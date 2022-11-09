@@ -18,6 +18,8 @@ from typing import Callable, Optional, Union
 import airflow
 from airflow import DAG
 from openmetadata_managed_apis.api.utils import clean_dag_id
+from pydantic import ValidationError
+from requests.utils import quote
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
@@ -38,6 +40,11 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from openmetadata_managed_apis.utils.logger import workflow_logger
+from openmetadata_managed_apis.utils.parser import (
+    parse_service_connection,
+    parse_validation_err,
+)
 from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
     build_secrets_manager_credentials,
 )
@@ -54,7 +61,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.ingestion.api.parser import (
+    InvalidWorkflowException,
+    ParsingConfigurationError,
+)
 from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.ometa.utils import model_str
+
+logger = workflow_logger()
 
 
 class InvalidServiceException(Exception):
@@ -115,25 +129,57 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             sourceConfig=ingestion_pipeline.sourceConfig,
         )
 
-    if service_type == "databaseService":
-        service: DatabaseService = metadata.get_by_name(
-            entity=DatabaseService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "pipelineService":
-        service: PipelineService = metadata.get_by_name(
-            entity=PipelineService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "dashboardService":
-        service: DashboardService = metadata.get_by_name(
-            entity=DashboardService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "messagingService":
-        service: MessagingService = metadata.get_by_name(
-            entity=MessagingService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "mlmodelService":
-        service: MlModelService = metadata.get_by_name(
-            entity=MlModelService, fqn=ingestion_pipeline.service.name
+    entity_class = None
+    try:
+        if service_type == "databaseService":
+            entity_class = DatabaseService
+            service: DatabaseService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "pipelineService":
+            entity_class = PipelineService
+            service: PipelineService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "dashboardService":
+            entity_class = DashboardService
+            service: DashboardService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "messagingService":
+            entity_class = MessagingService
+            service: MessagingService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "mlmodelService":
+            entity_class = MlModelService
+            service: MlModelService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        else:
+            raise InvalidServiceException(f"Invalid Service Type: {service_type}")
+    except ValidationError as original_error:
+        try:
+            resp = metadata.client.get(
+                f"{metadata.get_suffix(entity_class)}/name/{quote(model_str(ingestion_pipeline.service.name), safe='')}"
+            )
+            parse_service_connection(resp)
+        except (ValidationError, InvalidWorkflowException) as scoped_error:
+            if isinstance(scoped_error, ValidationError):
+                # Let's catch validations of internal Workflow models, not the Workflow itself
+                object_error = (
+                    scoped_error.model.__name__
+                    if scoped_error.model is not None
+                    else "workflow"
+                )
+                raise ParsingConfigurationError(
+                    f"We encountered an error parsing the configuration of your {object_error}.\n"
+                    f"{parse_validation_err(scoped_error)}"
+                )
+            raise scoped_error
+        raise ParsingConfigurationError(
+            f"We encountered an error parsing the configuration of your workflow.\n"
+            f"{parse_validation_err(original_error)}"
         )
 
     if not service:

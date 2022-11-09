@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-@label-color: #37352f90;
+import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 
-.data-insight-card {
-  .ant-card-head {
-    border-bottom: none;
-  }
+export interface ChartAggregateParam {
+  dataInsightChartName: DataInsightChartType;
+  startTs: number;
+  endTs: number;
+  tier?: string;
+  team?: string;
 }
 
-.ant-typography.data-insight-label-text {
-  color: @label-color;
+export interface ChartFilter {
+  team?: string;
+  tier?: string;
+  startTs: number;
+  endTs: number;
 }
