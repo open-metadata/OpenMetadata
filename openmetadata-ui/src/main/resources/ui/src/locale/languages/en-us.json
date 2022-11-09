@@ -211,7 +211,14 @@
     "day-label": "Last {{day}} Days",
     "tier-label": "Tier{{tier}}",
     "profiler-amp-data-quality": "Profiler & Data Quality",
-    "schema": "Schema"
+    "schema": "Schema",
+    "source": "Source",
+    "source-column": "Source Column",
+    "target": "Target",
+    "target-column": "Target Column",
+    "pipeline": "Pipeline",
+    "function": "Function",
+    "edge-information": "Edge Information"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -244,7 +251,8 @@
     "join-team-error": "Error while joining the team!",
     "leave-team-error": "Error while leaving the team!",
     "field-insight": "Display the percentage of datasets with {{field}} by type.",
-    "total-entity-insight": "Display the total of datasets by type."
+    "total-entity-insight": "Display the total of datasets by type.",
+    "no-query-available": "No query available"
   },
   "server": {
     "unexpected-response": "Unexpected response from server!"
