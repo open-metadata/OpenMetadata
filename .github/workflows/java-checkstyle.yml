@@ -52,8 +52,6 @@ jobs:
           git diff-files --quiet
 
       - name: Create a comment in the PR with the instructions
-        permissions:
-          pull-requests: write
         if: steps.git.outcome != 'success'
         uses: peter-evans/create-or-update-comment@v1
         with:
