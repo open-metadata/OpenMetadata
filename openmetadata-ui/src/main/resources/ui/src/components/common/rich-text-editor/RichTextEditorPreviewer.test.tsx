@@ -14,6 +14,7 @@
 import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { act } from 'react-test-renderer';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
 
 const mockDescription =
@@ -71,7 +72,9 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     expect(readMoreButton).toBeInTheDocument();
 
-    fireEvent.click(readMoreButton);
+    act(() => {
+      fireEvent.click(readMoreButton);
+    });
 
     expect(markdownParser.querySelector('del')).toBeInTheDocument();
 
@@ -179,7 +182,9 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     expect(readMoreButton).toBeInTheDocument();
 
-    fireEvent.click(readMoreButton);
+    act(() => {
+      fireEvent.click(readMoreButton);
+    });
 
     expect(markdownParser.querySelector('pre')).toBeInTheDocument();
 
@@ -215,7 +220,9 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     expect(readMoreButton).toBeInTheDocument();
 
-    fireEvent.click(readMoreButton);
+    act(() => {
+      fireEvent.click(readMoreButton);
+    });
 
     expect(markdownParser.querySelector('a')).toBeInTheDocument();
 
@@ -235,7 +242,9 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     expect(readMoreButton).toBeInTheDocument();
 
-    fireEvent.click(readMoreButton);
+    act(() => {
+      fireEvent.click(readMoreButton);
+    });
 
     expect(markdownParser.querySelector('img')).toBeInTheDocument();
 
@@ -255,7 +264,9 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     expect(readMoreButton).toBeInTheDocument();
 
-    fireEvent.click(readMoreButton);
+    act(() => {
+      fireEvent.click(readMoreButton);
+    });
 
     expect(markdownParser.querySelector('table')).toBeInTheDocument();
 

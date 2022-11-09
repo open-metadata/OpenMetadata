@@ -1033,11 +1033,11 @@ export const getTrimmedContent = (content: string, limit: number) => {
 
   // Logic for eliminating any broken words at the end
   // To avoid any URL being cut
-  const wordsInContent = slicedContent.split(' ');
-  const wordsCount = wordsInContent.length;
+  const words = slicedContent.split(' ');
+  const wordsCount = words.length;
 
   // Eliminate word at the end to avoid using broken words
-  const refinedContent = wordsInContent.slice(0, wordsCount - 1);
+  const refinedContent = words.slice(0, wordsCount - 1);
 
   return refinedContent.join(' ');
 };
