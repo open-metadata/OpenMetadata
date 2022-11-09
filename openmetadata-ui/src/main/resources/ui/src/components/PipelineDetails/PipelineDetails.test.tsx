@@ -252,7 +252,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is activity feed', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={2} />,
+      <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
@@ -264,7 +264,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is lineage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
+      <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
@@ -276,7 +276,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
@@ -291,7 +291,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }

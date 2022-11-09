@@ -15,16 +15,9 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
+import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import { postFeedById, postThread } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -51,9 +44,7 @@ import {
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { Post, Thread } from '../../generated/entity/feed/thread';
 import { Connection } from '../../generated/entity/services/dashboardService';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -64,10 +55,8 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
-  getFeedCounts,
 } from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -103,17 +92,7 @@ const PipelineDetailsPage = () => {
 
   const [isError, setIsError] = useState(false);
 
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isentityThreadLoading] = useState<boolean>(false);
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
   const [paging] = useState<Paging>({} as Paging);
-
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [pipelinePermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -136,16 +115,6 @@ const PipelineDetailsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.PIPELINE,
-      pipelineFQN,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
   };
 
   const { pipelineId, currentVersion } = useMemo(() => {
@@ -310,7 +279,6 @@ const PipelineDetailsPage = () => {
       const response = await saveUpdatedPipelineData(updatedPipeline);
       if (response) {
         setPipelineDetails(response);
-        getEntityFeedCount();
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -326,7 +294,6 @@ const PipelineDetailsPage = () => {
           if (res) {
             setPipelineDetails({ ...res, tags: res.tags ?? [] });
 
-            getEntityFeedCount();
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -347,8 +314,6 @@ const PipelineDetailsPage = () => {
       .then((res) => {
         if (res) {
           setPipelineDetails(res);
-
-          getEntityFeedCount();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -367,7 +332,6 @@ const PipelineDetailsPage = () => {
 
       if (response) {
         setTasks(response.tasks || []);
-        getEntityFeedCount();
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -455,74 +419,7 @@ const PipelineDetailsPage = () => {
     });
   };
 
-  const postFeedHandler = (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
-      });
-  };
-
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          setEntityThread((pre) => [...pre, res]);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['create-conversation-error']
-        );
-      });
-  };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  const handleExtentionUpdate = async (updatedPipeline: Pipeline) => {
+  const handleExtensionUpdate = async (updatedPipeline: Pipeline) => {
     try {
       const data = await saveUpdatedPipelineData(updatedPipeline);
 
@@ -543,7 +440,6 @@ const PipelineDetailsPage = () => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
       fetchPipelineDetail(pipelineFQN);
       setEntityLineage({} as EntityLineage);
-      getEntityFeedCount();
     }
   }, [pipelinePermissions, pipelineFQN]);
 
@@ -564,27 +460,19 @@ const PipelineDetailsPage = () => {
           {pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic ? (
             <PipelineDetails
               addLineageHandler={addLineageHandler}
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
               descriptionUpdateHandler={descriptionUpdateHandler}
-              entityFieldTaskCount={entityFieldTaskCount}
-              entityFieldThreadCount={entityFieldThreadCount}
               entityLineage={entityLineage}
               entityLineageHandler={entityLineageHandler}
               entityName={displayName}
-              entityThread={entityThread}
-              feedCount={feedCount}
               followPipelineHandler={followPipeline}
               followers={followers}
               isNodeLoading={isNodeLoading}
-              isentityThreadLoading={isentityThreadLoading}
               lineageLeafNodes={leafNodes}
               loadNodeHandler={loadNodeHandler}
               paging={paging}
               pipelineDetails={pipelineDetails}
               pipelineFQN={pipelineFQN}
               pipelineUrl={pipelineUrl}
-              postFeedHandler={postFeedHandler}
               removeLineageHandler={removeLineageHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedPipelineName={slashedPipelineName}
@@ -592,9 +480,8 @@ const PipelineDetailsPage = () => {
               taskUpdateHandler={onTaskUpdate}
               tasks={tasks}
               unfollowPipelineHandler={unfollowPipeline}
-              updateThreadHandler={updateThreadHandler}
               versionHandler={versionHandler}
-              onExtensionUpdate={handleExtentionUpdate}
+              onExtensionUpdate={handleExtensionUpdate}
             />
           ) : (
             <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>

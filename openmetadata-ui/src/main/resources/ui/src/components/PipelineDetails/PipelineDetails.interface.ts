@@ -12,19 +12,11 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import {
-  EntityFieldThreadCount,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
-import { CreateThread } from '../../generated/api/feed/createThread';
+import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { Thread } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
@@ -39,13 +31,7 @@ export interface PipeLineDetailsProp {
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   entityLineage: EntityLineage;
   tasks: Task[];
-  entityThread: Thread[];
-  isentityThreadLoading: boolean;
-  feedCount: number;
-  entityFieldThreadCount: EntityFieldThreadCount[];
-  entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
-  createThread: (data: CreateThread) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
@@ -57,12 +43,5 @@ export interface PipeLineDetailsProp {
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
 }

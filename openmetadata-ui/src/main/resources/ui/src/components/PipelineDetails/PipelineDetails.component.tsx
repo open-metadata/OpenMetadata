@@ -14,8 +14,14 @@
 import { Card, Col, Row, Space, Table, Tabs, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { EntityTags, ExtraInfo, TagOption } from 'Models';
+import { compare, Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
+import {
+  EntityFieldThreadCount,
+  EntityTags,
+  ExtraInfo,
+  TagOption,
+} from 'Models';
 import React, {
   RefObject,
   useCallback,
@@ -24,24 +30,30 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
+import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
+import {
+  getAllFeeds,
+  postFeedById,
+  postThread,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getPipelineDetailsPath } from '../../constants/constants';
+import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   Pipeline,
   PipelineStatus,
   TagLabel,
   Task,
 } from '../../generated/entity/data/pipeline';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -49,14 +61,20 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getCountBadge,
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
+  getFeedCounts,
   getOwnerValue,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getEntityFieldThreadCounts,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -81,6 +99,7 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
+import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
@@ -89,7 +108,6 @@ const PipelineDetails = ({
   pipelineUrl,
   pipelineDetails,
   descriptionUpdateHandler,
-
   followers,
   followPipelineHandler,
   unfollowPipelineHandler,
@@ -104,14 +122,7 @@ const PipelineDetails = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
-  isentityThreadLoading,
-  postFeedHandler,
-  entityFieldThreadCount,
-  createThread,
   pipelineFQN,
-  deletePostHandler,
-  updateThreadHandler,
-  entityFieldTaskCount,
   onExtensionUpdate,
 }: PipeLineDetailsProp) => {
   const history = useHistory();
@@ -139,6 +150,15 @@ const PipelineDetails = ({
   const [entityThreadPaging, setEntityThreadPaging] = useState<Paging>({
     total: 0,
   } as Paging);
+
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+
   const {
     tier,
     deleted,
@@ -386,7 +406,7 @@ const PipelineDetails = ({
   };
 
   const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
+    return entityThreadLoading ? <Loader /> : null;
   };
 
   const getFeedData = (
@@ -646,7 +666,7 @@ const PipelineDetails = ({
   useEffect(() => {
     switch (activeTab) {
       case 'entity-lineage':
-        !deleted && getLineageData();
+        !deleted && isEmpty(entityLineage) && getLineageData();
 
         break;
       case 'activity-feeds-tasks':
@@ -667,6 +687,87 @@ const PipelineDetails = ({
       });
     }
   };
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.PIPELINE,
+      pipelineFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
+  };
+
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    } as Post;
+    postFeedById(id, data)
+      .then((res) => {
+        if (res) {
+          const { id, posts } = res;
+          setEntityThreads((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res, posts: posts?.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+      });
+  };
+
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res) => {
+        if (res) {
+          setEntityThreads((pre) => [...pre, res]);
+          getEntityFeedCount();
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
+      });
+  };
+
+  const deletePostHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean
+  ) => {
+    deletePost(threadId, postId, isThread, setEntityThreads);
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThreads);
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, [pipelineFQN, description, pipelineDetails, tasks]);
 
   return (
     <PageContainer>
@@ -768,12 +869,33 @@ const PipelineDetails = ({
                   size="small"
                 />
               </Col>
+              {!isEmpty(tasks) && (
+                <Col span={24}>
+                  <Card title="DAG view">
+                    <div className="h-100">
+                      <TasksDAGView
+                        selectedExec={selectedExecution}
+                        tasks={tasks}
+                      />
+                    </div>
+                  </Card>
+                </Col>
+              )}
             </Row>
           </Tabs.TabPane>
           <Tabs.TabPane
             className="h-full"
             key="activity-feeds-tasks"
-            tab="Activity Feeds & Tasks">
+            tab={
+              <>
+                Activity Feeds & Tasks{' '}
+                {getCountBadge(
+                  feedCount,
+                  '',
+                  'activity-feeds-tasks' === activeTab
+                )}
+              </>
+            }>
             <Card className="h-min-full">
               <Row justify="center">
                 <Col span={18}>
@@ -841,6 +963,9 @@ const PipelineDetails = ({
               entityType={EntityType.PIPELINE}
               handleExtentionUpdate={onExtensionUpdate}
             />
+          </Tabs.TabPane>
+          <Tabs.TabPane key="*" tab="">
+            <Redirect to={ROUTES.NOT_FOUND} />
           </Tabs.TabPane>
         </Tabs>
       </div>
