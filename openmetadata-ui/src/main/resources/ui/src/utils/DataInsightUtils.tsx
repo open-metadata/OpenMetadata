@@ -183,6 +183,7 @@ export const getGraphDataByEntityType = (
     data: graphData,
     entities,
     total: getLatestCount(latestData),
+    latestData,
   };
 };
 

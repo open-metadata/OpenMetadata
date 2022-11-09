@@ -185,7 +185,7 @@ const DataInsightPage = () => {
           </Card>
         </Col>
         <Col span={24}>
-          <DataInsightSummary />
+          <DataInsightSummary chartFilter={chartFilter} />
         </Col>
         <Col span={24}>
           <Radio.Group

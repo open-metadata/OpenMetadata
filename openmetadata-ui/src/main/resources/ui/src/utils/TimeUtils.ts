@@ -402,3 +402,10 @@ export const formatDateTimeFromSeconds = (date: number) => {
 
   return dateTime.toLocaleString(DateTime.DATETIME_MED);
 };
+
+/**
+ *
+ * @returns Current date timestamp
+ */
+export const getCurrentDateTimeStampInMilliSeconds = () =>
+  getTimeStampByDate(DateTime.now().toFormat('yyyy-MM-dd'));
