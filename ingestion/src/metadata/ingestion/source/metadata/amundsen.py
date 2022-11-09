@@ -505,17 +505,16 @@ class AmundsenSource(Source[Entity]):
         """
         Method to get and create Database Service
         """
-
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name=service_name,
                 displayName=service_name,
                 connection=SERVICE_TYPE_MAPPER.get(
                     service_name, SERVICE_TYPE_MAPPER["mysql"]["connection"]
-                ),
+                )["connection"],
                 serviceType=SERVICE_TYPE_MAPPER.get(
                     service_name, SERVICE_TYPE_MAPPER["mysql"]["service_name"]
-                ),
+                )["service_name"],
             ),
         )
 
