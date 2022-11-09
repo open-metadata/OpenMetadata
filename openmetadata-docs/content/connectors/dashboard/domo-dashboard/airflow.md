@@ -53,10 +53,10 @@ source:
     config:
       type: DomoDashboard
       clientId: clientid
-      SecretToken: secret Token
-      AccessToken: access Token
-      APIHost: api.domo.com
-      SandboxDomain: https://<api_domo>.domo.com
+      secretToken: secret-token
+      accessToken: access-token
+      apiHost: api.domo.com
+      sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
       dashboardFilterPattern: {}
       chartFilterPattern: {}

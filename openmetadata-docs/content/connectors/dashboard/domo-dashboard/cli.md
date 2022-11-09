@@ -52,11 +52,11 @@ source:
   serviceConnection:
     config:
       type: DomoDashboard
-      ClientId: clientid
-      SecretToken: secret Token
-      AccessToken: access Token
-      APIHost: api.domo.com
-      SandboxDomain: https://<api_domo>.domo.com
+      clientId: clientid
+      secretToken: secret-token
+      accessToken: access-token
+      apiHost: api.domo.com
+      sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
       dashboardFilterPattern: {}
