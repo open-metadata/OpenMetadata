@@ -102,9 +102,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public String runPipeline(String pipelineName) {
     HttpResponse<String> response;
     try {
-      String triggerEndPoint = "%s/%s/trigger";
-      String triggerUrl = String.format(triggerEndPoint, serviceURL, API_ENDPOINT);
-      JSONObject requestPayload = new JSONObject();
+       String triggerEndPoint = "%s/%s/trigger";
+          String triggerUrl = String.format(triggerEndPoint, serviceURL, API_ENDPOINT);
+            JSONObject requestPayload =   new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
