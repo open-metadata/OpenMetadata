@@ -123,9 +123,14 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
-        <Typography.Title level={5}>
-          {t('label.data-insight-active-user-summary')}
-        </Typography.Title>
+        <>
+          <Typography.Title level={5}>
+            {t('label.data-insight-active-user-summary')}
+          </Typography.Title>
+          <Typography.Text className="data-insight-label-text">
+            {t('message.most-active-users')}
+          </Typography.Text>
+        </>
       }>
       <Table
         className="data-insight-table-wrapper"
