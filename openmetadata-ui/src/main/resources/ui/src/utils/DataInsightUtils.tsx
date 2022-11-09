@@ -20,6 +20,7 @@ import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
+import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
 import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
 import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
@@ -233,3 +234,11 @@ export const getTeamFilter = (suggestionValues: ListValues = []) => {
     value: suggestion.value,
   }));
 };
+
+export const getFormattedActiveUsersData = (activeUsers: DailyActiveUsers[]) =>
+  activeUsers.map((user) => ({
+    ...user,
+    timestamp: user.timestamp
+      ? getFormattedDateFromMilliSeconds(user.timestamp)
+      : '',
+  }));

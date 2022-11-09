@@ -27,6 +27,7 @@ import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
 import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
@@ -225,6 +226,9 @@ const DataInsightPage = () => {
             </Col>
             <Col span={24}>
               <TopActiveUsers chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <DailyActiveUsersChart chartFilter={chartFilter} />
             </Col>
           </>
         )}
