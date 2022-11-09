@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Table, Tag, Typography } from 'antd';
+import { Card, Space, Table, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TOP_VIEW_ENTITIES } from '../../pages/DataInsightPage/DataInsight.mock';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import './DataInsightDetail.less';
 
 interface EntityView {
@@ -44,7 +45,12 @@ const TopViewEntities = () => {
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
-        render: (owner: string) => <Typography.Text>{owner}</Typography.Text>,
+        render: (owner: string) => (
+          <Space>
+            <ProfilePicture id="" name={owner} type="circle" width="24" />
+            <Typography.Text>{owner}</Typography.Text>
+          </Space>
+        ),
       },
       {
         title: t('label.tags'),

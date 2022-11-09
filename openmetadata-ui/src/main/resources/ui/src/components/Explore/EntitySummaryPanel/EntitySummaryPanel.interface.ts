@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-@label-color: #37352f90;
+import { Table, TableType } from '../../../generated/entity/data/table';
+import { OverallTableSummeryType } from '../../TableProfiler/TableProfiler.interface';
 
-.data-insight-card {
-  .ant-card-head {
-    border-bottom: none;
-  }
+export interface EntitySummaryPanelProps {
+  entityDetails: Table;
+  handleClosePanel: () => void;
+  overallSummery: OverallTableSummeryType[];
+  showPanel: boolean;
 }
 
-.ant-typography.data-insight-label-text {
-  color: @label-color;
+export interface BasicTableInfo {
+  Type: TableType | string;
+  Queries: string;
+  Columns: string;
 }

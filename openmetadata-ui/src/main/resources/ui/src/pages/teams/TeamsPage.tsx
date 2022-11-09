@@ -297,7 +297,7 @@ const TeamsPage = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            t('message.entity-updation-error', {
+            t('message.entity-updating-error', {
               entity: 'Team',
             })
           );
@@ -383,7 +383,7 @@ const TeamsPage = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            t('message.entity-updation-error', {
+            t('message.entity-updating-error', {
               entity: 'Team',
             })
           );
@@ -421,7 +421,7 @@ const TeamsPage = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            t('message.entity-updation-error', {
+            t('message.entity-updating-error', {
               entity: 'Team',
             })
           );

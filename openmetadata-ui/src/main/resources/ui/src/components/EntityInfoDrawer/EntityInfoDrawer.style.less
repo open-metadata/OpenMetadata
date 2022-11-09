@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../styles/variables.less');
 
-@label-color: #37352f90;
-
-.data-insight-card {
-  .ant-card-head {
-    border-bottom: none;
+.edge-drawer-sql-editor {
+  border: 1px solid @border-color;
+  border-radius: 2px;
+  .CodeMirror {
+    height: 200px;
   }
-}
-
-.ant-typography.data-insight-label-text {
-  color: @label-color;
 }

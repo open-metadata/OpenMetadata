@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,23 +11,16 @@
  *  limitations under the License.
  */
 
-.side-drawer {
-  height: 110%;
-  background: white;
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 325px;
-  z-index: 200;
-  overflow-y: auto;
-  padding: 16px;
-  transform: translateX(100%);
-  display: none;
-  border-left: 1px solid #dce3ec;
-  transition: transform 0.3s ease-out;
+import { Column, DataType } from '../../../generated/entity/data/table';
+import { TagLabel } from './../../../generated/type/tagLabel';
+
+export interface ColumnSummaryProps {
+  columns: Column[];
 }
 
-.side-drawer.open {
-  transform: translateX(0);
-  display: block;
+export interface BasicColumnInfo {
+  name: string;
+  type: DataType;
+  tags?: TagLabel[];
+  description?: string;
 }
