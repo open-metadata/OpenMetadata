@@ -80,7 +80,12 @@ const TreeViewTab = ({
             </Col>
 
             <Col span={19}>
-              <Space>
+              <div
+                style={{
+                  overflowX: 'auto',
+                  width: '100%',
+                  height: '100%',
+                }}>
                 {value.map((status) => (
                   <Tooltip
                     html={
@@ -93,12 +98,13 @@ const TreeViewTab = ({
                     position="bottom">
                     <SVGIcons
                       alt="result"
-                      className="tw-w-6"
+                      className="tw-w-6 mr-2 mb-2"
                       icon={getStatusBadgeIcon(status.executionStatus)}
                     />
                   </Tooltip>
                 ))}
-              </Space>
+              </div>
+              <Space />
             </Col>
           </Row>
         );
