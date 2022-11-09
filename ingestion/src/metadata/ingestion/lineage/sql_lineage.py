@@ -246,9 +246,9 @@ def _build_table_lineage(
         from_table_raw_name=str(from_table_raw_name),
         column_lineage_map=column_lineage_map,
     )
-    lineage_details = None
+    lineage_details = LineageDetails(sqlQuery=query)
     if col_lineage:
-        lineage_details = LineageDetails(sqlQuery=query, columnsLineage=col_lineage)
+        lineage_details.columnsLineage = col_lineage
     if from_entity and to_entity:
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
