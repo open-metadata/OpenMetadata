@@ -18,7 +18,6 @@ import static org.openmetadata.schema.services.connections.metadata.SecretsManag
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
@@ -36,11 +35,6 @@ public class NoopSecretsManager extends SecretsManager {
   }
 
   @Override
-  public boolean isLocal() {
-    return true;
-  }
-
-  @Override
   public Object encryptOrDecryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
     try {
@@ -52,26 +46,6 @@ public class NoopSecretsManager extends SecretsManager {
       throw InvalidServiceConnectionException.byMessage(
           connectionType, String.format("Failed to construct connection instance of %s", connectionType));
     }
-  }
-
-  @Override
-  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt) {
-    return dbtConfigSource;
-  }
-
-  @Override
-  public Object storeTestConnectionObject(TestServiceConnection testServiceConnection) {
-    return testServiceConnection.getConnection();
-  }
-
-  @Override
-  public Object encryptOrDecryptBotUserCredentials(String botUserName, Object securityConfig, boolean encrypt) {
-    return securityConfig;
-  }
-
-  @Override
-  public Object encryptOrDecryptBotCredentials(String botName, String botUserName, boolean encrypt) {
-    return null;
   }
 
   private void encryptOrDecryptField(Object connConfig, String field, Class<?> clazz, boolean encrypt)

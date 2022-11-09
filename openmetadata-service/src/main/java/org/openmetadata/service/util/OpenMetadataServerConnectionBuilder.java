@@ -18,7 +18,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -44,21 +43,18 @@ public class OpenMetadataServerConnectionBuilder {
             : OpenMetadataServerConnection.AuthProvider.fromValue(
                 openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
 
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (!OpenMetadataServerConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
       botRepository = BotRepository.class.cast(Entity.getEntityRepository(Entity.BOT));
       userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
       User botUser = retrieveBotUser();
-      if (secretsManager.isLocal()) {
-        securityConfig = extractSecurityConfig(botUser);
-      }
+      securityConfig = extractSecurityConfig(botUser);
       authProvider = extractAuthProvider(botUser);
     }
 
     AirflowConfiguration airflowConfiguration = openMetadataApplicationConfig.getAirflowConfiguration();
     openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
     clusterName = openMetadataApplicationConfig.getClusterName();
-    secretsManagerProvider = secretsManager.getSecretsManagerProvider();
+    secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
     verifySSL = OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     airflowSSLConfig =
         getAirflowSSLConfig(
@@ -116,7 +112,6 @@ public class OpenMetadataServerConnectionBuilder {
   }
 
   private User retrieveIngestionBotUser(String botName) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       Bot bot1 = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
       if (bot1.getBotUser() == null) {
@@ -128,10 +123,7 @@ public class OpenMetadataServerConnectionBuilder {
               bot1.getBotUser().getFullyQualifiedName(),
               new EntityUtil.Fields(List.of("authenticationMechanism")));
       if (user.getAuthenticationMechanism() != null) {
-        user.getAuthenticationMechanism()
-            .setConfig(
-                secretsManager.encryptOrDecryptBotUserCredentials(
-                    user.getName(), user.getAuthenticationMechanism().getConfig(), false));
+        user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }
       return user;
     } catch (IOException | EntityNotFoundException ex) {

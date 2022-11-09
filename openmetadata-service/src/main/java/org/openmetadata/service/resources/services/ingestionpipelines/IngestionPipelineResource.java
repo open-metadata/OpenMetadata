@@ -57,8 +57,6 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -439,7 +437,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
     pipelineServiceClient.toggleIngestion(pipeline);
-    createOrUpdate(uriInfo, securityContext, pipeline);
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
@@ -483,12 +480,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid TestServiceConnection testServiceConnection) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    testServiceConnection =
-        testServiceConnection
-            .withConnection(secretsManager.storeTestConnectionObject(testServiceConnection))
-            .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider())
-            .withClusterName(openMetadataApplicationConfig.getClusterName());
     HttpResponse<String> response = pipelineServiceClient.testConnection(testServiceConnection);
     return Response.status(200, response.body()).build();
   }
@@ -683,19 +674,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
-      if (!secretsManager.isLocal()) { // TODO fix this correctly
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(ingestionPipeline.getId()));
-      }
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+          getResourceContextById(ingestionPipeline.getId()));
     } catch (AuthorizationException | IOException e) {
       ingestionPipeline.getSourceConfig().setConfig(null);
       return ingestionPipeline;
     }
-    secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
     return ingestionPipeline;
   }
 }

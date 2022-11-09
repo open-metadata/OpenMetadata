@@ -151,7 +151,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Test
   void post_put_invalidConnection_as_admin_4xx(TestInfo test) {
     RedshiftConnection redshiftConnection = new RedshiftConnection();
-    DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
     PipelineConnection pipelineConnection = new PipelineConnection().withConfig(redshiftConnection);
     assertResponseContains(
         () ->
@@ -272,13 +271,13 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
     // Use the database service tests utilities for the comparison
     // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
+    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
       DatabaseConnection actualDatabaseConnection =
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
       MysqlConnection actualMysqlConnection =
           JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
-    } else if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
+    } else {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
       assertNull(actualAirflowConnection.getConnection());

@@ -99,8 +99,6 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -561,9 +559,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @PathParam("id") UUID id,
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
-    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    authorizeGenerateJWT(user);
     authorizer.authorizeAdmin(securityContext);
+    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
@@ -592,10 +589,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response revokeToken(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
-
-    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    authorizeGenerateJWT(user);
     authorizer.authorizeAdmin(securityContext);
+    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
@@ -826,7 +821,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "200", description = "The user "),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) throws IOException {
+  public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
@@ -835,14 +830,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (IOException ex) {
       throw new BadRequestException("Email is not valid.");
     }
-    // send a mail to the User with the Update
-    authHandler.sendPasswordResetLink(
-        uriInfo,
-        registeredUser,
-        EmailUtil.getInstance().getPasswordResetSubject(),
-        EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
     try {
-
+      // send a mail to the User with the Update
+      authHandler.sendPasswordResetLink(
+          uriInfo,
+          registeredUser,
+          EmailUtil.getInstance().getPasswordResetSubject(),
+          EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -995,12 +989,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 
-  private void authorizeGenerateJWT(User user) {
-    if (!Boolean.TRUE.equals(user.getIsBot())) {
-      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
-    }
-  }
-
   public void validateEmailAlreadyExists(String email) {
     if (dao.checkEmailAlreadyExists(email)) {
       throw new RuntimeException("User with Email Already Exists");
@@ -1070,17 +1058,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isValidAuthenticationMechanism(create)) {
       AuthenticationMechanism authMechanism = create.getAuthenticationMechanism();
       AuthenticationMechanism.AuthType authType = authMechanism.getAuthType();
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       switch (authType) {
         case JWT:
           User original = retrieveBotUser(user, uriInfo);
-          if (original != null && !secretsManager.isLocal() && authMechanism.getConfig() != null) {
-            original
-                .getAuthenticationMechanism()
-                .setConfig(
-                    secretsManager.encryptOrDecryptBotUserCredentials(
-                        user.getName(), authMechanism.getConfig(), false));
-          }
           if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
             JWTAuthMechanism jwtAuthMechanism =
                 JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
@@ -1149,24 +1129,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private User decryptOrNullify(SecurityContext securityContext, User user) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
-        if (!secretsManager.isLocal()) {
-          authorizer.authorize(
-              securityContext,
-              new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-              getResourceContextById(user.getId()));
-        }
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+            getResourceContextById(user.getId()));
       } catch (AuthorizationException | IOException e) {
         user.getAuthenticationMechanism().setConfig(null);
         return user;
       }
-      user.getAuthenticationMechanism()
-          .setConfig(
-              secretsManager.encryptOrDecryptBotUserCredentials(
-                  user.getName(), user.getAuthenticationMechanism().getConfig(), false));
-      return user;
     }
     return user;
   }
