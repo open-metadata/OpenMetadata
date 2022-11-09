@@ -4,35 +4,19 @@ import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Edge, Node } from 'reactflow';
+import { Node } from 'reactflow';
 import { CSMode } from '../../enums/codemirror.enum';
 import { getEntityName, getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';
+import {
+  EdgeInfoDrawerInfo,
+  EdgeInformationType,
+} from './EntityInfoDrawer.interface';
 
 import './EntityInfoDrawer.style.less';
-
-interface EdgeInfoDrawerInfo {
-  edge: Edge;
-  nodes: Node[];
-  visible: boolean;
-  onClose: () => void;
-}
-type InfoType = {
-  key: string;
-  value: string | undefined;
-  link?: string;
-};
-type EdgeInformationType = {
-  sourceData?: InfoType;
-  targetData?: InfoType;
-  pipeline?: InfoType;
-  sourceColumn?: InfoType;
-  targetColumn?: InfoType;
-  functionInfo?: InfoType;
-};
 
 const EdgeInfoDrawer = ({
   edge,

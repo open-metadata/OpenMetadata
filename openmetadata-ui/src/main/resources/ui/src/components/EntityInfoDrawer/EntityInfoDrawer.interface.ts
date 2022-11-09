@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Edge, Node } from 'reactflow';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 
 export interface LineageDrawerProps {
@@ -19,3 +20,24 @@ export interface LineageDrawerProps {
   selectedNode: SelectedNode;
   isMainNode: boolean;
 }
+
+export interface EdgeInfoDrawerInfo {
+  edge: Edge;
+  nodes: Node[];
+  visible: boolean;
+  onClose: () => void;
+}
+type InfoType = {
+  key: string;
+  value: string | undefined;
+  link?: string;
+};
+
+export type EdgeInformationType = {
+  sourceData?: InfoType;
+  targetData?: InfoType;
+  pipeline?: InfoType;
+  sourceColumn?: InfoType;
+  targetColumn?: InfoType;
+  functionInfo?: InfoType;
+};
