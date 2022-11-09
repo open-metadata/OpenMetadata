@@ -64,6 +64,7 @@ const mockData: SearchedDataProps['data'] = [
 ];
 
 const mockPaginate = jest.fn();
+const mockHandleSummaryPanelDisplay = jest.fn();
 
 jest.mock('../common/table-data-card/TableDataCard', () => {
   return jest
@@ -90,6 +91,7 @@ describe('Test SearchedData Component', () => {
         isFilterSelected
         currentPage={0}
         data={mockData}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
         totalValue={10}
       />,
@@ -109,6 +111,7 @@ describe('Test SearchedData Component', () => {
         isFilterSelected
         currentPage={0}
         data={mockData}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
         totalValue={10}
       />,
@@ -128,6 +131,7 @@ describe('Test SearchedData Component', () => {
         isFilterSelected
         currentPage={0}
         data={mockData}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
         totalValue={10}>
         <p>hello world</p>
@@ -146,6 +150,7 @@ describe('Test SearchedData Component', () => {
         isFilterSelected
         currentPage={0}
         data={mockData}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
         totalValue={11}>
         <p>hello world</p>
@@ -165,6 +170,7 @@ describe('Test SearchedData Component', () => {
         showOnboardingTemplate
         currentPage={0}
         data={[]}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
         totalValue={0}
       />,
@@ -182,6 +188,7 @@ describe('Test SearchedData Component', () => {
         isFilterSelected
         currentPage={0}
         data={[]}
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
         totalValue={0}
       />,

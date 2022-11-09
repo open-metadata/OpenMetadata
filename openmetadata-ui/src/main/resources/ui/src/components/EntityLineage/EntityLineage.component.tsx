@@ -106,7 +106,6 @@ import {
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
@@ -128,7 +127,9 @@ import {
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
 
+import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import './entityLineage.style.less';
+import LineageNodeLabel from './LineageNodeLabel';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -180,6 +181,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     string | undefined
   >();
   const [isTracingActive, setIsTracingActive] = useState(false);
+  const [selectedEdgeInfo, setSelectedEdgeInfo] = useState<Edge>();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -217,25 +219,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const resetSelectedData = () => {
     setNewAddedNode({} as Node);
     setSelectedEntity({} as EntityReference);
-  };
-
-  /**
-   *
-   * @param node
-   * @returns label for given node
-   */
-  const getNodeLabel = (node: EntityReference) => {
-    return (
-      <p className="tw-flex tw-items-center tw-m-0 tw-py-3">
-        <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-        {getDataLabel(
-          node.displayName,
-          node.fullyQualifiedName,
-          false,
-          node.type
-        )}
-      </p>
-    );
   };
 
   const handleNodeSelection = (node: Node) => {
@@ -495,25 +478,20 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const setElementsHandle = (data: EntityLineage) => {
     if (!isEmpty(data)) {
-      const currentData = {
-        nodes: [...(nodes || [])],
-        edges: [...(edges || [])],
-      };
       const graphElements = getLineageData(
         data,
         selectNodeHandler,
         loadNodeHandler,
         lineageLeafNodes,
         isNodeLoading,
-        getNodeLabel,
         isEditMode,
         'buttonedge',
         onEdgeClick,
         removeNodeHandler,
         tableColumnsRef.current,
-        currentData,
         addPipelineClick,
-        handleColumnClick
+        handleColumnClick,
+        expandAllColumns
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -532,26 +510,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    * take boolean value as input and reset selected node
    * @param value
    */
-  const closeDrawer = (value: boolean) => {
-    setIsDrawerOpen(value);
-    setNodes((prevElements) => {
-      return prevElements.map((prevElement) => {
-        if (prevElement.id === selectedNode.id) {
-          const className =
-            prevElement.id.includes(updatedLineageData.entity?.id) &&
-            !isEditMode
-              ? 'leaf-node core'
-              : 'leaf-node';
-
-          return {
-            ...prevElement,
-            className,
-          };
-        } else {
-          return prevElement;
-        }
-      });
-    });
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
     setSelectedNode({} as SelectedNode);
   };
 
@@ -925,6 +885,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    */
   const onNodeClick = (node: Node) => {
     if (isNode(node)) {
+      setSelectedEdgeInfo(undefined);
+      setIsDrawerOpen(false);
       handleLineageTracing(node);
       handleNodeSelection(node);
     }
@@ -1111,7 +1073,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   isEditMode,
                   label: (
                     <Fragment>
-                      {getNodeLabel(selectedEntity)}
+                      <LineageNodeLabel node={selectedEntity} />
                       {getNodeRemoveButton(() => {
                         removeNodeHandler({
                           ...el,
@@ -1152,8 +1114,23 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setIsDrawerOpen(false);
   };
 
+  const handleEdgeClick = (
+    _e: React.MouseEvent<Element, MouseEvent>,
+    edge: Edge
+  ) => {
+    setSelectedEdgeInfo(edge);
+    setIsDrawerOpen(true);
+  };
+
   const toggleColumnView = (value: boolean) => {
     setExpandAllColumns(value);
+    setEdges((prevEdges) => {
+      return prevEdges.map((edge) => {
+        edge.data.isExpanded = value;
+
+        return edge;
+      });
+    });
     setNodes((prevNodes) => {
       const updatedNode = prevNodes.map((node) => {
         node.data.isExpanded = value;
@@ -1168,6 +1145,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
       return node;
     });
+
+    setTimeout(() => {
+      reactFlowInstance?.fitView();
+    }, 100);
   };
 
   const handleExpandColumnClick = () => {
@@ -1210,7 +1191,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   /**
-   * Handle updated linegae nodes
+   * Handle updated lineage nodes
    * Change newly added node label based on entity:EntityReference
    */
   const handleUpdatedLineageNode = () => {
@@ -1225,7 +1206,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         if (el.id === newlyAddedNode?.id) {
           return {
             ...el,
-            data: { ...el.data, label: getNodeLabel(newlyAddedNode) },
+            data: {
+              ...el.data,
+              label: <LineageNodeLabel node={newlyAddedNode} />,
+            },
           };
         } else {
           return el;
@@ -1316,6 +1300,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onConnect={onConnect}
             onDragOver={onDragOver}
             onDrop={onDrop}
+            onEdgeClick={handleEdgeClick}
             onEdgesChange={onEdgesChange}
             onInit={(reactFlowInstance: ReactFlowInstance) => {
               onLoad(reactFlowInstance);
@@ -1355,14 +1340,26 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           </ReactFlow>
         </ReactFlowProvider>
       </div>
-      {!isEmpty(selectedNode) && !isEditMode && (
-        <EntityInfoDrawer
-          isMainNode={selectedNode.name === updatedLineageData.entity?.name}
-          selectedNode={selectedNode}
-          show={isDrawerOpen && !isEditMode}
-          onCancel={closeDrawer}
-        />
-      )}
+      {isDrawerOpen &&
+        !isEditMode &&
+        (selectedEdgeInfo ? (
+          <EdgeInfoDrawer
+            edge={selectedEdgeInfo}
+            nodes={nodes}
+            visible={isDrawerOpen}
+            onClose={() => {
+              setIsDrawerOpen(false);
+              setSelectedEdgeInfo(undefined);
+            }}
+          />
+        ) : (
+          <EntityInfoDrawer
+            isMainNode={selectedNode.name === updatedLineageData.entity?.name}
+            selectedNode={selectedNode}
+            show={isDrawerOpen}
+            onCancel={closeDrawer}
+          />
+        ))}
       <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
       {showDeleteModal && (
         <Modal

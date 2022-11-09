@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AssetsDataType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
@@ -34,6 +35,8 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
+  followingEntities: AssetsDataType;
+  ownedEntities: AssetsDataType;
   username: string;
   tab: string;
   feedData: Thread[];
@@ -58,5 +61,7 @@ export interface Props {
   feedFilter: FeedFilter;
   setFeedFilter: (value: FeedFilter) => void;
   threadType: ThreadType.Task | ThreadType.Conversation;
+  onFollowingEntityPaginate: (page: string | number) => void;
+  onOwnedEntityPaginate: (page: string | number) => void;
   onSwitchChange: (checked: boolean) => void;
 }

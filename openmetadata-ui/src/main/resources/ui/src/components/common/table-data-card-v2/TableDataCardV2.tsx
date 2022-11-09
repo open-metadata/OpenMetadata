@@ -24,6 +24,7 @@ import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getEntityId,
@@ -48,6 +49,7 @@ export interface TableDataCardPropsV2 {
     value: number;
   }[];
   searchIndex: SearchIndex | EntityType;
+  handleSummaryPanelDisplay: (source: Table) => void;
 }
 
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
@@ -55,6 +57,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   source,
   matches,
   searchIndex,
+  handleSummaryPanelDisplay,
 }) => {
   const location = useLocation();
 
@@ -141,7 +144,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
-      data-testid="table-data-card">
+      data-testid="table-data-card"
+      onClick={() => handleSummaryPanelDisplay(source as Table)}>
       <div>
         {'databaseSchema' in source && 'database' in source && (
           <span

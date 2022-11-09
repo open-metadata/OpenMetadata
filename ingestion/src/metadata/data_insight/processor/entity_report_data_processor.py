@@ -35,8 +35,13 @@ from metadata.generated.schema.entity.data import (
     table,
     topic,
 )
+from metadata.generated.schema.entity.teams import user
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.tests import testSuite
+from metadata.generated.schema.type.entityReference import (
+    EntityReference,
+    EntityReferenceList,
+)
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
 
@@ -51,6 +56,8 @@ ENTITIES = [
     pipeline.Pipeline,
     table.Table,
     topic.Topic,
+    user.User,
+    testSuite.TestSuite,
 ]
 
 T = TypeVar("T", *ENTITIES)  # type: ignore
@@ -73,6 +80,9 @@ class EntityReportDataProcessor(DataProcessor):
         """
         if not owner:
             return None
+
+        if isinstance(owner, EntityReferenceList):
+            return owner.__root__[0].name
 
         if owner.type == "team":
             return owner.name
@@ -168,7 +178,11 @@ class EntityReportDataProcessor(DataProcessor):
         refined_data = defaultdict(lambda: defaultdict(dict))
         for entity in self.fetch_data():
             data_blob_for_entity = {}
-            team = self._get_team(entity.owner)
+            team = (
+                self._get_team(entity.owner)
+                if not isinstance(entity, User)
+                else self._get_team(entity.teams)
+            )
             try:
                 entity_tier = get_entity_tier_from_tags(entity.tags)
             except AttributeError:

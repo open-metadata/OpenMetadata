@@ -317,6 +317,8 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     Returns:
         Optional[str]
     """
+    if not tags:
+        return None
     return next(
         (
             tag.tagFQN.__root__

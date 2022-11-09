@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-@white: #fff;
-@body-color: #f8f9fa;
-@gray: #d9ceee;
-@secondary-color: #b02aac;
+@import url('../../styles/variables.less');
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -34,8 +31,8 @@
 }
 
 .custom-node-header-normal {
-  background-color: @body-color;
-  border: 1px solid @gray;
+  background-color: @body-bg-color;
+  border: 1px solid @border-color;
 }
 .custom-node-header-tracing {
   background: rgba(176, 42, 172, 0.1);
@@ -48,7 +45,7 @@
 }
 
 .custom-node-column-lineage {
-  background: @body-color;
+  background: @body-bg-color;
   border: 1px solid;
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.16);
   border-radius: 4px;
@@ -67,8 +64,19 @@
   }
 }
 .custom-node-column-lineage-normal {
-  border: 1px solid @gray;
+  border: 1px solid @border-color;
 }
 .custom-node-column-lineage-active {
   border: 1px solid rgba(176, 42, 172, 0.6);
+}
+
+.custom-edge-pipeline-button {
+  background: #8d6af1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: @white;
+  height: 32px;
+  width: 32px;
+  border-radius: 9999px;
 }

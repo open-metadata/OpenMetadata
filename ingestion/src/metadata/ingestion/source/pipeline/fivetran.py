@@ -31,7 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -170,20 +170,17 @@ class FivetranSource(PipelineServiceSource):
                 if not from_entity or not to_entity:
                     logger.info(f"Lineage Skipped for {from_fqn} - {to_fqn}")
                     continue
+                lineage_details = LineageDetails(
+                    pipeline=EntityReference(
+                        id=self.context.pipeline.id.__root__, type="pipeline"
+                    )
+                )
+
                 yield AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(id=from_entity.id, type="table"),
-                        toEntity=EntityReference(
-                            id=self.context.pipeline.id.__root__, type="pipeline"
-                        ),
-                    )
-                )
-                yield AddLineageRequest(
-                    edge=EntitiesEdge(
                         toEntity=EntityReference(id=to_entity.id, type="table"),
-                        fromEntity=EntityReference(
-                            id=self.context.pipeline.id.__root__, type="pipeline"
-                        ),
+                        lineageDetails=lineage_details,
                     )
                 )
 
