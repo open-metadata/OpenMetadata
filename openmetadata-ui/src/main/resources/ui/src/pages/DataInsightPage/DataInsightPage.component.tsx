@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 
-import { Col, Dropdown, Row, Space } from 'antd';
-import React, { ReactNode } from 'react';
 import {
-  DAY_FILTER,
-  ORG_FILTER,
-  TEAM_FILTER,
-  TIER_FILTER,
-} from './DataInsight.mock';
+  Button,
+  Card,
+  Col,
+  Radio,
+  Row,
+  Select,
+  SelectProps,
+  Space,
+  Typography,
+} from 'antd';
+import React, { useEffect, useState } from 'react';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 
+import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
@@ -28,67 +34,196 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
-import { getMenuItems } from '../../utils/DataInsightUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import {
+  DATA_INSIGHT_TAB,
+  DAY_FILTER,
+  DEFAULT_DAYS,
+  INITIAL_CHART_FILTER,
+  TIER_FILTER,
+} from '../../constants/DataInsight.constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { ChartFilter } from '../../interface/data-insight.interface';
+import { getTeamFilter } from '../../utils/DataInsightUtils';
+import {
+  getCurrentDateTimeMillis,
+  getFormattedDateFromMilliSeconds,
+  getPastDaysDateTimeMillis,
+} from '../../utils/TimeUtils';
+import './DataInsight.less';
 
-const DropDownLabel = ({ children, ...rest }: { children: ReactNode }) => {
-  return (
-    <Space {...rest}>
-      {children}
-      <DropDownIcon />
-    </Space>
-  );
-};
+const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
 
 const DataInsightPage = () => {
+  const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
+  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.Datasets);
+  const [chartFilter, setChartFilter] =
+    useState<ChartFilter>(INITIAL_CHART_FILTER);
+
+  useEffect(() => {
+    setChartFilter(INITIAL_CHART_FILTER);
+  }, []);
+
+  const handleTierChange = (tiers: string[] = []) => {
+    setChartFilter((previous) => ({
+      ...previous,
+      tier: tiers.length ? tiers.join(',') : undefined,
+    }));
+  };
+
+  const handleDaysChange = (days: number) => {
+    setChartFilter((previous) => ({
+      ...previous,
+      startTs: getPastDaysDateTimeMillis(days),
+      endTs: getCurrentDateTimeMillis(),
+    }));
+  };
+
+  const handleTeamChange = (teams: string[] = []) => {
+    setChartFilter((previous) => ({
+      ...previous,
+      team: teams.length ? teams.join(',') : undefined,
+    }));
+  };
+
+  const handleTeamSearch = async (query: string) => {
+    if (fetchTeamSuggestions) {
+      try {
+        const response = await fetchTeamSuggestions(query, 5);
+        setTeamOptions(getTeamFilter(response.values));
+      } catch (_error) {
+        // we will not show the toast error message for suggestion API
+      }
+    }
+  };
+
+  const fetchDefaultTeamOptions = async () => {
+    try {
+      const response = await searchQuery({
+        searchIndex: SearchIndex.TEAM,
+        query: '*',
+        pageSize: 5,
+      });
+      const hits = response.hits.hits;
+      const teamFilterOptions = hits.map((hit) => {
+        const source = hit._source;
+
+        return {
+          label: source.displayName || source.name,
+          value: source.fullyQualifiedName || source.name,
+        };
+      });
+      setTeamOptions(teamFilterOptions);
+    } catch (_error) {
+      // we will not show the toast error message for search API
+    }
+  };
+
+  useEffect(() => {
+    fetchDefaultTeamOptions();
+  }, []);
+
   return (
     <PageLayoutV1>
       <Row data-testid="data-insight-container" gutter={[16, 16]}>
         <Col span={24}>
-          <Space className="w-full justify-end" size={12}>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(DAY_FILTER, '7')}>
-              <DropDownLabel>Last 7 Days</DropDownLabel>
-            </Dropdown>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(TEAM_FILTER, 'team1')}>
-              <DropDownLabel>Cloud Infra</DropDownLabel>
-            </Dropdown>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(ORG_FILTER, 'org1')}>
-              <DropDownLabel>Organization1</DropDownLabel>
-            </Dropdown>
-            <Dropdown
-              className="cursor-pointer"
-              overlay={getMenuItems(TIER_FILTER, 'Tier.Tier1')}>
-              <DropDownLabel>Tier1</DropDownLabel>
-            </Dropdown>
+          <Space className="w-full justify-between">
+            <div data-testid="data-insight-header">
+              <Typography.Title level={5}>Data Insight</Typography.Title>
+              <Typography.Text className="data-insight-label-text">
+                Keep track of OKRs with charts built around OpenMetadata health.
+              </Typography.Text>
+            </div>
+            <Button type="primary">Add KPI</Button>
           </Space>
+        </Col>
+        <Col span={24}>
+          <Card>
+            <Space className="w-full justify-between">
+              <Space className="w-full">
+                <Select
+                  allowClear
+                  showArrow
+                  className="data-insight-select-dropdown"
+                  mode="multiple"
+                  notFoundContent={null}
+                  options={teamsOptions}
+                  placeholder="Select teams"
+                  onChange={handleTeamChange}
+                  onSearch={handleTeamSearch}
+                />
+                <Select
+                  allowClear
+                  showArrow
+                  className="data-insight-select-dropdown"
+                  mode="multiple"
+                  notFoundContent={null}
+                  options={TIER_FILTER}
+                  placeholder="Select tier"
+                  onChange={handleTierChange}
+                />
+              </Space>
+              <Space>
+                <Typography className="data-insight-label-text text-xs">
+                  {getFormattedDateFromMilliSeconds(
+                    chartFilter.startTs,
+                    'dd MMM yyyy'
+                  )}{' '}
+                  -{' '}
+                  {getFormattedDateFromMilliSeconds(
+                    chartFilter.endTs,
+                    'dd MMM yyyy'
+                  )}
+                </Typography>
+                <Select
+                  className="data-insight-select-dropdown"
+                  defaultValue={DEFAULT_DAYS}
+                  options={DAY_FILTER}
+                  onChange={handleDaysChange}
+                />
+              </Space>
+            </Space>
+          </Card>
         </Col>
         <Col span={24}>
           <DataInsightSummary />
         </Col>
         <Col span={24}>
-          <TotalEntityInsight />
+          <Radio.Group
+            buttonStyle="solid"
+            className="data-insight-switch"
+            data-testid="data-insight-switch"
+            optionType="button"
+            options={Object.values(DATA_INSIGHT_TAB)}
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+          />
         </Col>
-        <Col span={24}>
-          <DescriptionInsight />
-        </Col>
-        <Col span={24}>
-          <OwnerInsight />
-        </Col>
-        <Col span={24}>
-          <TierInsight />
-        </Col>
-        <Col span={24}>
-          <TopViewEntities />
-        </Col>
-        <Col span={24}>
-          <TopActiveUsers />
-        </Col>
+        {activeTab === DATA_INSIGHT_TAB.Datasets && (
+          <>
+            <Col span={24}>
+              <TotalEntityInsight chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <DescriptionInsight chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <OwnerInsight chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <TierInsight chartFilter={chartFilter} />
+            </Col>
+          </>
+        )}
+        {activeTab === DATA_INSIGHT_TAB['Web Analytics'] && (
+          <>
+            <Col span={24}>
+              <TopViewEntities />
+            </Col>
+            <Col span={24}>
+              <TopActiveUsers />
+            </Col>
+          </>
+        )}
       </Row>
     </PageLayoutV1>
   );

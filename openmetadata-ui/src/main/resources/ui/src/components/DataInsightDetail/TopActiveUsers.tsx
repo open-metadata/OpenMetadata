@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Table, Typography } from 'antd';
+import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TOP_ACTIVE_USER } from '../../pages/DataInsightPage/DataInsight.mock';
 import { getDateTimeFromMilliSeconds } from '../../utils/TimeUtils';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import './DataInsightDetail.less';
 interface ActiveUserView {
   userName: string;
@@ -36,7 +37,10 @@ const TopActiveUsers = () => {
         dataIndex: 'userName',
         key: 'userName',
         render: (userName: string) => (
-          <Typography.Text>{userName}</Typography.Text>
+          <Space>
+            <ProfilePicture id="" name={userName} type="circle" width="24" />
+            <Typography.Text>{userName}</Typography.Text>
+          </Space>
         ),
       },
       {

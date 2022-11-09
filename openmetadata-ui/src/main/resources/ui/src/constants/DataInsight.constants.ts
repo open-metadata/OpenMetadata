@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
+import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
+import { ChartFilter } from '../interface/data-insight.interface';
+import {
+  getCurrentDateTimeMillis,
+  getPastDaysDateTimeMillis,
+} from '../utils/TimeUtils';
 
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
@@ -34,3 +40,80 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
   '#D87F7F',
   '#DA996A',
 ];
+
+export const BAR_SIZE = 15;
+export const DEFAULT_DAYS = 30;
+
+export const ENTITIES_BAR_COLO_MAP: Record<string, string> = {
+  Chart: '#E7B85D',
+  Dashboard: '#416BB3',
+  Database: '#66B5AD',
+  DatabaseSchema: '#8D6AF1',
+  MlModel: '#699994',
+  Pipeline: '#6A86EB',
+  Table: '#7A57A6',
+  Topic: '#7DC177',
+  User: '#AD4F82',
+  TestSuite: '#C870C5',
+};
+
+export const TIER_BAR_COLOR_MAP: Record<string, string> = {
+  'Tier.Tier1': '#E7B85D',
+  'Tier.Tier2': '#416BB3',
+  'Tier.Tier3': '#66B5AD',
+  'Tier.Tier4': '#8D6AF1',
+  'Tier.Tier5': '#699994',
+  'No Tier': '#6A86EB',
+};
+
+export const DATA_INSIGHT_TAB = {
+  Datasets: 'Datasets',
+  'Web Analytics': 'Web Analytics',
+};
+
+export const DAY_FILTER = [
+  {
+    value: 7,
+    label: i18n.t('label.last-no-of-days', { day: 7 }),
+  },
+  {
+    value: 14,
+    label: i18n.t('label.last-no-of-days', { day: 14 }),
+  },
+  {
+    value: 30,
+    label: i18n.t('label.last-no-of-days', { day: 30 }),
+  },
+  {
+    value: 60,
+    label: i18n.t('label.last-no-of-days', { day: 60 }),
+  },
+];
+
+export const TIER_FILTER = [
+  {
+    value: 'Tier.Tier1',
+    label: i18n.t('label.tier-number', { tier: 1 }),
+  },
+  {
+    value: 'Tier.Tier2',
+    label: i18n.t('label.tier-number', { tier: 2 }),
+  },
+  {
+    value: 'Tier.Tier3',
+    label: i18n.t('label.tier-number', { tier: 3 }),
+  },
+  {
+    value: 'Tier.Tier4',
+    label: i18n.t('label.tier-number', { tier: 4 }),
+  },
+  {
+    value: 'Tier.Tier5',
+    label: i18n.t('label.tier-number', { tier: 5 }),
+  },
+];
+
+export const INITIAL_CHART_FILTER: ChartFilter = {
+  startTs: getPastDaysDateTimeMillis(DEFAULT_DAYS),
+  endTs: getCurrentDateTimeMillis(),
+};
