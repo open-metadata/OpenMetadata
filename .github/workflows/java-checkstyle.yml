@@ -28,6 +28,8 @@ concurrency:
 jobs:
   java-checkstyle:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Checkout
