@@ -101,6 +101,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -136,6 +138,7 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.resources.events.WebhookResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
@@ -269,7 +272,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static TestDefinition TEST_DEFINITION3;
   public static EntityReference TEST_DEFINITION3_REFERENCE;
+  public static DataInsightChart DI_CHART1;
+  public static EntityReference DI_CHART1_REFERENCE;
 
+  public static KpiTarget KPI_TARGET;
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -332,6 +338,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TestDefinitionResourceTest().setupTestDefinitions(test);
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
+    new KpiResourceTest().setupKpi(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {

@@ -461,7 +461,16 @@
     ]
   },
   {
-    "name" : "systemService",
+    "name" : "kpi",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
+  },
+  {
+    "name" : "metadataService",
     "operations" : [
       "Create",
       "Delete",

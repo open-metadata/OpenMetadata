@@ -216,7 +216,15 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
         if err.get("type") == "value_error.missing"
     ]
 
-    return "\t - " + "\n\t - ".join(missing_fields + extra_fields)
+    invalid_fields = [
+        f"Invalid parameter value for '{err.get('loc')[0]}'"
+        if len(err.get("loc")) == 1
+        else f"Invalid parameter value for {err.get('loc')}"
+        for err in validation_error.errors()
+        if err.get("type") not in ("value_error.missing", "value_error.extra")
+    ]
+
+    return "\t - " + "\n\t - ".join(missing_fields + extra_fields + invalid_fields)
 
 
 def _unsafe_parse_config(config: dict, cls: T, message: str) -> None:
