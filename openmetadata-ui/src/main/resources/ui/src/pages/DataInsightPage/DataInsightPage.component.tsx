@@ -217,10 +217,10 @@ const DataInsightPage = () => {
         {activeTab === DATA_INSIGHT_TAB['Web Analytics'] && (
           <>
             <Col span={24}>
-              <TopViewEntities />
+              <TopViewEntities chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <TopActiveUsers />
+              <TopActiveUsers chartFilter={chartFilter} />
             </Col>
           </>
         )}

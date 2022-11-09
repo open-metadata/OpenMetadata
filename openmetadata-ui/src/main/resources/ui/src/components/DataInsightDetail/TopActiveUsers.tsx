@@ -13,24 +13,54 @@
 
 import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TOP_ACTIVE_USER } from '../../pages/DataInsightPage/DataInsight.mock';
+import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
+import { ChartFilter } from '../../interface/data-insight.interface';
 import { getDateTimeFromMilliSeconds } from '../../utils/TimeUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
-interface ActiveUserView {
-  userName: string;
-  Team: string;
-  mostRecentSession: number;
-  totalSessions: number;
-  avgSessionDuration: number;
+
+interface Props {
+  chartFilter: ChartFilter;
 }
 
-const TopActiveUsers = () => {
+const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
+  const [mostActiveUsers, setMostActiveUsers] = useState<MostActiveUsers[]>();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
   const { t } = useTranslation();
 
-  const columns: ColumnsType<ActiveUserView> = useMemo(
+  const fetchMostActiveUsers = async () => {
+    setIsLoading(true);
+    try {
+      const params = {
+        ...chartFilter,
+        dataInsightChartName: DataInsightChartType.MostActiveUsers,
+        dataReportIndex: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
+      };
+      const response = await getAggregateChartData(params);
+
+      setMostActiveUsers(response.data ?? []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMostActiveUsers();
+  }, [chartFilter]);
+
+  const columns: ColumnsType<MostActiveUsers> = useMemo(
     () => [
       {
         title: t('label.user'),
@@ -45,28 +75,28 @@ const TopActiveUsers = () => {
       },
       {
         title: t('label.team'),
-        dataIndex: 'Team',
-        key: 'Team',
-        render: (Team: string) => (
-          <Typography.Text>{Team ?? '--'}</Typography.Text>
+        dataIndex: 'team',
+        key: 'team',
+        render: (team: string) => (
+          <Typography.Text>{team ?? '--'}</Typography.Text>
         ),
       },
       {
         title: t('label.most-recent-session'),
-        dataIndex: 'mostRecentSession',
-        key: 'mostRecentSession',
-        render: (mostRecentSession: number) => (
+        dataIndex: 'lastSession',
+        key: 'lastSession',
+        render: (lastSession: number) => (
           <Typography.Text>
-            {getDateTimeFromMilliSeconds(mostRecentSession)}
+            {getDateTimeFromMilliSeconds(lastSession)}
           </Typography.Text>
         ),
       },
       {
         title: t('label.total-session'),
-        dataIndex: 'totalSessions',
-        key: 'totalSessions',
-        render: (totalSessions: number) => (
-          <Typography.Text>{totalSessions}</Typography.Text>
+        dataIndex: 'sessions',
+        key: 'sessions',
+        render: (sessions: number) => (
+          <Typography.Text>{sessions}</Typography.Text>
         ),
       },
       {
@@ -93,7 +123,8 @@ const TopActiveUsers = () => {
       <Table
         className="data-insight-table-wrapper"
         columns={columns}
-        dataSource={TOP_ACTIVE_USER}
+        dataSource={mostActiveUsers}
+        loading={{ spinning: isLoading, indicator: <Loader /> }}
         pagination={false}
         size="small"
       />

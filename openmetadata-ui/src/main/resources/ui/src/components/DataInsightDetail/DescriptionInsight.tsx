@@ -33,6 +33,7 @@ import {
   BAR_SIZE,
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
+import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
@@ -72,6 +73,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
         ...chartFilter,
         dataInsightChartName:
           DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+        dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
 
