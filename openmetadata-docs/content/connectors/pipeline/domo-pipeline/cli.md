@@ -59,8 +59,7 @@ source:
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
-        dashboardFilterPattern: {}
-        chartFilterPattern: {}
+        pipelineFilterPattern: {}
     type: PipelineMetadata
       # pipelineFilterPattern:
       #   includes:

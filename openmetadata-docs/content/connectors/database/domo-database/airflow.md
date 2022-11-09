@@ -317,10 +317,10 @@ source:
     config:
       type: DomoDatabase
       clientId: clientid
-      SecretToken: secret Token
-      AccessToken: access Token
-      APIHost: api.domo.com
-      SandboxDomain: https://<api_domo>.domo.com
+      secretToken: secret Token
+      accessToken: access Token
+      apiHost: api.domo.com
+      sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
       type: DatabaseMetadata

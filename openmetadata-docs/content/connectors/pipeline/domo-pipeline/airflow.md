@@ -47,11 +47,11 @@ This is a sample config for Domo-Pipeline:
 
 ```yaml
 source:
-  type: domo-pipeline
+  type: domopipeline
   serviceName: domo-pipeline_source
   serviceConnection:
     config:
-      type: Domo-Pipeline
+      type: DomoPipeline
       clientID: clientid
       secretToken: secret-token
       accessToken: access-token
@@ -59,8 +59,7 @@ source:
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
     config:
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
+      pipelineFilterPattern: {}
       type: PipelineMetadata
 sink:
   type: metadata-rest
