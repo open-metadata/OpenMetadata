@@ -11,10 +11,8 @@
 
 name: Java Checkstyle
 
-# read-write repo token
-# access to secrets
 on:
-  pull_request_target:
+  pull_request:
     branches:
       - main
       - '0.[0-9]+.[0-9]+'
