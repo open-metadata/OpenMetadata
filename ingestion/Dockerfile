@@ -41,8 +41,8 @@ USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install --upgrade openmetadata-managed-apis==0.12.2.2 --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
-RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.12.2.2
+RUN pip install --upgrade openmetadata-managed-apis==0.12.2.4 --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.12.2.4
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 
