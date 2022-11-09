@@ -98,6 +98,12 @@ class LookerClient:
 
 
 @dataclass
+class QuickSightClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class DatalakeClient:
     def __init__(self, client, config) -> None:
         self.client = client

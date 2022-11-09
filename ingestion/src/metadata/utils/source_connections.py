@@ -336,10 +336,16 @@ def _(connection: HiveConnection):
         and hasattr(connection.connectionArguments, "auth")
         and connection.connectionArguments.auth in ("LDAP", "CUSTOM")
     ):
-        url += f"{quote_plus(connection.username)}"
+        url += quote_plus(connection.username)
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+
+    elif connection.username:
+        url += quote_plus(connection.username)
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
 
     url += connection.hostPort

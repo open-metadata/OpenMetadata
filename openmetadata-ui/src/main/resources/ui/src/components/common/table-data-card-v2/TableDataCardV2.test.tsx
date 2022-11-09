@@ -38,10 +38,13 @@ jest.mock('../table-data-card/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 
+const mockHandleSummaryPanelDisplay = jest.fn();
+
 describe('Test TableDataCard Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(
       <TableDataCardV2
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         id="1"
         searchIndex={SearchIndex.TABLE}
         source={{
@@ -58,6 +61,7 @@ describe('Test TableDataCard Component', () => {
   it('Component should render for deleted', () => {
     const { getByTestId } = render(
       <TableDataCardV2
+        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         id="1"
         searchIndex={SearchIndex.TABLE}
         source={{

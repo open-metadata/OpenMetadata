@@ -21,6 +21,7 @@ from metadata.clients.connection_clients import (
     GlueDBClient,
     GluePipelineClient,
     KinesisClient,
+    QuickSightClient,
     SageMakerClient,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
@@ -99,3 +100,6 @@ class AWSClient:
 
     def get_kinesis_client(self) -> KinesisClient:
         return KinesisClient(self.get_client("kinesis"))
+
+    def get_quicksight_client(self) -> QuickSightClient:
+        return QuickSightClient(self.get_client("quicksight"))
