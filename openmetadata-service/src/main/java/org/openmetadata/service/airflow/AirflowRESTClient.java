@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.airflow;
 
+
+
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
@@ -57,8 +60,14 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public String deployPipeline(IngestionPipeline ingestionPipeline) {
-    HttpResponse<String> response;
+        HttpResponse<String> response;
     try {
+      
+            
+        
+        
+        
+      
       String deployEndpoint = "%s/%s/deploy";
       String deployUrl = String.format(deployEndpoint, serviceURL, API_ENDPOINT);
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
