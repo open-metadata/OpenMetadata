@@ -21,7 +21,10 @@ import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import { getDateTimeFromMilliSeconds } from '../../utils/TimeUtils';
+import {
+  getDateTimeFromMilliSeconds,
+  getDurationFromSeconds,
+} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Loader from '../Loader/Loader';
@@ -104,7 +107,9 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'avgSessionDuration',
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
-          <Typography.Text>{avgSessionDuration}</Typography.Text>
+          <Typography.Text>
+            {getDurationFromSeconds(avgSessionDuration)}
+          </Typography.Text>
         ),
       },
     ],

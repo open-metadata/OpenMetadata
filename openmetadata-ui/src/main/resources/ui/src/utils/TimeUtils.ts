@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { toNumber } from 'lodash';
-import { DateTime } from 'luxon';
+import { DateTime, Duration } from 'luxon';
 
 const msPerSecond = 1000;
 const msPerMinute = 60 * msPerSecond;
@@ -322,3 +322,6 @@ export const getFormattedDateFromMilliSeconds = (
  */
 export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
   DateTime.fromMillis(timeStamp).toLocaleString(DateTime.DATETIME_MED);
+
+export const getDurationFromSeconds = (seconds: number) =>
+  Duration.fromObject({ seconds }).toFormat('hh:mm:ss');
