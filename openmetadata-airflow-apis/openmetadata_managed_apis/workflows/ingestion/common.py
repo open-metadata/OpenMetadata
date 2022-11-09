@@ -132,27 +132,27 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         if service_type == "databaseService":
             entity_class = DatabaseService
             service: DatabaseService = metadata.get_by_name(
-                entity=DatabaseService, fqn=ingestion_pipeline.service.name
+                entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         elif service_type == "pipelineService":
             entity_class = PipelineService
             service: PipelineService = metadata.get_by_name(
-                entity=PipelineService, fqn=ingestion_pipeline.service.name
+                entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         elif service_type == "dashboardService":
             entity_class = DashboardService
             service: DashboardService = metadata.get_by_name(
-                entity=DashboardService, fqn=ingestion_pipeline.service.name
+                entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         elif service_type == "messagingService":
             entity_class = MessagingService
             service: MessagingService = metadata.get_by_name(
-                entity=MessagingService, fqn=ingestion_pipeline.service.name
+                entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         elif service_type == "mlmodelService":
             entity_class = MlModelService
             service: MlModelService = metadata.get_by_name(
-                entity=MlModelService, fqn=ingestion_pipeline.service.name
+                entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         else:
             raise InvalidServiceException(f"Invalid Service Type: {service_type}")
