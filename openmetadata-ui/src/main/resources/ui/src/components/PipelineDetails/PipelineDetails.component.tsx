@@ -560,15 +560,13 @@ const PipelineDetails = ({
         title: t('label.name'),
         render: (name, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
-            <Space>
-              <span>{name}</span>
-              <SVGIcons
-                alt="external-link"
-                className="align-middle"
-                icon="external-link"
-                width="16px"
-              />
-            </Space>
+            <span>{name}</span>
+            <SVGIcons
+              alt="external-link"
+              className="align-middle m-l-xs"
+              icon="external-link"
+              width="16px"
+            />
           </Link>
         ),
       },
@@ -900,7 +898,6 @@ const PipelineDetails = ({
                     <ActivityFeedList
                       isEntityFeed
                       withSidePanel
-                      className=""
                       deletePostHandler={deletePostHandler}
                       entityName={entityName}
                       feedList={entityThreads}

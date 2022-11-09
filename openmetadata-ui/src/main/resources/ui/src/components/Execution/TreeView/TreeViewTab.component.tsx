@@ -105,7 +105,6 @@ const TreeViewTab = ({
                   </Tooltip>
                 ))}
               </div>
-              <Space />
             </Col>
           </Row>
         );
