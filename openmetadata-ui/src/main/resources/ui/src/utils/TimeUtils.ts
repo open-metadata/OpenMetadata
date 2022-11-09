@@ -342,7 +342,7 @@ export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
  * @returns Formatted duration for valid input. Format: 00:09:31
  */
 export const getDurationFromSeconds = (seconds: number) =>
-  isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
+  !isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
 
 /**
  * It takes a timestamp and returns a string in the format of "dd MMM yyyy, hh:mm"
