@@ -209,7 +209,9 @@
     "field-required": "{{field}} is required",
     "field-required-plural": "{{field}} are required",
     "day-label": "Last {{day}} Days",
-    "tier-label": "Tier{{tier}}"
+    "tier-label": "Tier{{tier}}",
+    "profiler-amp-data-quality": "Profiler & Data Quality",
+    "schema": "Schema"
   },
   "message": {
     "service-email-required": "Service account Email is required",
