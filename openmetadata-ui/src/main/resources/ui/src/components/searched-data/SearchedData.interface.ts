@@ -12,6 +12,7 @@
  */
 
 import { ReactNode } from 'react';
+import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -67,4 +68,5 @@ export interface SearchedDataProps {
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
+  handleSummaryPanelDisplay: (source: Table) => void;
 }
