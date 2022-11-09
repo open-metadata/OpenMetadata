@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
@@ -34,7 +47,7 @@ export default function EntitySummaryPanel({
         showPanel ? 'show-panel' : ''
       )}>
       <Space
-        className={classNames('basic-info-container m-4')}
+        className={classNames('basic-info-container m-md')}
         direction="vertical">
         <Typography.Title level={5}>{entityDetails.name}</Typography.Title>
         <Space className={classNames('w-full')} direction="vertical">
@@ -51,7 +64,7 @@ export default function EntitySummaryPanel({
         </Space>
       </Space>
       <Divider className="m-0" />
-      <Space className={classNames('m-4')} direction="vertical">
+      <Space className={classNames('m-md')} direction="vertical">
         <Typography.Text className="section-header">
           {t('label.profiler-amp-data-quality')}
         </Typography.Text>
@@ -75,7 +88,7 @@ export default function EntitySummaryPanel({
         </Row>
       </Space>
       <Divider className="m-0" />
-      <Space className={classNames('m-4')} direction="vertical">
+      <Space className={classNames('m-md')} direction="vertical">
         <Typography.Text className="section-header">
           {t('label.schema')}
         </Typography.Text>
