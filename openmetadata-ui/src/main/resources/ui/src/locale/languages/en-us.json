@@ -218,7 +218,9 @@
     "target-column": "Target Column",
     "pipeline": "Pipeline",
     "function": "Function",
-    "edge-information": "Edge Information"
+    "edge-information": "Edge Information",
+    "read-more": "read more",
+    "read-less": "read less"
   },
   "message": {
     "service-email-required": "Service account Email is required",
