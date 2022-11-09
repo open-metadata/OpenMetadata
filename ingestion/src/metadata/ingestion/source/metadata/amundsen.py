@@ -510,10 +510,12 @@ class AmundsenSource(Source[Entity]):
             CreateDatabaseServiceRequest(
                 name=service_name,
                 displayName=service_name,
-                connection=SERVICE_TYPE_MAPPER.get(service_name, "mysql")["connection"],
-                serviceType=SERVICE_TYPE_MAPPER.get(service_name, "mysql")[
-                    "service_name"
-                ],
+                connection=SERVICE_TYPE_MAPPER.get(
+                    service_name, SERVICE_TYPE_MAPPER["mysql"]["connection"]
+                ),
+                serviceType=SERVICE_TYPE_MAPPER.get(
+                    service_name, SERVICE_TYPE_MAPPER["mysql"]["service_name"]
+                ),
             ),
         )
 
