@@ -459,5 +459,14 @@
       "ViewAll",
       "EditDescription"
     ]
+  },
+  {
+    "name" : "kpi",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
   }
 ]

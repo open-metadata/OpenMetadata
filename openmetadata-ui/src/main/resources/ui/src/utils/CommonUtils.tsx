@@ -24,6 +24,7 @@ import {
   isEqual,
   isNil,
   isNull,
+  isString,
   isUndefined,
   uniqueId,
 } from 'lodash';
@@ -80,6 +81,7 @@ import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
+import { TagLabel } from '../generated/type/tagLabel';
 import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
@@ -1009,4 +1011,19 @@ export const getTierFromEntityInfo = (entity: FormattedTableData) => {
     entity.tier?.tagFQN ||
     getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
   )?.split(FQN_SEPARATOR_CHAR)[1];
+};
+
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+  if (isString(tag)) {
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      ? tag.split(FQN_SEPARATOR_CHAR)[1]
+      : tag;
+  } else {
+    return {
+      ...tag,
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : tag.tagFQN,
+    };
+  }
 };
