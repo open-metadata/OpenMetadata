@@ -220,7 +220,12 @@
     "target-column": "Target Column",
     "pipeline": "Pipeline",
     "function": "Function",
-    "edge-information": "Edge Information"
+    "edge-information": "Edge Information",
+    "tasks": "Tasks",
+    "activity-feed-and-task-plural": "Activity Feeds & tasks",
+    "executions": "Executions",
+    "entity-lineage": "Entity Lineage",
+    "custom-properties": "Custom Properties"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -243,6 +248,7 @@
     "no-ingestion-description": "To view Ingestion Data, run the MetaData Ingestion. Please refer to this doc to schedule the",
     "no-followed-entities": "You have not followed anything yet.",
     "no-owned-entities": "You have not owned anything yet.",
+    "no-task-available": "No task data is available",
     "entity-fetch-error": "Error while fetching {{entity}}",
     "feed-post-error": "Error while posting the message!",
     "unexpected-error": "An unexpected error occurred.",

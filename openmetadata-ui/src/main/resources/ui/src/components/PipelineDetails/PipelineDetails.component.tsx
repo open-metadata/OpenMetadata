@@ -43,6 +43,7 @@ import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
+import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -126,39 +127,8 @@ const PipelineDetails = ({
   onExtensionUpdate,
 }: PipeLineDetailsProp) => {
   const history = useHistory();
-  const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [editTask, setEditTask] = useState<{
-    task: Task;
-    index: number;
-  }>();
-  const USERId = getCurrentUserId();
-
-  const [editTaskTags, setEditTaskTags] = useState<{
-    task: Task;
-    index: number;
-  }>();
-  const { tab } = useParams<{ tab: string }>();
-  const [activeTab, setActiveTab] = useState(tab);
-  const [lineageLoading, setLineageLoading] = useState(false);
-  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
-    {} as EntityLineage
-  );
-  const [entityThreadLoading, setEntityThreadLoading] = useState(false);
-  const [entityThreads, setEntityThreads] = useState<Thread[]>([]);
-  const [entityThreadPaging, setEntityThreadPaging] = useState<Paging>({
-    total: 0,
-  } as Paging);
-
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-
+  const { tab } = useParams<{ tab: PIPELINE_DETAILS_TABS }>();
+  const { t } = useTranslation();
   const {
     tier,
     deleted,
@@ -181,7 +151,35 @@ const PipelineDetails = ({
     };
   }, [pipelineDetails]);
 
-  const { t } = useTranslation();
+  // local state variables
+  const [editTaskTags, setEditTaskTags] = useState<{
+    task: Task;
+    index: number;
+  }>();
+  const [isEdit, setIsEdit] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [editTask, setEditTask] = useState<{
+    task: Task;
+    index: number;
+  }>();
+  const [lineageLoading, setLineageLoading] = useState(false);
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
+  const [entityThreadLoading, setEntityThreadLoading] = useState(false);
+  const [entityThreads, setEntityThreads] = useState<Thread[]>([]);
+  const [entityThreadPaging, setEntityThreadPaging] = useState<Paging>({
+    total: 0,
+  } as Paging);
+
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const [tagList, setTagList] = useState<TagOption[]>();
 
@@ -208,6 +206,9 @@ const PipelineDetails = ({
     DEFAULT_ENTITY_PERMISSION
   );
 
+  // local state ends
+
+  const USERId = getCurrentUserId();
   const { getEntityPermission } = usePermissionProvider();
 
   const tasksInternal = useMemo(
@@ -664,24 +665,22 @@ const PipelineDetails = ({
   };
 
   useEffect(() => {
-    switch (activeTab) {
-      case 'entity-lineage':
+    switch (tab) {
+      case PIPELINE_DETAILS_TABS.EntityLineage:
         !deleted && isEmpty(entityLineage) && getLineageData();
 
         break;
-      case 'activity-feeds-tasks':
+      case PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks:
         getFeedData();
 
         break;
       default:
         break;
     }
-  }, [activeTab]);
+  }, [tab]);
 
   const handleTabChange = (tabValue: string) => {
-    if (tabValue !== activeTab) {
-      setActiveTab(tabValue);
-
+    if (tabValue !== tab) {
       history.push({
         pathname: getPipelineDetailsPath(pipelineFQN, tabValue),
       });
@@ -825,11 +824,10 @@ const PipelineDetails = ({
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
-        <Tabs
-          activeKey={activeTab}
-          className="h-full"
-          onChange={handleTabChange}>
-          <Tabs.TabPane key="tasks" tab="Tasks">
+        <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
+          <Tabs.TabPane
+            key={PIPELINE_DETAILS_TABS.Tasks}
+            tab={t('label.tasks')}>
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <Description
@@ -869,9 +867,9 @@ const PipelineDetails = ({
                   size="small"
                 />
               </Col>
-              {!isEmpty(tasks) && (
+              {!isEmpty(tasks) ? (
                 <Col span={24}>
-                  <Card title="DAG view">
+                  <Card title={t('label.dag-view')}>
                     <div className="h-100">
                       <TasksDAGView
                         selectedExec={selectedExecution}
@@ -880,19 +878,25 @@ const PipelineDetails = ({
                     </div>
                   </Card>
                 </Col>
+              ) : (
+                <div
+                  className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                  data-testid="no-tasks-data">
+                  <span>{t('label.no-task-available')}</span>
+                </div>
               )}
             </Row>
           </Tabs.TabPane>
           <Tabs.TabPane
             className="h-full"
-            key="activity-feeds-tasks"
+            key={PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks}
             tab={
               <>
-                Activity Feeds & Tasks{' '}
+                {t('label.activity-feed-and-task-plural')}{' '}
                 {getCountBadge(
                   feedCount,
                   '',
-                  'activity-feeds-tasks' === activeTab
+                  PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks === tab
                 )}
               </>
             }>
@@ -923,7 +927,9 @@ const PipelineDetails = ({
             </Card>
           </Tabs.TabPane>
 
-          <Tabs.TabPane key="executions" tab="Executions">
+          <Tabs.TabPane
+            key={PIPELINE_DETAILS_TABS.Executions}
+            tab={t('label.executions')}>
             <PipelineStatusList
               pipelineFQN={pipelineFQN}
               pipelineStatus={pipelineStatus}
@@ -934,7 +940,9 @@ const PipelineDetails = ({
             />
           </Tabs.TabPane>
 
-          <Tabs.TabPane key="entity-lineage" tab="Entity Lineage">
+          <Tabs.TabPane
+            key={PIPELINE_DETAILS_TABS.EntityLineage}
+            tab={t('label.entity-lineage')}>
             <div className="h-full bg-white">
               <EntityLineageComponent
                 addLineageHandler={addLineageHandler}
@@ -955,13 +963,15 @@ const PipelineDetails = ({
             </div>
           </Tabs.TabPane>
 
-          <Tabs.TabPane key="custom-properties" tab="Custom Properties">
+          <Tabs.TabPane
+            key={PIPELINE_DETAILS_TABS.CustomProperties}
+            tab={t('label.custom-properties')}>
             <CustomPropertyTable
               entityDetails={
                 pipelineDetails as CustomPropertyProps['entityDetails']
               }
               entityType={EntityType.PIPELINE}
-              handleExtentionUpdate={onExtensionUpdate}
+              handleExtensionUpdate={onExtensionUpdate}
             />
           </Tabs.TabPane>
           <Tabs.TabPane key="*" tab="">
@@ -1000,7 +1010,7 @@ const PipelineDetails = ({
         <RequestDescriptionModal
           createThread={createThread}
           defaultValue={getDefaultValue(owner as EntityReference)}
-          header="Request description"
+          header={t('label.request-description')}
           threadLink={getEntityFeedLink(
             EntityType.PIPELINE,
             pipelineFQN,
