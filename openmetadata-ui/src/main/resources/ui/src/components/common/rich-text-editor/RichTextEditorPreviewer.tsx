@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MAX_DESCRIPTION_PREVIEW_CHARACTERS } from '../../../constants/constants';
+import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
 import { PreviewerProp } from './RichTextEditor.interface';
 import './RichTextEditorPreviewer.less';
@@ -27,7 +27,7 @@ const RichTextEditorPreviewer = ({
   className = '',
   enableSeeMoreVariant = true,
   textVariant = 'black',
-  maxLength = MAX_DESCRIPTION_PREVIEW_CHARACTERS,
+  maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
 }: PreviewerProp) => {
   const { t } = useTranslation();
   const [content, setContent] = useState<string>('');
