@@ -59,27 +59,6 @@ jest.mock('../../components/searched-data/SearchedData', () => {
     ));
 });
 
-jest.mock(
-  '../containers/PageLayout',
-  () =>
-    ({
-      children,
-      leftPanel,
-      rightPanel,
-    }: {
-      children: React.ReactNode;
-      rightPanel: React.ReactNode;
-      leftPanel: React.ReactNode;
-    }) =>
-      (
-        <div data-testid="PageLayout">
-          <div data-testid="left-panel-content">{leftPanel}</div>
-          <div data-testid="right-panel-content">{rightPanel}</div>
-          {children}
-        </div>
-      )
-);
-
 const mockFunction = jest.fn();
 
 describe('Test Explore component', () => {
@@ -110,12 +89,10 @@ describe('Test Explore component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const pageContainer = await findByTestId(container, 'PageLayout');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
     const tabs = await findAllByTestId(container, /tab/i);
 
-    expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
     expect(tabs.length).toBe(5);
