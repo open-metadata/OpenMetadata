@@ -219,7 +219,10 @@ const EntitySummaryDetails = ({
                 data-testid="owner-link"
                 href={data.value as string}
                 rel="noopener noreferrer"
-                target={data.openInNewTab ? '_blank' : '_self'}>
+                target={data.openInNewTab ? '_blank' : '_self'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}>
                 {displayVal}
                 {data.openInNewTab && (
                   <>

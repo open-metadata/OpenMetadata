@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { isNil, toNumber } from 'lodash';
-import { DateTime } from 'luxon';
+import { DateTime, Duration } from 'luxon';
 
 const msPerSecond = 1000;
 const msPerMinute = 60 * msPerSecond;
@@ -337,6 +338,13 @@ export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
   DateTime.fromMillis(timeStamp).toLocaleString(DateTime.DATETIME_MED);
 
 /**
+ * @param seconds EPOCH seconds
+ * @returns Formatted duration for valid input. Format: 00:09:31
+ */
+export const getTimeDurationFromSeconds = (seconds: number) =>
+  !isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
+
+/**
  * It takes a timestamp and returns a string in the format of "dd MMM yyyy, hh:mm"
  * @param {number} timeStamp - number - The timestamp you want to convert to a date.
  * @returns A string ex: 23 May 2022, 23:59
@@ -350,6 +358,7 @@ export const getDateTimeByTimeStampWithCommaSeparated = (
 /**
  * Given a date string, return the time stamp of that date.
  * @param {string} date - The date you want to convert to a timestamp.
+ * @deprecated
  */
 export const getTimeStampByDate = (date: string) => Date.parse(date);
 

@@ -12,37 +12,93 @@
  */
 
 import { Card, Col, Row, Typography } from 'antd';
-import React from 'react';
+import { AxiosError } from 'axios';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OVERVIEW } from '../../pages/DataInsightPage/DataInsight.mock';
+import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
+import {
+  DataInsightChartResult,
+  DataInsightChartType,
+} from '../../generated/dataInsight/dataInsightChartResult';
+import { ChartFilter } from '../../interface/data-insight.interface';
+import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 
-const DataInsightSummary = () => {
+interface Props {
+  chartFilter: ChartFilter;
+}
+
+const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
+  const [totalEntitiesByType, setTotalEntitiesByType] =
+    useState<DataInsightChartResult>();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const { total, latestData = {} } = useMemo(() => {
+    return getGraphDataByEntityType(
+      totalEntitiesByType?.data ?? [],
+      DataInsightChartType.TotalEntitiesByType
+    );
+  }, [totalEntitiesByType]);
+
   const { t } = useTranslation();
+
+  const fetchTotalEntitiesByType = async () => {
+    setIsLoading(true);
+    try {
+      const params = {
+        ...chartFilter,
+        dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
+        dataReportIndex: DataReportIndex.EntityReportDataIndex,
+      };
+      const response = await getAggregateChartData(params);
+
+      setTotalEntitiesByType(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTotalEntitiesByType();
+  }, [chartFilter]);
 
   return (
     <Card
       className="data-insight-card"
       data-testid="summary-card"
+      loading={isLoading}
       title={
         <Typography.Title level={5}>
           {t('label.data-insight-summary')}
         </Typography.Title>
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
-        {OVERVIEW.map((summary, id) => (
-          <Col
-            data-testid={`summary-item-${summary.entityType}`}
-            key={id}
-            span={4}>
-            <Typography.Text className="data-insight-label-text">
-              {summary.entityType}
-            </Typography.Text>
-            <Typography className="font-semibold text-2xl">
-              {summary.count}
-            </Typography>
-          </Col>
-        ))}
+        <Col data-testid="summary-item-latest" span={4}>
+          <Typography.Text className="data-insight-label-text">
+            Latest
+          </Typography.Text>
+          <Typography className="font-semibold text-2xl">{total}</Typography>
+        </Col>
+        {Object.entries(latestData).map((summary) => {
+          const label = summary[0];
+          const value = summary[1] as number;
+
+          return label !== 'timestamp' ? (
+            <Col data-testid={`summary-item-${label}`} key={label} span={4}>
+              <Typography.Text className="data-insight-label-text">
+                {label}
+              </Typography.Text>
+              <Typography className="font-semibold text-2xl">
+                {value}
+              </Typography>
+            </Col>
+          ) : null;
+        })}
       </Row>
     </Card>
   );
