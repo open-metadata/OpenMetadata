@@ -16,7 +16,17 @@ To be used by OpenMetadata class
 
 from __future__ import annotations
 
+from typing import Optional
+
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
+    CreateKpiRequest,
+)
+from metadata.generated.schema.dataInsight.dataInsightChartResult import (
+    DataInsightChartResult,
+)
+from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
+from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 
 
 class DataInisghtMixin:
@@ -31,6 +41,18 @@ class DataInisghtMixin:
         """
 
         resp = self.client.post("/analytic/reportData", record.json())
+
+        return resp
+
+    def add_kpi_result(self, fqn: str, record: KpiResult) -> KpiResult:
+        """Given a ReportData object convert it to a json payload
+        and send a POST request to the report data endpoint
+
+        Args:
+            record (ReportData): report data
+        """
+
+        resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.json())
 
         return resp
 
@@ -54,3 +76,62 @@ class DataInisghtMixin:
         )
 
         return resp
+
+    def get_aggregated_data_insight_results(
+        self,
+        start_ts: int,
+        end_ts: int,
+        data_insight_chart_nane: str,
+        data_report_index: str,
+        params: Optional[dict] = None,
+    ) -> DataInsightChartResult:
+        """_summary_
+
+        Args:
+            start_ts (int): _description_
+            end_ts (int): _description_
+            data_insight_chart_nane (str): _description_
+            data_report_index (str): _description_
+            params (Optional[dict], optional): _description_. Defaults to None.
+
+        Returns:
+            DataInsightChartResult: _description_
+        """
+
+        request_params = {
+            "startTs": start_ts,
+            "endTs": end_ts,
+            "dataInsightChartName": data_insight_chart_nane,
+            "dataReportIndex": data_report_index,
+        }
+
+        if params:
+            request_params = {**request_params, **params}
+
+        resp = self.client.get(
+            "/dataInsight/aggregate",
+            request_params,
+        )
+
+        return DataInsightChartResult.parse_obj(resp)
+
+    def get_kpi_result(self, fqn: str, start_ts, end_ts) -> list[KpiResult]:
+        """Given FQN return KPI results
+
+        Args:
+            fqn (str): fullyQualifiedName
+        """
+
+        params = {"startTs": start_ts, "endTs": end_ts}
+
+        resp = self.client.get(
+            f"/kpi/{fqn}/kpiResult",
+            params,
+        )
+
+        return [KpiResult(**data) for data in resp["data"]]
+
+    def create_kpi(self, create: CreateKpiRequest) -> Kpi:
+        resp = self.client.post("/kpi", create.json())
+
+        return Kpi.parse_obj(resp)

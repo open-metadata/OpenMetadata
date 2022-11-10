@@ -29,6 +29,8 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
+from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -401,6 +403,15 @@ class OpenMetadata(
 
         if issubclass(entity, WebAnalyticEventData):
             return "/analytics/webAnalyticEvent/collect"
+
+        if issubclass(entity, DataInsightChart):
+            return "/dataInsight"
+
+        if issubclass(
+            entity,
+            Kpi,
+        ):
+            return "/kpi"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"

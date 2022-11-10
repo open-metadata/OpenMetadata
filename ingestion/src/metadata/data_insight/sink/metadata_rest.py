@@ -14,10 +14,11 @@ OpenMetadata REST Sink implementation for the Data Insight Profiler results
 """
 
 import traceback
-from typing import Optional
+from typing import Optional, Union
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -66,21 +67,33 @@ class MetadataRestSink(Sink[Entity]):
     def close(self) -> None:
         self.metadata.close()
 
-    def write_record(self, record: ReportData) -> None:
+    def write_record(self, record: Union[ReportData, KpiResult]) -> None:
         try:
-            self.metadata.add_data_insight_report_data(record)
-            logger.info(
-                f"Successfully ingested data insight for {record.data.__class__.__name__ if record.data else 'Unknown'}"
-            )
-            self.status.records_written(
-                f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
-            )
+            if isinstance(record, ReportData):
+                self.metadata.add_data_insight_report_data(record)
+                logger.info(
+                    "Successfully ingested data insight for"
+                    f"{record.data.__class__.__name__ if record.data else 'Unknown'}"
+                )
+                self.status.records_written(
+                    f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
+                )
+            if isinstance(record, KpiResult):
+                self.metadata.add_kpi_result(fqn=record.kpiFqn.__root__, record=record)
+                logger.info(f"Successfully ingested KPI for {record.kpiFqn}")
+                self.status.records_written(f"Data Insight: {record.kpiFqn}")
+
         except APIError as err:
-            logger.error(
-                "Failed to sink data insight data for "
-                f"{record.data.__class__.__name__ if record.data else 'Unknown'} - {err}"
-            )
-            logger.debug(traceback.format_exc())
-            self.status.failure(
-                f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
-            )
+            if isinstance(record, ReportData):
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    "Failed to sink data insight data for "
+                    f"{record.data.__class__.__name__ if record.data else 'Unknown'} - {err}"
+                )
+                self.status.failure(
+                    f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
+                )
+            if isinstance(record, KpiResult):
+                logger.debug(traceback.format_exc())
+                logger.error(f"Failed to sink KPI reasults for {record.kpiFqn} - {err}")
+                self.status.failure(f"KPI Result: {record.kpiFqn}")
