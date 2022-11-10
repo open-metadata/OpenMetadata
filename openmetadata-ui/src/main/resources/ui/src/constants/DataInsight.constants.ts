@@ -134,7 +134,7 @@ export const WEB_CHARTS = [
   },
   {
     chart: DataInsightChartType.DailyActiveUsers,
-    index: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
+    index: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
   },
 ];
 
