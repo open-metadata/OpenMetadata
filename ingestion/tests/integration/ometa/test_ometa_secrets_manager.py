@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from copy import copy
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -71,19 +70,6 @@ class OMetaSecretManagerTest(TestCase):
         self._init_aws_secret_manager()
         assert type(self.metadata.secrets_manager_client) is AWSSecretsManager
         assert type(self.metadata._auth_provider) is NoOpAuthenticationProvider
-
-    @patch("metadata.ingestion.ometa.ometa_api.get_secrets_manager_from_om_connection")
-    def test_ometa_with_aws_secret_manager_with_google_auth(self, secrets_manager_mock):
-        security_config = copy(self.aws_server_config)
-        security_config.securityConfig = GoogleSSOClientConfig(secretKey="/fake/path")
-        secret_client_mock = Mock()
-        secret_client_mock.add_auth_provider_security_config.return_value = (
-            security_config
-        )
-        secrets_manager_mock.return_value = secret_client_mock
-        self.aws_server_config.authProvider = AuthProvider.google
-        self._init_aws_secret_manager()
-        assert type(self.metadata._auth_provider) is GoogleAuthenticationProvider
 
     def _init_local_secret_manager(self):
         self.metadata = OpenMetadata(self.local_server_config)
