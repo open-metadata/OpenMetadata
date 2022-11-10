@@ -251,18 +251,18 @@ const Explore: React.FC<ExploreProps> = ({
   return (
     <PageLayoutV1
       leftPanel={
-        <div className="tw-h-full">
-          <Card data-testid="data-summary-container">
-            <FacetFilter
-              aggregations={searchResults?.aggregations}
-              filters={postFilter}
-              showDeleted={showDeleted}
-              onChangeShowDeleted={onChangeShowDeleted}
-              onClearFilter={handleFacetFilterClearFilter}
-              onSelectHandler={handleFacetFilterChange}
-            />
-          </Card>
-        </div>
+        <Card
+          className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
+          data-testid="data-summary-container">
+          <FacetFilter
+            aggregations={searchResults?.aggregations}
+            filters={postFilter}
+            showDeleted={showDeleted}
+            onChangeShowDeleted={onChangeShowDeleted}
+            onClearFilter={handleFacetFilterClearFilter}
+            onSelectHandler={handleFacetFilterChange}
+          />
+        </Card>
       }>
       <Tabs
         defaultActiveKey={defaultActiveTab}

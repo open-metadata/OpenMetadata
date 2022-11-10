@@ -667,7 +667,6 @@ const TagsPage = () => {
                     data-testid="delete-tag-category-button"
                     disabled={!categoryPermissions.Delete}
                     size="small"
-                    type="primary"
                     onClick={() => {
                       deleteTagHandler();
                     }}>
