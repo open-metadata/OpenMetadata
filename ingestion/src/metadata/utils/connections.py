@@ -155,7 +155,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.gluePipeline
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
 )
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import (
@@ -422,7 +421,9 @@ def _(
 
 @get_connection.register(KafkaConnection)
 @get_connection.register(RedpandaConnection)
-def _(connection, verbose: bool = False) -> KafkaClient:
+def _(
+    connection, verbose: bool = False
+) -> KafkaClient:  # pylint: disable=unused-argument
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """

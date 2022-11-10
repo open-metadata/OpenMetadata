@@ -17,8 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
-
 try:
     from typing import get_args
 except ImportError:
@@ -94,6 +92,7 @@ from metadata.ingestion.ometa.ssl_registry import (
     ssl_verification_registry,
 )
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = ometa_logger()
 

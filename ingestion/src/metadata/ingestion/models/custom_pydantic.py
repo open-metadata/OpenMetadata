@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Custom pydantic classes overwritten during code generation
+Pydantic classes overwritten defaults ones of code generation
 """
 
 import warnings
@@ -26,6 +26,13 @@ logger = ingestion_logger()
 
 
 class CustomSecretStr(SecretStr):
+    """
+    Custom SecretStr class which use the configured Secrets Manager to retrieve the actual values.
+
+    If the secret string value starts with `config:` it will use the rest of the string as secret id to search for it
+    in the secrets store.
+    """
+
     min_length: OptionalInt = None
     max_length: OptionalInt = None
 

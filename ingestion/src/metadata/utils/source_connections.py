@@ -96,7 +96,7 @@ CX_ORACLE_LIB_VERSION = "8.3.0"
 def update_connection_opts_args(connection):
     if hasattr(connection, "connectionOptions") and connection.connectionOptions:
         for key, value in connection.connectionOptions.dict().items():
-            if type(value) is str:
+            if isinstance(value, str):
                 setattr(
                     connection.connectionOptions,
                     key,
@@ -104,7 +104,7 @@ def update_connection_opts_args(connection):
                 )
     if hasattr(connection, "connectionArguments") and connection.connectionArguments:
         for key, value in connection.connectionArguments.dict().items():
-            if type(value) is str:
+            if isinstance(value, str):
                 setattr(
                     connection.connectionArguments,
                     key,

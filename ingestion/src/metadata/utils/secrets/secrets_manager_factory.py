@@ -26,11 +26,15 @@ from metadata.utils.singleton import Singleton
 
 
 class SecretsManagerFactory(metaclass=Singleton):
+    """
+    Singleton factory to initialize a secret manager. It will return always the same secret manager instance.
+    """
+
     secrets_manager: SecretsManager
 
     def __init__(
         self,
-        secrets_manager_provider: Optional[SecretsManagerProvider],
+        secrets_manager_provider: Optional[SecretsManagerProvider] = None,
         credentials: Optional[Any] = None,
     ):
         self.secrets_manager = self._get_secrets_manager(
