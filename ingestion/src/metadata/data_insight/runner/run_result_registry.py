@@ -55,7 +55,6 @@ def percentage_of_entities_with_description_kpi_result(
 
     latest_chart_result = {}
 
-    print(results)
 
     try:
         total_entity_with_description = sum(
