@@ -105,8 +105,11 @@ const CustomNode = (props: NodeProps) => {
     columns,
     isNewNode,
     removeNodeHandler,
+    handleColumnClick,
     isEditMode,
     isExpanded,
+    isTraced,
+    selectedColumns = [],
   } = data;
 
   useEffect(() => {
@@ -117,7 +120,13 @@ const CustomNode = (props: NodeProps) => {
     <div className="nowheel">
       {/* Node label could be simple text or reactNode */}
       <div
-        className="tw--mx-2 tw--my-0.5 tw-px-2 tw-bg-primary-lite tw-relative tw-border tw-border-primary-hover tw-rounded-md"
+        className={classNames(
+          'custom-node-header',
+          selected || data.selected
+            ? 'custom-node-header-active'
+            : 'custom-node-header-normal',
+          { 'custom-node-header-tracing': isTraced }
+        )}
         data-testid="node-label">
         {getHandle(type, isConnectable, isNewNode)}
         {label}{' '}
@@ -130,27 +139,48 @@ const CustomNode = (props: NodeProps) => {
 
       {isExpanded && (
         <div
-          className={classNames('tw-bg-border-lite-60 tw-border', {
-            'tw-py-3': !isEmpty(columns),
-          })}>
-          <section className={classNames('tw-px-3')} id="table-columns">
-            <div className="tw-flex tw-flex-col tw-gap-y-1 tw-relative">
+          className={classNames(
+            'custom-node-column-lineage',
+            selected || isTraced
+              ? 'custom-node-column-lineage-active'
+              : 'custom-node-column-lineage-normal',
+            {
+              'p-y-sm': !isEmpty(columns),
+            }
+          )}>
+          <section className="p-x-sm" id="table-columns">
+            <div className="custom-node-column-lineage-body">
               {(Object.values(columns || {}) as ModifiedColumn[])?.map(
-                (c, i) => (
-                  <div
-                    className="tw-p-1 tw-rounded tw-border tw-text-grey-body tw-relative tw-bg-white"
-                    data-testid="column"
-                    key={i}>
-                    {getHandle(
-                      c.type,
-                      isConnectable,
-                      isNewNode,
-                      c.fullyQualifiedName
-                    )}
-                    {getConstraintIcon(c.constraint, 'tw-')}
-                    <p className="tw-m-0">{c.name}</p>
-                  </div>
-                )
+                (column, index) => {
+                  const isColumnTraced = selectedColumns.includes(
+                    column.fullyQualifiedName
+                  );
+
+                  return (
+                    <div
+                      className={classNames(
+                        'custom-node-column-container',
+                        isColumnTraced
+                          ? 'custom-node-header-tracing'
+                          : 'custom-node-column-lineage-normal tw-bg-white'
+                      )}
+                      data-testid="column"
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleColumnClick(column.fullyQualifiedName);
+                      }}>
+                      {getHandle(
+                        column.type,
+                        isConnectable,
+                        isNewNode,
+                        column.fullyQualifiedName
+                      )}
+                      {getConstraintIcon(column.constraint, 'tw-')}
+                      <p className="m-0">{column.name}</p>
+                    </div>
+                  );
+                }
               )}
             </div>
           </section>

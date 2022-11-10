@@ -36,7 +36,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -216,25 +216,23 @@ class AirbyteSource(PipelineServiceSource):
                 service_name=destination_connection.get("name"),
             )
 
-            if not from_fqn and not to_fqn:
-                continue
-
             from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
             to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+
+            if not from_entity and not to_entity:
+                continue
+
+            lineage_details = LineageDetails(
+                pipeline=EntityReference(
+                    id=self.context.pipeline.id.__root__, type="pipeline"
+                )
+            )
+
             yield AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=from_entity.id, type="table"),
-                    toEntity=EntityReference(
-                        id=self.context.pipeline.id.__root__, type="pipeline"
-                    ),
-                )
-            )
-            yield AddLineageRequest(
-                edge=EntitiesEdge(
                     toEntity=EntityReference(id=to_entity.id, type="table"),
-                    fromEntity=EntityReference(
-                        id=self.context.pipeline.id.__root__, type="pipeline"
-                    ),
+                    lineageDetails=lineage_details,
                 )
             )
 

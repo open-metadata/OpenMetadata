@@ -24,6 +24,7 @@ import {
   isEqual,
   isNil,
   isNull,
+  isString,
   isUndefined,
   uniqueId,
 } from 'lodash';
@@ -31,6 +32,7 @@ import {
   CurrentState,
   EntityFieldThreadCount,
   ExtraInfo,
+  FormattedTableData,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -79,6 +81,7 @@ import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
+import { TagLabel } from '../generated/type/tagLabel';
 import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
@@ -87,6 +90,7 @@ import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
+import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -784,9 +788,7 @@ export const showPagination = (paging: Paging) => {
 };
 
 export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(
-    number
-  );
+  return new Intl.NumberFormat('en-US').format(number);
 };
 
 export const formTwoDigitNmber = (number: number) => {
@@ -1003,3 +1005,25 @@ export const getLoadingStatus = (
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
+
+export const getTierFromEntityInfo = (entity: FormattedTableData) => {
+  return (
+    entity.tier?.tagFQN ||
+    getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
+  )?.split(FQN_SEPARATOR_CHAR)[1];
+};
+
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+  if (isString(tag)) {
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      ? tag.split(FQN_SEPARATOR_CHAR)[1]
+      : tag;
+  } else {
+    return {
+      ...tag,
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : tag.tagFQN,
+    };
+  }
+};

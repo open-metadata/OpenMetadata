@@ -25,6 +25,9 @@ except ImportError:
 from pydantic import BaseModel
 from requests.utils import quote
 
+from metadata.generated.schema.analytics.webAnalyticEventData import (
+    WebAnalyticEventData,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -395,6 +398,9 @@ class OpenMetadata(
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
             return "/testCase"
+
+        if issubclass(entity, WebAnalyticEventData):
+            return "/analytics/webAnalyticEvent/collect"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"

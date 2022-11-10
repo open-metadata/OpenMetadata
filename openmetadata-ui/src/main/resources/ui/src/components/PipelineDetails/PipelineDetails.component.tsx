@@ -54,12 +54,12 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
+import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
@@ -123,14 +123,8 @@ const PipelineDetails = ({
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-  const [selectedExecution, setSelectedExecution] = useState<PipelineStatus>(
-    () => {
-      if (pipelineStatus) {
-        return pipelineStatus;
-      } else {
-        return {} as PipelineStatus;
-      }
-    }
+  const [selectedExecution] = useState<PipelineStatus | undefined>(
+    pipelineStatus
   );
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -200,6 +194,17 @@ const PipelineDetails = ({
       count: feedCount,
     },
     {
+      name: 'Executions',
+      icon: {
+        alt: 'executions',
+        name: 'executions',
+        title: 'Executions',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',
@@ -208,12 +213,12 @@ const PipelineDetails = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Custom Properties',
       isProtected: false,
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -464,7 +469,7 @@ const PipelineDetails = ({
           />
 
           <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
-            <div className="tw-flex-grow tw-flex tw-flex-col tw-bg-white tw-p-4 tw-shadow tw-rounded-md tw-w-full">
+            <div className="tw-flex-grow tw-flex tw-flex-col tw-bg-white tw-shadow tw-rounded-md tw-w-full">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
@@ -514,17 +519,6 @@ const PipelineDetails = ({
                       </div>
                     )}
                   </div>
-                  <hr className="tw-my-3" />
-                  <div className="tw-px-6">
-                    <PipelineStatusList
-                      pipelineFQN={pipelineFQN}
-                      pipelineStatus={pipelineStatus}
-                      selectedExec={selectedExecution}
-                      onSelectExecution={(exec) => {
-                        setSelectedExecution(exec);
-                      }}
-                    />
-                  </div>
                 </>
               )}
               {activeTab === 2 && (
@@ -546,7 +540,8 @@ const PipelineDetails = ({
                   <div />
                 </div>
               )}
-              {activeTab === 3 && (
+              {activeTab === 3 && <ExecutionsTab pipelineFQN={pipelineFQN} />}
+              {activeTab === 4 && (
                 <div className="h-full">
                   <EntityLineageComponent
                     addLineageHandler={addLineageHandler}
@@ -567,7 +562,7 @@ const PipelineDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 4 && (
+              {activeTab === 5 && (
                 <CustomPropertyTable
                   entityDetails={
                     pipelineDetails as CustomPropertyProps['entityDetails']

@@ -38,7 +38,7 @@ data_insight_config = {
     "processor": {"type": "data-insight-processor", "config": {}},
     "sink": {
         "type": "elasticsearch",
-        "config": {"es_host": "localhost", "es_port": 9200},
+        "config": {"es_host": "localhost", "es_port": 9200, "recreate_indexes": True},
     },
     "workflowConfig": {
         "openMetadataServerConfig": {
@@ -80,12 +80,20 @@ class DataInsightWorkflowTests(unittest.TestCase):
         workflow.execute()
 
         time.sleep(1)  # wait for data to be available
-        indexes = requests.get(
+        entity_report_indexes = requests.get(
             "http://localhost:9200/entity_report_data_index/_search", timeout=30
         )
+        requests.get(
+            "http://localhost:9200/entity_report_data_index/_search", timeout=30
+        )
+        requests.get(
+            "http://localhost:9200/web_analytic_entity_view_report_data/_search",
+            timeout=30,
+        )
         assert (
-            indexes.json()["hits"]["total"]["value"] > 0
+            entity_report_indexes.json()["hits"]["total"]["value"] > 0
         )  # check data have been correctly indexed in ES
+
         report_data = self.metadata.get_data_insight_report_data(
             int((datetime.now() - timedelta(days=1)).timestamp() * 1000),
             int((datetime.now() + timedelta(days=1)).timestamp() * 1000),

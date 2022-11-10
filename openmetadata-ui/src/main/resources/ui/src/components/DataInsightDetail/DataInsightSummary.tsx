@@ -35,8 +35,10 @@ const DataInsightSummary = () => {
             data-testid={`summary-item-${summary.entityType}`}
             key={id}
             span={4}>
-            <Typography.Text>{summary.entityType}</Typography.Text>
-            <Typography className="tw-font-semibold">
+            <Typography.Text className="data-insight-label-text">
+              {summary.entityType}
+            </Typography.Text>
+            <Typography className="font-semibold text-2xl">
               {summary.count}
             </Typography>
           </Col>

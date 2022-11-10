@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
     AirbyteConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.utils.credentials import generate_http_basic_token
 
 
 class AirbyteClient:
@@ -33,6 +34,15 @@ class AirbyteClient:
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),
         )
+        if self.config.username:
+            client_config.auth_token_mode = "Basic"
+            client_config.auth_token = lambda: (
+                generate_http_basic_token(
+                    self.config.username, self.config.password.get_secret_value()
+                ),
+                0,
+            )
+
         self.client = REST(client_config)
 
     def list_workspaces(self) -> List[dict]:
