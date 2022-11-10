@@ -788,7 +788,7 @@ export const createNewEdge = (
     id: `edge-${source}-${target}`,
     source: `${source}`,
     target: `${target}`,
-    type: isEditMode ? 'buttonedge' : 'custom',
+    type: isEditMode ? 'buttonedge' : 'default',
     style: { strokeWidth: '2px' },
     markerEnd: {
       type: MarkerType.ArrowClosed,
