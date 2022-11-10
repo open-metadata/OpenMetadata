@@ -11,20 +11,31 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
-import { ENTITIES_CHARTS_NAMES } from '../../constants/DataInsight.constants';
+import { getUserPath } from '../../constants/constants';
+import {
+  ENTITIES_CHARTS,
+  WEB_CHARTS,
+} from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
+import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import { getEntitiesChartSummary } from '../../utils/DataInsightUtils';
+import {
+  getEntitiesChartSummary,
+  getWebChartSummary,
+} from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import './DataInsightDetail.less';
 
 interface Props {
@@ -37,18 +48,28 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const [entitiesCharts, setEntitiesChart] = useState<
     (DataInsightChartResult | undefined)[]
   >([]);
+  const [webCharts, setWebCharts] = useState<
+    (DataInsightChartResult | undefined)[]
+  >([]);
+
+  const [mostActiveUser, setMostActiveUser] = useState<MostActiveUsers>();
 
   const entitiesSummaryList = useMemo(
     () => getEntitiesChartSummary(entitiesCharts),
     [entitiesCharts]
   );
 
+  const webSummaryList = useMemo(
+    () => getWebChartSummary(webCharts),
+    [webCharts]
+  );
+
   const { t } = useTranslation();
 
-  const fetchTotalEntitiesByType = async () => {
+  const fetchEntitiesChartData = async () => {
     setIsLoading(true);
     try {
-      const promises = ENTITIES_CHARTS_NAMES.map((chartName) => {
+      const promises = ENTITIES_CHARTS.map((chartName) => {
         const params = {
           ...chartFilter,
           dataInsightChartName: chartName,
@@ -76,8 +97,59 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
     }
   };
 
+  const fetchMostActiveUser = async () => {
+    try {
+      const params = {
+        ...chartFilter,
+        dataInsightChartName: DataInsightChartType.MostActiveUsers,
+        dataReportIndex: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
+      };
+      const response = await getAggregateChartData(params);
+      if (response.data && response.data.length) {
+        setMostActiveUser(response.data[0]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchWebChartData = async () => {
+    setIsLoading(true);
+    try {
+      const promises = WEB_CHARTS.map((chart) => {
+        const params = {
+          ...chartFilter,
+          dataInsightChartName: chart.chart,
+          dataReportIndex: chart.index,
+        };
+
+        return getAggregateChartData(params);
+      });
+
+      const responses = await Promise.allSettled(promises);
+
+      const chartDataList = responses.map((response) => {
+        if (response.status === 'fulfilled') {
+          return response.value;
+        }
+
+        return;
+      });
+
+      setWebCharts(chartDataList);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchTotalEntitiesByType();
+    fetchEntitiesChartData();
+    fetchMostActiveUser();
+    fetchWebChartData();
   }, [chartFilter]);
 
   return (
@@ -91,6 +163,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
         </Typography.Title>
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
+        {/* summary of entity charts */}
         {entitiesSummaryList.map((summary) => (
           <Col
             className="summary-card-item"
@@ -107,6 +180,48 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
             </Typography>
           </Col>
         ))}
+
+        {/* summary for web charts */}
+        {webSummaryList.map((summary) => (
+          <Col
+            className="summary-card-item"
+            data-testid={`summary-item-${summary.id}`}
+            key={summary.id}
+            span={6}
+            onClick={() => onScrollToChart(summary.id)}>
+            <Typography.Text className="data-insight-label-text">
+              {summary.label}
+            </Typography.Text>
+            <Typography className="font-semibold text-2xl m--ml-0.5">
+              {summary.latest}
+              {summary.id.startsWith('Percentage') ? '%' : ''}
+            </Typography>
+          </Col>
+        ))}
+
+        {/* summary of most active user */}
+        {mostActiveUser && mostActiveUser.userName && (
+          <Col
+            data-testid={`summary-item-${DataInsightChartType.MostActiveUsers}`}
+            key={DataInsightChartType.MostActiveUsers}
+            span={6}>
+            <Typography.Text className="data-insight-label-text d-block">
+              {t('label.most-active-user')}
+            </Typography.Text>
+            <UserPopOverCard userName={mostActiveUser.userName}>
+              <Space>
+                <ProfilePicture
+                  id=""
+                  name={mostActiveUser.userName}
+                  type="circle"
+                />
+                <Link to={getUserPath(mostActiveUser.userName)}>
+                  {mostActiveUser.userName}
+                </Link>
+              </Space>
+            </UserPopOverCard>
+          </Col>
+        )}
       </Row>
     </Card>
   );

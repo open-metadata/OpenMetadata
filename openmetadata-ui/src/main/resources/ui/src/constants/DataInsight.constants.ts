@@ -13,6 +13,7 @@
 
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
+import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
 import {
@@ -119,11 +120,35 @@ export const INITIAL_CHART_FILTER: ChartFilter = {
   endTs: getCurrentDateTimeMillis(),
 };
 
-export const ENTITIES_CHARTS_NAMES = [
+export const ENTITIES_CHARTS = [
   DataInsightChartType.TotalEntitiesByType,
   DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
   DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
   DataInsightChartType.TotalEntitiesByTier,
+];
+
+export const WEB_CHARTS = [
+  {
+    chart: DataInsightChartType.PageViewsByEntities,
+    index: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
+  },
+  {
+    chart: DataInsightChartType.DailyActiveUsers,
+    index: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
+  },
+];
+
+export const WEB_SUMMARY_LIST = [
+  {
+    label: i18n.t('label.page-views-by-entities'),
+    latest: 0,
+    id: DataInsightChartType.PageViewsByEntities,
+  },
+  {
+    label: i18n.t('label.daily-active-user'),
+    latest: 0,
+    id: DataInsightChartType.DailyActiveUsers,
+  },
 ];
 
 export const ENTITIES_SUMMARY_LIST = [

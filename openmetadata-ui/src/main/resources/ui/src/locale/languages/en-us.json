@@ -234,7 +234,8 @@
     "data-asset": "Data asset",
     "total-data-assets": "Total data assets",
     "data-assets-with-field": "Data assets with {{field}}",
-    "total-data-assets-with-tiers": "Total Data assets with tiers"
+    "total-data-assets-with-tiers": "Total Data assets with tiers",
+    "most-active-user": "Most active user"
   },
   "message": {
     "service-email-required": "Service account Email is required",

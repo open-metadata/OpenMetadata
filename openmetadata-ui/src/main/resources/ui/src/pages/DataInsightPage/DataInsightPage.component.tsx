@@ -22,7 +22,7 @@ import {
   Space,
   Typography,
 } from 'antd';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
@@ -40,6 +40,7 @@ import {
   DATA_INSIGHT_TAB,
   DAY_FILTER,
   DEFAULT_DAYS,
+  ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
@@ -61,6 +62,8 @@ const DataInsightPage = () => {
   const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.DataAssets);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
+
+  const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
 
   useEffect(() => {
     setChartFilter(INITIAL_CHART_FILTER);
@@ -122,11 +125,23 @@ const DataInsightPage = () => {
   };
 
   const handleScrollToChart = (chartType: DataInsightChartType) => {
-    const element = document.getElementById(chartType);
-    if (element) {
-      element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (ENTITIES_CHARTS.includes(chartType)) {
+      setActiveTab(DATA_INSIGHT_TAB.DataAssets);
+    } else {
+      setActiveTab(DATA_INSIGHT_TAB['Web Analytics']);
     }
+    setSelectedChart(chartType);
   };
+
+  useLayoutEffect(() => {
+    if (selectedChart) {
+      const element = document.getElementById(selectedChart);
+      if (element) {
+        element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setSelectedChart(undefined);
+      }
+    }
+  }, [selectedChart]);
 
   useEffect(() => {
     fetchDefaultTeamOptions();
@@ -236,10 +251,10 @@ const DataInsightPage = () => {
               <PageViewsByEntitiesChart chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <TopActiveUsers chartFilter={chartFilter} />
+              <DailyActiveUsersChart chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <DailyActiveUsersChart chartFilter={chartFilter} />
+              <TopActiveUsers chartFilter={chartFilter} />
             </Col>
           </>
         )}
