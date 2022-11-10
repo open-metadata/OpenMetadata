@@ -318,6 +318,12 @@ site_menu:
     url: /connectors/database/mariadb/airflow
   - category: Connectors / Database / MariaDB / CLI
     url: /connectors/database/mariadb/cli
+  - category: Connectors / Database / Domo Database
+    url: /connectors/database/domo-database
+  - category: Connectors / Database / Domo Database / Airflow
+    url: /connectors/database/domo-database/airflow
+  - category: Connectors / Database / Domo Database / CLI
+    url: /connectors/database/domo-database/cli
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard
@@ -365,6 +371,13 @@ site_menu:
     url: /connectors/dashboard/mode/airflow
   - category: Connectors / Dashboard / Mode / CLI
     url: /connectors/dashboard/mode/cli
+  - category: Connectors / Dashboard
+  - category: Connectors / Dashboard / Domo Dashboard
+    url: /connectors/dashboard/domo-dashboard
+  - category: Connectors / Dashboard / Domo Dashboard / Airflow
+    url: /connectors/dashboard/domo-dashboard/airflow
+  - category: Connectors / Dashboard / Domo Dashboard / CLI
+    url: /connectors/dashboard/domo-dashboard/cli
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -415,6 +428,12 @@ site_menu:
     url: /connectors/pipeline/dagster/airflow
   - category: Connectors / Pipeline / Dagster / CLI
     url: /connectors/pipeline/dagster/cli
+  - category: Connectors / Pipeline / Domo Pipeline
+    url: /connectors/pipeline/domo-pipeline
+  - category: Connectors / Pipeline / Domo Pipeline / Airflow
+    url: /connectors/pipeline/domo-pipeline/airflow
+  - category: Connectors / Pipeline / Domo Pipeline / CLI
+    url: /connectors/pipeline/domo-pipeline/cli
 
   - category: Connectors / ML Model
     url: /connectors/ml-model

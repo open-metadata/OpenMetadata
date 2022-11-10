@@ -62,6 +62,7 @@ import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
+import IconExitFullScreen from '../assets/svg/exit-full-screen.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
@@ -309,6 +310,7 @@ export const Icons = {
   SAMPLE_DATA_COLOR: 'sample-data-color',
   FITVEW: 'icon-fitview',
   FULL_SCREEN: 'icon-full-screen',
+  EXIT_FULL_SCREEN: 'icon-exit-full-screen',
   CONTROLPLUS: 'icon-control-plus',
   CONTROLMINUS: 'icon-control-minus',
   EDITLINEAGECOLOR: 'icon-edit-lineage-color',
@@ -831,6 +833,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.FULL_SCREEN:
       IconComponent = IconFullScreen;
+
+      break;
+    case Icons.EXIT_FULL_SCREEN:
+      IconComponent = IconExitFullScreen;
 
       break;
     case Icons.CONTROLPLUS:

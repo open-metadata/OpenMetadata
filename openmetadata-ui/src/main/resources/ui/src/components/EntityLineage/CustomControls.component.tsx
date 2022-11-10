@@ -11,20 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Col, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
-import { LoadingState } from 'Models';
 import React, {
   ButtonHTMLAttributes,
   FC,
-  HTMLAttributes,
   memo,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
-import { FitViewOptions, useReactFlow } from 'reactflow';
+import { useTranslation } from 'react-i18next';
+import { useReactFlow } from 'reactflow';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   MAX_ZOOM_VALUE,
@@ -35,25 +34,7 @@ import {
 } from '../../constants/Lineage.constants';
 import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-
-export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
-  showZoom?: boolean;
-  showFitView?: boolean;
-  fitViewParams?: FitViewOptions;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
-  onFitView?: () => void;
-  handleFullScreenViewClick?: () => void;
-  deleted: boolean | undefined;
-  isEditMode: boolean;
-  hasEditAccess: boolean | undefined;
-  isColumnsExpanded: boolean;
-  onEditLinageClick: () => void;
-  onExpandColumnClick: () => void;
-  loading: boolean;
-  status: LoadingState;
-  zoomValue: number;
-}
+import { ControlProps } from './EntityLineage.interface';
 
 export const ControlButton: FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
   children,
@@ -82,10 +63,14 @@ const CustomControls: FC<ControlProps> = ({
   onEditLinageClick,
   onExpandColumnClick,
   handleFullScreenViewClick,
+  onExitFullScreenViewClick,
   loading,
   status,
   zoomValue,
+  lineageData,
+  onOptionSelect,
 }: ControlProps) => {
+  const { t } = useTranslation();
   const { fitView, zoomTo } = useReactFlow();
   const [zoom, setZoom] = useState<number>(zoomValue);
 
@@ -118,11 +103,36 @@ const CustomControls: FC<ControlProps> = ({
     fitView?.(fitViewParams);
   }, [fitView, fitViewParams]);
 
+  const handleSearchFilterOption = (
+    input: string,
+    option?: {
+      label: string;
+      value: string;
+    }
+  ) => {
+    return (option?.label || '').toLowerCase().includes(input.toLowerCase());
+  };
+
+  const onRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const zoomValue = parseFloat(event.target.value);
+    onZoomHandler(zoomValue);
+    setZoom(zoomValue);
+  };
+
   useEffect(() => {
     if (zoomValue !== zoom) {
       setZoom(zoomValue);
     }
   }, [zoomValue]);
+
+  const nodeOptions = useMemo(
+    () =>
+      [lineageData.entity, ...(lineageData.nodes || [])].map((node) => ({
+        label: node.fullyQualifiedName || node.name || '',
+        value: node.id,
+      })),
+    [lineageData]
+  );
 
   const editIcon = useMemo(() => {
     return (
@@ -136,90 +146,121 @@ const CustomControls: FC<ControlProps> = ({
   }, [isEditMode]);
 
   return (
-    <div
-      className={classNames(
-        'controls-container tw-flex tw-gap-4 tw-z-10',
-        className
-      )}
+    <Row
+      className={classNames('z-10 w-full', className)}
+      gutter={[8, 8]}
       style={style}>
-      <Button
-        ghost
-        data-testid="expand-column"
-        type="primary"
-        onClick={onExpandColumnClick}>
-        {isColumnsExpanded ? 'Collapse All' : 'Expand All'}
-      </Button>
-
-      {showZoom && (
-        <div className="flow-control tw-flex tw-gap-x-2 tw-bg-body-hover tw-border border-gray tw-h-8 tw-shadow-md tw-rounded">
-          <ControlButton
-            className="tw-px-1 tw-cursor-pointer tw-w-8 tw-h-8"
-            onClick={onZoomOutHandler}>
-            <SVGIcons
-              alt="minus-icon"
-              className="tw--mt-0.5"
-              icon="icon-control-minus"
-              width="12"
-            />
-          </ControlButton>
-
-          <input
-            className="tw-bg-body-hover"
-            max={MAX_ZOOM_VALUE}
-            min={MIN_ZOOM_VALUE}
-            step={ZOOM_SLIDER_STEP}
-            type="range"
-            value={zoom}
-            onChange={(e) => {
-              const zoomValue = parseFloat(e.target.value);
-              onZoomHandler(zoomValue);
-              setZoom(zoomValue);
-            }}
-          />
-          <ControlButton
-            className="tw-px-1 tw-cursor-pointer tw-w-8 tw-h-8"
-            onClick={onZoomInHandler}>
-            <SVGIcons
-              alt="plus-icon"
-              className="tw--mt-0.5"
-              icon="icon-control-plus"
-              width="12"
-            />
-          </ControlButton>
-        </div>
-      )}
-      {showFitView && (
-        <ControlButton
-          className="tw-border border-gray tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
-          onClick={onFitViewHandler}>
-          <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
-        </ControlButton>
-      )}
-      {handleFullScreenViewClick && (
-        <ControlButton
-          className="tw-border border-gray tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
-          onClick={handleFullScreenViewClick}>
-          <SVGIcons
-            alt="fullScreenViewicon"
-            icon={Icons.FULL_SCREEN}
-            width="16"
-          />
-        </ControlButton>
-      )}
-      {!deleted && (
-        <ControlButton
-          className={classNames('h-8 w-8 rounded-full p-x-xss tw-shadow-lg', {
-            'bg-primary': !isEditMode,
-            'bg-primary-hover-lite': isEditMode,
+      <Col span={12}>
+        <Select
+          allowClear
+          showSearch
+          className={classNames('custom-control-search-box', {
+            'custom-control-search-box-edit-mode': isEditMode,
           })}
-          data-testid="edit-lineage"
-          disabled={!hasEditAccess}
-          title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
-          onClick={onEditLinageClick}>
-          {getLoadingStatusValue(editIcon, loading, status)}
-        </ControlButton>
-      )}
-    </div>
+          filterOption={handleSearchFilterOption}
+          options={nodeOptions}
+          placeholder={t('label.search-lineage')}
+          onChange={onOptionSelect}
+        />
+      </Col>
+      <Col span={12}>
+        <Space className="justify-end w-full" size={16}>
+          <Button
+            ghost
+            data-testid="expand-column"
+            type="primary"
+            onClick={onExpandColumnClick}>
+            {isColumnsExpanded
+              ? t('label.collapse-all')
+              : t('label.expand-all')}
+          </Button>
+
+          {showZoom && (
+            <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide">
+              <ControlButton
+                className="custom-control-basic-button"
+                onClick={onZoomOutHandler}>
+                <SVGIcons
+                  alt="minus-icon"
+                  className="tw--mt-0.5"
+                  icon="icon-control-minus"
+                  width="12"
+                />
+              </ControlButton>
+
+              <input
+                className="tw-bg-body-hover"
+                max={MAX_ZOOM_VALUE}
+                min={MIN_ZOOM_VALUE}
+                step={ZOOM_SLIDER_STEP}
+                type="range"
+                value={zoom}
+                onChange={onRangeChange}
+              />
+              <ControlButton
+                className="custom-control-basic-button"
+                onClick={onZoomInHandler}>
+                <SVGIcons
+                  alt="plus-icon"
+                  className="tw--mt-0.5"
+                  icon="icon-control-plus"
+                  width="12"
+                />
+              </ControlButton>
+            </div>
+          )}
+          {showFitView && (
+            <ControlButton
+              className="custom-control-basic-button custom-control-fit-screen-button"
+              onClick={onFitViewHandler}>
+              <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
+            </ControlButton>
+          )}
+          {handleFullScreenViewClick && (
+            <ControlButton
+              className="custom-control-basic-button custom-control-fit-screen-button"
+              onClick={handleFullScreenViewClick}>
+              <SVGIcons
+                alt="fullScreenViewicon"
+                icon={Icons.FULL_SCREEN}
+                width="16"
+              />
+            </ControlButton>
+          )}
+          {onExitFullScreenViewClick && (
+            <ControlButton
+              className="custom-control-basic-button custom-control-fit-screen-button"
+              onClick={onExitFullScreenViewClick}>
+              <SVGIcons
+                alt="exitFullScreenViewIcon"
+                icon={Icons.EXIT_FULL_SCREEN}
+                width="16"
+              />
+            </ControlButton>
+          )}
+          {!deleted && (
+            <ControlButton
+              className={classNames(
+                'h-8 w-8 rounded-full p-x-xss tw-shadow-lg',
+                {
+                  'bg-primary': !isEditMode,
+                  'bg-primary-hover-lite': isEditMode,
+                }
+              )}
+              data-testid="edit-lineage"
+              disabled={!hasEditAccess}
+              title={
+                hasEditAccess
+                  ? t('label.edit-lineage')
+                  : NO_PERMISSION_FOR_ACTION
+              }
+              onClick={onEditLinageClick}>
+              {getLoadingStatusValue(editIcon, loading, status)}
+            </ControlButton>
+          )}
+        </Space>
+      </Col>
+    </Row>
   );
 };
 

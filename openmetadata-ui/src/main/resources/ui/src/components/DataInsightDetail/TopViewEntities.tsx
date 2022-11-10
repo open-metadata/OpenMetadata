@@ -11,81 +11,86 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tag, Typography } from 'antd';
+import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useMemo } from 'react';
+import { AxiosError } from 'axios';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TOP_VIEW_ENTITIES } from '../../pages/DataInsightPage/DataInsight.mock';
+import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';
+import { ChartFilter } from '../../interface/data-insight.interface';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import Loader from '../Loader/Loader';
 import './DataInsightDetail.less';
 
-interface EntityView {
-  entityName: string;
-  owner: string;
-  tags: string[];
-  entityType: string;
-  totalViews: number;
-  uniqueViews: number;
+interface Props {
+  chartFilter: ChartFilter;
 }
 
-const TopViewEntities = () => {
+const TopViewEntities: FC<Props> = ({ chartFilter }) => {
+  const [mostViewedEntities, setMostViewedEntities] =
+    useState<MostViewedEntities[]>();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
   const { t } = useTranslation();
 
-  const columns: ColumnsType<EntityView> = useMemo(
+  const fetchMostViewedEntities = async () => {
+    setIsLoading(true);
+    try {
+      const params = {
+        ...chartFilter,
+        dataInsightChartName: DataInsightChartType.MostViewedEntities,
+        dataReportIndex: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
+      };
+      const response = await getAggregateChartData(params);
+
+      setMostViewedEntities(response.data ?? []);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMostViewedEntities();
+  }, [chartFilter]);
+
+  const columns: ColumnsType<MostViewedEntities> = useMemo(
     () => [
       {
         title: t('label.entity-name'),
-        dataIndex: 'entityName',
+        dataIndex: 'entityFqn',
         key: 'entityName',
-        render: (entityName: string) => (
-          <Typography.Text>{entityName}</Typography.Text>
+        render: (entityFqn: string) => (
+          <Typography.Text>{getDecodedFqn(entityFqn)}</Typography.Text>
         ),
       },
       {
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
-        render: (owner: string) => (
-          <Space>
-            <ProfilePicture id="" name={owner} type="circle" width="24" />
-            <Typography.Text>{owner}</Typography.Text>
-          </Space>
-        ),
-      },
-      {
-        title: t('label.tags'),
-        dataIndex: 'tags',
-        key: 'tags',
-        render: (tags: string[]) => (
-          <Typography.Text>
-            {tags.map((tag, i) => (
-              <Tag key={i}>{tag}</Tag>
-            ))}
-          </Typography.Text>
-        ),
-      },
-      {
-        title: t('label.entity-type'),
-        dataIndex: 'entityType',
-        key: 'entityType',
-        render: (entityType: string) => (
-          <Typography.Text>{entityType}</Typography.Text>
-        ),
+        render: (owner: string) =>
+          owner ? (
+            <Space>
+              <ProfilePicture id="" name={owner} type="circle" width="24" />
+              <Typography.Text>{owner}</Typography.Text>
+            </Space>
+          ) : (
+            <Typography.Text>{t('label.no-owner')}</Typography.Text>
+          ),
       },
       {
         title: t('label.total-views'),
-        dataIndex: 'totalViews',
+        dataIndex: 'pageViews',
         key: 'totalViews',
-        render: (totalViews: number) => (
-          <Typography.Text>{totalViews}</Typography.Text>
-        ),
-      },
-      {
-        title: t('label.unique-views'),
-        dataIndex: 'uniqueViews',
-        key: 'uniqueViews',
-        render: (uniqueViews: number) => (
-          <Typography.Text>{uniqueViews}</Typography.Text>
+        render: (pageViews: number) => (
+          <Typography.Text>{pageViews}</Typography.Text>
         ),
       },
     ],
@@ -97,14 +102,20 @@ const TopViewEntities = () => {
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
-        <Typography.Title level={5}>
-          {t('label.data-insight-top-viewed-entity-summary')}
-        </Typography.Title>
+        <>
+          <Typography.Title level={5}>
+            {t('label.data-insight-top-viewed-entity-summary')}
+          </Typography.Title>
+          <Typography.Text className="data-insight-label-text">
+            {t('message.most-viewed-datasets')}
+          </Typography.Text>
+        </>
       }>
       <Table
         className="data-insight-table-wrapper"
         columns={columns}
-        dataSource={TOP_VIEW_ENTITIES}
+        dataSource={mostViewedEntities}
+        loading={{ spinning: isLoading, indicator: <Loader /> }}
         pagination={false}
         size="small"
       />

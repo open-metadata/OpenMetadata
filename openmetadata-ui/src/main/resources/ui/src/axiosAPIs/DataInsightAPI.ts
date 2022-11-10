@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartResult } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartAggregateParam } from '../interface/data-insight.interface';
 import APIClient from './index';
@@ -20,10 +19,7 @@ export const getAggregateChartData = async (params: ChartAggregateParam) => {
   const response = await APIClient.get<DataInsightChartResult>(
     '/dataInsight/aggregate',
     {
-      params: {
-        ...params,
-        dataReportIndex: DataReportIndex.EntityReportDataIndex,
-      },
+      params,
     }
   );
 
