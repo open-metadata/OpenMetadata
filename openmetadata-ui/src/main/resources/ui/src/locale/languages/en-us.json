@@ -230,7 +230,10 @@
     "collapse-all": "Collapse All",
     "expand-all": "Expand All",
     "search-lineage": "Search Lineage",
-    "edit-lineage": "Edit Lineage"
+    "edit-lineage": "Edit Lineage",
+    "data-asset": "Data asset",
+    "end-date": "End Date",
+    "metric-type": "metricType"
   },
   "message": {
     "service-email-required": "Service account Email is required",

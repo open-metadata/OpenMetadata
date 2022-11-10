@@ -221,6 +221,9 @@ const LogsViewer = withSuspenseFallback(
 const DataInsightPage = withSuspenseFallback(
   React.lazy(() => import('../pages/DataInsightPage/DataInsightPage.component'))
 );
+const KPIListPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/KPIListPage/KPIListPage'))
+);
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
@@ -522,6 +525,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.TEST_SUITES}
       />
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
+      <Route exact component={KPIListPage} path={ROUTES.KPI_LIST} />
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
