@@ -26,6 +26,9 @@ on:
       - ingestion/**
       - openmetadata-service/**
 
+permissions:
+  contents: read
+
 jobs:
   py-run-tests:
     runs-on: ubuntu-latest
@@ -33,6 +36,7 @@ jobs:
       matrix:
         py-version: ['3.7', '3.8', '3.9']
     steps:
+
     - name: Checkout
       uses: actions/checkout@v2
       with:

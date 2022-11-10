@@ -54,6 +54,7 @@ import {
   ELEMENT_DELETE_STATE,
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
+  ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -143,6 +144,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineageHandler,
   onFullScreenClick,
   hasEditAccess,
+  onExitFullScreenViewClick,
 }: EntityLineageProp) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -870,7 +872,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         prevNode.data = {
           ...prevNode.data,
           isTraced: highlight,
-          selected: false,
+          selected: prevNode.id === selectedNode.id,
           selectedColumns: [],
         };
 
@@ -1190,6 +1192,25 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const handleOptionSelect = (value?: string) => {
+    if (value) {
+      const selectedNode = nodes.find((node) => node.id === value);
+
+      if (selectedNode) {
+        const { position } = selectedNode;
+        onNodeClick(selectedNode);
+        // moving selected node in center
+        reactFlowInstance &&
+          reactFlowInstance.setCenter(position.x, position.y, {
+            duration: ZOOM_TRANSITION_DURATION,
+            zoom: MIN_ZOOM_VALUE,
+          });
+      } else {
+        onPaneClick();
+      }
+    }
+  };
+
   /**
    * Handle updated lineage nodes
    * Change newly added node label based on entity:EntityReference
@@ -1328,11 +1349,14 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               hasEditAccess={hasEditAccess}
               isColumnsExpanded={expandAllColumns}
               isEditMode={isEditMode}
+              lineageData={updatedLineageData}
               loading={loading}
               status={status}
               zoomValue={zoomValue}
               onEditLinageClick={handleEditLineageClick}
+              onExitFullScreenViewClick={onExitFullScreenViewClick}
               onExpandColumnClick={handleExpandColumnClick}
+              onOptionSelect={handleOptionSelect}
             />
             {isEditMode && (
               <Background gap={12} size={1} variant={BackgroundVariant.Lines} />

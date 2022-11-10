@@ -15,12 +15,14 @@ import { Card, Typography } from 'antd';
 import { isInteger, last, toNumber } from 'lodash';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
-import { LegendProps, Surface, TooltipProps } from 'recharts';
+import { LegendProps, Surface } from 'recharts';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
+import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
 import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
+import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
 
 export const renderLegend = (legendData: LegendProps, latest: string) => {
@@ -56,9 +58,11 @@ export const renderLegend = (legendData: LegendProps, latest: string) => {
  * we don't have type for Tooltip value and Tooltip
  * that's why we have to use the type "any"
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const CustomTooltip = (props: TooltipProps<any, any>) => {
-  const { active, payload = [], label } = props;
+
+export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
+  const { active, payload = [], label, isPercentage } = props;
+
+  const suffix = isPercentage ? '%' : '';
 
   if (active && payload && payload.length) {
     return (
@@ -72,7 +76,9 @@ export const CustomTooltip = (props: TooltipProps<any, any>) => {
             </Surface>
             <span>
               {entry.dataKey} -{' '}
-              {isInteger(entry.value) ? entry.value : entry.value?.toFixed(2)}
+              {isInteger(entry.value)
+                ? `${entry.value}${suffix}`
+                : `${entry.value?.toFixed(2)}${suffix}`}
             </span>
           </li>
         ))}
@@ -158,6 +164,11 @@ export const getGraphDataByEntityType = (
 
           break;
 
+        case DataInsightChartType.PageViewsByEntities:
+          value = data.pageViews;
+
+          break;
+
         default:
           break;
       }
@@ -178,6 +189,7 @@ export const getGraphDataByEntityType = (
     data: graphData,
     entities,
     total: getLatestCount(latestData),
+    latestData,
   };
 };
 
@@ -222,3 +234,11 @@ export const getTeamFilter = (suggestionValues: ListValues = []) => {
     value: suggestion.value,
   }));
 };
+
+export const getFormattedActiveUsersData = (activeUsers: DailyActiveUsers[]) =>
+  activeUsers.map((user) => ({
+    ...user,
+    timestamp: user.timestamp
+      ? getFormattedDateFromMilliSeconds(user.timestamp)
+      : '',
+  }));
