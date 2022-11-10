@@ -29,12 +29,6 @@ jobs:
         node-version: [16.x]
     runs-on: ubuntu-latest
     steps:
-    - name: Wait for approval
-      uses: lewagon/wait-on-check-action@v1.2.0
-      with:
-        ref: ${{ github.ref }}
-        check-name: 'Approval'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - uses: actions/checkout@v2
       with:
