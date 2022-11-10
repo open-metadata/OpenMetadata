@@ -226,7 +226,11 @@
     "edge-information": "Edge Information",
     "no-owner": "No Owner",
     "page-views-by-entities": "Page views by datasets",
-    "daily-active-user": "Daily active users on the platform"
+    "daily-active-user": "Daily active users on the platform",
+    "collapse-all": "Collapse All",
+    "expand-all": "Expand All",
+    "search-lineage": "Search Lineage",
+    "edit-lineage": "Edit Lineage"
   },
   "message": {
     "service-email-required": "Service account Email is required",
