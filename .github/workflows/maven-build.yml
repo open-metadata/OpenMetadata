@@ -45,12 +45,6 @@ jobs:
           - 16.x
 
     steps:
-      - name: Wait for approval
-        uses: lewagon/wait-on-check-action@master
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: 'Approval'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: install libssl
         run: |
