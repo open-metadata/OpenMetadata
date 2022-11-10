@@ -19,6 +19,9 @@ on:
     paths:
       - 'openmetadata-service/src/main/resources/json/**'
 
+permissions:
+  contents: read
+
 concurrency: 
   group: py-generate-${{ github.head_ref }}
   cancel-in-progress: true

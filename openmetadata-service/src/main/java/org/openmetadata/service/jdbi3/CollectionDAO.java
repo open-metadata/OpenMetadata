@@ -42,6 +42,8 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
+import org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
@@ -3164,10 +3166,18 @@ public interface CollectionDAO {
       settings.setConfigType(configType);
       Object value;
       try {
-        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
-          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-        } else {
-          throw new RuntimeException("Invalid Settings Type");
+        switch (configType) {
+          case ACTIVITY_FEED_FILTER_SETTING:
+            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+            break;
+          case TASK_NOTIFICATION_CONFIGURATION:
+            value = JsonUtils.readValue(json, TaskNotificationConfiguration.class);
+            break;
+          case TEST_RESULT_NOTIFICATION_CONFIGURATION:
+            value = JsonUtils.readValue(json, TestResultNotificationConfiguration.class);
+            break;
+          default:
+            throw new RuntimeException("Invalid Settings Type");
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

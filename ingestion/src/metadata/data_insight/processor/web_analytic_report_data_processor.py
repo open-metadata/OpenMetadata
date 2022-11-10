@@ -225,7 +225,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             "totalSessionDuration": total_session_duration_seconds,
         }
 
-    def _get_user_details(self, user_id: str) -> Optional[dict]:
+    def _get_user_details(self, user_id: str) -> dict:
         """Get user details from user id
 
         Returns:
@@ -239,7 +239,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
         )
 
         if not user_entity:
-            return None
+            return {}
 
         teams = user_entity.teams
         return {

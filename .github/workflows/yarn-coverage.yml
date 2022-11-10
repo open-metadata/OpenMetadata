@@ -13,6 +13,10 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - openmetadata-ui/src/main/resources/ui/**
+
+permissions:
+  contents: read
+
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
 concurrency: 
@@ -25,6 +29,7 @@ jobs:
         node-version: [16.x]
     runs-on: ubuntu-latest
     steps:
+
     - uses: actions/checkout@v2
       with:
         ref: ${{ github.event.pull_request.head.sha }}
