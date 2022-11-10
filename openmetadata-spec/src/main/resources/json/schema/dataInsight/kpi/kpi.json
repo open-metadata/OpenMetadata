@@ -84,6 +84,14 @@
       "default": false
     }
   },
-  "required": ["name", "description", "dateInsightChart", "startDate", "endDate", "targetDefinition", "metricType"],
+  "required": [
+    "name",
+    "description",
+    "dataInsightChart",
+    "startDate",
+    "endDate",
+    "targetDefinition",
+    "metricType"
+  ],
   "additionalProperties": false
 }
