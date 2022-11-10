@@ -23,7 +23,6 @@ import {
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
-import { getCurrentDateTimeStampInMilliSeconds } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 
@@ -51,7 +50,6 @@ const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
     try {
       const params = {
         ...chartFilter,
-        startTs: getCurrentDateTimeStampInMilliSeconds(),
         dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
