@@ -69,7 +69,7 @@ public class MetadataServiceResource
     registerMetadataServices(config);
   }
 
-  private void registerMetadataServices(OpenMetadataApplicationConfig config){
+  private void registerMetadataServices(OpenMetadataApplicationConfig config) {
     try {
       if (config.getElasticSearchConfiguration() != null) {
         OpenMetadataServerConnection openMetadataServerConnection =
