@@ -80,6 +80,21 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   ),
 }));
 
+jest.mock('../../components/DataInsightDetail/DailyActiveUsersChart', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="daily-active-users">DailyActiveUsersChart</div>
+    )
+);
+jest.mock('../../components/DataInsightDetail/PageViewsByEntitiesChart', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="entities-page-views">PageViewsByEntitiesChart</div>
+    )
+);
+
 describe('Test DataInsightPage Component', () => {
   it('Should render all child elements', async () => {
     render(<DataInsightPage />);
