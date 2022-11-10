@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
@@ -34,7 +35,9 @@ import org.openmetadata.schema.api.services.CreateMetadataService;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.services.connections.metadata.MetadataToElasticSearchConnection;
+import org.openmetadata.schema.services.connections.metadata.ComponentConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.Sink;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -47,6 +50,7 @@ import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataServerConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -65,17 +69,20 @@ public class MetadataServiceResource
     registerMetadataServices(config);
   }
 
-  private void registerMetadataServices(OpenMetadataApplicationConfig config) throws IOException {
+  private void registerMetadataServices(OpenMetadataApplicationConfig config){
     try {
       if (config.getElasticSearchConfiguration() != null) {
-        MetadataConnection esMetadataConnection =
-            new MetadataConnection().withConfig(getElasticSearchConnection(config.getElasticSearchConfiguration()));
+        OpenMetadataServerConnection openMetadataServerConnection =
+            new OpenMetadataServerConnectionBuilder(config)
+                .build()
+                .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
+        MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
         List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
         servicesList.forEach(
             (service) -> {
               try {
                 // populate values for the Metadata Service
-                service.setConnection(esMetadataConnection);
+                service.setConnection(metadataConnection);
                 dao.initializeEntity(service);
               } catch (IOException e) {
                 LOG.error(
@@ -386,13 +393,21 @@ public class MetadataServiceResource
     return service.getServiceType().value();
   }
 
-  private MetadataToElasticSearchConnection getElasticSearchConnection(ElasticSearchConfiguration config) {
-    return new MetadataToElasticSearchConnection()
-        .withType(MetadataToElasticSearchConnection.EsType.METADATA_TO_ELASTIC_SEARCH)
-        .withHost(config.getHost())
-        .withPort(config.getPort())
-        .withScheme(config.getScheme())
-        .withUsername(config.getUsername())
-        .withPassword(config.getPassword());
+  private Sink getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) {
+    if (Objects.nonNull(esConfig)) {
+      Sink sink = new Sink();
+      ComponentConfig componentConfig = new ComponentConfig();
+      sink.withType("elasticsearch")
+          .withConfig(
+              componentConfig
+                  .withAdditionalProperty("es_host", esConfig.getHost())
+                  .withAdditionalProperty("es_port", esConfig.getPort().toString())
+                  .withAdditionalProperty("es_username", esConfig.getUsername())
+                  .withAdditionalProperty("es_password", esConfig.getPassword())
+                  .withAdditionalProperty("scheme", esConfig.getScheme()));
+      return sink;
+    } else {
+      throw new RuntimeException("Elastic Search Configuration Missing");
+    }
   }
 }

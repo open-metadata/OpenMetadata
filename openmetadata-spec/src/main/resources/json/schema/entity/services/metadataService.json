@@ -14,7 +14,7 @@
       "description": "Type of database service such as Amundsen, Atlas...",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas", "MetadataToElasticSearch"],
+      "enum": ["Amundsen", "MetadataES", "OpenMetadataServer", "Atlas"],
       "javaEnums": [
         {
           "name": "Amundsen"
@@ -23,7 +23,7 @@
           "name": "MetadataES"
         },
         {
-          "name": "OpenMetadata"
+          "name": "OpenMetadataServer"
         },
         {
           "name": "Atlas"
@@ -48,13 +48,10 @@
               "$ref": "./connections/metadata/metadataESConnection.json"
             },
             {
-              "$ref": "./connections/metadata/openMetadataConnection.json"
+              "$ref": "./connections/metadata/openMetadataServerConnection.json"
             },
             {
               "$ref": "./connections/metadata/atlasConnection.json"
-            },
-            {
-              "$ref": "connections/system/metadataToElasticSearchConnection.json"
             }
           ]
         }
@@ -122,6 +119,11 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "allowServiceCreation": {
+      "description": "When `true` indicates the metadata service can be created",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": ["id", "name", "serviceType"],

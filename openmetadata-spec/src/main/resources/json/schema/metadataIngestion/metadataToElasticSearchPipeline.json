@@ -1,13 +1,11 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/metadataToElasticSearchConnection.json",
+  "$id": "https://open-metadata.org/schema/metadataIngestion/metadataToElasticSearchPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MetadataToElasticSearchConnection",
-  "description": "ElasticSearch Connection Config",
-  "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.metadata.MetadataToElasticSearchConnection",
+  "title": "MetadataToElasticSearchPipeline",
+  "description": "Data Insight Pipeline Configuration.",
   "definitions": {
-    "esType": {
-      "description": "Metadata to Elastic Search type",
+    "metadataToESConfigType": {
+      "description": "Pipeline Source Config Metadata Pipeline type",
       "type": "string",
       "enum": ["MetadataToElasticSearch"],
       "default": "MetadataToElasticSearch"
@@ -15,29 +13,9 @@
   },
   "properties": {
     "type": {
-      "description": "Service Type",
-      "$ref": "#/definitions/esType",
+      "description": "Pipeline type",
+      "$ref": "#/definitions/metadataToESConfigType",
       "default": "MetadataToElasticSearch"
-    },
-    "host": {
-      "description": "Elastic Search Host",
-      "type": "string"
-    },
-    "port": {
-      "description": "Elastic Search port",
-      "type": "integer"
-    },
-    "scheme": {
-      "description": "Http/Https connection scheme",
-      "type": "string"
-    },
-    "username": {
-      "description": "Elastic Search Username for Login",
-      "type": "string"
-    },
-    "password": {
-      "description": "Elastic Search Password for Login",
-      "type": "string"
     },
     "useSSL": {
       "description": "Indicates whether to use SSL",
@@ -68,5 +46,6 @@
       "type": "string"
     }
   },
+  "required": ["type"],
   "additionalProperties": false
 }

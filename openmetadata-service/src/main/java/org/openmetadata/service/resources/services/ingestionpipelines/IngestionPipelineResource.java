@@ -33,7 +33,18 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.Encoded;
+import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -41,25 +52,18 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.services.ingestionPipelines.ComponentConfig;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.schema.api.services.ingestionPipelines.Sink;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.services.connections.metadata.MetadataToElasticSearchConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowRESTClient;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -70,7 +74,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataServerConnectionBuilder;
 import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.ResultList;
@@ -394,13 +397,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
-    Sink sink = null;
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build());
-    if (ingestionPipeline.getPipelineType().equals(PipelineType.DATA_INSIGHT)) {
-      sink = buildElasticSearchSink(ingestionPipeline.getService());
-    }
-    ingestionPipeline.setSink(sink);
     pipelineServiceClient.deployPipeline(ingestionPipeline);
     createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline);
@@ -684,21 +682,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
-    Sink sink = null;
     OpenMetadataServerConnection openMetadataServerConnection =
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build();
-
-    if (create.getPipelineType().equals(PipelineType.DATA_INSIGHT)) {
-      sink = buildElasticSearchSink(create.getService());
-    }
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
-        .withService(create.getService())
-        .withSink(sink);
+        .withService(create.getService());
   }
 
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
@@ -716,30 +708,5 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     }
     secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
     return ingestionPipeline;
-  }
-
-  private Sink buildElasticSearchSink(EntityReference reference) throws IOException {
-    EntityRepository<MetadataService> systemService = Entity.getEntityRepository(reference.getType());
-    MetadataService metadataToEs = systemService.get(null, reference.getId(), systemService.getFields("connection"));
-    MetadataToElasticSearchConnection connection =
-        JsonUtils.convertValue(metadataToEs.getConnection().getConfig(), MetadataToElasticSearchConnection.class);
-
-    Sink sink = new Sink();
-    ComponentConfig componentConfig = new ComponentConfig();
-    sink.withType("elasticsearch")
-        .withConfig(
-            componentConfig
-                .withAdditionalProperty("es_host", connection.getHost())
-                .withAdditionalProperty("es_port", connection.getPort().toString())
-                .withAdditionalProperty("es_username", connection.getUsername())
-                .withAdditionalProperty("es_password", connection.getPassword())
-                .withAdditionalProperty("scheme", connection.getScheme())
-                .withAdditionalProperty("timeout", connection.getTimeout().toString())
-                .withAdditionalProperty("use_ssl", connection.getUseSSL().toString())
-                .withAdditionalProperty("verify_certs", connection.getVerifyCerts().toString())
-                .withAdditionalProperty("ca_certs", connection.getCaCerts())
-                .withAdditionalProperty("use_AWS_credentials", connection.getUseAwsCredentials().toString())
-                .withAdditionalProperty("region_name", connection.getRegionName()));
-    return sink;
   }
 }
