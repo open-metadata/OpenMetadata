@@ -34,7 +34,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -366,6 +368,25 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted TestDefinition.",
+      tags = "tables",
+      description = "Restore a soft deleted TestDefinition.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "Successfully restored the TestDefinition. ",
+              content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestDefinition.class)))
+      })
+  public Response restoreTestDefinition(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private TestDefinition getTestDefinition(CreateTestDefinition create, String user) throws IOException {
