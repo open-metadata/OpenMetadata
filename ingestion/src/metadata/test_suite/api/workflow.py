@@ -28,18 +28,11 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.data.table import (
-    IntervalType,
-    PartitionProfilerConfig,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-    DatabaseServiceType,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
@@ -61,6 +54,7 @@ from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcesso
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_helper import (
     set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
 )
@@ -230,50 +224,7 @@ class TestSuiteWorkflow:
         Args:
             entity: table entity
         """
-        if (
-            hasattr(entity, "tableProfilerConfig")
-            and hasattr(entity.tableProfilerConfig, "partitioning")
-            and entity.tableProfilerConfig.partitioning
-        ):
-            return entity.tableProfilerConfig.partitioning
-
-        if (
-            hasattr(entity, "serviceType")
-            and entity.serviceType == DatabaseServiceType.BigQuery
-        ):
-            if hasattr(entity, "tablePartition") and entity.tablePartition:
-                if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
-                    return PartitionProfilerConfig(
-                        enablePartitioning=True,
-                        partitionColumnName=entity.tablePartition.columns[0],
-                        partitionIntervalUnit=entity.tablePartition.interval,
-                        partitionInterval=30,
-                        partitionIntervalType=entity.tablePartition.intervalType.value,
-                        partitionValues=None,
-                    )
-                if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
-                    if entity.tablePartition.interval == "DAY":
-                        return PartitionProfilerConfig(
-                            enablePartitioning=True,
-                            partitionColumnName="_PARTITIONDATE",
-                            partitionIntervalUnit=entity.tablePartition.interval,
-                            partitionInterval=30,
-                            partitionIntervalType=entity.tablePartition.intervalType.value,
-                            partitionValues=None,
-                        )
-                    return PartitionProfilerConfig(
-                        enablePartitioning=True,
-                        partitionColumnName="_PARTITIONTIME",
-                        partitionIntervalUnit=entity.tablePartition.interval,
-                        partitionInterval=24,
-                        partitionIntervalType=entity.tablePartition.intervalType.value,
-                        partitionValues=None,
-                    )
-                raise TypeError(
-                    f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
-                )
-
-        return None
+        return get_partition_details(entity)
 
     def _create_runner_interface(self, entity_fqn: str, sqa_metadata_obj: MetaData):
         """create the interface to execute test against SQA sources"""

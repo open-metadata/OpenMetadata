@@ -189,7 +189,7 @@ class ProfilerPartitionUnitTest(TestCase):
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
         assert resp.partitionColumnName == "_PARTITIONTIME"
-        assert resp.partitionInterval == 24
+        assert resp.partitionInterval == 30
         assert not resp.partitionValues
 
         table_entity.tableProfilerConfig = TableProfilerConfig(
