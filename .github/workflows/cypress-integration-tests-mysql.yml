@@ -26,6 +26,9 @@ on:
     paths-ignore:
       - 'openmetadata-docs/**'
 
+permissions:
+  contents: read
+
 concurrency:
   group: cypress-integration-tests-mysql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -38,6 +41,13 @@ jobs:
         job: [0, 1]
     environment: cypress
     steps:
+      - name: Wait for approval
+        uses: lewagon/wait-on-check-action@v1.2.0
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'approval'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout
         uses: actions/checkout@v2
         with:

@@ -183,7 +183,9 @@ class HiveSource(CommonDbSourceService):
         return cls(config, metadata_config)
 
     def _parse_version(self, version: str) -> Tuple:
-        return tuple(map(int, (version.split("."))))
+        if "-" in version:
+            version = version.replace("-", ".")
+        return tuple(map(int, (version.split(".")[:3])))
 
     def prepare(self):
         """
