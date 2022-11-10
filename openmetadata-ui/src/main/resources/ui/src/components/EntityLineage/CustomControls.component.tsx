@@ -103,6 +103,22 @@ const CustomControls: FC<ControlProps> = ({
     fitView?.(fitViewParams);
   }, [fitView, fitViewParams]);
 
+  const handleSearchFilterOption = (
+    input: string,
+    option?: {
+      label: string;
+      value: string;
+    }
+  ) => {
+    return (option?.label || '').toLowerCase().includes(input.toLowerCase());
+  };
+
+  const onRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const zoomValue = parseFloat(event.target.value);
+    onZoomHandler(zoomValue);
+    setZoom(zoomValue);
+  };
+
   useEffect(() => {
     if (zoomValue !== zoom) {
       setZoom(zoomValue);
@@ -112,7 +128,7 @@ const CustomControls: FC<ControlProps> = ({
   const nodeOptions = useMemo(
     () =>
       [lineageData.entity, ...(lineageData.nodes || [])].map((node) => ({
-        label: node.fullyQualifiedName,
+        label: node.fullyQualifiedName || node.name || '',
         value: node.id,
       })),
     [lineageData]
@@ -131,21 +147,19 @@ const CustomControls: FC<ControlProps> = ({
 
   return (
     <Row
-      className={classNames('tw-z-10 w-full', className)}
+      className={classNames('z-10 w-full', className)}
       gutter={[8, 8]}
       style={style}>
       <Col span={12}>
         <Select
           allowClear
           showSearch
-          filterOption={(input, option) =>
-            ((option?.label as string) ?? '')
-              .toLowerCase()
-              .includes(input.toLowerCase())
-          }
+          className={classNames('custom-control-search-box', {
+            'custom-control-search-box-edit-mode': isEditMode,
+          })}
+          filterOption={handleSearchFilterOption}
           options={nodeOptions}
           placeholder={t('label.search-lineage')}
-          style={{ width: 400, height: 32, marginLeft: isEditMode ? 83 : 0 }}
           onChange={onOptionSelect}
         />
       </Col>
@@ -162,9 +176,9 @@ const CustomControls: FC<ControlProps> = ({
           </Button>
 
           {showZoom && (
-            <div className="flow-control tw-flex tw-gap-x-2 tw-bg-body-hover tw-border border-gray tw-h-8 tw-shadow-md tw-rounded">
+            <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide">
               <ControlButton
-                className="tw-px-1 tw-cursor-pointer tw-w-8 tw-h-8"
+                className="custom-control-basic-button"
                 onClick={onZoomOutHandler}>
                 <SVGIcons
                   alt="minus-icon"
@@ -181,14 +195,10 @@ const CustomControls: FC<ControlProps> = ({
                 step={ZOOM_SLIDER_STEP}
                 type="range"
                 value={zoom}
-                onChange={(e) => {
-                  const zoomValue = parseFloat(e.target.value);
-                  onZoomHandler(zoomValue);
-                  setZoom(zoomValue);
-                }}
+                onChange={onRangeChange}
               />
               <ControlButton
-                className="tw-px-1 tw-cursor-pointer tw-w-8 tw-h-8"
+                className="custom-control-basic-button"
                 onClick={onZoomInHandler}>
                 <SVGIcons
                   alt="plus-icon"
@@ -201,14 +211,14 @@ const CustomControls: FC<ControlProps> = ({
           )}
           {showFitView && (
             <ControlButton
-              className="tw-border border-gray tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
+              className="custom-control-basic-button custom-control-fit-screen-button"
               onClick={onFitViewHandler}>
               <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
             </ControlButton>
           )}
           {handleFullScreenViewClick && (
             <ControlButton
-              className="tw-border border-gray tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
+              className="custom-control-basic-button custom-control-fit-screen-button"
               onClick={handleFullScreenViewClick}>
               <SVGIcons
                 alt="fullScreenViewicon"
@@ -219,7 +229,7 @@ const CustomControls: FC<ControlProps> = ({
           )}
           {onExitFullScreenViewClick && (
             <ControlButton
-              className="tw-border border-gray tw-rounded tw-px-1 tw-bg-body-main tw-shadow-md tw-cursor-pointer tw-w-8 tw-h-8"
+              className="custom-control-basic-button custom-control-fit-screen-button"
               onClick={onExitFullScreenViewClick}>
               <SVGIcons
                 alt="exitFullScreenViewIcon"
@@ -239,7 +249,11 @@ const CustomControls: FC<ControlProps> = ({
               )}
               data-testid="edit-lineage"
               disabled={!hasEditAccess}
-              title={hasEditAccess ? 'Edit Lineage' : NO_PERMISSION_FOR_ACTION}
+              title={
+                hasEditAccess
+                  ? t('label.edit-lineage')
+                  : NO_PERMISSION_FOR_ACTION
+              }
               onClick={onEditLinageClick}>
               {getLoadingStatusValue(editIcon, loading, status)}
             </ControlButton>

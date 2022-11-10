@@ -1199,6 +1199,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       if (selectedNode) {
         const { position } = selectedNode;
         onNodeClick(selectedNode);
+        // moving selected node in center
         reactFlowInstance &&
           reactFlowInstance.setCenter(position.x, position.y, {
             duration: ZOOM_TRANSITION_DURATION,
