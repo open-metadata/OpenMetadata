@@ -60,8 +60,8 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
       const runs = response.data.splice(0, 5).reverse() ?? [];
 
       setRecentRunStatus(
-        runs.length === 0
-          ? [ingestion.pipelineStatuses as PipelineStatus]
+        runs.length === 0 && ingestion.pipelineStatuses
+          ? [ingestion.pipelineStatuses]
           : runs
       );
     } finally {
