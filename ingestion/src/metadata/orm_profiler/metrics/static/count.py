@@ -17,6 +17,9 @@ Count Metric definition
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 
 class Count(StaticMetric):
@@ -39,5 +42,12 @@ class Count(StaticMetric):
         return func.count(column(self.col.name))
 
     @_label
-    def dl_fn(self):
-        return func.count(column(self.col.name))
+    def dl_fn(self, data_frame=None):
+        try:
+            return len(data_frame[self.col.name.__root__])
+        except Exception as err:
+            logger.debug(
+                f"Don't know how to process type {self.col.dataType.value} when computing MEAN"
+            )
+            logger.error(err)
+            return 0

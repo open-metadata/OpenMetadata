@@ -14,6 +14,7 @@ AVG Metric definition
 """
 # pylint: disable=duplicate-code
 
+import pandas as pd
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
@@ -74,14 +75,23 @@ class Mean(StaticMetric):
         return None
 
     @_label
-    def dl_fn(self, data_frame):
-        if is_quantifiable(self.col.dataType.value):
-            print(data_frame)
-            return data_frame
+    def dl_fn(self, data_frame=None):
+        if is_quantifiable(self.col.dataType):
+            return data_frame[self.col.name.__root__].mean().tolist()
 
-        if is_concatenable(self.col.dataType.value):
-            print(data_frame)
-            return data_frame
+        if is_concatenable(self.col.dataType):
+            return (
+                pd.DataFrame(
+                    [
+                        len(concatenable_data)
+                        for concatenable_data in data_frame[
+                            self.col.name.__root__
+                        ].values.tolist()
+                    ]
+                )
+                .mean()
+                .tolist()[0]
+            )
 
         logger.debug(
             f"Don't know how to process type {self.col.dataType.value} when computing MEAN"

@@ -48,5 +48,5 @@ class NullCount(StaticMetric):
         return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))
 
     @_label
-    def dl_fn(self):
-        return SumFn(case([(column(self.col.name).is_(None), 1)], else_=0))
+    def dl_fn(self, data_frame=None):
+        return data_frame[self.col.name.__root__].isnull().values.tolist().count(True)

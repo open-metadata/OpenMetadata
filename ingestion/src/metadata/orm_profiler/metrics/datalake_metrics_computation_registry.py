@@ -54,6 +54,11 @@ def get_table_metrics(
         row = [metric().dl_fn(data_frame) for metric in metrics]
 
         if row:
+            if isinstance(row, list):
+                row_dict = {}
+                for index, table_metric in enumerate(metrics):
+                    row_dict[table_metric.name()] = row[index]
+                return row_dict
             return dict(row)
         return None
 
@@ -81,14 +86,18 @@ def get_static_metrics(
         dictionnary of results
     """
     try:
-        row = [
-            metric(column).dl_fn(data_frame)
-            for metric in metrics
-            if not metric.is_window_metric()
-        ]
-        return row
+        row = []
+        for metric in metrics:
+            if not metric.is_window_metric():
+                row.append(metric(column).dl_fn(data_frame))
+            else:
+                row.append(None)
+        row_dict = {}
+        for index, table_metric in enumerate(metrics):
+            row_dict[table_metric.name()] = row[index]
+        return row_dict
     except Exception as exc:
-        logger.debug(traceback.format_exc())
+        logger.warning(traceback.format_exc())
         logger.warning(f"Error trying to compute profile for {exc}")
         processor_status.failure(f"{column.name}", "Static Metrics", f"{exc}")
         return None

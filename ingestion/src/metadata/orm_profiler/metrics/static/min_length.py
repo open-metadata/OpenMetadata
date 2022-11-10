@@ -14,11 +14,12 @@ MIN_LENGTH Metric definition
 """
 # pylint: disable=duplicate-code
 
+import pandas as pd
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
-from metadata.orm_profiler.orm.registry import is_concatenable
+from metadata.orm_profiler.orm.registry import CONCATENABLE_DICT, is_concatenable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -53,12 +54,14 @@ class MinLength(StaticMetric):
         return None
 
     @_label
-    def dl_fn(self):
-
-        if is_concatenable(self.col.type):
-            return func.min(LenFn(column(self.col.name)))
-
+    def dl_fn(self, data_frame=None):
+        if self.col.dataType in CONCATENABLE_DICT:
+            return (
+                pd.DataFrame([len(i) for i in data_frame[self.col.name.__root__]])
+                .min()
+                .values
+            )[0]
         logger.debug(
-            f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
+            f"Don't know how to process type {self.col.dataType} when computing MAX_LENGTH"
         )
         return None

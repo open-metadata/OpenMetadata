@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
+    TableData,
     TableProfile,
 )
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
@@ -278,7 +279,9 @@ class Profiler(Generic[TMetric]):
 
         logger.debug("Running post Profiler...")
 
-        current_col_results: Dict[str, Any] = self._column_results.get(col.name)
+        current_col_results: Dict[str, Any] = self._column_results.get(
+            col.name if not isinstance(col.name, ColumnName) else col.name.__root__
+        )
         if not current_col_results:
             logger.error(
                 "We do not have any results to base our Composed Metrics. Stopping!"
@@ -287,11 +290,13 @@ class Profiler(Generic[TMetric]):
 
         for metric in self.get_col_metrics(self.composed_metrics):
             # Composed metrics require the results as an argument
-            logger.debug(f"Running composed metric {metric.name()} for {col.name}")
+            logger.debug(
+                f"Running composed metric {metric.name()} for {col.name if not isinstance(col.name, ColumnName) else col.name.__root__}"
+            )
 
-            self._column_results[col.name][
-                metric.name()
-            ] = self.profiler_interface.get_composed_metrics(
+            self._column_results[
+                col.name if not isinstance(col.name, ColumnName) else col.name.__root__
+            ][metric.name()] = self.profiler_interface.get_composed_metrics(
                 col,
                 metric,
                 current_col_results,
@@ -373,7 +378,6 @@ class Profiler(Generic[TMetric]):
         profile_results = self.profiler_interface.get_all_metrics(
             all_metrics_for_thread_pool,
         )
-
         self._table_results = profile_results["table"]
         self._column_results = profile_results["columns"]
 
@@ -396,15 +400,20 @@ class Profiler(Generic[TMetric]):
         )
 
         if (
-            isinstance(self.table.serviceType, DatabaseServiceType)
+            not isinstance(self.table, DeclarativeMeta)
             and self.table.serviceType == DatabaseServiceType.Datalake
         ):
-            (
-                self.sample_data,
-                self.data_frame,
-            ) = self.profiler_interface.fetch_sample_data(self.table)
+            sample_data, self.data_frame = self.profiler_interface.fetch_sample_data(
+                self.table
+            )
             self.compute_metrics()
-            return
+            profile = self._check_profile_and_handle(self.get_profile())
+            table_profile = ProfilerResponse(
+                table=self.profiler_interface.table_entity,
+                profile=profile,
+                sample_data=sample_data,
+            )
+            return table_profile
 
         self.compute_metrics()
         if generate_sample_data:
@@ -463,9 +472,19 @@ class Profiler(Generic[TMetric]):
             # computing metrics, if the type is not supported.
             # Let's filter those out.
             computed_profiles = [
-                ColumnProfile(**self.column_results.get(col.name))
+                ColumnProfile(
+                    **self.column_results.get(
+                        col.name
+                        if not isinstance(col.name, ColumnName)
+                        else col.name.__root__
+                    )
+                )
                 for col in self.columns
-                if self.column_results.get(col.name)
+                if self.column_results.get(
+                    col.name
+                    if not isinstance(col.name, ColumnName)
+                    else col.name.__root__
+                )
             ]
             table_profile = TableProfile(
                 timestamp=self.profile_date,

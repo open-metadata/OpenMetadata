@@ -57,5 +57,5 @@ class ColumnCount(StaticMetric):
         return literal(len(inspect(self.table).c))
 
     @_label
-    def dl_fn(self, data_frame):
+    def dl_fn(self, data_frame=None):
         return len(data_frame.columns)

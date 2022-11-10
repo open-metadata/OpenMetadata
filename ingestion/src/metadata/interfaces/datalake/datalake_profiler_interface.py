@@ -23,7 +23,7 @@ from typing import Dict
 
 from sqlalchemy import Column, MetaData
 
-from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.data.table import ColumnName, Table, TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeType,
     GCSConfig,
@@ -121,10 +121,13 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
                 processor_status=self.processor_status,
             )
         except Exception as err:
-            print(err)
+            row = None
         if column is not None:
-            column = column.name
-
+            column = (
+                column.name
+                if not isinstance(column.name, ColumnName)
+                else column.name.__root__
+            )
         return row, column
 
     def fetch_sample_data(self, table) -> TableData:
@@ -146,7 +149,7 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         sample_data, self.data_frame = sampler.fetch_dl_sample_data(
             self.service_connection_config.configSource
         )
-        return sample_data
+        return sample_data, self.data_frame
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -174,18 +177,24 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         """get all profiler metrics"""
         logger.info(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
-        profile, column = [
+        metric_list = [
             self.compute_metrics_in_thread(metric_funcs=metric_func)
             for metric_func in metric_funcs
         ]
-        profile_results["table"].update(profile)
-        profile_results["columns"][column].update(
-            {
-                "name": column,
-                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
-                **profile,
-            }
-        )
+        for metric_result in metric_list:
+            profile, column = metric_result
+
+            if not column:
+                profile_results["table"].update(profile)
+            else:
+                if profile:
+                    profile_results["columns"][column].update(
+                        {
+                            "name": column,
+                            "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                            **profile,
+                        }
+                    )
         return profile_results
 
     @property
@@ -195,3 +204,6 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
 
     def get_columns(self):
         return self._table.columns
+
+    def close(self):
+        pass
