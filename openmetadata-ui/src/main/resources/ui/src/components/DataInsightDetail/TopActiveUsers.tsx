@@ -25,7 +25,7 @@ import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUser
 import { ChartFilter } from '../../interface/data-insight.interface';
 import {
   getDateTimeFromMilliSeconds,
-  getDurationFromSeconds,
+  getTimeDurationFromSeconds,
 } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -110,7 +110,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
           <Typography.Text>
-            {getDurationFromSeconds(avgSessionDuration)}
+            {getTimeDurationFromSeconds(avgSessionDuration)}
           </Typography.Text>
         ),
       },

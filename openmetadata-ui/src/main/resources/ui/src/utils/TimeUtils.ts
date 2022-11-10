@@ -341,7 +341,7 @@ export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
  * @param seconds EPOCH seconds
  * @returns Formatted duration for valid input. Format: 00:09:31
  */
-export const getDurationFromSeconds = (seconds: number) =>
+export const getTimeDurationFromSeconds = (seconds: number) =>
   !isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
 
 /**
@@ -358,6 +358,7 @@ export const getDateTimeByTimeStampWithCommaSeparated = (
 /**
  * Given a date string, return the time stamp of that date.
  * @param {string} date - The date you want to convert to a timestamp.
+ * @deprecated
  */
 export const getTimeStampByDate = (date: string) => Date.parse(date);
 
@@ -402,10 +403,3 @@ export const formatDateTimeFromSeconds = (date: number) => {
 
   return dateTime.toLocaleString(DateTime.DATETIME_MED);
 };
-
-/**
- *
- * @returns Current date timestamp
- */
-export const getCurrentDateTimeStampInMilliSeconds = () =>
-  getTimeStampByDate(DateTime.now().toFormat('yyyy-MM-dd'));
