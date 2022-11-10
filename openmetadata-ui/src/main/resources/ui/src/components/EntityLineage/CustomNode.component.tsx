@@ -120,7 +120,7 @@ const CustomNode = (props: NodeProps) => {
   }, [isEditMode, isExpanded]);
 
   return (
-    <div className="nowheel">
+    <div className="nowheel custom-node">
       {/* Node label could be simple text or reactNode */}
       <div
         className={classNames(
