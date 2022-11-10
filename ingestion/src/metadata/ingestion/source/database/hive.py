@@ -15,7 +15,6 @@ Hive source methods.
 import re
 from typing import Tuple
 
-import pandas as pd
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
@@ -174,13 +173,13 @@ def get_table_comment(  # pylint: disable=unused-argument
         HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)
     )
     try:
-
-        data = [dict(i) for i in list(cursor)]
-        df = pd.DataFrame(data=data)
-        result = df[df.data_type.str.strip() == "comment"].comment.values
-        return {"text": result[0] if result and result[0] else None}
+        for result in list(cursor):
+            data = result.values()
+            if data[1] and data[1].strip() == "comment":
+                return {"text": data[2] if data and data[2] else None}
     except Exception:
         return {"text": None}
+    return {"text": None}
 
 
 HiveDialect.get_columns = get_columns

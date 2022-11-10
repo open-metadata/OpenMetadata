@@ -88,7 +88,6 @@ plugins: Dict[str, Set[str]] = {
         "thrift~=0.13.0",
         "sasl==0.3.1",
         "thrift-sasl==0.4.3",
-        "pandas==1.3.5",
         "presto-types-parser==0.0.2",
     },
     "kafka": {"confluent_kafka==1.8.2", "fastavro>=1.2.0", "avro-python3"},
