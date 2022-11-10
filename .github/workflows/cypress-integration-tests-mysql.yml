@@ -41,12 +41,6 @@ jobs:
         job: [0, 1]
     environment: cypress
     steps:
-      - name: Wait for approval
-        uses: lewagon/wait-on-check-action@v1.2.0
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'Approval'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout
         uses: actions/checkout@v2
