@@ -49,14 +49,14 @@ class AWSClient:
             and self.config.awsSessionToken
         ):
             return Session(
-                aws_access_key_id=self.config.awsAccessKeyId.get_secret_value(),
+                aws_access_key_id=self.config.awsAccessKeyId,
                 aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
-                aws_session_token=self.config.awsSessionToken.get_secret_value(),
+                aws_session_token=self.config.awsSessionToken,
                 region_name=self.config.awsRegion,
             )
         if self.config.awsAccessKeyId and self.config.awsSecretAccessKey:
             return Session(
-                aws_access_key_id=self.config.awsAccessKeyId.get_secret_value(),
+                aws_access_key_id=self.config.awsAccessKeyId,
                 aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
                 region_name=self.config.awsRegion,
             )
