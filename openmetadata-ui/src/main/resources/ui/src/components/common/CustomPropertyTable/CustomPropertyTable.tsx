@@ -25,7 +25,7 @@ import { PropertyValue } from './PropertyValue';
 
 export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   entityDetails,
-  handleExtentionUpdate,
+  handleExtensionUpdate,
   entityType,
 }) => {
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
@@ -41,7 +41,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   const onExtensionUpdate = async (
     updatedExtension: CustomPropertyProps['entityDetails']['extension']
   ) => {
-    await handleExtentionUpdate({
+    await handleExtensionUpdate({
       ...entityDetails,
       extension: updatedExtension,
     });

@@ -23,19 +23,12 @@ from metadata.generated.schema.api.data.createTableProfile import (
 )
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
+    PartitionProfilerConfig,
     Table,
     TableData,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.orm_profiler.profiler.models import ProfilerDef
-
-
-class TablePartitionConfig(ConfigModel):
-    """table partition config"""
-
-    partitionField: Optional[str] = None
-    partitionQueryDuration: Optional[int] = 30
-    partitionValues: Optional[List] = None
 
 
 class ColumnConfig(ConfigModel):
@@ -51,7 +44,7 @@ class TableConfig(ConfigModel):
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[float] = None
     profileQuery: Optional[str] = None
-    partitionConfig: Optional[TablePartitionConfig]
+    partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]
 
 

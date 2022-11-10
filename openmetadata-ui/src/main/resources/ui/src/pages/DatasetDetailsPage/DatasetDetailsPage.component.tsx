@@ -852,7 +852,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTableHandler={followTable}
               followers={followers}
-              handleExtentionUpdate={handleExtentionUpdate}
+              handleExtensionUpdate={handleExtentionUpdate}
               isLineageLoading={isLineageLoading}
               isNodeLoading={isNodeLoading}
               isQueriesLoading={isTableQueriesLoading}

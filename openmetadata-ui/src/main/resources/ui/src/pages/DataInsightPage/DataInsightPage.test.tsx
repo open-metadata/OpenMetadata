@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  getByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import DataInsightPage from './DataInsightPage.component';
 
@@ -74,6 +80,21 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   ),
 }));
 
+jest.mock('../../components/DataInsightDetail/DailyActiveUsersChart', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="daily-active-users">DailyActiveUsersChart</div>
+    )
+);
+jest.mock('../../components/DataInsightDetail/PageViewsByEntitiesChart', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="entities-page-views">PageViewsByEntitiesChart</div>
+    )
+);
+
 describe('Test DataInsightPage Component', () => {
   it('Should render all child elements', async () => {
     render(<DataInsightPage />);
@@ -83,8 +104,7 @@ describe('Test DataInsightPage Component', () => {
     const descriptionInsight = screen.getByTestId('description-insight');
     const ownerInsight = screen.getByTestId('owner-insight');
     const tierInsight = screen.getByTestId('tier-insight');
-    const topActiveUser = screen.getByTestId('top-active-user');
-    const topViewedEntities = screen.getByTestId('top-viewed-entities');
+
     const totalEntityInsight = screen.getByTestId('total-entity-insight');
 
     expect(container).toBeInTheDocument();
@@ -93,8 +113,25 @@ describe('Test DataInsightPage Component', () => {
     expect(descriptionInsight).toBeInTheDocument();
     expect(ownerInsight).toBeInTheDocument();
     expect(tierInsight).toBeInTheDocument();
+
+    expect(totalEntityInsight).toBeInTheDocument();
+  });
+
+  it('Should render the web analytics when tab is switch to web analytics', async () => {
+    render(<DataInsightPage />);
+
+    const switchContainer = screen.getByTestId('data-insight-switch');
+
+    const webAnalyticsButton = getByText(switchContainer, 'Web Analytics');
+
+    act(() => {
+      fireEvent.click(webAnalyticsButton);
+    });
+
+    const topActiveUser = screen.getByTestId('top-active-user');
+    const topViewedEntities = screen.getByTestId('top-viewed-entities');
+
     expect(topActiveUser).toBeInTheDocument();
     expect(topViewedEntities).toBeInTheDocument();
-    expect(totalEntityInsight).toBeInTheDocument();
   });
 });

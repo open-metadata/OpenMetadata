@@ -23,12 +23,15 @@ from typing import Dict, Optional
 
 from sqlalchemy import Column, MetaData
 
-from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.data.table import (
+    PartitionProfilerConfig,
+    Table,
+    TableData,
+)
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
-from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.sqa_metrics_computation_registry import (
     compute_metrics_registry,
@@ -61,7 +64,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         table_entity: Optional[Table] = None,
         table_sample_precentage: Optional[float] = None,
         table_sample_query: Optional[str] = None,
-        table_partition_config: Optional[TablePartitionConfig] = None,
+        table_partition_config: Optional[PartitionProfilerConfig] = None,
     ):
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count

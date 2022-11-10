@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { isNil, isString } from 'lodash';
+import { isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getTagValue } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
@@ -32,21 +32,6 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   extraInfo,
   tags,
 }: Props) => {
-  const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-    if (isString(tag)) {
-      return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-        ? tag.split(FQN_SEPARATOR_CHAR)[1]
-        : tag;
-    } else {
-      return {
-        ...tag,
-        tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-          ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-          : tag.tagFQN,
-      };
-    }
-  };
-
   return (
     <div data-testid="table-body">
       <div className="tw-mb-4 tw-flex tw-items-center tw-flex-wrap tw-text-xs">

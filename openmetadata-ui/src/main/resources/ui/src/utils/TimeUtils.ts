@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { toNumber } from 'lodash';
-import { DateTime } from 'luxon';
+
+import { isNil, toNumber } from 'lodash';
+import { DateTime, Duration } from 'luxon';
 
 const msPerSecond = 1000;
 const msPerMinute = 60 * msPerSecond;
@@ -182,6 +183,19 @@ export const getDateTimeByTimeStamp = (
 };
 
 /**
+ * It takes a timestamp and returns a formatted date string
+ * @param {number} timeStamp - The timestamp you want to convert to a date.
+ * @param {string} [format] - The format of the date you want to return.
+ * @returns A string
+ */
+export const getDateByTimeStamp = (
+  timeStamp: number,
+  format?: string
+): string => {
+  return DateTime.fromMillis(timeStamp).toFormat(format || 'dd MMM yyyy');
+};
+
+/**
  * It takes a timestamp and returns a relative date time string
  * @param {number} timestamp - number - The timestamp to convert to a relative date time.
  */
@@ -216,7 +230,7 @@ export const getTimeZone = (): string => {
     })
     .slice(4);
 
-  // Line below finds out the abbrevation for time zone
+  // Line below finds out the abbreviation for time zone
   // e.g. India Standard Time --> IST
   const abbreviation = timeZoneToString.match(/\b[A-Z]+/g)?.join('') || '';
 
@@ -322,3 +336,70 @@ export const getFormattedDateFromMilliSeconds = (
  */
 export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
   DateTime.fromMillis(timeStamp).toLocaleString(DateTime.DATETIME_MED);
+
+/**
+ * @param seconds EPOCH seconds
+ * @returns Formatted duration for valid input. Format: 00:09:31
+ */
+export const getTimeDurationFromSeconds = (seconds: number) =>
+  !isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
+
+/**
+ * It takes a timestamp and returns a string in the format of "dd MMM yyyy, hh:mm"
+ * @param {number} timeStamp - number - The timestamp you want to convert to a date.
+ * @returns A string ex: 23 May 2022, 23:59
+ */
+export const getDateTimeByTimeStampWithCommaSeparated = (
+  timeStamp: number
+): string => {
+  return `${DateTime.fromMillis(timeStamp).toFormat('dd MMM yyyy, hh:mm')}`;
+};
+
+/**
+ * Given a date string, return the time stamp of that date.
+ * @param {string} date - The date you want to convert to a timestamp.
+ * @deprecated
+ */
+export const getTimeStampByDate = (date: string) => Date.parse(date);
+
+/**
+ * @param date EPOCH Millis
+ * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM TimeZone
+ */
+export const formatDateTimeWithTimeZone = (date: number) => {
+  if (isNil(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromMillis(date);
+
+  return dateTime.toLocaleString(DateTime.DATETIME_FULL);
+};
+
+/**
+ * @param date EPOCH Millis
+ * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
+ */
+export const formatDateTime = (date: number) => {
+  if (isNil(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromMillis(date);
+
+  return dateTime.toLocaleString(DateTime.DATETIME_MED);
+};
+
+/**
+ * @param date EPOCH seconds
+ * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
+ */
+export const formatDateTimeFromSeconds = (date: number) => {
+  if (isNil(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromSeconds(date);
+
+  return dateTime.toLocaleString(DateTime.DATETIME_MED);
+};

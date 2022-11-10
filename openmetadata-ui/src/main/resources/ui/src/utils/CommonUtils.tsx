@@ -24,6 +24,7 @@ import {
   isEqual,
   isNil,
   isNull,
+  isString,
   isUndefined,
   uniqueId,
 } from 'lodash';
@@ -80,6 +81,7 @@ import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
+import { TagLabel } from '../generated/type/tagLabel';
 import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
@@ -1009,4 +1011,43 @@ export const getTierFromEntityInfo = (entity: FormattedTableData) => {
     entity.tier?.tagFQN ||
     getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
   )?.split(FQN_SEPARATOR_CHAR)[1];
+};
+
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+  if (isString(tag)) {
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      ? tag.split(FQN_SEPARATOR_CHAR)[1]
+      : tag;
+  } else {
+    return {
+      ...tag,
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : tag.tagFQN,
+    };
+  }
+};
+
+export const getTrimmedContent = (content: string, limit: number) => {
+  const lines = content.split('\n');
+  // Selecting the content in three lines
+  const contentInThreeLines = lines.slice(0, 3).join('\n');
+
+  const slicedContent = contentInThreeLines.slice(0, limit);
+
+  // Logic for eliminating any broken words at the end
+  // To avoid any URL being cut
+  const words = slicedContent.split(' ');
+  const wordsCount = words.length;
+
+  if (wordsCount === 1) {
+    // In case of only one word (possibly too long URL)
+    // return the whole word instead of trimming
+    return content.split(' ')[0];
+  }
+
+  // Eliminate word at the end to avoid using broken words
+  const refinedContent = words.slice(0, wordsCount - 1);
+
+  return refinedContent.join(' ');
 };
