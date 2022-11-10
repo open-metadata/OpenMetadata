@@ -422,8 +422,8 @@ def _(
 @get_connection.register(KafkaConnection)
 @get_connection.register(RedpandaConnection)
 def _(
-    connection, verbose: bool = False
-) -> KafkaClient:  # pylint: disable=unused-argument
+    connection, verbose: bool = False  # pylint: disable=unused-argument
+) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
