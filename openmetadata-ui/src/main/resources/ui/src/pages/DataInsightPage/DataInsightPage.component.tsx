@@ -44,6 +44,7 @@ import {
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getTeamFilter } from '../../utils/DataInsightUtils';
 import {
@@ -120,6 +121,13 @@ const DataInsightPage = () => {
     }
   };
 
+  const handleScrollToChart = (chartType: DataInsightChartType) => {
+    const element = document.getElementById(chartType);
+    if (element) {
+      element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  };
+
   useEffect(() => {
     fetchDefaultTeamOptions();
   }, []);
@@ -187,7 +195,10 @@ const DataInsightPage = () => {
           </Card>
         </Col>
         <Col span={24}>
-          <DataInsightSummary chartFilter={chartFilter} />
+          <DataInsightSummary
+            chartFilter={chartFilter}
+            onScrollToChart={handleScrollToChart}
+          />
         </Col>
         <Col span={24}>
           <Radio.Group

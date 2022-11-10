@@ -16,46 +16,59 @@ import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { ENTITIES_CHARTS_NAMES } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
+import { getEntitiesChartSummary } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 
 interface Props {
   chartFilter: ChartFilter;
+  onScrollToChart: (chartType: DataInsightChartType) => void;
 }
 
-const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
-  const [totalEntitiesByType, setTotalEntitiesByType] =
-    useState<DataInsightChartResult>();
-
+const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [entitiesCharts, setEntitiesChart] = useState<
+    (DataInsightChartResult | undefined)[]
+  >([]);
 
-  const { total, latestData = {} } = useMemo(() => {
-    return getGraphDataByEntityType(
-      totalEntitiesByType?.data ?? [],
-      DataInsightChartType.TotalEntitiesByType
-    );
-  }, [totalEntitiesByType]);
+  const entitiesSummaryList = useMemo(
+    () => getEntitiesChartSummary(entitiesCharts),
+    [entitiesCharts]
+  );
 
   const { t } = useTranslation();
 
   const fetchTotalEntitiesByType = async () => {
     setIsLoading(true);
     try {
-      const params = {
-        ...chartFilter,
-        dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
-        dataReportIndex: DataReportIndex.EntityReportDataIndex,
-      };
-      const response = await getAggregateChartData(params);
+      const promises = ENTITIES_CHARTS_NAMES.map((chartName) => {
+        const params = {
+          ...chartFilter,
+          dataInsightChartName: chartName,
+          dataReportIndex: DataReportIndex.EntityReportDataIndex,
+        };
 
-      setTotalEntitiesByType(response);
+        return getAggregateChartData(params);
+      });
+
+      const responses = await Promise.allSettled(promises);
+
+      const chartDataList = responses.map((response) => {
+        if (response.status === 'fulfilled') {
+          return response.value;
+        }
+
+        return;
+      });
+
+      setEntitiesChart(chartDataList);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -78,27 +91,21 @@ const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
         </Typography.Title>
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
-        <Col data-testid="summary-item-latest" span={4}>
-          <Typography.Text className="data-insight-label-text">
-            Latest
-          </Typography.Text>
-          <Typography className="font-semibold text-2xl">{total}</Typography>
-        </Col>
-        {Object.entries(latestData).map((summary) => {
-          const label = summary[0];
-          const value = summary[1] as number;
-
-          return label !== 'timestamp' ? (
-            <Col data-testid={`summary-item-${label}`} key={label} span={4}>
-              <Typography.Text className="data-insight-label-text">
-                {label}
-              </Typography.Text>
-              <Typography className="font-semibold text-2xl">
-                {value}
-              </Typography>
-            </Col>
-          ) : null;
-        })}
+        {entitiesSummaryList.map((summary) => (
+          <Col
+            className="summary-card-item"
+            data-testid={`summary-item-${summary.id}`}
+            key={summary.id}
+            span={6}
+            onClick={() => onScrollToChart(summary.id)}>
+            <Typography.Text className="data-insight-label-text">
+              {summary.label}
+            </Typography.Text>
+            <Typography className="font-semibold text-2xl m--ml-0.5">
+              {summary.latest}
+            </Typography>
+          </Col>
+        ))}
       </Row>
     </Card>
   );

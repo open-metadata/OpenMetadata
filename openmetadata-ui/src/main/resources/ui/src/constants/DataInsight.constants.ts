@@ -13,6 +13,7 @@
 
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
+import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
 import {
   getCurrentDateTimeMillis,
@@ -117,3 +118,33 @@ export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getPastDaysDateTimeMillis(DEFAULT_DAYS),
   endTs: getCurrentDateTimeMillis(),
 };
+
+export const ENTITIES_CHARTS_NAMES = [
+  DataInsightChartType.TotalEntitiesByType,
+  DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+  DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+  DataInsightChartType.TotalEntitiesByTier,
+];
+
+export const ENTITIES_SUMMARY_LIST = [
+  {
+    label: i18n.t('label.total-data-assets'),
+    latest: 0,
+    id: DataInsightChartType.TotalEntitiesByType,
+  },
+  {
+    label: i18n.t('label.data-assets-with-field', { field: 'description' }),
+    latest: 0,
+    id: DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+  },
+  {
+    label: i18n.t('label.data-assets-with-field', { field: 'owners' }),
+    latest: 0,
+    id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+  },
+  {
+    label: i18n.t('label.total-data-assets-with-tiers'),
+    latest: 0,
+    id: DataInsightChartType.TotalEntitiesByTier,
+  },
+];

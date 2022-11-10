@@ -231,7 +231,10 @@
     "expand-all": "Expand All",
     "search-lineage": "Search Lineage",
     "edit-lineage": "Edit Lineage",
-    "data-asset": "Data asset"
+    "data-asset": "Data asset",
+    "total-data-assets": "Total data assets",
+    "data-assets-with-field": "Data assets with {{field}}",
+    "total-data-assets-with-tiers": "Total Data assets with tiers"
   },
   "message": {
     "service-email-required": "Service account Email is required",
