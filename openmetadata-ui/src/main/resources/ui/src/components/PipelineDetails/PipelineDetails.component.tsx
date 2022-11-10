@@ -818,7 +818,11 @@ const PipelineDetails = ({
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>
           <Tabs.TabPane
             key={PIPELINE_DETAILS_TABS.Tasks}
-            tab={t('label.tasks')}>
+            tab={
+              <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
+                {t('label.tasks')}
+              </span>
+            }>
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <Description
@@ -882,14 +886,14 @@ const PipelineDetails = ({
             className="h-full"
             key={PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks}
             tab={
-              <>
+              <span data-testid={PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks}>
                 {t('label.activity-feed-and-task-plural')}{' '}
                 {getCountBadge(
                   feedCount,
                   '',
                   PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks === tab
                 )}
-              </>
+              </span>
             }>
             <Card className="h-min-full">
               <Row justify="center">
@@ -919,13 +923,19 @@ const PipelineDetails = ({
 
           <Tabs.TabPane
             key={PIPELINE_DETAILS_TABS.Executions}
-            tab={t('label.executions')}>
+            tab={
+              <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
+                {t('label.executions')}
+              </span>
+            }>
             <ExecutionsTab pipelineFQN={pipelineFQN} />
           </Tabs.TabPane>
 
           <Tabs.TabPane
             key={PIPELINE_DETAILS_TABS.EntityLineage}
-            tab={t('label.entity-lineage')}>
+            tab={
+              <span data-testid="Lineage">{t('label.entity-lineage')}</span>
+            }>
             <div className="h-full bg-white">
               <EntityLineageComponent
                 addLineageHandler={addLineageHandler}
@@ -948,7 +958,11 @@ const PipelineDetails = ({
 
           <Tabs.TabPane
             key={PIPELINE_DETAILS_TABS.CustomProperties}
-            tab={t('label.custom-properties')}>
+            tab={
+              <span data-testid="Custom Properties">
+                {t('label.custom-properties')}
+              </span>
+            }>
             <CustomPropertyTable
               entityDetails={
                 pipelineDetails as CustomPropertyProps['entityDetails']
