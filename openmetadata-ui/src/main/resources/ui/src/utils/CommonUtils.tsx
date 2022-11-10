@@ -1027,3 +1027,27 @@ export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
     };
   }
 };
+
+export const getTrimmedContent = (content: string, limit: number) => {
+  const lines = content.split('\n');
+  // Selecting the content in three lines
+  const contentInThreeLines = lines.slice(0, 3).join('\n');
+
+  const slicedContent = contentInThreeLines.slice(0, limit);
+
+  // Logic for eliminating any broken words at the end
+  // To avoid any URL being cut
+  const words = slicedContent.split(' ');
+  const wordsCount = words.length;
+
+  if (wordsCount === 1) {
+    // In case of only one word (possibly too long URL)
+    // return the whole word instead of trimming
+    return content.split(' ')[0];
+  }
+
+  // Eliminate word at the end to avoid using broken words
+  const refinedContent = words.slice(0, wordsCount - 1);
+
+  return refinedContent.join(' ');
+};

@@ -224,6 +224,8 @@
     "pipeline": "Pipeline",
     "function": "Function",
     "edge-information": "Edge Information",
+    "read-more": "read more",
+    "read-less": "read less",
     "no-owner": "No Owner",
     "page-views-by-entities": "Page views by datasets",
     "daily-active-user": "Daily active users on the platform",
