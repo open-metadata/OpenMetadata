@@ -1,0 +1,16 @@
+on:
+  pull_request_target:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+name: Team Label
+jobs:
+  labeler:
+    runs-on: ubuntu-latest
+    name: Team Label
+    steps:
+    - uses: JulienKode/team-labeler-action@v0.1.1
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
