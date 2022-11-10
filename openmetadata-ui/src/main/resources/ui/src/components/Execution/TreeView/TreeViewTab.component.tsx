@@ -79,14 +79,7 @@ const TreeViewTab = ({
             </Col>
 
             <Col span={19}>
-              <div
-                className="execution-node-container"
-                style={{
-                  overflowX: 'auto',
-                  width: '100%',
-                  height: '100%',
-                  whiteSpace: 'nowrap',
-                }}>
+              <div className="execution-node-container">
                 {value.map((status) => (
                   <Tooltip
                     key={uniqueId()}

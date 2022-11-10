@@ -230,7 +230,8 @@
     "activity-feed-and-task-plural": "Activity Feeds & tasks",
     "executions": "Executions",
     "entity-lineage": "Entity Lineage",
-    "custom-properties": "Custom Properties"
+    "custom-properties": "Custom Properties",
+    "dag-view": "DAG view"
   },
   "message": {
     "service-email-required": "Service account Email is required",
