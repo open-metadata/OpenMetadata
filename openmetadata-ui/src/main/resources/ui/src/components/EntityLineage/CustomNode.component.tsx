@@ -27,17 +27,17 @@ import { getConstraintIcon } from '../../utils/TableUtils';
 import { ModifiedColumn } from './EntityLineage.interface';
 
 const handleStyles: CSSProperties = {
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
+  width: '20%',
+  height: '100%',
+  borderRadius: '3px',
   position: 'absolute',
-  top: 15,
+  background: 'transparent',
+  border: 'none',
 };
 
 const getHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
-  isNewNode = false,
   id?: string
 ) => {
   if (nodeType === EntityLineageNodeType.OUTPUT) {
@@ -47,7 +47,7 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={handleStyles}
+          style={{ ...handleStyles, borderLeft: '5px solid #d9ceee', left: 0 }}
           type="target"
         />
       </Fragment>
@@ -59,7 +59,11 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Right}
-          style={handleStyles}
+          style={{
+            ...handleStyles,
+            borderRight: '5px solid #d9ceee',
+            right: 0,
+          }}
           type="source"
         />
       </Fragment>
@@ -75,8 +79,8 @@ const getHandle = (
           position={Position.Left}
           style={{
             ...handleStyles,
-
-            top: isNewNode ? 13 : handleStyles.top,
+            left: 0,
+            borderLeft: '5px solid #d9ceee',
           }}
           type="target"
         />
@@ -86,8 +90,8 @@ const getHandle = (
           position={Position.Right}
           style={{
             ...handleStyles,
-
-            top: isNewNode ? 13 : handleStyles.top,
+            right: 0,
+            borderRight: '5px solid #d9ceee',
           }}
           type="source"
         />
@@ -103,7 +107,6 @@ const CustomNode = (props: NodeProps) => {
   const {
     label,
     columns,
-    isNewNode,
     removeNodeHandler,
     handleColumnClick,
     isEditMode,
@@ -128,7 +131,7 @@ const CustomNode = (props: NodeProps) => {
           { 'custom-node-header-tracing': isTraced }
         )}
         data-testid="node-label">
-        {getHandle(type, isConnectable, isNewNode)}
+        {getHandle(type, isConnectable)}
         {label}{' '}
         {selected && isEditMode
           ? getNodeRemoveButton(() => {
@@ -173,7 +176,6 @@ const CustomNode = (props: NodeProps) => {
                       {getHandle(
                         column.type,
                         isConnectable,
-                        isNewNode,
                         column.fullyQualifiedName
                       )}
                       {getConstraintIcon(column.constraint, 'tw-')}
