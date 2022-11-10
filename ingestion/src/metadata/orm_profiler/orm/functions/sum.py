@@ -42,6 +42,7 @@ def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
     return f"SUM(CAST({proc} AS NUMERIC))"
 
+
 @compiles(SumFn, Dialects.Snowflake)
 @compiles(SumFn, Dialects.Vertica)
 def _(element, compiler, **kw):
