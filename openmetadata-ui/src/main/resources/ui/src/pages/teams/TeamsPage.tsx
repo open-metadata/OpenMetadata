@@ -297,7 +297,7 @@ const TeamsPage = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            t('message.entity-updation-error', {
+            t('server.entity-updating-error', {
               entity: 'Team',
             })
           );
@@ -322,41 +322,36 @@ const TeamsPage = () => {
   };
 
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
-    // setIsPageLoading(true);
     updateUserDetail(id, data)
       .then((res) => {
         if (res) {
           AppState.updateUserDetails(res);
           fetchTeamByFqn(selectedTeam.name);
-          showSuccessToast(t('message.join-team-success'), 2000);
+          showSuccessToast(t('server.join-team-success'), 2000);
         } else {
-          throw t('message.join-team-error');
+          throw t('server.join-team-error');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('message.join-team-error'));
-        // setIsRightPanelLoading(false);
+        showErrorToast(err, t('server.join-team-error'));
       });
   };
 
   const handleLeaveTeamClick = (id: string, data: Operation[]) => {
-    // setIsRightPanelLoading(true);
-
     return new Promise<void>((resolve) => {
       updateUserDetail(id, data)
         .then((res) => {
           if (res) {
             AppState.updateUserDetails(res);
             fetchTeamByFqn(selectedTeam.name);
-            showSuccessToast(t('message.leave-team-success'), 2000);
+            showSuccessToast(t('server.leave-team-success'), 2000);
             resolve();
           } else {
-            throw t('message.leave-team-error');
+            throw t('server.leave-team-error');
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(err, t('message.leave-team-error'));
-          // setIsRightPanelLoading(false);
+          showErrorToast(err, t('server.leave-team-error'));
         });
     });
   };
@@ -383,7 +378,7 @@ const TeamsPage = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            t('message.entity-updation-error', {
+            t('server.entity-updating-error', {
               entity: 'Team',
             })
           );
@@ -421,7 +416,7 @@ const TeamsPage = () => {
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            t('message.entity-updation-error', {
+            t('server.entity-updating-error', {
               entity: 'Team',
             })
           );

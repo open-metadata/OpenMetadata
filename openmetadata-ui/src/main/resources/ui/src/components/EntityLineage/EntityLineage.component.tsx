@@ -54,6 +54,7 @@ import {
   ELEMENT_DELETE_STATE,
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
+  ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -127,6 +128,7 @@ import {
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
 
+import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import './entityLineage.style.less';
 import LineageNodeLabel from './LineageNodeLabel';
 
@@ -142,6 +144,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineageHandler,
   onFullScreenClick,
   hasEditAccess,
+  onExitFullScreenViewClick,
 }: EntityLineageProp) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -180,6 +183,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     string | undefined
   >();
   const [isTracingActive, setIsTracingActive] = useState(false);
+  const [selectedEdgeInfo, setSelectedEdgeInfo] = useState<Edge>();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -508,26 +512,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    * take boolean value as input and reset selected node
    * @param value
    */
-  const closeDrawer = (value: boolean) => {
-    setIsDrawerOpen(value);
-    setNodes((prevElements) => {
-      return prevElements.map((prevElement) => {
-        if (prevElement.id === selectedNode.id) {
-          const className =
-            prevElement.id.includes(updatedLineageData.entity?.id) &&
-            !isEditMode
-              ? 'leaf-node core'
-              : 'leaf-node';
-
-          return {
-            ...prevElement,
-            className,
-          };
-        } else {
-          return prevElement;
-        }
-      });
-    });
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
     setSelectedNode({} as SelectedNode);
   };
 
@@ -886,7 +872,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         prevNode.data = {
           ...prevNode.data,
           isTraced: highlight,
-          selected: false,
+          selected: prevNode.id === selectedNode.id,
           selectedColumns: [],
         };
 
@@ -901,6 +887,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    */
   const onNodeClick = (node: Node) => {
     if (isNode(node)) {
+      setSelectedEdgeInfo(undefined);
+      setIsDrawerOpen(false);
       handleLineageTracing(node);
       handleNodeSelection(node);
     }
@@ -1128,6 +1116,14 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setIsDrawerOpen(false);
   };
 
+  const handleEdgeClick = (
+    _e: React.MouseEvent<Element, MouseEvent>,
+    edge: Edge
+  ) => {
+    setSelectedEdgeInfo(edge);
+    setIsDrawerOpen(true);
+  };
+
   const toggleColumnView = (value: boolean) => {
     setExpandAllColumns(value);
     setEdges((prevEdges) => {
@@ -1193,6 +1189,25 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         error as AxiosError,
         jsonData['api-error-messages']['fetch-suggestions-error']
       );
+    }
+  };
+
+  const handleOptionSelect = (value?: string) => {
+    if (value) {
+      const selectedNode = nodes.find((node) => node.id === value);
+
+      if (selectedNode) {
+        const { position } = selectedNode;
+        onNodeClick(selectedNode);
+        // moving selected node in center
+        reactFlowInstance &&
+          reactFlowInstance.setCenter(position.x, position.y, {
+            duration: ZOOM_TRANSITION_DURATION,
+            zoom: MIN_ZOOM_VALUE,
+          });
+      } else {
+        onPaneClick();
+      }
     }
   };
 
@@ -1306,6 +1321,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onConnect={onConnect}
             onDragOver={onDragOver}
             onDrop={onDrop}
+            onEdgeClick={handleEdgeClick}
             onEdgesChange={onEdgesChange}
             onInit={(reactFlowInstance: ReactFlowInstance) => {
               onLoad(reactFlowInstance);
@@ -1333,11 +1349,14 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               hasEditAccess={hasEditAccess}
               isColumnsExpanded={expandAllColumns}
               isEditMode={isEditMode}
+              lineageData={updatedLineageData}
               loading={loading}
               status={status}
               zoomValue={zoomValue}
               onEditLinageClick={handleEditLineageClick}
+              onExitFullScreenViewClick={onExitFullScreenViewClick}
               onExpandColumnClick={handleExpandColumnClick}
+              onOptionSelect={handleOptionSelect}
             />
             {isEditMode && (
               <Background gap={12} size={1} variant={BackgroundVariant.Lines} />
@@ -1345,14 +1364,26 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           </ReactFlow>
         </ReactFlowProvider>
       </div>
-      {!isEmpty(selectedNode) && !isEditMode && (
-        <EntityInfoDrawer
-          isMainNode={selectedNode.name === updatedLineageData.entity?.name}
-          selectedNode={selectedNode}
-          show={isDrawerOpen && !isEditMode}
-          onCancel={closeDrawer}
-        />
-      )}
+      {isDrawerOpen &&
+        !isEditMode &&
+        (selectedEdgeInfo ? (
+          <EdgeInfoDrawer
+            edge={selectedEdgeInfo}
+            nodes={nodes}
+            visible={isDrawerOpen}
+            onClose={() => {
+              setIsDrawerOpen(false);
+              setSelectedEdgeInfo(undefined);
+            }}
+          />
+        ) : (
+          <EntityInfoDrawer
+            isMainNode={selectedNode.name === updatedLineageData.entity?.name}
+            selectedNode={selectedNode}
+            show={isDrawerOpen}
+            onCancel={closeDrawer}
+          />
+        ))}
       <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
       {showDeleteModal && (
         <Modal

@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-    getCurrentLocaleDate,
-    getFutureLocaleDateFromCurrentDate
-} from '../../../src/utils/TimeUtils';
-import {
-    descriptionBox,
-    interceptURL,
-    login,
-    verifyResponseStatusCode,
-    visitEntityDetailsPage
-} from '../../common/common';
+import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from '../../../src/utils/TimeUtils';
+import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
 describe('Entity Details Page', () => {

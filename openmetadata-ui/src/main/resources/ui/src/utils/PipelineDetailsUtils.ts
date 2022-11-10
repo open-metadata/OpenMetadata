@@ -33,6 +33,11 @@ export const pipelineDetailsTabs = [
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
+    name: 'Executions',
+    path: 'executions',
+    field: TabSpecificField.EXECUTIONS,
+  },
+  {
     name: 'Lineage',
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
@@ -51,12 +56,17 @@ export const getCurrentPipelineTab = (tab: string) => {
 
       break;
 
-    case 'lineage':
+    case 'executions':
       currentTab = 3;
 
       break;
-    case 'custom_properties':
+
+    case 'lineage':
       currentTab = 4;
+
+      break;
+    case 'custom_properties':
+      currentTab = 5;
 
       break;
 
@@ -109,7 +119,7 @@ export const STATUS_OPTIONS = [
   { value: StatusType.Pending, label: StatusType.Pending },
 ];
 
-export const getStatusBadgeIcon = (status: StatusType) => {
+export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
       return Icons.SUCCESS_BADGE;

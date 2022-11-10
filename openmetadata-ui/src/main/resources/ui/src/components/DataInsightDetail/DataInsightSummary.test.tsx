@@ -13,6 +13,8 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { act } from 'react-test-renderer';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import DataInsightSummary from './DataInsightSummary';
 
 jest.mock('react-i18next', () => ({
@@ -21,33 +23,35 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockFilter = {
+  startTs: 1667952000000,
+  endTs: 1668000248671,
+};
+
+const mockScrollFunction = jest.fn();
+
+jest.mock('../../axiosAPIs/DataInsightAPI', () => ({
+  getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
 describe('Test DataInsightSummary Component', () => {
   it('Should render the overview data', async () => {
-    render(<DataInsightSummary />);
+    await act(async () => {
+      render(
+        <DataInsightSummary
+          chartFilter={mockFilter}
+          onScrollToChart={mockScrollFunction}
+        />
+      );
+    });
 
     const summaryCard = screen.getByTestId('summary-card');
 
-    const allEntityCount = screen.getByTestId('summary-item-All');
-    const usersCount = screen.getByTestId('summary-item-Users');
-    const sessionCount = screen.getByTestId('summary-item-Sessions');
-    const activityCount = screen.getByTestId('summary-item-Activity');
-    const activeUsersCount = screen.getByTestId('summary-item-ActiveUsers');
-    const tablesCount = screen.getByTestId('summary-item-Tables');
-    const topicsCount = screen.getByTestId('summary-item-Topics');
-    const dashboardCount = screen.getByTestId('summary-item-Dashboards');
-    const mlModelsCount = screen.getByTestId('summary-item-MlModels');
-    const testCasesCount = screen.getByTestId('summary-item-TestCases');
+    const totalEntitiesByType = screen.getByTestId(
+      `summary-item-${DataInsightChartType.TotalEntitiesByType}`
+    );
 
     expect(summaryCard).toBeInTheDocument();
-    expect(allEntityCount).toBeInTheDocument();
-    expect(usersCount).toBeInTheDocument();
-    expect(sessionCount).toBeInTheDocument();
-    expect(activityCount).toBeInTheDocument();
-    expect(activeUsersCount).toBeInTheDocument();
-    expect(tablesCount).toBeInTheDocument();
-    expect(topicsCount).toBeInTheDocument();
-    expect(dashboardCount).toBeInTheDocument();
-    expect(mlModelsCount).toBeInTheDocument();
-    expect(testCasesCount).toBeInTheDocument();
+    expect(totalEntitiesByType).toBeInTheDocument();
   });
 });

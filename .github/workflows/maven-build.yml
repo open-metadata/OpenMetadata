@@ -27,6 +27,10 @@ on:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
 
+permissions:
+  contents: read
+  checks: write
+
 concurrency: 
   group: maven-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -42,6 +46,7 @@ jobs:
           - 16.x
 
     steps:
+
       - name: install libssl
         run: |
          sudo su -c "echo 'deb http://security.ubuntu.com/ubuntu xenial-security main' >> /etc/apt/sources.list"

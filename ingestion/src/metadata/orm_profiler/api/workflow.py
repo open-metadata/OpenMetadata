@@ -28,16 +28,13 @@ from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
-    IntervalType,
+    PartitionProfilerConfig,
     Table,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-    DatabaseServiceType,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
@@ -60,7 +57,6 @@ from metadata.orm_profiler.api.models import (
     ProfilerProcessorConfig,
     ProfilerResponse,
     TableConfig,
-    TablePartitionConfig,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
@@ -72,6 +68,7 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
+from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_helper import (
     set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
 )
@@ -220,35 +217,18 @@ class ProfilerWorkflow:
 
         return None
 
-    def get_partition_details(self, entity: Table) -> Optional[TablePartitionConfig]:
+    def get_partition_details(self, entity: Table) -> Optional[PartitionProfilerConfig]:
         """Get partition details
 
         Args:
             entity: table entity
         """
-        if (
-            not hasattr(entity, "serviceType")
-            or entity.serviceType != DatabaseServiceType.BigQuery
-        ):
-            return None
-
         entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-        if entity_config:
+
+        if entity_config:  # check if a yaml config was pass with partition definition
             return entity_config.partitionConfig
 
-        if hasattr(entity, "tablePartition") and entity.tablePartition:
-            if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
-                return TablePartitionConfig(
-                    partitionField=entity.tablePartition.columns[0]
-                )
-            if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
-                if entity.tablePartition.interval == "DAY":
-                    return TablePartitionConfig(partitionField="_PARTITIONDATE")
-                return TablePartitionConfig(partitionField="_PARTITIONTIME")
-            raise TypeError(
-                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
-            )
-        return None
+        return get_partition_details(entity)
 
     def create_profiler_interface(
         self,

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
+import { Col, Divider, Row, Space, Typography } from 'antd';
 import { toLower } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../constants/constants';
 import { getTagValue } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
@@ -38,50 +39,59 @@ export default function ColumnSummary({ columns }: ColumnSummaryProps) {
   }, [columns]);
 
   return (
-    <Space direction="vertical">
+    <Row>
       {columns &&
         formattedColumnsData.map((column) => (
-          <React.Fragment key={column.name}>
-            <Space direction="vertical" size={0}>
-              <Text className="column-name">{column.name}</Text>
-              <Space className="text-xs" size={4}>
-                <Space size={4}>
-                  <Text className="text-gray">{`${t('label.type')}:`}</Text>
-                  <Text className="text-semi-bold">{toLower(column.type)}</Text>
-                </Space>
-                {column.tags?.length !== 0 && (
-                  <>
-                    <Divider type="vertical" />
-                    <Space size={4}>
-                      <SVGIcons
-                        alt="icon-tag"
-                        icon="icon-tag-grey"
-                        width="12"
-                      />
+          <Col key={column.name} span={24}>
+            <Row>
+              <Col span={24}>
+                <Text className="column-name">{column.name}</Text>
+              </Col>
+              <Col span={24}>
+                <Space className="text-xs" size={4}>
+                  <Space size={4}>
+                    <Text className="text-gray">{`${t('label.type')}:`}</Text>
+                    <Text className="text-semi-bold">
+                      {toLower(column.type)}
+                    </Text>
+                  </Space>
+                  {column.tags?.length !== 0 && (
+                    <>
+                      <Divider type="vertical" />
+                      <Space size={4}>
+                        <SVGIcons
+                          alt="icon-tag"
+                          icon="icon-tag-grey"
+                          width="12"
+                        />
 
-                      <TagsViewer
-                        sizeCap={-1}
-                        tags={(column.tags || []).map((tag) =>
-                          getTagValue(tag)
-                        )}
-                      />
-                    </Space>
-                  </>
-                )}
-              </Space>
-              <Paragraph className="text-gray">
-                {column.description ? (
-                  <RichTextEditorPreviewer
-                    markdown={column.description || ''}
-                  />
-                ) : (
-                  t('label.no-description')
-                )}
-              </Paragraph>
-            </Space>
+                        <TagsViewer
+                          sizeCap={-1}
+                          tags={(column.tags || []).map((tag) =>
+                            getTagValue(tag)
+                          )}
+                        />
+                      </Space>
+                    </>
+                  )}
+                </Space>
+              </Col>
+              <Col span={24}>
+                <Paragraph className="text-gray">
+                  {column.description ? (
+                    <RichTextEditorPreviewer
+                      markdown={column.description || ''}
+                      maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
+                    />
+                  ) : (
+                    t('label.no-description')
+                  )}
+                </Paragraph>
+              </Col>
+            </Row>
             <Divider />
-          </React.Fragment>
+          </Col>
         ))}
-    </Space>
+    </Row>
   );
 }

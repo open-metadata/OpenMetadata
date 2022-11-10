@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Col, Divider, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,54 +46,70 @@ export default function EntitySummaryPanel({
         'summary-panel-container',
         showPanel ? 'show-panel' : ''
       )}>
-      <Space
-        className={classNames('basic-info-container m-md')}
-        direction="vertical">
-        <Typography.Title level={5}>{entityDetails.name}</Typography.Title>
-        <Space className={classNames('w-full')} direction="vertical">
-          {Object.keys(basicTableInfo).map((fieldName) => (
-            <Row gutter={16} key={fieldName}>
-              <Col className="text-gray" span={10}>
-                {fieldName}
+      <Row className={classNames('m-md')}>
+        <Col span={24}>
+          <Typography.Title level={5}>{entityDetails.name}</Typography.Title>
+        </Col>
+        <Col span={24}>
+          <Row>
+            {Object.keys(basicTableInfo).map((fieldName) => (
+              <Col key={fieldName} span={24}>
+                <Row gutter={16}>
+                  <Col className="text-gray" span={10}>
+                    {fieldName}
+                  </Col>
+                  <Col span={12}>
+                    {basicTableInfo[fieldName as keyof BasicTableInfo]}
+                  </Col>
+                </Row>
               </Col>
-              <Col span={12}>
-                {basicTableInfo[fieldName as keyof BasicTableInfo]}
+            ))}
+          </Row>
+        </Col>
+      </Row>
+      <Divider className="m-0" />
+      <Row className={classNames('m-md')} gutter={[0, 16]}>
+        <Col span={24}>
+          <Typography.Text className="section-header">
+            {t('label.profiler-amp-data-quality')}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          <Row gutter={[16, 16]}>
+            {overallSummery.map((field) => (
+              <Col key={field.title} span={10}>
+                <Row>
+                  <Col span={24}>
+                    <Typography.Text className="text-gray">
+                      {field.title}
+                    </Typography.Text>
+                  </Col>
+                  <Col span={24}>
+                    <Typography.Text
+                      className={classNames(
+                        'tw-text-2xl tw-font-semibold',
+                        field.className
+                      )}>
+                      {field.value}
+                    </Typography.Text>
+                  </Col>
+                </Row>
               </Col>
-            </Row>
-          ))}
-        </Space>
-      </Space>
+            ))}
+          </Row>
+        </Col>
+      </Row>
       <Divider className="m-0" />
-      <Space className={classNames('m-md')} direction="vertical">
-        <Typography.Text className="section-header">
-          {t('label.profiler-amp-data-quality')}
-        </Typography.Text>
-        <Row gutter={[16, 16]}>
-          {overallSummery.map((field) => (
-            <Col key={field.title} span={10}>
-              <Space direction="vertical" size={6}>
-                <Typography.Text className="text-gray">
-                  {field.title}
-                </Typography.Text>
-                <Typography.Text
-                  className={classNames(
-                    'tw-text-2xl tw-font-semibold',
-                    field.className
-                  )}>
-                  {field.value}
-                </Typography.Text>
-              </Space>
-            </Col>
-          ))}
-        </Row>
-      </Space>
-      <Divider className="m-0" />
-      <Space className={classNames('m-md')} direction="vertical">
-        <Typography.Text className="section-header">
-          {t('label.schema')}
-        </Typography.Text>
-        <ColumnSummary columns={columns} />
-      </Space>
+      <Row className={classNames('m-md')} gutter={[0, 16]}>
+        <Col span={24}>
+          <Typography.Text className="section-header">
+            {t('label.schema')}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          <ColumnSummary columns={columns} />
+        </Col>
+      </Row>
       <CloseOutlined className="close-icon" onClick={handleClosePanel} />
     </div>
   );

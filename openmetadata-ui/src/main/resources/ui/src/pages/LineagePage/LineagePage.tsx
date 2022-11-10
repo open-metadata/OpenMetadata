@@ -15,7 +15,7 @@ import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
@@ -42,6 +42,7 @@ import {
   getTableTabPath,
   getTopicDetailsPath,
 } from '../../constants/constants';
+import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -67,6 +68,7 @@ import './lineagePage.style.less';
 const LineagePage = () => {
   const { entityType, entityFQN } =
     useParams<{ entityType: EntityType; entityFQN: string }>();
+  const history = useHistory();
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
@@ -201,7 +203,10 @@ const LineagePage = () => {
             const pipelineRes = await getPipelineByFqn(entityFQN, '');
             updateBreadcrumb(
               pipelineRes,
-              getPipelineDetailsPath(entityFQN, 'lineage')
+              getPipelineDetailsPath(
+                entityFQN,
+                PIPELINE_DETAILS_TABS.EntityLineage
+              )
             );
           }
 
@@ -280,6 +285,38 @@ const LineagePage = () => {
     }
   };
 
+  const handleExitFullScreenViewClick = () => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        history.push(getTableTabPath(entityFQN, 'lineage'));
+
+        break;
+
+      case EntityType.TOPIC:
+        history.push(getTopicDetailsPath(entityFQN, 'lineage'));
+
+        break;
+
+      case EntityType.DASHBOARD:
+        history.push(getDashboardDetailsPath(entityFQN, 'lineage'));
+
+        break;
+
+      case EntityType.PIPELINE:
+        history.push(getPipelineDetailsPath(entityFQN, 'lineage'));
+
+        break;
+
+      case EntityType.MLMODEL:
+        history.push(getMlModelPath(entityFQN, 'lineage'));
+
+        break;
+
+      default:
+        break;
+    }
+  };
+
   const removeLineageHandler = (data: EdgeData) => {
     deleteLineageEdge(
       data.fromEntity,
@@ -318,6 +355,7 @@ const LineagePage = () => {
               lineageLeafNodes={leafNodes}
               loadNodeHandler={loadNodeHandler}
               removeLineageHandler={removeLineageHandler}
+              onExitFullScreenViewClick={handleExitFullScreenViewClick}
             />
           </Card>
         </div>
