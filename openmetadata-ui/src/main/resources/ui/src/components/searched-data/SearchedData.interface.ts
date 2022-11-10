@@ -68,5 +68,5 @@ export interface SearchedDataProps {
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
-  handleSummaryPanelDisplay: (source: Table) => void;
+  handleSummaryPanelDisplay?: (source: Table) => void;
 }

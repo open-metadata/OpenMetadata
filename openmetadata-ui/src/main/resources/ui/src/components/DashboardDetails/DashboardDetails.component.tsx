@@ -625,6 +625,7 @@ const DashboardDetails = ({
       editChartTags,
       tagList,
       deleted,
+      isTagLoading,
     ]
   );
 
@@ -782,7 +783,7 @@ const DashboardDetails = ({
                     dashboardDetails as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.DASHBOARD}
-                  handleExtentionUpdate={onExtensionUpdate}
+                  handleExtensionUpdate={onExtensionUpdate}
                 />
               )}
               <div

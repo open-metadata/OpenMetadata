@@ -13,6 +13,8 @@
 
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
+import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
+import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
 import {
   getCurrentDateTimeMillis,
@@ -67,7 +69,7 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
 };
 
 export const DATA_INSIGHT_TAB = {
-  Datasets: 'Datasets',
+  DataAssets: 'Data assets',
   'Web Analytics': 'Web Analytics',
 };
 
@@ -117,3 +119,57 @@ export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getPastDaysDateTimeMillis(DEFAULT_DAYS),
   endTs: getCurrentDateTimeMillis(),
 };
+
+export const ENTITIES_CHARTS = [
+  DataInsightChartType.TotalEntitiesByType,
+  DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+  DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+  DataInsightChartType.TotalEntitiesByTier,
+];
+
+export const WEB_CHARTS = [
+  {
+    chart: DataInsightChartType.PageViewsByEntities,
+    index: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
+  },
+  {
+    chart: DataInsightChartType.DailyActiveUsers,
+    index: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
+  },
+];
+
+export const WEB_SUMMARY_LIST = [
+  {
+    label: i18n.t('label.page-views-by-entities'),
+    latest: 0,
+    id: DataInsightChartType.PageViewsByEntities,
+  },
+  {
+    label: i18n.t('label.daily-active-user'),
+    latest: 0,
+    id: DataInsightChartType.DailyActiveUsers,
+  },
+];
+
+export const ENTITIES_SUMMARY_LIST = [
+  {
+    label: i18n.t('label.total-data-assets'),
+    latest: 0,
+    id: DataInsightChartType.TotalEntitiesByType,
+  },
+  {
+    label: i18n.t('label.data-assets-with-field', { field: 'description' }),
+    latest: 0,
+    id: DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+  },
+  {
+    label: i18n.t('label.data-assets-with-field', { field: 'owners' }),
+    latest: 0,
+    id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+  },
+  {
+    label: i18n.t('label.total-data-assets-with-tiers'),
+    latest: 0,
+    id: DataInsightChartType.TotalEntitiesByTier,
+  },
+];

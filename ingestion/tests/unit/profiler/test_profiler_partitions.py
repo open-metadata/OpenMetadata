@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional
+from typing import Optional, cast
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -17,7 +17,15 @@ from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartiti
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    PartitionIntervalType,
+    PartitionIntervalUnit,
+    PartitionProfilerConfig,
+    Table,
+    TablePartition,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -80,7 +88,17 @@ MOCK_DATABASE = Database(
 
 class MockTable(BaseModel):
     tablePartition: Optional[TablePartition]
+    tableProfilerConfig: Optional[TableProfilerConfig]
     serviceType = DatabaseServiceType.BigQuery
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class MockRedshiftTable(BaseModel):
+    tablePartition: Optional[TablePartition]
+    tableProfilerConfig: Optional[TableProfilerConfig]
+    serviceType = DatabaseServiceType.Redshift
 
     class Config:
         arbitrary_types_allowed = True
@@ -108,34 +126,122 @@ class ProfilerPartitionUnitTest(TestCase):
         table_entity = MockTable(
             tablePartition=TablePartition(
                 columns=["e"], intervalType=IntervalType.TIME_UNIT, interval="DAY"
-            )
+            ),
+            tableProfilerConfig=None,
         )
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.partitionField == "e"
-        assert resp.partitionQueryDuration == 30
+        assert resp.partitionColumnName == "e"
+        assert resp.partitionInterval == 30
         assert not resp.partitionValues
+
+        table_entity.tableProfilerConfig = TableProfilerConfig(
+            partitioning=PartitionProfilerConfig(
+                partitionColumnName="e",
+                partitionInterval=3,
+                partitionIntervalUnit="MONTH",
+            )  # type: ignore
+        )
+
+        resp = self.profiler_workflow.get_partition_details(table_entity)
+
+        assert resp.partitionColumnName == "e"
+        assert resp.partitionInterval == 3
+        assert resp.partitionIntervalUnit == PartitionIntervalUnit.MONTH
 
     def test_partition_details_ingestion_time_date(self):
         table_entity = MockTable(
             tablePartition=TablePartition(
                 columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="DAY"
-            )
+            ),
+            tableProfilerConfig=None,
         )
+
+        table_entity = cast(Table, table_entity)
+
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.partitionField == "_PARTITIONDATE"
-        assert resp.partitionQueryDuration == 30
+        assert resp.partitionColumnName == "_PARTITIONDATE"
+        assert resp.partitionInterval == 30
         assert not resp.partitionValues
+
+        table_entity.tableProfilerConfig = TableProfilerConfig(
+            partitioning=PartitionProfilerConfig(
+                partitionColumnName="_PARTITIONDATE",
+                partitionInterval=10,
+                partitionIntervalUnit="DAY",
+            )  # type: ignore
+        )
+
+        resp = self.profiler_workflow.get_partition_details(table_entity)
+
+        assert resp.partitionInterval == 10
+        assert resp.partitionColumnName == "_PARTITIONDATE"
+        assert resp.partitionIntervalUnit == PartitionIntervalUnit.DAY
 
     def test_partition_details_ingestion_time_hour(self):
         table_entity = MockTable(
             tablePartition=TablePartition(
                 columns=["e"], intervalType=IntervalType.INGESTION_TIME, interval="HOUR"
-            )
+            ),
+            tableProfilerConfig=None,
         )
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.partitionField == "_PARTITIONTIME"
-        assert resp.partitionQueryDuration == 30
+        assert resp.partitionColumnName == "_PARTITIONTIME"
+        assert resp.partitionInterval == 30
         assert not resp.partitionValues
+
+        table_entity.tableProfilerConfig = TableProfilerConfig(
+            partitioning=PartitionProfilerConfig(
+                partitionColumnName="_PARTITIONTIME",
+                partitionInterval=1,
+                partitionIntervalUnit="HOUR",
+            )  # type: ignore
+        )
+
+        resp = self.profiler_workflow.get_partition_details(table_entity)
+
+        assert resp.partitionInterval == 1
+        assert resp.partitionColumnName == "_PARTITIONTIME"
+        assert resp.partitionIntervalUnit == PartitionIntervalUnit.HOUR
+
+    def test_partition_non_bq_table_profiler_partition_config(self):
+        table_entity = MockRedshiftTable(
+            tablePartition=TablePartition(
+                columns=["datetime"],
+                intervalType=IntervalType.TIME_UNIT,
+                interval="DAY",
+            ),
+            tableProfilerConfig=TableProfilerConfig(
+                partitioning=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName="foo",
+                    partitionIntervalType=PartitionIntervalType.TIME_UNIT,
+                    partitionIntervalUnit="DAY",
+                    partitionInterval=1,
+                )  # type: ignore
+            ),
+        )
+
+        resp = self.profiler_workflow.get_partition_details(table_entity)
+
+        assert resp.enablePartitioning == True
+        assert resp.partitionColumnName == "foo"
+        assert resp.partitionIntervalType == PartitionIntervalType.TIME_UNIT
+        assert resp.partitionIntervalUnit == PartitionIntervalUnit.DAY
+        assert resp.partitionInterval == 1
+
+    def test_partition_non_bq_table_no_profiler_partition_config(self):
+        table_entity = MockRedshiftTable(
+            tablePartition=TablePartition(
+                columns=["datetime"],
+                intervalType=IntervalType.TIME_UNIT,
+                interval="DAY",
+            ),
+            tableProfilerConfig=None,
+        )
+
+        resp = self.profiler_workflow.get_partition_details(table_entity)
+
+        assert resp is None

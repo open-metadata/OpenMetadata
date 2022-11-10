@@ -92,6 +92,7 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card"
+      id={DataInsightChartType.TotalEntitiesByType}
       loading={isLoading}
       title={
         <>

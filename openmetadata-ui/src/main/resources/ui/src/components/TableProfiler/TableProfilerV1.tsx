@@ -343,7 +343,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
               target="_blank"
               to={{
                 pathname:
-                  'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+                  'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
               }}>
               here.
             </Link>

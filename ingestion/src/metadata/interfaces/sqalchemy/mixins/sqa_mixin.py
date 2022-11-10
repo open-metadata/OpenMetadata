@@ -15,25 +15,19 @@ supporting sqlalchemy abstraction layer
 """
 
 
+from datetime import datetime
 from typing import Dict, Optional
 
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.orm import DeclarativeMeta
 
+from metadata.generated.schema.entity.data.table import PartitionProfilerConfig
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
-from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiler.handle_partition import (
-    get_partition_cols,
-    is_partitioned,
-)
 from metadata.utils.connections import get_connection
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 
 
@@ -93,30 +87,41 @@ class SQAInterfaceMixin:
             )
 
     def get_partition_details(
-        self, partition_config: TablePartitionConfig
+        self, partition_config: Optional[PartitionProfilerConfig]
     ) -> Optional[Dict]:
         """From partition config, get the partition table for a table entity
 
         Args:
-            partition_config: TablePartitionConfig object with some partition details
+            partition_config: PartitionProfilerConfig object with some partition details
 
         Returns:
             dict or None: dictionnary with all the elements constituing the a partition
         """
-        if (
-            self.table_entity.serviceType == DatabaseServiceType.BigQuery
-            and is_partitioned(self.session, self.table)
-        ):
-            start, end = get_start_and_end(partition_config.partitionQueryDuration)
-            return {
-                "partition_field": partition_config.partitionField
-                or get_partition_cols(self.session, self.table),
-                "partition_start": start,
-                "partition_end": end,
-                "partition_values": partition_config.partitionValues,
-            }
+        if not partition_config:
+            return None
 
-        return None
+        timedelta_mapping = {
+            "YEAR": "years",
+            "MONTH": "months",
+            "DAY": "days",
+            "HOUR": "hours",
+        }
+
+        timedelta_dict = {
+            timedelta_mapping.get(
+                partition_config.partitionIntervalUnit.value, "days"
+            ): partition_config.partitionInterval
+            or 1
+        }
+
+        end = datetime.utcnow()
+        start = end - relativedelta(**timedelta_dict)
+        return {
+            "partition_field": partition_config.partitionColumnName,
+            "partition_start": start,
+            "partition_end": end,
+            "partition_values": partition_config.partitionValues,
+        }
 
     def close(self):
         """close session"""

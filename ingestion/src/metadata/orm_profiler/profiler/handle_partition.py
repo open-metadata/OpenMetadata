@@ -14,12 +14,7 @@ Helper submodule for partitioned tables
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import text
-from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
 
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
@@ -28,60 +23,6 @@ from metadata.utils.logger import profiler_logger
 RANDOM_LABEL = "random"
 
 logger = profiler_logger()
-
-
-def get_partition_cols(session: Session, table: DeclarativeMeta) -> list:
-    """Get partiton columns
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    """
-    return get_partition_details(session, table).get("column_names")[0]
-
-
-def get_partition_details(session: Session, table: DeclarativeMeta) -> Optional[dict]:
-    """get partition details
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    """
-    partition_details = [
-        el for el in get_table_indexes(session, table) if el.get("name") == "partition"
-    ]
-    if partition_details:
-        return partition_details[0]
-    return None
-
-
-def get_table_indexes(session: Session, table: DeclarativeMeta) -> list[dict]:
-    """get indexes for a specific table
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    Returns:
-        list[dict]
-    """
-    return inspect(session.get_bind()).get_indexes(
-        table.__tablename__,
-        table.__table_args__.get("schema"),
-    )
-
-
-def is_partitioned(session: Session, table: DeclarativeMeta) -> bool:
-    """Check weather a table is partitioned
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    Returns:
-        bool
-    """
-    if not get_partition_details(session, table):
-        return False
-    return True
 
 
 def format_partition_values(partition_values: list, col_type) -> str:

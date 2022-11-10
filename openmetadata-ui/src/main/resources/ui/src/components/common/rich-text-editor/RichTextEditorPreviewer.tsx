@@ -16,18 +16,20 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
+import { getTrimmedContent } from '../../../utils/CommonUtils';
 import { PreviewerProp } from './RichTextEditor.interface';
 import './RichTextEditorPreviewer.less';
-
-export const MAX_LENGTH = 350;
 
 const RichTextEditorPreviewer = ({
   markdown = '',
   className = '',
   enableSeeMoreVariant = true,
   textVariant = 'black',
-  maxLength = MAX_LENGTH,
+  maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
 }: PreviewerProp) => {
+  const { t } = useTranslation();
   const [content, setContent] = useState<string>('');
   const [hideReadMoreText, setHideReadMoreText] = useState<boolean>(
     markdown.length <= maxLength
@@ -53,7 +55,7 @@ const RichTextEditorPreviewer = ({
           initialValue={
             hideReadMoreText || !enableSeeMoreVariant
               ? content
-              : `${content.slice(0, maxLength)}...`
+              : `${getTrimmedContent(content, maxLength)}...`
           }
           key={uniqueId()}
         />
@@ -64,7 +66,7 @@ const RichTextEditorPreviewer = ({
           data-testid="read-more-button"
           type="link"
           onClick={displayMoreHandler}>
-          {hideReadMoreText ? 'read less' : 'read more'}
+          {hideReadMoreText ? t('label.read-less') : t('label.read-more')}
         </Button>
       )}
     </div>
