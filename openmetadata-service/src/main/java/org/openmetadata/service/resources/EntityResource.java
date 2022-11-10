@@ -247,6 +247,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    T entity = addHref(uriInfo, dao.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id));
+    LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
+    return Response.ok(entity.getHref()).entity(entity).build();
+  }
+
   public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {
     EntityReference owner = dao.validateOwner(request.getOwner());
     entity.setId(UUID.randomUUID());

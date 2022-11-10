@@ -43,6 +43,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -343,6 +344,26 @@ public class MessagingServiceResource
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted MessagingService.",
+      tags = "tables",
+      description = "Restore a soft deleted MessagingService.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the MessagingService ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class)))
+      })
+  public Response restoreMessagingService(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private MessagingService getService(CreateMessagingService create, String user) throws IOException {

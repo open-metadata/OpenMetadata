@@ -881,7 +881,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
+  public T restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
@@ -899,6 +899,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity = dao.findEntityById(id, DELETED);
     entity.setDeleted(false);
     dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+    return entity;
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
