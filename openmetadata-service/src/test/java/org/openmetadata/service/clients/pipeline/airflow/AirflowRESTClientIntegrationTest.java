@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.pipelineService.airflow;
+package org.openmetadata.service.clients.pipeline.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,8 +31,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.exception.PipelineServiceClientException;
-import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.service.pipelineServiceClient.airflow.AirflowRESTClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfiguration;
 
 @ExtendWith(MockitoExtension.class)
 class AirflowRESTClientIntegrationTest {
@@ -46,21 +45,27 @@ class AirflowRESTClientIntegrationTest {
           .withId(UUID.randomUUID())
           .withPipelineType(PipelineType.METADATA)
           .withSourceConfig(DATABASE_METADATA_CONFIG)
-          .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
+          .withAirflowConfig(
+              new AirflowConfig()
+                  .withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
 
-  @RegisterExtension private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
+  @RegisterExtension
+  private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
 
   AirflowRESTClient airflowRESTClient;
 
   @BeforeEach
   void setUp() {
 
-    PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        new PipelineServiceClientConfiguration();
     pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
-    pipelineServiceClientConfiguration.setMetadataApiEndpoint("http://openmetadata-server:8585/api");
+    pipelineServiceClientConfiguration.setMetadataApiEndpoint(
+        "http://openmetadata-server:8585/api");
 
     AirflowConfiguration airflowConfiguration = createDefaultAirflowConfiguration();
-    airflowRESTClient = new AirflowRESTClient(pipelineServiceClientConfiguration, airflowConfiguration);
+    airflowRESTClient =
+        new AirflowRESTClient(pipelineServiceClientConfiguration, airflowConfiguration);
     httpServerExtension.unregisterHandler();
   }
 

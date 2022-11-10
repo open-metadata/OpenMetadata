@@ -1,4 +1,4 @@
-package org.openmetadata.service.pipelineServiceClient;
+package org.openmetadata.service.clients.pipeline;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -1,4 +1,4 @@
-package org.openmetadata.service.pipelineService;
+package org.openmetadata.service.clients.pipeline;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,13 +15,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientProvider;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientFactory;
-import org.openmetadata.service.pipelineServiceClient.airflow.AirflowRESTClient;
-import org.openmetadata.service.pipelineServiceClient.argo.ArgoServiceClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient;
+import org.openmetadata.service.clients.pipeline.argo.ArgoServiceClient;
 
 public class PipelineServiceClientFactoryTest {
 
-  protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
+  protected static final String CONFIG_PATH =
+      ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
   private OpenMetadataApplicationConfig config;
 
   @BeforeEach
@@ -30,25 +31,36 @@ public class PipelineServiceClientFactoryTest {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
-        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
     config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
   @Test
   void testDefaultIsCreatedIfNullConfig() {
     config.getPipelineServiceClientConfiguration().setPipelineServiceClient(null);
-    assertTrue(PipelineServiceClientFactory.createPipelineServiceClient(config) instanceof AirflowRESTClient);
+    assertTrue(
+        PipelineServiceClientFactory.createPipelineServiceClient(config)
+            instanceof AirflowRESTClient);
   }
 
   @Test
   void testIsCreatedIfAirflowProvider() {
-    config.getPipelineServiceClientConfiguration().setPipelineServiceClient(PipelineServiceClientProvider.AIRFLOW);
-    assertTrue(PipelineServiceClientFactory.createPipelineServiceClient(config) instanceof AirflowRESTClient);
+    config
+        .getPipelineServiceClientConfiguration()
+        .setPipelineServiceClient(PipelineServiceClientProvider.AIRFLOW);
+    assertTrue(
+        PipelineServiceClientFactory.createPipelineServiceClient(config)
+            instanceof AirflowRESTClient);
   }
 
   @Test
   void testIsCreatedIfArgoProvider() {
-    config.getPipelineServiceClientConfiguration().setPipelineServiceClient(PipelineServiceClientProvider.ARGO);
-    assertTrue(PipelineServiceClientFactory.createPipelineServiceClient(config) instanceof ArgoServiceClient);
+    config
+        .getPipelineServiceClientConfiguration()
+        .setPipelineServiceClient(PipelineServiceClientProvider.ARGO);
+    assertTrue(
+        PipelineServiceClientFactory.createPipelineServiceClient(config)
+            instanceof ArgoServiceClient);
   }
 }

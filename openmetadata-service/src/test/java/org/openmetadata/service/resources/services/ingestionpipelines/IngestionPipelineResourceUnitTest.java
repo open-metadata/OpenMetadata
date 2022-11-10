@@ -57,8 +57,8 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.pipelineServiceClient.PipelineServiceClient;
-import org.openmetadata.service.pipelineServiceClient.airflow.AirflowRESTClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
@@ -87,12 +87,15 @@ public class IngestionPipelineResourceUnitTest {
   @BeforeEach
   void setUp() {
     reset(entityDAO, collectionDAO, secretsManager, authorizer);
-    CollectionDAO.EntityRelationshipDAO relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
     CollectionDAO.EntityRelationshipRecord entityRelationshipRecord =
         mock(CollectionDAO.EntityRelationshipRecord.class);
     lenient().when(entityRelationshipRecord.getId()).thenReturn(UUID.randomUUID());
     lenient().when(entityRelationshipRecord.getType()).thenReturn("ingestionPipeline");
-    lenient().when(relationshipDAO.findFrom(any(), any(), anyInt())).thenReturn(List.of(entityRelationshipRecord));
+    lenient()
+        .when(relationshipDAO.findFrom(any(), any(), anyInt()))
+        .thenReturn(List.of(entityRelationshipRecord));
     when(collectionDAO.ingestionPipelineDAO()).thenReturn(entityDAO);
     lenient().when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     ingestionPipelineResource = new IngestionPipelineResource(collectionDAO, authorizer);
@@ -102,24 +105,6 @@ public class IngestionPipelineResourceUnitTest {
   @AfterEach
   void afterEach() {
     SecretsManagerFactory.setSecretsManager(null);
-  }
-
-  @Test
-  void testLastIngestionLogsAreRetrieved() throws IOException {
-    IngestionPipeline ingestionPipeline = mock(IngestionPipeline.class);
-    when(ingestionPipeline.getId()).thenReturn(DAG_ID);
-    when(entityDAO.findEntityById(any(), any())).thenReturn(ingestionPipeline);
-    when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(mock(EntityReference.class));
-    Map<String, String> expectedMap = Map.of("task", "log");
-    try (MockedConstruction<AirflowRESTClient> mocked =
-        mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
-      ingestionPipelineResource.initialize(openMetadataApplicationConfig);
-      assertEquals(
-          expectedMap,
-          ingestionPipelineResource.getLastIngestionLogs(null, securityContext, DAG_ID, "after").getEntity());
-      PipelineServiceClient client = mocked.constructed().get(0);
-      verify(client).getLastIngestionLogs(ingestionPipeline, "after");
-    }
   }
 
   @Test
@@ -152,13 +137,15 @@ public class IngestionPipelineResourceUnitTest {
 
     IngestionPipeline ingestionPipeline = buildIngestionPipeline(config, pipelineType, id);
 
-    Entity.registerEntity(serviceClass, service.getType(), mock(EntityDAO.class), mock(EntityRepository.class));
+    Entity.registerEntity(
+        serviceClass, service.getType(), mock(EntityDAO.class), mock(EntityRepository.class));
 
     doAnswer(
             invocation -> {
               if (mustBeEncrypted) {
                 IngestionPipeline arg0 = invocation.getArgument(0);
-                ((DatabaseServiceMetadataPipeline) arg0.getSourceConfig().getConfig()).setDbtConfigSource(null);
+                ((DatabaseServiceMetadataPipeline) arg0.getSourceConfig().getConfig())
+                    .setDbtConfigSource(null);
               }
               return null;
             })
@@ -168,7 +155,8 @@ public class IngestionPipelineResourceUnitTest {
     when(entityDAO.findEntityById(eq(id), any())).thenReturn(ingestionPipeline);
     when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(service);
 
-    IngestionPipeline actualIngestionPipeline = ingestionPipelineResource.get(null, securityContext, id, null, null);
+    IngestionPipeline actualIngestionPipeline =
+        ingestionPipelineResource.get(null, securityContext, id, null, null);
 
     verifySecretManagerIsCalled(mustBeEncrypted, ingestionPipeline);
     assertIngestionPipelineDbtConfigIsEncrypted(mustBeEncrypted, actualIngestionPipeline);
@@ -188,7 +176,8 @@ public class IngestionPipelineResourceUnitTest {
 
     IngestionPipeline ingestionPipeline = buildIngestionPipeline(config, pipelineType, id);
 
-    Entity.registerEntity(serviceClass, service.getType(), mock(EntityDAO.class), mock(EntityRepository.class));
+    Entity.registerEntity(
+        serviceClass, service.getType(), mock(EntityDAO.class), mock(EntityRepository.class));
 
     when(entityDAO.findEntityByName(eq(PIPELINE_NAME), any())).thenReturn(ingestionPipeline);
     when(entityDAO.findEntityReferenceById(any(), any())).thenReturn(service);
@@ -197,7 +186,8 @@ public class IngestionPipelineResourceUnitTest {
             invocation -> {
               if (mustBeEncrypted) {
                 IngestionPipeline arg0 = invocation.getArgument(0);
-                ((DatabaseServiceMetadataPipeline) arg0.getSourceConfig().getConfig()).setDbtConfigSource(null);
+                ((DatabaseServiceMetadataPipeline) arg0.getSourceConfig().getConfig())
+                    .setDbtConfigSource(null);
               }
               return null;
             })
@@ -211,11 +201,14 @@ public class IngestionPipelineResourceUnitTest {
     assertIngestionPipelineDbtConfigIsEncrypted(mustBeEncrypted, actualIngestionPipeline);
   }
 
-  private void preparePipelineServiceClient(AirflowRESTClient mockPipelineServiceClient, Context context) {
-    when(mockPipelineServiceClient.getLastIngestionLogs(any(), any())).thenReturn(Map.of("task", "log"));
+  private void preparePipelineServiceClient(
+      AirflowRESTClient mockPipelineServiceClient, Context context) {
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(), any()))
+        .thenReturn(Map.of("task", "log"));
   }
 
-  private IngestionPipeline buildIngestionPipeline(Object config, PipelineType pipelineType, UUID id) {
+  private IngestionPipeline buildIngestionPipeline(
+      Object config, PipelineType pipelineType, UUID id) {
     return new IngestionPipeline()
         .withId(id)
         .withPipelineType(pipelineType)
@@ -223,7 +216,8 @@ public class IngestionPipelineResourceUnitTest {
         .withName(PIPELINE_NAME);
   }
 
-  private void verifySecretManagerIsCalled(boolean mustBeEncrypted, IngestionPipeline ingestionPipeline) {
+  private void verifySecretManagerIsCalled(
+      boolean mustBeEncrypted, IngestionPipeline ingestionPipeline) {
     if (mustBeEncrypted) {
       verify(secretsManager).encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
     } else {

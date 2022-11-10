@@ -34,7 +34,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.pipelineServiceClient.airflow.AirflowConfigurationForAPI;
+import org.openmetadata.service.clients.pipeline.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.util.TestUtils;
@@ -50,39 +50,52 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
-        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
     config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
   @Test
   void get_auth_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("auth");
-    AuthenticationConfiguration auth = TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
+    AuthenticationConfiguration auth =
+        TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
     assertEquals(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
     assertEquals(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
     assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
     assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
-    assertEquals(config.getAuthenticationConfiguration().getJwtPrincipalClaims(), auth.getJwtPrincipalClaims());
+    assertEquals(
+        config.getAuthenticationConfiguration().getJwtPrincipalClaims(),
+        auth.getJwtPrincipalClaims());
     assertEquals(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
   }
 
   @Test
   void get_authorizer_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("authorizer");
-    AuthorizerConfiguration auth = TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
+    AuthorizerConfiguration auth =
+        TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
     assertEquals(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
-    assertEquals(config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
-    assertEquals(config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
-    assertEquals(config.getAuthorizerConfiguration().getContainerRequestFilter(), auth.getContainerRequestFilter());
     assertEquals(
-        config.getAuthorizerConfiguration().getEnableSecureSocketConnection(), auth.getEnableSecureSocketConnection());
-    assertEquals(config.getAuthorizerConfiguration().getEnforcePrincipalDomain(), auth.getEnforcePrincipalDomain());
+        config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
+    assertEquals(
+        config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
+    assertEquals(
+        config.getAuthorizerConfiguration().getContainerRequestFilter(),
+        auth.getContainerRequestFilter());
+    assertEquals(
+        config.getAuthorizerConfiguration().getEnableSecureSocketConnection(),
+        auth.getEnableSecureSocketConnection());
+    assertEquals(
+        config.getAuthorizerConfiguration().getEnforcePrincipalDomain(),
+        auth.getEnforcePrincipalDomain());
   }
 
   @Test
   void get_airflow_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("airflow");
-    AirflowConfigurationForAPI auth = TestUtils.get(target, AirflowConfigurationForAPI.class, TEST_AUTH_HEADERS);
+    AirflowConfigurationForAPI auth =
+        TestUtils.get(target, AirflowConfigurationForAPI.class, TEST_AUTH_HEADERS);
     assertEquals(config.getAirflowConfiguration().getApiEndpoint(), auth.getApiEndpoint());
   }
 
@@ -91,7 +104,8 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("slackChat");
     SlackChatConfiguration slackChatConfiguration =
         TestUtils.get(target, SlackChatConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getSlackChatConfiguration().getSlackUrl(), slackChatConfiguration.getSlackUrl());
+    assertEquals(
+        config.getSlackChatConfiguration().getSlackUrl(), slackChatConfiguration.getSlackUrl());
   }
 
   @Test

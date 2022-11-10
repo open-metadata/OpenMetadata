@@ -172,8 +172,8 @@ pipelineServiceClientConfiguration:
   hostIp: ""
 
 argoConfiguration:
-  apiEndpoint: ${ARGO_HOST:-https://host.docker.internal:2746}
-  token: ${ARGO_TOKEN:-""}  # Service Account token to auth to the argo server
+  apiEndpoint: "https://host.docker.internal:2746"
+  token: ""  # Service Account token to auth to the argo server
 
 airflowConfiguration:
   apiEndpoint: "http://localhost:8080"

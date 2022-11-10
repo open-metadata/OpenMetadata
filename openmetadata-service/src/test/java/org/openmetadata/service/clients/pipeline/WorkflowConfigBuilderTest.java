@@ -1,4 +1,4 @@
-package org.openmetadata.service.pipelineService;
+package org.openmetadata.service.clients.pipeline;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.resources.EntityResourceTest.MYSQL_REFERENCE;
@@ -22,7 +22,7 @@ import org.openmetadata.schema.metadataIngestion.WorkflowConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.pipelineServiceClient.WorkflowConfigBuilder;
+import org.openmetadata.service.clients.pipeline.WorkflowConfigBuilder;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -44,9 +44,12 @@ public class WorkflowConfigBuilderTest extends OpenMetadataApplicationTest {
   @Test
   public void testBuildDefaultWorkflowConfig() {
     IngestionPipeline ingestionPipeline = newMetadataIngestionPipeline();
-    WorkflowConfig workflowConfig = WorkflowConfigBuilder.buildDefaultWorkflowConfig(ingestionPipeline);
+    WorkflowConfig workflowConfig =
+        WorkflowConfigBuilder.buildDefaultWorkflowConfig(ingestionPipeline);
     assertEquals(workflowConfig.getLoggerLevel(), LogLevels.INFO);
-    assertEquals(workflowConfig.getOpenMetadataServerConfig(), ingestionPipeline.getOpenMetadataServerConnection());
+    assertEquals(
+        workflowConfig.getOpenMetadataServerConfig(),
+        ingestionPipeline.getOpenMetadataServerConnection());
   }
 
   @Test
@@ -60,7 +63,8 @@ public class WorkflowConfigBuilderTest extends OpenMetadataApplicationTest {
   @Test
   public void testBuildMetadataWorkflowConfig() throws IOException {
     IngestionPipeline ingestionPipeline = newMetadataIngestionPipeline();
-    OpenMetadataWorkflowConfig config = WorkflowConfigBuilder.buildMetadataWorkflowConfig(ingestionPipeline);
+    OpenMetadataWorkflowConfig config =
+        WorkflowConfigBuilder.buildMetadataWorkflowConfig(ingestionPipeline);
     String yamlConfig = WorkflowConfigBuilder.stringifiedOMWorkflowConfig(config);
     String expectedYamlConfig =
         "---\n"
@@ -118,7 +122,9 @@ public class WorkflowConfigBuilderTest extends OpenMetadataApplicationTest {
         .withService(MYSQL_REFERENCE)
         .withSourceConfig(
             new SourceConfig()
-                .withConfig(new DatabaseServiceMetadataPipeline().withDbtConfigSource(new LinkedHashMap<>())))
+                .withConfig(
+                    new DatabaseServiceMetadataPipeline()
+                        .withDbtConfigSource(new LinkedHashMap<>())))
         .withOpenMetadataServerConnection(
             new OpenMetadataServerConnection()
                 .withAuthProvider(OpenMetadataServerConnection.AuthProvider.OPENMETADATA)

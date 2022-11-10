@@ -14,16 +14,11 @@
       "description": "Argo service account token.",
       "type": "string",
       "format": "password"
-    },
-    "metadataApiEndpoint": {
-      "description": "Metadata api endpoint",
-      "type": "string"
     }
   },
   "required": [
     "apiEndpoint",
-    "token",
-    "metadataApiEndpoint"
+    "token"
   ],
   "additionalProperties": false
 }

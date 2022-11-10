@@ -18,7 +18,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfiguration;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -37,7 +37,8 @@ public class OpenMetadataServerConnectionBuilder {
   BotRepository botRepository;
   UserRepository userRepository;
 
-  public OpenMetadataServerConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+  public OpenMetadataServerConnectionBuilder(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
     authProvider =
         "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
@@ -60,10 +61,12 @@ public class OpenMetadataServerConnectionBuilder {
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
 
-    AirflowConfiguration airflowConfiguration = openMetadataApplicationConfig.getAirflowConfiguration();
+    AirflowConfiguration airflowConfiguration =
+        openMetadataApplicationConfig.getAirflowConfiguration();
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerProvider = secretsManager.getSecretsManagerProvider();
-    verifySSL = OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
+    verifySSL =
+        OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     airflowSSLConfig =
         getAirflowSSLConfig(
             OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL()),
@@ -75,7 +78,8 @@ public class OpenMetadataServerConnectionBuilder {
     switch (authType) {
       case SSO:
         return OpenMetadataServerConnection.AuthProvider.fromValue(
-            JsonUtils.convertValue(botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
+            JsonUtils.convertValue(
+                    botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
                 .getSsoServiceType()
                 .value());
       case JWT:
@@ -90,13 +94,17 @@ public class OpenMetadataServerConnectionBuilder {
     AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
     switch (botUser.getAuthenticationMechanism().getAuthType()) {
       case SSO:
-        return JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class).getAuthConfig();
+        return JsonUtils.convertValue(authMechanism.getConfig(), SSOAuthMechanism.class)
+            .getAuthConfig();
       case JWT:
-        JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+        JWTAuthMechanism jwtAuthMechanism =
+            JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
         return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
       default:
         throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authMechanism.getAuthType().value()));
+            String.format(
+                "Not supported authentication mechanism type: [%s]",
+                authMechanism.getAuthType().value()));
     }
   }
 
@@ -139,12 +147,15 @@ public class OpenMetadataServerConnectionBuilder {
       }
       return user;
     } catch (IOException | EntityNotFoundException ex) {
-      LOG.debug((bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
+      LOG.debug(
+          (bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.",
+          botName);
       return null;
     }
   }
 
-  protected Object getAirflowSSLConfig(OpenMetadataServerConnection.VerifySSL verifySSL, SSLConfig sslConfig) {
+  protected Object getAirflowSSLConfig(
+      OpenMetadataServerConnection.VerifySSL verifySSL, SSLConfig sslConfig) {
     switch (verifySSL) {
       case NO_SSL:
       case IGNORE:
@@ -152,7 +163,8 @@ public class OpenMetadataServerConnectionBuilder {
       case VALIDATE:
         return sslConfig.getValidate();
       default:
-        throw new IllegalArgumentException("OpenMetadata doesn't support SSL verification type " + verifySSL.value());
+        throw new IllegalArgumentException(
+            "OpenMetadata doesn't support SSL verification type " + verifySSL.value());
     }
   }
 }

@@ -1,8 +1,8 @@
-package org.openmetadata.service.pipelineServiceClient.argo;
+package org.openmetadata.service.clients.pipeline.argo;
 
-import static org.openmetadata.service.pipelineServiceClient.PipelineServiceClient.SERVER_VERSION;
-import static org.openmetadata.service.pipelineServiceClient.WorkflowConfigBuilder.buildOMWorkflowConfig;
-import static org.openmetadata.service.pipelineServiceClient.WorkflowConfigBuilder.stringifiedOMWorkflowConfig;
+import static org.openmetadata.service.clients.pipeline.PipelineServiceClient.SERVER_VERSION;
+import static org.openmetadata.service.clients.pipeline.WorkflowConfigBuilder.buildOMWorkflowConfig;
+import static org.openmetadata.service.clients.pipeline.WorkflowConfigBuilder.stringifiedOMWorkflowConfig;
 
 import io.argoproj.workflow.ApiClient;
 import io.argoproj.workflow.Configuration;
@@ -31,7 +31,7 @@ public class WorkflowClient {
     ApiClient defaultClient = Configuration.getDefaultApiClient();
 
     defaultClient.setBasePath(host);
-    // TODO: handle SSL from Argo configs
+    // https://github.com/open-metadata/OpenMetadata/issues/8588
     defaultClient.setVerifyingSsl(false); // we don't have any local SSL. Tune it accordingly
 
     // Configure API key authorization: BearerToken
@@ -50,15 +50,17 @@ public class WorkflowClient {
   The CRON Workflow is the Argo Entity that will be deployed. It's the object that we will interact
   in any operation from the PipelineServiceClient.
    */
-  public IoArgoprojWorkflowV1alpha1CronWorkflow buildCronWorkflow(IngestionPipeline ingestionPipeline)
-      throws IOException {
+  public IoArgoprojWorkflowV1alpha1CronWorkflow buildCronWorkflow(
+      IngestionPipeline ingestionPipeline) throws IOException {
 
     String lowerCaseName = ingestionPipeline.getName().toLowerCase().replace("_", "-");
 
-    IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow = new IoArgoprojWorkflowV1alpha1CronWorkflow();
+    IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow =
+        new IoArgoprojWorkflowV1alpha1CronWorkflow();
     cronWorkflow.setKind("CronWorkflow");
     cronWorkflow.setApiVersion("argoproj.io/v1alpha1");
-    cronWorkflow.setMetadata(new V1ObjectMeta().generateName(lowerCaseName + "-").name(lowerCaseName));
+    cronWorkflow.setMetadata(
+        new V1ObjectMeta().generateName(lowerCaseName + "-").name(lowerCaseName));
 
     cronWorkflow.setSpec(
         new IoArgoprojWorkflowV1alpha1CronWorkflowSpec()
@@ -79,8 +81,8 @@ public class WorkflowClient {
   This is the place where we set the affinity as well.
   TODO: pick up affinity from ArgoConfig. No Affinity by default.
    */
-  public IoArgoprojWorkflowV1alpha1WorkflowSpec buildWorkflowSpec(IngestionPipeline ingestionPipeline)
-      throws IOException {
+  public IoArgoprojWorkflowV1alpha1WorkflowSpec buildWorkflowSpec(
+      IngestionPipeline ingestionPipeline) throws IOException {
     return new IoArgoprojWorkflowV1alpha1WorkflowSpec()
         .entrypoint(INGESTION_ENTRYPOINT) // just a name pointer to the template
         .templates(
@@ -99,9 +101,12 @@ public class WorkflowClient {
   Main logic transforming an IngestionPipeline to its YAML representation
    */
   public List<V1EnvVar> setIngestionEnv(IngestionPipeline ingestionPipeline) throws IOException {
-    V1EnvVar pipelineTypeEnv = new V1EnvVar().name("pipelineType").value(ingestionPipeline.getPipelineType().value());
+    V1EnvVar pipelineTypeEnv =
+        new V1EnvVar().name("pipelineType").value(ingestionPipeline.getPipelineType().value());
     V1EnvVar config =
-        new V1EnvVar().name("config").value(stringifiedOMWorkflowConfig(buildOMWorkflowConfig(ingestionPipeline)));
+        new V1EnvVar()
+            .name("config")
+            .value(stringifiedOMWorkflowConfig(buildOMWorkflowConfig(ingestionPipeline)));
     return List.of(pipelineTypeEnv, config);
   }
 }

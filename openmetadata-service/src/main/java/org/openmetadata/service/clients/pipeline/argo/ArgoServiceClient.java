@@ -1,7 +1,6 @@
-package org.openmetadata.service.pipelineServiceClient.argo;
+package org.openmetadata.service.clients.pipeline.argo;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.gson.Gson;
 import io.argoproj.workflow.ApiException;
 import io.argoproj.workflow.apis.CronWorkflowServiceApi;
 import io.argoproj.workflow.models.IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest;
@@ -17,8 +16,8 @@ import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnec
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.service.exception.PipelineServiceClientException;
-import org.openmetadata.service.pipelineServiceClient.PipelineServiceClient;
-import org.openmetadata.service.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfiguration;
 
 public class ArgoServiceClient extends PipelineServiceClient {
 
@@ -39,7 +38,8 @@ public class ArgoServiceClient extends PipelineServiceClient {
     // k8s namespace will be the same as the cluster name to ensure uni
     this.namespace = clusterName;
 
-    this.workflowClient = new WorkflowClient(this.serviceURL.toString(), this.token, this.namespace);
+    this.workflowClient =
+        new WorkflowClient(this.serviceURL.toString(), this.token, this.namespace);
     this.apiInstance = new CronWorkflowServiceApi(this.workflowClient.client);
   }
 
@@ -57,14 +57,14 @@ public class ArgoServiceClient extends PipelineServiceClient {
   public String deployPipeline(IngestionPipeline ingestionPipeline) {
     try {
 
-      // TODO: validate ingestion bot token. Check that exists, it is not expired and has a valid signature.
-      IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow = this.workflowClient.buildCronWorkflow(ingestionPipeline);
+      // https://github.com/open-metadata/OpenMetadata/issues/8587
+      IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow =
+          this.workflowClient.buildCronWorkflow(ingestionPipeline);
 
       IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest cronWorkflowCreateRequest =
           new IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest();
       cronWorkflowCreateRequest.setCronWorkflow(cronWorkflow);
       cronWorkflowCreateRequest.setNamespace(this.workflowClient.namespace);
-      System.out.println(new Gson().toJson(cronWorkflowCreateRequest));
 
       IoArgoprojWorkflowV1alpha1CronWorkflow result =
           this.apiInstance.cronWorkflowServiceCreateCronWorkflow(
@@ -75,16 +75,20 @@ public class ArgoServiceClient extends PipelineServiceClient {
     } catch (JsonProcessingException e) {
       throw new PipelineServiceClientException(
           String.format(
-              "%s Failed to build Ingestion Workflow due to %s", ingestionPipeline.getName(), e.getMessage()));
+              "%s Failed to build Ingestion Workflow due to %s",
+              ingestionPipeline.getName(), e.getMessage()));
     } catch (ApiException e) {
       throw new PipelineServiceClientException(
           String.format(
-              "%s Failed to deploy Ingestion Workflow due to %s", ingestionPipeline.getName(), e.getMessage()));
+              "%s Failed to deploy Ingestion Workflow due to %s",
+              ingestionPipeline.getName(), e.getMessage()));
     } catch (IOException e) {
       throw new PipelineServiceClientException(
           String.format(
               "%s Failed retrieving the service %s - %s",
-              ingestionPipeline.getName(), ingestionPipeline.getService().getName(), e.getMessage()));
+              ingestionPipeline.getName(),
+              ingestionPipeline.getService().getName(),
+              e.getMessage()));
     }
   }
 
@@ -109,7 +113,8 @@ public class ArgoServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
+  public Map<String, String> getLastIngestionLogs(
+      IngestionPipeline ingestionPipeline, String after) {
     return null;
   }
 
