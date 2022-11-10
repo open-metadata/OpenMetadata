@@ -42,7 +42,7 @@ public class NoopSecretsManagerTest {
 
   @BeforeAll
   static void setUp() {
-    secretsManager = NoopSecretsManager.getInstance("openmetadata");
+    secretsManager = NoopSecretsManager.getInstance("openmetadata", SecretsManagerProvider.NOOP);
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);

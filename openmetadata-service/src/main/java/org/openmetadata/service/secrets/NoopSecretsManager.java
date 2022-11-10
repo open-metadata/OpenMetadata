@@ -13,12 +13,11 @@
 
 package org.openmetadata.service.secrets;
 
-import static org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider.NOOP;
-
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
@@ -29,8 +28,8 @@ public class NoopSecretsManager extends SecretsManager {
 
   private Fernet fernet;
 
-  private NoopSecretsManager(String clusterPrefix) {
-    super(NOOP, clusterPrefix);
+  private NoopSecretsManager(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
+    super(secretsManagerProvider, clusterPrefix);
     this.fernet = Fernet.getInstance();
   }
 
@@ -66,8 +65,8 @@ public class NoopSecretsManager extends SecretsManager {
     }
   }
 
-  public static NoopSecretsManager getInstance(String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new NoopSecretsManager(clusterPrefix);
+  public static NoopSecretsManager getInstance(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
+    if (INSTANCE == null) INSTANCE = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
     return INSTANCE;
   }
 

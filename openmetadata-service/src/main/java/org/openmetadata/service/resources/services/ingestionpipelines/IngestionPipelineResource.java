@@ -57,6 +57,7 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -480,6 +481,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid TestServiceConnection testServiceConnection) {
+    testServiceConnection =
+        testServiceConnection.withSecretsManagerProvider(
+            SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider());
     HttpResponse<String> response = pipelineServiceClient.testConnection(testServiceConnection);
     return Response.status(200, response.body()).build();
   }

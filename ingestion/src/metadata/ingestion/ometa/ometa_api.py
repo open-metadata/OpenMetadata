@@ -17,6 +17,8 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+
 try:
     from typing import get_args
 except ImportError:
@@ -92,9 +94,6 @@ from metadata.ingestion.ometa.ssl_registry import (
     ssl_verification_registry,
 )
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
-from metadata.utils.secrets.secrets_manager_factory import (
-    get_secrets_manager_from_om_connection,
-)
 
 logger = ometa_logger()
 
@@ -182,14 +181,10 @@ class OpenMetadata(
         self.config = config
 
         # Load the secrets' manager client
-        self.secrets_manager_client = get_secrets_manager_from_om_connection(
-            config, config.secretsManagerCredentials
-        )
-
-        # Load auth provider config from Secret Manager if necessary
-        self.secrets_manager_client.add_auth_provider_security_config(
-            self.config, "ingestion-bot"
-        )
+        self.secrets_manager_client = SecretsManagerFactory(
+            config.secretsManagerProvider,
+            config.secretsManagerCredentials,
+        ).get_secrets_manager()
 
         # Load the auth provider init from the registry
         auth_provider_fn = auth_provider_registry.registry.get(

@@ -11,10 +11,11 @@
 """
 Module containing AWS Client
 """
-from typing import Any
+from typing import Any, Optional
 
 import boto3
 from boto3 import Session
+from pydantic import BaseModel, Extra, Field, SecretStr
 
 from metadata.clients.connection_clients import (
     DynamoClient,
@@ -24,10 +25,28 @@ from metadata.clients.connection_clients import (
     QuickSightClient,
     SageMakerClient,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+class AWSCredentials(BaseModel):
+    class Config:
+        extra = Extra.forbid
+
+    awsAccessKeyId: Optional[SecretStr] = Field(
+        None, description="AWS Access key ID.", title="AWS Access Key ID"
+    )
+    awsSecretAccessKey: Optional[SecretStr] = Field(
+        None, description="AWS Secret Access Key.", title="AWS Secret Access Key"
+    )
+    awsRegion: str = Field(..., description="AWS Region", title="AWS Region")
+    awsSessionToken: Optional[SecretStr] = Field(
+        None, description="AWS Session Token.", title="AWS Session Token"
+    )
+    endPointURL: Optional[str] = Field(
+        None, description="EndPoint URL for the AWS", title="Endpoint URL"
+    )
 
 
 class AWSClient:
@@ -37,9 +56,9 @@ class AWSClient:
 
     config: AWSCredentials
 
-    def __init__(self, config: AWSCredentials):
+    def __init__(self, config: Any):
 
-        self.config = config
+        self.config = AWSCredentials.parse_obj(config) if config else config
 
     def _get_session(self) -> Session:
         if (
@@ -48,14 +67,14 @@ class AWSClient:
             and self.config.awsSessionToken
         ):
             return Session(
-                aws_access_key_id=self.config.awsAccessKeyId,
+                aws_access_key_id=self.config.awsAccessKeyId.get_secret_value(),
                 aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
-                aws_session_token=self.config.awsSessionToken,
+                aws_session_token=self.config.awsSessionToken.get_secret_value(),
                 region_name=self.config.awsRegion,
             )
         if self.config.awsAccessKeyId and self.config.awsSecretAccessKey:
             return Session(
-                aws_access_key_id=self.config.awsAccessKeyId,
+                aws_access_key_id=self.config.awsAccessKeyId.get_secret_value(),
                 aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
                 region_name=self.config.awsRegion,
             )
@@ -68,10 +87,6 @@ class AWSClient:
         if self.config is not None:
             logger.info(f"Getting AWS client for service [{service_name}]")
             session = self._get_session()
-            if self.config.endPointURL is not None:
-                return session.client(
-                    service_name=service_name, endpoint_url=self.config.endPointURL
-                )
             return session.client(service_name=service_name)
 
         logger.info(f"Getting AWS default client for service [{service_name}]")
@@ -80,10 +95,6 @@ class AWSClient:
 
     def get_resource(self, service_name: str) -> Any:
         session = self._get_session()
-        if self.config.endPointURL is not None:
-            return session.resource(
-                service_name=service_name, endpoint_url=self.config.endPointURL
-            )
         return session.resource(service_name=service_name)
 
     def get_dynamo_client(self) -> DynamoClient:

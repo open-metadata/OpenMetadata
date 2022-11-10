@@ -12,57 +12,58 @@
 """
 Secrets manager factory module
 """
-from typing import Optional, Union
+from typing import Any, Optional
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
+from metadata.clients.aws_client import AWSCredentials
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
+from metadata.utils.singleton import Singleton
 
 
-def get_secrets_manager_from_om_connection(
-    open_metadata_config: OpenMetadataConnection,
-    credentials: Optional[Union[AWSCredentials]] = None,
-) -> SecretsManager:
-    """
-    Method to get the secrets manager based on the configuration passed in OpenMetadataConnection
-    :param open_metadata_config: the OpenMetadata connection configuration object
-    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations # pylint: disable=line-too-long
-    :return: a secrets manager
-    """
-    return get_secrets_manager(
-        open_metadata_config.secretsManagerProvider,
-        open_metadata_config.clusterName,
-        credentials,
-    )
+class SecretsManagerFactory(metaclass=Singleton):
+    secrets_manager: SecretsManager
 
-
-def get_secrets_manager(
-    secrets_manager_provider: SecretsManagerProvider,
-    cluster_name: str,
-    credentials: Optional[Union[AWSCredentials]] = None,
-) -> SecretsManager:
-    """
-    Method to get the secrets manager based on the arguments passed
-    :param secrets_manager_provider: the secrets manager provider
-    :param cluster_name: the cluster name
-    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations # pylint: disable=line-too-long
-    :return: a secrets manager
-    """
-    if (
-        secrets_manager_provider is None
-        or secrets_manager_provider == SecretsManagerProvider.noop
+    def __init__(
+        self,
+        secrets_manager_provider: Optional[SecretsManagerProvider],
+        credentials: Optional[Any] = None,
     ):
-        return NoopSecretsManager(cluster_name)
-    if secrets_manager_provider == SecretsManagerProvider.aws:
-        return AWSSecretsManager(credentials, cluster_name)
-    if secrets_manager_provider == SecretsManagerProvider.aws_ssm:
-        return AWSSSMSecretsManager(credentials, cluster_name)
-    raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
+        self.secrets_manager = self._get_secrets_manager(
+            secrets_manager_provider,
+            credentials,
+        )
+
+    def _get_secrets_manager(
+        self,
+        secrets_manager_provider: SecretsManagerProvider,
+        credentials: Any = None,
+    ) -> SecretsManager:
+        """
+        Method to get the secrets manager based on the arguments passed
+        :param secrets_manager_provider: the secrets' manager provider
+        :param credentials: optional credentials that could be required by the clients of the secrets' manager
+                            implementations
+        :return: a secrets manager
+        """
+        if (
+            secrets_manager_provider is None
+            or secrets_manager_provider == SecretsManagerProvider.noop
+        ):
+            return NoopSecretsManager()
+        if secrets_manager_provider == SecretsManagerProvider.aws:
+            return AWSSecretsManager(
+                AWSCredentials.parse_obj(credentials) if credentials else None
+            )
+        if secrets_manager_provider == SecretsManagerProvider.aws_ssm:
+            return AWSSSMSecretsManager(
+                AWSCredentials.parse_obj(credentials) if credentials else None
+            )
+        raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
+
+    def get_secrets_manager(self):
+        return self.secrets_manager

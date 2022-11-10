@@ -13,13 +13,12 @@
 Abstract class for AWS based secrets manager implementations
 """
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import utils_logger
 from metadata.utils.secrets.external_secrets_manager import ExternalSecretsManager
 
@@ -35,17 +34,16 @@ class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
 
     def __init__(
         self,
-        credentials: Optional[AWSCredentials],
+        credentials: Optional[Any],
         client: str,
         provider: SecretsManagerProvider,
-        cluster_prefix: str,
     ):
-        super().__init__(cluster_prefix, provider)
+        super().__init__(provider)
         self.client = AWSClient(credentials).get_client(client)
 
     @abstractmethod
-    def get_string_value(self, name: str) -> str:
+    def get_string_value(self, secret_id: str) -> str:
         """
-        :param name: The secret name to retrieve
+        :param secret_id: The secret id to retrieve
         :return: The value of the secret
         """
