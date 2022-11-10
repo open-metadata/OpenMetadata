@@ -11,51 +11,138 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getUserPath } from '../../constants/constants';
+import {
+  ENTITIES_CHARTS,
+  WEB_CHARTS,
+} from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
+import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
+import {
+  getEntitiesChartSummary,
+  getWebChartSummary,
+} from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import './DataInsightDetail.less';
 
 interface Props {
   chartFilter: ChartFilter;
+  onScrollToChart: (chartType: DataInsightChartType) => void;
 }
 
-const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
-  const [totalEntitiesByType, setTotalEntitiesByType] =
-    useState<DataInsightChartResult>();
-
+const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [entitiesCharts, setEntitiesChart] = useState<
+    (DataInsightChartResult | undefined)[]
+  >([]);
+  const [webCharts, setWebCharts] = useState<
+    (DataInsightChartResult | undefined)[]
+  >([]);
 
-  const { total, latestData = {} } = useMemo(() => {
-    return getGraphDataByEntityType(
-      totalEntitiesByType?.data ?? [],
-      DataInsightChartType.TotalEntitiesByType
-    );
-  }, [totalEntitiesByType]);
+  const [mostActiveUser, setMostActiveUser] = useState<MostActiveUsers>();
+
+  const entitiesSummaryList = useMemo(
+    () => getEntitiesChartSummary(entitiesCharts),
+    [entitiesCharts]
+  );
+
+  const webSummaryList = useMemo(
+    () => getWebChartSummary(webCharts),
+    [webCharts]
+  );
 
   const { t } = useTranslation();
 
-  const fetchTotalEntitiesByType = async () => {
+  const fetchEntitiesChartData = async () => {
     setIsLoading(true);
+    try {
+      const promises = ENTITIES_CHARTS.map((chartName) => {
+        const params = {
+          ...chartFilter,
+          dataInsightChartName: chartName,
+          dataReportIndex: DataReportIndex.EntityReportDataIndex,
+        };
+
+        return getAggregateChartData(params);
+      });
+
+      const responses = await Promise.allSettled(promises);
+
+      const chartDataList = responses
+        .map((response) => {
+          if (response.status === 'fulfilled') {
+            return response.value;
+          }
+
+          return;
+        })
+        .filter(Boolean);
+
+      setEntitiesChart(chartDataList);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchMostActiveUser = async () => {
     try {
       const params = {
         ...chartFilter,
-        dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
-        dataReportIndex: DataReportIndex.EntityReportDataIndex,
+        dataInsightChartName: DataInsightChartType.MostActiveUsers,
+        dataReportIndex: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
+      if (response.data && response.data.length) {
+        setMostActiveUser(response.data[0]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      setTotalEntitiesByType(response);
+  const fetchWebChartData = async () => {
+    setIsLoading(true);
+    try {
+      const promises = WEB_CHARTS.map((chart) => {
+        const params = {
+          ...chartFilter,
+          dataInsightChartName: chart.chart,
+          dataReportIndex: chart.index,
+        };
+
+        return getAggregateChartData(params);
+      });
+
+      const responses = await Promise.allSettled(promises);
+
+      const chartDataList = responses
+        .map((response) => {
+          if (response.status === 'fulfilled') {
+            return response.value;
+          }
+
+          return;
+        })
+        .filter(Boolean);
+
+      setWebCharts(chartDataList);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -64,7 +151,9 @@ const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
   };
 
   useEffect(() => {
-    fetchTotalEntitiesByType();
+    fetchEntitiesChartData();
+    fetchMostActiveUser();
+    fetchWebChartData();
   }, [chartFilter]);
 
   return (
@@ -78,27 +167,65 @@ const DataInsightSummary: FC<Props> = ({ chartFilter }) => {
         </Typography.Title>
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
-        <Col data-testid="summary-item-latest" span={4}>
-          <Typography.Text className="data-insight-label-text">
-            Latest
-          </Typography.Text>
-          <Typography className="font-semibold text-2xl">{total}</Typography>
-        </Col>
-        {Object.entries(latestData).map((summary) => {
-          const label = summary[0];
-          const value = summary[1] as number;
+        {/* summary of entity charts */}
+        {entitiesSummaryList.map((summary) => (
+          <Col
+            className="summary-card-item"
+            data-testid={`summary-item-${summary.id}`}
+            key={summary.id}
+            span={6}
+            onClick={() => onScrollToChart(summary.id)}>
+            <Typography.Text className="data-insight-label-text">
+              {summary.label}
+            </Typography.Text>
+            <Typography className="font-semibold text-2xl m--ml-0.5">
+              {summary.latest}
+              {summary.id.startsWith('Percentage') ? '%' : ''}
+            </Typography>
+          </Col>
+        ))}
 
-          return label !== 'timestamp' ? (
-            <Col data-testid={`summary-item-${label}`} key={label} span={4}>
-              <Typography.Text className="data-insight-label-text">
-                {label}
-              </Typography.Text>
-              <Typography className="font-semibold text-2xl">
-                {value}
-              </Typography>
-            </Col>
-          ) : null;
-        })}
+        {/* summary for web charts */}
+        {webSummaryList.map((summary) => (
+          <Col
+            className="summary-card-item"
+            data-testid={`summary-item-${summary.id}`}
+            key={summary.id}
+            span={6}
+            onClick={() => onScrollToChart(summary.id)}>
+            <Typography.Text className="data-insight-label-text">
+              {summary.label}
+            </Typography.Text>
+            <Typography className="font-semibold text-2xl m--ml-0.5">
+              {summary.latest}
+              {summary.id.startsWith('Percentage') ? '%' : ''}
+            </Typography>
+          </Col>
+        ))}
+
+        {/* summary of most active user */}
+        {mostActiveUser && mostActiveUser.userName && (
+          <Col
+            data-testid={`summary-item-${DataInsightChartType.MostActiveUsers}`}
+            key={DataInsightChartType.MostActiveUsers}
+            span={6}>
+            <Typography.Text className="data-insight-label-text d-block">
+              {t('label.most-active-user')}
+            </Typography.Text>
+            <UserPopOverCard userName={mostActiveUser.userName}>
+              <Space>
+                <ProfilePicture
+                  id=""
+                  name={mostActiveUser.userName}
+                  type="circle"
+                />
+                <Link to={getUserPath(mostActiveUser.userName)}>
+                  {mostActiveUser.userName}
+                </Link>
+              </Space>
+            </UserPopOverCard>
+          </Col>
+        )}
       </Row>
     </Card>
   );

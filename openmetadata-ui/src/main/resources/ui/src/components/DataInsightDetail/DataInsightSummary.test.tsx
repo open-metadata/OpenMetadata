@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { act } from 'react-test-renderer';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import DataInsightSummary from './DataInsightSummary';
 
 jest.mock('react-i18next', () => ({
@@ -27,6 +28,8 @@ const mockFilter = {
   endTs: 1668000248671,
 };
 
+const mockScrollFunction = jest.fn();
+
 jest.mock('../../axiosAPIs/DataInsightAPI', () => ({
   getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
@@ -34,14 +37,21 @@ jest.mock('../../axiosAPIs/DataInsightAPI', () => ({
 describe('Test DataInsightSummary Component', () => {
   it('Should render the overview data', async () => {
     await act(async () => {
-      render(<DataInsightSummary chartFilter={mockFilter} />);
+      render(
+        <DataInsightSummary
+          chartFilter={mockFilter}
+          onScrollToChart={mockScrollFunction}
+        />
+      );
     });
 
     const summaryCard = screen.getByTestId('summary-card');
 
-    const allEntityCount = screen.getByTestId('summary-item-latest');
+    const totalEntitiesByType = screen.getByTestId(
+      `summary-item-${DataInsightChartType.TotalEntitiesByType}`
+    );
 
     expect(summaryCard).toBeInTheDocument();
-    expect(allEntityCount).toBeInTheDocument();
+    expect(totalEntitiesByType).toBeInTheDocument();
   });
 });
