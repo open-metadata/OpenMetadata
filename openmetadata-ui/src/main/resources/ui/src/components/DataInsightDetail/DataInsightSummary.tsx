@@ -81,13 +81,15 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
       const responses = await Promise.allSettled(promises);
 
-      const chartDataList = responses.map((response) => {
-        if (response.status === 'fulfilled') {
-          return response.value;
-        }
+      const chartDataList = responses
+        .map((response) => {
+          if (response.status === 'fulfilled') {
+            return response.value;
+          }
 
-        return;
-      });
+          return;
+        })
+        .filter(Boolean);
 
       setEntitiesChart(chartDataList);
     } catch (error) {
@@ -130,13 +132,15 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
       const responses = await Promise.allSettled(promises);
 
-      const chartDataList = responses.map((response) => {
-        if (response.status === 'fulfilled') {
-          return response.value;
-        }
+      const chartDataList = responses
+        .map((response) => {
+          if (response.status === 'fulfilled') {
+            return response.value;
+          }
 
-        return;
-      });
+          return;
+        })
+        .filter(Boolean);
 
       setWebCharts(chartDataList);
     } catch (error) {

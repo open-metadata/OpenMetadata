@@ -82,7 +82,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
               <Typography.Text>{owner}</Typography.Text>
             </Space>
           ) : (
-            <Typography.Text>{t('label.no-owner')}</Typography.Text>
+            <Typography.Text>--</Typography.Text>
           ),
       },
       {
