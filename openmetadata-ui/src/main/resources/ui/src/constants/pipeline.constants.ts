@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
-
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-  }
+export enum PIPELINE_DETAILS_TABS {
+  Tasks = 'tasks',
+  ActivityFeedsAndTasks = 'activity-feeds-tasks',
+  Executions = 'executions',
+  EntityLineage = 'entity-lineage',
+  CustomProperties = 'custom-properties',
 }

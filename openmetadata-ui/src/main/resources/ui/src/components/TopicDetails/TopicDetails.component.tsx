@@ -609,7 +609,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     topicDetails as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.TOPIC}
-                  handleExtentionUpdate={onExtensionUpdate}
+                  handleExtensionUpdate={onExtensionUpdate}
                 />
               )}
               <div

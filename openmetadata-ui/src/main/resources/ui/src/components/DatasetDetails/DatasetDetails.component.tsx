@@ -128,7 +128,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
-  handleExtentionUpdate,
+  handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
 }: DatasetDetailsProps) => {
@@ -834,7 +834,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     tableDetails as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.TABLE}
-                  handleExtentionUpdate={handleExtentionUpdate}
+                  handleExtensionUpdate={handleExtensionUpdate}
                 />
               )}
               <div
