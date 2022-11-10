@@ -17,6 +17,7 @@ import org.openmetadata.schema.email.EmailRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;
@@ -50,9 +51,11 @@ public class EmailUtil {
   public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change.ftl";
   private static final String INVITE_SUBJECT = "Welcome to %s";
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
+  private static final String TEST_SUBJECT = "%s : Test Result Notification";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
   public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
+  public static final String TEST_NOTIFICATION_TEMPLATE = "testResultStatus.ftl";
   private static EmailUtil INSTANCE = null;
   private SmtpSettings defaultSmtpSettings = null;
   private Mailer mailer = null;
@@ -155,6 +158,27 @@ public class EmailUtil {
       templatePopulator.put("fieldOldValue", thread.getTask().getOldValue());
       templatePopulator.put("fieldNewValue", thread.getTask().getSuggestion());
       templatePopulator.put("taskLink", taskLink);
+
+      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    }
+  }
+
+  public void sendTestResultEmailNotificationToUser(
+      String email,
+      String testResultLink,
+      String testCaseName,
+      TestCaseResult result,
+      String subject,
+      String templateFilePath)
+      throws IOException, TemplateException {
+    if (defaultSmtpSettings.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put("receiverName", email.split("@")[0]);
+      templatePopulator.put("testResultName", testCaseName);
+      templatePopulator.put("testResultDescription", result.getResult());
+      templatePopulator.put("testResultStatus", result.getTestCaseStatus().toString());
+      templatePopulator.put("testResultTimestamp", result.getTimestamp().toString());
+      templatePopulator.put("testResultLink", testResultLink);
 
       sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     }
@@ -286,6 +310,10 @@ public class EmailUtil {
 
   public String getTaskAssignmentSubject() {
     return String.format(TASK_SUBJECT, defaultSmtpSettings.getEmailingEntity());
+  }
+
+  public String getTestResultSubject() {
+    return String.format(TEST_SUBJECT, defaultSmtpSettings.getEmailingEntity());
   }
 
   public String getEmailingEntity() {

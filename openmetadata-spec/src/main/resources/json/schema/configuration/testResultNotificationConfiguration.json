@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration",
   "properties": {
     "enabled": {
-      "description": "Is Task Notification Enabled?",
+      "description": "Is Test Notification Enabled?",
       "type" : "boolean",
       "default": false
     },
@@ -17,6 +17,18 @@
       "items": {
         "$ref": "../tests/basic.json#/definitions/testCaseStatus"
       }
+    },
+    "receivers": {
+      "description": "Send notification on the mail",
+      "type": "array",
+      "items": {
+        "$ref": "../type/basic.json#/definitions/email"
+      }
+    },
+    "sendToOwners": {
+      "description": "Send notification on the mail",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

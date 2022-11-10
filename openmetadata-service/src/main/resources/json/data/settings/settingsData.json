@@ -225,8 +225,9 @@
   {
     "config_type": "testResultNotificationConfiguration",
     "config_value": {
-      "enabled" : true,
-      "onResult": ["Failed", "Aborted"]
+      "enabled" : false,
+      "onResult": ["Failed", "Aborted"],
+      "sendToOwners": false
     }
   }
 ]

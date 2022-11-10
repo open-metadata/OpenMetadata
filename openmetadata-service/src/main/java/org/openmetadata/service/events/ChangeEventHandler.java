@@ -17,18 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.Entity.USER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import freemarker.template.TemplateException;
-import java.io.IOException;
-import java.net.URI;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,33 +30,23 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.Post;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.filter.FilterRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.ChangeEventParser;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.NotificationHandler;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -72,11 +54,13 @@ public class ChangeEventHandler implements EventHandler {
   private CollectionDAO dao;
   private FeedRepository feedDao;
   private ObjectMapper mapper;
+  private NotificationHandler notificationHandler;
 
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
     this.mapper = new ObjectMapper();
+    this.notificationHandler = new NotificationHandler(jdbi.onDemand(CollectionDAO.class));
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -84,7 +68,7 @@ public class ChangeEventHandler implements EventHandler {
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
-      handleNotifications(responseContext);
+      notificationHandler.processNotifications(responseContext);
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent == null) {
         return null;
@@ -140,112 +124,6 @@ public class ChangeEventHandler implements EventHandler {
       LOG.error("Failed to capture change event for method {} due to ", method, e);
     }
     return null;
-  }
-
-  private void handleNotifications(ContainerResponseContext responseContext) {
-    int responseCode = responseContext.getStatus();
-    if (responseCode == Status.CREATED.getStatusCode()
-        && responseContext.getEntity() != null
-        && responseContext.getEntity().getClass().equals(Thread.class)) {
-      Thread thread = (Thread) responseContext.getEntity();
-      try {
-        String jsonThread = mapper.writeValueAsString(thread);
-        switch (thread.getType()) {
-          case Task:
-            if (thread.getPostsCount() == 0) {
-              List<EntityReference> assignees = thread.getTask().getAssignees();
-              HashSet<UUID> receiversList = new HashSet<>();
-              assignees.forEach(
-                  e -> {
-                    if (Entity.USER.equals(e.getType())) {
-                      receiversList.add(e.getId());
-                    } else if (Entity.TEAM.equals(e.getType())) {
-                      // fetch all that are there in the team
-                      List<EntityRelationshipRecord> records =
-                          dao.relationshipDAO()
-                              .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-                      records.forEach((eRecord) -> receiversList.add(eRecord.getId()));
-                    }
-                  });
-
-              // Send WebSocket Notification
-              WebSocketManager.getInstance()
-                  .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
-
-              // Send Email Notification If Enabled
-              if (((TaskNotificationConfiguration)
-                      dao.getSettingsDAO()
-                          .getConfigWithKey(SettingsType.TASK_NOTIFICATION_CONFIGURATION.toString())
-                          .getConfigValue())
-                  .getEnabled()) {
-                handleEmailNotifications(receiversList, thread);
-              }
-            }
-            break;
-          case Conversation:
-            WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
-            List<EntityLink> mentions;
-            if (thread.getPostsCount() == 0) {
-              mentions = MessageParser.getEntityLinks(thread.getMessage());
-            } else {
-              Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-              mentions = MessageParser.getEntityLinks(latestPost.getMessage());
-            }
-            mentions.forEach(
-                entityLink -> {
-                  String fqn = entityLink.getEntityFQN();
-                  if (USER.equals(entityLink.getEntityType())) {
-                    User user = dao.userDAO().findEntityByName(fqn);
-                    WebSocketManager.getInstance()
-                        .sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
-                  } else if (TEAM.equals(entityLink.getEntityType())) {
-                    Team team = dao.teamDAO().findEntityByName(fqn);
-                    // fetch all that are there in the team
-                    List<EntityRelationshipRecord> records =
-                        dao.relationshipDAO().findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);
-                    // Notify on WebSocket for Realtime
-                    WebSocketManager.getInstance()
-                        .sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
-                  }
-                });
-            break;
-          case Announcement:
-            AnnouncementDetails announcementDetails = thread.getAnnouncement();
-            Long currentTimestamp = Instant.now().getEpochSecond();
-            if (announcementDetails.getStartTime() <= currentTimestamp
-                && currentTimestamp <= announcementDetails.getEndTime()) {
-              WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
-            }
-            break;
-        }
-      } catch (JsonProcessingException e) {
-        throw new RuntimeException(e);
-      }
-    }
-  }
-
-  private void handleEmailNotifications(HashSet<UUID> userList, Thread thread) {
-    EntityRepository<User> repository = Entity.getEntityRepository(USER);
-    URI urlInstance = thread.getHref();
-    userList.forEach(
-        (id) -> {
-          try {
-            User user = repository.get(null, id, repository.getFields("name,email,href"));
-            EmailUtil.getInstance()
-                .sendTaskAssignmentNotificationToUser(
-                    user.getName(),
-                    user.getEmail(),
-                    String.format(
-                        "%s://%s/users/%s/tasks", urlInstance.getScheme(), urlInstance.getHost(), user.getName()),
-                    thread,
-                    EmailUtil.getInstance().getTaskAssignmentSubject(),
-                    EmailUtil.TASK_NOTIFICATION_TEMPLATE);
-          } catch (IOException ex) {
-            LOG.error("Task Email Notification Failed :", ex);
-          } catch (TemplateException ex) {
-            LOG.error("Task Email Notification Template Parsing Exception :", ex);
-          }
-        });
   }
 
   public ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
