@@ -13,15 +13,12 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { uniqueId } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Legend,
-  LegendProps,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -30,19 +27,15 @@ import {
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import {
   BAR_CHART_MARGIN,
-  BAR_SIZE,
-  ENTITIES_BAR_COLO_MAP,
+  DATA_INSIGHT_GRAPH_COLORS,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
-import {
-  DataInsightChartResult,
-  DataInsightChartType,
-} from '../../generated/dataInsight/dataInsightChartResult';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { DailyActiveUsers } from '../../generated/dataInsight/type/dailyActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import {
   CustomTooltip,
-  getGraphDataByEntityType,
-  renderLegend,
+  getFormattedActiveUsersData,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
@@ -51,32 +44,26 @@ interface Props {
   chartFilter: ChartFilter;
 }
 
-const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
-  const [totalEntitiesByType, setTotalEntitiesByType] =
-    useState<DataInsightChartResult>();
+const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
+  const [dailyActiveUsers, setDailyActiveUsers] = useState<DailyActiveUsers[]>(
+    []
+  );
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { data, entities, total } = useMemo(() => {
-    return getGraphDataByEntityType(
-      totalEntitiesByType?.data ?? [],
-      DataInsightChartType.TotalEntitiesByType
-    );
-  }, [totalEntitiesByType]);
-
   const { t } = useTranslation();
 
-  const fetchTotalEntitiesByType = async () => {
+  const fetchPageViewsByEntities = async () => {
     setIsLoading(true);
     try {
       const params = {
         ...chartFilter,
-        dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
-        dataReportIndex: DataReportIndex.EntityReportDataIndex,
+        dataInsightChartName: DataInsightChartType.DailyActiveUsers,
+        dataReportIndex: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
 
-      setTotalEntitiesByType(response);
+      setDailyActiveUsers(response.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -85,50 +72,41 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
   };
 
   useEffect(() => {
-    fetchTotalEntitiesByType();
+    fetchPageViewsByEntities();
   }, [chartFilter]);
 
   return (
     <Card
       className="data-insight-card"
-      data-testid="entity-summary-card"
+      data-testid="entity-active-user-card"
       loading={isLoading}
       title={
         <>
           <Typography.Title level={5}>
-            {t('label.data-insight-total-entity-summary')}
+            {t('label.daily-active-user')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            {t('message.total-entity-insight')}
+            {t('message.active-users')}
           </Typography.Text>
         </>
       }>
       <ResponsiveContainer debounce={1} minHeight={400}>
-        <BarChart data={data} margin={BAR_CHART_MARGIN}>
+        <LineChart
+          data={getFormattedActiveUsersData(dailyActiveUsers)}
+          margin={BAR_CHART_MARGIN}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="timestamp" />
           <YAxis />
           <Tooltip content={<CustomTooltip />} />
-          <Legend
-            align="left"
-            content={(props) => renderLegend(props as LegendProps, `${total}`)}
-            layout="vertical"
-            verticalAlign="top"
-            wrapperStyle={{ left: '0px' }}
+          <Line
+            dataKey="activeUsers"
+            stroke={DATA_INSIGHT_GRAPH_COLORS[3]}
+            type="monotone"
           />
-          {entities.map((entity) => (
-            <Bar
-              barSize={BAR_SIZE}
-              dataKey={entity}
-              fill={ENTITIES_BAR_COLO_MAP[entity]}
-              key={uniqueId()}
-              stackId="entityCount"
-            />
-          ))}
-        </BarChart>
+        </LineChart>
       </ResponsiveContainer>
     </Card>
   );
 };
 
-export default TotalEntityInsight;
+export default DailyActiveUsersChart;

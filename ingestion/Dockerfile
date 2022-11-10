@@ -43,7 +43,7 @@ RUN apt-get update \
     libpcre2-8-0 \
     postgresql-common \
     expat \
-    bind9=1:9.18.4-2~bpo11+1
+    bind9
 
 # Required for Starting Ingestion Container in Docker Compose
 COPY --chown=airflow:0 ingestion/ingestion_dependency.sh /opt/airflow
