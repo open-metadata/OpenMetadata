@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { TooltipProps } from 'recharts';
+import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 
 export interface ChartAggregateParam {
   dataInsightChartName: DataInsightChartType;
+  dataReportIndex: DataReportIndex;
   startTs: number;
   endTs: number;
   tier?: string;
@@ -26,4 +29,8 @@ export interface ChartFilter {
   tier?: string;
   startTs: number;
   endTs: number;
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
+  isPercentage?: boolean;
 }

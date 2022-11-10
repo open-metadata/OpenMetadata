@@ -19,6 +19,23 @@
         }
       }
     },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
+      "type": "string",
+      "enum": ["Success", "Failed", "Aborted"],
+      "javaEnums": [
+        {
+          "name": "Success"
+        },
+        {
+          "name": "Failed"
+        },
+        {
+          "name": "Aborted"
+        }
+      ]
+    },
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
@@ -30,20 +47,7 @@
         },
         "testCaseStatus": {
           "description": "Status of Test Case run.",
-          "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
-          "type": "string",
-          "enum": ["Success", "Failed", "Aborted"],
-          "javaEnums": [
-            {
-              "name": "Success"
-            },
-            {
-              "name": "Failed"
-            },
-            {
-              "name": "Aborted"
-            }
-          ]
+          "$ref": "#/definitions/testCaseStatus"
         },
         "result": {
           "description": "Details of test case results.",

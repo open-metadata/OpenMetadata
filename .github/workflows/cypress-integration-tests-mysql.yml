@@ -26,6 +26,9 @@ on:
     paths-ignore:
       - 'openmetadata-docs/**'
 
+permissions:
+  contents: read
+
 concurrency:
   group: cypress-integration-tests-mysql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -38,6 +41,7 @@ jobs:
         job: [0, 1]
     environment: cypress
     steps:
+
       - name: Checkout
         uses: actions/checkout@v2
         with:

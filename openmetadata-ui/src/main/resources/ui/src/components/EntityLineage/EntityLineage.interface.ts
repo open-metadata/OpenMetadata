@@ -12,7 +12,8 @@
  */
 
 import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
-import { Edge as FlowEdge, Node } from 'reactflow';
+import { HTMLAttributes } from 'react';
+import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import {
@@ -42,6 +43,7 @@ export interface EntityLineageProp {
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
   onFullScreenClick?: () => void;
+  onExitFullScreenViewClick?: () => void;
 }
 
 export interface Edge {
@@ -112,4 +114,26 @@ export enum EdgeTypeEnum {
   UP_STREAM = 'upstream',
   DOWN_STREAM = 'downstream',
   NO_STREAM = '',
+}
+
+export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
+  showZoom?: boolean;
+  showFitView?: boolean;
+  fitViewParams?: FitViewOptions;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onFitView?: () => void;
+  handleFullScreenViewClick?: () => void;
+  onExitFullScreenViewClick?: () => void;
+  deleted: boolean | undefined;
+  isEditMode: boolean;
+  hasEditAccess: boolean | undefined;
+  isColumnsExpanded: boolean;
+  onEditLinageClick: () => void;
+  onExpandColumnClick: () => void;
+  loading: boolean;
+  status: LoadingState;
+  zoomValue: number;
+  lineageData: EntityLineage;
+  onOptionSelect: (value?: string) => void;
 }

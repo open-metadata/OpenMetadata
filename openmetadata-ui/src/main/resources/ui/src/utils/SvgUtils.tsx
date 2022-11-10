@@ -31,6 +31,7 @@ import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
+import IconArrowRight from '../assets/svg/arrow-right.svg';
 import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
@@ -61,6 +62,7 @@ import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
+import IconExitFullScreen from '../assets/svg/exit-full-screen.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
@@ -308,6 +310,7 @@ export const Icons = {
   SAMPLE_DATA_COLOR: 'sample-data-color',
   FITVEW: 'icon-fitview',
   FULL_SCREEN: 'icon-full-screen',
+  EXIT_FULL_SCREEN: 'icon-exit-full-screen',
   CONTROLPLUS: 'icon-control-plus',
   CONTROLMINUS: 'icon-control-minus',
   EDITLINEAGECOLOR: 'icon-edit-lineage-color',
@@ -317,6 +320,7 @@ export const Icons = {
   CIRCLE_CHECKBOX: 'icon-circle-checkbox',
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
+  ARROW_RIGHT: 'icon-arrow-right',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
   ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
@@ -831,6 +835,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconFullScreen;
 
       break;
+    case Icons.EXIT_FULL_SCREEN:
+      IconComponent = IconExitFullScreen;
+
+      break;
     case Icons.CONTROLPLUS:
       IconComponent = IconControlPlus;
 
@@ -857,6 +865,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ARROW_DOWN_PRIMARY:
       IconComponent = IconArrowDownPrimary;
+
+      break;
+    case Icons.ARROW_RIGHT:
+      IconComponent = IconArrowRight;
 
       break;
     case Icons.ARROW_RIGHT_PRIMARY:

@@ -199,6 +199,10 @@ jest.mock('../../utils/CommonUtils', () => ({
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
+jest.mock('', () => ({
+  ExecutionsTab: jest.fn().mockImplementation(() => <p>Executions</p>),
+}));
+
 describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
     const { container } = render(
@@ -230,13 +234,8 @@ describe('Test PipelineDetails component', () => {
       }
     );
     const taskDetail = await findByTestId(container, 'tasks-dag');
-    const pipelineStatus = await findByTestId(
-      container,
-      'pipeline-status-list'
-    );
 
     expect(taskDetail).toBeInTheDocument();
-    expect(pipelineStatus).toBeInTheDocument();
   });
 
   it('Should render no tasks data placeholder is tasks list is empty', async () => {
@@ -262,9 +261,21 @@ describe('Test PipelineDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is lineage', async () => {
+  it('should render execution tab if active tab is 3', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const executions = await findByText(container, 'Executions');
+
+    expect(executions).toBeInTheDocument();
+  });
+
+  it('Check if active tab is lineage', async () => {
+    const { container } = render(
+      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -276,7 +287,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
@@ -291,7 +302,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
