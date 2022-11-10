@@ -34,10 +34,8 @@ import {
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
-import {
-  DataInsightChartResult,
-  DataInsightChartType,
-} from '../../generated/dataInsight/dataInsightChartResult';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import {
   CustomTooltip,
@@ -51,32 +49,32 @@ interface Props {
   chartFilter: ChartFilter;
 }
 
-const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
-  const [totalEntitiesByType, setTotalEntitiesByType] =
-    useState<DataInsightChartResult>();
+const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter }) => {
+  const [pageViewsByEntities, setPageViewsByEntities] =
+    useState<PageViewsByEntities[]>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { data, entities, total } = useMemo(() => {
     return getGraphDataByEntityType(
-      totalEntitiesByType?.data ?? [],
-      DataInsightChartType.TotalEntitiesByType
+      pageViewsByEntities,
+      DataInsightChartType.PageViewsByEntities
     );
-  }, [totalEntitiesByType]);
+  }, [pageViewsByEntities]);
 
   const { t } = useTranslation();
 
-  const fetchTotalEntitiesByType = async () => {
+  const fetchPageViewsByEntities = async () => {
     setIsLoading(true);
     try {
       const params = {
         ...chartFilter,
-        dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
-        dataReportIndex: DataReportIndex.EntityReportDataIndex,
+        dataInsightChartName: DataInsightChartType.PageViewsByEntities,
+        dataReportIndex: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
       };
       const response = await getAggregateChartData(params);
 
-      setTotalEntitiesByType(response);
+      setPageViewsByEntities(response.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -85,21 +83,21 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
   };
 
   useEffect(() => {
-    fetchTotalEntitiesByType();
+    fetchPageViewsByEntities();
   }, [chartFilter]);
 
   return (
     <Card
       className="data-insight-card"
-      data-testid="entity-summary-card"
+      data-testid="entity-page-views-card"
       loading={isLoading}
       title={
         <>
           <Typography.Title level={5}>
-            {t('label.data-insight-total-entity-summary')}
+            {t('label.page-views-by-entities')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            {t('message.total-entity-insight')}
+            {t('message.data-insight-page-views')}
           </Typography.Text>
         </>
       }>
@@ -131,4 +129,4 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
   );
 };
 
-export default TotalEntityInsight;
+export default PageViewsByEntitiesChart;

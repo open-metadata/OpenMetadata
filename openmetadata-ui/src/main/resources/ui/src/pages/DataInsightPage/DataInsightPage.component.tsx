@@ -27,9 +27,11 @@ import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
 import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
+import PageViewsByEntitiesChart from '../../components/DataInsightDetail/PageViewsByEntitiesChart';
 import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
@@ -185,7 +187,7 @@ const DataInsightPage = () => {
           </Card>
         </Col>
         <Col span={24}>
-          <DataInsightSummary />
+          <DataInsightSummary chartFilter={chartFilter} />
         </Col>
         <Col span={24}>
           <Radio.Group
@@ -217,10 +219,16 @@ const DataInsightPage = () => {
         {activeTab === DATA_INSIGHT_TAB['Web Analytics'] && (
           <>
             <Col span={24}>
-              <TopViewEntities />
+              <TopViewEntities chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <TopActiveUsers />
+              <PageViewsByEntitiesChart chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <TopActiveUsers chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <DailyActiveUsersChart chartFilter={chartFilter} />
             </Col>
           </>
         )}
