@@ -161,6 +161,8 @@ test = {
     "pydomo~=0.3.0.5",
     # mock boto3 functions
     "moto==4.0.8",
+    # amundsen
+    "neo4j~=4.4.0",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
