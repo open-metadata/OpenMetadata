@@ -5,6 +5,7 @@ on:
 
 jobs:
   approval:
+    name: Approval
     runs-on: ubuntu-latest
     steps:
       - name: Echo
