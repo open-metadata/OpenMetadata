@@ -16,10 +16,18 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Space, Tabs } from 'antd';
+import { Card, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
-import { isNil, isNumber, lowerCase, noop, omit, toUpper } from 'lodash';
+import {
+  isNil,
+  isNumber,
+  lowerCase,
+  noop,
+  omit,
+  toLower,
+  toUpper,
+} from 'lodash';
 import { EntityType } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +51,7 @@ import {
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { Entities } from '../AddWebhook/WebhookConstants';
 import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
@@ -242,18 +251,18 @@ const Explore: React.FC<ExploreProps> = ({
   return (
     <PageLayoutV1
       leftPanel={
-        <div className="tw-h-full">
-          <Card data-testid="data-summary-container">
-            <FacetFilter
-              aggregations={searchResults?.aggregations}
-              filters={postFilter}
-              showDeleted={showDeleted}
-              onChangeShowDeleted={onChangeShowDeleted}
-              onClearFilter={handleFacetFilterClearFilter}
-              onSelectHandler={handleFacetFilterChange}
-            />
-          </Card>
-        </div>
+        <Card
+          className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
+          data-testid="data-summary-container">
+          <FacetFilter
+            aggregations={searchResults?.aggregations}
+            filters={postFilter}
+            showDeleted={showDeleted}
+            onChangeShowDeleted={onChangeShowDeleted}
+            onClearFilter={handleFacetFilterClearFilter}
+            onSelectHandler={handleFacetFilterChange}
+          />
+        </Card>
       }>
       <Tabs
         defaultActiveKey={defaultActiveTab}
@@ -293,6 +302,7 @@ const Explore: React.FC<ExploreProps> = ({
         }
         onChange={(tab) => {
           tab && onChangeSearchIndex(tab as ExploreSearchIndex);
+          setShowSummaryPanel(false);
         }}>
         {Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => (
           <Tabs.TabPane
@@ -314,46 +324,50 @@ const Explore: React.FC<ExploreProps> = ({
           />
         ))}
       </Tabs>
-      <Space>
-        <div
-          style={{
-            marginRight: showSummaryPanel ? '380px' : '',
-          }}>
-          <AdvancedSearch
-            jsonTree={advancedSearchJsonTree}
-            searchIndex={searchIndex}
-            onChangeJsonTree={(nTree) => onChangeAdvancedSearchJsonTree(nTree)}
-            onChangeQueryFilter={(nQueryFilter) =>
-              onChangeAdvancedSearchQueryFilter(nQueryFilter)
+      <div
+        style={{
+          marginRight: showSummaryPanel ? '390px' : '',
+        }}>
+        <AdvancedSearch
+          jsonTree={advancedSearchJsonTree}
+          searchIndex={searchIndex}
+          onChangeJsonTree={(nTree) => onChangeAdvancedSearchJsonTree(nTree)}
+          onChangeQueryFilter={(nQueryFilter) =>
+            onChangeAdvancedSearchQueryFilter(nQueryFilter)
+          }
+        />
+        {!loading ? (
+          <SearchedData
+            isFilterSelected
+            showResultCount
+            currentPage={page}
+            data={searchResults?.hits.hits ?? []}
+            handleSummaryPanelDisplay={
+              tab === toLower(Entities.table)
+                ? handleSummaryPanelDisplay
+                : undefined
             }
+            paginate={(value) => {
+              if (isNumber(value)) {
+                onChangePage(value);
+              } else if (!isNaN(Number.parseInt(value))) {
+                onChangePage(Number.parseInt(value));
+              }
+            }}
+            totalValue={searchResults?.hits.total.value ?? 0}
           />
-          {!loading ? (
-            <SearchedData
-              isFilterSelected
-              showResultCount
-              currentPage={page}
-              data={searchResults?.hits.hits ?? []}
-              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-              paginate={(value) => {
-                if (isNumber(value)) {
-                  onChangePage(value);
-                } else if (!isNaN(Number.parseInt(value))) {
-                  onChangePage(Number.parseInt(value));
-                }
-              }}
-              totalValue={searchResults?.hits.total.value ?? 0}
-            />
-          ) : (
-            <Loader />
-          )}
-        </div>
+        ) : (
+          <Loader />
+        )}
+      </div>
+      {tab === toLower(Entities.table) && (
         <EntitySummaryPanel
           entityDetails={entityDetails || ({} as Table)}
           handleClosePanel={handleClosePanel}
           overallSummery={overallSummery}
           showPanel={showSummaryPanel}
         />
-      </Space>
+      )}
     </PageLayoutV1>
   );
 };
