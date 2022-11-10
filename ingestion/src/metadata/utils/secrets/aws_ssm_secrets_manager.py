@@ -13,7 +13,7 @@
 Secrets manager implementation using AWS SSM Parameter Store
 """
 import traceback
-from typing import Any, Optional
+from typing import Optional
 
 from botocore.exceptions import ClientError
 
@@ -32,7 +32,7 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
     AWS SSM Parameter Store Secret Manager Class
     """
 
-    def __init__(self, credentials: Optional[Any]):
+    def __init__(self, credentials: Optional["AWSCredentials"]):
         super().__init__(credentials, "ssm", SecretsManagerProvider.aws)
 
     def get_string_value(self, secret_id: str) -> str:

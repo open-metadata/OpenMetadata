@@ -14,7 +14,6 @@ Secrets manager factory module
 """
 from typing import Any, Optional
 
-from metadata.clients.aws_client import AWSCredentials
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
@@ -35,8 +34,14 @@ class SecretsManagerFactory(metaclass=Singleton):
     def __init__(
         self,
         secrets_manager_provider: Optional[SecretsManagerProvider] = None,
-        credentials: Optional[Any] = None,
+        credentials: Optional["AWSCredentials"] = None,
     ):
+        """Here the concrete class object is no passed to avoid the creation of circular dependencies
+
+        :param secrets_manager_provider: the secrets' manager provider
+        :param credentials: optional credentials that could be required by the clients of the secrets' manager
+                            implementations
+        """
         self.secrets_manager = self._get_secrets_manager(
             secrets_manager_provider,
             credentials,
@@ -60,13 +65,9 @@ class SecretsManagerFactory(metaclass=Singleton):
         ):
             return NoopSecretsManager()
         if secrets_manager_provider == SecretsManagerProvider.aws:
-            return AWSSecretsManager(
-                AWSCredentials.parse_obj(credentials) if credentials else None
-            )
+            return AWSSecretsManager(credentials)
         if secrets_manager_provider == SecretsManagerProvider.aws_ssm:
-            return AWSSSMSecretsManager(
-                AWSCredentials.parse_obj(credentials) if credentials else None
-            )
+            return AWSSSMSecretsManager(credentials)
         raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
 
     def get_secrets_manager(self):

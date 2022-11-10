@@ -11,11 +11,10 @@
 """
 Module containing AWS Client
 """
-from typing import Any, Optional
+from typing import Any
 
 import boto3
 from boto3 import Session
-from pydantic import BaseModel, Extra, Field, SecretStr
 
 from metadata.clients.connection_clients import (
     DynamoClient,
@@ -30,33 +29,16 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-class AWSCredentials(BaseModel):
-    class Config:
-        extra = Extra.forbid
-
-    awsAccessKeyId: Optional[SecretStr] = Field(
-        None, description="AWS Access key ID.", title="AWS Access Key ID"
-    )
-    awsSecretAccessKey: Optional[SecretStr] = Field(
-        None, description="AWS Secret Access Key.", title="AWS Secret Access Key"
-    )
-    awsRegion: str = Field(..., description="AWS Region", title="AWS Region")
-    awsSessionToken: Optional[SecretStr] = Field(
-        None, description="AWS Session Token.", title="AWS Session Token"
-    )
-    endPointURL: Optional[str] = Field(
-        None, description="EndPoint URL for the AWS", title="Endpoint URL"
-    )
-
-
 class AWSClient:
     """
     AWSClient creates a boto3 Session client based on AWSCredentials.
     """
 
-    config: AWSCredentials
-
-    def __init__(self, config: Any):
+    def __init__(self, config: "AWSCredentials"):
+        # local import to avoid the creation of circular dependencies with CustomSecretStr
+        from metadata.generated.schema.security.credentials.awsCredentials import (  # pylint: disable=import-outside-toplevel
+            AWSCredentials,
+        )
 
         self.config = AWSCredentials.parse_obj(config) if config else config
 

@@ -13,7 +13,7 @@
 Abstract class for AWS based secrets manager implementations
 """
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
@@ -34,7 +34,7 @@ class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
 
     def __init__(
         self,
-        credentials: Optional[Any],
+        credentials: Optional["AWSCredentials"],
         client: str,
         provider: SecretsManagerProvider,
     ):
