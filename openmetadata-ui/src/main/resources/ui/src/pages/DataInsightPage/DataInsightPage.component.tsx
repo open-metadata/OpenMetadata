@@ -57,7 +57,7 @@ const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
 
 const DataInsightPage = () => {
   const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
-  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.Datasets);
+  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.DataAssets);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
 
@@ -200,7 +200,7 @@ const DataInsightPage = () => {
             onChange={(e) => setActiveTab(e.target.value)}
           />
         </Col>
-        {activeTab === DATA_INSIGHT_TAB.Datasets && (
+        {activeTab === DATA_INSIGHT_TAB.DataAssets && (
           <>
             <Col span={24}>
               <TotalEntityInsight chartFilter={chartFilter} />

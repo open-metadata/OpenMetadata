@@ -67,7 +67,7 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
 };
 
 export const DATA_INSIGHT_TAB = {
-  Datasets: 'Datasets',
+  DataAssets: 'Data assets',
   'Web Analytics': 'Web Analytics',
 };
 
