@@ -17,8 +17,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 
 public class WorkflowConfigBuilder {
-  public static OpenMetadataWorkflowConfig buildOMWorkflowConfig(
-      IngestionPipeline ingestionPipeline) throws IOException {
+  public static OpenMetadataWorkflowConfig buildOMWorkflowConfig(IngestionPipeline ingestionPipeline)
+      throws IOException {
 
     OpenMetadataWorkflowConfig workflowConfig;
 
@@ -42,8 +42,7 @@ public class WorkflowConfigBuilder {
         workflowConfig = buildDataInsightWorkflowConfig(ingestionPipeline);
         break;
       default:
-        throw new IllegalArgumentException(
-            "Not implemented pipeline type: " + ingestionPipeline.getPipelineType());
+        throw new IllegalArgumentException("Not implemented pipeline type: " + ingestionPipeline.getPipelineType());
     }
     return workflowConfig;
   }
@@ -58,9 +57,7 @@ public class WorkflowConfigBuilder {
   public static WorkflowConfig buildDefaultWorkflowConfig(IngestionPipeline ingestionPipeline) {
     WorkflowConfig workflowConfig = new WorkflowConfig();
     workflowConfig.setLoggerLevel(
-        ingestionPipeline.getLoggerLevel() != null
-            ? ingestionPipeline.getLoggerLevel()
-            : LogLevels.INFO);
+        ingestionPipeline.getLoggerLevel() != null ? ingestionPipeline.getLoggerLevel() : LogLevels.INFO);
     workflowConfig.setOpenMetadataServerConfig(ingestionPipeline.getOpenMetadataServerConnection());
     return workflowConfig;
   }
@@ -71,15 +68,14 @@ public class WorkflowConfigBuilder {
     source.setSourceConfig(ingestionPipeline.getSourceConfig());
 
     ServiceEntityInterface service =
-        Entity.getEntity(
-            ingestionPipeline.getService(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
+        Entity.getEntity(ingestionPipeline.getService(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
     source.setType(service.getServiceType().toString().toLowerCase());
 
     return source;
   }
 
-  public static OpenMetadataWorkflowConfig buildMetadataWorkflowConfig(
-      IngestionPipeline ingestionPipeline) throws IOException {
+  public static OpenMetadataWorkflowConfig buildMetadataWorkflowConfig(IngestionPipeline ingestionPipeline)
+      throws IOException {
     OpenMetadataWorkflowConfig config = new OpenMetadataWorkflowConfig();
 
     Source source = buildDefaultSource(ingestionPipeline);
@@ -93,28 +89,23 @@ public class WorkflowConfigBuilder {
     return config;
   }
 
-  public static OpenMetadataWorkflowConfig buildUsageWorkflowConfig(
-      IngestionPipeline ingestionPipeline) {
+  public static OpenMetadataWorkflowConfig buildUsageWorkflowConfig(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
-  public static OpenMetadataWorkflowConfig buildLineageWorkflowConfig(
-      IngestionPipeline ingestionPipeline) {
+  public static OpenMetadataWorkflowConfig buildLineageWorkflowConfig(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
-  public static OpenMetadataWorkflowConfig buildProfilerWorkflowConfig(
-      IngestionPipeline ingestionPipeline) {
+  public static OpenMetadataWorkflowConfig buildProfilerWorkflowConfig(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
-  public static OpenMetadataWorkflowConfig buildTestSuiteWorkflowConfig(
-      IngestionPipeline ingestionPipeline) {
+  public static OpenMetadataWorkflowConfig buildTestSuiteWorkflowConfig(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
-  public static OpenMetadataWorkflowConfig buildDataInsightWorkflowConfig(
-      IngestionPipeline ingestionPipeline) {
+  public static OpenMetadataWorkflowConfig buildDataInsightWorkflowConfig(IngestionPipeline ingestionPipeline) {
     return null;
   }
 

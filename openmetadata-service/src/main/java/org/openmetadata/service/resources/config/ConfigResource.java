@@ -105,9 +105,7 @@ public class ConfigResource {
             responseCode = "200",
             description = "Sandbox mode",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = SandboxConfiguration.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = SandboxConfiguration.class)))
       })
   public SandboxConfiguration getSandboxMode() {
     SandboxConfiguration sandboxConfiguration = new SandboxConfiguration();
@@ -174,10 +172,7 @@ public class ConfigResource {
         @ApiResponse(
             responseCode = "200",
             description = "JWKS public key",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = JWKSResponse.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWKSResponse.class)))
       })
   public JWKSResponse getJWKSResponse() {
     return jwtTokenGenerator.getJWKSResponse();

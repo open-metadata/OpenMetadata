@@ -7,13 +7,10 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfiguration;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
 
-  public MockPipelineServiceClient(
-      PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+  public MockPipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     super(pipelineServiceClientConfiguration);
   }
 
@@ -53,8 +50,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(
-      IngestionPipeline ingestionPipeline, String after) {
+  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
     return null;
   }
 

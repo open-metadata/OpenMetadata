@@ -33,8 +33,8 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
-import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfiguration;
+import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.secrets.SecretsManagerConfiguration;
 
 @Getter

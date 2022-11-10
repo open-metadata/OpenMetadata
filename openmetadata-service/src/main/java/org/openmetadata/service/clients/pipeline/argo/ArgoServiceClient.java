@@ -15,9 +15,9 @@ import org.openmetadata.schema.api.configuration.argo.ArgoConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientConfiguration;
+import org.openmetadata.service.exception.PipelineServiceClientException;
 
 public class ArgoServiceClient extends PipelineServiceClient {
 
@@ -38,8 +38,7 @@ public class ArgoServiceClient extends PipelineServiceClient {
     // k8s namespace will be the same as the cluster name to ensure uni
     this.namespace = clusterName;
 
-    this.workflowClient =
-        new WorkflowClient(this.serviceURL.toString(), this.token, this.namespace);
+    this.workflowClient = new WorkflowClient(this.serviceURL.toString(), this.token, this.namespace);
     this.apiInstance = new CronWorkflowServiceApi(this.workflowClient.client);
   }
 
@@ -58,8 +57,7 @@ public class ArgoServiceClient extends PipelineServiceClient {
     try {
 
       // https://github.com/open-metadata/OpenMetadata/issues/8587
-      IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow =
-          this.workflowClient.buildCronWorkflow(ingestionPipeline);
+      IoArgoprojWorkflowV1alpha1CronWorkflow cronWorkflow = this.workflowClient.buildCronWorkflow(ingestionPipeline);
 
       IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest cronWorkflowCreateRequest =
           new IoArgoprojWorkflowV1alpha1CreateCronWorkflowRequest();
@@ -75,20 +73,16 @@ public class ArgoServiceClient extends PipelineServiceClient {
     } catch (JsonProcessingException e) {
       throw new PipelineServiceClientException(
           String.format(
-              "%s Failed to build Ingestion Workflow due to %s",
-              ingestionPipeline.getName(), e.getMessage()));
+              "%s Failed to build Ingestion Workflow due to %s", ingestionPipeline.getName(), e.getMessage()));
     } catch (ApiException e) {
       throw new PipelineServiceClientException(
           String.format(
-              "%s Failed to deploy Ingestion Workflow due to %s",
-              ingestionPipeline.getName(), e.getMessage()));
+              "%s Failed to deploy Ingestion Workflow due to %s", ingestionPipeline.getName(), e.getMessage()));
     } catch (IOException e) {
       throw new PipelineServiceClientException(
           String.format(
               "%s Failed retrieving the service %s - %s",
-              ingestionPipeline.getName(),
-              ingestionPipeline.getService().getName(),
-              e.getMessage()));
+              ingestionPipeline.getName(), ingestionPipeline.getService().getName(), e.getMessage()));
     }
   }
 
@@ -113,8 +107,7 @@ public class ArgoServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(
-      IngestionPipeline ingestionPipeline, String after) {
+  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
     return null;
   }
 

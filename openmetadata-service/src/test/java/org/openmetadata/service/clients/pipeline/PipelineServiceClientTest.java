@@ -13,8 +13,7 @@ public class PipelineServiceClientTest {
 
   @BeforeAll
   static void setUp() {
-    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
-        new PipelineServiceClientConfiguration();
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
     pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
     pipelineServiceClientConfiguration.setMetadataApiEndpoint("http://localhost:8585/api");
 
@@ -31,8 +30,7 @@ public class PipelineServiceClientTest {
   public void testGetVersionFromStringRaises() {
     Exception exception =
         assertThrows(
-            PipelineServiceVersionException.class,
-            () -> mockPipelineServiceClient.getVersionFromString("random"));
+            PipelineServiceVersionException.class, () -> mockPipelineServiceClient.getVersionFromString("random"));
 
     String expectedMessage = "Cannot extract version x.y.z from random";
     String actualMessage = exception.getMessage();

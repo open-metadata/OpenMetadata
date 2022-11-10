@@ -10,8 +10,7 @@ public class PipelineServiceClientFactory {
 
   @Getter private static PipelineServiceClient pipelineServiceClient;
 
-  public static PipelineServiceClient createPipelineServiceClient(
-      OpenMetadataApplicationConfig config) {
+  public static PipelineServiceClient createPipelineServiceClient(OpenMetadataApplicationConfig config) {
     if (pipelineServiceClient != null) {
       return pipelineServiceClient;
     }
@@ -29,19 +28,15 @@ public class PipelineServiceClientFactory {
     switch (pipelineServiceClientProvider) {
       case AIRFLOW:
         pipelineServiceClient =
-            new AirflowRESTClient(
-                pipelineServiceClientConfiguration, config.getAirflowConfiguration());
+            new AirflowRESTClient(pipelineServiceClientConfiguration, config.getAirflowConfiguration());
         break;
       case ARGO:
         pipelineServiceClient =
             new ArgoServiceClient(
-                pipelineServiceClientConfiguration,
-                config.getArgoConfiguration(),
-                config.getClusterName());
+                pipelineServiceClientConfiguration, config.getArgoConfiguration(), config.getClusterName());
         break;
       default:
-        throw new IllegalArgumentException(
-            "Not implemented pipeline service client: " + pipelineServiceClientProvider);
+        throw new IllegalArgumentException("Not implemented pipeline service client: " + pipelineServiceClientProvider);
     }
     return pipelineServiceClient;
   }

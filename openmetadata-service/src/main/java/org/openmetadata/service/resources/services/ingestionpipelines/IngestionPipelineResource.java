@@ -51,11 +51,11 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -73,8 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "IngestionPipelines")
-public class IngestionPipelineResource
-    extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
+public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
@@ -94,8 +93,7 @@ public class IngestionPipelineResource
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
     this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            this.openMetadataApplicationConfig);
+        PipelineServiceClientFactory.createPipelineServiceClient(this.openMetadataApplicationConfig);
     dao.setPipelineServiceClient(pipelineServiceClient);
   }
 
@@ -123,9 +121,7 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "List of ingestion workflows",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public ResultList<IngestionPipeline> list(
       @Context UriInfo uriInfo,
@@ -140,22 +136,16 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string", example = "snowflakeWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(
-              description =
-                  "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(
-              description = "Returns list of ingestion before this cursor",
-              schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of ingestion before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(
-              description = "Returns list of ingestion after this cursor",
-              schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of ingestion after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -167,8 +157,7 @@ public class IngestionPipelineResource
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     ResultList<IngestionPipeline> ingestionPipelines =
-        super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
       if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
@@ -190,17 +179,12 @@ public class IngestionPipelineResource
         @ApiResponse(
             responseCode = "200",
             description = "List of IngestionPipeline versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = EntityHistory.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "IngestionPipeline Id", schema = @Schema(type = "string"))
-          @PathParam("id")
-          UUID id)
+      @Parameter(description = "IngestionPipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -217,12 +201,8 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "IngestionPipeline for instance {id} is not found")
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "IngestionPipeline for instance {id} is not found")
       })
   public IngestionPipeline get(
       @Context UriInfo uriInfo,
@@ -240,8 +220,7 @@ public class IngestionPipelineResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(dao.getLatestPipelineStatus(ingestionPipeline));
     }
@@ -260,19 +239,15 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "IngestionPipelines",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(
             responseCode = "404",
-            description =
-                "IngestionPipeline for instance {id} and version  " + "{version} is not found")
+            description = "IngestionPipeline for instance {id} and version  " + "{version} is not found")
       })
   public IngestionPipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id,
+      @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
               description = "Ingestion version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -294,9 +269,7 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "IngestionPipeline",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public IngestionPipeline getByName(
@@ -315,8 +288,7 @@ public class IngestionPipelineResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    IngestionPipeline ingestionPipeline =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    IngestionPipeline ingestionPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(dao.getLatestPipelineStatus(ingestionPipeline));
     }
@@ -334,18 +306,13 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "The Ingestion Pipeline",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateIngestionPipeline create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
-    IngestionPipeline ingestionPipeline =
-        getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
+    IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
     return response;
@@ -358,10 +325,7 @@ public class IngestionPipelineResource
       summary = "Update a IngestionPipeline",
       tags = "IngestionPipelines",
       description = "Update an existing IngestionPipeline using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
@@ -373,8 +337,7 @@ public class IngestionPipelineResource
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {
-                        @ExampleObject(
-                            "[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
       throws IOException {
@@ -388,25 +351,19 @@ public class IngestionPipelineResource
       operationId = "createOrUpdateIngestionPipeline",
       summary = "Create or update a IngestionPipeline",
       tags = "IngestionPipelines",
-      description =
-          "Create a new IngestionPipeline, if it does not exist or update an existing IngestionPipeline.",
+      description = "Create a new IngestionPipeline, if it does not exist or update an existing IngestionPipeline.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The IngestionPipeline",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateIngestionPipeline update)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
-    IngestionPipeline ingestionPipeline =
-        getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
+    IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
     return response;
@@ -423,14 +380,11 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public IngestionPipeline deployIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext)
-      throws IOException {
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
     ingestionPipeline.setOpenMetadataServerConnection(
@@ -453,14 +407,11 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public IngestionPipeline triggerIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext)
-      throws IOException {
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
     pipelineServiceClient.runPipeline(ingestionPipeline.getName());
@@ -480,14 +431,11 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response toggleIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext)
-      throws IOException {
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
@@ -501,8 +449,7 @@ public class IngestionPipelineResource
   @Path("/kill/{id}")
   @Operation(
       operationId = "killIngestionPipelineRuns",
-      summary =
-          "Mark as failed and kill any not-finished workflow or task for the IngestionPipeline",
+      summary = "Mark as failed and kill any not-finished workflow or task for the IngestionPipeline",
       tags = "IngestionPipelines",
       description = "Kill an ingestion pipeline by ID.",
       responses = {
@@ -510,16 +457,12 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response killIngestion(
-      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext)
-      throws IOException {
-    IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+      @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
+    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline);
     HttpResponse<String> response = pipelineServiceClient.killIngestion(ingestionPipeline);
     return Response.status(200, response.body()).build();
@@ -583,8 +526,7 @@ public class IngestionPipelineResource
             description = "Status message",
             content = @Content(mediaType = "application/json"))
       })
-  public Response getRESTStatus(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return pipelineServiceClient.getServiceStatus();
   }
 
@@ -606,8 +548,7 @@ public class IngestionPipelineResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id)
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
@@ -621,26 +562,20 @@ public class IngestionPipelineResource
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description =
-                "JSON object with the task instance name of the ingestion on each key and log in the value",
+            description = "JSON object with the task instance name of the ingestion on each key and log in the value",
             content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
       })
   public Response getLastIngestionLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id,
-      @Parameter(
-              description = "Returns log chunk after this cursor",
-              schema = @Schema(type = "string"))
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException {
-    IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
-    Map<String, String> lastIngestionLogs =
-        pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
+    Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
@@ -656,23 +591,18 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "Successfully updated the PipelineStatus. ",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public Response addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Encoded
-          @Parameter(
-              description = "fqn of the ingestion pipeline",
-              schema = @Schema(type = "string"))
+          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
@@ -692,14 +622,11 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "List of pipeline status",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public ResultList<PipelineStatus> listPipelineStatuses(
       @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
-          @PathParam("fqn")
+      @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn,
       @Parameter(
               description = "Filter pipeline status after the given start timestamp",
@@ -729,31 +656,23 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "Successfully updated state of the PipelineStatus.",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public PipelineStatus getPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Encoded
-          @Parameter(
-              description = "fqn of the ingestion pipeline",
-              schema = @Schema(type = "string"))
+          @Parameter(description = "fqn of the ingestion pipeline", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
-      @Parameter(description = "Pipeline Status Run Id", schema = @Schema(type = "string"))
-          @PathParam("id")
-          UUID runId)
+      @Parameter(description = "Pipeline Status Run Id", schema = @Schema(type = "string")) @PathParam("id") UUID runId)
       throws IOException {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getPipelineStatus(fqn, runId);
   }
 
-  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user)
-      throws IOException {
+  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataServerConnection openMetadataServerConnection =
         new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build();
     return copy(new IngestionPipeline(), create, user)
@@ -765,8 +684,7 @@ public class IngestionPipelineResource
         .withService(create.getService());
   }
 
-  private IngestionPipeline decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
+  private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       if (!secretsManager.isLocal()) { // TODO fix this correctly

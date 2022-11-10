@@ -20,15 +20,15 @@ import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.PipelineServiceVersionException;
 
 /**
- * Client to make API calls to add, deleted, and deploy pipelines on a PipelineService, such as
- * Airflow. Core abstractions are as follows:
+ * Client to make API calls to add, deleted, and deploy pipelines on a PipelineService, such as Airflow. Core
+ * abstractions are as follows:
  *
  * <ul>
  *   <li>A PipelineService is a service such as AirFlow to which a pipeline can be deployed
- *   <li>A Pipeline is a workflow for performing certain tasks. Example - ingestion pipeline is a
- *       workflow that connects to a database service or other services and collect metadata.
- *   <li>Pipeline uses `Connection` to a service as dependency. A Pipeline might need to connection
- *       to database service to collect metadata, OpenMetadata to user metadata over APIs, etc.
+ *   <li>A Pipeline is a workflow for performing certain tasks. Example - ingestion pipeline is a workflow that connects
+ *       to a database service or other services and collect metadata.
+ *   <li>Pipeline uses `Connection` to a service as dependency. A Pipeline might need to connection to database service
+ *       to collect metadata, OpenMetadata to user metadata over APIs, etc.
  * </ul>
  */
 public abstract class PipelineServiceClient {
@@ -50,8 +50,7 @@ public abstract class PipelineServiceClient {
     SERVER_VERSION = rawServerVersion;
   }
 
-  public PipelineServiceClient(
-      PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+  public PipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     this.hostIp = pipelineServiceClientConfiguration.getHostIp();
   }
 
@@ -84,8 +83,7 @@ public abstract class PipelineServiceClient {
           .findFirst()
           .orElseThrow(
               () ->
-                  new PipelineServiceVersionException(
-                      String.format("Cannot extract version x.y.z from %s", version)));
+                  new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
     } else {
       throw new PipelineServiceVersionException("Received version as null");
     }
@@ -103,8 +101,7 @@ public abstract class PipelineServiceClient {
         return Map.of("ip", this.hostIp);
       }
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage(
-          "Failed to get Pipeline Service host IP.", e.getMessage());
+      throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());
     }
   }
 
@@ -130,8 +127,7 @@ public abstract class PipelineServiceClient {
   public abstract IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract Map<String, String> getLastIngestionLogs(
-      IngestionPipeline ingestionPipeline, String after);
+  public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline);
