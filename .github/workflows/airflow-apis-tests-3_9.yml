@@ -33,6 +33,12 @@ jobs:
   airflow-apis-tests:
     runs-on: ubuntu-latest
     steps:
+    - name: Wait for approval
+      uses: lewagon/wait-on-check-action@master
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        check-name: 'Approval'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Checkout
       uses: actions/checkout@v2
