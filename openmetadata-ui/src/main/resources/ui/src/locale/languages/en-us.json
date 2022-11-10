@@ -223,7 +223,11 @@
     "target-column": "Target Column",
     "pipeline": "Pipeline",
     "function": "Function",
-    "edge-information": "Edge Information"
+    "edge-information": "Edge Information",
+    "collapse-all": "Collapse All",
+    "expand-all": "Expand All",
+    "search-lineage": "Search Lineage",
+    "edit-lineage": "Edit Lineage"
   },
   "message": {
     "service-email-required": "Service account Email is required",
