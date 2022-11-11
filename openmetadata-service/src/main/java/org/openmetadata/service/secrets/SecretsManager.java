@@ -18,14 +18,8 @@ import static java.util.Objects.isNull;
 import java.util.List;
 import java.util.Locale;
 import lombok.Getter;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.util.JsonUtils;
@@ -41,33 +35,8 @@ public abstract class SecretsManager {
     this.clusterPrefix = clusterPrefix;
   }
 
-  public boolean isLocal() {
-    return false;
-  }
-
   public abstract Object encryptOrDecryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt);
-
-  abstract Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt);
-
-  public void encryptOrDecryptDbtConfigSource(IngestionPipeline ingestionPipeline, boolean encrypt) {
-    encryptOrDecryptDbtConfigSource(ingestionPipeline, ingestionPipeline.getService(), encrypt);
-  }
-
-  public void encryptOrDecryptDbtConfigSource(
-      IngestionPipeline ingestionPipeline, EntityReference service, boolean encrypt) {
-    // DatabaseServiceMetadataPipeline contains dbtConfigSource and must be encrypted
-    if (service.getType().equals(Entity.DATABASE_SERVICE)
-        && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA)) {
-      DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
-          JsonUtils.convertValue(
-              ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
-      databaseServiceMetadataPipeline.setDbtConfigSource(
-          encryptOrDecryptDbtConfigSource(
-              databaseServiceMetadataPipeline.getDbtConfigSource(), service.getName(), encrypt));
-      ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
-    }
-  }
 
   protected String getSecretSeparator() {
     return "/";
@@ -102,12 +71,6 @@ public abstract class SecretsManager {
     // All package names must be lowercase per java naming convention
     return serviceType.value().toLowerCase(Locale.ROOT);
   }
-
-  public abstract Object storeTestConnectionObject(TestServiceConnection testServiceConnection);
-
-  public abstract Object encryptOrDecryptBotUserCredentials(String botUserName, Object securityConfig, boolean encrypt);
-
-  public abstract Object encryptOrDecryptBotCredentials(String botName, String botUserName, boolean encrypt);
 
   public void validateServiceConnection(Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {

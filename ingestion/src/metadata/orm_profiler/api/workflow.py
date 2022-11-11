@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
@@ -48,6 +51,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
@@ -515,24 +519,29 @@ class ProfilerWorkflow:
 
         :return:
         """
-        if not self._is_sample_source(self.config.source.type):
-            service_type: ServiceType = get_service_type_from_source_type(
-                self.config.source.type
-            )
-            service = self.metadata.get_by_name(
-                get_service_class_from_service_type(service_type),
-                self.config.source.serviceName,
-            )
-            if service:
-                self.config.source.serviceConnection = (
-                    self.metadata.secrets_manager_client.retrieve_service_connection(
-                        service, service_type.name.lower()
-                    )
+        service_type: ServiceType = get_service_type_from_source_type(
+            self.config.source.type
+        )
+        if self.config.source.serviceConnection:
+            service_name = self.config.source.serviceName
+            try:
+                service: ServiceWithConnectionType = cast(
+                    ServiceWithConnectionType,
+                    self.metadata.get_by_name(
+                        get_service_class_from_service_type(service_type),
+                        service_name,
+                    ),
                 )
-
-    @staticmethod
-    def _is_sample_source(service_type):
-        return service_type in {"sample-data", "sample-usage"}
+                if service:
+                    self.config.source.serviceConnection = ServiceConnection(
+                        __root__=service.connection
+                    )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting service connection for service name [{service_name}]"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
+                )
 
     def set_ingestion_pipeline_status(self, state: PipelineState):
         """
