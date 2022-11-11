@@ -133,6 +133,8 @@ site_menu:
     url: /deployment/security/enable-ssl/openmetadata-server
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
+  - category: Deployment / Enable Security / JWT Troubleshooting
+    url: /deployment/security/jwt-troubleshooting
 
   - category: Deployment / Enable Secrets Manager
     url: /deployment/secrets-manager

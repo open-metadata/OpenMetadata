@@ -1,0 +1,49 @@
+---
+title: JWT validation Troubleshooting
+slug: /deployment/security/jwt-troubleshooting
+---
+# JWT Troubleshooting
+
+Add the {domain}:{port}/config/jwks in the list of publicKeyUrls
+
+```yaml
+  authentication:
+    provider: "google"
+    publicKeys:
+    - "https://www.googleapis.com/oauth2/v3/certs"
+    - "http://localhost:8585/api/v1/config/jwks" (your domain and port)
+```
+
+This config with `"http://localhost:8585/api/v1/config/jwks"` is default behavior. if you configuring and expecting a jwt token to work, its important that config with that.
+
+JWT Tokens are issued by private certificates.
+
+We need public keys to decrypt it and get at the user name and expirty time etc from that token.
+
+In OpenMetadata users can enable SSO for users to login and use JWT tokens issued by OpenMetadata for bots
+The way OpenMetadata issues a JWT Token is using this [config](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml#L155). It uses the rsaprivateKeyPath file to generate a token.
+
+When the ingestion worfkflow uses this token , we use rsapublicKeyPath to decrypt it. The way we do this is using the response from this [endpoint](http://localhost:8585/api/v1/config/jwks).
+
+
+## Get JWT token from UI.
+
+First Open Open-Metadata UI than go to settings > Bots > Ingestion Bot
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/deployment/troubleshoot/jwt-token.png"
+  alt="jwt-token"
+  caption="jwt-token"
+/>
+</div>
+
+You can validate that in [jwt.io](https://jwt.io/). if there's something wrong on how the JWT token was generated.
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/deployment/troubleshoot/jwt-validation.png"
+  alt="jwt.io"
+  caption="jwt-validation"
+/>
+</div>
