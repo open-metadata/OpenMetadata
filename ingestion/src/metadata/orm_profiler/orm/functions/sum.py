@@ -31,9 +31,9 @@ class SumFn(GenericFunction):
 
 @compiles(SumFn)
 def _(element, compiler, **kw):
-    """Handle case for empty table. If empty, clickhouse returns NaN"""
+    """Cast to BIGINT to address overflow error from summing 32-bit int in most database dialects, #8430"""
     proc = compiler.process(element.clauses, **kw)
-    return f"SUM({proc})"
+    return f"SUM(CAST({proc} AS BIGINT))"
 
 
 @compiles(SumFn, Dialects.BigQuery)
@@ -41,3 +41,11 @@ def _(element, compiler, **kw):
     """Handle case where column type is INTEGER but SUM returns a NUMBER"""
     proc = compiler.process(element.clauses, **kw)
     return f"SUM(CAST({proc} AS NUMERIC))"
+
+
+@compiles(SumFn, Dialects.Snowflake)
+@compiles(SumFn, Dialects.Vertica)
+def _(element, compiler, **kw):
+    """These database types have all int types as alias for int64 so don't need a cast"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM({proc})"
