@@ -12,57 +12,63 @@
 """
 Secrets manager factory module
 """
-from typing import Optional, Union
+from typing import Any, Optional
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
+from metadata.utils.singleton import Singleton
 
 
-def get_secrets_manager_from_om_connection(
-    open_metadata_config: OpenMetadataConnection,
-    credentials: Optional[Union[AWSCredentials]] = None,
-) -> SecretsManager:
+class SecretsManagerFactory(metaclass=Singleton):
     """
-    Method to get the secrets manager based on the configuration passed in OpenMetadataConnection
-    :param open_metadata_config: the OpenMetadata connection configuration object
-    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations # pylint: disable=line-too-long
-    :return: a secrets manager
+    Singleton factory to initialize a secret manager. It will return always the same secret manager instance.
     """
-    return get_secrets_manager(
-        open_metadata_config.secretsManagerProvider,
-        open_metadata_config.clusterName,
-        credentials,
-    )
 
+    secrets_manager: SecretsManager
 
-def get_secrets_manager(
-    secrets_manager_provider: SecretsManagerProvider,
-    cluster_name: str,
-    credentials: Optional[Union[AWSCredentials]] = None,
-) -> SecretsManager:
-    """
-    Method to get the secrets manager based on the arguments passed
-    :param secrets_manager_provider: the secrets manager provider
-    :param cluster_name: the cluster name
-    :param credentials: optional credentials that could be required by the clients of the secrets manager implementations # pylint: disable=line-too-long
-    :return: a secrets manager
-    """
-    if (
-        secrets_manager_provider is None
-        or secrets_manager_provider == SecretsManagerProvider.noop
+    def __init__(
+        self,
+        secrets_manager_provider: Optional[SecretsManagerProvider] = None,
+        credentials: Optional["AWSCredentials"] = None,
     ):
-        return NoopSecretsManager(cluster_name)
-    if secrets_manager_provider == SecretsManagerProvider.aws:
-        return AWSSecretsManager(credentials, cluster_name)
-    if secrets_manager_provider == SecretsManagerProvider.aws_ssm:
-        return AWSSSMSecretsManager(credentials, cluster_name)
-    raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
+        """Here the concrete class object is no passed to avoid the creation of circular dependencies
+
+        :param secrets_manager_provider: the secrets' manager provider
+        :param credentials: optional credentials that could be required by the clients of the secrets' manager
+                            implementations
+        """
+        self.secrets_manager = self._get_secrets_manager(
+            secrets_manager_provider,
+            credentials,
+        )
+
+    def _get_secrets_manager(
+        self,
+        secrets_manager_provider: SecretsManagerProvider,
+        credentials: Any = None,
+    ) -> SecretsManager:
+        """
+        Method to get the secrets manager based on the arguments passed
+        :param secrets_manager_provider: the secrets' manager provider
+        :param credentials: optional credentials that could be required by the clients of the secrets' manager
+                            implementations
+        :return: a secrets manager
+        """
+        if (
+            secrets_manager_provider is None
+            or secrets_manager_provider == SecretsManagerProvider.noop
+        ):
+            return NoopSecretsManager()
+        if secrets_manager_provider == SecretsManagerProvider.aws:
+            return AWSSecretsManager(credentials)
+        if secrets_manager_provider == SecretsManagerProvider.aws_ssm:
+            return AWSSSMSecretsManager(credentials)
+        raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
+
+    def get_secrets_manager(self):
+        return self.secrets_manager

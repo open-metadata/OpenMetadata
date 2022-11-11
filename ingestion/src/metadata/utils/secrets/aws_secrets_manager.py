@@ -20,7 +20,6 @@ from botocore.exceptions import ClientError
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
@@ -33,28 +32,26 @@ class AWSSecretsManager(AWSBasedSecretsManager):
     Secrets Manager Implementation Class
     """
 
-    def __init__(self, credentials: Optional[AWSCredentials], cluster_prefix: str):
-        super().__init__(
-            credentials, "secretsmanager", SecretsManagerProvider.aws, cluster_prefix
-        )
+    def __init__(self, credentials: Optional["AWSCredentials"]):
+        super().__init__(credentials, "secretsmanager", SecretsManagerProvider.aws)
 
-    def get_string_value(self, name: str) -> str:
+    def get_string_value(self, secret_id: str) -> str:
         """
-        :param name: The secret name to retrieve. Current stage is always retrieved.
+        :param secret_id: The secret id to retrieve. Current stage is always retrieved.
         :return: The value of the secret. When the secret is a string, the value is
                  contained in the `SecretString` field. When the secret is bytes or not present,
                  it throws a `ValueError` exception.
         """
-        if name is None:
+        if secret_id is None:
             raise ValueError("[name] argument is None")
 
         try:
-            kwargs = {"SecretId": name}
+            kwargs = {"SecretId": secret_id}
             response = self.client.get_secret_value(**kwargs)
-            logger.debug("Got value for secret %s.", name)
+            logger.debug("Got value for secret %s.", secret_id)
         except ClientError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Couldn't get value for secret [{name}]: {err}")
+            logger.error(f"Couldn't get value for secret [{secret_id}]: {err}")
             raise err
         else:
             if "SecretString" in response:
@@ -64,5 +61,5 @@ class AWSSecretsManager(AWSBasedSecretsManager):
                     else None
                 )
             raise ValueError(
-                f"SecretString for secret [{name}] not present in the response."
+                f"SecretString for secret [{secret_id}] not present in the response."
             )

@@ -20,7 +20,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
-public abstract class AWSBasedSecretsManager extends ThirdPartySecretsManager {
+public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
 
   public static final String ACCESS_KEY_ID = "accessKeyId";
   public static final String SECRET_ACCESS_KEY = "secretAccessKey";

@@ -24,17 +24,25 @@ import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.services.ingestionPipelines.*;
-import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.util.*;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.PipelineServiceClient;
+import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ResultList;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
   private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
@@ -83,28 +91,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Don't store owner. Build it on the fly based on relationships
     ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
-    // encrypt config in case of local secret manager
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (secretsManager.isLocal()) {
-      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, service, true);
-      store(ingestionPipeline.getId(), ingestionPipeline, update);
-    } else if (service.getType().equals(Entity.DATABASE_SERVICE)
-        && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA)) {
-      // otherwise, nullify the config since it will be kept outside OM
-      DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
-          JsonUtils.convertValue(
-              ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
-      Object dbtConfigSource = databaseServiceMetadataPipeline.getDbtConfigSource();
-      databaseServiceMetadataPipeline.setDbtConfigSource(null);
-      ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
-      store(ingestionPipeline.getId(), ingestionPipeline, update);
-      // save config in the secret manager after storing the ingestion pipeline
-      databaseServiceMetadataPipeline.setDbtConfigSource(dbtConfigSource);
-      ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
-      secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, service, true);
-    } else {
-      store(ingestionPipeline.getId(), ingestionPipeline, update);
-    }
+    store(ingestionPipeline.getId(), ingestionPipeline, update);
 
     // Restore the relationships
     ingestionPipeline.withOwner(owner).withService(service);
@@ -214,24 +201,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
-    PipelineStatus pipelineStatus =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getLatestExtensionByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
-            PipelineStatus.class);
-    return pipelineStatus;
+    return JsonUtils.readValue(
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtensionByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
+        PipelineStatus.class);
   }
 
   public PipelineStatus getPipelineStatus(String ingestionPipelineFQN, UUID pipelineStatusRunId) throws IOException {
     IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
-    PipelineStatus pipelineStatus =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtension(ingestionPipeline.getFullyQualifiedName(), pipelineStatusRunId.toString()),
-            PipelineStatus.class);
-    return pipelineStatus;
+    return JsonUtils.readValue(
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getExtension(ingestionPipeline.getFullyQualifiedName(), pipelineStatusRunId.toString()),
+        PipelineStatus.class);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -251,13 +234,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateSourceConfig() throws JsonProcessingException {
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      secretsManager.encryptOrDecryptDbtConfigSource(original, false);
 
       JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));
       JSONObject updatedSourceConfig = new JSONObject(JsonUtils.pojoToJson(updated.getSourceConfig().getConfig()));
-
-      original.getSourceConfig().setConfig(null);
 
       if (!origSourceConfig.similar(updatedSourceConfig)) {
         recordChange("sourceConfig", "old-encrypted-value", "new-encrypted-value", true);
@@ -274,7 +253,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateOpenMetadataServerConnection(
         OpenMetadataServerConnection origConfig, OpenMetadataServerConnection updatedConfig)
         throws JsonProcessingException {
-      if (updatedConfig != null && !origConfig.equals(updatedConfig)) {
+
+      JSONObject origConfigJson = new JSONObject(JsonUtils.pojoToJson(origConfig));
+      JSONObject updatedConfigJson = new JSONObject(JsonUtils.pojoToJson(updatedConfig));
+
+      if (!origConfigJson.similar(updatedConfigJson)) {
         recordChange("openMetadataServerConnection", origConfig, updatedConfig);
       }
     }

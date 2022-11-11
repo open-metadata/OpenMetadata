@@ -49,11 +49,6 @@
     },
     "secretsManagerProvider": {
       "$ref": "../../../entity/services/connections/metadata/secretsManagerProvider.json"
-    },
-    "clusterName": {
-      "description": "Cluster name to differentiate OpenMetadata Server instance",
-      "type": "string",
-      "default": "openmetadata"
     }
   },
   "additionalProperties": false

@@ -13,7 +13,7 @@ Metadata DAG common functions
 """
 import json
 from datetime import datetime, timedelta
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 import airflow
 from airflow import DAG
@@ -104,9 +104,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         raise ClientInitializationError(f"Failed to initialize the client: {exc}")
 
     service_type = ingestion_pipeline.service.type
-    service: Optional[
-        Union[DatabaseService, MessagingService, PipelineService, DashboardService]
-    ] = None
 
     if service_type == "testSuite":
         service = metadata.get_by_name(

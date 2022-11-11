@@ -27,42 +27,50 @@ import { getConstraintIcon } from '../../utils/TableUtils';
 import { ModifiedColumn } from './EntityLineage.interface';
 
 const handleStyles: CSSProperties = {
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
+  width: '20%',
+  height: '100%',
+  borderRadius: '3px',
   position: 'absolute',
-  top: 15,
+  background: 'transparent',
+  border: 'none',
+};
+
+const leftHandleStyle: CSSProperties = {
+  ...handleStyles,
+  borderLeft: '5px solid #d9ceee',
+  left: -1,
+};
+
+const rightHandleStyle: CSSProperties = {
+  ...handleStyles,
+  borderRight: '5px solid #d9ceee',
+  right: -1,
 };
 
 const getHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
-  isNewNode = false,
   id?: string
 ) => {
   if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
-      <Fragment>
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Left}
-          style={handleStyles}
-          type="target"
-        />
-      </Fragment>
+      <Handle
+        id={id}
+        isConnectable={isConnectable}
+        position={Position.Left}
+        style={leftHandleStyle}
+        type="target"
+      />
     );
   } else if (nodeType === EntityLineageNodeType.INPUT) {
     return (
-      <Fragment>
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={handleStyles}
-          type="source"
-        />
-      </Fragment>
+      <Handle
+        id={id}
+        isConnectable={isConnectable}
+        position={Position.Right}
+        style={rightHandleStyle}
+        type="source"
+      />
     );
   } else if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
     return null;
@@ -73,22 +81,14 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={{
-            ...handleStyles,
-
-            top: isNewNode ? 13 : handleStyles.top,
-          }}
+          style={leftHandleStyle}
           type="target"
         />
         <Handle
           id={id}
           isConnectable={isConnectable}
           position={Position.Right}
-          style={{
-            ...handleStyles,
-
-            top: isNewNode ? 13 : handleStyles.top,
-          }}
+          style={rightHandleStyle}
           type="source"
         />
       </Fragment>
@@ -103,7 +103,6 @@ const CustomNode = (props: NodeProps) => {
   const {
     label,
     columns,
-    isNewNode,
     removeNodeHandler,
     handleColumnClick,
     isEditMode,
@@ -117,7 +116,7 @@ const CustomNode = (props: NodeProps) => {
   }, [isEditMode, isExpanded]);
 
   return (
-    <div className="nowheel">
+    <div className="nowheel custom-node">
       {/* Node label could be simple text or reactNode */}
       <div
         className={classNames(
@@ -128,7 +127,7 @@ const CustomNode = (props: NodeProps) => {
           { 'custom-node-header-tracing': isTraced }
         )}
         data-testid="node-label">
-        {getHandle(type, isConnectable, isNewNode)}
+        {getHandle(type, isConnectable)}
         {label}{' '}
         {selected && isEditMode
           ? getNodeRemoveButton(() => {
@@ -173,7 +172,6 @@ const CustomNode = (props: NodeProps) => {
                       {getHandle(
                         column.type,
                         isConnectable,
-                        isNewNode,
                         column.fullyQualifiedName
                       )}
                       {getConstraintIcon(column.constraint, 'tw-')}

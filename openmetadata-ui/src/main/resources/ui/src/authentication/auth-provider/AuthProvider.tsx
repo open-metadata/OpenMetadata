@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
@@ -64,6 +65,7 @@ import {
   getUserDataFromOidc,
   matchUserDetails,
 } from '../../utils/UserDataUtils';
+import { resetWebAnalyticSession } from '../../utils/WebAnalyticsUtils';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../authenticators/basic-auth.authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
@@ -113,11 +115,16 @@ export const AuthProvider = ({
   const onLoginHandler = () => {
     setLoading(true);
     authenticatorRef.current?.invokeLogin();
+
+    resetWebAnalyticSession();
   };
 
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
     authenticatorRef.current?.invokeLogout();
+
+    // remove analytics session on logout
+    removeSession();
     setLoading(false);
   }, [timeoutId]);
 

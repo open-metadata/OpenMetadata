@@ -48,7 +48,7 @@
               "$ref": "./connections/metadata/metadataESConnection.json"
             },
             {
-              "$ref": "./connections/metadata/openMetadataConnection.json"
+              "$ref": "./connections/metadata/openMetadataServerConnection.json"
             },
             {
               "$ref": "./connections/metadata/atlasConnection.json"

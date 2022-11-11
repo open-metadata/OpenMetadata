@@ -20,4 +20,6 @@ declare module '@analytics/session-utils' {
     extra = {},
     extend?: boolean
   ) => Session;
+
+  export const removeSession: () => void;
 }

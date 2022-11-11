@@ -20,7 +20,6 @@ from botocore.exceptions import ClientError
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
@@ -33,24 +32,24 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
     AWS SSM Parameter Store Secret Manager Class
     """
 
-    def __init__(self, credentials: Optional[AWSCredentials], cluster_prefix: str):
-        super().__init__(credentials, "ssm", SecretsManagerProvider.aws, cluster_prefix)
+    def __init__(self, credentials: Optional["AWSCredentials"]):
+        super().__init__(credentials, "ssm", SecretsManagerProvider.aws)
 
-    def get_string_value(self, name: str) -> str:
+    def get_string_value(self, secret_id: str) -> str:
         """
-        :param name: The parameter name to retrieve.
+        :param secret_id: The parameter name to retrieve.
         :return: The value of the parameter. When the parameter is not present, it throws a `ValueError` exception.
         """
-        if name is None:
+        if secret_id is None:
             raise ValueError("[name] argument is None")
 
         try:
-            kwargs = {"Name": name, "WithDecryption": True}
+            kwargs = {"Name": secret_id, "WithDecryption": True}
             response = self.client.get_parameter(**kwargs)
-            logger.debug("Got value for parameter %s.", name)
+            logger.debug("Got value for parameter %s.", secret_id)
         except ClientError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Couldn't get value for parameter [{name}]: {err}")
+            logger.error(f"Couldn't get value for parameter [{secret_id}]: {err}")
             raise err
         else:
             if "Parameter" in response and "Value" in response["Parameter"]:
@@ -60,5 +59,5 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
                     else None
                 )
             raise ValueError(
-                f"Parameter for parameter name [{name}] not present in the response."
+                f"Parameter for parameter name [{secret_id}] not present in the response."
             )

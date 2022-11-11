@@ -25,6 +25,10 @@
         "value": {
           "description": "value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.",
           "type": "string"
+        },
+        "targetMet": {
+          "description": "whether the target value was met or not.",
+          "type": "boolean"
         }
       },
       "required": ["name", "value"],
@@ -38,6 +42,10 @@
         "timestamp": {
           "description": "Data one which result is updated",
           "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "kpiFqn": {
+          "description": "KPI FQN",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "targetResult": {
           "description": "Metric and their corresponding current results",
