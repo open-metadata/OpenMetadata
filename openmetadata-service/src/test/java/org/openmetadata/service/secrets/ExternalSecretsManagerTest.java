@@ -28,9 +28,6 @@ import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvi
 @ExtendWith(MockitoExtension.class)
 public abstract class ExternalSecretsManagerTest {
 
-  static final boolean ENCRYPT = true;
-  static final String AUTH_PROVIDER_SECRET_ID_PREFIX = "auth-provider";
-  static final String TEST_CONNECTION_SECRET_ID_PREFIX = "test-connection-temp";
   static final boolean DECRYPT = false;
   static final String EXPECTED_CONNECTION_JSON =
       "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"password\":\"openmetadata-test\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true,\"supportsQueryComment\":true}";
