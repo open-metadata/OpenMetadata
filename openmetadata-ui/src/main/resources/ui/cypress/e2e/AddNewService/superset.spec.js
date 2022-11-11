@@ -77,11 +77,11 @@ describe('Superset Ingestion', () => {
     editOwnerforCreatedService(
       SERVICE_TYPE.Dashboard,
       serviceName,
-      API_SERVICE.dashboardServiecs
+      API_SERVICE.dashboardServices
     );
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName, API_SERVICE.dashboardServiecs);
+    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName, API_SERVICE.dashboardServices);
   });
 });

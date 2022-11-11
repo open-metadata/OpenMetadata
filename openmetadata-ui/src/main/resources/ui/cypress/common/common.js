@@ -274,10 +274,11 @@ export const deleteCreatedService = (typeOfService, service_Name, apiService) =>
     verifyResponseStatusCode('@deleteService', 200);
     //Checking if the service got deleted successfully
     //Click on settings page
+    interceptURL('GET', '/api/v1/teams/name/Organization?fields=users,owns,defaultRoles,policies,owner,parents,childrenCount&include=all', 'getSettingsPage') 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-
+    verifyResponseStatusCode('@getSettingsPage', 200)
     // Services page
-    cy.get('.ant-menu-title-content')
+    cy.get('[data-testid="settings-left-panel"]')
         .contains(typeOfService)
         .should('be.visible')
         .click();
