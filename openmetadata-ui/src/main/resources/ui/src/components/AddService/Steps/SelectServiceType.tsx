@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   excludedService,
   serviceTypes,
@@ -63,6 +63,17 @@ const SelectServiceType = ({
     );
   }, [serviceCategory]);
 
+  const filteredConnectors = useMemo(
+    () =>
+      selectedConnectors.filter(
+        (connectorType) =>
+          !excludedService.includes(
+            connectorType as MlModelServiceType | MetadataServiceType
+          )
+      ),
+    [selectedConnectors]
+  );
+
   return (
     <div>
       <Field>
@@ -98,42 +109,32 @@ const SelectServiceType = ({
           <div
             className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
             data-testid="select-service">
-            {selectedConnectors
-              .filter(
-                (connectorType) =>
-                  !excludedService.includes(
-                    connectorType as MlModelServiceType | MetadataServiceType
-                  )
-              )
-              .map((type) => (
-                <div
-                  className={classNames(
-                    'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
-                    {
-                      'tw-border-primary': type === selectServiceType,
-                    }
-                  )}
-                  data-testid={type}
-                  key={type}
-                  onClick={() => handleServiceTypeClick(type)}>
-                  <div className="tw-mb-2.5">
-                    <div data-testid="service-icon">
-                      {getServiceLogo(type || '', 'tw-h-9')}
-                    </div>
-                    <div className="tw-absolute tw-top-0 tw-right-1.5">
-                      {type === selectServiceType && (
-                        <SVGIcons
-                          alt="checkbox"
-                          icon={Icons.CHECKBOX_PRIMARY}
-                        />
-                      )}
-                    </div>
+            {filteredConnectors.map((type) => (
+              <div
+                className={classNames(
+                  'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
+                  {
+                    'tw-border-primary': type === selectServiceType,
+                  }
+                )}
+                data-testid={type}
+                key={type}
+                onClick={() => handleServiceTypeClick(type)}>
+                <div className="tw-mb-2.5">
+                  <div data-testid="service-icon">
+                    {getServiceLogo(type || '', 'tw-h-9')}
                   </div>
-                  <p className="break-word text-center">
-                    {type.includes('Custom') ? startCase(type) : type}
-                  </p>
+                  <div className="tw-absolute tw-top-0 tw-right-1.5">
+                    {type === selectServiceType && (
+                      <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
+                    )}
+                  </div>
                 </div>
-              ))}
+                <p className="break-word text-center">
+                  {type.includes('Custom') ? startCase(type) : type}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
         {showError && errorMsg('Service is required')}
