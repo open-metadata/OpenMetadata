@@ -16,6 +16,7 @@ import { Button, Dropdown, Menu, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, { FC, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -59,6 +60,7 @@ const ManageButton: FC<Props> = ({
   onRestoreEntity,
   deleted,
 }) => {
+  const { t } = useTranslation();
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -85,11 +87,12 @@ const ManageButton: FC<Props> = ({
                   <p
                     className="tw-font-medium"
                     data-testid="delete-button-title">
-                    Delete
+                    {t('label.delete')}
                   </p>
                   <p className="tw-text-grey-muted tw-text-xs">
-                    Deleting this {entityType} will permanently remove its
-                    metadata from OpenMetadata.
+                    {t('message.delete-action-description', {
+                      entityType,
+                    })}
                   </p>
                 </div>
               </Space>
@@ -121,11 +124,12 @@ const ManageButton: FC<Props> = ({
                         <p
                           className="tw-font-medium"
                           data-testid="delete-button-title">
-                          Restore
+                          {t('label.restore')}
                         </p>
                         <p className="tw-text-grey-muted tw-text-xs">
-                          Restoring this {entityType} will restore its metadata
-                          in OpenMetadata.
+                          {t('message.restore-action-description', {
+                            entityType,
+                          })}
                         </p>
                       </div>
                     </Space>
@@ -155,10 +159,11 @@ const ManageButton: FC<Props> = ({
                     <div
                       className="tw-text-left"
                       data-testid="announcement-button">
-                      <p className="tw-font-medium">Announcements</p>
+                      <p className="tw-font-medium">
+                        {t('label.announcements')}
+                      </p>
                       <p className="tw-text-grey-muted tw-text-xs">
-                        Set up banners to inform your team of upcoming
-                        maintenance, updates, &amp; deletions.
+                        {t('message.announcement-action-description')}
                       </p>
                     </div>
                   </Space>

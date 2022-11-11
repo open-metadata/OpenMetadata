@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { EntityReference, RestoreEntities } from 'Models';
+import { EntityReference, RestoreEntitiesRequestType } from 'Models';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
@@ -121,7 +121,7 @@ export const patchDashboardDetails = async (id: string, data: Operation[]) => {
 
 export const restoreDashboard = async (id: string) => {
   const response = await APIClient.put<
-    RestoreEntities,
+    RestoreEntitiesRequestType,
     AxiosResponse<Dashboard>
   >('/dashboards/restore', { id });
 

@@ -34,7 +34,7 @@ declare module 'Models' {
     type: string;
   }
 
-  export interface RestoreEntities {
+  export interface RestoreEntitiesRequestType {
     id: string;
   }
 
