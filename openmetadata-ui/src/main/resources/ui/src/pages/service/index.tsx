@@ -85,6 +85,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -987,28 +988,31 @@ const ServicePage: FunctionComponent = () => {
                   className="tw-justify-between"
                   style={{ width: '100%' }}>
                   <TitleBreadcrumb titleLinks={slashedTableName} />
-                  <Tooltip
-                    title={
-                      servicePermission.Delete
-                        ? 'Delete'
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <LegacyButton
-                      data-testid="service-delete"
-                      disabled={!servicePermission.Delete}
-                      size="small"
-                      theme="primary"
-                      variant="outlined"
-                      onClick={handleDelete}>
-                      <IcDeleteColored
-                        className="tw-mr-1.5"
-                        height={14}
-                        viewBox="0 0 24 24"
-                        width={14}
-                      />
-                      Delete
-                    </LegacyButton>
-                  </Tooltip>
+                  {serviceDetails?.serviceType !==
+                    MetadataServiceType.OpenMetadataServer && (
+                    <Tooltip
+                      title={
+                        servicePermission.Delete
+                          ? 'Delete'
+                          : NO_PERMISSION_FOR_ACTION
+                      }>
+                      <LegacyButton
+                        data-testid="service-delete"
+                        disabled={!servicePermission.Delete}
+                        size="small"
+                        theme="primary"
+                        variant="outlined"
+                        onClick={handleDelete}>
+                        <IcDeleteColored
+                          className="tw-mr-1.5"
+                          height={14}
+                          viewBox="0 0 24 24"
+                          width={14}
+                        />
+                        Delete
+                      </LegacyButton>
+                    </Tooltip>
+                  )}
                   <DeleteWidgetModal
                     isRecursiveDelete
                     allowSoftDelete={false}
