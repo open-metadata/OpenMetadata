@@ -172,7 +172,6 @@ class DagsterSource(PipelineServiceSource):
             category_name=CreateTagCategoryRequest(
                 name="DagsterTags",
                 description="Tags associated with dagster",
-                categoryType="Descriptive",
             ),
             category_details=CreateTagRequest(
                 name=self.context.repository_name, description="Dagster Tag"

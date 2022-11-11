@@ -13,21 +13,6 @@
       "minLength": 2,
       "maxLength": 64
     },
-    "tagCategoryType": {
-      "description": "Type of tag category.",
-      "type": "string",
-      "enum": ["Descriptive", "Classification"],
-      "javaEnums": [
-        {
-          "name": "Descriptive",
-          "description": "Tag category used for describing an entity. Example - column is of of type User.Address."
-        },
-        {
-          "name": "Classification",
-          "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitive."
-        }
-      ]
-    },
     "tag": {
       "javaType": "org.openmetadata.schema.entity.tags.Tag",
       "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -99,6 +84,11 @@
         "disabled" : {
           "description": "System tags can't be deleted. Use this flag to disable them.",
           "type": "boolean"
+        },
+        "mutuallyExclusive" : {
+          "description" : "Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
+          "type" : "boolean",
+          "default" : "false"
         }
       },
       "required": ["name", "description"],
@@ -137,9 +127,6 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "categoryType": {
-      "$ref": "#/definitions/tagCategoryType"
-    },
     "href": {
       "description": "Link to the resource corresponding to the tag category.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -170,8 +157,13 @@
     "disabled" : {
       "description": "System tag categories can't be deleted. Use this flag to disable them.",
       "type": "boolean"
+    },
+    "mutuallyExclusive" : {
+      "description" : "Tags under this category are mutually exclusive. When mutually exclusive is `true` the tags from this category are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this category are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously. ** Note when a tag category is marked mutually exclusive, all the tag groups under it are also mutually exclusive.",
+      "type" : "boolean",
+      "default" : "false"
     }
   },
-  "required": ["name", "description", "categoryType"],
+  "required": ["name", "description"],
   "additionalProperties": false
 }

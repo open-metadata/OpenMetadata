@@ -131,7 +131,6 @@ const mockTagList = [
     id: 'tagCatId1',
     name: 'TagCat1',
     description: '',
-    categoryType: 'Classification',
     children: [
       {
         id: 'tagId1',
@@ -147,7 +146,6 @@ const mockTagList = [
     id: 'tagCatId2',
     name: 'TagCat2',
     description: '',
-    categoryType: 'Classification',
     children: [
       {
         id: 'tagId2',

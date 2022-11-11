@@ -22,7 +22,6 @@ export type Tag = {
 export type TagsCategory = {
   name: string;
   description: string;
-  categoryType?: string;
   children?: Array<Tag>;
   href?: string;
   usageCount?: number;

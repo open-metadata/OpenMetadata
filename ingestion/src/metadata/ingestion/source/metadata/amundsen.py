@@ -251,7 +251,6 @@ class AmundsenSource(Source[Entity]):
                 category_name=CreateTagCategoryRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(
                     name=tag, description="Amundsen Table Tag"
@@ -351,7 +350,6 @@ class AmundsenSource(Source[Entity]):
                 category_name=CreateTagCategoryRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(
                     name=AMUNDSEN_TABLE_TAG, description="Amundsen Table Tag"
@@ -362,7 +360,6 @@ class AmundsenSource(Source[Entity]):
                 category_name=CreateTagCategoryRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(
                     name=table["cluster"], description="Amundsen Cluster Tag"
