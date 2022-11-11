@@ -24,7 +24,7 @@ import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.model.OktaSSOConfig;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.client.security.interfaces.OktaAccessTokenApi;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
 public class OktaAuthenticationProvider implements AuthenticationProvider {
@@ -32,8 +32,8 @@ public class OktaAuthenticationProvider implements AuthenticationProvider {
   private Long expirationTimeMillis;
   private final OktaAccessTokenApi oktaSSOClient;
 
-  public OktaAuthenticationProvider(OpenMetadataServerConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.OKTA)) {
+  public OktaAuthenticationProvider(OpenMetadataConnection iConfig) {
+    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.OKTA)) {
       LOG.error("Required type to invoke is OKTA for OKTA Authentication Provider");
       throw new RuntimeException("Required type to invoke is OKTA for OKTA Authentication Provider");
     }
@@ -54,7 +54,7 @@ public class OktaAuthenticationProvider implements AuthenticationProvider {
   }
 
   @Override
-  public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
+  public AuthenticationProvider create(OpenMetadataConnection iConfig) {
     return new OktaAuthenticationProvider(iConfig);
   }
 

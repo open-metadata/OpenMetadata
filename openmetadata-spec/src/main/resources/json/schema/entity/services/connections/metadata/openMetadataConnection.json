@@ -1,16 +1,23 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/openMetadataServerConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/openMetadataConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OpenMetadataServerConnection",
+  "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection",
   "definitions": {
     "openmetadataType": {
       "description": "OpenMetadata service type",
       "type": "string",
-      "enum": ["OpenMetadataServer"],
-      "default": "OpenMetadataServer"
+      "enum": ["OpenMetadata"],
+      "default": "OpenMetadata"
+    },
+    "componentConfig": {
+      "description": "key/value pairs to pass to sink component.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "properties": {
@@ -22,7 +29,7 @@
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/openmetadataType",
-      "default": "OpenMetadataServer"
+      "default": "OpenMetadata"
     },
     "hostPort": {
       "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
@@ -182,7 +189,19 @@
       "default": false
     },
     "elasticsSearch": {
-      "$ref": "../../../../metadataIngestion/workflow.json#/definitions/sink"
+      "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of sink component ex: metadata",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
     },
     "supportMetadataToElasticSearchExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataToElasticSearchExtraction"
