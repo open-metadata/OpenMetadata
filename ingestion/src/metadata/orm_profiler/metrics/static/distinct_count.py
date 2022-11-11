@@ -17,6 +17,9 @@ Distinct Count Metric definition
 from sqlalchemy import column, distinct, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 
 class DistinctCount(StaticMetric):
@@ -37,3 +40,13 @@ class DistinctCount(StaticMetric):
     @_label
     def fn(self):
         return func.count(distinct(column(self.col.name)))
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        try:
+            return data_frame[self.col.name.__root__].dropna().nunique()
+        except Exception as err:
+            logger.debug(
+                f"Don't know how to process type {self.col.dataType.value} when computing Distinct Count.\n Error: {err}"
+            )
+            return None

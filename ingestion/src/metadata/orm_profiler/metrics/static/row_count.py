@@ -14,6 +14,7 @@ Table Count Metric definition
 """
 # pylint: disable=duplicate-code
 
+import pandas as pd
 from sqlalchemy import func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -44,3 +45,7 @@ class RowCount(StaticMetric):
     @_label
     def fn(self):
         return func.count()
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        return len(data_frame.index)

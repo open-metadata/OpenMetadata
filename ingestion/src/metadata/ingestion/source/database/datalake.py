@@ -298,9 +298,13 @@ class DatalakeSource(DatabaseServiceSource):
         try:
             table_constraints = None
             if isinstance(self.service_connection.configSource, GCSConfig):
-                data_frame = self.get_gcs_files(key=table_name, bucket_name=schema_name)
+                data_frame = self.get_gcs_files(
+                    client=self.client, key=table_name, bucket_name=schema_name
+                )
             if isinstance(self.service_connection.configSource, S3Config):
-                data_frame = self.get_s3_files(key=table_name, bucket_name=schema_name)
+                data_frame = self.get_s3_files(
+                    client=self.client, key=table_name, bucket_name=schema_name
+                )
             if not data_frame.empty:
                 columns = self.get_columns(data_frame)
                 table_request = CreateTableRequest(
@@ -316,22 +320,22 @@ class DatalakeSource(DatabaseServiceSource):
                 )
                 yield table_request
                 self.register_record(table_request=table_request)
-
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
-    def get_gcs_files(self, key, bucket_name):
+    @staticmethod
+    def get_gcs_files(client, key, bucket_name, sample_size: int = None):
         try:
             if key.endswith(".csv"):
-                return read_csv_from_gcs(key, bucket_name)
+                return read_csv_from_gcs(key, bucket_name, sample_size)
 
             if key.endswith(".tsv"):
-                return read_tsv_from_gcs(key, bucket_name)
+                return read_tsv_from_gcs(key, bucket_name, sample_size)
 
             if key.endswith(".json"):
-                return read_json_from_gcs(self.client, key, bucket_name)
+                return read_json_from_gcs(client, key, bucket_name, sample_size)
 
             if key.endswith(".parquet"):
                 return read_parquet_from_gcs(key, bucket_name)
@@ -343,19 +347,20 @@ class DatalakeSource(DatabaseServiceSource):
             )
         return None
 
-    def get_s3_files(self, key, bucket_name):
+    @staticmethod
+    def get_s3_files(client, key, bucket_name , sample_size: int = None):
         try:
             if key.endswith(".csv"):
-                return read_csv_from_s3(self.client, key, bucket_name)
+                return read_csv_from_s3(client, key, bucket_name, sample_size)
 
             if key.endswith(".tsv"):
-                return read_tsv_from_s3(self.client, key, bucket_name)
+                return read_tsv_from_s3(client, key, bucket_name, sample_size)
 
             if key.endswith(".json"):
-                return read_json_from_s3(self.client, key, bucket_name)
+                return read_json_from_s3(client, key, bucket_name, sample_size)
 
             if key.endswith(".parquet"):
-                return read_parquet_from_s3(self.client, key, bucket_name)
+                return read_parquet_from_s3(client, key, bucket_name)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -364,23 +369,8 @@ class DatalakeSource(DatabaseServiceSource):
             )
         return None
 
-    def fetch_sample_data(self, data_frame, table: str) -> Optional[TableData]:
-        try:
-            cols = []
-            table_columns = self.get_columns(data_frame)
-
-            for col in table_columns:
-                cols.append(col.name.__root__)
-            table_rows = data_frame.values.tolist()
-
-            return TableData(columns=cols, rows=table_rows)
-        # Catch any errors and continue the ingestion
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch sample data for {table}: {exc}")
-        return None
-
-    def get_columns(self, data_frame):
+    @staticmethod
+    def get_columns(data_frame):
         """
         method to process column details
         """
@@ -407,6 +397,22 @@ class DatalakeSource(DatabaseServiceSource):
                     logger.warning(
                         f"Unexpected exception parsing column [{column}]: {exc}"
                     )
+
+    def fetch_sample_data(self, data_frame, table: str) -> Optional[TableData]:
+        try:
+            cols = []
+            table_columns = self.get_columns(data_frame)
+
+            for col in table_columns:
+                cols.append(col.name.__root__)
+            table_rows = data_frame.values.tolist()
+
+            return TableData(columns=cols, rows=table_rows)
+        # Catch any errors and continue the ingestion
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch sample data for {table}: {exc}")
+        return None
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []

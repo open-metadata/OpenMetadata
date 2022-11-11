@@ -14,11 +14,12 @@ MAX_LENGTH Metric definition
 """
 # pylint: disable=duplicate-code
 
+import pandas as pd
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
-from metadata.orm_profiler.orm.registry import is_concatenable
+from metadata.orm_profiler.orm.registry import CONCATENABLE_DICT, is_concatenable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -51,3 +52,23 @@ class MaxLength(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )
         return None
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        if self.col.dataType in CONCATENABLE_DICT:
+            return (
+                pd.DataFrame(
+                    [
+                        len(concatenable_data)
+                        if concatenable_data and not isinstance(concatenable_data, float)
+                        else concatenable_data
+                        for concatenable_data in data_frame[self.col.name.__root__].dropna()
+                    ]
+                )
+                .max()
+                .values
+            )[0]
+        logger.debug(
+            f"Don't know how to process type {self.col.dataType} when computing MAX_LENGTH"
+        )
+        return 0

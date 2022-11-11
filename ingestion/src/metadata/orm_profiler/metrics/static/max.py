@@ -17,7 +17,11 @@ Max Metric definition
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.orm_profiler.orm.registry import is_date_time, is_quantifiable
+from metadata.orm_profiler.orm.registry import (
+    QUANTIFIABLE_DICT,
+    is_date_time,
+    is_quantifiable,
+)
 
 
 class Max(StaticMetric):
@@ -36,3 +40,9 @@ class Max(StaticMetric):
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
         return func.max(column(self.col.name))
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        if self.col.dataType in QUANTIFIABLE_DICT:
+            return data_frame[self.col.name.__root__].max().tolist()
+        return 0

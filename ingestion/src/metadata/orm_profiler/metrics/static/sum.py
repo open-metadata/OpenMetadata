@@ -18,7 +18,7 @@ from sqlalchemy import column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.sum import SumFn
-from metadata.orm_profiler.orm.registry import is_quantifiable
+from metadata.orm_profiler.orm.registry import QUANTIFIABLE_DICT, is_quantifiable
 
 
 class Sum(StaticMetric):
@@ -39,4 +39,10 @@ class Sum(StaticMetric):
         if is_quantifiable(self.col.type):
             return SumFn(column(self.col.name))
 
+        return None
+
+    @_label
+    def dl_fn(self, data_frame):
+        if self.col.dataType in QUANTIFIABLE_DICT:
+            return data_frame[self.col.name.__root__].dropna().sum().tolist()
         return None

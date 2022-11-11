@@ -18,7 +18,13 @@ from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
+from metadata.clients.connection_clients import DatalakeClient
 from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    GCSConfig,
+    S3Config,
+)
+from metadata.ingestion.source.database.datalake import DatalakeSource
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects
@@ -35,7 +41,7 @@ class Sampler:
 
     def __init__(
         self,
-        session: Session,
+        session: Optional[Session],
         table: DeclarativeMeta,
         profile_sample: Optional[float] = None,
         partition_details: Optional[Dict] = None,
@@ -46,8 +52,8 @@ class Sampler:
         self.table = table
         self._partition_details = partition_details
         self._profile_sample_query = profile_sample_query
-
         self.sample_limit = 100
+        self._sample_rows = None
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
@@ -89,9 +95,9 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sqa_sample_data(self) -> TableData:
         """
-        Use the sampler to retrieve 100 sample data rows
+        Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
         """
         if self._profile_sample_query:
@@ -112,6 +118,28 @@ class Sampler:
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
         )
+
+    def fetch_dl_sample_data(self, configSource) -> TableData:
+        if isinstance(configSource, GCSConfig):
+            data_frame = DatalakeSource.get_gcs_files(
+                client=self.session,
+                key=self.table.name.__root__,
+                bucket_name=self.table.databaseSchema.name,
+                sample_size=self.sample_limit
+            )
+        if isinstance(configSource, S3Config):
+            data_frame = DatalakeSource.get_s3_files(
+                client=self.session,
+                key=self.table.name.__root__,
+                bucket_name=self.table.databaseSchema.name,
+                sample_size=self.sample_limit
+            )
+        cols = []
+        table_columns = DatalakeSource.get_columns(data_frame=data_frame)
+        for col in table_columns:
+            cols.append(col.name.__root__)
+        self._sample_rows = data_frame.dropna().values.tolist()
+        return TableData(columns=cols, rows=self._sample_rows), data_frame
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""

@@ -19,7 +19,11 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.orm_profiler.orm.registry import Dialects, is_quantifiable
+from metadata.orm_profiler.orm.registry import (
+    QUANTIFIABLE_DICT,
+    Dialects,
+    is_quantifiable,
+)
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -82,6 +86,16 @@ class StdDev(StaticMetric):
 
         logger.debug(
             f"{self.col} has type {self.col.type}, which is not listed as quantifiable."
+            + " We won't compute STDDEV for it."
+        )
+        return None
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        if self.col.dataType in QUANTIFIABLE_DICT:
+            return data_frame[self.col.name.__root__].std().tolist()
+        logger.debug(
+            f"{self.col.name.__root__} has type {self.col.dataType}, which is not listed as quantifiable."
             + " We won't compute STDDEV for it."
         )
         return None
