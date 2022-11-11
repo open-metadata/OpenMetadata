@@ -247,7 +247,12 @@
     "total-data-assets": "Total data assets",
     "data-assets-with-field": "Data assets with {{field}}",
     "total-data-assets-with-tiers": "Total Data assets with tiers",
-    "most-active-user": "Most active user"
+    "most-active-user": "Most active user",
+    "add-new-kpi": "Add New KPI",
+    "select-a-chart": "Select a chart",
+    "select-a-metric-type": "Select a metric type",
+    "metric-value": "Metric value",
+    "add-kpi": "Add KPI"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -274,7 +279,10 @@
     "total-entity-insight": "Display the total of data assets by type.",
     "active-users": "Display the number of users active.",
     "most-active-users": "Displays the most active users on the platform based on page views.",
-    "most-viewed-data-assets": "Displays the most viewed data assets."
+    "most-viewed-data-assets": "Displays the most viewed data assets.",
+    "data-insight-chart-required": "Data insight chart is required",
+    "metric-type-required": "Metric type is required",
+    "metric-value-required": "Metric value is required"
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

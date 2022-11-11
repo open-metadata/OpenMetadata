@@ -15,6 +15,7 @@ import { Button, Col, Row, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -33,6 +34,7 @@ import { Paging } from '../../generated/type/paging';
 import { formatDateTimeFromSeconds } from '../../utils/TimeUtils';
 
 const KPIListPage = () => {
+  const history = useHistory();
   const { t } = useTranslation();
   const [KpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,6 +122,10 @@ const KPIListPage = () => {
     });
   };
 
+  const handleAddKPI = () => {
+    history.push(ROUTES.ADD_KPI);
+  };
+
   useEffect(() => {
     fetchKpiList();
   }, []);
@@ -142,7 +148,9 @@ const KPIListPage = () => {
                 },
               ]}
             />
-            <Button type="primary">Add KPI</Button>
+            <Button type="primary" onClick={handleAddKPI}>
+              Add KPI
+            </Button>
           </Space>
         </Col>
         <Col span={24}>

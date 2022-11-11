@@ -265,7 +265,8 @@ export const ROUTES = {
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
 
   DATA_INSIGHT: `/data-insights`,
-  KPI_LIST: `/kpi-list`,
+  KPI_LIST: `/data-insights/kpi-list`,
+  ADD_KPI: `/data-insights/kpi-list/add-kpi`,
 };
 
 export const SOCKET_EVENTS = {

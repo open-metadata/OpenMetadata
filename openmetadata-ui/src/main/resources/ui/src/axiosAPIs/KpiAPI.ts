@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosResponse } from 'axios';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
@@ -30,6 +31,11 @@ export const getListKPIs = async (params?: ListParams) => {
   }>('/kpi', {
     params,
   });
+
+  return response.data;
+};
+export const postKPI = async (data: Kpi) => {
+  const response = await APIClient.post<Kpi, AxiosResponse<Kpi>>('/kpi', data);
 
   return response.data;
 };

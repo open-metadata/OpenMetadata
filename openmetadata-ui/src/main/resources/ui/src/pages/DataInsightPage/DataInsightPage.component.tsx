@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
@@ -36,6 +37,7 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
+import { ROUTES } from '../../constants/constants';
 import {
   DATA_INSIGHT_TAB,
   DAY_FILTER,
@@ -58,6 +60,7 @@ import './DataInsight.less';
 const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
 
 const DataInsightPage = () => {
+  const history = useHistory();
   const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
   const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.DataAssets);
   const [chartFilter, setChartFilter] =
@@ -133,6 +136,10 @@ const DataInsightPage = () => {
     setSelectedChart(chartType);
   };
 
+  const handleAddKPI = () => {
+    history.push(ROUTES.ADD_KPI);
+  };
+
   useLayoutEffect(() => {
     if (selectedChart) {
       const element = document.getElementById(selectedChart);
@@ -158,7 +165,9 @@ const DataInsightPage = () => {
                 Keep track of OKRs with charts built around OpenMetadata health.
               </Typography.Text>
             </div>
-            <Button type="primary">Add KPI</Button>
+            <Button type="primary" onClick={handleAddKPI}>
+              Add KPI
+            </Button>
           </Space>
         </Col>
         <Col span={24}>

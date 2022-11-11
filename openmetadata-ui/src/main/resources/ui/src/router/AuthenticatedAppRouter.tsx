@@ -222,7 +222,10 @@ const DataInsightPage = withSuspenseFallback(
   React.lazy(() => import('../pages/DataInsightPage/DataInsightPage.component'))
 );
 const KPIListPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/KPIListPage/KPIListPage'))
+  React.lazy(() => import('../pages/KPIPage/KPIListPage'))
+);
+const AddKPIPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/KPIPage/AddKPIPage'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -526,6 +529,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route exact component={KPIListPage} path={ROUTES.KPI_LIST} />
+      <Route exact component={AddKPIPage} path={ROUTES.ADD_KPI} />
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>

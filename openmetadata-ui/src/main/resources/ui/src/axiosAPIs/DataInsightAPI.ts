@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { DataInsightChart } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartResult } from '../generated/dataInsight/dataInsightChartResult';
+import { Paging } from '../generated/type/paging';
 import { ChartAggregateParam } from '../interface/data-insight.interface';
 import APIClient from './index';
 
@@ -22,6 +24,15 @@ export const getAggregateChartData = async (params: ChartAggregateParam) => {
       params,
     }
   );
+
+  return response.data;
+};
+
+export const getListDataInsightCharts = async () => {
+  const response = await APIClient.get<{
+    data: DataInsightChart[];
+    paging: Paging;
+  }>('/dataInsight');
 
   return response.data;
 };

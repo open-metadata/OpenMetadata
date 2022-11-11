@@ -43,6 +43,11 @@ Policies are assigned to Teams. In OpenMetadata, a Policy is a collection of Rul
 Create well-defined policies based on conditional rules to build rich access control roles.
         `;
 
+export const ADD_KPI_TEXT = `Contrary to popular belief, Lorem Ipsum is not simply random text. It
+          has roots in a piece of classical Latin literature from 45 BC, making
+          it over 2000 years old. Richard McClintock, a Latin professor at
+          Hampden-Sydney College in Virginia, looked up one of the more obscure`;
+
 export const NO_PERMISSION_FOR_ACTION =
   'You do not have the necessary permissions to perform this action.';
 
