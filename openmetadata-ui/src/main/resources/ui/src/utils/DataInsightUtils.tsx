@@ -18,6 +18,7 @@ import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import {
   ENTITIES_SUMMARY_LIST,
+  UNSUPPORTED_DATA_INSIGHT_ENTITIES,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import {
@@ -57,11 +58,6 @@ export const renderLegend = (legendData: LegendProps, latest: string) => {
     </>
   );
 };
-
-/**
- * we don't have type for Tooltip value and Tooltip
- * that's why we have to use the type "any"
- */
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   const { active, payload = [], label, isPercentage } = props;
@@ -122,11 +118,17 @@ const prepareGraphData = (
   );
 };
 
+/**
+ *
+ * @param latestData graph latest data
+ * @returns latest count for latest data
+ */
 const getLatestCount = (latestData = {}) => {
   let total = 0;
   const latestEntries = Object.entries(latestData ?? {});
 
   for (const entry of latestEntries) {
+    // skip the timestamp value
     if (entry[0] !== 'timestamp') {
       total += toNumber(entry[1]);
     }
@@ -135,6 +137,12 @@ const getLatestCount = (latestData = {}) => {
   return isInteger(total) ? total : total.toFixed(2);
 };
 
+/**
+ *
+ * @param rawData Data insight chart result data
+ * @param dataInsightChartType data insight chart type
+ * @returns graph data for chart type
+ */
 export const getGraphDataByEntityType = (
   rawData: DataInsightChartResult['data'] = [],
   dataInsightChartType: DataInsightChartType
@@ -142,49 +150,56 @@ export const getGraphDataByEntityType = (
   const entities: string[] = [];
   const timestamps: string[] = [];
 
-  const filteredData = rawData.map((data) => {
-    if (data.timestamp && data.entityType) {
-      let value;
-      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
-      if (!entities.includes(data.entityType ?? '')) {
-        entities.push(data.entityType ?? '');
+  const filteredData = rawData
+    .map((data) => {
+      if (data.timestamp && data.entityType) {
+        let value;
+        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+        const entityType = data.entityType ?? '';
+
+        // skip the unsupported data insight entities
+        if (UNSUPPORTED_DATA_INSIGHT_ENTITIES.includes(entityType)) return;
+
+        if (!entities.includes(entityType)) {
+          entities.push(entityType);
+        }
+
+        if (!timestamps.includes(timestamp)) {
+          timestamps.push(timestamp);
+        }
+
+        switch (dataInsightChartType) {
+          case DataInsightChartType.TotalEntitiesByType:
+            value = data.entityCount;
+
+            break;
+          case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+            value = data.completedDescriptionFraction;
+
+            break;
+          case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+            value = data.hasOwnerFraction;
+
+            break;
+
+          case DataInsightChartType.PageViewsByEntities:
+            value = data.pageViews;
+
+            break;
+
+          default:
+            break;
+        }
+
+        return {
+          timestamp: timestamp,
+          [data.entityType]: value,
+        };
       }
 
-      if (!timestamps.includes(timestamp)) {
-        timestamps.push(timestamp);
-      }
-
-      switch (dataInsightChartType) {
-        case DataInsightChartType.TotalEntitiesByType:
-          value = data.entityCount;
-
-          break;
-        case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-          value = data.completedDescriptionFraction;
-
-          break;
-        case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-          value = data.hasOwnerFraction;
-
-          break;
-
-        case DataInsightChartType.PageViewsByEntities:
-          value = data.pageViews;
-
-          break;
-
-        default:
-          break;
-      }
-
-      return {
-        timestamp: timestamp,
-        [data.entityType]: value,
-      };
-    }
-
-    return;
-  });
+      return;
+    })
+    .filter(Boolean);
 
   const graphData = prepareGraphData(timestamps, filteredData);
   const latestData = last(graphData);
@@ -197,30 +212,37 @@ export const getGraphDataByEntityType = (
   };
 };
 
+/**
+ *
+ * @param rawData entities data by tier
+ * @returns graph data for tier chart
+ */
 export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   const tiers: string[] = [];
   const timestamps: string[] = [];
 
-  const filteredData = rawData.map((data) => {
-    if (data.timestamp && data.entityTier) {
-      const tiering = data.entityTier;
-      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
-      if (!tiers.includes(tiering)) {
-        tiers.push(tiering);
+  const filteredData = rawData
+    .map((data) => {
+      if (data.timestamp && data.entityTier) {
+        const tiering = data.entityTier;
+        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+        if (!tiers.includes(tiering)) {
+          tiers.push(tiering);
+        }
+
+        if (!timestamps.includes(timestamp)) {
+          timestamps.push(timestamp);
+        }
+
+        return {
+          timestamp: timestamp,
+          [tiering]: data.entityCount,
+        };
       }
 
-      if (!timestamps.includes(timestamp)) {
-        timestamps.push(timestamp);
-      }
-
-      return {
-        timestamp: timestamp,
-        [tiering]: data.entityCount,
-      };
-    }
-
-    return;
-  });
+      return;
+    })
+    .filter(Boolean);
 
   const graphData = prepareGraphData(timestamps, filteredData);
   const latestData = last(graphData);
@@ -232,6 +254,11 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   };
 };
 
+/**
+ *
+ * @param suggestionValues suggestion list
+ * @returns option list for filters
+ */
 export const getTeamFilter = (suggestionValues: ListValues = []) => {
   return (suggestionValues as ListItem[]).map((suggestion: ListItem) => ({
     label: suggestion.title,
@@ -239,6 +266,11 @@ export const getTeamFilter = (suggestionValues: ListValues = []) => {
   }));
 };
 
+/**
+ *
+ * @param activeUsers raw daily active users list
+ * @returns user list with formatted timestamp
+ */
 export const getFormattedActiveUsersData = (activeUsers: DailyActiveUsers[]) =>
   activeUsers.map((user) => ({
     ...user,
@@ -247,6 +279,11 @@ export const getFormattedActiveUsersData = (activeUsers: DailyActiveUsers[]) =>
       : '',
   }));
 
+/**
+ *
+ * @param chartResults raw chart results for entities chart
+ * @returns chart summary for entities chart
+ */
 export const getEntitiesChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
 ) => {
@@ -277,6 +314,11 @@ export const getEntitiesChartSummary = (
   return updatedSummaryList;
 };
 
+/**
+ *
+ * @param chartResults raw chart results for web chart
+ * @returns chart summary for web chart
+ */
 export const getWebChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
 ) => {

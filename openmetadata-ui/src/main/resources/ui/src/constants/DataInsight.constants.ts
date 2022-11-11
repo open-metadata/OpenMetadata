@@ -21,6 +21,8 @@ import {
   getPastDaysDateTimeMillis,
 } from '../utils/TimeUtils';
 
+export const UNSUPPORTED_DATA_INSIGHT_ENTITIES = ['TestSuite', 'User'];
+
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
   right: 30,
