@@ -67,7 +67,7 @@ RUN pip install "."
 
 WORKDIR /home/airflow/ingestion
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install --upgrade ".[${INGESTION_DEPENDENCY}]"
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
