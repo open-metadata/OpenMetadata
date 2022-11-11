@@ -125,18 +125,20 @@ class Sampler:
                 client=self.session,
                 key=self.table.name.__root__,
                 bucket_name=self.table.databaseSchema.name,
+                sample_size=self.sample_limit
             )
         if isinstance(configSource, S3Config):
             data_frame = DatalakeSource.get_s3_files(
                 client=self.session,
                 key=self.table.name.__root__,
                 bucket_name=self.table.databaseSchema.name,
+                sample_size=self.sample_limit
             )
         cols = []
         table_columns = DatalakeSource.get_columns(data_frame=data_frame)
         for col in table_columns:
             cols.append(col.name.__root__)
-        self._sample_rows = data_frame.values.tolist()
+        self._sample_rows = data_frame.dropna().values.tolist()
         return TableData(columns=cols, rows=self._sample_rows), data_frame
 
     def _fetch_sample_data_from_user_query(self) -> TableData:

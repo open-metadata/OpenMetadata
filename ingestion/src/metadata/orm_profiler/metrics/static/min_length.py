@@ -57,7 +57,14 @@ class MinLength(StaticMetric):
     def dl_fn(self, data_frame=None):
         if self.col.dataType in CONCATENABLE_DICT:
             return (
-                pd.DataFrame([len(i) for i in data_frame[self.col.name.__root__]])
+                pd.DataFrame(
+                    [
+                        len(concatenable_data)
+                        if concatenable_data and not isinstance(concatenable_data, float)
+                        else concatenable_data
+                        for concatenable_data in data_frame[self.col.name.__root__].dropna()
+                    ]
+                )
                 .min()
                 .values
             )[0]

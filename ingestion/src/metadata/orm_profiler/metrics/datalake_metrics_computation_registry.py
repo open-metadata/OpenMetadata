@@ -89,7 +89,11 @@ def get_static_metrics(
         row = []
         for metric in metrics:
             if not metric.is_window_metric():
-                row.append(metric(column).dl_fn(data_frame))
+                if not data_frame.empty:
+                    row.append(metric(column).dl_fn(data_frame))
+                else:
+                    row.append(None)
+                    
             else:
                 row.append(None)
         row_dict = {}
@@ -97,14 +101,15 @@ def get_static_metrics(
             row_dict[table_metric.name()] = row[index]
         return row_dict
     except Exception as exc:
-        logger.warning(traceback.format_exc())
+        logger.debug(traceback.format_exc())
         logger.warning(f"Error trying to compute profile for {exc}")
         processor_status.failure(f"{column.name}", "Static Metrics", f"{exc}")
         return None
 
-
+def pass_func(*args,**kwargs):
+    pass
 compute_metrics_registry = enum_register()
 compute_metrics_registry.add("Table")(get_table_metrics)
 compute_metrics_registry.add("Static")(get_static_metrics)
-# compute_metrics_registry.add("Query")(get_query_metrics)
-# compute_metrics_registry.add("Window")(get_window_metrics)
+compute_metrics_registry.add("Query")(pass_func)
+compute_metrics_registry.add("Window")(pass_func)

@@ -14,6 +14,7 @@ AVG Metric definition
 """
 # pylint: disable=duplicate-code
 
+import traceback
 import pandas as pd
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
@@ -22,6 +23,8 @@ from sqlalchemy.sql.functions import GenericFunction
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
 from metadata.orm_profiler.orm.registry import (
+    CONCATENABLE_DICT,
+    QUANTIFIABLE_DICT,
     Dialects,
     is_concatenable,
     is_quantifiable,
@@ -76,24 +79,26 @@ class Mean(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if is_quantifiable(self.col.dataType):
-            return data_frame[self.col.name.__root__].mean().tolist()
+        try:
+            if self.col.dataType in QUANTIFIABLE_DICT:
+                return data_frame[self.col.name.__root__].dropna().mean().tolist()
 
-        if is_concatenable(self.col.dataType):
-            return (
-                pd.DataFrame(
-                    [
-                        len(concatenable_data)
-                        for concatenable_data in data_frame[
-                            self.col.name.__root__
-                        ].values.tolist()
-                    ]
+            if self.col.dataType in CONCATENABLE_DICT:
+                return (
+                    pd.DataFrame(
+                        [
+                            len(concatenable_data) if concatenable_data and not isinstance(concatenable_data, float) else concatenable_data
+                            for concatenable_data in data_frame[
+                                self.col.name.__root__
+                            ].dropna().values.tolist()
+                        ]
+                    )
+                    .mean()
+                    .tolist()[0]
                 )
-                .mean()
-                .tolist()[0]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Don't know how to process type {self.col.dataType.value} when computing MEAN, Error: {err}"
             )
-
-        logger.debug(
-            f"Don't know how to process type {self.col.dataType.value} when computing MEAN"
-        )
-        return None
+            return None

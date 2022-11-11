@@ -44,5 +44,5 @@ class Sum(StaticMetric):
     @_label
     def dl_fn(self, data_frame):
         if self.col.dataType in QUANTIFIABLE_DICT:
-            return data_frame[self.col.name.__root__].sum().tolist()
+            return data_frame[self.col.name.__root__].dropna().sum().tolist()
         return None
