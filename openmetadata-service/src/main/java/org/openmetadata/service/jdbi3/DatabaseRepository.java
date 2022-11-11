@@ -13,14 +13,12 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.LOCATION;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.ws.rs.core.Response.Status;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -62,7 +60,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void prepare(Database database) throws IOException {
     populateService(database);
-    setFullyQualifiedName(database);
   }
 
   @Override
@@ -132,15 +129,5 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE, Entity.DATABASE_SERVICE));
-  }
-
-  @Transaction
-  public Status addLocation(UUID databaseId, UUID locationId) throws IOException {
-    daoCollection.databaseDAO().findEntityById(databaseId);
-    daoCollection.locationDAO().findEntityById(locationId);
-    // A database has only one location.
-    deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
-    addRelationship(databaseId, locationId, Entity.DATABASE, Entity.LOCATION, Relationship.HAS);
-    return CREATED;
   }
 }

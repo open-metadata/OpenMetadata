@@ -37,7 +37,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void prepare(TestSuite entity) {
-    setFullyQualifiedName(entity);
+    /* Nothing to do */
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) throws IOException {

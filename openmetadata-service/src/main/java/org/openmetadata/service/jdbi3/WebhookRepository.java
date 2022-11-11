@@ -53,7 +53,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
   @Override
   public void prepare(Webhook entity) {
-    setFullyQualifiedName(entity);
+    /* Nothing to do */
   }
 
   @Override

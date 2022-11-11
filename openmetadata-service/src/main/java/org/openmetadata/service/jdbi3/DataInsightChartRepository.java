@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -18,6 +17,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilde
 import org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.type.EntityReference;
@@ -93,7 +93,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
 
   @Override
   public void prepare(DataInsightChart entity) throws IOException {
-    setFullyQualifiedName(entity);
+    /* Nothing to do */
   }
 
   @Override
@@ -112,13 +112,13 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   public SearchSourceBuilder buildQueryFilter(
-      Long startTs, Long endTs, String tier, String team, String dataInsightChartName) throws ClassNotFoundException {
+      Long startTs, Long endTs, String tier, String team, String dataInsightChartName) {
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     BoolQueryBuilder searchQueryFiler = new BoolQueryBuilder();
 
     if (team != null && SUPPORTS_TEAM_FILTER.contains(dataInsightChartName)) {
-      List<String> teamArray = new ArrayList<String>(Arrays.asList(team));
+      List<String> teamArray = CommonUtil.listOf(team);
 
       BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
       teamQueryFilter.should(QueryBuilders.termsQuery(DATA_TEAM, teamArray));
@@ -126,7 +126,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     }
 
     if (tier != null && SUPPORTS_TIER_FILTER.contains(dataInsightChartName)) {
-      List<String> tierArray = new ArrayList<String>(Arrays.asList(tier));
+      List<String> tierArray = CommonUtil.listOf(tier);
 
       BoolQueryBuilder tierQueryFilter = QueryBuilders.boolQuery();
       tierQueryFilter.should(QueryBuilders.termsQuery(DATA_ENTITY_TIER, tierArray));

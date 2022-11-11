@@ -44,7 +44,6 @@ import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
@@ -106,7 +105,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void prepare(Policy policy) throws IOException {
-    setFullyQualifiedName(policy);
     validateRules(policy);
     policy.setLocation(getLocationReference(policy));
   }
@@ -162,21 +160,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       rule.getOperations().sort(Comparator.comparing(MetadataOperation::value));
     }
     rules.sort(Comparator.comparing(Rule::getName));
-  }
-
-  public List<Policy> getAccessControlPolicies() throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("rules", ENABLED));
-    ListFilter filter = new ListFilter();
-    List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
-    List<Policy> policies = new ArrayList<>(jsons.size());
-    for (String json : jsons) {
-      Policy policy = setFieldsInternal(JsonUtils.readValue(json, Policy.class), fields);
-      if (!Boolean.TRUE.equals(policy.getEnabled())) {
-        continue;
-      }
-      policies.add(policy);
-    }
-    return policies;
   }
 
   private void setLocation(Policy policy, EntityReference location) {

@@ -79,7 +79,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
     EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
     ingestionPipeline.setService(entityReference);
-    setFullyQualifiedName(ingestionPipeline);
   }
 
   @Override

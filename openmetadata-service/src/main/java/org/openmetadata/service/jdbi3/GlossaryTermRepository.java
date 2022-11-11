@@ -102,16 +102,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent());
     entity.setParent(parentTerm);
 
-    setFullyQualifiedName(entity);
-
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
     // Validate reviewers
     EntityUtil.populateEntityReferences(entity.getReviewers());
-
-    // Validate table tags and add derived tags to the list
-    entity.setTags(addDerivedTags(entity.getTags()));
   }
 
   @Override

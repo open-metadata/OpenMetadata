@@ -161,8 +161,6 @@ public class LocationRepository extends EntityRepository<Location> {
     StorageService storageService = getService(location.getService().getId(), location.getService().getType());
     location.setService(storageService.getEntityReference());
     location.setServiceType(storageService.getServiceType());
-    setFullyQualifiedName(location);
-    location.setTags(addDerivedTags(location.getTags()));
   }
 
   @Override

@@ -176,8 +176,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
-    setFullyQualifiedName(pipeline);
-    pipeline.setTags(addDerivedTags(pipeline.getTags()));
   }
 
   @Override

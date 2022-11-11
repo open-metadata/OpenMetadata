@@ -60,7 +60,6 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void prepare(Type type) {
-    setFullyQualifiedName(type);
     TypeRegistry.instance().validateCustomProperties(type);
   }
 
@@ -80,7 +79,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void storeRelationships(Type type) {
-    // Nothing to do
+    /* Nothing to do */
   }
 
   private void updateTypeMap(Type entity) {

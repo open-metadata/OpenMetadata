@@ -76,7 +76,6 @@ public class RoleRepository extends EntityRepository<Role> {
    */
   @Override
   public void prepare(Role role) throws IOException {
-    setFullyQualifiedName(role);
     if (listOrEmpty(role.getPolicies()).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
     }

@@ -103,7 +103,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void prepare(Team team) throws IOException {
-    setFullyQualifiedName(team);
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());

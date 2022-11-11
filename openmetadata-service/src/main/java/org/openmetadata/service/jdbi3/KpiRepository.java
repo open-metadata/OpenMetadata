@@ -58,9 +58,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
     DataInsightChart chart =
         dataInsightChartRepository.get(
             null, kpi.getDataInsightChart().getId(), dataInsightChartRepository.getFields("metrics"));
-    // Valiadte here if this chart already has some kpi in progress
+    // Validate here if this chart already has some kpi in progress
     validateKpiTargetDefinition(kpi.getTargetDefinition(), chart.getMetrics());
-    kpi.setFullyQualifiedName(kpi.getName());
   }
 
   private void validateKpiTargetDefinition(

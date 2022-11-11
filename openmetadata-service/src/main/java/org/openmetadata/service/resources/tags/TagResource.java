@@ -111,7 +111,6 @@ public class TagResource {
               });
       daoCategory.initCategory(tagCategory);
     }
-    TagLabelCache.initialize();
   }
 
   static final String FIELDS = "usageCount";

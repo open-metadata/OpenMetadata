@@ -45,7 +45,6 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public void prepare(Report report) {
     // TODO report does not have service yet
-    setFullyQualifiedName(report);
   }
 
   @Override

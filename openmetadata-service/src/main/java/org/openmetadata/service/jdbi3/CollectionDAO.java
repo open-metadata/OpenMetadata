@@ -3165,7 +3165,7 @@ public interface CollectionDAO {
           resp = JsonUtils.readValue(json, RefreshToken.class);
           break;
         default:
-          throw new RuntimeException("Invalid Token Type.");
+          throw new IllegalArgumentException("Invalid Token Type.");
       }
       return resp;
     }

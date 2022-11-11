@@ -57,8 +57,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     DashboardService dashboardService = Entity.getEntity(chart.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     chart.setService(dashboardService.getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
-    setFullyQualifiedName(chart);
-    chart.setTags(addDerivedTags(chart.getTags()));
   }
 
   @Override
