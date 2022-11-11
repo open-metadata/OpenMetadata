@@ -15,7 +15,7 @@ Protobuf parser tests
 
 from unittest import TestCase
 
-from metadata.utils.protobuf_parser import ProtobufParser, ProtobufParserConfig
+from metadata.parsers.protobuf_parser import ProtobufParser, ProtobufParserConfig
 
 
 class ProtobufParserTests(TestCase):

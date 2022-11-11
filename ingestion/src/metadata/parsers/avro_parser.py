@@ -14,15 +14,17 @@ Utils module to parse the avro schema
 """
 
 import traceback
+from typing import Optional
 
 import avro.schema as avroschema
+from avro.schema import RecordSchema
 
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-def parse_avro_schema(schema):
+def parse_avro_schema(schema: str) -> Optional[RecordSchema]:
     """
     Method to parse the avro schema
     """

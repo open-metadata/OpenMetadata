@@ -15,12 +15,11 @@ Utils module to parse the protobuf schema
 
 import glob
 import importlib
-import os
-import pathlib
 import shutil
 import sys
 import traceback
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 import grpc_tools.protoc
@@ -80,6 +79,12 @@ class ProtobufDataTypes(Enum):
 class ProtobufParserConfig(BaseModel):
     """
     Protobuf Parser Config class
+    :param schema_name: Name of protobuf schema
+    :param schema_text: Protobuf schema definition in text format
+    :param base_file_path: A temporary directory will be created under this path for
+      generating the files required for protobuf parsing and compiling. By default
+      the directory will be created under "/tmp/protobuf_openmetadata" unless it is
+      specified in the parameter.
     """
 
     schema_name: str
@@ -112,10 +117,10 @@ class ProtobufParser:
         """
         try:
             # Create a temporary directory for saving all the files if not already present
-            if not os.path.exists(self.generated_src_dir):
-                os.makedirs(self.generated_src_dir)
-            if not os.path.exists(self.proto_interface_dir):
-                os.makedirs(self.proto_interface_dir)
+            generated_src_dir_path = Path(self.generated_src_dir)
+            generated_src_dir_path.mkdir(parents=True, exist_ok=True)
+            proto_interface_dir_path = Path(self.proto_interface_dir)
+            proto_interface_dir_path.mkdir(parents=True, exist_ok=True)
 
             # Create a .proto file under the interfaces directory with schema text
             file_path = f"{self.proto_interface_dir}/{self.config.schema_name}.proto"
@@ -147,12 +152,13 @@ class ProtobufParser:
 
             # import the python file
             sys.path.append(self.generated_src_dir)
+            generated_src_dir_path = Path(self.generated_src_dir)
             py_file = glob.glob(
-                os.path.join(
-                    self.generated_src_dir, f"{self.config.schema_name}_pb2.py"
+                str(
+                    generated_src_dir_path.joinpath(f"{self.config.schema_name}_pb2.py")
                 )
             )[0]
-            module_name = pathlib.Path(py_file).stem
+            module_name = Path(py_file).stem
             message = importlib.import_module(module_name)
 
             # get the class and create a object instance
@@ -192,7 +198,7 @@ class ProtobufParser:
                 parsed_schema["fields"].append(field_dict)
 
             # Clean up the tmp folder
-            if os.path.exists(self.config.base_file_path):
+            if Path(self.config.base_file_path).exists():
                 shutil.rmtree(self.config.base_file_path)
 
             return parsed_schema

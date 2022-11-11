@@ -14,7 +14,7 @@ Avro parser tests
 """
 from unittest import TestCase
 
-from metadata.utils.avro_parser import parse_avro_schema
+from metadata.parsers.avro_parser import parse_avro_schema
 
 
 class AvroParserTests(TestCase):

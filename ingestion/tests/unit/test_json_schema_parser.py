@@ -14,7 +14,7 @@ Jsonschema parser tests
 """
 from unittest import TestCase
 
-from metadata.utils.json_schema_parser import parse_json_schema
+from metadata.parsers.json_schema_parser import parse_json_schema
 
 
 class JsonSchemaParserTests(TestCase):
