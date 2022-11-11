@@ -23,7 +23,7 @@ import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getCustomEntityPath,
+  getCustomPropertyPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -217,7 +217,7 @@ export const getEntityLink = (
       return getEditWebhookPath(fullyQualifiedName);
 
     case EntityType.TYPE:
-      return getCustomEntityPath(fullyQualifiedName);
+      return getCustomPropertyPath(`${fullyQualifiedName}s`);
 
     case EntityType.MLMODEL:
     case SearchIndex.MLMODEL:

@@ -458,9 +458,14 @@ export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
   return path;
 };
 
-export const getCustomEntityPath = (entityTypeFQN: string) => {
-  let path = ROUTES.CUSTOM_ENTITY_DETAIL;
-  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+export const getCustomPropertyPath = (entityTypeFQN: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB;
+  path = path
+    .replace(
+      PLACEHOLDER_SETTING_CATEGORY,
+      GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
+    )
+    .replace(PLACEHOLDER_ROUTE_TAB, entityTypeFQN);
 
   return path;
 };
