@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 from unittest import TestCase
-from unittest.mock import Mock, patch
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
@@ -30,6 +29,7 @@ from metadata.ingestion.ometa.auth_provider import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.singleton import Singleton
 
 
 class OMetaSecretManagerTest(TestCase):
@@ -39,6 +39,7 @@ class OMetaSecretManagerTest(TestCase):
 
     @classmethod
     def setUp(cls) -> None:
+        Singleton.clear_all()
         cls.local_server_config = OpenMetadataConnection(
             hostPort="http://localhost:8585/api",
             enableVersionValidation=False,
