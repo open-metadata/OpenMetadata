@@ -2016,6 +2016,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<TagLabel> expectedTags = (List<TagLabel>) expected;
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
       assertTrue(actualTags.containsAll(expectedTags));
+      actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
       assertEquals(expected.toString(), actual.toString());
     } else {
