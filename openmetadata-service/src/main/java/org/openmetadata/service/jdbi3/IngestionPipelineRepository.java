@@ -28,7 +28,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -251,8 +251,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateOpenMetadataServerConnection(
-        OpenMetadataServerConnection origConfig, OpenMetadataServerConnection updatedConfig)
-        throws JsonProcessingException {
+        OpenMetadataConnection origConfig, OpenMetadataConnection updatedConfig) throws JsonProcessingException {
 
       JSONObject origConfigJson = new JSONObject(JsonUtils.pojoToJson(origConfig));
       JSONObject updatedConfigJson = new JSONObject(JsonUtils.pojoToJson(updatedConfig));

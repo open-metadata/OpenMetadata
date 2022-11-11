@@ -27,7 +27,7 @@ import org.openmetadata.client.api.CatalogApi;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.utils.VersionUtils;
 
 @Slf4j
@@ -41,17 +41,17 @@ public class OpenMetadata {
   private ApiClient apiClient;
   private static final String REQUEST_INTERCEPTOR_KEY = "custom";
 
-  public OpenMetadata(OpenMetadataServerConnection config) {
+  public OpenMetadata(OpenMetadataConnection config) {
     initClient(config);
     validateVersion();
   }
 
-  public OpenMetadata(OpenMetadataServerConnection config, boolean validateVersion) {
+  public OpenMetadata(OpenMetadataConnection config, boolean validateVersion) {
     initClient(config);
     if (validateVersion) validateVersion();
   }
 
-  public void initClient(OpenMetadataServerConnection config) {
+  public void initClient(OpenMetadataConnection config) {
     apiClient = new ApiClient();
     Feign.Builder builder =
         Feign.builder()
