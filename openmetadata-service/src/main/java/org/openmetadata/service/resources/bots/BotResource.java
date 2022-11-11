@@ -77,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Bot collection", tags = "Bot collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots")
+@Collection(name = "bots", order = 8) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 

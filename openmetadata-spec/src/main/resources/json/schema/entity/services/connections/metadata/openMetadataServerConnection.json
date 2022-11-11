@@ -1,7 +1,7 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/openMetadataConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/openMetadataServerConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OpenMetadataConnection",
+  "title": "OpenMetadataServerConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection",
@@ -9,8 +9,8 @@
     "openmetadataType": {
       "description": "OpenMetadata service type",
       "type": "string",
-      "enum": ["OpenMetadata"],
-      "default": "OpenMetadata"
+      "enum": ["OpenMetadataServer"],
+      "default": "OpenMetadataServer"
     }
   },
   "properties": {
@@ -22,7 +22,7 @@
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/openmetadataType",
-      "default": "OpenMetadata"
+      "default": "OpenMetadataServer"
     },
     "hostPort": {
       "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
@@ -181,8 +181,14 @@
       "type": "boolean",
       "default": false
     },
-    "supportsMetadataExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    "elasticsSearch": {
+      "$ref": "../../../../metadataIngestion/workflow.json#/definitions/sink"
+    },
+    "supportMetadataToElasticSearchExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataToElasticSearchExtraction"
+    },
+    "supportsElasticSearchReindexingExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsElasticSearchReindexingExtraction"
     }
   },
   "additionalProperties": false,

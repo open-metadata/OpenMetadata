@@ -73,6 +73,7 @@ public final class Entity {
   public static final String PIPELINE_SERVICE = "pipelineService";
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
+  public static final String METADATA_SERVICE = "metadataService";
 
   //
   // Data asset entities

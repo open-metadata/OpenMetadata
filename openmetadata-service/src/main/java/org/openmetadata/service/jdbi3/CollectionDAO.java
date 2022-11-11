@@ -72,6 +72,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
@@ -187,6 +188,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DatabaseServiceDAO dbServiceDAO();
+
+  @CreateSqlObject
+  MetadataServiceDAO metadataServiceDAO();
 
   @CreateSqlObject
   PipelineServiceDAO pipelineServiceDAO();
@@ -322,6 +326,23 @@ public interface CollectionDAO {
     @Override
     default Class<DatabaseService> getEntityClass() {
       return DatabaseService.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface MetadataServiceDAO extends EntityDAO<MetadataService> {
+    @Override
+    default String getTableName() {
+      return "metadata_service_entity";
+    }
+
+    @Override
+    default Class<MetadataService> getEntityClass() {
+      return MetadataService.class;
     }
 
     @Override
