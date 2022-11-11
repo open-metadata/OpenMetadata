@@ -36,8 +36,8 @@ import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.metadata.ComponentConfig;
+import org.openmetadata.schema.services.connections.metadata.ElasticsSearch;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.schema.services.connections.metadata.Sink;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -83,6 +83,7 @@ public class MetadataServiceResource
               try {
                 // populate values for the Metadata Service
                 service.setConnection(metadataConnection);
+                service.setAllowServiceCreation(false);
                 dao.initializeEntity(service);
               } catch (IOException e) {
                 LOG.error(
@@ -393,9 +394,9 @@ public class MetadataServiceResource
     return service.getServiceType().value();
   }
 
-  private Sink getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) {
+  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) {
     if (Objects.nonNull(esConfig)) {
-      Sink sink = new Sink();
+      ElasticsSearch sink = new ElasticsSearch();
       ComponentConfig componentConfig = new ComponentConfig();
       sink.withType("elasticsearch")
           .withConfig(
