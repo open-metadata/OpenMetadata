@@ -2,5 +2,5 @@
   "name": "Openmetadata",
   "displayName": "Openmetadata Service",
   "description": "Service Used for creating Openmetadata Ingestion Pipelines.",
-  "serviceType": "OpenMetadataServer"
+  "serviceType": "OpenMetadata"
 }
