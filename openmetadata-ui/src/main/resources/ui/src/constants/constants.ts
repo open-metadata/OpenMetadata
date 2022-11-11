@@ -458,18 +458,6 @@ export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
   return path;
 };
 
-export const getCustomPropertyPath = (entityTypeFQN: string) => {
-  let path = ROUTES.SETTINGS_WITH_TAB;
-  path = path
-    .replace(
-      PLACEHOLDER_SETTING_CATEGORY,
-      GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
-    )
-    .replace(PLACEHOLDER_ROUTE_TAB, entityTypeFQN);
-
-  return path;
-};
-
 export const getCreateUserPath = (bot: boolean) => {
   let path = bot ? ROUTES.CREATE_USER_WITH_BOT : ROUTES.CREATE_USER;
 
