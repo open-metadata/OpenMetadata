@@ -37,7 +37,7 @@ import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { formatDateTimeFromSeconds } from '../../utils/TimeUtils';
+import { formatDateTime } from '../../utils/TimeUtils';
 
 const KPIListPage = () => {
   const history = useHistory();
@@ -92,10 +92,7 @@ const KPIListPage = () => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography.Text>
-            {' '}
-            {formatDateTimeFromSeconds(startDate)}
-          </Typography.Text>
+          <Typography.Text> {formatDateTime(startDate)}</Typography.Text>
         ),
       },
       {
@@ -103,9 +100,7 @@ const KPIListPage = () => {
         dataIndex: 'endDate',
         key: 'endDate',
         render: (endDate: number) => (
-          <Typography.Text>
-            {formatDateTimeFromSeconds(endDate)}
-          </Typography.Text>
+          <Typography.Text>{formatDateTime(endDate)}</Typography.Text>
         ),
       },
       {

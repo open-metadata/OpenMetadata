@@ -127,8 +127,8 @@ const AddKPIPage = () => {
   const handleCancel = () => history.goBack();
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
-    const startDate = Math.floor(getUTCDateTime(values.startDate) / 1000);
-    const endDate = Math.floor(getUTCDateTime(values.endDate) / 1000);
+    const startDate = getUTCDateTime(values.startDate);
+    const endDate = getUTCDateTime(values.endDate);
     const formData: CreateKpiRequest = {
       dataInsightChart: {
         id: values.dataInsightChart,

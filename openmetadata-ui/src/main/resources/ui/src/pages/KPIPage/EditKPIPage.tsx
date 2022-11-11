@@ -95,8 +95,8 @@ const AddKPIPage = () => {
     if (kpiData) {
       const metric = kpiData.targetDefinition[0];
       const chart = kpiData.dataInsightChart;
-      const startDate = getLocaleDateFromTimeStamp(kpiData.startDate * 1000);
-      const endDate = getLocaleDateFromTimeStamp(kpiData.endDate * 1000);
+      const startDate = getLocaleDateFromTimeStamp(kpiData.startDate);
+      const endDate = getLocaleDateFromTimeStamp(kpiData.endDate);
 
       return {
         name: kpiData.name,
@@ -142,8 +142,8 @@ const AddKPIPage = () => {
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     if (kpiData && metricData) {
-      const startDate = Math.floor(getUTCDateTime(values.startDate) / 1000);
-      const endDate = Math.floor(getUTCDateTime(values.endDate) / 1000);
+      const startDate = getUTCDateTime(values.startDate);
+      const endDate = getUTCDateTime(values.endDate);
       const formData: CreateKpiRequest = {
         dataInsightChart: kpiData.dataInsightChart,
         description,
