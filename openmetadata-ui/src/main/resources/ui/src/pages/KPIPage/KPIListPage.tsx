@@ -15,7 +15,7 @@ import { Button, Col, Row, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -23,6 +23,7 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import {
+  getKpiPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
@@ -31,6 +32,7 @@ import {
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 
 import { Paging } from '../../generated/type/paging';
+import { getEntityName } from '../../utils/CommonUtils';
 import { formatDateTimeFromSeconds } from '../../utils/TimeUtils';
 
 const KPIListPage = () => {
@@ -67,7 +69,9 @@ const KPIListPage = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => <Typography.Text>{name}</Typography.Text>,
+        render: (name: string, record) => (
+          <Link to={getKpiPath(name)}>{getEntityName(record)}</Link>
+        ),
       },
       {
         title: t('label.description'),

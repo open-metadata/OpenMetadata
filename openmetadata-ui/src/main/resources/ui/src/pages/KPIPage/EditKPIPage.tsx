@@ -20,144 +20,178 @@ import {
   Input,
   InputNumber,
   Row,
-  Select,
   Slider,
   Space,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isUndefined, toNumber } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { getListDataInsightCharts } from '../../axiosAPIs/DataInsightAPI';
+import { useHistory, useParams } from 'react-router-dom';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import './KPIPage.less';
 
-import { postKPI } from '../../axiosAPIs/KpiAPI';
+import { getChartById } from '../../axiosAPIs/DataInsightAPI';
+import { getKPIByName, putKPI } from '../../axiosAPIs/KpiAPI';
+import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
-import {
-  SUPPORTED_CHARTS_FOR_KPI,
-  VALIDATE_MESSAGES,
-} from '../../constants/DataInsight.constants';
+import { VALIDATE_MESSAGES } from '../../constants/DataInsight.constants';
 import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
-import { EntityType } from '../../enums/entity.enum';
-import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
+import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
+import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import {
-  ChartParameterValues,
-  DataInsightChart,
-  DataType,
-} from '../../generated/dataInsight/dataInsightChart';
-import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
-import { getUTCDateTime } from '../../utils/TimeUtils';
+  getLocaleDateFromTimeStamp,
+  getUTCDateTime,
+} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-const { Option } = Select;
-
-const breadcrumb = [
-  {
-    name: 'Data Insights',
-    url: ROUTES.DATA_INSIGHT,
-  },
-  {
-    name: 'KPI List',
-    url: ROUTES.KPI_LIST,
-  },
-  {
-    name: 'Add New KPI',
-    url: '',
-    activeTitle: true,
-  },
-];
 
 const AddKPIPage = () => {
+  const { kpiName } = useParams<{ kpiName: string }>();
+
   const { t } = useTranslation();
   const history = useHistory();
-  const [dataInsightCharts, setDataInsightCharts] = useState<
-    DataInsightChart[]
-  >([]);
-  const [description, setDescription] = useState<string>('');
-  const [selectedChart, setSelectedChart] = useState<DataInsightChart>();
-  const [selectedMetric, setSelectedMetric] = useState<ChartParameterValues>();
-  const [metricValue, setMetricValue] = useState<number>(0);
-  const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
 
-  const metricTypes = useMemo(
-    () =>
-      (selectedChart?.metrics ?? []).filter((metric) =>
-        // only return supported data type
-        [DataType.Number, DataType.Percentage].includes(
-          metric.dataType as DataType
-        )
-      ),
-    [selectedChart]
+  const [kpiData, setKpiData] = useState<Kpi>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [description, setDescription] = useState<string>('');
+
+  const [selectedChart, setSelectedChart] = useState<DataInsightChart>();
+
+  const [metricValue, setMetricValue] = useState<number>(0);
+  const [isUpdatingKPI, setIsUpdatingKPI] = useState<boolean>(false);
+
+  const breadcrumb = useMemo(
+    () => [
+      {
+        name: 'Data Insights',
+        url: ROUTES.DATA_INSIGHT,
+      },
+      {
+        name: 'KPI List',
+        url: ROUTES.KPI_LIST,
+      },
+      {
+        name: kpiData?.name ?? '',
+        url: '',
+        activeTitle: true,
+      },
+    ],
+    [kpiData]
   );
 
-  const fetchCharts = async () => {
-    try {
-      const response = await getListDataInsightCharts();
-      const supportedCharts = response.data.filter((chart) =>
-        // only return the supported charts data
-        SUPPORTED_CHARTS_FOR_KPI.includes(chart.name as DataInsightChartType)
-      );
+  const metricData = useMemo(() => {
+    if (kpiData) {
+      return kpiData.targetDefinition[0];
+    }
 
-      setDataInsightCharts(supportedCharts);
+    return;
+  }, [kpiData]);
+
+  const initialValues = useMemo(() => {
+    if (kpiData) {
+      const metric = kpiData.targetDefinition[0];
+      const chart = kpiData.dataInsightChart;
+      const startDate = getLocaleDateFromTimeStamp(kpiData.startDate * 1000);
+      const endDate = getLocaleDateFromTimeStamp(kpiData.endDate * 1000);
+
+      return {
+        name: kpiData.name,
+        displayName: kpiData.displayName,
+        dataInsightChart: chart.displayName || chart.name,
+        metricType: metric.name,
+        startDate,
+        endDate,
+      };
+    }
+
+    return {};
+  }, [kpiData]);
+
+  const fetchKPI = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getKPIByName(kpiName, {
+        fields:
+          'startDate,endDate,targetDefinition,dataInsightChart,metricType',
+      });
+      setKpiData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleChartSelect = (value: string) => {
-    const selectedChartValue = dataInsightCharts.find(
-      (chart) => chart.id === value
-    );
-    setSelectedChart(selectedChartValue);
-  };
-
-  const handleMetricSelect = (value: string) => {
-    const selectedMetricValue = metricTypes.find(
-      (metric) => metric.name === value
-    );
-    setSelectedMetric(selectedMetricValue);
+  const fetchChartData = async () => {
+    const chartId = kpiData?.dataInsightChart.id;
+    if (chartId) {
+      try {
+        const response = await getChartById(chartId);
+        setSelectedChart(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
   };
 
   const handleCancel = () => history.goBack();
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
-    const startDate = Math.floor(getUTCDateTime(values.startDate) / 1000);
-    const endDate = Math.floor(getUTCDateTime(values.endDate) / 1000);
-    const formData = {
-      dataInsightChart: {
-        id: values.dataInsightChart,
-        type: EntityType.DATA_INSIGHT_CHART,
-      },
-      description,
-      name: values.name,
-      displayName: values.displayName,
-      startDate,
-      endDate,
-      metricType: selectedMetric?.dataType as unknown as KpiTargetType,
-      targetDefinition: [
-        {
-          name: selectedMetric?.name as string,
-          value: metricValue + '',
-        },
-      ],
-    };
-    setIsCreatingKPI(true);
-    try {
-      await postKPI(formData);
-      history.push(ROUTES.KPI_LIST);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsCreatingKPI(false);
+    if (kpiData && metricData) {
+      const startDate = Math.floor(getUTCDateTime(values.startDate) / 1000);
+      const endDate = Math.floor(getUTCDateTime(values.endDate) / 1000);
+      const formData: Kpi = {
+        dataInsightChart: kpiData.dataInsightChart,
+        description,
+        displayName: values.displayName,
+        endDate,
+        metricType: kpiData.metricType,
+        name: kpiData.name,
+        startDate,
+        targetDefinition: [
+          {
+            ...metricData,
+            value: metricValue + '',
+          },
+        ],
+      };
+
+      setIsUpdatingKPI(true);
+      try {
+        await putKPI(formData);
+        history.push(ROUTES.KPI_LIST);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsUpdatingKPI(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchCharts();
-  }, []);
+    fetchKPI();
+  }, [kpiName]);
+
+  useEffect(() => {
+    if (kpiData) {
+      fetchChartData();
+      setDescription(kpiData.description);
+    }
+  }, [kpiData]);
+
+  useEffect(() => {
+    const value = metricData?.value;
+    if (value) {
+      setMetricValue(toNumber(value));
+    }
+  }, [metricData]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <Row
@@ -175,21 +209,17 @@ const AddKPIPage = () => {
           <Form
             data-testid="kpi-form"
             id="kpi-form"
+            initialValues={initialValues}
             layout="vertical"
             validateMessages={VALIDATE_MESSAGES}
             onFinish={handleSubmit}>
-            <Form.Item
-              label={t('label.name')}
-              name="name"
-              rules={[
-                {
-                  required: true,
-                  max: 128,
-                  min: 1,
-                  message: 'Invalid name',
-                },
-              ]}>
-              <Input data-testid="name" placeholder="Kpi name" type="text" />
+            <Form.Item label={t('label.name')} name="name">
+              <Input
+                disabled
+                data-testid="name"
+                placeholder="Kpi name"
+                type="text"
+              />
             </Form.Item>
 
             <Form.Item label={t('label.display-name')} name="displayName">
@@ -200,52 +230,18 @@ const AddKPIPage = () => {
               />
             </Form.Item>
 
-            <Form.Item
-              label={t('label.select-a-chart')}
-              name="dataInsightChart"
-              rules={[
-                {
-                  required: true,
-                  message: t('message.data-insight-chart-required'),
-                },
-              ]}>
-              <Select
-                data-testid="dataInsightChart"
-                placeholder="Select DataInsight Chart"
-                value={selectedChart?.id}
-                onChange={handleChartSelect}>
-                {dataInsightCharts.map((chart) => (
-                  <Option key={chart.id}>
-                    {chart.displayName || chart.name}
-                  </Option>
-                ))}
-              </Select>
+            <Form.Item label="Data insight chart" name="dataInsightChart">
+              <Input
+                disabled
+                value={selectedChart?.displayName || selectedChart?.name}
+              />
             </Form.Item>
 
-            <Form.Item
-              label={t('label.select-a-metric-type')}
-              name="metricType"
-              rules={[
-                {
-                  required: true,
-                  message: t('message.metric-type-required'),
-                },
-              ]}>
-              <Select
-                data-testid="metricType"
-                disabled={isUndefined(selectedChart)}
-                placeholder="Select a metric type"
-                value={selectedMetric?.name}
-                onChange={handleMetricSelect}>
-                {metricTypes.map((metric) => (
-                  <Option key={metric.name}>
-                    {`${metric.name} (${metric.dataType})`}
-                  </Option>
-                ))}
-              </Select>
+            <Form.Item label={t('label.metric-type')} name="metricType">
+              <Input disabled value={metricData?.name} />
             </Form.Item>
 
-            {!isUndefined(selectedMetric) && (
+            {!isUndefined(metricData) && (
               <Form.Item
                 label={t('label.metric-value')}
                 name="metricValue"
@@ -262,7 +258,7 @@ const AddKPIPage = () => {
                   },
                 ]}>
                 <>
-                  {selectedMetric.dataType === DataType.Percentage && (
+                  {kpiData?.metricType === KpiTargetType.Percentage && (
                     <Row gutter={20}>
                       <Col span={20}>
                         <Slider
@@ -295,7 +291,7 @@ const AddKPIPage = () => {
                       </Col>
                     </Row>
                   )}
-                  {selectedMetric.dataType === DataType.Number && (
+                  {kpiData?.metricType === KpiTargetType.Number && (
                     <InputNumber
                       className="w-full"
                       min={0}
@@ -348,15 +344,15 @@ const AddKPIPage = () => {
                 data-testid="cancel-btn"
                 type="link"
                 onClick={handleCancel}>
-                Cancel
+                Back
               </Button>
               <Button
                 data-testid="submit-btn"
                 form="kpi-form"
                 htmlType="submit"
-                loading={isCreatingKPI}
+                loading={isUpdatingKPI}
                 type="primary">
-                Submit
+                Save
               </Button>
             </Space>
           </Form>

@@ -36,3 +36,9 @@ export const getListDataInsightCharts = async () => {
 
   return response.data;
 };
+
+export const getChartById = async (id: string) => {
+  const response = await APIClient.get<DataInsightChart>(`/dataInsight/${id}`);
+
+  return response.data;
+};

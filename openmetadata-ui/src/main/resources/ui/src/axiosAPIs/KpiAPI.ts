@@ -39,3 +39,16 @@ export const postKPI = async (data: Kpi) => {
 
   return response.data;
 };
+export const putKPI = async (data: Kpi) => {
+  const response = await APIClient.put<Kpi, AxiosResponse<Kpi>>('/kpi', data);
+
+  return response.data;
+};
+
+export const getKPIByName = async (kpiName: string, params?: ListParams) => {
+  const response = await APIClient.get<Kpi>(`/kpi/name/${kpiName}`, {
+    params,
+  });
+
+  return response.data;
+};
