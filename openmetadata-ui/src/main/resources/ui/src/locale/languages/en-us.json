@@ -243,7 +243,7 @@
     "edit-lineage": "Edit Lineage",
     "data-asset": "Data asset",
     "end-date": "End Date",
-    "metric-type": "metricType",
+    "metric-type": "Metric type",
     "total-data-assets": "Total data assets",
     "data-assets-with-field": "Data assets with {{field}}",
     "total-data-assets-with-tiers": "Total Data assets with tiers",
