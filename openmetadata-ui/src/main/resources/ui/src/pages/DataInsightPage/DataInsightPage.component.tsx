@@ -22,6 +22,7 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { t } from 'i18next';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
@@ -131,7 +132,7 @@ const DataInsightPage = () => {
     if (ENTITIES_CHARTS.includes(chartType)) {
       setActiveTab(DATA_INSIGHT_TAB.DataAssets);
     } else {
-      setActiveTab(DATA_INSIGHT_TAB['Web Analytics']);
+      setActiveTab(DATA_INSIGHT_TAB['App Analytics']);
     }
     setSelectedChart(chartType);
   };
@@ -162,11 +163,11 @@ const DataInsightPage = () => {
             <div data-testid="data-insight-header">
               <Typography.Title level={5}>Data Insight</Typography.Title>
               <Typography.Text className="data-insight-label-text">
-                Keep track of OKRs with charts built around OpenMetadata health.
+                {t('label.data-insight-subtitle')}
               </Typography.Text>
             </div>
             <Button type="primary" onClick={handleAddKPI}>
-              Add KPI
+              {t('label.add-kpi')}
             </Button>
           </Space>
         </Col>
@@ -181,7 +182,7 @@ const DataInsightPage = () => {
                   mode="multiple"
                   notFoundContent={null}
                   options={teamsOptions}
-                  placeholder="Select teams"
+                  placeholder="Select Teams"
                   onChange={handleTeamChange}
                   onSearch={handleTeamSearch}
                 />
@@ -192,7 +193,7 @@ const DataInsightPage = () => {
                   mode="multiple"
                   notFoundContent={null}
                   options={TIER_FILTER}
-                  placeholder="Select tier"
+                  placeholder="Select Tier"
                   onChange={handleTierChange}
                 />
               </Space>
@@ -251,7 +252,7 @@ const DataInsightPage = () => {
             </Col>
           </>
         )}
-        {activeTab === DATA_INSIGHT_TAB['Web Analytics'] && (
+        {activeTab === DATA_INSIGHT_TAB['App Analytics'] && (
           <>
             <Col span={24}>
               <TopViewEntities chartFilter={chartFilter} />

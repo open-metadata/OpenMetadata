@@ -69,8 +69,8 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
 };
 
 export const DATA_INSIGHT_TAB = {
-  DataAssets: 'Data assets',
-  'Web Analytics': 'Web Analytics',
+  DataAssets: 'Data Assets',
+  'App Analytics': 'App Analytics',
 };
 
 export const DAY_FILTER = [
