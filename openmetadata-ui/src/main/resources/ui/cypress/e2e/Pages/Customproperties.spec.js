@@ -19,7 +19,7 @@ import {
     login,
     verifyResponseStatusCode
 } from '../../common/common';
-import { ENTITIES, LOGIN } from '../../constants/constants';
+import { ENTITIES, LOGIN, uuid } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
   before(() => {
@@ -38,123 +38,225 @@ describe('Custom Properties should work properly', () => {
     cy.get('[data-testid="settings-left-panel"]').should('be.visible');
   });
 
-  Object.values(ENTITIES).forEach((entity) => {
-    it(`Add Integer custom property for ${entity.name}  Entities`, () => {
-      interceptURL(
-        'GET',
-        `/api/v1/metadata/types/name/${entity.name}*`,
-        'getEntity'
-      );
+  describe('Add update and delete Integer custom properties', () => {
+    Object.values(ENTITIES).forEach((entity) => {
+      const propertyName = `entity${entity.name}test${uuid()}`;
+      it(`Add Integer custom property for ${entity.name}  Entities`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
 
-      //Selecting the entity
-      cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@getEntity', 200);
+        verifyResponseStatusCode('@getEntity', 200);
 
-      //Getting the property
-      const propertyName = addCustomPropertiesForEntity(
-        entity,
-        'integer',
-        entity.integerValue,
-        entity.entityObj
-      );
-      //Navigating back to custom properties page
-      cy.get('[data-testid="appbar-item-settings"]')
-        .should('be.visible')
-        .click();
-      cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+        //Getting the property
+        addCustomPropertiesForEntity(
+          propertyName,
+          entity,
+          'integer',
+          entity.integerValue,
+          entity.entityObj
+        );
+        //Navigating back to custom properties page
+        cy.get('[data-testid="appbar-item-settings"]')
+          .should('be.visible')
+          .click();
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@getEntity', 200);
+        verifyResponseStatusCode('@getEntity', 200);
+      });
 
-      editCreatedProperty(propertyName);
+      it(`Edit created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
 
-      deleteCreatedProperty(propertyName);
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
+
+        verifyResponseStatusCode('@getEntity', 200);
+        editCreatedProperty(propertyName);
+      });
+
+      it(`Delete created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
+
+        verifyResponseStatusCode('@getEntity', 200);
+        deleteCreatedProperty(propertyName);
+      });
     });
   });
 
-  Object.values(ENTITIES).forEach((entity) => {
-    it(`Add String custom property for ${entity.name} Entities`, () => {
-      interceptURL(
-        'GET',
-        `/api/v1/metadata/types/name/${entity.name}*`,
-        'getEntity'
-      );
+  describe('Add update and delete String custom properties', () => {
+    Object.values(ENTITIES).forEach((entity) => {
+      const propertyName = `entity${entity.name}test${uuid()}`;
+      it(`Add String custom property for ${entity.name} Entities`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
 
-      //Selecting the entity
-      cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@getEntity', 200);
+        verifyResponseStatusCode('@getEntity', 200);
 
-      const propertyName = addCustomPropertiesForEntity(
-        entity,
-        'string',
-        entity.stringValue,
-        entity.entityObj
-      );
+        addCustomPropertiesForEntity(
+          propertyName,
+          entity,
+          'string',
+          entity.stringValue,
+          entity.entityObj
+        );
 
-      //Navigating back to custom properties page
-      cy.get('[data-testid="appbar-item-settings"]')
-        .should('be.visible')
-        .click();
-      //Selecting the entity
-      cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+        //Navigating back to custom properties page
+        cy.get('[data-testid="appbar-item-settings"]')
+          .should('be.visible')
+          .click();
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@getEntity', 200);
+        verifyResponseStatusCode('@getEntity', 200);
+      });
 
-      editCreatedProperty(propertyName);
+      it(`Edit created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
 
-      deleteCreatedProperty(propertyName);
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
+
+        verifyResponseStatusCode('@getEntity', 200);
+        editCreatedProperty(propertyName);
+      });
+
+      it(`Delete created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
+
+        verifyResponseStatusCode('@getEntity', 200);
+        deleteCreatedProperty(propertyName);
+      });
     });
   });
 
-  Object.values(ENTITIES).forEach((entity) => {
-    it(`Add Markdown custom property for ${entity.name} Entities`, () => {
-      interceptURL(
-        'GET',
-        `/api/v1/metadata/types/name/${entity.name}*`,
-        'getEntity'
-      );
+  describe('Add update and delete Markdown custom properties', () => {
+    Object.values(ENTITIES).forEach((entity) => {
+      const propertyName = `entity${entity.name}test${uuid()}`;
+      it(`Add Markdown custom property for ${entity.name} Entities`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
 
-      //Selecting the entity
-      cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@getEntity', 200);
+        verifyResponseStatusCode('@getEntity', 200);
 
-      const propertyName = addCustomPropertiesForEntity(
-        entity,
-        'markdown',
-        entity.markdownValue,
-        entity.entityObj
-      );
-      //Navigating back to custom properties page
-      cy.get('[data-testid="appbar-item-settings"]')
-        .should('be.visible')
-        .click();
-      cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
+        addCustomPropertiesForEntity(
+          propertyName,
+          entity,
+          'markdown',
+          entity.markdownValue,
+          entity.entityObj
+        );
+        //Navigating back to custom properties page
+        cy.get('[data-testid="appbar-item-settings"]')
+          .should('be.visible')
+          .click();
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
 
-      verifyResponseStatusCode('@getEntity', 200);
+        verifyResponseStatusCode('@getEntity', 200);
+      });
 
-      editCreatedProperty(propertyName);
+      it(`Edit created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
 
-      deleteCreatedProperty(propertyName);
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
+
+        verifyResponseStatusCode('@getEntity', 200);
+        editCreatedProperty(propertyName);
+      });
+
+      it(`Delete created property for ${entity.name} entity`, () => {
+        interceptURL(
+          'GET',
+          `/api/v1/metadata/types/name/${entity.name}*`,
+          'getEntity'
+        );
+
+        //Selecting the entity
+        cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
+          .scrollIntoView()
+          .should('be.visible')
+          .click();
+
+        verifyResponseStatusCode('@getEntity', 200);
+        deleteCreatedProperty(propertyName);
+      });
     });
   });
 });

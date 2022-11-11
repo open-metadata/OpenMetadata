@@ -20,7 +20,7 @@ import {
     updateDescriptionForIngestedTables,
     uuid
 } from '../../common/common';
-import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Superset';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -77,11 +77,11 @@ describe('Superset Ingestion', () => {
     editOwnerforCreatedService(
       SERVICE_TYPE.Dashboard,
       serviceName,
-      'dashboardServices'
+      API_SERVICE.dashboardServiecs
     );
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName, API_SERVICE.dashboardServiecs);
   });
 });
