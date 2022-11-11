@@ -13,19 +13,39 @@
 Validate workflow configs and filters
 """
 
-import time
+from __future__ import annotations
+
 import unittest
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, time
+from time import sleep
 
 import pytest
 import requests
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
+from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.generated.schema.analytics.reportData import ReportDataType
+from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
+    CreateKpiRequest,
+)
+from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
+from metadata.generated.schema.dataInsight.dataInsightChartResult import (
+    DataInsightChartResult,
+    DataInsightChartType,
+)
+from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
+from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithDescriptionByType import (
+    PercentageOfEntitiesWithDescriptionByType,
+)
+from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByType import (
+    PercentageOfEntitiesWithOwnerByType,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -65,6 +85,32 @@ class DataInsightWorkflowTests(unittest.TestCase):
             )
         )
 
+        cls.start_ts = int(
+            datetime.combine(datetime.utcnow(), time.min).timestamp() * 1000
+        )
+        cls.end_ts = int(
+            datetime.combine(datetime.utcnow(), time.max).timestamp() * 1000
+        )
+
+        completed_description_chart = cls.metadata.get_by_name(
+            DataInsightChart, "PercentageOfEntitiesWithDescriptionByType", fields="*"
+        )
+        create = CreateKpiRequest(
+            name="CompletedDescription",
+            dataInsightChart=EntityReference(
+                type="dataInsightChart", id=completed_description_chart.id
+            ),
+            description="foo",
+            startDate=cls.start_ts,
+            endDate=cls.end_ts,
+            targetDefinition=[
+                KpiTarget(name="completedDescriptionFraction", value="0.63")
+            ],
+            metricType="PERCENTAGE",
+        )
+
+        cls.metadata.create_kpi(create)
+
     def test_create_method(self):
         """Test validation of the workflow config is properly happening"""
         DataInsightWorkflow.create(data_insight_config)
@@ -79,7 +125,9 @@ class DataInsightWorkflowTests(unittest.TestCase):
         workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
         workflow.execute()
 
-        time.sleep(1)  # wait for data to be available
+        sleep(1)  # wait for data to be available
+
+        # Test the indexes have been created as expected and the data have been loaded
         entity_report_indexes = requests.get(
             "http://localhost:9200/entity_report_data_index/_search", timeout=30
         )
@@ -94,9 +142,100 @@ class DataInsightWorkflowTests(unittest.TestCase):
             entity_report_indexes.json()["hits"]["total"]["value"] > 0
         )  # check data have been correctly indexed in ES
 
+        # test report endpoint is returning data
         report_data = self.metadata.get_data_insight_report_data(
-            int((datetime.now() - timedelta(days=1)).timestamp() * 1000),
-            int((datetime.now() + timedelta(days=1)).timestamp() * 1000),
+            self.start_ts,
+            self.end_ts,
             ReportDataType.EntityReportData.value,
         )
         assert report_data.get("data")
+
+        # test data insight aggregation endpoint is returning data
+        resp = self.metadata.get_aggregated_data_insight_results(
+            start_ts=self.start_ts,
+            end_ts=self.end_ts,
+            data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithDescriptionByType.value,
+            data_report_index=DataInsightEsIndex.EntityReportData.value,
+        )
+
+        assert isinstance(resp, DataInsightChartResult)
+        assert resp.data
+        assert isinstance(resp.data[0], PercentageOfEntitiesWithDescriptionByType)
+
+        resp = self.metadata.get_aggregated_data_insight_results(
+            start_ts=self.start_ts,
+            end_ts=self.end_ts,
+            data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithOwnerByType.value,
+            data_report_index=DataInsightEsIndex.EntityReportData.value,
+        )
+
+        assert resp.data
+        assert isinstance(resp.data[0], PercentageOfEntitiesWithOwnerByType)
+
+    def test_get_kpis(self):
+        """test Kpis are returned as expected"""
+        # TO DO: Add KPI creation step and deletion (setUp + tearDown)
+
+        workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
+
+        kpis = workflow._get_kpis()
+
+        assert kpis
+
+    def test_write_kpi_result(self):
+        """test write kpi result"""
+        fqn = "CompletedDescription"
+        self.metadata.add_kpi_result(
+            fqn,
+            KpiResult(
+                timestamp=int(datetime.utcnow().timestamp() * 1000),
+                kpiFqn="CompletedDescription",
+                targetResult=[
+                    KpiTarget(
+                        name="completedDescriptionFraction",
+                        value="0.56",
+                        targetMet=False,
+                    )
+                ],
+            ),
+        )
+
+        kpi_result = self.metadata.get_kpi_result(fqn, self.start_ts, self.end_ts)
+
+        assert kpi_result
+
+    def test_create_kpi(self):
+        completed_description_chart = self.metadata.get_by_name(
+            DataInsightChart, "PercentageOfEntitiesWithDescriptionByType", fields="*"
+        )
+        create = CreateKpiRequest(
+            name="myKpi",
+            dataInsightChart=EntityReference(
+                type="dataInsightChart", id=completed_description_chart.id
+            ),
+            description="foo",
+            startDate=self.start_ts,
+            endDate=self.end_ts,
+            targetDefinition=[
+                KpiTarget(name="completedDescriptionFraction", value="0.63")
+            ],
+            metricType="PERCENTAGE",
+        )
+
+        kpi = self.metadata.create_kpi(create)
+        assert kpi
+        assert isinstance(kpi, Kpi)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        kpis: list[Kpi] = cls.metadata.list_entities(
+            entity=Kpi, fields="*"  # type: ignore
+        ).entities
+
+        for kpi in kpis:
+            cls.metadata.delete(
+                entity=Kpi,
+                entity_id=kpi.id,
+                hard_delete=True,
+                recursive=True,
+            )

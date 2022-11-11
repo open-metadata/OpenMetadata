@@ -20,6 +20,7 @@ Workflow definition for the ORM Profiler.
 from __future__ import annotations
 
 import traceback
+from datetime import datetime
 from typing import Optional, Union, cast
 
 from pydantic import ValidationError
@@ -34,7 +35,9 @@ from metadata.data_insight.processor.web_analytic_report_data_processor import (
     WebAnalyticEntityViewReportDataProcessor,
     WebAnalyticUserActivityReportDataProcessor,
 )
+from metadata.data_insight.runner.kpi_runner import KpiRunner
 from metadata.generated.schema.analytics.reportData import ReportDataType
+from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -47,7 +50,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.workflow_helper import (
     set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
@@ -55,6 +58,8 @@ from metadata.utils.workflow_helper import (
 from metadata.utils.workflow_output_handler import print_data_insight_status
 
 logger = data_insight_logger()
+
+NOW = datetime.utcnow().timestamp() * 1000
 
 
 class DataInsightWorkflow:
@@ -82,6 +87,8 @@ class DataInsightWorkflow:
             ]
         ] = None
 
+        self.kpi_runner: Optional[KpiRunner] = None
+
         if self.config.sink:
             self.sink = get_sink(
                 sink_type="metadata-rest",
@@ -96,6 +103,84 @@ class DataInsightWorkflow:
                 metadata_config=self.metadata_config,
                 _from="ingestion",
             )
+
+    @staticmethod
+    def _is_kpi_active(entity: Kpi) -> bool:
+        """Check if a KPI is active
+
+        Args:
+            entity (Kpi): KPI entity
+
+        Returns:
+            Kpi:
+        """
+
+        start_date = entity.startDate.__root__
+        end_date = entity.endDate.__root__
+
+        if not start_date or not end_date:
+            logger.warning(
+                f"Start date or End date was not defined.\n\t-startDate: {start_date}\n\t-end_date: {end_date}\n"
+                "We won't be running the KPI validation"
+            )
+            return False
+
+        if start_date <= NOW <= end_date:
+            return True
+
+        return False
+
+    def _get_kpis(self) -> list[Kpi]:
+        """get the list of KPIs and return the active ones
+
+        Returns:
+            _type_: _description_
+        """
+
+        kpis: EntityList[Kpi] = self.metadata.list_entities(
+            entity=Kpi, fields="*"  # type: ignore
+        )
+
+        return [kpi for kpi in kpis.entities if self._is_kpi_active(kpi)]
+
+    def _execute_data_processor(self):
+        """Data processor method to refine raw data into report data and ingest it in ES"""
+        for report_data_type in ReportDataType:
+            logger.info(f"Processing data for report type {report_data_type}")
+            try:
+                self.data_processor = DataProcessor.create(
+                    _data_processor_type=report_data_type.value, metadata=self.metadata
+                )
+                for record in self.data_processor.process():
+                    if hasattr(self, "sink"):
+                        self.sink.write_record(record)
+                        self.es_sink.write_record(record)
+                    else:
+                        logger.warning(
+                            "No sink attribute found, skipping ingestion of KPI result"
+                        )
+
+            except Exception as exc:
+                logger.error(
+                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
+                )
+                logger.debug(traceback.format_exc())
+                self.status.failure(
+                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
+                )
+
+    def _execute_kpi_runner(self):
+        """KPI runner method to run KPI definiton against platform latest metric"""
+        kpis = self._get_kpis()
+        self.kpi_runner = KpiRunner(kpis, self.metadata)
+
+        for kpi_result in self.kpi_runner.run():
+            if hasattr(self, "sink"):
+                self.sink.write_record(kpi_result)
+            else:
+                logger.warning(
+                    "No sink attribute found, skipping ingestion of KPI result"
+                )
 
     @classmethod
     def create(cls, config_dict: dict) -> DataInsightWorkflow:
@@ -122,24 +207,15 @@ class DataInsightWorkflow:
             raise err
 
     def execute(self):
-        for report_data_type in ReportDataType:
-            try:
-                self.data_processor = DataProcessor.create(
-                    _data_processor_type=report_data_type.value, metadata=self.metadata
-                )
-                for record in self.data_processor.process():
-                    if hasattr(self, "sink"):
-                        self.sink.write_record(record)
-                        self.es_sink.write_record(record)
+        """Execute workflow"""
+        logger.info("Starting data processor executiong")
+        self._execute_data_processor()
+        logger.info("Data processor finished running")
 
-            except Exception as exc:
-                logger.error(
-                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
-                )
-                logger.debug(traceback.format_exc())
-                self.status.failure(
-                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
-                )
+        logger.info("Sleeping for 1 second. Waiting for ES data to be indexed.")
+        logger.info("Starting KPI runner")
+        self._execute_kpi_runner()
+        logger.info("KPI runner finished running")
 
     def raise_from_status(self, raise_warnings=False):
         if self.data_processor and self.data_processor.get_status().failures:
