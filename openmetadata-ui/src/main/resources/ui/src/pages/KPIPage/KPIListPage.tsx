@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Typography } from 'antd';
+import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListKPIs } from '../../axiosAPIs/KpiAPI';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -29,10 +31,12 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 
 import { Paging } from '../../generated/type/paging';
 import { getEntityName } from '../../utils/CommonUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTimeFromSeconds } from '../../utils/TimeUtils';
 
 const KPIListPage = () => {
@@ -42,6 +46,7 @@ const KPIListPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [kpiPage, setKpiPage] = useState(INITIAL_PAGING_VALUE);
   const [kpiPaging, setKpiPaging] = useState<Paging>(pagingObject);
+  const [selectedKpi, setSelectedKpi] = useState<Kpi>();
 
   const fetchKpiList = async (param?: Record<string, string>) => {
     try {
@@ -110,6 +115,26 @@ const KPIListPage = () => {
         render: (metricType: KpiTargetType) => (
           <Typography.Text>{metricType}</Typography.Text>
         ),
+      },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        width: '80px',
+        key: 'actions',
+        render: (_, record) => {
+          return (
+            <Tooltip placement="left" title="Delete">
+              <Button
+                data-testid={`delete-action-${getEntityName(record)}`}
+                icon={
+                  <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+                }
+                type="text"
+                onClick={() => setSelectedKpi(record)}
+              />
+            </Tooltip>
+          );
+        },
       },
     ];
 
@@ -180,6 +205,20 @@ const KPIListPage = () => {
           </Col>
         )}
       </Row>
+      {selectedKpi && (
+        <DeleteWidgetModal
+          afterDeleteAction={fetchKpiList}
+          allowSoftDelete={false}
+          deleteMessage={`Are you sure you want to delete ${getEntityName(
+            selectedKpi
+          )}`}
+          entityId={selectedKpi.id}
+          entityName={getEntityName(selectedKpi)}
+          entityType={EntityType.KPI}
+          visible={!isUndefined(selectedKpi)}
+          onCancel={() => setSelectedKpi(undefined)}
+        />
+      )}
     </PageLayoutV1>
   );
 };
