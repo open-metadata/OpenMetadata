@@ -32,7 +32,6 @@ base_requirements = {
     "google>=3.0.0",
     "google-auth>=1.33.0",
     "python-dateutil>=2.8.1",
-    "email-validator>=1.0.3",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
     "sqlalchemy>=1.4.0",
