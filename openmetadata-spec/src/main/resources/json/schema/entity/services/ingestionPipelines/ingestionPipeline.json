@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "MetadataToElasticSearch"]
     },
     "pipelineStatus": {
       "type": "object",
@@ -22,9 +22,11 @@
           "description": "Pipeline unique run ID.",
           "type": "string"
         },
-        "state": {
+        "pipelineState": {
           "description": "Pipeline status denotes if its failed or succeeded.",
-          "type": "string"
+          "type": "string",
+          "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType",
+          "enum": ["queued","success","failed","running","partialSuccess"]
         },
         "startDate": {
           "description": "startDate of the pipeline run for this particular execution.",
@@ -149,7 +151,7 @@
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/sourceConfig"
     },
     "openMetadataServerConnection": {
-      "$ref": "../connections/metadata/openMetadataConnection.json"
+      "$ref": "../connections/metadata/openMetadataServerConnection.json"
     },
     "airflowConfig": {
       "$ref": "#/definitions/airflowConfig"
@@ -159,12 +161,8 @@
       "$ref": "../../../type/entityReference.json"
     },
     "pipelineStatuses": {
-      "description": "List of executions and status for the Pipeline.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/pipelineStatus"
-      },
-      "default": null
+      "description": "Last of executions and status for the Pipeline.",
+      "$ref": "#/definitions/pipelineStatus"
     },
     "loggerLevel": {
       "description": "Set the logging level for the workflow.",
@@ -203,10 +201,6 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
-    },
-    "sink": {
-      "description": "Sink configuration",
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sink"
     }
   },
   "required": [

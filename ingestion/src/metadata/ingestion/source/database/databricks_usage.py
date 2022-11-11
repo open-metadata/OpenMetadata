@@ -87,15 +87,18 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
         """
         try:
             queries = []
-            data = self.client.list_query_history()
+            data = self.client.list_query_history(
+                start_date=self.start,
+                end_date=self.end,
+            )
             for row in data:
                 try:
                     queries.append(
                         TableQuery(
-                            query=row["query_text"],
-                            userName=row["user_name"],
-                            startTime=row["query_start_time_ms"],
-                            endTime=row["execution_end_time_ms"],
+                            query=row.get("query_text"),
+                            userName=row.get("user_name"),
+                            startTime=row.get("query_start_time_ms"),
+                            endTime=row.get("execution_end_time_ms"),
                             analysisDate=datetime.now(),
                             serviceName=self.config.serviceName,
                             databaseName="default",  # In databricks databaseName is always default

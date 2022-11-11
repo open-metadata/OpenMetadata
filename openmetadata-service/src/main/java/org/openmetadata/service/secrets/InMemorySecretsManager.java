@@ -20,7 +20,7 @@ import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvi
 import org.openmetadata.service.exception.SecretsManagerException;
 
 /** Secret Manager used for testing */
-public class InMemorySecretsManager extends ThirdPartySecretsManager {
+public class InMemorySecretsManager extends ExternalSecretsManager {
 
   private static InMemorySecretsManager INSTANCE;
 

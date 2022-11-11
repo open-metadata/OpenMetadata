@@ -13,7 +13,7 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { isNil, isString, startCase, uniqueId } from 'lodash';
+import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -24,11 +24,13 @@ import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getEntityId,
   getEntityName,
   getEntityPlaceHolder,
+  getNameFromFQN,
   getOwnerValue,
   getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
@@ -47,6 +49,7 @@ export interface TableDataCardPropsV2 {
     value: number;
   }[];
   searchIndex: SearchIndex | EntityType;
+  handleSummaryPanelDisplay?: (source: Table) => void;
 }
 
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
@@ -54,23 +57,13 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   source,
   matches,
   searchIndex,
+  handleSummaryPanelDisplay,
 }) => {
   const location = useLocation();
 
   const otherDetails = useMemo(() => {
-    const _otherDetails: ExtraInfo[] = [];
-
-    if ('tier' in source && !isNil(source.tier)) {
-      _otherDetails.push({
-        key: 'Tier',
-        value: isString(source.tier)
-          ? source.tier
-          : source.tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1],
-      });
-    }
-
-    if ('owner' in source && !isNil(source.owner)) {
-      _otherDetails.push({
+    const _otherDetails: ExtraInfo[] = [
+      {
         key: 'Owner',
         value: getOwnerValue(source.owner as EntityReference),
         placeholderText: getEntityPlaceHolder(
@@ -85,8 +78,16 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
           source.owner?.type === OwnerType.USER
             ? source.owner?.name
             : undefined,
-      });
-    }
+      },
+      {
+        key: 'Tier',
+        value: source.tier
+          ? isString(source.tier)
+            ? source.tier
+            : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+          : '',
+      },
+    ];
 
     if ('usageSummary' in source) {
       _otherDetails.push({
@@ -106,7 +107,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     return _otherDetails;
   }, [source]);
 
-  const handleLinkClick = () => {
+  const handleLinkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (location.pathname.includes(ROUTES.TOUR)) {
       AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
     }
@@ -119,9 +121,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
         data-testid={`${getPartialNameFromTableFQN(
           source.fullyQualifiedName ?? '',
           [FqnPart.Service]
-        )}-${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
-          FqnPart.Table,
-        ])}`}
+        )}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`}
         id={`${id}Title`}
         onClick={handleLinkClick}>
         {stringToHTML(source.name)}
@@ -142,7 +142,10 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
-      data-testid="table-data-card">
+      data-testid="table-data-card"
+      onClick={() => {
+        handleSummaryPanelDisplay && handleSummaryPanelDisplay(source as Table);
+      }}>
       <div>
         {'databaseSchema' in source && 'database' in source && (
           <span

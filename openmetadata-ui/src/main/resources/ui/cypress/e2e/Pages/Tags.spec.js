@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-    addNewTagToEntity,
-    descriptionBox,
-    interceptURL,
-    login,
-    verifyResponseStatusCode
-} from '../../common/common';
-import {
-    LOGIN,
-    NEW_TAG,
-    NEW_TAG_CATEGORY,
-    SEARCH_ENTITY_TABLE
-} from '../../constants/constants';
+import { addNewTagToEntity, descriptionBox, interceptURL, login, verifyResponseStatusCode } from '../../common/common';
+import { LOGIN, NEW_TAG, NEW_TAG_CATEGORY, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 describe('Tags page should work', () => {
   beforeEach(() => {
@@ -95,7 +84,7 @@ describe('Tags page should work', () => {
       });
   });
 
-  it('Add new tag flow shoud work properly', () => {
+  it('Add new tag flow should work properly', () => {
     cy.get('[data-testid="side-panel-category"]')
       .contains(NEW_TAG_CATEGORY.name)
       .should('be.visible')

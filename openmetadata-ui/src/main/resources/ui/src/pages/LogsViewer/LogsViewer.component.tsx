@@ -30,11 +30,11 @@ import {
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { CopyToClipboardButton } from '../../components/buttons/CopyToClipboardButton/CopyToClipboardButton';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { IngestionRecentRuns } from '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from '../../components/Loader/Loader';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
-import { getIngestionStatuses } from '../../utils/CommonUtils';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
@@ -197,10 +197,11 @@ const LogsViewer = () => {
     return {
       Type: ingestionDetails?.pipelineType || '--',
       Schedule: ingestionDetails?.airflowConfig.scheduleInterval || '--',
-      ['Recent Runs']:
-        getIngestionStatuses(
-          ingestionDetails ? ingestionDetails : ({} as IngestionPipeline)
-        ) || '--',
+      ['Recent Runs']: ingestionDetails?.fullyQualifiedName ? (
+        <IngestionRecentRuns ingestion={ingestionDetails} />
+      ) : (
+        '--'
+      ),
     };
   }, [ingestionDetails]);
 

@@ -28,6 +28,13 @@ export type ExploreSearchIndex =
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC;
 
+export type ExploreSearchIndexKey =
+  | 'TABLE'
+  | 'PIPELINE'
+  | 'DASHBOARD'
+  | 'MLMODEL'
+  | 'TOPIC';
+
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {

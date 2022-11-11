@@ -24,7 +24,7 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 export const pageContainerStyles = {
   height: '100%',
   padding: '1rem 0.5rem',
-  margin: '0px',
+
   overflow: 'hidden',
 };
 

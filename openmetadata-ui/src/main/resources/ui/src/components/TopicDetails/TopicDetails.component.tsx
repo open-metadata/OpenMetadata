@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { restoreTopic } from '../../axiosAPIs/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -46,6 +47,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -113,6 +115,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onExtensionUpdate,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -432,6 +435,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     );
   };
 
+  const handleFullScreenClick = () => {
+    history.push(getLineageViewPath(EntityType.TOPIC, topicFQN));
+  };
+
   const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -639,6 +646,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     lineageLeafNodes={lineageTabData.lineageLeafNodes}
                     loadNodeHandler={lineageTabData.loadNodeHandler}
                     removeLineageHandler={lineageTabData.removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}
@@ -648,7 +656,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     topicDetails as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.TOPIC}
-                  handleExtentionUpdate={onExtensionUpdate}
+                  handleExtensionUpdate={onExtensionUpdate}
                 />
               )}
               <div

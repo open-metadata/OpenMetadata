@@ -109,6 +109,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   @Transaction
   public TagCategory delete(UriInfo uriInfo, UUID id) throws IOException {
     TagCategory category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(category);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), category.getName());
@@ -134,7 +135,8 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       // TODO handle name change
-      recordChange("categoryType", original.getCategoryType(), updated.getCategoryType());
+      // TODO mutuallyExclusive from false to true?
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       updateName(original, updated);
     }
 

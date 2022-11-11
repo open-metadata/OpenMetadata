@@ -32,7 +32,6 @@ import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerJdbiTimingCollector;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
 import java.io.IOException;
@@ -77,7 +76,6 @@ import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.secrets.SecretsManagerMigrationService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -158,10 +156,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Event publishers
     registerEventPublisher(catalogConfig, jdbi);
 
-    // Check if migration is need from local secret manager to configured one and migrate
-    new SecretsManagerMigrationService(secretsManager, catalogConfig.getClusterName())
-        .migrateServicesToSecretManagerIfNeeded();
-
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig, jdbi);
@@ -177,8 +171,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
-    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
-
     SqlLogger sqlLogger =
         new SqlLogger() {
           @Override

@@ -23,6 +23,9 @@ on:
     paths:
       - 'openmetadata-airflow-apis/**'
 
+permissions:
+  contents: read
+
 concurrency: 
   group: airflow-apis-tests-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -30,6 +33,7 @@ jobs:
   airflow-apis-tests:
     runs-on: ubuntu-latest
     steps:
+
     - name: Checkout
       uses: actions/checkout@v2
       with:

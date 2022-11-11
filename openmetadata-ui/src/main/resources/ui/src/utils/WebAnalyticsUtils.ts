@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
+import {
+  getSession,
+  removeSession,
+  setSession,
+} from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { AxiosError } from 'axios';
 import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
 import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
-import { PageViewEvent } from '../generated/analytics/pageViewEvent';
 import {
   WebAnalyticEventData,
   WebAnalyticEventType,
 } from '../generated/analytics/webAnalyticEventData';
-import { showErrorToast } from './ToastUtils';
+import { PageViewEvent } from '../generated/analytics/webAnalyticEventType/pageViewEvent';
 
 /**
  * Check if url is valid or not and return the pathname
@@ -61,57 +64,54 @@ export const getPageLoadTime = (performance: Performance) => {
  * @param userId string
  */
 export const trackPageView = async (pageData: WebPageData, userId: string) => {
+  // Get the current session
+  const currentSession = getSession();
+
   const { payload } = pageData;
 
   const { location, navigator, performance, document } = window;
-  const { hostname, pathname } = location;
-
-  // store the current path reference
-  let currentPathRef = pathname;
+  const { hostname } = location;
 
   const pageLoadTime = getPageLoadTime(performance);
 
-  const { anonymousId, properties, meta } = payload;
+  const { properties, meta } = payload;
 
   const referrer = properties.referrer ?? document.referrer;
-
-  const previousPathRef = getReferrerPath(referrer);
 
   // timestamp for the current event
   const timestamp = meta.ts;
 
   if (userId) {
-    /**
-     *  Check if the previous path and current path is not matching
-     *  then only collect the data
-     */
-    if (currentPathRef !== previousPathRef) {
-      currentPathRef = previousPathRef;
+    const pageViewEvent: PageViewEvent = {
+      fullUrl: properties.url,
+      url: properties.path,
+      hostname,
+      language: navigator.language,
+      screenSize: `${properties.width}x${properties.height}`,
+      userId,
+      sessionId: currentSession.id,
+      referrer,
+      pageLoadTime,
+    };
 
-      const pageViewEvent: PageViewEvent = {
-        fullUrl: properties.url,
-        url: properties.path,
-        hostname,
-        language: navigator.language,
-        screenSize: `${properties.width}x${properties.height}`,
-        userId,
-        sessionId: anonymousId,
-        referrer,
-        pageLoadTime,
-      };
+    const webAnalyticEventData: WebAnalyticEventData = {
+      eventType: WebAnalyticEventType.PageView,
+      eventData: pageViewEvent,
+      timestamp,
+    };
 
-      const webAnalyticEventData: WebAnalyticEventData = {
-        eventType: WebAnalyticEventType.PageView,
-        eventData: pageViewEvent,
-        timestamp,
-      };
+    try {
+      /**
+       * extend the session expiry if user continues to interact
+       * Let say expiry is at "5:45:23 PM", and user spent some time and then
+       * interact with other page in 2 minutes so expiry time will be extended to "5:47:23 PM"
+       */
+      setSession(30, {}, true);
 
-      try {
-        // collect the page event
-        await postPageView(webAnalyticEventData);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
+      // collect the page event
+      await postPageView(webAnalyticEventData);
+    } catch (_error) {
+      // handle page view error
     }
   }
 };
@@ -133,4 +133,12 @@ export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
       },
     ],
   });
+};
+
+export const resetWebAnalyticSession = () => {
+  // remove existing session first
+  removeSession();
+
+  // then set new analytics session for 30 minutes
+  setSession(30);
 };

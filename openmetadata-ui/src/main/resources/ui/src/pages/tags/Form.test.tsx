@@ -5,7 +5,6 @@ import Form from './Form';
 
 const mockFunction = jest.fn();
 const mockInitialData = {
-  categoryType: 'Descriptive',
   description: '',
   name: '',
 };
@@ -27,10 +26,8 @@ describe('Test TagsPage form component', () => {
       }
     );
 
-    const categoryType = await findByTestId(container, 'category-type');
     const name = await findByTestId(container, 'name');
 
-    expect(categoryType).toBeInTheDocument();
     expect(name).toBeInTheDocument();
     expect(
       await findByText(container, /MarkdownWithPreview component/i)

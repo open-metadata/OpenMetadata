@@ -146,11 +146,11 @@ class DashboardSourceStatus(SourceStatus):
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
-        logger.info(f"Scanned: {record}")
+        logger.debug(f"Scanned: {record}")
 
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append(key)
-        logger.warning(f"Filtered {key}: {reason}")
+        logger.debug(f"Filtered {key}: {reason}")
 
 
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -246,7 +246,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DashboardServiceTopology()
     context = create_source_context(topology)
 
-    @abstractmethod
     def __init__(
         self,
         config: WorkflowSource,

@@ -34,9 +34,11 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
+import { reactivateTeam } from '../../axiosAPIs/teamsAPI';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
+  LIST_SIZE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { TEAMS_DOCS } from '../../constants/docs.constants';
@@ -53,13 +55,13 @@ import {
   User,
 } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
-import jsonData from '../../jsons/en';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import UserCard from '../../pages/teams/UserCard';
 import {
   commonUserDetailColumns,
   getEntityName,
+  getTierFromEntityInfo,
   hasEditAccess,
 } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
@@ -72,8 +74,9 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
+  getRestoreTeamData,
 } from '../../utils/TeamUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ManageButton from '../common/entityPageInfo/ManageButton/ManageButton';
@@ -81,6 +84,7 @@ import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDe
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
+import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -113,6 +117,7 @@ interface PlaceholderProps {
 }
 
 const TeamDetailsV1 = ({
+  assets,
   hasAccess,
   currentTeam,
   currentTeamUsers,
@@ -137,6 +142,7 @@ const TeamDetailsV1 = ({
   handleAddUser,
   removeUserFromTeam,
   afterDeleteAction,
+  onAssetsPaginate,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const isOrganization = currentTeam.name === TeamType.Organization;
@@ -510,6 +516,33 @@ const TeamDetailsV1 = ({
     setIsModalLoading(false);
   };
 
+  const handleReactiveTeam = async () => {
+    try {
+      const res = await reactivateTeam(
+        getRestoreTeamData(currentTeam, childTeams)
+      );
+      if (res) {
+        afterDeleteAction();
+        showSuccessToast(
+          t('message.entity-restored-success', {
+            entity: 'Team',
+          })
+        );
+      } else {
+        throw t('message.entity-restored-error', {
+          entity: 'Team',
+        });
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.entity-restored-error', {
+          entity: 'Team',
+        })
+      );
+    }
+  };
+
   const fetchPermissions = async () => {
     setLoading(true);
     try {
@@ -521,7 +554,9 @@ const TeamDetailsV1 = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-user-permission-error']
+        t('message.entity-fetch-error', {
+          entity: 'User Permissions',
+        })
       );
     } finally {
       setLoading(false);
@@ -594,8 +629,41 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
+  const restoreIcon = useMemo(
+    () => <SVGIcons alt="Restore" icon={Icons.RESTORE} width="16px" />,
+    [currentTeam.isJoinable]
+  );
+
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
+      ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
+        ? [
+            {
+              label: (
+                <Space
+                  className="cursor-pointer manage-button"
+                  size={8}
+                  onClick={handleReactiveTeam}>
+                  {restoreIcon}
+                  <div
+                    className="text-left open-group"
+                    data-testid="restore-team">
+                    <p className="font-medium" data-testid="restore-team-label">
+                      Restore Team
+                    </p>
+
+                    <p className="tw-text-grey-muted tw-text-xs">
+                      Restoring the Team will add all the metadata back to
+                      OpenMetadata
+                    </p>
+                  </div>
+                </Space>
+              ),
+              key: 'restore-team-dropdown',
+            },
+          ]
+        : []),
+
       {
         label: (
           <Space
@@ -631,7 +699,7 @@ const TeamDetailsV1 = ({
         key: 'open-group-dropdown',
       },
     ],
-    [entityPermissions, currentTeam]
+    [entityPermissions, currentTeam, childTeams]
   );
 
   /**
@@ -709,6 +777,7 @@ const TeamDetailsV1 = ({
               <div>
                 <Fragment>
                   <Table
+                    bordered
                     className="teams-list-table"
                     columns={columns}
                     dataSource={sortedUser}
@@ -738,7 +807,7 @@ const TeamDetailsV1 = ({
    * Check for current team datasets and return the dataset cards
    * @returns - dataset cards
    */
-  const getDatasetCards = () => {
+  const getAssetDetailCards = () => {
     const ownData = filterEntityAssets(currentTeam?.owns || []);
 
     if (ownData.length <= 0) {
@@ -760,26 +829,38 @@ const TeamDetailsV1 = ({
     }
 
     return (
-      <>
-        <div
-          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-          data-testid="dataset-card">
-          {' '}
-          {ownData.map((dataset, index) => {
-            const Dataset = {
-              displayName: dataset.displayName || dataset.name || '',
-              type: dataset.type,
-              fqn: dataset.fullyQualifiedName || '',
-              id: dataset.id,
-              name: dataset.name,
-            };
-
-            return (
-              <UserCard isDataset isIconVisible item={Dataset} key={index} />
-            );
-          })}
-        </div>
-      </>
+      <div data-testid="table-container">
+        {assets.data.map((entity, index) => (
+          <div className="m-b-sm" key={`${entity.name}${index}`}>
+            <TableDataCard
+              database={entity.database}
+              databaseSchema={entity.databaseSchema}
+              deleted={entity.deleted}
+              description={entity.description}
+              fullyQualifiedName={entity.fullyQualifiedName}
+              id={`tabledatacard${index}`}
+              indexType={entity.index}
+              name={entity.name}
+              owner={entity.owner}
+              service={entity.service}
+              serviceType={entity.serviceType || '--'}
+              tags={entity.tags}
+              tier={getTierFromEntityInfo(entity)}
+              usage={entity.weeklyPercentileRank}
+            />
+          </div>
+        ))}
+        {assets.total > LIST_SIZE && assets.data.length > 0 && (
+          <NextPrevious
+            isNumberBased
+            currentPage={assets.currPage}
+            pageSize={LIST_SIZE}
+            paging={{} as Paging}
+            pagingHandler={onAssetsPaginate}
+            totalCount={assets.total}
+          />
+        )}
+      </div>
     );
   };
 
@@ -1053,7 +1134,7 @@ const TeamDetailsV1 = ({
 
               {currentTab === 2 && getUserCards()}
 
-              {currentTab === 3 && getDatasetCards()}
+              {currentTab === 3 && getAssetDetailCards()}
 
               {currentTab === 4 &&
                 (isEmpty(currentTeam.defaultRoles || []) ? (

@@ -75,6 +75,13 @@
     "teams": {
       "description": "Teams that have this role assigned to them.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "disabled" : {
+      "description": "System policy can't be deleted. Use this flag to disable them.",
+      "type": "boolean"
     }
   },
   "required": ["id", "name"],

@@ -12,7 +12,8 @@
  */
 
 import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
-import { Edge as FlowEdge, Node } from 'reactflow';
+import { HTMLAttributes } from 'react';
+import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import {
@@ -41,6 +42,8 @@ export interface EntityLineageProp {
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
+  onFullScreenClick?: () => void;
+  onExitFullScreenViewClick?: () => void;
 }
 
 export interface Edge {
@@ -65,6 +68,8 @@ export interface EdgeData {
 
 export interface CustomEdgeData {
   id: string;
+  label?: string;
+  pipeline?: EntityReference;
   source: string;
   target: string;
   sourceType: string;
@@ -72,6 +77,12 @@ export interface CustomEdgeData {
   isColumnLineage: boolean;
   sourceHandle: string;
   targetHandle: string;
+  selectedColumns?: string[];
+  isTraced?: boolean;
+  selected?: boolean;
+  columnFunctionValue?: string;
+  edge?: Edge;
+  isExpanded?: false;
 }
 
 export interface SelectedEdge {
@@ -94,6 +105,7 @@ export interface CustomControlElementsProps {
   isEditMode: boolean;
   hasEditAccess: boolean | undefined;
   onClick: () => void;
+  onExpandColumnClick: () => void;
   loading: boolean;
   status: LoadingState;
 }
@@ -102,4 +114,26 @@ export enum EdgeTypeEnum {
   UP_STREAM = 'upstream',
   DOWN_STREAM = 'downstream',
   NO_STREAM = '',
+}
+
+export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
+  showZoom?: boolean;
+  showFitView?: boolean;
+  fitViewParams?: FitViewOptions;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onFitView?: () => void;
+  handleFullScreenViewClick?: () => void;
+  onExitFullScreenViewClick?: () => void;
+  deleted: boolean | undefined;
+  isEditMode: boolean;
+  hasEditAccess: boolean | undefined;
+  isColumnsExpanded: boolean;
+  onEditLinageClick: () => void;
+  onExpandColumnClick: () => void;
+  loading: boolean;
+  status: LoadingState;
+  zoomValue: number;
+  lineageData: EntityLineage;
+  onOptionSelect: (value?: string) => void;
 }

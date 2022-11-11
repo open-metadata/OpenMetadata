@@ -72,7 +72,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -96,11 +95,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -136,11 +138,13 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.resources.events.WebhookResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
@@ -165,6 +169,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
+  private final String systemEntityName; // System entity provided by the system that can't be deleted
   protected boolean supportsFollowers;
   protected boolean supportsOwner;
   protected final boolean supportsTags;
@@ -223,6 +228,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
 
+  public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
+  public static EntityReference ATLAS_SERVICE_REFERENCE;
+
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
   public static TagLabel PII_SENSITIVE_TAG_LABEL;
@@ -268,7 +276,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static TestDefinition TEST_DEFINITION3;
   public static EntityReference TEST_DEFINITION3_REFERENCE;
+  public static DataInsightChart DI_CHART1;
+  public static EntityReference DI_CHART1_REFERENCE;
 
+  public static KpiTarget KPI_TARGET;
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -285,6 +296,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
       String fields) {
+    this(entityType, entityClass, entityListClass, collectionName, fields, null);
+  }
+
+  public EntityResourceTest(
+      String entityType,
+      Class<T> entityClass,
+      Class<? extends ResultList<T>> entityListClass,
+      String collectionName,
+      String fields,
+      String systemEntityName) {
     this.entityType = entityType;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
@@ -297,6 +318,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
+    this.systemEntityName = systemEntityName;
   }
 
   @BeforeAll
@@ -315,11 +337,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
+    new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions(test);
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
+    new KpiResourceTest().setupKpi(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
@@ -1303,7 +1327,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     String json = JsonUtils.pojoToJson(entityType);
     ChangeDescription change = getChangeDescription(entityType.getVersion());
-    fieldAdded(change, "customProperties", Arrays.asList(fieldB));
+    fieldAdded(change, "customProperties", CommonUtil.listOf(fieldB));
     entityType.getCustomProperties().add(fieldB);
     entityType = typeResourceTest.patchEntityAndCheck(entityType, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1416,7 +1440,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */
-  @Test
+  //  @Test
   void delete_put_entity_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -1507,6 +1531,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             null,
             TEAM_ONLY_POLICY.getName(),
             TEAM_ONLY_POLICY_RULES.get(0).getName()));
+  }
+
+  @Test
+  void delete_systemEntity() throws IOException {
+    if (systemEntityName == null) {
+      return;
+    }
+    T systemEntity = getEntityByName(systemEntityName, "", ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteEntity(systemEntity.getId(), true, true, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(systemEntity.getName(), entityType));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

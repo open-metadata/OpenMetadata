@@ -64,6 +64,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
+        ingestionPipeline.setDeployed(true);
         return response.body();
       }
     } catch (Exception e) {
@@ -152,19 +153,15 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
-      String statusEndPoint = "%s/%s/status?dag_id=%s";
+      String statusEndPoint = "%s/%s/status?dag_id=%s&only_queued=true";
       response =
           getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
-        List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
-        ingestionPipeline.setPipelineStatuses(statuses);
-        ingestionPipeline.setDeployed(true);
-        return ingestionPipeline;
-      } else if (response.statusCode() == 404) {
-        ingestionPipeline.setDeployed(false);
+        List<PipelineStatus> pipelineStatusList = JsonUtils.readObjects(response.body(), PipelineStatus.class);
+        return pipelineStatusList;
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage(ingestionPipeline.getName(), e.getMessage());
@@ -179,7 +176,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public Response getServiceStatus() {
     HttpResponse<String> response;
     try {
-      response = getRequestNoAuthForJsonContent("%s/%s/health", serviceURL, API_ENDPOINT);
+      response = getRequestNoAuthForJsonContent(serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
         JSONObject responseJSON = new JSONObject(response.body());
         String ingestionVersion = responseJSON.getString("version");
@@ -299,9 +296,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
         .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
   }
 
-  private HttpResponse<String> getRequestNoAuthForJsonContent(String stringUrlFormat, Object... stringReplacement)
+  private HttpResponse<String> getRequestNoAuthForJsonContent(Object... stringReplacement)
       throws IOException, InterruptedException {
-    String url = String.format(stringUrlFormat, stringReplacement);
+    String url = String.format("%s/%s/health", stringReplacement);
     HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header(CONTENT_HEADER, CONTENT_TYPE).GET().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }

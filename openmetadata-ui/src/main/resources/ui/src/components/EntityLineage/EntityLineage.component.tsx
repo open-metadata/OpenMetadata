@@ -13,8 +13,8 @@
 
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import {
+  debounce,
   isEmpty,
   isNil,
   isUndefined,
@@ -47,8 +47,18 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import { searchData } from '../../axiosAPIs/miscAPI';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
+import { PAGE_SIZE } from '../../constants/constants';
+import {
+  ELEMENT_DELETE_STATE,
+  MAX_ZOOM_VALUE,
+  MIN_ZOOM_VALUE,
+  ZOOM_TRANSITION_DURATION,
+  ZOOM_VALUE,
+} from '../../constants/Lineage.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import {
   AddLineage,
   ColumnLineage,
@@ -60,25 +70,36 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
+import jsonData from '../../jsons/en';
+import { formatDataResponse } from '../../utils/APIUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
   dragHandle,
   findUpstreamDownStreamEdge,
+  getAllTracedColumnEdge,
+  getAllTracedNodes,
+  getClassifiedEdge,
   getColumnType,
   getDataLabel,
   getDeletedLineagePlaceholder,
+  getEdgeStyle,
   getEdgeType,
   getLayoutedElements,
   getLineageData,
+  getLoadingStatusValue,
   getModalBodyText,
+  getNewLineageConnectionDetails,
   getNodeRemoveButton,
   getRemovedNodeData,
   getSelectedEdgeArr,
   getUniqueFlowElements,
   getUpdatedEdge,
+  getUpdatedEdgeWithPipeline,
   getUpdatedUpstreamDownStreamEdgeArr,
   getUpStreamDownStreamColumnLineageArr,
-  LoadingStatus,
+  isColumnLineageTraced,
+  isTracedEdge,
   onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
@@ -86,11 +107,11 @@ import {
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
-import CustomControlElements from './CustomControlElements.component';
+import AddPipeLineModal from './AddPipeLineModal';
+import CustomControlsComponent from './CustomControls.component';
 import { CustomEdge } from './CustomEdge.component';
 import CustomNode from './CustomNode.component';
 import {
@@ -107,6 +128,10 @@ import {
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
 
+import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
+import './entityLineage.style.less';
+import LineageNodeLabel from './LineageNodeLabel';
+
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
   loadNodeHandler,
@@ -117,7 +142,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  onFullScreenClick,
   hasEditAccess,
+  onExitFullScreenViewClick,
 }: EntityLineageProp) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -141,11 +168,22 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     {} as SelectedEdge
   );
   const [loading, setLoading] = useState<boolean>(false);
+  const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [status, setStatus] = useState<LoadingState>('initial');
   const [deletionState, setDeletionState] = useState<{
     loading: boolean;
     status: ElementLoadingState;
   }>(ELEMENT_DELETE_STATE);
+  const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
+  const [showAddPipelineModal, setShowAddPipelineModal] =
+    useState<boolean>(false);
+  const [pipelineSearchValue, setPipelineSearchValue] = useState<string>('');
+  const [pipelineOptions, setPipelineOptions] = useState<EntityReference[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<
+    string | undefined
+  >();
+  const [isTracingActive, setIsTracingActive] = useState(false);
+  const [selectedEdgeInfo, setSelectedEdgeInfo] = useState<Edge>();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -185,43 +223,24 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setSelectedEntity({} as EntityReference);
   };
 
-  /**
-   *
-   * @param node
-   * @returns label for given node
-   */
-  const getNodeLabel = (node: EntityReference, isExpanded = false) => {
-    return (
-      <Fragment>
-        {node.type === 'table' ? (
-          <button
-            className="tw-absolute tw--top-3.5 tw--left-2 tw-cursor-pointer tw-z-9999"
-            onClick={(e) => {
-              expandButton.current = expandButton.current
-                ? null
-                : e.currentTarget;
-              // eslint-disable-next-line @typescript-eslint/no-use-before-define
-              handleNodeExpand(!isExpanded, node);
-              setIsDrawerOpen(false);
-            }}>
-            <SVGIcons
-              alt="plus"
-              icon={isExpanded ? 'icon-minus' : 'icon-plus'}
-              width="16px"
-            />
-          </button>
-        ) : null}
-        <p className="tw-flex tw-m-0 tw-py-3">
-          <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(
-            node.displayName,
-            node.fullyQualifiedName,
-            false,
-            node.type
-          )}
-        </p>
-      </Fragment>
-    );
+  const handleNodeSelection = (node: Node) => {
+    const selectedNode = [
+      ...(updatedLineageData.nodes || []),
+      updatedLineageData.entity,
+    ].find((n) => node.id.includes(n.id));
+
+    if (!expandButton.current) {
+      selectNodeHandler(true, {
+        name: selectedNode?.name as string,
+        fqn: selectedNode?.fullyQualifiedName as string,
+        id: node.id,
+        displayName: selectedNode?.displayName,
+        type: selectedNode?.type as string,
+        entityId: selectedNode?.id as string,
+      });
+    } else {
+      expandButton.current = null;
+    }
   };
 
   /**
@@ -238,10 +257,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         toId: data.target.id,
       };
       removeLineageHandler(edgeData);
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      setEdges((es) => {
-        return es.filter(
-          (e) => e.source !== data.source.id && e.target !== data.target.id
+      setEdges((prevEdges) => {
+        return prevEdges.filter(
+          (edge) =>
+            edge.source !== data.source.id && edge.target !== data.target.id
         );
       });
       const newDownStreamEdges = getSelectedEdgeArr(
@@ -335,6 +354,47 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const handleColumnClick = (column: string) => {
+    const { columnEdge } = getClassifiedEdge(edges);
+    const { incomingColumnEdges, outGoingColumnEdges, connectedColumnEdges } =
+      getAllTracedColumnEdge(column, columnEdge);
+
+    setNodes((prevNodes) => {
+      return prevNodes.map((prevNode) => {
+        const nodeTraced = prevNode.data.columns[column];
+        prevNode.data = {
+          ...prevNode.data,
+          selected: !isUndefined(nodeTraced),
+          isTraced: !isUndefined(nodeTraced),
+          selectedColumns: connectedColumnEdges,
+        };
+        if (!isUndefined(nodeTraced)) {
+          handleNodeSelection(prevNode);
+        }
+
+        return prevNode;
+      });
+    });
+    setIsTracingActive(true);
+
+    setEdges((prevEdges) => {
+      return prevEdges.map((edge) => {
+        const isTraced = isColumnLineageTraced(
+          column,
+          edge,
+          incomingColumnEdges,
+          outGoingColumnEdges
+        );
+        edge.style = {
+          ...edge.style,
+          ...getEdgeStyle(isTraced),
+        };
+
+        return edge;
+      });
+    });
+  };
+
   /**
    * take edge data and set it as selected edge
    * @param evt
@@ -362,6 +422,32 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         data,
       };
     });
+  };
+
+  const addPipelineClick = (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    data: CustomEdgeData
+  ) => {
+    setShowAddPipelineModal(true);
+    evt.stopPropagation();
+    if (!isUndefined(data.pipeline)) {
+      setSelectedPipelineId(data.pipeline.id);
+      setPipelineOptions([data.pipeline]);
+    }
+
+    setSelectedEdge({
+      id: data.id,
+      source: {} as EntityReference,
+      target: {} as EntityReference,
+      data,
+    });
+  };
+
+  const handleRemoveEdgeClick = (evt: React.MouseEvent<HTMLButtonElement>) => {
+    setShowAddPipelineModal(false);
+    if (selectedEdge.data) {
+      onEdgeClick(evt, selectedEdge.data);
+    }
   };
 
   const removeNodeHandler = useCallback(
@@ -394,23 +480,20 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const setElementsHandle = (data: EntityLineage) => {
     if (!isEmpty(data)) {
-      const currentData = {
-        nodes: [...(nodes || [])],
-        edges: [...(edges || [])],
-      };
       const graphElements = getLineageData(
         data,
         selectNodeHandler,
         loadNodeHandler,
         lineageLeafNodes,
         isNodeLoading,
-        getNodeLabel,
         isEditMode,
         'buttonedge',
         onEdgeClick,
         removeNodeHandler,
         tableColumnsRef.current,
-        currentData
+        addPipelineClick,
+        handleColumnClick,
+        expandAllColumns
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -429,26 +512,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    * take boolean value as input and reset selected node
    * @param value
    */
-  const closeDrawer = (value: boolean) => {
-    setIsDrawerOpen(value);
-    setNodes((prevElements) => {
-      return prevElements.map((prevElement) => {
-        if (prevElement.id === selectedNode.id) {
-          const className =
-            prevElement.id.includes(updatedLineageData.entity?.id) &&
-            !isEditMode
-              ? 'leaf-node core'
-              : 'leaf-node';
-
-          return {
-            ...prevElement,
-            className,
-          };
-        } else {
-          return prevElement;
-        }
-      });
-    });
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
     setSelectedNode({} as SelectedNode);
   };
 
@@ -555,6 +620,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               });
             }
             newEdge.edge.lineageDetails = {
+              ...currentEdge,
               sqlQuery: currentEdge.sqlQuery || '',
               columnsLineage: updatedColumnsLineage,
             };
@@ -567,7 +633,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               sourceNode?.type || '',
               targetNode?.type || '',
               true,
-              onEdgeClick
+              onEdgeClick,
+              addPipelineClick
             );
 
             return getUniqueFlowElements(
@@ -583,7 +650,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             sourceNode?.type || '',
             targetNode?.type || '',
             false,
-            onEdgeClick
+            onEdgeClick,
+            addPipelineClick
           );
 
           return getUniqueFlowElements(
@@ -657,38 +725,210 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     [selectedNode, updatedLineageData, selectedEntity]
   );
 
-  /**
-   * take element and perform onClick logic
-   * @param el
-   */
-  const onNodeClick = (el: Node) => {
-    if (isNode(el)) {
-      const node = [
-        ...(updatedLineageData.nodes as Array<EntityReference>),
-        updatedLineageData.entity,
-      ].find((n) => el.id.includes(n.id));
+  const handlePipelineSelection = (value: string) => {
+    setSelectedPipelineId(value);
+  };
 
-      if (!expandButton.current) {
-        selectNodeHandler(true, {
-          name: node?.name as string,
-          fqn: node?.fullyQualifiedName as string,
-          id: el.id,
-          displayName: node?.displayName,
-          type: node?.type as string,
-          entityId: node?.id as string,
+  const handleModalCancel = () => {
+    setSelectedPipelineId(undefined);
+    setShowAddPipelineModal(false);
+    setSelectedEdge({} as SelectedEdge);
+    setPipelineOptions([]);
+  };
+
+  const onPipelineSelectionClear = () => {
+    setSelectedPipelineId(undefined);
+    setPipelineSearchValue('');
+  };
+
+  const handleModalSave = () => {
+    if (selectedEdge.data) {
+      setStatus('waiting');
+      setLoading(true);
+      const { source, target } = selectedEdge.data;
+      const allEdge = [
+        ...(updatedLineageData.upstreamEdges || []),
+        ...(updatedLineageData.downstreamEdges || []),
+      ];
+
+      const selectedEdgeValue = allEdge.find(
+        (ed) => ed.fromEntity === source && ed.toEntity === target
+      );
+
+      const pipelineDetail = pipelineOptions.find(
+        (d) => d.id === selectedPipelineId
+      );
+
+      const { newEdge, updatedLineageDetails } = getNewLineageConnectionDetails(
+        selectedEdgeValue,
+        selectedPipelineId,
+        selectedEdge.data
+      );
+
+      addLineageHandler(newEdge)
+        .then(() => {
+          setStatus('success');
+          setLoading(false);
+          setUpdatedLineageData((pre) => {
+            if (selectedEdge.data) {
+              const newData = {
+                ...pre,
+                downstreamEdges: getUpdatedEdgeWithPipeline(
+                  pre.downstreamEdges,
+                  updatedLineageDetails,
+                  selectedEdge.data,
+                  pipelineDetail
+                ),
+                upstreamEdges: getUpdatedEdgeWithPipeline(
+                  pre.upstreamEdges,
+                  updatedLineageDetails,
+                  selectedEdge.data,
+                  pipelineDetail
+                ),
+              };
+
+              return newData;
+            }
+
+            return pre;
+          });
+          setEdges((pre) => {
+            return pre.map((edge) => {
+              if (edge.id === selectedEdge.id) {
+                return {
+                  ...edge,
+                  animated: true,
+                  data: {
+                    ...edge.data,
+                    label: getEntityName(pipelineDetail),
+                    pipeline: updatedLineageDetails.pipeline,
+                  },
+                };
+              }
+
+              return edge;
+            });
+          });
+          setTimeout(() => {
+            setStatus('initial');
+          }, 100);
+          setNewAddedNode({} as Node);
+          setSelectedEntity({} as EntityReference);
+        })
+        .catch(() => {
+          setStatus('initial');
+          setLoading(false);
+        })
+        .finally(() => {
+          handleModalCancel();
         });
-      } else {
-        expandButton.current = null;
-      }
     }
   };
 
-  //   ToDo: remove below code once design flow finalized for column expand and colaps
+  const handleLineageTracing = (selectedNode: Node) => {
+    const { normalEdge } = getClassifiedEdge(edges);
+    const incomingNode = getAllTracedNodes(
+      selectedNode,
+      nodes,
+      normalEdge,
+      [],
+      true
+    );
+    const outgoingNode = getAllTracedNodes(
+      selectedNode,
+      nodes,
+      normalEdge,
+      [],
+      false
+    );
+    const incomerIds = incomingNode.map((incomer) => incomer.id);
+    const outgoerIds = outgoingNode.map((outGoer) => outGoer.id);
+    setIsTracingActive(true);
+
+    setEdges((prevEdges) => {
+      return prevEdges.map((edge) => {
+        const isStrokeNeeded = isTracedEdge(
+          selectedNode,
+          edge,
+          incomerIds,
+          outgoerIds
+        );
+        edge.style = {
+          ...edge.style,
+          ...getEdgeStyle(isStrokeNeeded),
+        };
+
+        return edge;
+      });
+    });
+
+    setNodes((prevNodes) => {
+      return prevNodes.map((prevNode) => {
+        const highlight =
+          prevNode.id === selectedNode.id ||
+          incomerIds.includes(prevNode.id) ||
+          outgoerIds.includes(prevNode.id);
+
+        prevNode.data = {
+          ...prevNode.data,
+          isTraced: highlight,
+          selected: prevNode.id === selectedNode.id,
+          selectedColumns: [],
+        };
+
+        return prevNode;
+      });
+    });
+  };
+
+  /**
+   * take element and perform onClick logic
+   * @param node
+   */
+  const onNodeClick = (node: Node) => {
+    if (isNode(node)) {
+      setSelectedEdgeInfo(undefined);
+      setIsDrawerOpen(false);
+      handleLineageTracing(node);
+      handleNodeSelection(node);
+    }
+  };
+  const onPaneClick = () => {
+    if (isTracingActive) {
+      setEdges((prevEdges) => {
+        return prevEdges.map((edge) => {
+          edge.style = {
+            ...edge.style,
+            opacity: undefined,
+            stroke: undefined,
+            strokeWidth: undefined,
+          };
+
+          return edge;
+        });
+      });
+
+      setNodes((prevNodes) => {
+        return prevNodes.map((prevNode) => {
+          prevNode.data = {
+            ...prevNode.data,
+            isTraced: false,
+            selectedColumns: [],
+            selected: false,
+          };
+
+          return prevNode;
+        });
+      });
+      setIsTracingActive(false);
+      setIsDrawerOpen(false);
+    }
+  };
 
   const updateColumnsToNode = (columns: Column[], id: string) => {
-    setNodes((node) => {
-      const updatedNode = node.map((n) => {
-        if (n.id === id) {
+    setNodes((prevNodes) => {
+      const updatedNode = prevNodes.map((node) => {
+        if (node.id === id) {
           const cols: { [key: string]: ModifiedColumn } = {};
           columns.forEach((col) => {
             cols[col.fullyQualifiedName || col.name] = {
@@ -698,10 +938,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 : getColumnType(edges, col.fullyQualifiedName || col.name),
             };
           });
-          n.data.columns = cols;
+          node.data.columns = cols;
         }
 
-        return n;
+        return node;
       });
 
       return updatedNode;
@@ -712,71 +952,24 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    * take node and get the columns for that node
    * @param expandNode
    */
-  const getTableColumns = (expandNode?: EntityReference) => {
+  const getTableColumns = async (expandNode?: EntityReference) => {
     if (expandNode) {
-      getTableDetails(expandNode.id, ['columns'])
-        .then((res) => {
-          const tableId = expandNode.id;
-          const { columns } = res;
-          tableColumnsRef.current[tableId] = columns;
-          updateColumnsToNode(columns, tableId);
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            `Error while fetching ${getDataLabel(
-              expandNode.displayName,
-              expandNode.name,
-              true
-            )} columns`
-          );
-        });
-    }
-  };
-
-  const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
-    if (isExpanded) {
-      setNodes((prevState) => {
-        const newNodes = prevState.map((n) => {
-          if (n.id === node.id) {
-            const nodeId = node.id;
-            n.data.label = getNodeLabel(node, true);
-            n.data.isExpanded = true;
-            if (isUndefined(tableColumnsRef.current[nodeId])) {
-              getTableColumns(node);
-            } else {
-              const cols: { [key: string]: ModifiedColumn } = {};
-              tableColumnsRef.current[nodeId]?.forEach((col) => {
-                cols[col.fullyQualifiedName || col.name] = {
-                  ...col,
-                  type: isEditMode
-                    ? 'default'
-                    : getColumnType(edges, col.fullyQualifiedName || col.name),
-                };
-              });
-              n.data.columns = cols;
-            }
-          }
-
-          return n;
-        });
-
-        return newNodes;
-      });
-    } else {
-      setNodes((prevState) => {
-        const newNodes = prevState.map((n) => {
-          if (n.id === node.id) {
-            n.data.label = getNodeLabel(node);
-            n.data.isExpanded = false;
-            n.data.columns = undefined;
-          }
-
-          return n;
-        });
-
-        return newNodes;
-      });
+      try {
+        const res = await getTableDetails(expandNode.id, ['columns']);
+        const tableId = expandNode.id;
+        const { columns } = res;
+        tableColumnsRef.current[tableId] = columns;
+        updateColumnsToNode(columns, tableId);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          `Error while fetching ${getDataLabel(
+            expandNode.displayName,
+            expandNode.name,
+            true
+          )} columns`
+        );
+      }
     }
   };
 
@@ -882,7 +1075,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   isEditMode,
                   label: (
                     <Fragment>
-                      {getNodeLabel(selectedEntity)}
+                      <LineageNodeLabel node={selectedEntity} />
                       {getNodeRemoveButton(() => {
                         removeNodeHandler({
                           ...el,
@@ -917,14 +1110,109 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }, 500);
   };
 
-  const handleCustomControlClick = () => {
+  const handleEditLineageClick = () => {
     setEditMode((pre) => !pre && !deleted);
     resetSelectedData();
     setIsDrawerOpen(false);
   };
 
+  const handleEdgeClick = (
+    _e: React.MouseEvent<Element, MouseEvent>,
+    edge: Edge
+  ) => {
+    setSelectedEdgeInfo(edge);
+    setIsDrawerOpen(true);
+  };
+
+  const toggleColumnView = (value: boolean) => {
+    setExpandAllColumns(value);
+    setEdges((prevEdges) => {
+      return prevEdges.map((edge) => {
+        edge.data.isExpanded = value;
+
+        return edge;
+      });
+    });
+    setNodes((prevNodes) => {
+      const updatedNode = prevNodes.map((node) => {
+        node.data.isExpanded = value;
+
+        return node;
+      });
+      const { edge, node } = getLayoutedElements({
+        node: updatedNode,
+        edge: edges,
+      });
+      setEdges(edge);
+
+      return node;
+    });
+
+    setTimeout(() => {
+      reactFlowInstance?.fitView();
+    }, 100);
+  };
+
+  const handleExpandColumnClick = () => {
+    if (expandAllColumns) {
+      toggleColumnView(false);
+    } else {
+      const allTableNodes = [
+        updatedLineageData.entity,
+        ...(updatedLineageData.nodes || []),
+      ].filter(
+        (node) =>
+          node.type === EntityType.TABLE &&
+          isUndefined(tableColumnsRef.current[node.id])
+      );
+
+      allTableNodes.length &&
+        allTableNodes.map(async (node) => await getTableColumns(node));
+      toggleColumnView(true);
+    }
+  };
+
+  const getSearchResults = async (value = '*') => {
+    try {
+      const data = await searchData(
+        value,
+        1,
+        PAGE_SIZE,
+        '',
+        '',
+        '',
+        SearchIndex.PIPELINE
+      );
+      setPipelineOptions(formatDataResponse(data.data.hits.hits));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-suggestions-error']
+      );
+    }
+  };
+
+  const handleOptionSelect = (value?: string) => {
+    if (value) {
+      const selectedNode = nodes.find((node) => node.id === value);
+
+      if (selectedNode) {
+        const { position } = selectedNode;
+        onNodeClick(selectedNode);
+        // moving selected node in center
+        reactFlowInstance &&
+          reactFlowInstance.setCenter(position.x, position.y, {
+            duration: ZOOM_TRANSITION_DURATION,
+            zoom: MIN_ZOOM_VALUE,
+          });
+      } else {
+        onPaneClick();
+      }
+    }
+  };
+
   /**
-   * Handle updated linegae nodes
+   * Handle updated lineage nodes
    * Change newly added node label based on entity:EntityReference
    */
   const handleUpdatedLineageNode = () => {
@@ -939,7 +1227,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         if (el.id === newlyAddedNode?.id) {
           return {
             ...el,
-            data: { ...el.data, label: getNodeLabel(newlyAddedNode) },
+            data: {
+              ...el.data,
+              label: <LineageNodeLabel node={newlyAddedNode} />,
+            },
           };
         } else {
           return el;
@@ -947,6 +1238,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       });
     });
   };
+
+  const handleZoomLevel = debounce((value: number) => {
+    setZoomValue(value);
+  }, 150);
 
   useEffect(() => {
     if (!deleted && !isEmpty(updatedLineageData)) {
@@ -994,6 +1289,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
+  useEffect(() => {
+    if (pipelineSearchValue) {
+      getSearchResults(pipelineSearchValue);
+    }
+  }, [pipelineSearchValue]);
+
   if (isLoading || (nodes.length === 0 && !deleted)) {
     return <Loader />;
   }
@@ -1003,31 +1304,30 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   }
 
   return (
-    <div
-      className={classNames('tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4')}
-      data-testid="lineage-container">
-      <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
+    <div className="relative h-full" data-testid="lineage-container">
+      <div className="w-full h-full" ref={reactFlowWrapper}>
         <ReactFlowProvider>
           <ReactFlow
+            className="custom-react-flow"
             data-testid="react-flow-component"
             edgeTypes={customEdges}
             edges={edges}
-            maxZoom={2}
-            minZoom={0.5}
+            maxZoom={MAX_ZOOM_VALUE}
+            minZoom={MIN_ZOOM_VALUE}
             nodeTypes={nodeTypes}
             nodes={nodes}
             nodesConnectable={isEditMode}
             selectNodesOnDrag={false}
-            zoomOnDoubleClick={false}
-            zoomOnScroll={false}
             onConnect={onConnect}
             onDragOver={onDragOver}
             onDrop={onDrop}
+            onEdgeClick={handleEdgeClick}
             onEdgesChange={onEdgesChange}
             onInit={(reactFlowInstance: ReactFlowInstance) => {
-              onLoad(reactFlowInstance, nodes.length);
+              onLoad(reactFlowInstance);
               setReactFlowInstance(reactFlowInstance);
             }}
+            onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
             onNodeClick={(_e, node) => onNodeClick(node)}
             onNodeContextMenu={onNodeContextMenu}
             onNodeDrag={dragHandle}
@@ -1036,14 +1336,27 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onNodeMouseEnter={onNodeMouseEnter}
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeMouseMove={onNodeMouseMove}
-            onNodesChange={onNodesChange}>
-            <CustomControlElements
+            onNodesChange={onNodesChange}
+            onPaneClick={onPaneClick}>
+            <CustomControlsComponent
+              className="absolute top-1 right-1 bottom-full"
               deleted={deleted}
+              fitViewParams={{
+                minZoom: MIN_ZOOM_VALUE,
+                maxZoom: MAX_ZOOM_VALUE,
+              }}
+              handleFullScreenViewClick={onFullScreenClick}
               hasEditAccess={hasEditAccess}
+              isColumnsExpanded={expandAllColumns}
               isEditMode={isEditMode}
+              lineageData={updatedLineageData}
               loading={loading}
               status={status}
-              onClick={handleCustomControlClick}
+              zoomValue={zoomValue}
+              onEditLinageClick={handleEditLineageClick}
+              onExitFullScreenViewClick={onExitFullScreenViewClick}
+              onExpandColumnClick={handleExpandColumnClick}
+              onOptionSelect={handleOptionSelect}
             />
             {isEditMode && (
               <Background gap={12} size={1} variant={BackgroundVariant.Lines} />
@@ -1051,18 +1364,30 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           </ReactFlow>
         </ReactFlowProvider>
       </div>
-      {(!isEmpty(selectedNode) || !isEditMode) && (
-        <EntityInfoDrawer
-          isMainNode={selectedNode.name === updatedLineageData.entity?.name}
-          selectedNode={selectedNode}
-          show={isDrawerOpen && !isEditMode}
-          onCancel={closeDrawer}
-        />
-      )}
+      {isDrawerOpen &&
+        !isEditMode &&
+        (selectedEdgeInfo ? (
+          <EdgeInfoDrawer
+            edge={selectedEdgeInfo}
+            nodes={nodes}
+            visible={isDrawerOpen}
+            onClose={() => {
+              setIsDrawerOpen(false);
+              setSelectedEdgeInfo(undefined);
+            }}
+          />
+        ) : (
+          <EntityInfoDrawer
+            isMainNode={selectedNode.name === updatedLineageData.entity?.name}
+            selectedNode={selectedNode}
+            show={isDrawerOpen}
+            onCancel={closeDrawer}
+          />
+        ))}
       <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
       {showDeleteModal && (
         <Modal
-          okText={LoadingStatus(
+          okText={getLoadingStatusValue(
             'Confirm',
             deletionState.loading,
             deletionState.status
@@ -1076,6 +1401,19 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           {getModalBodyText(selectedEdge)}
         </Modal>
       )}
+
+      <AddPipeLineModal
+        pipelineOptions={pipelineOptions}
+        pipelineSearchValue={pipelineSearchValue}
+        selectedPipelineId={selectedPipelineId}
+        showAddPipelineModal={showAddPipelineModal}
+        onClear={onPipelineSelectionClear}
+        onModalCancel={handleModalCancel}
+        onRemoveEdgeClick={handleRemoveEdgeClick}
+        onSave={handleModalSave}
+        onSearch={(value) => setPipelineSearchValue(value)}
+        onSelect={handlePipelineSelection}
+      />
     </div>
   );
 };

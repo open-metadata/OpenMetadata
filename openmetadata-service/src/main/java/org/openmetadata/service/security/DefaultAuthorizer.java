@@ -20,6 +20,7 @@ import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceTyp
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.GOOGLE;
 import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.OKTA;
+import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
@@ -45,15 +46,12 @@ import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
-import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
@@ -184,24 +182,18 @@ public class DefaultAuthorizer implements Authorizer {
   public List<ResourcePermission> listPermissions(SecurityContext securityContext, String user) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermissions(Access.ALLOW);
-    }
-    return PolicyEvaluator.listPermission(subjectContext);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermissions(ALLOW) // Admin has permissions to do all operations.
+        : PolicyEvaluator.listPermission(subjectContext);
   }
 
   @Override
   public ResourcePermission getPermission(SecurityContext securityContext, String user, String resourceType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermission(resourceType, Access.ALLOW);
-    }
-    return PolicyEvaluator.getPermission(subjectContext, resourceType);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermission(resourceType, ALLOW) // Admin has permissions to do all operations.
+        : PolicyEvaluator.getPermission(subjectContext, resourceType);
   }
 
   @Override
@@ -209,12 +201,9 @@ public class DefaultAuthorizer implements Authorizer {
       SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
-
-    if (subjectContext.isAdmin() || subjectContext.isBot()) {
-      // Admins and bots have permissions to do all operations.
-      return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
-    }
-    return PolicyEvaluator.getPermission(subjectContext, resourceContext);
+    return subjectContext.isAdmin()
+        ? PolicyEvaluator.getResourcePermission(resourceContext.getResource(), ALLOW) // Admin all permissions
+        : PolicyEvaluator.getPermission(subjectContext, resourceContext);
   }
 
   @Override
@@ -240,15 +229,7 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public boolean decryptSecret(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin()) { // Always decrypt secrets for admin
-      return true;
-    }
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (subjectContext.isBot() && secretsManager.isLocal()) {
-      // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
-      return true;
-    }
-    return false;
+    return subjectContext.isAdmin() || subjectContext.isBot();
   }
 
   private void addUsers(Set<String> users, String domain, Boolean isAdmin) {
@@ -293,7 +274,7 @@ public class DefaultAuthorizer implements Authorizer {
    * </ul>
    */
   public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    User originalUser = retrieveAuthMechanism(user);
+    User originalUser = retrieveWithAuthMechanism(user);
     // the user did not have an auth mechanism
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     if (authMechanism == null) {
@@ -362,19 +343,10 @@ public class DefaultAuthorizer implements Authorizer {
     return new AuthenticationMechanism().withAuthType(authType).withConfig(config);
   }
 
-  private static User retrieveAuthMechanism(User user) {
+  private static User retrieveWithAuthMechanism(User user) {
     EntityRepository<User> userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
     try {
-      User originalUser =
-          userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-      AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      if (authMechanism != null) {
-        Object config =
-            secretsManager.encryptOrDecryptBotUserCredentials(user.getName(), authMechanism.getConfig(), false);
-        authMechanism.setConfig(config != null ? config : authMechanism.getConfig());
-      }
-      return originalUser;
+      return userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
     } catch (IOException | EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;

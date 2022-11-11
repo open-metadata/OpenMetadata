@@ -129,6 +129,7 @@ public class TagRepository extends EntityRepository<Tag> {
   @Transaction
   public Tag delete(UriInfo uriInfo, UUID id) throws IOException {
     Tag tag = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(tag);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(tag.getFullyQualifiedName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
@@ -143,6 +144,9 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      // TODO mutuallyExclusive from false to true?
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      // TODO check the below
       updateName(original, updated);
     }
 

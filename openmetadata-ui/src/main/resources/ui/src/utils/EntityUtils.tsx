@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
+import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import { Bucket, LeafNodes, LineagePos } from 'Models';
-import React from 'react';
+import React, { Fragment } from 'react';
+import { Link } from 'react-router-dom';
+import PopOver from '../components/common/popover/PopOver';
 import { EntityData } from '../components/common/PopOverCard/EntityPopOverCard';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
+  getTableDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
@@ -28,12 +31,21 @@ import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { Table } from '../generated/entity/data/table';
+import {
+  Column,
+  ColumnJoins,
+  JoinedWith,
+  Table,
+} from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
+import {
+  getEntityName,
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './CommonUtils';
 import {
   getDataTypeString,
   getTierFromTableTags,
@@ -399,4 +411,147 @@ export const getResourceEntityFromEntityType = (entityType: string) => {
   }
 
   return ResourceEntity.ALL;
+};
+
+/**
+ * It searches for a given text in a given table and returns a new table with only the columns that
+ * contain the given text
+ * @param {Column[]} table - Column[] - the table to search in
+ * @param {string} searchText - The text to search for.
+ * @returns An array of columns that have been searched for a specific string.
+ */
+export const searchInColumns = (
+  table: Column[],
+  searchText: string
+): Column[] => {
+  const searchedValue: Column[] = table.reduce((searchedCols, column) => {
+    const searchLowerCase = lowerCase(searchText);
+    const isContainData =
+      lowerCase(column.name).includes(searchLowerCase) ||
+      lowerCase(column.description).includes(searchLowerCase) ||
+      lowerCase(getDataTypeString(column.dataType)).includes(searchLowerCase);
+
+    if (isContainData) {
+      return [...searchedCols, column];
+    } else if (!isUndefined(column.children)) {
+      const searchedChildren = searchInColumns(column.children, searchText);
+      if (searchedChildren.length > 0) {
+        return [
+          ...searchedCols,
+          {
+            ...column,
+            children: searchedChildren,
+          },
+        ];
+      }
+    }
+
+    return searchedCols;
+  }, [] as Column[]);
+
+  return searchedValue;
+};
+
+/**
+ * It checks if a column has a join
+ * @param {string} columnName - The name of the column you want to check if joins are available for.
+ * @param joins - Array<ColumnJoins>
+ * @returns A boolean value.
+ */
+export const checkIfJoinsAvailable = (
+  columnName: string,
+  joins: Array<ColumnJoins>
+): boolean => {
+  return (
+    joins &&
+    Boolean(joins.length) &&
+    Boolean(joins.find((join) => join.columnName === columnName))
+  );
+};
+
+/**
+ * It takes a column name and a list of joins and returns the list of joinedWith for the column name
+ * @param {string} columnName - The name of the column you want to get the frequently joined with
+ * columns for.
+ * @param joins - Array<ColumnJoins>
+ * @returns An array of joinedWith objects
+ */
+export const getFrequentlyJoinedWithColumns = (
+  columnName: string,
+  joins: Array<ColumnJoins>
+): Array<JoinedWith> => {
+  return joins.find((join) => join.columnName === columnName)?.joinedWith || [];
+};
+
+export const getFrequentlyJoinedColumns = (
+  columnName: string,
+  joins: Array<ColumnJoins>,
+  columnLabel: string
+) => {
+  const frequentlyJoinedWithColumns = getFrequentlyJoinedWithColumns(
+    columnName,
+    joins
+  );
+
+  return checkIfJoinsAvailable(columnName, joins) ? (
+    <div className="m-t-sm" data-testid="frequently-joined-columns">
+      <span className="tw-text-grey-muted m-r-xss">{columnLabel}:</span>
+      <span>
+        {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
+          <Fragment key={index}>
+            {index > 0 && <span className="m-r-xss">,</span>}
+            <Link
+              className="link-text"
+              to={getTableDetailsPath(
+                getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
+                getPartialNameFromTableFQN(columnJoin.fullyQualifiedName, [
+                  FqnPart.Column,
+                ])
+              )}>
+              {getPartialNameFromTableFQN(
+                columnJoin.fullyQualifiedName,
+                [FqnPart.Database, FqnPart.Table, FqnPart.Column],
+                FQN_SEPARATOR_CHAR
+              )}
+            </Link>
+          </Fragment>
+        ))}
+
+        {frequentlyJoinedWithColumns.length > 3 && (
+          <PopOver
+            html={
+              <div className="text-left">
+                {frequentlyJoinedWithColumns
+                  ?.slice(3)
+                  .map((columnJoin, index) => (
+                    <Fragment key={index}>
+                      <a
+                        className="link-text d-block p-y-xss"
+                        href={getTableDetailsPath(
+                          getTableFQNFromColumnFQN(
+                            columnJoin?.fullyQualifiedName
+                          ),
+                          getPartialNameFromTableFQN(
+                            columnJoin?.fullyQualifiedName,
+                            [FqnPart.Column]
+                          )
+                        )}>
+                        {getPartialNameFromTableFQN(
+                          columnJoin?.fullyQualifiedName,
+                          [FqnPart.Database, FqnPart.Table, FqnPart.Column]
+                        )}
+                      </a>
+                    </Fragment>
+                  ))}
+              </div>
+            }
+            position="bottom"
+            theme="light"
+            trigger="click">
+            <span className="show-more m-l-xss text-underline">...</span>
+          </PopOver>
+        )}
+      </span>
+    </div>
+  ) : null;
 };

@@ -18,13 +18,17 @@
         "description": "Type of data",
         "type": "string",
         "enum": [
-          "EntityReportData"
+          "EntityReportData",
+          "WebAnalyticUserActivityReportData",
+          "WebAnalyticEntityViewReportData"
         ]
       },
       "data": {
         "description": "Data captured",
         "oneOf": [
-          {"$ref": "reportDataType/entityReportData.json"}
+          {"$ref": "reportDataType/entityReportData.json"},
+          {"$ref": "reportDataType/webAnalyticUserActivityReportData.json"},
+          {"$ref": "reportDataType/webAnalyticEntityViewReportData.json"}
         ]
       }
   }

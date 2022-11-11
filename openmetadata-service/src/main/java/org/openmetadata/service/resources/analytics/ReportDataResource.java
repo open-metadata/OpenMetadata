@@ -36,7 +36,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "ReportData collection", tags = "ReportData collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "ReportData")
+@Collection(name = "reportData")
 public class ReportDataResource {
   public static final String COLLECTION_PATH = "v1/analytic/reportData";
   @Getter protected final ReportDataRepository dao;
@@ -59,7 +59,7 @@ public class ReportDataResource {
   @Operation(
       operationId = "getReportData",
       summary = "List the report data",
-      tags = "ReportData",
+      tags = "reportData",
       description =
           "Get a list of all the report data for a given reportDataType, optionally filtered by  `startTs` and `endTs` of the result. "
               + "Use cursor-based pagination to limit the number of "
@@ -99,7 +99,7 @@ public class ReportDataResource {
   @Operation(
       operationId = "addReportData",
       summary = "Add report data",
-      tags = "ReportData",
+      tags = "reportData",
       description = "Add report data",
       responses = {
         @ApiResponse(

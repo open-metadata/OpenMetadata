@@ -23,9 +23,12 @@ from metadata.generated.schema.entity.data.table import SqlQuery
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.stage import Stage, StageStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
@@ -54,6 +57,7 @@ class TableUsageStage(Stage[QueryParserData]):
     ):
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(self.metadata_config)
         self.status = StageStatus()
         self.table_usage = {}
         self.table_queries = {}
@@ -70,11 +74,41 @@ class TableUsageStage(Stage[QueryParserData]):
         config = TableStageConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
+    def _get_user_entity(self, username: str):
+        if username:
+            user = self.metadata.get_by_name(entity=User, fqn=username)
+            if user:
+                return [
+                    EntityReference(
+                        id=user.id,
+                        type="user",
+                        name=user.name.__root__,
+                        fullyQualifiedName=user.fullyQualifiedName.__root__,
+                        description=user.description,
+                        displayName=user.displayName,
+                        deleted=user.deleted,
+                        href=user.href,
+                    )
+                ]
+        return []
+
     def _add_sql_query(self, record, table):
         if self.table_queries.get((table, record.date)):
-            self.table_queries[(table, record.date)].append(SqlQuery(query=record.sql))
+            self.table_queries[(table, record.date)].append(
+                SqlQuery(
+                    query=record.sql,
+                    users=self._get_user_entity(record.userName),
+                    queryDate=record.date,
+                )
+            )
         else:
-            self.table_queries[(table, record.date)] = [SqlQuery(query=record.sql)]
+            self.table_queries[(table, record.date)] = [
+                SqlQuery(
+                    query=record.sql,
+                    users=self._get_user_entity(record.userName),
+                    queryDate=record.date,
+                )
+            ]
 
     def stage_record(self, record: QueryParserData) -> None:
         if not record or not record.parsedData:

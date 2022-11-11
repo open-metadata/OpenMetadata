@@ -89,7 +89,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     webhookDAO = dao.webhookDAO();
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
       List<String> listAllWebhooks = webhookDAO.listAllWebhooks(webhookDAO.getTableName());

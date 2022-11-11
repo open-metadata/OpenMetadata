@@ -42,6 +42,8 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
+import org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
@@ -49,6 +51,8 @@ import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Chart;
@@ -68,6 +72,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
@@ -185,6 +190,9 @@ public interface CollectionDAO {
   DatabaseServiceDAO dbServiceDAO();
 
   @CreateSqlObject
+  MetadataServiceDAO metadataServiceDAO();
+
+  @CreateSqlObject
   PipelineServiceDAO pipelineServiceDAO();
 
   @CreateSqlObject
@@ -227,6 +235,9 @@ public interface CollectionDAO {
   WebAnalyticEventDAO webAnalyticEventDAO();
 
   @CreateSqlObject
+  DataInsightChartDAO dataInsightChartDAO();
+
+  @CreateSqlObject
   UtilDAO utilDAO();
 
   @CreateSqlObject
@@ -234,6 +245,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TokenDAO getTokenDAO();
+
+  @CreateSqlObject
+  KpiDAO kpiDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -312,6 +326,23 @@ public interface CollectionDAO {
     @Override
     default Class<DatabaseService> getEntityClass() {
       return DatabaseService.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface MetadataServiceDAO extends EntityDAO<MetadataService> {
+    @Override
+    default String getTableName() {
+      return "metadata_service_entity";
+    }
+
+    @Override
+    default Class<MetadataService> getEntityClass() {
+      return MetadataService.class;
     }
 
     @Override
@@ -2959,6 +2990,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface DataInsightChartDAO extends EntityDAO<DataInsightChart> {
+    @Override
+    default String getTableName() {
+      return "data_insight_chart";
+    }
+
+    @Override
+    default Class<DataInsightChart> getEntityClass() {
+      return DataInsightChart.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+  }
+
   interface EntityExtensionTimeSeriesDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -3026,6 +3074,23 @@ public interface CollectionDAO {
         "DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
     void deleteAtTimestamp(
         @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
+
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN and jsonSchema = :jsonSchema")
+    List<String> listByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND jsonSchema = :jsonSchema "
+            + "ORDER BY timestamp DESC LIMIT 1")
+    String getLatestExtensionByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and jsonSchema = :jsonSchema "
+            + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
+    List<String> listBetweenTimestampsByFQN(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") long endTs);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and extension = :extension "
@@ -3120,12 +3185,20 @@ public interface CollectionDAO {
     public static Settings getSettings(SettingsType configType, String json) {
       Settings settings = new Settings();
       settings.setConfigType(configType);
-      Object value = null;
+      Object value;
       try {
-        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
-          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-        } else {
-          throw new RuntimeException("Invalid Settings Type");
+        switch (configType) {
+          case ACTIVITY_FEED_FILTER_SETTING:
+            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+            break;
+          case TASK_NOTIFICATION_CONFIGURATION:
+            value = JsonUtils.readValue(json, TaskNotificationConfiguration.class);
+            break;
+          case TEST_RESULT_NOTIFICATION_CONFIGURATION:
+            value = JsonUtils.readValue(json, TestResultNotificationConfiguration.class);
+            break;
+          default:
+            throw new RuntimeException("Invalid Settings Type");
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -3168,7 +3241,7 @@ public interface CollectionDAO {
     }
 
     public static TokenInterface getToken(TokenType type, String json) throws IOException {
-      TokenInterface resp = null;
+      TokenInterface resp;
       try {
         switch (type) {
           case EMAIL_VERIFICATION:
@@ -3219,5 +3292,22 @@ public interface CollectionDAO {
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);
+  }
+
+  interface KpiDAO extends EntityDAO<Kpi> {
+    @Override
+    default String getTableName() {
+      return "kpi_entity";
+    }
+
+    @Override
+    default Class<Kpi> getEntityClass() {
+      return Kpi.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
   }
 }

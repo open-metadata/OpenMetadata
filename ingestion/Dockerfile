@@ -42,23 +42,23 @@ RUN apt-get update \
     curl \
     libpcre2-8-0 \
     postgresql-common \
-    expat=2.2.10-2+deb11u4 \
-    bind9=1:9.18.4-2~bpo11+1
+    expat \
+    bind9
 
 # Required for Starting Ingestion Container in Docker Compose
-COPY --chown=airflow:airflow ingestion/ingestion_dependency.sh /opt/airflow
+COPY --chown=airflow:0 ingestion/ingestion_dependency.sh /opt/airflow
 # Required for Ingesting Sample Data
-COPY --chown=airflow:airflow ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
+COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
 # Required for Airflow DAGs of Sample Data
-COPY --chown=airflow:airflow ingestion/examples/airflow/dags /opt/airflow/dags
+COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 # Provide Execute Permissions to shell script
 RUN chmod +x /opt/airflow/ingestion_dependency.sh
 USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install --upgrade openmetadata-managed-apis --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
-RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]
+RUN pip install "openmetadata-managed-apis==0.12.2.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.12.2.4"
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 

@@ -15,7 +15,7 @@ import { Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postkillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { postKillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface KillIngestionModalProps {
@@ -39,7 +39,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      const response = await postkillIngestionPipelineById(pipelineId);
+      const response = await postKillIngestionPipelineById(pipelineId);
       const status = response.status;
       if (status === 200) {
         onClose();

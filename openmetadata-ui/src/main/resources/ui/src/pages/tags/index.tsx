@@ -46,10 +46,7 @@ import {
 import { TIER_CATEGORY } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
-import {
-  CreateTagCategory,
-  TagCategoryType,
-} from '../../generated/api/tags/createTagCategory';
+import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -334,7 +331,6 @@ const TagsPage = () => {
       const response = await updateTagCategory(currentCategory?.name ?? '', {
         name: currentCategory?.name ?? '',
         description: updatedHTML,
-        categoryType: currentCategory?.categoryType,
       });
       if (response) {
         await fetchCurrentCategory(currentCategory?.name as string, true);
@@ -424,11 +420,13 @@ const TagsPage = () => {
   };
 
   const getUsageCountLink = (tagFQN: string) => {
-    if (tagFQN.startsWith('Tier')) {
-      return getExplorePathWithInitFilters('', undefined, `tier=${tagFQN}`);
-    } else {
-      return getExplorePathWithInitFilters('', undefined, `tags=${tagFQN}`);
-    }
+    const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
+
+    return getExplorePathWithInitFilters(
+      '',
+      undefined,
+      `postFilter[${type}.tagFQN][0]=${tagFQN}`
+    );
   };
 
   const handleActionDeleteTag = (record: TagClass) => {
@@ -665,7 +663,6 @@ const TagsPage = () => {
                     data-testid="delete-tag-category-button"
                     disabled={!categoryPermissions.Delete}
                     size="small"
-                    type="primary"
                     onClick={() => {
                       deleteTagHandler();
                     }}>
@@ -693,6 +690,7 @@ const TagsPage = () => {
               />
             </div>
             <Table
+              bordered
               columns={tableColumn}
               data-testid="table"
               dataSource={currentCategory?.children as TagClass[]}
@@ -720,7 +718,6 @@ const TagsPage = () => {
                 initialData={{
                   name: '',
                   description: '',
-                  categoryType: TagCategoryType.Descriptive,
                 }}
                 isSaveButtonDisabled={!isEmpty(errorDataCategory)}
                 onCancel={() => setIsAddingCategory(false)}
@@ -741,7 +738,6 @@ const TagsPage = () => {
                 initialData={{
                   name: '',
                   description: '',
-                  categoryType: '',
                 }}
                 isSaveButtonDisabled={!isEmpty(errorDataTag)}
                 onCancel={() => setIsAddingTag(false)}

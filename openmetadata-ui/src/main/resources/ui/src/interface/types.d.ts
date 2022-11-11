@@ -287,7 +287,7 @@ declare module 'Models' {
     _source: FormattedGlossarySuggestion;
   }
 
-  export interface GlossaryTermAssets {
+  export interface AssetsDataType {
     data: FormattedTableData[];
     total: number;
     currPage: number;
@@ -597,6 +597,13 @@ declare module 'Models' {
     id: string;
     state: string;
   }
+
+  export type EntityType =
+    | 'tables'
+    | 'topics'
+    | 'dashboards'
+    | 'pipelines'
+    | 'mlmodels';
 
   // ES interface end
 

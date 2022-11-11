@@ -105,7 +105,9 @@ public final class JsonUtils {
   }
 
   public static Map<String, Object> getMap(Object o) {
-    return OBJECT_MAPPER.convertValue(o, Map.class);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = OBJECT_MAPPER.convertValue(o, Map.class);
+    return map;
   }
 
   public static <T> T readValue(String json, Class<T> clz) throws IOException {
@@ -271,6 +273,12 @@ public final class JsonUtils {
   public static JsonPatch getJsonPatch(String v1, String v2) {
     JsonValue source = readJson(v1);
     JsonValue dest = readJson(v2);
+    return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
+  }
+
+  public static JsonPatch getJsonPatch(Object v1, Object v2) throws JsonProcessingException {
+    JsonValue source = readJson(JsonUtils.pojoToJson(v1));
+    JsonValue dest = readJson(JsonUtils.pojoToJson(v2));
     return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
   }
 

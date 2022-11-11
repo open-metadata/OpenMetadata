@@ -11,8 +11,10 @@
 """
 REST Auth & Client for PowerBi
 """
+import json
 import traceback
-from typing import Optional, Tuple
+from time import sleep
+from typing import List, Optional, Tuple
 
 import msal
 
@@ -76,67 +78,107 @@ class PowerBiApiClient:
 
         return access_token, expiry
 
-    def fetch_charts(self, dashboard_id: str) -> Optional[dict]:
-        """Get charts method
-
-        Args:
-            dashboard_id:
-        Returns:
-            dict
-        """
-        try:
-            response = self.client.get(f"/myorg/admin/dashboards/{dashboard_id}/tiles")
-            return response
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching charts: {exc}")
-
-        return None
-
     def fetch_dashboards(self) -> Optional[dict]:
         """Get dashboards method
-
         Returns:
             dict
         """
         try:
-            response = self.client.get("/myorg/admin/dashboards")
-            return response
+            return self.client.get("/myorg/admin/dashboards")
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching dashboards: {exc}")
 
         return None
 
-    def fetch_datasets(self) -> Optional[dict]:
-        """Get datasets method
-
+    def fetch_all_workspaces(self) -> Optional[dict]:
+        """Method to fetch all powerbi workspace details
         Returns:
             dict
         """
         try:
-            response = self.client.get("/myorg/admin/datasets")
-            return response
+            params_data = {"$top": "100"}
+            return self.client.get("/myorg/admin/groups", data=params_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching datasets: {exc}")
+            logger.warning(f"Error fetching workspaces: {exc}")
 
         return None
 
-    def fetch_data_sources(self, dataset_id: str) -> Optional[dict]:
-        """Get dataset by id method
+    def initiate_workspace_scan(self, workspace_ids: List[str]) -> Optional[dict]:
+        """Method to initiate workspace scan
         Args:
-            dataset_id:
+            workspace_ids:
         Returns:
             dict
         """
         try:
-            response = self.client.get(
-                f"/myorg/admin/datasets/{dataset_id}/datasources"
+            data = json.dumps({"workspaces": workspace_ids})
+            path = (
+                "/myorg/admin/workspaces/getInfo?"
+                "datasetExpressions=True&datasetSchema=True"
+                "&datasourceDetails=True&getArtifactUsers=True&lineage=True"
             )
-            return response
+            return self.client.post(path=path, data=data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching data sources: {exc}")
+            logger.warning(f"Error initiating workspace scan: {exc}")
 
         return None
+
+    def fetch_workspace_scan_status(self, scan_id: str) -> Optional[dict]:
+        """Get Workspace scan status by id method
+        Args:
+            scan_id:
+        Returns:
+            dict
+        """
+        try:
+            return self.client.get(f"/myorg/admin/workspaces/scanStatus/{scan_id}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching workspace scan status: {exc}")
+
+        return None
+
+    def fetch_workspace_scan_result(self, scan_id: str) -> Optional[dict]:
+        """Get Workspace scan result by id method
+        Args:
+            scan_id:
+        Returns:
+            dict
+        """
+        try:
+            return self.client.get(f"/myorg/admin/workspaces/scanResult/{scan_id}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching workspace scan result: {exc}")
+
+        return None
+
+    def wait_for_scan_complete(self, scan_id, timeout=180) -> bool:
+        """
+        Method to poll the scan status endpoint until the timeout
+        """
+        min_sleep_time = 3
+        if min_sleep_time > timeout:
+            logger.info(f"Timeout is set to minimum sleep time: {timeout}")
+            timeout = min_sleep_time
+
+        max_poll = timeout // min_sleep_time
+        poll = 1
+        while True:
+            logger.info(f"Starting poll - {poll}/{max_poll}")
+            response = self.fetch_workspace_scan_status(scan_id=scan_id)
+            status = response.get("status")
+            if status:
+                if status.lower() == "succeeded":
+                    return True
+
+            if poll == max_poll:
+                break
+            logger.info(f"Sleeping for {min_sleep_time} seconds")
+            sleep(min_sleep_time)
+            poll += 1
+
+        return False

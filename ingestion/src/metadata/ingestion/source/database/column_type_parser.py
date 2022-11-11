@@ -201,6 +201,15 @@ class ColumnTypeParser:
 
     _FIXED_STRING = re.compile(r"(var)?char\(\s*(\d+)\s*\)")
 
+    try:
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy.dialects.mssql import BIT
+
+        _COLUMN_TYPE_MAPPING[BIT] = "BINARY"
+        _SOURCE_TYPE_TO_OM_TYPE["BIT"] = "BINARY"
+    except ImportError:
+        pass
+
     @staticmethod
     def get_column_type(column_type: Any) -> str:
         if not ColumnTypeParser._COLUMN_TYPE_MAPPING.get(type(column_type)):

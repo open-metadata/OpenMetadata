@@ -24,6 +24,7 @@ import {
   isEqual,
   isNil,
   isNull,
+  isString,
   isUndefined,
   uniqueId,
 } from 'lodash';
@@ -31,6 +32,7 @@ import {
   CurrentState,
   EntityFieldThreadCount,
   ExtraInfo,
+  FormattedTableData,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -47,7 +49,6 @@ import {
   getHourCron,
 } from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PopOver from '../components/common/popover/PopOver';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -75,26 +76,21 @@ import { Topic } from '../generated/entity/data/topic';
 import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
-import {
-  IngestionPipeline,
-  PipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
+import { TagLabel } from '../generated/type/tagLabel';
 import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { LIST_CAP } from './PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
-} from './RouterUtils';
+import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
+import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -701,18 +697,6 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   }
 };
 
-export const getExploreLinkByFilter = (
-  filter: Ownership,
-  userDetails: User,
-  nonSecureUserDetails: User
-) => {
-  return getExplorePathWithInitFilters(
-    '',
-    undefined,
-    `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
-  );
-};
-
 export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
 };
@@ -804,9 +788,7 @@ export const showPagination = (paging: Paging) => {
 };
 
 export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(
-    number
-  );
+  return new Intl.NumberFormat('en-US').format(number);
 };
 
 export const formTwoDigitNmber = (number: number) => {
@@ -836,60 +818,6 @@ export const getTeamsUser = (
   }
 
   return;
-};
-
-export const getIngestionStatuses = (ingestion: IngestionPipeline) => {
-  const lastFiveIngestions = ingestion.pipelineStatuses
-    ?.sort((a, b) => {
-      // Turn your strings into millis, and then subtract them
-      // to get a value that is either negative, positive, or zero.
-      const date1 = new Date(a.startDate || '');
-      const date2 = new Date(b.startDate || '');
-
-      return date1.getTime() - date2.getTime();
-    })
-    .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
-
-  return lastFiveIngestions?.map((r, i) => {
-    const status =
-      i === lastFiveIngestions.length - 1 ? (
-        <p
-          className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
-          key={i}>
-          {capitalize(r.state)}
-        </p>
-      ) : (
-        <p
-          className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-          key={i}
-        />
-      );
-
-    return r?.endDate || r?.startDate || r?.timestamp ? (
-      <PopOver
-        html={
-          <div className="tw-text-left">
-            {r.timestamp ? (
-              <p>Execution Date: {new Date(r.timestamp).toUTCString()}</p>
-            ) : null}
-            {r.startDate ? (
-              <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
-            ) : null}
-            {r.endDate ? (
-              <p>End Date: {new Date(r.endDate).toUTCString()}</p>
-            ) : null}
-          </div>
-        }
-        key={i}
-        position="bottom"
-        theme="light"
-        trigger="mouseenter">
-        {status}
-      </PopOver>
-    ) : (
-      status
-    );
-  });
 };
 
 export const getDiffArray = (
@@ -1075,3 +1003,52 @@ export const getLoadingStatus = (
 };
 
 export const refreshPage = () => window.location.reload();
+// return array of id as  strings
+export const getEntityIdArray = (entities: EntityReference[]): string[] =>
+  entities.map((item) => item.id);
+
+export const getTierFromEntityInfo = (entity: FormattedTableData) => {
+  return (
+    entity.tier?.tagFQN ||
+    getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
+  )?.split(FQN_SEPARATOR_CHAR)[1];
+};
+
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+  if (isString(tag)) {
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      ? tag.split(FQN_SEPARATOR_CHAR)[1]
+      : tag;
+  } else {
+    return {
+      ...tag,
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : tag.tagFQN,
+    };
+  }
+};
+
+export const getTrimmedContent = (content: string, limit: number) => {
+  const lines = content.split('\n');
+  // Selecting the content in three lines
+  const contentInThreeLines = lines.slice(0, 3).join('\n');
+
+  const slicedContent = contentInThreeLines.slice(0, limit);
+
+  // Logic for eliminating any broken words at the end
+  // To avoid any URL being cut
+  const words = slicedContent.split(' ');
+  const wordsCount = words.length;
+
+  if (wordsCount === 1) {
+    // In case of only one word (possibly too long URL)
+    // return the whole word instead of trimming
+    return content.split(' ')[0];
+  }
+
+  // Eliminate word at the end to avoid using broken words
+  const refinedContent = words.slice(0, wordsCount - 1);
+
+  return refinedContent.join(' ');
+};

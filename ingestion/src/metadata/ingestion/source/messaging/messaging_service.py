@@ -15,6 +15,8 @@ Base class for ingesting messaging services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -41,6 +43,15 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_topic
+
+
+class BrokerTopicDetails(BaseModel):
+    """
+    Wrapper Class to combine the topic_name with topic_metadata
+    """
+
+    topic_name: str
+    topic_metadata: Any
 
 
 class MessagingServiceTopology(ServiceTopology):
@@ -127,7 +138,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = MessagingServiceTopology()
     context = create_source_context(topology)
 
-    @abstractmethod
     def __init__(
         self,
         config: WorkflowSource,

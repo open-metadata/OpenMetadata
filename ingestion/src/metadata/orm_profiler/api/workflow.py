@@ -28,15 +28,18 @@ from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
-    IntervalType,
+    PartitionProfilerConfig,
     Table,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
@@ -48,6 +51,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
@@ -57,7 +61,6 @@ from metadata.orm_profiler.api.models import (
     ProfilerProcessorConfig,
     ProfilerResponse,
     TableConfig,
-    TablePartitionConfig,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
@@ -69,6 +72,10 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
+from metadata.utils.partition import get_partition_details
+from metadata.utils.workflow_helper import (
+    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
+)
 from metadata.utils.workflow_output_handler import print_profiler_status
 
 logger = profiler_logger()
@@ -100,6 +107,8 @@ class ProfilerWorkflow:
         self.metadata = OpenMetadata(self.metadata_config)
 
         self._retrieve_service_connection_if_needed()
+
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
@@ -212,35 +221,18 @@ class ProfilerWorkflow:
 
         return None
 
-    def get_partition_details(self, entity: Table) -> Optional[TablePartitionConfig]:
+    def get_partition_details(self, entity: Table) -> Optional[PartitionProfilerConfig]:
         """Get partition details
 
         Args:
             entity: table entity
         """
-        if (
-            not hasattr(entity, "serviceType")
-            or entity.serviceType != DatabaseServiceType.BigQuery
-        ):
-            return None
-
         entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-        if entity_config:
+
+        if entity_config:  # check if a yaml config was pass with partition definition
             return entity_config.partitionConfig
 
-        if hasattr(entity, "tablePartition") and entity.tablePartition:
-            if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
-                return TablePartitionConfig(
-                    partitionField=entity.tablePartition.columns[0]
-                )
-            if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
-                if entity.tablePartition.interval == "DAY":
-                    return TablePartitionConfig(partitionField="_PARTITIONDATE")
-                return TablePartitionConfig(partitionField="_PARTITIONTIME")
-            raise TypeError(
-                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
-            )
-        return None
+        return get_partition_details(entity)
 
     def create_profiler_interface(
         self,
@@ -516,6 +508,7 @@ class ProfilerWorkflow:
         """
         Close all connections
         """
+        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
 
     def _retrieve_service_connection_if_needed(self) -> None:
@@ -526,21 +519,38 @@ class ProfilerWorkflow:
 
         :return:
         """
-        if not self._is_sample_source(self.config.source.type):
-            service_type: ServiceType = get_service_type_from_source_type(
-                self.config.source.type
-            )
-            service = self.metadata.get_by_name(
-                get_service_class_from_service_type(service_type),
-                self.config.source.serviceName,
-            )
-            if service:
-                self.config.source.serviceConnection = (
-                    self.metadata.secrets_manager_client.retrieve_service_connection(
-                        service, service_type.name.lower()
+        service_type: ServiceType = get_service_type_from_source_type(
+            self.config.source.type
+        )
+        if self.config.source.serviceConnection:
+            service_name = self.config.source.serviceName
+            try:
+                service: ServiceWithConnectionType = cast(
+                    ServiceWithConnectionType,
+                    self.metadata.get_by_name(
+                        get_service_class_from_service_type(service_type),
+                        service_name,
+                    ),
+                )
+                if service:
+                    self.config.source.serviceConnection = ServiceConnection(
+                        __root__=service.connection
                     )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting service connection for service name [{service_name}]"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
 
-    @staticmethod
-    def _is_sample_source(service_type):
-        return service_type in {"sample-data", "sample-usage"}
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+        pipeline_run_id = set_ingestion_pipeline_status_helper(
+            state=state,
+            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
+            pipeline_run_id=self.config.pipelineRunId,
+            metadata=self.metadata,
+        )
+        self.config.pipelineRunId = pipeline_run_id

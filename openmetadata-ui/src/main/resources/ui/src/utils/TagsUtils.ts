@@ -16,8 +16,10 @@ import { flatten, isEmpty } from 'lodash';
 import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
 import { TAG_VIEW_CAP } from '../constants/constants';
+import { SettledStatus } from '../enums/axios.enum';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
 export const getTagCategories = async (fields?: Array<string> | string) => {
   try {
@@ -117,4 +119,35 @@ export const getTagsWithLabel = (tags: Array<Bucket>) => {
 //  Will return tag with ellipses if it exceeds the limit
 export const getTagDisplay = (tag: string) => {
   return tag.length > TAG_VIEW_CAP ? `${tag.slice(0, TAG_VIEW_CAP)}...` : tag;
+};
+
+export const fetchTagsAndGlossaryTerms = async () => {
+  const responses = await Promise.allSettled([
+    getTagCategories(),
+    fetchGlossaryTerms(),
+  ]);
+
+  let tagsAndTerms: TagOption[] = [];
+  if (
+    responses[0].status === SettledStatus.FULFILLED &&
+    responses[0].value.data
+  ) {
+    tagsAndTerms = getTaglist(responses[0].value.data).map((tag) => {
+      return { fqn: tag, source: 'Tag' };
+    });
+  }
+  if (
+    responses[1].status === SettledStatus.FULFILLED &&
+    responses[1].value &&
+    responses[1].value.length > 0
+  ) {
+    const glossaryTerms: TagOption[] = getGlossaryTermlist(
+      responses[1].value
+    ).map((tag) => {
+      return { fqn: tag, source: 'Glossary' };
+    });
+    tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+  }
+
+  return tagsAndTerms;
 };

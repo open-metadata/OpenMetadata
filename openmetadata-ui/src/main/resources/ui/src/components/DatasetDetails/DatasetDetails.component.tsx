@@ -18,6 +18,7 @@ import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { restoreTable } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
@@ -53,6 +54,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -131,11 +133,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
-  handleExtentionUpdate,
+  handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -602,6 +605,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
+  const handleFullScreenClick = () => {
+    history.push(getLineageViewPath(EntityType.TABLE, datasetFQN));
+  };
+
   const getLoader = () => {
     return isentityThreadLoading ? <Loader /> : null;
   };
@@ -832,7 +839,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {activeTab === 7 && (
                 <div
                   className={classNames(
-                    'tw-px-2',
                     location.pathname.includes(ROUTES.TOUR)
                       ? 'tw-h-70vh'
                       : 'tw-h-full'
@@ -852,6 +858,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}
@@ -870,7 +877,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     tableDetails as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.TABLE}
-                  handleExtentionUpdate={handleExtentionUpdate}
+                  handleExtensionUpdate={handleExtensionUpdate}
                 />
               )}
               <div
