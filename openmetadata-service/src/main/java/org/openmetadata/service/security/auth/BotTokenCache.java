@@ -1,5 +1,7 @@
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -41,10 +43,6 @@ public class BotTokenCache {
     }
   }
 
-  public void putToken(String botName, String token) {
-    BOTS_TOKEN_CACHE.put(botName, token);
-  }
-
   public void invalidateToken(String botName) {
     try {
       BOTS_TOKEN_CACHE.invalidate(botName);
@@ -65,8 +63,8 @@ public class BotTokenCache {
     public String load(@CheckForNull String botName) throws IOException {
       UserRepository userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
       User user =
-          userRepository.getByNameWithSecretManager(
-              botName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)));
+          userRepository.getByName(
+              null, botName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       if (authenticationMechanism != null) {
         JWTAuthMechanism jwtAuthMechanism =

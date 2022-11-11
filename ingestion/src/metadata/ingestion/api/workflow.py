@@ -16,7 +16,7 @@ import traceback
 
 # module building strings read better with .format instead of f-strings
 # pylint: disable=consider-using-f-string
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar, cast
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -26,10 +26,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineState,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseMetadataConfigType,
-    DatabaseServiceMetadataPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -39,6 +35,7 @@ from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
+from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
@@ -53,8 +50,6 @@ from metadata.utils.workflow_output_handler import print_status
 logger = ingestion_logger()
 
 T = TypeVar("T")
-
-SAMPLE_SOURCE = {"sample-data", "sample-usage"}
 
 SUCCESS_THRESHOLD_VALUE = 90
 
@@ -106,8 +101,6 @@ class Workflow:
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self._retrieve_service_connection_if_needed(service_type)
-
-        self._retrieve_dbt_config_source_if_needed(service_type)
 
         logger.info(f"Service type:{service_type},{source_type} configured")
 
@@ -309,60 +302,24 @@ class Workflow:
         :param service_type: source workflow service type
         :return:
         """
-        if service_type is not ServiceType.Metadata and not self._is_sample_source(
-            self.config.source.type
+        if (
+            service_type is not ServiceType.Metadata
+            and not self.config.source.serviceConnection
         ):
             service_name = self.config.source.serviceName
             try:
-                service = self.metadata.get_by_name(
-                    get_service_class_from_service_type(service_type),
-                    service_name,
+                service: ServiceWithConnectionType = cast(
+                    ServiceWithConnectionType,
+                    self.metadata.get_by_name(
+                        get_service_class_from_service_type(service_type),
+                        service_name,
+                    ),
                 )
                 if service:
-                    self.config.source.serviceConnection = self.metadata.secrets_manager_client.retrieve_service_connection(  # pylint: disable=line-too-long
-                        service, service_type.name.lower()
-                    )
+                    self.config.source.serviceConnection = service.connection
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
-                    f"Error getting dbtConfigSource for service name [{service_name}]"
+                    f"Error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
-
-    def _retrieve_dbt_config_source_if_needed(self, service_type: ServiceType) -> None:
-        """
-        We override the current `config` source config object if it is a metadata ingestion type. When secrets' manager
-        is configured, we retrieve the config from the secrets' manager. Otherwise, we get the config from the source
-        config object itself through the default `SecretsManager`.
-
-        :return:
-        """
-        config = self.config.source.sourceConfig.config
-        if (
-            service_type is ServiceType.Database
-            and config
-            and config.type == DatabaseMetadataConfigType.DatabaseMetadata
-        ):
-            try:
-                dbt_config_source: object = (
-                    self.metadata.secrets_manager_client.retrieve_dbt_source_config(
-                        self.config.source.sourceConfig,
-                        self.config.source.serviceName,
-                    )
-                )
-                if dbt_config_source:
-                    config_dict = config.dict()
-                    config_dict["dbtConfigSource"] = dbt_config_source
-                    self.config.source.sourceConfig.config = (
-                        DatabaseServiceMetadataPipeline.parse_obj(config_dict)
-                    )
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error getting dbtConfigSource for config [{config}] using the secrets manager"
-                    f" provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
-                )
-
-    @staticmethod
-    def _is_sample_source(service_type: str) -> bool:
-        return service_type in SAMPLE_SOURCE

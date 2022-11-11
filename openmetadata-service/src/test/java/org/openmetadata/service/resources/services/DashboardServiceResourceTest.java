@@ -218,11 +218,10 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         }
         assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
         assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
-        if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
+        if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
           assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
-          assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
-        } else if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
+        } else {
           assertNull(actualSupersetConnection.getUsername());
           assertNull(actualSupersetConnection.getPassword());
         }

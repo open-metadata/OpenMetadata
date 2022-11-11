@@ -29,6 +29,7 @@ public class SecretsManagerFactoryTest {
   void setUp() {
     config = new SecretsManagerConfiguration();
     config.setParameters(new HashMap<>());
+    SecretsManagerFactory.setSecretsManager(null);
   }
 
   @Test
@@ -50,12 +51,24 @@ public class SecretsManagerFactoryTest {
   @Test
   void testIsCreatedIfAWSSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+  }
+
+  @Test
+  void testIsCreatedIfManagedAWSSecretsManager() {
+    initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS);
     assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSecretsManager);
   }
 
   @Test
   void testIsCreatedIfAWSSSMSecretsManager() {
     initConfigForAWSBasedSecretManager(SecretsManagerProvider.AWS_SSM);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof NoopSecretsManager);
+  }
+
+  @Test
+  void testIsCreatedIfManagedAWSSSMSecretsManager() {
+    initConfigForAWSBasedSecretManager(SecretsManagerProvider.MANAGED_AWS_SSM);
     assertTrue(SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME) instanceof AWSSSMSecretsManager);
   }
 

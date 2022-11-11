@@ -52,8 +52,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
@@ -231,12 +229,7 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public boolean decryptSecret(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin()) { // Always decrypt secrets for admin
-      return true;
-    }
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
-    return subjectContext.isBot() && secretsManager.isLocal();
+    return subjectContext.isAdmin() || subjectContext.isBot();
   }
 
   private void addUsers(Set<String> users, String domain, Boolean isAdmin) {
@@ -281,7 +274,7 @@ public class DefaultAuthorizer implements Authorizer {
    * </ul>
    */
   public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    User originalUser = retrieveAuthMechanism(user);
+    User originalUser = retrieveWithAuthMechanism(user);
     // the user did not have an auth mechanism
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     if (authMechanism == null) {
@@ -350,19 +343,10 @@ public class DefaultAuthorizer implements Authorizer {
     return new AuthenticationMechanism().withAuthType(authType).withConfig(config);
   }
 
-  private static User retrieveAuthMechanism(User user) {
+  private static User retrieveWithAuthMechanism(User user) {
     EntityRepository<User> userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
     try {
-      User originalUser =
-          userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-      AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      if (authMechanism != null) {
-        Object config =
-            secretsManager.encryptOrDecryptBotUserCredentials(user.getName(), authMechanism.getConfig(), false);
-        authMechanism.setConfig(config != null ? config : authMechanism.getConfig());
-      }
-      return originalUser;
+      return userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
     } catch (IOException | EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;

@@ -53,7 +53,6 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -64,8 +63,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.teams.RoleResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.SecurityUtil;
@@ -301,15 +298,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
     Bot bot = getBot(securityContext, create);
-    Response response = createOrUpdate(uriInfo, securityContext, bot);
-    // ensures the secrets' manager store the credentials even when the botUser does not change
-    // TODO encrypt decrypt could be done twice
-    bot = (Bot) response.getEntity();
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (ProviderType.SYSTEM.equals(bot.getProvider())) { // User bots credentials are not stored. Only system bots.
-      secretsManager.encryptOrDecryptBotCredentials(bot.getName(), bot.getBotUser().getName(), true);
-    }
-    return response;
+    return createOrUpdate(uriInfo, securityContext, bot);
   }
 
   @PATCH
