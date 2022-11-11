@@ -39,7 +39,6 @@ import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -288,10 +287,11 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       tags = "tables",
       description = "Restore a soft deleted WebAnalyticEvent.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully restored the WebAnalyticEvent. ",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = WebAnalyticEvent.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the WebAnalyticEvent. ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = WebAnalyticEvent.class)))
       })
   public Response restoreWebAnalyticEvent(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)

@@ -36,7 +36,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
-import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -378,10 +377,10 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
       tags = "tables",
       description = "Restore a soft deleted TestDefinition.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully restored the TestDefinition. ",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestDefinition.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the TestDefinition. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestDefinition.class)))
       })
   public Response restoreTestDefinition(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)

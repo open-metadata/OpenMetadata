@@ -44,7 +44,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
@@ -561,10 +560,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       tags = "tables",
       description = "Restore a soft deleted IngestionPipeline.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully restored the IngestionPipeline. ",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the IngestionPipeline. ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public Response restoreIngestionPipeline(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)

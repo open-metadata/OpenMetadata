@@ -37,7 +37,6 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
-import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
@@ -351,10 +350,10 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       tags = "tables",
       description = "Restore a soft deleted Kpi.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully restored the Kpi. ",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Kpi. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
       })
   public Response restoreKpi(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)

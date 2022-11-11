@@ -51,7 +51,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateRole;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -393,10 +392,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       tags = "tables",
       description = "Restore a soft deleted role.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully restored the Role. ",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Role. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
       })
   public Response restoreRole(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)

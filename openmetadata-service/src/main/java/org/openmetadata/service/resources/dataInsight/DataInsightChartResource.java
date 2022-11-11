@@ -46,7 +46,6 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -393,10 +392,11 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       tags = "tables",
       description = "Restore a soft deleted DataInsightChart.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully restored the DataInsightChart. ",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the DataInsightChart. ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class)))
       })
   public Response restoreDataInsightChart(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
