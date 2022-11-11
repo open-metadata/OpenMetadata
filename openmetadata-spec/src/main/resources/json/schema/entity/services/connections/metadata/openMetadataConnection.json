@@ -4,13 +4,13 @@
   "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection",
   "definitions": {
     "openmetadataType": {
       "description": "OpenMetadata service type",
       "type": "string",
-      "enum": ["OpenMetadataServer"],
-      "default": "OpenMetadataServer"
+      "enum": ["OpenMetadata"],
+      "default": "OpenMetadata"
     },
     "componentConfig": {
       "description": "key/value pairs to pass to sink component.",
@@ -29,7 +29,7 @@
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/openmetadataType",
-      "default": "OpenMetadataServer"
+      "default": "OpenMetadata"
     },
     "hostPort": {
       "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
