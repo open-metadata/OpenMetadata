@@ -19,6 +19,7 @@ on:
       - ingestion/**
       - openmetadata-service/**
   pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
     branches:
       - main
       - '0.[0-9]+.[0-9]+'
@@ -36,6 +37,22 @@ jobs:
       matrix:
         py-version: ['3.7', '3.8', '3.9']
     steps:
+
+    - name: Wait for the labeler
+      uses: lewagon/wait-on-check-action@v1.2.0
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        check-name: Team Label
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 30
+
+    - name: Verify PR labels
+      uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+      with:
+        github-token: '${{ secrets.GITHUB_TOKEN }}'
+        valid-labels: 'safe to test'
+        pull-request-number: '${{ github.event.pull_request.number }}'
+        disable-reviews: true  # To not auto approve changes
 
     - name: Checkout
       uses: actions/checkout@v2
