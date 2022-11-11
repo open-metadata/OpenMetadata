@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TEAM;
 
 import java.io.IOException;
@@ -27,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
@@ -39,8 +37,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -104,14 +100,6 @@ public class UserRepository extends EntityRepository<User> {
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
-
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
-      user.getAuthenticationMechanism()
-          .setConfig(
-              secretsManager.encryptOrDecryptBotUserCredentials(
-                  user.getName(), user.getAuthenticationMechanism().getConfig(), true));
-    }
 
     store(user.getId(), user, update);
 
@@ -215,19 +203,6 @@ public class UserRepository extends EntityRepository<User> {
     User user = getByName(uriInfo, userName, Fields.EMPTY_FIELDS, Include.ALL);
     List<EntityReference> teams = getTeams(user);
     return getGroupTeams(teams);
-  }
-
-  @Transaction
-  public User getByNameWithSecretManager(String fqn, Fields fields) throws IOException {
-    User user = getByName(null, fqn, fields, NON_DELETED);
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (user.getAuthenticationMechanism() != null) {
-      user.getAuthenticationMechanism()
-          .withConfig(
-              secretsManager.encryptOrDecryptBotUserCredentials(
-                  user.getName(), user.getAuthenticationMechanism().getConfig(), false));
-    }
-    return user;
   }
 
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) throws IOException {

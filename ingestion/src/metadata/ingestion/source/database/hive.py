@@ -17,6 +17,7 @@ from typing import Tuple
 
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
+from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -29,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils.sql_queries import HIVE_GET_COMMENTS
 
 complex_data_types = ["struct", "map", "array", "union"]
 
@@ -160,7 +162,28 @@ def get_view_names_older_versions(
     return []
 
 
+@reflection.cache
+def get_table_comment(  # pylint: disable=unused-argument
+    self, connection, table_name, schema_name, **kw
+):
+    """
+    Returns comment of table.
+    """
+    cursor = connection.execute(
+        HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)
+    )
+    try:
+        for result in list(cursor):
+            data = result.values()
+            if data[1] and data[1].strip() == "comment":
+                return {"text": data[2] if data and data[2] else None}
+    except Exception:
+        return {"text": None}
+    return {"text": None}
+
+
 HiveDialect.get_columns = get_columns
+HiveDialect.get_table_comment = get_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"

@@ -520,3 +520,10 @@ REDSHIFT_PARTITION_DETAILS = """
   from SVV_TABLE_INFO
   where diststyle not like 'AUTO%%'
 """
+
+
+HIVE_GET_COMMENTS = textwrap.dedent(
+    """
+    describe formatted {schema_name}.{table_name}
+"""
+)

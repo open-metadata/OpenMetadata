@@ -146,21 +146,15 @@ class TestSuiteWorkflow:
         """given an entityLink return the service connection
 
         Args:
-            entity_link: entity link for the test case
+            entity_fqn: entity link for the test case
         """
-        service = self.metadata.get_by_name(
+        service: DatabaseService = self.metadata.get_by_name(
             entity=DatabaseService,
             fqn=entity_fqn.split(".")[0],
         )
 
         if service:
-            service_connection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service,
-                    "databaseservice",
-                )
-            )
-            service_connection_config = deepcopy(service_connection.__root__.config)
+            service_connection_config = deepcopy(service.connection.config)
             if hasattr(service_connection_config, "supportsDatabase"):
                 if (
                     hasattr(

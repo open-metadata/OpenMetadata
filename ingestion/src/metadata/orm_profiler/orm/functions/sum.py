@@ -43,6 +43,15 @@ def _(element, compiler, **kw):
     return f"SUM(CAST({proc} AS NUMERIC))"
 
 
+@compiles(SumFn, Dialects.MySQL)
+def _(element, compiler, **kw):
+    """MySQL uses (UN)SIGNED INTEGER to cast to BIGINT
+    https://dev.mysql.com/doc/refman/8.0/en/cast-functions.html
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(CAST({proc} AS UNSIGNED INTEGER))"
+
+
 @compiles(SumFn, Dialects.Snowflake)
 @compiles(SumFn, Dialects.Vertica)
 def _(element, compiler, **kw):

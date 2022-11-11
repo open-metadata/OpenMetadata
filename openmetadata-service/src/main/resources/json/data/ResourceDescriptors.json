@@ -468,5 +468,17 @@
       "ViewAll",
       "EditDescription"
     ]
+  },
+  {
+    "name" : "metadataService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
+    ]
   }
 ]

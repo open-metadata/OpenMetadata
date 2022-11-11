@@ -13,7 +13,7 @@
 Hosts the singledispatch to build source URLs
 """
 import os
-from functools import singledispatch
+from functools import singledispatch, wraps
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
@@ -88,8 +88,42 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaConnection,
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
+
+
+def update_connection_opts_args(connection):
+    if hasattr(connection, "connectionOptions") and connection.connectionOptions:
+        for key, value in connection.connectionOptions.dict().items():
+            if isinstance(value, str):
+                setattr(
+                    connection.connectionOptions,
+                    key,
+                    CustomSecretStr(value).get_secret_value(),
+                )
+    if hasattr(connection, "connectionArguments") and connection.connectionArguments:
+        for key, value in connection.connectionArguments.dict().items():
+            if isinstance(value, str):
+                setattr(
+                    connection.connectionArguments,
+                    key,
+                    CustomSecretStr(value).get_secret_value(),
+                )
+
+
+def singledispatch_with_options_secrets(fn):
+    """Decorator used for get any secret from the Secrets Manager that has been passed inside connection options
+    or arguments.
+    """
+
+    @wraps(fn)
+    @singledispatch
+    def inner(connection, **kwargs):
+        update_connection_opts_args(connection)
+        return fn(connection, **kwargs)
+
+    return inner
 
 
 def get_connection_url_common(connection):
@@ -130,7 +164,7 @@ def get_connection_url_common(connection):
     return url
 
 
-@singledispatch
+@singledispatch_with_options_secrets
 def get_connection_url(connection):
     """
     Single dispatch method to get the source connection url
@@ -264,7 +298,7 @@ def _(connection: PrestoConnection):
     return url
 
 
-@singledispatch
+@singledispatch_with_options_secrets
 def get_connection_args(connection):
     """
     Single dispatch method to get the connection arguments

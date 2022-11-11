@@ -30,7 +30,10 @@
     },
     "hostPort": {
       "description": "Host and port of the data source.",
-      "type": "string"
+      "title": "Host and Port",
+      "type": "string",
+      "format": "uri",
+      "expose": true
     },
 
     "entityTypes": {

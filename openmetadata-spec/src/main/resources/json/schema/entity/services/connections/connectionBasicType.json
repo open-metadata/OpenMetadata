@@ -49,6 +49,16 @@
       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
       "type": "boolean",
       "default": true
+    },
+    "supportsMetadataToElasticSearchExtraction": {
+      "description": "Support Metadata To Elastic Search",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsElasticSearchReindexingExtraction": {
+      "description": "Support Elastic Search Reindexing",
+      "type": "boolean",
+      "default": true
     }
   }
 }
