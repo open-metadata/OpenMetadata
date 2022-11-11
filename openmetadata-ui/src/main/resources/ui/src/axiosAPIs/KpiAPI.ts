@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
@@ -34,13 +35,19 @@ export const getListKPIs = async (params?: ListParams) => {
 
   return response.data;
 };
-export const postKPI = async (data: Kpi) => {
-  const response = await APIClient.post<Kpi, AxiosResponse<Kpi>>('/kpi', data);
+export const postKPI = async (data: CreateKpiRequest) => {
+  const response = await APIClient.post<CreateKpiRequest, AxiosResponse<Kpi>>(
+    '/kpi',
+    data
+  );
 
   return response.data;
 };
-export const putKPI = async (data: Kpi) => {
-  const response = await APIClient.put<Kpi, AxiosResponse<Kpi>>('/kpi', data);
+export const putKPI = async (data: CreateKpiRequest) => {
+  const response = await APIClient.put<CreateKpiRequest, AxiosResponse<Kpi>>(
+    '/kpi',
+    data
+  );
 
   return response.data;
 };

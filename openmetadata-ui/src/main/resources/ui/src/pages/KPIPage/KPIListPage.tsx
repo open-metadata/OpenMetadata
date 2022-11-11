@@ -42,7 +42,7 @@ import { formatDateTimeFromSeconds } from '../../utils/TimeUtils';
 const KPIListPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const [KpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [kpiPage, setKpiPage] = useState(INITIAL_PAGING_VALUE);
   const [kpiPaging, setKpiPaging] = useState<Paging>(pagingObject);
@@ -139,7 +139,7 @@ const KPIListPage = () => {
     ];
 
     return col;
-  }, [KpiList]);
+  }, [kpiList]);
 
   const kpiPagingHandler = (
     cursorValue: string | number,
@@ -186,14 +186,14 @@ const KPIListPage = () => {
           <Table
             bordered
             columns={columns}
-            dataSource={KpiList}
+            dataSource={kpiList}
             loading={{ spinning: isLoading, indicator: <Loader /> }}
             pagination={false}
             rowKey="name"
             size="small"
           />
         </Col>
-        {KpiList.length > PAGE_SIZE_MEDIUM && (
+        {kpiList.length > PAGE_SIZE_MEDIUM && (
           <Col span={24}>
             <NextPrevious
               currentPage={kpiPage}

@@ -43,7 +43,10 @@ import {
 } from '../../constants/DataInsight.constants';
 import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
-import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
+import {
+  CreateKpiRequest,
+  KpiTargetType,
+} from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import {
   ChartParameterValues,
   DataInsightChart,
@@ -126,7 +129,7 @@ const AddKPIPage = () => {
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     const startDate = Math.floor(getUTCDateTime(values.startDate) / 1000);
     const endDate = Math.floor(getUTCDateTime(values.endDate) / 1000);
-    const formData = {
+    const formData: CreateKpiRequest = {
       dataInsightChart: {
         id: values.dataInsightChart,
         type: EntityType.DATA_INSIGHT_CHART,

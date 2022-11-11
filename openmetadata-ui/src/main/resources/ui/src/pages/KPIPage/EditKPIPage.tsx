@@ -39,6 +39,7 @@ import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import { VALIDATE_MESSAGES } from '../../constants/DataInsight.constants';
 import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
+import { CreateKpiRequest } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import {
@@ -143,7 +144,7 @@ const AddKPIPage = () => {
     if (kpiData && metricData) {
       const startDate = Math.floor(getUTCDateTime(values.startDate) / 1000);
       const endDate = Math.floor(getUTCDateTime(values.endDate) / 1000);
-      const formData: Kpi = {
+      const formData: CreateKpiRequest = {
         dataInsightChart: kpiData.dataInsightChart,
         description,
         displayName: values.displayName,
