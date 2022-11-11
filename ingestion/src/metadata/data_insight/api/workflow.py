@@ -208,7 +208,7 @@ class DataInsightWorkflow:
 
     def execute(self):
         """Execute workflow"""
-        logger.info("Starting data processor executiong")
+        logger.info("Starting data processor execution")
         self._execute_data_processor()
         logger.info("Data processor finished running")
 
