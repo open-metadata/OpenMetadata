@@ -27,7 +27,7 @@ base_requirements = {
     "idna<3,>=2.5",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic==1.9.0",
+    "pydantic~=1.9.0",
     "email-validator>=1.0.3",
     "google>=3.0.0",
     "google-auth>=1.33.0",
