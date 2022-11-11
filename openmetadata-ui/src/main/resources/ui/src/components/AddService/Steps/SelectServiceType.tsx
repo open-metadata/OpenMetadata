@@ -19,6 +19,8 @@ import {
   serviceTypes,
 } from '../../../constants/services.const';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
+import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -96,32 +98,42 @@ const SelectServiceType = ({
           <div
             className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
             data-testid="select-service">
-            {selectedConnectors.map((type) => (
-              <div
-                className={classNames(
-                  'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
-                  {
-                    'tw-border-primary': type === selectServiceType,
-                  }
-                )}
-                data-testid={type}
-                key={type}
-                onClick={() => handleServiceTypeClick(type)}>
-                <div className="tw-mb-2.5">
-                  <div data-testid="service-icon">
-                    {getServiceLogo(type || '', 'tw-h-9')}
+            {selectedConnectors
+              .filter(
+                (connectorType) =>
+                  !excludedService.includes(
+                    connectorType as MlModelServiceType | MetadataServiceType
+                  )
+              )
+              .map((type) => (
+                <div
+                  className={classNames(
+                    'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
+                    {
+                      'tw-border-primary': type === selectServiceType,
+                    }
+                  )}
+                  data-testid={type}
+                  key={type}
+                  onClick={() => handleServiceTypeClick(type)}>
+                  <div className="tw-mb-2.5">
+                    <div data-testid="service-icon">
+                      {getServiceLogo(type || '', 'tw-h-9')}
+                    </div>
+                    <div className="tw-absolute tw-top-0 tw-right-1.5">
+                      {type === selectServiceType && (
+                        <SVGIcons
+                          alt="checkbox"
+                          icon={Icons.CHECKBOX_PRIMARY}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="tw-absolute tw-top-0 tw-right-1.5">
-                    {type === selectServiceType && (
-                      <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
-                    )}
-                  </div>
+                  <p className="break-word text-center">
+                    {type.includes('Custom') ? startCase(type) : type}
+                  </p>
                 </div>
-                <p className="break-word text-center">
-                  {type.includes('Custom') ? startCase(type) : type}
-                </p>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
         {showError && errorMsg('Service is required')}

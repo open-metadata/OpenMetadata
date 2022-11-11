@@ -97,10 +97,12 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
+  getCountLabel,
   getCurrentServiceTab,
   getDeleteEntityMessage,
   getResourceEntityFromServiceCategory,
   getServiceCategoryFromType,
+  getServicePageTabs,
   getServiceRouteFromServiceType,
   getTestConnectionType,
   servicePageTabs,
@@ -133,7 +135,9 @@ const ServicePage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState(getCurrentServiceTab(tab));
+  const [activeTab, setActiveTab] = useState(
+    getCurrentServiceTab(tab, serviceName)
+  );
   const [isError, setIsError] = useState(false);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
@@ -174,44 +178,16 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getCountLabel = () => {
-    switch (serviceName) {
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return 'Dashboards';
-      case ServiceCategory.MESSAGING_SERVICES:
-        return 'Topics';
-      case ServiceCategory.PIPELINE_SERVICES:
-        return 'Pipelines';
-      case ServiceCategory.ML_MODEL_SERVICES:
-        return 'Models';
-      case ServiceCategory.DATABASE_SERVICES:
-      default:
-        return 'Databases';
-    }
-  };
-
-  const tabs = [
-    {
-      name: getCountLabel(),
-      isProtected: false,
-
-      position: 1,
-      count: instanceCount,
-    },
-    {
-      name: 'Ingestions',
-      isProtected: false,
-
-      position: 2,
-      count: ingestions.length,
-    },
-    {
-      name: 'Connection',
-      isProtected: !servicePermission.EditAll,
-      isHidden: !servicePermission.EditAll,
-      position: 3,
-    },
-  ];
+  const tabs = useMemo(
+    () =>
+      getServicePageTabs(
+        serviceName,
+        instanceCount,
+        ingestions,
+        servicePermission
+      ),
+    [serviceName, instanceCount, ingestions, servicePermission]
+  );
 
   const extraInfo: Array<ExtraInfo> = [
     {
@@ -234,17 +210,20 @@ const ServicePage: FunctionComponent = () => {
   const activeTabHandler = (tabValue: number) => {
     setActiveTab(tabValue);
     const currentTabIndex = tabValue - 1;
-    if (servicePageTabs(getCountLabel())[currentTabIndex].path !== tab) {
+    if (
+      servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path !== tab
+    ) {
       setActiveTab(
         getCurrentServiceTab(
-          servicePageTabs(getCountLabel())[currentTabIndex].path
+          servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path,
+          serviceName
         )
       );
       history.push({
         pathname: getServiceDetailsPath(
           serviceFQN,
           serviceCategory,
-          servicePageTabs(getCountLabel())[currentTabIndex].path
+          servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path
         ),
       });
     }
@@ -788,10 +767,10 @@ const ServicePage: FunctionComponent = () => {
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
-      const currentTab = getCurrentServiceTab(tab);
+      const currentTab = getCurrentServiceTab(tab, serviceName);
       const currentTabIndex = currentTab - 1;
 
-      if (tabs[currentTabIndex].isProtected) {
+      if (tabs[currentTabIndex]?.isProtected) {
         activeTabHandler(1);
       }
 
@@ -965,8 +944,10 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    if (servicePageTabs(getCountLabel())[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentServiceTab(tab));
+    if (
+      servicePageTabs(getCountLabel(serviceName))[activeTab - 1].path !== tab
+    ) {
+      setActiveTab(getCurrentServiceTab(tab, serviceName));
     }
   }, [tab]);
 
