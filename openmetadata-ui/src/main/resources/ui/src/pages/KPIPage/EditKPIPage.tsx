@@ -35,6 +35,7 @@ import './KPIPage.less';
 
 import { getChartById } from '../../axiosAPIs/DataInsightAPI';
 import { getKPIByName, putKPI } from '../../axiosAPIs/KpiAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import { VALIDATE_MESSAGES } from '../../constants/DataInsight.constants';
@@ -195,177 +196,187 @@ const AddKPIPage = () => {
   }
 
   return (
-    <Row
-      className="tw-bg-body-main tw-h-full"
-      data-testid="add-kpi-container"
-      gutter={[16, 16]}>
-      <Col offset={4} span={12}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
-        <Card>
-          <Typography.Paragraph
-            className="tw-text-base"
-            data-testid="form-title">
-            {t('label.add-new-kpi')}
-          </Typography.Paragraph>
-          <Form
-            data-testid="kpi-form"
-            id="kpi-form"
-            initialValues={initialValues}
-            layout="vertical"
-            validateMessages={VALIDATE_MESSAGES}
-            onFinish={handleSubmit}>
-            <Form.Item label={t('label.name')} name="name">
-              <Input
-                disabled
-                data-testid="name"
-                placeholder="Kpi name"
-                type="text"
-              />
-            </Form.Item>
+    <>
+      {kpiData ? (
+        <Row
+          className="tw-bg-body-main tw-h-full"
+          data-testid="add-kpi-container"
+          gutter={[16, 16]}>
+          <Col offset={4} span={12}>
+            <TitleBreadcrumb titleLinks={breadcrumb} />
+            <Card>
+              <Typography.Paragraph
+                className="tw-text-base"
+                data-testid="form-title">
+                {t('label.add-new-kpi')}
+              </Typography.Paragraph>
+              <Form
+                data-testid="kpi-form"
+                id="kpi-form"
+                initialValues={initialValues}
+                layout="vertical"
+                validateMessages={VALIDATE_MESSAGES}
+                onFinish={handleSubmit}>
+                <Form.Item label={t('label.name')} name="name">
+                  <Input
+                    disabled
+                    data-testid="name"
+                    placeholder="Kpi name"
+                    type="text"
+                  />
+                </Form.Item>
 
-            <Form.Item label={t('label.display-name')} name="displayName">
-              <Input
-                data-testid="displayName"
-                placeholder="Kpi display name"
-                type="text"
-              />
-            </Form.Item>
+                <Form.Item label={t('label.display-name')} name="displayName">
+                  <Input
+                    data-testid="displayName"
+                    placeholder="Kpi display name"
+                    type="text"
+                  />
+                </Form.Item>
 
-            <Form.Item label="Data insight chart" name="dataInsightChart">
-              <Input
-                disabled
-                value={selectedChart?.displayName || selectedChart?.name}
-              />
-            </Form.Item>
+                <Form.Item label="Data insight chart" name="dataInsightChart">
+                  <Input
+                    disabled
+                    value={selectedChart?.displayName || selectedChart?.name}
+                  />
+                </Form.Item>
 
-            <Form.Item label={t('label.metric-type')} name="metricType">
-              <Input disabled value={metricData?.name} />
-            </Form.Item>
+                <Form.Item label={t('label.metric-type')} name="metricType">
+                  <Input disabled value={metricData?.name} />
+                </Form.Item>
 
-            {!isUndefined(metricData) && (
-              <Form.Item
-                label={t('label.metric-value')}
-                name="metricValue"
-                rules={[
-                  {
-                    required: true,
-                    validator: () => {
-                      if (metricValue >= 0) {
-                        return Promise.resolve();
-                      }
+                {!isUndefined(metricData) && (
+                  <Form.Item
+                    label={t('label.metric-value')}
+                    name="metricValue"
+                    rules={[
+                      {
+                        required: true,
+                        validator: () => {
+                          if (metricValue >= 0) {
+                            return Promise.resolve();
+                          }
 
-                      return Promise.reject(t('message.metric-value-required'));
-                    },
-                  },
-                ]}>
-                <>
-                  {kpiData?.metricType === KpiTargetType.Percentage && (
-                    <Row gutter={20}>
-                      <Col span={20}>
-                        <Slider
-                          className="kpi-slider"
-                          marks={{
-                            0: '0%',
-                            100: '100%',
-                          }}
-                          max={100}
-                          min={0}
-                          tooltipPlacement="bottom"
-                          tooltipVisible={false}
-                          value={metricValue}
-                          onChange={(value) => {
-                            setMetricValue(value);
-                          }}
-                        />
-                      </Col>
-                      <Col span={4}>
+                          return Promise.reject(
+                            t('message.metric-value-required')
+                          );
+                        },
+                      },
+                    ]}>
+                    <>
+                      {kpiData?.metricType === KpiTargetType.Percentage && (
+                        <Row gutter={20}>
+                          <Col span={20}>
+                            <Slider
+                              className="kpi-slider"
+                              marks={{
+                                0: '0%',
+                                100: '100%',
+                              }}
+                              max={100}
+                              min={0}
+                              tooltipPlacement="bottom"
+                              tooltipVisible={false}
+                              value={metricValue}
+                              onChange={(value) => {
+                                setMetricValue(value);
+                              }}
+                            />
+                          </Col>
+                          <Col span={4}>
+                            <InputNumber
+                              formatter={(value) => `${value}%`}
+                              max={100}
+                              min={0}
+                              step={1}
+                              value={metricValue}
+                              onChange={(value) => {
+                                setMetricValue(value);
+                              }}
+                            />
+                          </Col>
+                        </Row>
+                      )}
+                      {kpiData?.metricType === KpiTargetType.Number && (
                         <InputNumber
-                          formatter={(value) => `${value}%`}
-                          max={100}
+                          className="w-full"
                           min={0}
-                          step={1}
                           value={metricValue}
-                          onChange={(value) => {
-                            setMetricValue(value);
-                          }}
+                          onChange={(value) => setMetricValue(value)}
                         />
-                      </Col>
-                    </Row>
-                  )}
-                  {kpiData?.metricType === KpiTargetType.Number && (
-                    <InputNumber
-                      className="w-full"
-                      min={0}
-                      value={metricValue}
-                      onChange={(value) => setMetricValue(value)}
-                    />
-                  )}
-                </>
-              </Form.Item>
-            )}
+                      )}
+                    </>
+                  </Form.Item>
+                )}
 
-            <Space className="w-full kpi-dates-space">
-              <Form.Item
-                label={t('label.start-date')}
-                messageVariables={{ fieldName: 'startDate' }}
-                name="startDate"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input type="datetime-local" />
-              </Form.Item>
+                <Space className="w-full kpi-dates-space">
+                  <Form.Item
+                    label={t('label.start-date')}
+                    messageVariables={{ fieldName: 'startDate' }}
+                    name="startDate"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}>
+                    <Input type="datetime-local" />
+                  </Form.Item>
 
-              <Form.Item
-                label={t('label.end-date')}
-                messageVariables={{ fieldName: 'endDate' }}
-                name="endDate"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input type="datetime-local" />
-              </Form.Item>
-            </Space>
+                  <Form.Item
+                    label={t('label.end-date')}
+                    messageVariables={{ fieldName: 'endDate' }}
+                    name="endDate"
+                    rules={[
+                      {
+                        required: true,
+                      },
+                    ]}>
+                    <Input type="datetime-local" />
+                  </Form.Item>
+                </Space>
 
-            <Form.Item label={t('label.description')} name="description">
-              <RichTextEditor
-                height="200px"
-                initialValue={description}
-                placeHolder="write your description"
-                style={{ margin: 0 }}
-                onTextChange={(value) => setDescription(value)}
-              />
-            </Form.Item>
+                <Form.Item label={t('label.description')} name="description">
+                  <RichTextEditor
+                    height="200px"
+                    initialValue={description}
+                    placeHolder="write your description"
+                    style={{ margin: 0 }}
+                    onTextChange={(value) => setDescription(value)}
+                  />
+                </Form.Item>
 
-            <Space align="center" className="tw-w-full tw-justify-end">
-              <Button
-                data-testid="cancel-btn"
-                type="link"
-                onClick={handleCancel}>
-                Back
-              </Button>
-              <Button
-                data-testid="submit-btn"
-                form="kpi-form"
-                htmlType="submit"
-                loading={isUpdatingKPI}
-                type="primary">
-                Save
-              </Button>
-            </Space>
-          </Form>
-        </Card>
-      </Col>
-      <Col className="tw-mt-4" span={4}>
-        <Typography.Paragraph className="tw-text-base tw-font-medium">
-          {t('label.add-kpi')}
-        </Typography.Paragraph>
-        <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
-      </Col>
-    </Row>
+                <Space align="center" className="tw-w-full tw-justify-end">
+                  <Button
+                    data-testid="cancel-btn"
+                    type="link"
+                    onClick={handleCancel}>
+                    Back
+                  </Button>
+                  <Button
+                    data-testid="submit-btn"
+                    form="kpi-form"
+                    htmlType="submit"
+                    loading={isUpdatingKPI}
+                    type="primary">
+                    Save
+                  </Button>
+                </Space>
+              </Form>
+            </Card>
+          </Col>
+          <Col className="tw-mt-4" span={4}>
+            <Typography.Paragraph className="tw-text-base tw-font-medium">
+              {t('label.add-kpi')}
+            </Typography.Paragraph>
+            <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
+          </Col>
+        </Row>
+      ) : (
+        <ErrorPlaceHolder>
+          {t('message.no-kpi-found', { name: kpiName })}
+        </ErrorPlaceHolder>
+      )}
+    </>
   );
 };
 

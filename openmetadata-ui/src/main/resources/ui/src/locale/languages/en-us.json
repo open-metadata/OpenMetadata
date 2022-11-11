@@ -283,7 +283,8 @@
     "most-viewed-data-assets": "Displays the most viewed data assets.",
     "data-insight-chart-required": "Data insight chart is required",
     "metric-type-required": "Metric type is required",
-    "metric-value-required": "Metric value is required"
+    "metric-value-required": "Metric value is required",
+    "no-kpi-found": "No Kpi found with name {{name}}"
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",
