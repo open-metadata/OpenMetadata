@@ -16,7 +16,7 @@ package org.openmetadata.client.security;
 import feign.RequestTemplate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
 public class NoOpAuthenticationProvider implements AuthenticationProvider {
@@ -25,7 +25,7 @@ public class NoOpAuthenticationProvider implements AuthenticationProvider {
   }
 
   @Override
-  public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
+  public AuthenticationProvider create(OpenMetadataConnection iConfig) {
     return new NoOpAuthenticationProvider();
   }
 

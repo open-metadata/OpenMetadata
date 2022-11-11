@@ -41,6 +41,9 @@
             },
             {
               "$ref": "metadataToElasticSearchPipeline.json"
+            },
+            {
+              "$ref": "dataInsightPipeline.json"
             }
           ]
         }
@@ -153,7 +156,7 @@
           "default": "INFO"
         },
         "openMetadataServerConfig": {
-          "$ref": "../entity/services/connections/metadata/openMetadataServerConnection.json"
+          "$ref": "../entity/services/connections/metadata/openMetadataConnection.json"
         },
         "config": {
           "$ref": "#/definitions/componentConfig"
