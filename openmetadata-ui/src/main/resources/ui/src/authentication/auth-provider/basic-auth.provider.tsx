@@ -37,6 +37,7 @@ import {
   showInfoToast,
   showSuccessToast,
 } from '../../utils/ToastUtils';
+import { resetWebAnalyticSession } from '../../utils/WebAnalyticsUtils';
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -106,6 +107,9 @@ const BasicAuthProvider = ({
             scope: '',
           });
         }
+
+        // reset web analytic session
+        resetWebAnalyticSession();
       } catch (error) {
         const err = error as AxiosError<{ code: number; message: string }>;
 
