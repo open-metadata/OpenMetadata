@@ -16,10 +16,18 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Space, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
-import { isNil, isNumber, lowerCase, noop, omit, toUpper } from 'lodash';
+import {
+  isEmpty,
+  isNil,
+  isNumber,
+  lowerCase,
+  noop,
+  omit,
+  toUpper,
+} from 'lodash';
 import { EntityType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -273,6 +281,23 @@ const Explore: React.FC<ExploreProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    const term = {} as Record<string, unknown>;
+    selectedQuickFilters.map((filter) => {
+      if (filter.key) {
+        term[filter.key] = filter.value;
+      }
+    });
+
+    onChangeAdvancedSearchQueryFilter(
+      isEmpty(term)
+        ? {}
+        : {
+            query: { bool: { must: [{ term }] } },
+          }
+    );
+  }, [selectedQuickFilters]);
+
   return (
     <PageLayoutV1
       leftPanel={
@@ -323,12 +348,6 @@ const Explore: React.FC<ExploreProps> = ({
                 </button>
               )}
             </div>
-            <Button
-              ghost
-              type="primary"
-              onClick={() => setShowAdvanceSearchModal(true)}>
-              Advance Search
-            </Button>
           </div>
         }
         onChange={(tab) => {
@@ -359,41 +378,40 @@ const Explore: React.FC<ExploreProps> = ({
           style={{
             marginRight: showSummaryPanel ? '380px' : '',
           }}>
-          <AdvancedFields
-            fields={selectedQuickFilters}
-            index={searchIndex}
-            onClear={handleAdvanceFieldClear}
-            onFieldRemove={handleAdvanceFieldRemove}
-            onFieldSelect={handleAdvancedFieldSelect}
-            onFieldValueSelect={handleAdvanceFieldValueSelect}
-          />
-          <AdvancedSearchModal
-            jsonTree={advancedSearchJsonTree}
-            searchIndex={searchIndex}
-            visible={showAdvanceSearchModal}
-            onCancel={() => setShowAdvanceSearchModal(false)}
-            onChangeJsonTree={onChangeAdvancedSearchJsonTree}
-            onSubmit={onChangeAdvancedSearchQueryFilter}
-          />
-          {!loading ? (
-            <SearchedData
-              isFilterSelected
-              showResultCount
-              currentPage={page}
-              data={searchResults?.hits.hits ?? []}
-              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-              paginate={(value) => {
-                if (isNumber(value)) {
-                  onChangePage(value);
-                } else if (!isNaN(Number.parseInt(value))) {
-                  onChangePage(Number.parseInt(value));
-                }
-              }}
-              totalValue={searchResults?.hits.total.value ?? 0}
-            />
-          ) : (
-            <Loader />
-          )}
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <AdvancedFields
+                fields={selectedQuickFilters}
+                index={searchIndex}
+                onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
+                onClear={handleAdvanceFieldClear}
+                onFieldRemove={handleAdvanceFieldRemove}
+                onFieldSelect={handleAdvancedFieldSelect}
+                onFieldValueSelect={handleAdvanceFieldValueSelect}
+              />
+            </Col>
+            <Col span={24}>
+              {!loading ? (
+                <SearchedData
+                  isFilterSelected
+                  showResultCount
+                  currentPage={page}
+                  data={searchResults?.hits.hits ?? []}
+                  handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                  paginate={(value) => {
+                    if (isNumber(value)) {
+                      onChangePage(value);
+                    } else if (!isNaN(Number.parseInt(value))) {
+                      onChangePage(Number.parseInt(value));
+                    }
+                  }}
+                  totalValue={searchResults?.hits.total.value ?? 0}
+                />
+              ) : (
+                <Loader />
+              )}
+            </Col>
+          </Row>
         </div>
         <EntitySummaryPanel
           entityDetails={entityDetails || ({} as Table)}
@@ -402,6 +420,14 @@ const Explore: React.FC<ExploreProps> = ({
           showPanel={showSummaryPanel}
         />
       </Space>
+      <AdvancedSearchModal
+        jsonTree={advancedSearchJsonTree}
+        searchIndex={searchIndex}
+        visible={showAdvanceSearchModal}
+        onCancel={() => setShowAdvanceSearchModal(false)}
+        onChangeJsonTree={onChangeAdvancedSearchJsonTree}
+        onSubmit={onChangeAdvancedSearchQueryFilter}
+      />
     </PageLayoutV1>
   );
 };

@@ -36,7 +36,10 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       visible={visible}
       width={700}
       onCancel={onCancel}
-      onOk={() => onSubmit(queryFilter)}>
+      onOk={() => {
+        onSubmit(queryFilter);
+        onCancel();
+      }}>
       <AdvancedSearch
         jsonTree={jsonTree}
         searchIndex={searchIndex}

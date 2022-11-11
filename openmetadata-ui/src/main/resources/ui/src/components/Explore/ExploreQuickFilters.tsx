@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Menu, Space } from 'antd';
-import { uniqueId } from 'lodash';
-import React, { FC, useCallback, useMemo } from 'react';
+import { Badge, Divider, Dropdown, Menu, Space } from 'antd';
+import { isEmpty, isNil, uniqueId } from 'lodash';
+import React, { FC, useCallback, useEffect, useMemo } from 'react';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { ExploreQuickFilterField } from './explore.interface';
 import AdvancedField from './ExploreQuickFilter';
 
@@ -26,12 +26,14 @@ interface Props {
   onClear: () => void;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
   onFieldSelect: (value: string) => void;
+  onAdvanceSearch: () => void;
 }
 
 const AdvancedFields: FC<Props> = ({
   fields,
   onFieldRemove,
   onClear,
+  onAdvanceSearch,
   index,
   onFieldValueSelect,
   onFieldSelect,
@@ -40,10 +42,12 @@ const AdvancedFields: FC<Props> = ({
     onFieldSelect(menuInfo.key);
   }, []);
 
+  const menuItems = useMemo(() => getDropDownItems(index), [index]);
+
   const menu = useMemo(() => {
     return (
       <Menu
-        items={getDropDownItems(index).map((option) => ({
+        items={menuItems.map((option) => ({
           ...option,
           disabled: Boolean(fields.find((f) => f.key === option.key)),
           onClick: handleMenuItemClick,
@@ -51,14 +55,21 @@ const AdvancedFields: FC<Props> = ({
         }))}
       />
     );
-  }, [onFieldSelect, fields, index]);
+  }, [onFieldSelect, fields, menuItems]);
 
-  //   useEffect(() => {
-  //     fields.length < 2 ?
-  //   })
+  useEffect(() => {
+    onClear();
+    handleMenuItemClick(menuItems[0]);
+    handleMenuItemClick(menuItems[1]);
+  }, [menuItems]);
+
+  const filterCount = useMemo(
+    () => fields.filter((field) => !isNil(field.value)).length,
+    [fields]
+  );
 
   return (
-    <Space wrap>
+    <Space wrap size={[16, 16]}>
       {fields.map((field) => (
         <AdvancedField
           field={field}
@@ -69,17 +80,16 @@ const AdvancedFields: FC<Props> = ({
         />
       ))}
       <Dropdown
+        className="cursor-pointer"
         data-testid="quick-filter-dropdown"
         overlay={menu}
         trigger={['click']}>
-        <Button ghost type="primary">
-          <Space>
-            Quick Filters
-            <DownOutlined />
-          </Space>
-        </Button>
+        <Badge count={filterCount} size="small">
+          <SVGIcons alt="filter" icon={Icons.FILTER_PRIMARY} />
+        </Badge>
       </Dropdown>
-      {Boolean(fields.length) && (
+      <Divider type="vertical" />
+      {!isEmpty(fields) && (
         <span
           className="tw-text-primary tw-self-center tw-cursor-pointer"
           data-testid="clear-all-button"
@@ -87,6 +97,12 @@ const AdvancedFields: FC<Props> = ({
           Clear All
         </span>
       )}
+      <span
+        className="tw-text-primary tw-self-center tw-cursor-pointer"
+        data-testid="clear-all-button"
+        onClick={onAdvanceSearch}>
+        Advance Filter
+      </span>
     </Space>
   );
 };

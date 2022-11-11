@@ -29,6 +29,7 @@ const fields = [
 ] as ExploreQuickFilterField[];
 
 const onFieldRemove = jest.fn();
+const onAdvanceSearch = jest.fn();
 const onClear = jest.fn();
 const onFieldValueSelect = jest.fn();
 const onFieldSelect = jest.fn();
@@ -37,6 +38,7 @@ const mockProps = {
   index,
   fields,
   onFieldRemove,
+  onAdvanceSearch,
   onClear,
   onFieldValueSelect,
   onFieldSelect,
@@ -70,6 +72,6 @@ describe('Test AdvancedFields component', () => {
 
     fireEvent.click(clearButton);
 
-    expect(onClear).toBeCalled();
+    expect(onAdvanceSearch).toBeCalled();
   });
 });
