@@ -104,4 +104,4 @@ UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{deployed}';
 
 UPDATE ingestion_pipeline_entity
-SET json = jsonb_set(json, '{deployed}', 'false'::jsonb, true);
+SET json = jsonb_set(json::jsonb, '{deployed}', 'true'::jsonb, true);

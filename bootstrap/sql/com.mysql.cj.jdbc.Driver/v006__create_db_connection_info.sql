@@ -99,4 +99,4 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json ,'$.deployed');
 
 UPDATE ingestion_pipeline_entity
-SET json = JSON_INSERT(json ,'$.deployed', 'false');
+SET json = JSON_INSERT(json ,'$.deployed', 'true');
