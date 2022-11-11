@@ -18,6 +18,8 @@ import enum
 class DataInsightEsIndex(enum.Enum):
     """Data Insight ES Indexes"""
 
-    EntityReportData = "entity_report_data_index"
-    WebAnalyticUserActivityReportData = "web_analytic_user_activity_report_data_index"
-    WebAnalyticEntityViewReportData = "web_analytic_entity_view_report_data_index"
+    ENTITY_REPORT_DATA = "entity_report_data_index"
+    WEB_ANALYTICS_USER_ACTIVITY_REPORT_DATA = (
+        "web_analytic_user_activity_report_data_index"
+    )
+    WEB_ANALYTICS_ENTITY_VIEW_REPORT_DATA = "web_analytic_entity_view_report_data_index"
