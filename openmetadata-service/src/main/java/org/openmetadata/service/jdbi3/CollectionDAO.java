@@ -92,11 +92,10 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
-import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -459,17 +458,6 @@ public interface CollectionDAO {
             + "ORDER BY toId")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
-        @Bind("fromId") String fromId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
-
-    @SqlQuery(
-        "SELECT count(*) FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
-            + "AND (toEntity = :toEntity OR :toEntity IS NULL) "
-            + "ORDER BY fromId")
-    int findToCount(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -1235,17 +1223,6 @@ public interface CollectionDAO {
         @Bind("resolved") boolean resolved);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM thread_entity WHERE (id IN (<threadIds>)) "
-            + "AND resolved= :isResolved AND (:type IS NULL OR type = :type) "
-            + "AND (:status IS NULL OR taskStatus = :status) GROUP BY entityLink")
-    @RegisterRowMapper(CountFieldMapper.class)
-    List<List<String>> listCountByThreads(
-        @BindList("threadIds") List<String> threadIds,
-        @Bind("type") ThreadType type,
-        @Bind("status") TaskStatus status,
-        @Bind("isResolved") boolean isResolved);
-
-    @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "
             + "(:type IS NULL OR type = :type) AND entityId in ("
             + "SELECT toId FROM entity_relationship WHERE "
@@ -1400,26 +1377,6 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
-    @RegisterRowMapper(FromFieldMapper.class)
-    List<Triple<String, String, String>> listFromByPrefix(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("fromType") String fromType,
-        @Bind("toType") String toType,
-        @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType LIKE CONCAT(:toType, '%') AND relation = :relation")
-    @RegisterRowMapper(FromFieldMapper.class)
-    List<Triple<String, String, String>> listFromByAllPrefix(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("fromType") String fromType,
-        @Bind("toType") String toType,
-        @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
@@ -1480,13 +1437,6 @@ public interface CollectionDAO {
       @Override
       public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
         return Triple.of(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
-      }
-    }
-
-    class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
-      @Override
-      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Triple.of(rs.getString("toFQN"), rs.getString("fromFQN"), rs.getString("json"));
       }
     }
   }
@@ -1888,27 +1838,14 @@ public interface CollectionDAO {
     @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
     List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
-                + "t.json ->> '$.description' AS description1, "
-                + "g.json ->> '$.description' AS description2 "
-                + "FROM tag_usage tu "
-                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
-                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
-                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
-                + "t.json ->> 'description' AS description1, "
-                + "g.json ->> 'description' AS description2 "
-                + "FROM tag_usage tu "
-                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
-                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
-                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
-        connectionType = POSTGRES)
-    List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
+    default List<TagLabel> getTags(String targetFQN) {
+      List<TagLabel> tags = getTagsInternal(targetFQN);
+      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getInstance().getDescription(tagLabel)));
+      return tags;
+    }
+
+    @SqlQuery("SELECT source, tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
+    List<TagLabel> getTagsInternal(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
     int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
@@ -1924,19 +1861,16 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:targetFQN, '%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
+  }
 
-    class TagLabelMapper implements RowMapper<TagLabel> {
-      @Override
-      public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
-        String description1 = r.getString("description1");
-        String description2 = r.getString("description2");
-        return new TagLabel()
-            .withSource(TagLabel.TagSource.values()[r.getInt("source")])
-            .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
-            .withState(TagLabel.State.values()[r.getInt("state")])
-            .withTagFQN(r.getString("tagFQN"))
-            .withDescription(description1 == null ? description2 : description1);
-      }
+  class TagLabelMapper implements RowMapper<TagLabel> {
+    @Override
+    public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
+      return new TagLabel()
+          .withSource(TagLabel.TagSource.values()[r.getInt("source")])
+          .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
+          .withState(TagLabel.State.values()[r.getInt("state")])
+          .withTagFQN(r.getString("tagFQN"));
     }
   }
 
@@ -2284,22 +2218,22 @@ public interface CollectionDAO {
                 + "WHERE u.id = vals.id AND usageDate = (:date :: date);",
         connectionType = POSTGRES)
     void computePercentile(@Bind("entityType") String entityType, @Bind("date") String date);
+  }
 
-    class UsageDetailsMapper implements RowMapper<UsageDetails> {
-      @Override
-      public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
-        UsageStats dailyStats =
-            new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble("percentile1"));
-        UsageStats weeklyStats =
-            new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble("percentile7"));
-        UsageStats monthlyStats =
-            new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble("percentile30"));
-        return new UsageDetails()
-            .withDate(r.getString("usageDate"))
-            .withDailyStats(dailyStats)
-            .withWeeklyStats(weeklyStats)
-            .withMonthlyStats(monthlyStats);
-      }
+  class UsageDetailsMapper implements RowMapper<UsageDetails> {
+    @Override
+    public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
+      UsageStats dailyStats =
+          new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble("percentile1"));
+      UsageStats weeklyStats =
+          new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble("percentile7"));
+      UsageStats monthlyStats =
+          new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble("percentile30"));
+      return new UsageDetails()
+          .withDate(r.getString("usageDate"))
+          .withDailyStats(dailyStats)
+          .withWeeklyStats(weeklyStats)
+          .withMonthlyStats(monthlyStats);
     }
   }
 
@@ -2577,9 +2511,6 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
-
-    @SqlQuery(value = "SELECT json FROM user_entity WHERE email = :email")
-    String findUserByEmail(@Bind("email") String email);
   }
 
   interface ChangeEventDAO {
@@ -2981,12 +2912,6 @@ public interface CollectionDAO {
         "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
-
-    @SqlQuery(
-        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
-            + "ORDER BY timestamp DESC LIMIT :limit")
-    List<String> getLastLatestExtension(
-        @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("limit") int limit);
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(

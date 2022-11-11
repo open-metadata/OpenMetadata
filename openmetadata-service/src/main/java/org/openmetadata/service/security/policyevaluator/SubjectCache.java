@@ -78,7 +78,6 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      ex.printStackTrace();
       throw new EntityNotFoundException(ex.getMessage());
     }
   }

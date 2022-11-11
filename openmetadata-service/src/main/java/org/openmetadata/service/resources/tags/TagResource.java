@@ -117,6 +117,7 @@ public class TagResource {
           } catch (Exception e) {
             LOG.warn("Failed to initialize the tag files {}", tagFile, e);
           }
+          TagLabelCache.initialize();
         });
   }
 
