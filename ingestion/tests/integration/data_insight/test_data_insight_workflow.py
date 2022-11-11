@@ -155,7 +155,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithDescriptionByType.value,
-            data_report_index=DataInsightEsIndex.ENTITY_REPORT_DATA.value,
+            data_report_index=DataInsightEsIndex.EntityReportData.value,
         )
 
         assert isinstance(resp, DataInsightChartResult)
@@ -166,7 +166,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithOwnerByType.value,
-            data_report_index=DataInsightEsIndex.ENTITY_REPORT_DATA.value,
+            data_report_index=DataInsightEsIndex.EntityReportData.value,
         )
 
         assert resp.data
