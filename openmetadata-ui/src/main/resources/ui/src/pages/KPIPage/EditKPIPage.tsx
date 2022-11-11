@@ -366,7 +366,7 @@ const AddKPIPage = () => {
           </Col>
           <Col className="tw-mt-4" span={4}>
             <Typography.Paragraph className="tw-text-base tw-font-medium">
-              {t('label.add-kpi')}
+              {t('label.edit-kpi')}
             </Typography.Paragraph>
             <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
           </Col>

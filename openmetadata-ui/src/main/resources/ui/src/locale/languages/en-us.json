@@ -255,7 +255,8 @@
     "add-kpi": "Add KPI",
     "data-insight-subtitle": "Get a single pane view of the health of all your data assets over time.",
     "kpi-title": "Key Performance Indicators (KPI)",
-    "kpi-subtitle": "Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets."
+    "kpi-subtitle": "Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets.",
+    "edit-kpi": "Edit KPI"
   },
   "message": {
     "service-email-required": "Service account Email is required",
