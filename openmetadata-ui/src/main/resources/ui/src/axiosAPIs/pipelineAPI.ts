@@ -13,8 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
-import { CreatePipeline } from '../generated/api/data/createPipeline';
+import { PagingResponse, RestoreEntities } from 'Models';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -139,11 +138,13 @@ export const getPipelineStatus = async (
   return response.data;
 };
 
-export const restorePipeline = async (data: CreatePipeline) => {
-  const response = await APIClient.put<CreatePipeline, AxiosResponse<Pipeline>>(
-    '/pipelines',
-    data
-  );
+export const restorePipeline = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreEntities,
+    AxiosResponse<Pipeline>
+  >('/pipelines/restore', {
+    id,
+  });
 
   return response.data;
 };

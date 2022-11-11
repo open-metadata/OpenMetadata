@@ -28,7 +28,6 @@ import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateTopic } from '../../generated/api/data/createTopic';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -363,29 +362,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const handleRestoreTopic = async () => {
-    const data: CreateTopic = {
-      cleanupPolicies: topicDetails.cleanupPolicies,
-      maximumMessageSize: topicDetails.maximumMessageSize,
-      description: topicDetails.description,
-      displayName: topicDetails.displayName,
-      extension: topicDetails.extension,
-      name: topicDetails.name,
-      owner: topicDetails.owner,
-      service: topicDetails.service,
-      tags: topicDetails.tags,
-      minimumInSyncReplicas: topicDetails.minimumInSyncReplicas,
-      partitions: topicDetails.partitions,
-      replicationFactor: topicDetails.replicationFactor,
-      retentionSize: topicDetails.retentionSize,
-      retentionTime: topicDetails.retentionTime,
-      sampleData: topicDetails.sampleData,
-      schemaText: topicDetails.schemaText,
-      schemaType: topicDetails.schemaType,
-      topicConfig: topicDetails.topicConfig,
-    };
-
     try {
-      await restoreTopic(data);
+      await restoreTopic(topicDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.topic'),

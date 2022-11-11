@@ -48,7 +48,6 @@ import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreatePipeline } from '../../generated/api/data/createPipeline';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   Pipeline,
@@ -356,22 +355,8 @@ const PipelineDetails = ({
   };
 
   const handleRestorePipeline = async () => {
-    const data: CreatePipeline = {
-      concurrency: pipelineDetails.concurrency,
-      pipelineUrl: pipelineDetails.pipelineUrl,
-      description: pipelineDetails.description,
-      displayName: pipelineDetails.displayName,
-      extension: pipelineDetails.extension,
-      name: pipelineDetails.name,
-      owner: pipelineDetails.owner,
-      service: pipelineDetails.service,
-      tags: pipelineDetails.tags,
-      pipelineLocation: pipelineDetails.pipelineLocation,
-      startDate: pipelineDetails.startDate,
-    };
-
     try {
-      await restorePipeline(data);
+      await restorePipeline(pipelineDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.pipeline'),

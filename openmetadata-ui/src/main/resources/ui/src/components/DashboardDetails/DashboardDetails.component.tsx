@@ -34,7 +34,6 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateDashboard } from '../../generated/api/data/createDashboard';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -341,20 +340,8 @@ const DashboardDetails = ({
   };
 
   const handleRestoreDashboard = async () => {
-    const data: CreateDashboard = {
-      charts: dashboardDetails.charts,
-      dashboardUrl: dashboardDetails.dashboardUrl,
-      description: dashboardDetails.description,
-      displayName: dashboardDetails.displayName,
-      extension: dashboardDetails.extension,
-      name: dashboardDetails.name,
-      owner: dashboardDetails.owner,
-      service: dashboardDetails.service,
-      tags: dashboardDetails.tags,
-    };
-
     try {
-      await restoreDashboard(data);
+      await restoreDashboard(dashboardDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.dashboard'),

@@ -27,7 +27,6 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateTable } from '../../generated/api/data/createTable';
 import {
   JoinedWith,
   Table,
@@ -536,24 +535,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   const handleRestoreTable = async () => {
-    const data: CreateTable = {
-      columns: tableDetails.columns,
-      databaseSchema: tableDetails.databaseSchema as EntityReference,
-      description: tableDetails.description,
-      displayName: tableDetails.displayName,
-      extension: tableDetails.extension,
-      name: tableDetails.name,
-      owner: tableDetails.owner,
-      tableConstraints: tableDetails.tableConstraints,
-      tags: tableDetails.tags,
-      tablePartition: tableDetails.tablePartition,
-      tableProfilerConfig: tableDetails.tableProfilerConfig,
-      tableType: tableDetails.tableType,
-      viewDefinition: tableDetails.viewDefinition,
-    };
-
     try {
-      await restoreTable(data);
+      await restoreTable(tableDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.table'),

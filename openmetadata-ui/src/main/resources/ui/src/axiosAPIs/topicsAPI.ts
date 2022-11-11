@@ -13,8 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { RestoreEntities } from 'Models';
 import { TabSpecificField } from '../enums/entity.enum';
-import { CreateTopic } from '../generated/api/data/createTopic';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -126,10 +126,10 @@ export const patchTopicDetails = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const restoreTopic = async (data: CreateTopic) => {
-  const response = await APIClient.put<CreateTopic, AxiosResponse<Topic>>(
-    '/topics',
-    data
+export const restoreTopic = async (id: string) => {
+  const response = await APIClient.put<RestoreEntities, AxiosResponse<Topic>>(
+    '/topics/restore',
+    { id }
   );
 
   return response.data;
