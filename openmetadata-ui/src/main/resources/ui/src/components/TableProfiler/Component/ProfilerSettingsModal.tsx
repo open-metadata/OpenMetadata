@@ -39,13 +39,13 @@ import {
 import {
   codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,
+  INTERVAL_TYPE_OPTIONS,
+  INTERVAL_UNIT_OPTIONS,
   PROFILER_METRIC,
   SUPPORTED_PARTITION_TYPE,
 } from '../../../constants/profiler.constant';
 import {
   ColumnProfilerConfig,
-  PartitionIntervalType,
-  PartitionIntervalUnit,
   PartitionProfilerConfig,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
@@ -119,19 +119,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       isPartitionDisabled,
     };
   }, [columns]);
-
-  const intervalTypeOptions = useMemo(() => {
-    return Object.values(PartitionIntervalType).map((value) => ({
-      value,
-      label: value,
-    }));
-  }, []);
-  const intervalUnitOptions = useMemo(() => {
-    return Object.values(PartitionIntervalUnit).map((value) => ({
-      value,
-      label: value,
-    }));
-  }, []);
 
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
     const { includeColumns, partitioning } = tableProfilerConfig;
@@ -482,7 +469,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="interval-type"
                     disabled={isPartitionDisabled || !enablePartition}
-                    options={intervalTypeOptions}
+                    options={INTERVAL_TYPE_OPTIONS}
                     placeholder={t('message.select-type-required')}
                     size="middle"
                   />
@@ -536,7 +523,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="select-interval-unit"
                     disabled={isPartitionDisabled || !enablePartition}
-                    options={intervalUnitOptions}
+                    options={INTERVAL_UNIT_OPTIONS}
                     placeholder={t('message.select-interval-unit')}
                     size="middle"
                   />

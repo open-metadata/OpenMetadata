@@ -13,7 +13,12 @@
 
 import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
-import { ColumnProfilerConfig, DataType } from '../generated/entity/data/table';
+import {
+  ColumnProfilerConfig,
+  DataType,
+  PartitionIntervalType,
+  PartitionIntervalUnit,
+} from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { JSON_TAB_SIZE } from './constants';
 
@@ -213,3 +218,16 @@ export const SUPPORTED_PARTITION_TYPE = [
   DataType.Datetime,
   DataType.Timestampz,
 ];
+
+export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(
+  (value) => ({
+    value,
+    label: value,
+  })
+);
+export const INTERVAL_UNIT_OPTIONS = Object.values(PartitionIntervalUnit).map(
+  (value) => ({
+    value,
+    label: value,
+  })
+);
