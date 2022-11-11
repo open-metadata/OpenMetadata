@@ -35,7 +35,6 @@ public class SecretsManagerFactory {
       case NOOP:
       case AWS_SSM:
       case AWS:
-      case IN_MEMORY:
         secretsManager = NoopSecretsManager.getInstance(clusterName, secretsManagerProvider);
         break;
       case MANAGED_AWS:
@@ -43,6 +42,9 @@ public class SecretsManagerFactory {
         break;
       case MANAGED_AWS_SSM:
         secretsManager = AWSSSMSecretsManager.getInstance(config, clusterName);
+        break;
+      case IN_MEMORY:
+        secretsManager = InMemorySecretsManager.getInstance(clusterName);
         break;
       default:
         throw new IllegalArgumentException("Not implemented secret manager store: " + secretsManagerProvider);

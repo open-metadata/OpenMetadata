@@ -13,20 +13,27 @@
 
 package org.openmetadata.service.secrets;
 
-import org.openmetadata.schema.entity.services.ServiceType;
+import java.util.Locale;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
+  public static final String SECRET_FIELD_PREFIX = "secret:";
 
   protected ExternalSecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
     super(secretsManagerProvider, clusterPrefix);
   }
 
   @Override
-  public Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
-    return connectionConfig;
+  protected String storeValue(String fieldName, String value, String secretId) {
+    String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    // check if value does not start with 'config:' only String can have password annotation
+    if (!value.startsWith(SECRET_FIELD_PREFIX)) {
+      upsertSecret(fieldSecretId, value);
+      return SECRET_FIELD_PREFIX + fieldSecretId;
+    } else {
+      return value;
+    }
   }
 
   public void upsertSecret(String secretName, String secretValue) {

@@ -12,26 +12,16 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.Objects;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
-import org.openmetadata.service.util.JsonUtils;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterResponse;
 import software.amazon.awssdk.services.ssm.model.Parameter;
-import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 
 public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
 
@@ -54,28 +44,6 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
       lenient()
           .when(ssmClient.getParameter(any(GetParameterRequest.class)))
           .thenReturn(GetParameterResponse.builder().parameter(Parameter.builder().value(value).build()).build());
-    }
-  }
-
-  @Override
-  void verifySecretIdGetCalls(String expectedSecretId, int times) {
-    ArgumentCaptor<GetParameterRequest> getSecretCaptor = ArgumentCaptor.forClass(GetParameterRequest.class);
-    verify(ssmClient, times(times)).getParameter(getSecretCaptor.capture());
-    for (int i = 0; i < times; i++) {
-      assertEquals(expectedSecretId, getSecretCaptor.getAllValues().get(i).name());
-    }
-  }
-
-  @Override
-  void verifyClientCalls(Object expectedAuthProviderConfig, String expectedSecretId) throws JsonProcessingException {
-    ArgumentCaptor<PutParameterRequest> createSecretCaptor = ArgumentCaptor.forClass(PutParameterRequest.class);
-    if (Objects.isNull(expectedAuthProviderConfig)) {
-      verifyNoInteractions(ssmClient);
-    } else {
-      verify(ssmClient).putParameter(createSecretCaptor.capture());
-      assertEquals(expectedSecretId, createSecretCaptor.getValue().name());
-      assertNotNull(createSecretCaptor.getValue().value());
-      assertEquals(JsonUtils.pojoToJson(expectedAuthProviderConfig), createSecretCaptor.getValue().value());
     }
   }
 

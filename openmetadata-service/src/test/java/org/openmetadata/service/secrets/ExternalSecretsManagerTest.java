@@ -13,9 +13,7 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,11 +64,6 @@ public abstract class ExternalSecretsManagerTest {
 
   abstract void mockClientGetValue(String value);
 
-  abstract void verifySecretIdGetCalls(String expectedSecretId, int times);
-
-  abstract void verifyClientCalls(Object expectedAuthProviderConfig, String expectedSecretId)
-      throws JsonProcessingException;
-
   void testEncryptDecryptServiceConnection(boolean decrypt) {
     MysqlConnection mysqlConnection = new MysqlConnection();
     mysqlConnection.setPassword("openmetadata-test");
@@ -82,7 +75,6 @@ public abstract class ExternalSecretsManagerTest {
             mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
 
     assertEquals(mysqlConnection, actualConfig);
-    assertSame(mysqlConnection, actualConfig);
   }
 
   abstract SecretsManagerProvider expectedSecretManagerProvider();
