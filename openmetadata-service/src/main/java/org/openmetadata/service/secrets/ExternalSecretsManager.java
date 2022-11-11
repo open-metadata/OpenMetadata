@@ -20,8 +20,12 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
   public static final String SECRET_FIELD_PREFIX = "secret:";
 
-  protected ExternalSecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
+  private final long WAIT_TIME_BETWEEN_STORE_CALLS;
+
+  protected ExternalSecretsManager(
+      SecretsManagerProvider secretsManagerProvider, String clusterPrefix, long waitTimeBetweenCalls) {
     super(secretsManagerProvider, clusterPrefix);
+    WAIT_TIME_BETWEEN_STORE_CALLS = waitTimeBetweenCalls;
   }
 
   @Override
@@ -39,14 +43,18 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   public void upsertSecret(String secretName, String secretValue) {
     if (existSecret(secretName)) {
       updateSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      sleep();
     } else {
       storeSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      sleep();
     }
   }
 
   public boolean existSecret(String secretName) {
     try {
-      return getSecret(secretName) != null;
+      boolean exists = getSecret(secretName) != null;
+      sleep();
+      return exists;
     } catch (Exception e) {
       return false;
     }
@@ -57,4 +65,15 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   abstract void updateSecret(String secretName, String secretValue);
 
   abstract String getSecret(String secretName);
+
+  private void sleep() {
+    // delay reaching secrets manager quotas
+    if (WAIT_TIME_BETWEEN_STORE_CALLS > 0) {
+      try {
+        Thread.sleep(WAIT_TIME_BETWEEN_STORE_CALLS);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
 }

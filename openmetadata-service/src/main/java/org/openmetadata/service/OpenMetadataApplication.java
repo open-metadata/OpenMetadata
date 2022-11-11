@@ -76,6 +76,7 @@ import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -155,6 +156,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
     registerEventPublisher(catalogConfig, jdbi);
+
+    // update entities secrets if required
+    new SecretsManagerUpdateService(secretsManager, catalogConfig.getClusterName()).updateEntities();
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
