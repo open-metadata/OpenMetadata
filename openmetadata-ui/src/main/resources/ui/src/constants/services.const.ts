@@ -130,7 +130,7 @@ export const NOSERVICE = noService;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
-  MetadataServiceType.OpenMetadataServer,
+  MetadataServiceType.OpenMetadata,
 ];
 
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {

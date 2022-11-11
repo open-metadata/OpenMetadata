@@ -16,7 +16,7 @@ import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import amundsenConnection from '../jsons/connectionSchemas/connections/metadata/amundsenConnection.json';
 import atlasConnection from '../jsons/connectionSchemas/connections/metadata/atlasConnection.json';
-import openMetadataServerConnection from '../jsons/connectionSchemas/connections/metadata/openMetadataServerConnection.json';
+import openMetadataConnection from '../jsons/connectionSchemas/connections/metadata/openMetadataConnection.json';
 
 export const getMetadataConfig = (type: MetadataServiceType) => {
   let schema = {};
@@ -32,8 +32,8 @@ export const getMetadataConfig = (type: MetadataServiceType) => {
 
       break;
     }
-    case MetadataServiceType.OpenMetadataServer: {
-      schema = openMetadataServerConnection;
+    case MetadataServiceType.OpenMetadata: {
+      schema = openMetadataConnection;
 
       break;
     }

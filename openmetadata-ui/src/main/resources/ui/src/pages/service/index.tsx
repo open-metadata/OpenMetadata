@@ -989,7 +989,7 @@ const ServicePage: FunctionComponent = () => {
                   style={{ width: '100%' }}>
                   <TitleBreadcrumb titleLinks={slashedTableName} />
                   {serviceDetails?.serviceType !==
-                    MetadataServiceType.OpenMetadataServer && (
+                    MetadataServiceType.OpenMetadata && (
                     <Tooltip
                       title={
                         servicePermission.Delete
