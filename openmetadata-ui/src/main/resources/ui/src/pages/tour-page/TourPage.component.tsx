@@ -190,7 +190,7 @@ const TourPage = () => {
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
-            handleExtentionUpdate={handleCountChange}
+            handleExtensionUpdate={handleCountChange}
             isNodeLoading={{
               id: undefined,
               state: false,

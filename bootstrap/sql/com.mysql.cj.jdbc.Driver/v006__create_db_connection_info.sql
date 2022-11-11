@@ -1,3 +1,6 @@
+--
+-- Upgrade changes for 0.13
+--
 CREATE TABLE IF NOT EXISTS web_analytic_event (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
@@ -52,6 +55,21 @@ WHERE serviceType = 'Dagster';
 UPDATE pipeline_service_entity 
 SET json = JSON_REMOVE(json ,'$.connection.config.hostPort', '$.connection.config.numberOfStatus')
 WHERE serviceType = 'Dagster';
+
+-- Remove categoryType
+UPDATE tag_category
+SET json = JSON_REMOVE(json ,'$.categoryType');
+
+-- Set mutuallyExclusive flag
+UPDATE tag_category
+SET json = JSON_INSERT(json ,'$.mutuallyExclusive', 'false');
+
+UPDATE tag_category
+SET json = JSON_INSERT(json ,'$.mutuallyExclusive', 'true')
+WHERE name in ('PersonalData', 'PII', 'Tier');
+
+UPDATE tag
+SET json = JSON_INSERT(json ,'$.mutuallyExclusive', 'false');
 
 CREATE TABLE IF NOT EXISTS kpi_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,

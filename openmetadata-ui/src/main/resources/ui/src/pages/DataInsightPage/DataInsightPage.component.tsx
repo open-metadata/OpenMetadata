@@ -22,7 +22,7 @@ import {
   Space,
   Typography,
 } from 'antd';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
@@ -40,10 +40,12 @@ import {
   DATA_INSIGHT_TAB,
   DAY_FILTER,
   DEFAULT_DAYS,
+  ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getTeamFilter } from '../../utils/DataInsightUtils';
 import {
@@ -57,9 +59,11 @@ const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
 
 const DataInsightPage = () => {
   const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
-  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.Datasets);
+  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.DataAssets);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
+
+  const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
 
   useEffect(() => {
     setChartFilter(INITIAL_CHART_FILTER);
@@ -119,6 +123,25 @@ const DataInsightPage = () => {
       // we will not show the toast error message for search API
     }
   };
+
+  const handleScrollToChart = (chartType: DataInsightChartType) => {
+    if (ENTITIES_CHARTS.includes(chartType)) {
+      setActiveTab(DATA_INSIGHT_TAB.DataAssets);
+    } else {
+      setActiveTab(DATA_INSIGHT_TAB['Web Analytics']);
+    }
+    setSelectedChart(chartType);
+  };
+
+  useLayoutEffect(() => {
+    if (selectedChart) {
+      const element = document.getElementById(selectedChart);
+      if (element) {
+        element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setSelectedChart(undefined);
+      }
+    }
+  }, [selectedChart]);
 
   useEffect(() => {
     fetchDefaultTeamOptions();
@@ -187,7 +210,10 @@ const DataInsightPage = () => {
           </Card>
         </Col>
         <Col span={24}>
-          <DataInsightSummary chartFilter={chartFilter} />
+          <DataInsightSummary
+            chartFilter={chartFilter}
+            onScrollToChart={handleScrollToChart}
+          />
         </Col>
         <Col span={24}>
           <Radio.Group
@@ -200,7 +226,7 @@ const DataInsightPage = () => {
             onChange={(e) => setActiveTab(e.target.value)}
           />
         </Col>
-        {activeTab === DATA_INSIGHT_TAB.Datasets && (
+        {activeTab === DATA_INSIGHT_TAB.DataAssets && (
           <>
             <Col span={24}>
               <TotalEntityInsight chartFilter={chartFilter} />
@@ -225,10 +251,10 @@ const DataInsightPage = () => {
               <PageViewsByEntitiesChart chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <TopActiveUsers chartFilter={chartFilter} />
+              <DailyActiveUsersChart chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <DailyActiveUsersChart chartFilter={chartFilter} />
+              <TopActiveUsers chartFilter={chartFilter} />
             </Col>
           </>
         )}

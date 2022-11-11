@@ -664,7 +664,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     mlModelDetail as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.MLMODEL}
-                  handleExtentionUpdate={onExtensionUpdate}
+                  handleExtensionUpdate={onExtensionUpdate}
                 />
               )}
               <div

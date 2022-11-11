@@ -64,9 +64,9 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
   const columns: ColumnsType<MostViewedEntities> = useMemo(
     () => [
       {
-        title: t('label.entity-name'),
+        title: t('label.data-asset'),
         dataIndex: 'entityFqn',
-        key: 'entityName',
+        key: 'dataAsset',
         render: (entityFqn: string) => (
           <Typography.Text>{getDecodedFqn(entityFqn)}</Typography.Text>
         ),
@@ -82,7 +82,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
               <Typography.Text>{owner}</Typography.Text>
             </Space>
           ) : (
-            <Typography.Text>{t('label.no-owner')}</Typography.Text>
+            <Typography.Text>--</Typography.Text>
           ),
       },
       {
@@ -107,7 +107,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
             {t('label.data-insight-top-viewed-entity-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            {t('message.most-viewed-datasets')}
+            {t('message.most-viewed-data-assets')}
           </Typography.Text>
         </>
       }>

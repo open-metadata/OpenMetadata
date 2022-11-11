@@ -93,6 +93,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-description-percentage-card"
+      id={DataInsightChartType.PercentageOfEntitiesWithDescriptionByType}
       loading={isLoading}
       title={
         <>

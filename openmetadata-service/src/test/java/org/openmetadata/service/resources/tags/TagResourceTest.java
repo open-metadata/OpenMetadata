@@ -45,7 +45,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.tags.CreateTag;
 import org.openmetadata.schema.api.tags.CreateTagCategory;
-import org.openmetadata.schema.api.tags.CreateTagCategory.TagCategoryType;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
@@ -80,11 +79,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     EntityResourceTest.TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
     EntityResourceTest.TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
-    CreateTagCategory create =
-        new CreateTagCategory()
-            .withName("User")
-            .withDescription("description")
-            .withCategoryType(TagCategoryType.Descriptive);
+    CreateTagCategory create = new CreateTagCategory().withName("User").withDescription("description");
     USER_TAG_CATEGORY = tagResourceTest.createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
 
     List<String> associatedTags = new ArrayList<>();
@@ -156,10 +151,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   void post_alreadyExistingTagCategory_4xx() {
     // POST .../tags/{allReadyExistingCategory} returns 4xx
     CreateTagCategory create =
-        new CreateTagCategory()
-            .withName(USER_TAG_CATEGORY.getName())
-            .withDescription("description")
-            .withCategoryType(TagCategoryType.Descriptive);
+        new CreateTagCategory().withName(USER_TAG_CATEGORY.getName()).withDescription("description");
     assertResponse(() -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
   }
 
@@ -167,11 +159,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   void post_delete_validTagCategory_as_admin_201(TestInfo test) throws HttpResponseException {
     // POST .../tags/{newCategory} returns 201
     String categoryName = test.getDisplayName().substring(0, 20); // Form a unique category name based on the test name
-    CreateTagCategory create =
-        new CreateTagCategory()
-            .withName(categoryName)
-            .withDescription("description")
-            .withCategoryType(TagCategoryType.Descriptive);
+    CreateTagCategory create = new CreateTagCategory().withName(categoryName).withDescription("description");
     TagCategory category = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
     assertEquals(0, category.getChildren().size());
 
@@ -198,11 +186,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   void post_delete_validTags_as_admin_201(TestInfo test) throws HttpResponseException {
     // Create tag category
     String categoryName = test.getDisplayName().substring(0, 20);
-    CreateTagCategory create =
-        new CreateTagCategory()
-            .withName(categoryName)
-            .withDescription("description")
-            .withCategoryType(TagCategoryType.Descriptive);
+    CreateTagCategory create = new CreateTagCategory().withName(categoryName).withDescription("description");
     TagCategory category = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
     assertEquals(0, category.getChildren().size());
 
@@ -272,21 +256,12 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     String categoryName = test.getDisplayName().substring(0, 10); // Form a unique category name based on the test name
 
     // Missing description
-    CreateTagCategory create =
-        new CreateTagCategory()
-            .withName(categoryName)
-            .withDescription(null)
-            .withCategoryType(TagCategoryType.Descriptive);
+    CreateTagCategory create = new CreateTagCategory().withName(categoryName).withDescription(null);
     assertResponseContains(
         () -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
 
-    // Missing category
-    create.withDescription("description").withCategoryType(null);
-    assertResponseContains(
-        () -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "categoryType must not be null");
-
     // Long name
-    create.withName(TestUtils.LONG_ENTITY_NAME).withCategoryType(TagCategoryType.Descriptive);
+    create.withName(TestUtils.LONG_ENTITY_NAME);
     assertResponseContains(
         () -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name size must be between 2 and 64");
   }
@@ -355,30 +330,10 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void put_tagCategory_200(TestInfo test) {
-    // Update an existing tag category
-    String newCategoryName = test.getDisplayName().substring(0, 10);
-    CreateTagCategory create =
-        new CreateTagCategory()
-            .withName(newCategoryName)
-            .withDescription("updatedDescription")
-            .withCategoryType(TagCategoryType.Descriptive);
-    updateCategory(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS);
-
-    // Revert tag category back
-    create.withName(USER_TAG_CATEGORY.getName()).withCategoryType(TagCategoryType.Classification);
-    updateCategory(newCategoryName, create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void put_tagCategoryInvalidRequest_400(TestInfo test) {
     // Primary tag with missing description
     String newCategoryName = test.getDisplayName().substring(0, 10);
-    CreateTagCategory create =
-        new CreateTagCategory()
-            .withName(newCategoryName)
-            .withDescription(null)
-            .withCategoryType(TagCategoryType.Descriptive);
+    CreateTagCategory create = new CreateTagCategory().withName(newCategoryName).withDescription(null);
     assertResponseContains(
         () -> updateCategory(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -448,12 +403,11 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags");
     TagCategory tagCategory = TestUtils.post(target, create, TagCategory.class, authHeaders);
-    TagCategory category =
-        validate(tagCategory, create.getCategoryType(), create.getName(), create.getDescription(), updatedBy);
+    TagCategory category = validate(tagCategory, create.getName(), create.getDescription(), updatedBy);
     assertEquals(0.1, category.getVersion());
 
     TagCategory getCategory = getCategory(create.getName(), authHeaders);
-    validate(getCategory, create.getCategoryType(), create.getName(), create.getDescription(), updatedBy);
+    validate(getCategory, create.getName(), create.getDescription(), updatedBy);
     return category;
   }
 
@@ -504,11 +458,11 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
 
     // Ensure PUT returns the updated tag category
     TagCategory tagCategory = TestUtils.put(target, update, TagCategory.class, Status.OK, authHeaders);
-    validate(tagCategory, update.getCategoryType(), update.getName(), update.getDescription(), updatedBy);
+    validate(tagCategory, update.getName(), update.getDescription(), updatedBy);
 
     // Ensure GET returns the updated tag category
     TagCategory getCategory = getCategory(update.getName(), authHeaders);
-    validate(getCategory, update.getCategoryType(), update.getName(), update.getDescription(), updatedBy);
+    validate(getCategory, update.getName(), update.getDescription(), updatedBy);
   }
 
   private void updatePrimaryTag(String category, String primaryTag, CreateTag update, Map<String, String> authHeaders)
@@ -587,14 +541,9 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   }
 
   private TagCategory validate(
-      TagCategory actual,
-      TagCategoryType expectedCategoryType,
-      String expectedName,
-      String expectedDescription,
-      String expectedUpdatedBy) {
+      TagCategory actual, String expectedName, String expectedDescription, String expectedUpdatedBy) {
     validate(actual);
     assertEquals(expectedName, actual.getName());
-    assertEquals(expectedCategoryType, actual.getCategoryType());
     assertEquals(expectedDescription, actual.getDescription());
     assertEquals(expectedUpdatedBy, actual.getUpdatedBy());
     return actual;

@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Empty, Row, Space, Typography } from 'antd';
+import { Card, Col, Empty, Row, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tooltip } from 'react-tippy';
 import { PipelineStatus } from '../../../generated/entity/data/pipeline';
 import { getTreeViewData } from '../../../utils/executionUtils';
 import { getStatusBadgeIcon } from '../../../utils/PipelineDetailsUtils';
@@ -80,25 +79,25 @@ const TreeViewTab = ({
             </Col>
 
             <Col span={19}>
-              <Space>
+              <div className="execution-node-container">
                 {value.map((status) => (
                   <Tooltip
-                    html={
+                    key={uniqueId()}
+                    placement="top"
+                    title={
                       <Space direction="vertical">
                         <div>{status.timestamp}</div>
                         <div>{status.executionStatus}</div>
                       </Space>
-                    }
-                    key={uniqueId()}
-                    position="bottom">
+                    }>
                     <SVGIcons
                       alt="result"
-                      className="tw-w-6"
+                      className="tw-w-6 mr-2 mb-2"
                       icon={getStatusBadgeIcon(status.executionStatus)}
                     />
                   </Tooltip>
                 ))}
-              </Space>
+              </div>
             </Col>
           </Row>
         );

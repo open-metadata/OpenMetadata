@@ -16,12 +16,13 @@ import {
   faWindowMinimize,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import Loader from '../../Loader/Loader';
 
@@ -35,19 +36,18 @@ type Props = {
   value: string;
   placeholder: string;
   onSave?: (text: string) => Promise<void>;
-  onSuggest?: (text: string) => void;
   onCancel?: () => void;
 };
 
 export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
   isExpandable = false,
   header,
-  // placeholder,
+  placeholder,
   value,
   onSave,
-  // onSuggest,
   onCancel,
 }: Props) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -86,7 +86,6 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
               <Button
                 className="tw-text-lg tw-text-gray-900 hover:tw-text-gray-900"
                 size="small"
-                variant="text"
                 onClick={() => setExpanded((value) => !value)}>
                 <FontAwesomeIcon
                   icon={expanded ? faWindowMinimize : faWindowMaximize}
@@ -109,26 +108,26 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
             </div>
           )}
         </div>
-        <div className="tw-modal-body tw-pt-0 tw-pb-1">
-          <RichTextEditor initialValue={value} ref={markdownRef} />
+        <div className="tw-modal-body">
+          <RichTextEditor
+            initialValue={value}
+            placeHolder={placeholder}
+            ref={markdownRef}
+          />
         </div>
         <div className="tw-modal-footer">
           <Button
             data-testid="cancel"
             disabled={isLoading}
-            size="regular"
-            theme="primary"
-            variant="link"
+            type="link"
             onClick={onCancel}>
-            Cancel
+            {t('label.cancel')}
           </Button>
           <Button
             data-testid="save"
-            size="regular"
-            theme="primary"
-            variant="contained"
+            type="primary"
             onClick={() => handleSaveData()}>
-            {isLoading ? <Loader size="small" type="white" /> : 'Save'}
+            {isLoading ? <Loader size="small" type="white" /> : t('label.save')}
           </Button>
         </div>
       </div>

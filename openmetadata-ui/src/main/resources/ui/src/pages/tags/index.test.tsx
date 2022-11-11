@@ -53,7 +53,6 @@ jest.mock('react-router-dom', () => ({
 
 const mockTagsCategory = [
   {
-    categoryType: 'Classification',
     id: 'test',
     children: [
       {
@@ -78,7 +77,6 @@ const mockTagsCategory = [
     usageCount: 3,
   },
   {
-    categoryType: 'Classification',
     id: 'test2',
     children: [],
     description: 'description',
@@ -96,7 +94,6 @@ const mockCategory = [
     version: 0.1,
     updatedAt: 1649665563400,
     updatedBy: 'admin',
-    categoryType: 'Classification',
     href: 'http://localhost:8585/api/v1/tags/PersonalData',
     usageCount: 0,
     children: [
@@ -139,7 +136,6 @@ const mockCategory = [
     version: 0.1,
     updatedAt: 1649665563410,
     updatedBy: 'admin',
-    categoryType: 'Classification',
     href: 'http://localhost:8585/api/v1/tags/PII',
     usageCount: 0,
     children: [

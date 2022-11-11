@@ -89,6 +89,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      id={DataInsightChartType.TotalEntitiesByTier}
       loading={isLoading}
       title={
         <>
