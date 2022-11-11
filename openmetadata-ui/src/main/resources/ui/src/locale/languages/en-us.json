@@ -288,7 +288,7 @@
     "metric-type-required": "Metric type is required",
     "metric-value-required": "Metric value is required",
     "no-kpi-found": "No Kpi found with name {{name}}",
-    "no-kpi-available-add-new-one": "No Kpi available, Add one by clicking on 'Add Kpi' button."
+    "no-kpi-available-add-new-one": "No kpi's are available, add one by clicking Add KPI button."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

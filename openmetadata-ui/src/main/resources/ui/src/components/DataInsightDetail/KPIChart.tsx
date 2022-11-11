@@ -49,6 +49,7 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
+  const handleListKpi = () => history.push(ROUTES.KPI_LIST);
 
   const fetchKpiList = async () => {
     try {
@@ -105,11 +106,14 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
   }, [kpiList, chartFilter]);
 
   const addKpiPlaceholder = (
-    <Space direction="vertical">
+    <Space className="w-full justify-center items-center" direction="vertical">
       <Typography.Text>
         {t('message.no-kpi-available-add-new-one')}
       </Typography.Text>
-      <Button type="primary" onClick={handleAddKpi}>
+      <Button
+        className="tw-border-primary tw-text-primary"
+        type="default"
+        onClick={handleAddKpi}>
         {t('label.add-kpi')}
       </Button>
     </Space>
@@ -122,12 +126,17 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
       id="kpi-charts"
       loading={isLoading}
       title={
-        <>
-          <Typography.Title level={5}>{t('label.kpi-title')}</Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('label.kpi-subtitle')}
-          </Typography.Text>
-        </>
+        <Space className="w-full justify-between">
+          <div>
+            <Typography.Title level={5}>
+              {t('label.kpi-title')}
+            </Typography.Title>
+            <Typography.Text className="data-insight-label-text">
+              {t('label.kpi-subtitle')}
+            </Typography.Text>
+          </div>
+          <Button onClick={handleListKpi}>View All KPI&apos;s</Button>
+        </Space>
       }>
       {kpiList.length ? (
         <ResponsiveContainer debounce={1} minHeight={400}>
