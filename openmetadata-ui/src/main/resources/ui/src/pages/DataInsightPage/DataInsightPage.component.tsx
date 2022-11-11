@@ -32,6 +32,7 @@ import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
+import KPIChart from '../../components/DataInsightDetail/KPIChart';
 import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
 import PageViewsByEntitiesChart from '../../components/DataInsightDetail/PageViewsByEntitiesChart';
 import TierInsight from '../../components/DataInsightDetail/TierInsight';
@@ -224,6 +225,9 @@ const DataInsightPage = () => {
             chartFilter={chartFilter}
             onScrollToChart={handleScrollToChart}
           />
+        </Col>
+        <Col span={24}>
+          <KPIChart chartFilter={chartFilter} />
         </Col>
         <Col span={24}>
           <Radio.Group

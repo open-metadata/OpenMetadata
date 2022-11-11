@@ -253,7 +253,9 @@
     "select-a-metric-type": "Select a metric type",
     "metric-value": "Metric value",
     "add-kpi": "Add KPI",
-    "data-insight-subtitle": "Get a single pane view of the health of all your data assets over time."
+    "data-insight-subtitle": "Get a single pane view of the health of all your data assets over time.",
+    "kpi-title": "Key Performance Indicators (KPI)",
+    "kpi-subtitle": "Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets."
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -284,7 +286,8 @@
     "data-insight-chart-required": "Data insight chart is required",
     "metric-type-required": "Metric type is required",
     "metric-value-required": "Metric value is required",
-    "no-kpi-found": "No Kpi found with name {{name}}"
+    "no-kpi-found": "No Kpi found with name {{name}}",
+    "no-kpi-available-add-new-one": "No Kpi available, Add one by clicking on 'Add Kpi' button."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

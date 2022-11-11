@@ -12,7 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
+import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
@@ -23,6 +23,11 @@ export type ListParams = {
   before?: string;
   after?: string;
   include?: Include;
+};
+
+export type KpiResultParam = {
+  startTs: number;
+  endTs: number;
 };
 
 export const getListKPIs = async (params?: ListParams) => {
@@ -56,6 +61,15 @@ export const getKPIByName = async (kpiName: string, params?: ListParams) => {
   const response = await APIClient.get<Kpi>(`/kpi/name/${kpiName}`, {
     params,
   });
+
+  return response.data;
+};
+
+export const getListKpiResult = async (fqn: string, params: KpiResultParam) => {
+  const response = await APIClient.get<{ data: KpiResult[]; paging: Paging }>(
+    `/kpi/${fqn}/kpiResult`,
+    { params }
+  );
 
   return response.data;
 };

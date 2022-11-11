@@ -24,6 +24,7 @@ import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
+import { KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
 import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
 import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
@@ -304,4 +305,28 @@ export const getWebChartSummary = (
   });
 
   return updatedSummary;
+};
+
+export const getKpiGraphData = (kpiResults: KpiResult[]) => {
+  const kpis: string[] = [];
+  const timeStamps: string[] = [];
+
+  const formattedData = kpiResults.map((kpiResult) => {
+    const timestamp = getFormattedDateFromMilliSeconds(kpiResult.timestamp);
+    const kpiFqn = kpiResult.kpiFqn ?? '';
+    const kpiTarget = kpiResult.targetResult[0];
+    if (!timeStamps.includes(timestamp)) {
+      timeStamps.push(timestamp);
+    }
+    if (!kpis.includes(kpiFqn)) {
+      kpis.push(kpiFqn);
+    }
+
+    return {
+      timestamp,
+      [kpiFqn]: kpiTarget.value,
+    };
+  });
+
+  return { graphData: prepareGraphData(timeStamps, formattedData), kpis };
 };
