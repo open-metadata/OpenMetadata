@@ -301,20 +301,21 @@ class DatalakeSource(DatabaseServiceSource):
                 data_frame = self.get_gcs_files(key=table_name, bucket_name=schema_name)
             if isinstance(self.service_connection.configSource, S3Config):
                 data_frame = self.get_s3_files(key=table_name, bucket_name=schema_name)
-            columns = self.get_columns(data_frame)
-            table_request = CreateTableRequest(
-                name=table_name,
-                tableType=table_type,
-                description="",
-                columns=columns,
-                tableConstraints=table_constraints if table_constraints else None,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
-            )
-            yield table_request
-            self.register_record(table_request=table_request)
+            if not data_frame.empty:
+                columns = self.get_columns(data_frame)
+                table_request = CreateTableRequest(
+                    name=table_name,
+                    tableType=table_type,
+                    description="",
+                    columns=columns,
+                    tableConstraints=table_constraints if table_constraints else None,
+                    databaseSchema=EntityReference(
+                        id=self.context.database_schema.id,
+                        type="databaseSchema",
+                    ),
+                )
+                yield table_request
+                self.register_record(table_request=table_request)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
