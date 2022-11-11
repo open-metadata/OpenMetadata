@@ -35,6 +35,18 @@ const handleStyles: CSSProperties = {
   border: 'none',
 };
 
+const leftHandleStyle: CSSProperties = {
+  ...handleStyles,
+  borderLeft: '5px solid #d9ceee',
+  left: -1,
+};
+
+const rightHandleStyle: CSSProperties = {
+  ...handleStyles,
+  borderRight: '5px solid #d9ceee',
+  right: -1,
+};
+
 const getHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
@@ -42,31 +54,23 @@ const getHandle = (
 ) => {
   if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
-      <Fragment>
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Left}
-          style={{ ...handleStyles, borderLeft: '5px solid #d9ceee', left: 0 }}
-          type="target"
-        />
-      </Fragment>
+      <Handle
+        id={id}
+        isConnectable={isConnectable}
+        position={Position.Left}
+        style={leftHandleStyle}
+        type="target"
+      />
     );
   } else if (nodeType === EntityLineageNodeType.INPUT) {
     return (
-      <Fragment>
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={{
-            ...handleStyles,
-            borderRight: '5px solid #d9ceee',
-            right: 0,
-          }}
-          type="source"
-        />
-      </Fragment>
+      <Handle
+        id={id}
+        isConnectable={isConnectable}
+        position={Position.Right}
+        style={rightHandleStyle}
+        type="source"
+      />
     );
   } else if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
     return null;
@@ -77,22 +81,14 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={{
-            ...handleStyles,
-            left: 0,
-            borderLeft: '5px solid #d9ceee',
-          }}
+          style={leftHandleStyle}
           type="target"
         />
         <Handle
           id={id}
           isConnectable={isConnectable}
           position={Position.Right}
-          style={{
-            ...handleStyles,
-            right: 0,
-            borderRight: '5px solid #d9ceee',
-          }}
+          style={rightHandleStyle}
           type="source"
         />
       </Fragment>
