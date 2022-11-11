@@ -15,7 +15,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import AsyncSelect from 'react-select/async';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { TagSource } from '../../generated/type/tagLabel';
@@ -87,11 +93,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     setTags(updatedTags);
   };
 
-  const handleSave = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onSelectionChange(tags);
-  };
+  const handleSave = useCallback(
+    (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onSelectionChange(tags);
+    },
+    [tags]
+  );
 
   const handleCancel = (event: React.MouseEvent<HTMLElement, MouseEvent>) => {
     event.preventDefault();

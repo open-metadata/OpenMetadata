@@ -18,7 +18,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Preferred name for the glossary term.",
+      "description": "Name of the glossary",
       "type": "string",
       "$ref": "#/definitions/name"
     },
@@ -88,6 +88,11 @@
     "disabled" : {
       "description": "System glossary can't be deleted. Use this flag to disable them.",
       "type": "boolean"
+    },
+    "mutuallyExclusive" : {
+      "description" : "Glossary terms under this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity. When Glossary is mutually exclusive, all the glossary term groups under it are also mutually exclusive.",
+      "type" : "boolean",
+      "default" : "false"
     }
   },
   "required": ["id", "name", "description"],

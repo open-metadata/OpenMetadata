@@ -407,7 +407,6 @@ class DatabaseServiceSource(
                         category_name=CreateTagCategoryRequest(
                             name="DBTTags",
                             description="",
-                            categoryType="Classification",
                         ),
                         category_details=CreateTagRequest(
                             name=tag_label.tagFQN.__root__.split(".")[1],

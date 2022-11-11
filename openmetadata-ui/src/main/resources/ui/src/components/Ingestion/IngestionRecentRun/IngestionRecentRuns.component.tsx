@@ -12,7 +12,7 @@
  */
 
 import { Popover, Skeleton, Space } from 'antd';
-import { capitalize } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAPI';
 import {
   IngestionPipeline,
+  PipelineState,
   PipelineStatus,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
@@ -45,7 +46,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   classNames,
 }: Props) => {
   const { t } = useTranslation();
-  const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>();
+  const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPipelineStatus = useCallback(async () => {
@@ -59,8 +60,8 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
       const runs = response.data.splice(0, 5).reverse() ?? [];
 
       setRecentRunStatus(
-        runs.length === 0
-          ? [ingestion.pipelineStatuses as PipelineStatus]
+        runs.length === 0 && ingestion.pipelineStatuses
+          ? [ingestion.pipelineStatuses]
           : runs
       );
     } finally {
@@ -78,8 +79,14 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     <Space className={classNames} size={2}>
       {loading ? (
         <Skeleton.Input size="small" />
+      ) : isEmpty(recentRunStatus) ? (
+        <p
+          className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${PipelineState.Queued} tw-px-1 tw-text-white tw-text-center`}
+          data-testid="pipeline-status">
+          {capitalize(PipelineState.Queued)}
+        </p>
       ) : (
-        recentRunStatus?.map((r, i) => {
+        recentRunStatus.map((r, i) => {
           const status =
             i === recentRunStatus.length - 1 ? (
               <p

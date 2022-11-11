@@ -90,6 +90,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-page-views-card"
+      id={DataInsightChartType.PageViewsByEntities}
       loading={isLoading}
       title={
         <>

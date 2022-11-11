@@ -1,3 +1,6 @@
+--
+-- Upgrade changes for 0.13
+--
 CREATE TABLE IF NOT EXISTS web_analytic_event (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
@@ -51,12 +54,27 @@ WHERE fullyQualifiedName in ('PersonalData.Personal', 'PersonalData.SpecialCateg
 'Tier.Tier1', 'Tier.Tier2', 'Tier.Tier3', 'Tier.Tier4', 'Tier.Tier5');
 
 UPDATE pipeline_service_entity 
-SET json = jsonb_set(json::jsonb,'{connection,config}',json::jsonb #>'{connection,config}' || jsonb_build_object('configSource',jsonb_build_object('hostPort',json #>'{connection,config,hostPort}')), true)
+SET json = JSONB_SET(json::jsonb,'{connection,config}',json::jsonb #>'{connection,config}' || jsonb_build_object('configSource',jsonb_build_object('hostPort',json #>'{connection,config,hostPort}')), true)
 where servicetype = 'Dagster';
 
 UPDATE pipeline_service_entity 
 SET json = json::jsonb #- '{connection,config,hostPort}' #- '{connection,config,numberOfStatus}'
 where servicetype = 'Dagster';
+
+-- Remove categoryType
+UPDATE tag_category
+SET json = json::jsonb #- '{categoryType}';
+
+-- set mutuallyExclusive flag
+UPDATE tag_category
+SET json = jsonb_set(json, '{mutuallyExclusive}', 'false'::jsonb, true);
+
+UPDATE tag_category
+SET json = jsonb_set(json, '{mutuallyExclusive}', 'true'::jsonb, true)
+WHERE name in ('PersonalData', 'PII', 'Tier');
+
+UPDATE tag
+SET json = jsonb_set(json, '{mutuallyExclusive}', 'false'::jsonb, true);
 
 CREATE TABLE IF NOT EXISTS kpi_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,

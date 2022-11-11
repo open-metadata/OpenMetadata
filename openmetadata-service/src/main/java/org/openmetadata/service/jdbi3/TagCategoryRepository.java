@@ -135,7 +135,8 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       // TODO handle name change
-      recordChange("categoryType", original.getCategoryType(), updated.getCategoryType());
+      // TODO mutuallyExclusive from false to true?
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       updateName(original, updated);
     }
 

@@ -12,10 +12,14 @@
  */
 
 import { Card, Typography } from 'antd';
-import { isInteger, last, toNumber } from 'lodash';
+import { isInteger, isUndefined, last, toNumber } from 'lodash';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import {
+  ENTITIES_SUMMARY_LIST,
+  WEB_SUMMARY_LIST,
+} from '../constants/DataInsight.constants';
 import {
   DataInsightChartResult,
   DataInsightChartType,
@@ -242,3 +246,62 @@ export const getFormattedActiveUsersData = (activeUsers: DailyActiveUsers[]) =>
       ? getFormattedDateFromMilliSeconds(user.timestamp)
       : '',
   }));
+
+export const getEntitiesChartSummary = (
+  chartResults: (DataInsightChartResult | undefined)[]
+) => {
+  const updatedSummaryList = ENTITIES_SUMMARY_LIST.map((summary) => {
+    // grab the current chart type
+    const chartData = chartResults.find(
+      (chart) => chart?.chartType === summary.id
+    );
+
+    // return default summary if chart data is undefined else calculate the latest count for chartType
+    if (isUndefined(chartData)) return summary;
+    else {
+      if (chartData.chartType === DataInsightChartType.TotalEntitiesByTier) {
+        const { total } = getGraphDataByTierType(chartData.data ?? []);
+
+        return { ...summary, latest: total };
+      } else {
+        const { total } = getGraphDataByEntityType(
+          chartData.data ?? [],
+          chartData.chartType
+        );
+
+        return { ...summary, latest: total };
+      }
+    }
+  });
+
+  return updatedSummaryList;
+};
+
+export const getWebChartSummary = (
+  chartResults: (DataInsightChartResult | undefined)[]
+) => {
+  const updatedSummary = WEB_SUMMARY_LIST.map((summary) => {
+    // grab the current chart type
+    const chartData = chartResults.find(
+      (chart) => chart?.chartType === summary.id
+    );
+    // return default summary if chart data is undefined else calculate the latest count for chartType
+    if (isUndefined(chartData)) return summary;
+    else {
+      if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
+        const latestData = last(chartData.data);
+
+        return { ...summary, latest: latestData?.activeUsers ?? 0 };
+      } else {
+        const { total } = getGraphDataByEntityType(
+          chartData.data ?? [],
+          chartData.chartType
+        );
+
+        return { ...summary, latest: total };
+      }
+    }
+  });
+
+  return updatedSummary;
+};

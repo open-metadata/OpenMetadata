@@ -551,7 +551,7 @@ public class TagResource {
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withFullyQualifiedName(create.getName())
-        .withCategoryType(create.getCategoryType())
+        .withMutuallyExclusive(create.getMutuallyExclusive())
         .withDescription(create.getDescription())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
@@ -564,6 +564,7 @@ public class TagResource {
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
         .withDescription(create.getDescription())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withUpdatedAt(System.currentTimeMillis())
+        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

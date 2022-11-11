@@ -51,26 +51,24 @@ const SchemaTab: FunctionComponent<Props> = ({
         </div>
       </div>
       <div className="row">
-        {columns?.length > 0 ? (
-          <div className="col-sm-12">
-            <EntityTableV1
-              columnName={columnName}
-              entityFieldTasks={entityFieldTasks}
-              entityFieldThreads={entityFieldThreads}
-              entityFqn={entityFqn}
-              hasDescriptionEditAccess={hasDescriptionEditAccess}
-              hasTagEditAccess={hasTagEditAccess}
-              isReadOnly={isReadOnly}
-              joins={joins}
-              searchText={lowerCase(searchText)}
-              tableColumns={columns}
-              tableConstraints={tableConstraints}
-              onEntityFieldSelect={onEntityFieldSelect}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdate={onUpdate}
-            />
-          </div>
-        ) : null}
+        <div className="col-sm-12">
+          <EntityTableV1
+            columnName={columnName}
+            entityFieldTasks={entityFieldTasks}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            hasDescriptionEditAccess={hasDescriptionEditAccess}
+            hasTagEditAccess={hasTagEditAccess}
+            isReadOnly={isReadOnly}
+            joins={joins}
+            searchText={lowerCase(searchText)}
+            tableColumns={columns}
+            tableConstraints={tableConstraints}
+            onEntityFieldSelect={onEntityFieldSelect}
+            onThreadLinkSelect={onThreadLinkSelect}
+            onUpdate={onUpdate}
+          />
+        </div>
       </div>
     </Fragment>
   );

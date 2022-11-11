@@ -42,6 +42,7 @@ import {
   getTableTabPath,
   getTopicDetailsPath,
 } from '../../constants/constants';
+import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -202,7 +203,10 @@ const LineagePage = () => {
             const pipelineRes = await getPipelineByFqn(entityFQN, '');
             updateBreadcrumb(
               pipelineRes,
-              getPipelineDetailsPath(entityFQN, 'lineage')
+              getPipelineDetailsPath(
+                entityFQN,
+                PIPELINE_DETAILS_TABS.EntityLineage
+              )
             );
           }
 
