@@ -716,9 +716,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
-  protected void store(UUID id, T entity, boolean update) throws JsonProcessingException {
+  protected void store(T entity, boolean update) throws JsonProcessingException {
     if (update) {
-      dao.update(id, JsonUtils.pojoToJson(entity));
+      dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
     } else {
       dao.insert(entity);
     }

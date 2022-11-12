@@ -89,7 +89,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     kpi.withOwner(null).withHref(null).withDataInsightChart(null);
-    store(kpi.getId(), kpi, update);
+    store(kpi, update);
 
     // Restore the relationships
     kpi.withOwner(owner).withDataInsightChart(dataInsightChart);

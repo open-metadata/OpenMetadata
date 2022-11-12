@@ -95,7 +95,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   public void storeEntity(TagCategory category, boolean update) throws IOException {
     List<Tag> primaryTags = category.getChildren();
     category.setChildren(null); // Children are not stored as json and are constructed on the fly
-    store(category.getId(), category, update);
+    store(category, update);
     category.withChildren(primaryTags);
   }
 

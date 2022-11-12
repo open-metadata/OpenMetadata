@@ -51,7 +51,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     EntityReference owner = entity.getOwner();
 
     entity.withOwner(null).withHref(null);
-    store(entity.getId(), entity, update);
+    store(entity, update);
 
     entity.withOwner(owner);
   }

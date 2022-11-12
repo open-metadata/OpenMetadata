@@ -91,7 +91,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Don't store owner. Build it on the fly based on relationships
     ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
-    store(ingestionPipeline.getId(), ingestionPipeline, update);
+    store(ingestionPipeline, update);
 
     // Restore the relationships
     ingestionPipeline.withOwner(owner).withService(service);

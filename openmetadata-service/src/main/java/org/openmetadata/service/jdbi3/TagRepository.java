@@ -54,7 +54,7 @@ public class TagRepository extends EntityRepository<Tag> {
       String oldFQN = tag.getFullyQualifiedName();
       String newFQN = oldFQN.replace(prefix, newPrefix);
       LOG.info("Replacing tag fqn from {} to {}", oldFQN, newFQN);
-      tag.setFullyQualifiedName(oldFQN.replace(prefix, newPrefix));
+      tag.setFullyQualifiedName(newFQN);
       daoCollection.tagDAO().update(tag.getId(), JsonUtils.pojoToJson(tag));
       updateChildrenTagNames(oldFQN, newFQN);
     }
@@ -89,7 +89,7 @@ public class TagRepository extends EntityRepository<Tag> {
   public void storeEntity(Tag tag, boolean update) throws IOException {
     List<Tag> tags = tag.getChildren();
     tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
-    store(tag.getId(), tag, update);
+    store(tag, update);
     tag.setChildren(tags);
     LOG.info("Added tag {}", tag.getFullyQualifiedName());
 

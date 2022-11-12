@@ -74,7 +74,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     database.withOwner(null).withService(null).withHref(null);
 
-    store(database.getId(), database, update);
+    store(database, update);
 
     // Restore the relationships
     database.withOwner(owner).withService(service);

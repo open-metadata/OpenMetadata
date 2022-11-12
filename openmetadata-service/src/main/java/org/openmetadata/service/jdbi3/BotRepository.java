@@ -47,7 +47,7 @@ public class BotRepository extends EntityRepository<Bot> {
   public void storeEntity(Bot entity, boolean update) throws IOException {
     EntityReference botUser = entity.getBotUser();
     entity.withBotUser(null);
-    store(entity.getId(), entity, update);
+    store(entity, update);
     entity.withBotUser(botUser);
   }
 

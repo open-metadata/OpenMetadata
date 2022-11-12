@@ -95,7 +95,7 @@ public class RoleRepository extends EntityRepository<Role> {
     // Don't store policy and href as JSON. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();
     role.withPolicies(null).withHref(null);
-    store(role.getId(), role, update);
+    store(role, update);
     role.withPolicies(policies); // Restore policies
   }
 

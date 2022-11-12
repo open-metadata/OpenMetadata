@@ -101,7 +101,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     test.withOwner(null).withHref(null).withTestSuite(null).withTestDefinition(null);
-    store(test.getId(), test, update);
+    store(test, update);
 
     // Restore the relationships
     test.withOwner(owner).withTestSuite(testSuite).withTestDefinition(testDefinition);

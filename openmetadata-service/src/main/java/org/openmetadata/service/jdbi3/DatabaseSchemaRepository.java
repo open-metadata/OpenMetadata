@@ -30,7 +30,6 @@ import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner";
@@ -68,12 +67,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     schema.withOwner(null).withService(null).withHref(null);
 
-    if (update) {
-      daoCollection.databaseSchemaDAO().update(schema.getId(), JsonUtils.pojoToJson(schema));
-    } else {
-      daoCollection.databaseSchemaDAO().insert(schema);
-    }
-
+    store(schema, update);
     // Restore the relationships
     schema.withOwner(owner).withService(service);
   }

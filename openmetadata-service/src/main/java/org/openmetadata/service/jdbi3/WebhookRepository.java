@@ -59,7 +59,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   @Override
   public void storeEntity(Webhook entity, boolean update) throws IOException {
     entity.setHref(null);
-    store(entity.getId(), entity, update);
+    store(entity, update);
   }
 
   @Override

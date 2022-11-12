@@ -101,7 +101,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     EntityReference owner = entity.getOwner();
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     entity.withOwner(null).withHref(null);
-    store(entity.getId(), entity, update);
+    store(entity, update);
     // Restore the relationships
     entity.withOwner(owner);
   }
