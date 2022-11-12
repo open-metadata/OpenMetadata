@@ -34,7 +34,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       okText={t('label.submit')}
       title={t('label.advanced-search')}
       visible={visible}
-      width={700}
+      width={950}
       onCancel={onCancel}
       onOk={() => {
         onSubmit(queryFilter);

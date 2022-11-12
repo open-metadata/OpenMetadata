@@ -101,7 +101,7 @@ const AdvancedFields: FC<Props> = ({
         className="tw-text-primary tw-self-center tw-cursor-pointer"
         data-testid="clear-all-button"
         onClick={onAdvanceSearch}>
-        Advance Filter
+        Advance Search
       </span>
     </Space>
   );
