@@ -571,7 +571,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setColumns(cloneWithoutTags(columnWithTags));
     table.getColumns().forEach(column -> column.setTags(null));
 
-    store(table.getId(), table, update);
+    store(table, update);
 
     // Restore the relationships
     table.withOwner(owner).withTags(tags).withColumns(columnWithTags).withService(service);

@@ -71,7 +71,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     chart.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    store(chart.getId(), chart, update);
+    store(chart, update);
 
     // Restore the relationships
     chart.withOwner(owner).withService(service).withTags(tags);

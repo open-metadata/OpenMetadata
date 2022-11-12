@@ -69,7 +69,7 @@ public class TypeRepository extends EntityRepository<Type> {
     URI href = type.getHref();
     List<CustomProperty> customProperties = type.getCustomProperties();
     type.withHref(null).withCustomProperties(null);
-    store(type.getId(), type, update);
+    store(type, update);
     type.withHref(href).withCustomProperties(customProperties);
     updateTypeMap(type);
   }

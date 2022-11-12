@@ -89,7 +89,7 @@ public abstract class ServiceEntityRepository<
                     serviceType,
                     true));
 
-    store(service.getId(), service, update);
+    store(service, update);
 
     // Restore the relationships
     service.withOwner(owner);

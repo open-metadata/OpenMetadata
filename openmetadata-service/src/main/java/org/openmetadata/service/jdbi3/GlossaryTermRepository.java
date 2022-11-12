@@ -133,7 +133,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .withHref(null)
         .withTags(null);
 
-    store(entity.getId(), entity, update);
+    store(entity, update);
 
     // Restore the relationships
     entity

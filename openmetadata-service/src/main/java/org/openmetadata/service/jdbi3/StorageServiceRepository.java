@@ -55,7 +55,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     service.withOwner(null).withHref(null);
 
-    store(service.getId(), service, update);
+    store(service, update);
 
     // Restore the relationships
     service.withOwner(owner);

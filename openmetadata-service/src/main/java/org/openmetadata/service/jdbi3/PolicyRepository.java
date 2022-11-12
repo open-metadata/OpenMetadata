@@ -121,7 +121,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // Don't store owner, location and href as JSON. Build it on the fly based on relationships
     policy.withOwner(null).withLocation(null).withHref(null);
 
-    store(policy.getId(), policy, update);
+    store(policy, update);
 
     // Restore the relationships
     policy.withOwner(owner).withLocation(location).withHref(href);

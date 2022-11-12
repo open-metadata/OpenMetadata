@@ -190,7 +190,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    store(pipeline.getId(), pipeline, update);
+    store(pipeline, update);
 
     // Restore the relationships
     pipeline.withOwner(owner).withService(service).withTags(tags);

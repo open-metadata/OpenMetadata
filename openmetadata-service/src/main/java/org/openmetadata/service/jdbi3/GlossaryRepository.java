@@ -70,7 +70,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     glossary.withOwner(null).withHref(null).withTags(null);
 
-    store(glossary.getId(), glossary, update);
+    store(glossary, update);
 
     // Restore the relationships
     glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);

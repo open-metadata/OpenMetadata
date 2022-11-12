@@ -153,7 +153,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
     mlModel.withService(null).withOwner(null).withDashboard(null).withHref(null).withTags(null);
 
-    store(mlModel.getId(), mlModel, update);
+    store(mlModel, update);
 
     // Restore the relationships
     mlModel.withService(service).withOwner(owner).withDashboard(dashboard).withTags(tags);

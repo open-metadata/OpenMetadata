@@ -175,7 +175,7 @@ public class LocationRepository extends EntityRepository<Location> {
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     location.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    store(location.getId(), location, update);
+    store(location, update);
 
     // Restore the relationships
     location.withOwner(owner).withService(service).withTags(tags);

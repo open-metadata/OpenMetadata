@@ -124,7 +124,7 @@ public class TeamRepository extends EntityRepository<Team> {
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null).withInheritedRoles(null);
 
-    store(team.getId(), team, update);
+    store(team, update);
 
     // Restore the relationships
     team.withUsers(users)
