@@ -158,6 +158,7 @@ public class TableRepository extends EntityRepository<Table> {
   public void setFullyQualifiedName(Table table) {
     table.setFullyQualifiedName(
         FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
+    setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
   @Transaction
@@ -541,15 +542,10 @@ public class TableRepository extends EntityRepository<Table> {
     table.setDatabase(schema.getDatabase());
     table.setService(schema.getService());
     table.setServiceType(schema.getServiceType());
-    setFullyQualifiedName(table);
-
-    setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
-
-    // Validate table tags and add derived tags to the list
-    table.setTags(addDerivedTags(table.getTags()));
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
+    table.getColumns().forEach(column -> checkMutuallyExclusive(column.getTags()));
   }
 
   private EntityReference getLocation(Table table) throws IOException {

@@ -60,8 +60,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
-    setFullyQualifiedName(topic);
-    topic.setTags(addDerivedTags(topic.getTags()));
   }
 
   @Override

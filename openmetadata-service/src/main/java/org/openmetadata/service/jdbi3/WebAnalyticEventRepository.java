@@ -7,13 +7,9 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -43,7 +39,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
 
   @Override
   public void prepare(WebAnalyticEvent entity) {
-    entity.setFullyQualifiedName(entity.getName());
+    /* Nothing to do */
   }
 
   @Override
@@ -59,17 +55,6 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   @Override
   public void storeRelationships(WebAnalyticEvent entity) {
     storeOwner(entity, entity.getOwner());
-  }
-
-  private ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
-    return new ChangeEvent()
-        .withEntity(updated)
-        .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
-        .withEntityType(entityType)
-        .withTimestamp(System.currentTimeMillis())
-        .withPreviousVersion(prevVersion);
   }
 
   @Transaction

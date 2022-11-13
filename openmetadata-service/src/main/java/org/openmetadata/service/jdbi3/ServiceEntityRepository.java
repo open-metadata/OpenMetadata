@@ -67,7 +67,7 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void prepare(T service) {
-    setFullyQualifiedName(service);
+    /* Nothing to do */
   }
 
   @Override

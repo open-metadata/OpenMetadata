@@ -63,6 +63,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void setFullyQualifiedName(MlModel mlModel) {
     mlModel.setFullyQualifiedName(FullyQualifiedName.add(mlModel.getService().getName(), mlModel.getName()));
+    if (!nullOrEmpty(mlModel.getMlFeatures())) {
+      setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
+    }
   }
 
   @Override
@@ -131,15 +134,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     setFullyQualifiedName(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
-      setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
 
     // Check that the dashboard exists
     if (mlModel.getDashboard() != null) {
       daoCollection.dashboardDAO().findEntityReferenceById(mlModel.getDashboard().getId());
     }
-
-    mlModel.setTags(addDerivedTags(mlModel.getTags()));
   }
 
   @Override

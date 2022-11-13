@@ -77,11 +77,11 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void prepare(Tag entity) {
     String[] split = FullyQualifiedName.split(entity.getFullyQualifiedName());
-    String category = split[0];
-    daoCollection.tagCategoryDAO().existsByName(category);
+    String categoryName = split[0];
+    daoCollection.tagCategoryDAO().findEntityByName(categoryName);
 
     if (split.length == 3) { // Secondary tag is being created. Check the primary tag
-      dao.existsByName(FullyQualifiedName.build(split[0], split[1]));
+      dao.findEntityByName(FullyQualifiedName.build(split[0], split[1]));
     }
   }
 
