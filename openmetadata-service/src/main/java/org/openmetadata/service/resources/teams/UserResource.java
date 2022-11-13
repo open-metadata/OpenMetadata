@@ -520,7 +520,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
 
-    dao.prepare(user);
+    dao.prepareInternal(user);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {

@@ -984,7 +984,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    // Set TEAM_OWNER1 as owner using PATCH request
+    // Set TEAM_OWNER1 as owner from no owner using PATCH request
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwner(TEAM11_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
@@ -2016,6 +2016,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<TagLabel> expectedTags = (List<TagLabel>) expected;
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
       assertTrue(actualTags.containsAll(expectedTags));
+      actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
       assertEquals(expected.toString(), actual.toString());
     } else {

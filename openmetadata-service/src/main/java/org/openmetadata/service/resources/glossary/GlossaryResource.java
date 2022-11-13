@@ -346,6 +346,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {
-    return copy(new Glossary(), create, user).withReviewers(create.getReviewers()).withTags(create.getTags());
+    return copy(new Glossary(), create, user)
+        .withReviewers(create.getReviewers())
+        .withTags(create.getTags())
+        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

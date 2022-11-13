@@ -170,7 +170,8 @@
     },
     "deployed": {
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "enabled": {
       "description": "True if the pipeline is ready to be run in the next schedule. False if it is paused.",

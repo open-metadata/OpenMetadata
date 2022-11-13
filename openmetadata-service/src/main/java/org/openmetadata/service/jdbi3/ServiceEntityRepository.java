@@ -67,7 +67,7 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void prepare(T service) {
-    setFullyQualifiedName(service);
+    /* Nothing to do */
   }
 
   @Override
@@ -89,7 +89,7 @@ public abstract class ServiceEntityRepository<
                     serviceType,
                     true));
 
-    store(service.getId(), service, update);
+    store(service, update);
 
     // Restore the relationships
     service.withOwner(owner);
