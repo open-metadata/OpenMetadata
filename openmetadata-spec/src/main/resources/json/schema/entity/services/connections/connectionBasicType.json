@@ -50,7 +50,7 @@
       "type": "boolean",
       "default": true
     },
-    "supportsMetadataToElasticSearchExtraction": {
+    "supportsDataInsightExtraction": {
       "description": "Support Metadata To Elastic Search",
       "type": "boolean",
       "default": true
