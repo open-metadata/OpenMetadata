@@ -41,6 +41,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.EntityHistory;
@@ -85,7 +86,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "listStorageService",
       summary = "List storage services",
-      tags = "storageService",
+      tags = "storageServices",
       description =
           "Get a list of storage services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -132,7 +133,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "getStorageServiceByID",
       summary = "Get a storage service",
-      tags = "storageService",
+      tags = "storageServices",
       description = "Get a storage service by `id`.",
       responses = {
         @ApiResponse(
@@ -166,7 +167,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "getStorageServiceByFQN",
       summary = "Get storage service by name",
-      tags = "storageService",
+      tags = "storageServices",
       description = "Get a storage service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -200,7 +201,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "listAllStorageServiceVersion",
       summary = "List storage service versions",
-      tags = "storageService",
+      tags = "storageServices",
       description = "Get a list of all the versions of a storage service identified by `id`",
       responses = {
         @ApiResponse(
@@ -221,7 +222,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "getSpecificStorageServiceVersion",
       summary = "Get a version of the storage service",
-      tags = "storageService",
+      tags = "storageServices",
       description = "Get a version of the storage service by given `id`",
       responses = {
         @ApiResponse(
@@ -250,7 +251,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "createStorageService",
       summary = "Create storage service",
-      tags = "storageService",
+      tags = "storageServices",
       description = "Create a new storage service.",
       responses = {
         @ApiResponse(
@@ -271,7 +272,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "createOrUpdateStorageService",
       summary = "Update storage service",
-      tags = "storageService",
+      tags = "storageServices",
       description = "Update an existing storage service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -293,7 +294,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "deleteStorageService",
       summary = "Delete a storage service",
-      tags = "storageService",
+      tags = "storageServices",
       description = "Delete a storage services. If storages (and tables) belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -313,6 +314,25 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted StorageService.",
+      tags = "storageServices",
+      description = "Restore a soft deleted StorageService.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the StorageService ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class)))
+      })
+  public Response restoreTable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private StorageService getService(CreateStorageService create, String user) throws IOException {

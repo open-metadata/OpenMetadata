@@ -67,6 +67,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
@@ -741,6 +742,25 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted User.",
+      tags = "users",
+      description = "Restore a soft deleted User.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the User ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class)))
+      })
+  public Response restoreTable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @POST

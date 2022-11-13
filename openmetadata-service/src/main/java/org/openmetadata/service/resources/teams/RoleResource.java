@@ -49,6 +49,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
@@ -381,6 +382,25 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     Response response = delete(uriInfo, securityContext, id, true, hardDelete);
     RoleCache.getInstance().invalidateRole(id);
     return response;
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted role.",
+      tags = "roles",
+      description = "Restore a soft deleted role.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Role. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
+      })
+  public Response restoreRole(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Role getRole(CreateRole create, String user) throws IOException {
