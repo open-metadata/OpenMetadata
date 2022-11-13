@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "MetadataToElasticSearch", "dataInsight"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight", "elasticSearchReindex"]
     },
     "pipelineStatus": {
       "type": "object",
@@ -170,7 +170,8 @@
     },
     "deployed": {
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "enabled": {
       "description": "True if the pipeline is ready to be run in the next schedule. False if it is paused.",

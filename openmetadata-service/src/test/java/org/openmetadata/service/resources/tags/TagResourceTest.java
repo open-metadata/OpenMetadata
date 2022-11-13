@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.resources.EntityResourceTest.*;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER1_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -51,7 +53,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.CategoryList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -74,23 +75,23 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   public void setupTags() throws HttpResponseException {
     TAGS_URL = "http://localhost:" + APP.getLocalPort() + "/api/v1/tags";
     TagResourceTest tagResourceTest = new TagResourceTest();
-    EntityResourceTest.PERSONAL_DATA_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PersonalData", "Personal"));
-    EntityResourceTest.PII_SENSITIVE_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PII", "Sensitive"));
-    EntityResourceTest.TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
-    EntityResourceTest.TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
+    PERSONAL_DATA_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PersonalData", "Personal"));
+    PII_SENSITIVE_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PII", "Sensitive"));
+    TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
+    TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
     CreateTagCategory create = new CreateTagCategory().withName("User").withDescription("description");
     USER_TAG_CATEGORY = tagResourceTest.createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
 
     List<String> associatedTags = new ArrayList<>();
-    associatedTags.add(EntityResourceTest.PERSONAL_DATA_TAG_LABEL.getTagFQN());
-    associatedTags.add(EntityResourceTest.PII_SENSITIVE_TAG_LABEL.getTagFQN());
+    associatedTags.add(PERSONAL_DATA_TAG_LABEL.getTagFQN());
+    associatedTags.add(PII_SENSITIVE_TAG_LABEL.getTagFQN());
 
     CreateTag createTag =
         new CreateTag().withName("Address").withDescription("description").withAssociatedTags(associatedTags);
     ADDRESS_TAG = tagResourceTest.createPrimaryTag(USER_TAG_CATEGORY.getName(), createTag, ADMIN_AUTH_HEADERS);
 
-    EntityResourceTest.USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {

@@ -45,13 +45,12 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public void prepare(Report report) {
     // TODO report does not have service yet
-    setFullyQualifiedName(report);
   }
 
   @Override
   public void storeEntity(Report report, boolean update) throws IOException {
     report.setHref(null);
-    store(report.getId(), report, update);
+    store(report, update);
   }
 
   @Override

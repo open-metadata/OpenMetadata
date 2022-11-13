@@ -98,6 +98,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -1002,7 +1003,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    // Set TEAM_OWNER1 as owner using PATCH request
+    // Set TEAM_OWNER1 as owner from no owner using PATCH request
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwner(TEAM11_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
@@ -1457,9 +1458,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
-  /** Soft delete an entity and then use PUT request to restore it back */
-  //  @Test
-  void delete_put_entity_200(TestInfo test) throws IOException {
+  /** Soft delete an entity and then use restore request to restore it back */
+  @Test
+  void delete_restore_entity_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
@@ -1472,7 +1473,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // Send PUT request (with no changes) to restore the entity from soft deleted state
       ChangeDescription change = getChangeDescription(version);
       fieldUpdated(change, FIELD_DELETED, true, false);
-      updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      restoreAndCheckEntity(entity, Response.Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     } else {
       assertEntityDeleted(entity, true);
     }
@@ -1576,6 +1577,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected final WebTarget getResourceByName(String name) {
     return getCollection().path("/name/" + name);
+  }
+
+  protected final WebTarget getRestoreResource(UUID id) {
+    return getCollection().path("/restore");
   }
 
   protected final WebTarget getFollowersCollection(UUID id) {
@@ -1687,6 +1692,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
+  public final T restoreEntity(RestoreEntity restore, Status status, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getRestoreResource(restore.getId());
+    return TestUtils.put(target, restore, entityClass, status, authHeaders);
+  }
+
   /** Helper function to create an entity, submit POST API request and validate response. */
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
@@ -1732,6 +1743,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateUpdatedEntity(getEntity, request, authHeaders, updateType);
     validateChangeDescription(getEntity, updateType, changeDescription);
 
+    // Check if the entity change events are record
+    if (updateType != NO_CHANGE) {
+      EventType expectedEventType =
+          updateType == UpdateType.CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      validateChangeEvents(updated, updated.getUpdatedAt(), expectedEventType, changeDescription, authHeaders);
+    }
+    return updated;
+  }
+
+  protected final T restoreAndCheckEntity(
+      T entity,
+      Status status,
+      Map<String, String> authHeaders,
+      UpdateType updateType,
+      ChangeDescription changeDescription)
+      throws IOException {
+    T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), status, authHeaders);
+    validateLatestVersion(updated, updateType, changeDescription, authHeaders);
+    // GET the newly updated entity and validate
+    T getEntity = getEntity(updated.getId(), authHeaders);
+    validateChangeDescription(getEntity, updateType, changeDescription);
     // Check if the entity change events are record
     if (updateType != NO_CHANGE) {
       EventType expectedEventType =
@@ -2034,6 +2066,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<TagLabel> expectedTags = (List<TagLabel>) expected;
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
       assertTrue(actualTags.containsAll(expectedTags));
+      actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
       assertEquals(expected.toString(), actual.toString());
     } else {

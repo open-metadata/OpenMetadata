@@ -60,7 +60,6 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void prepare(Type type) {
-    setFullyQualifiedName(type);
     TypeRegistry.instance().validateCustomProperties(type);
   }
 
@@ -69,7 +68,7 @@ public class TypeRepository extends EntityRepository<Type> {
     URI href = type.getHref();
     List<CustomProperty> customProperties = type.getCustomProperties();
     type.withHref(null).withCustomProperties(null);
-    store(type.getId(), type, update);
+    store(type, update);
     type.withHref(href).withCustomProperties(customProperties);
     updateTypeMap(type);
   }
@@ -80,7 +79,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void storeRelationships(Type type) {
-    // Nothing to do
+    /* Nothing to do */
   }
 
   private void updateTypeMap(Type entity) {
