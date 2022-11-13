@@ -204,7 +204,7 @@
       "required": ["type"]
     },
     "supportMetadataToElasticSearchExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataToElasticSearchExtraction"
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataInsightExtraction"
     },
     "supportsElasticSearchReindexingExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsElasticSearchReindexingExtraction"
