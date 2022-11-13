@@ -136,3 +136,10 @@ CREATE TABLE IF NOT EXISTS metadata_service_entity (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+
+-- We are starting to store the current deployed flag. Let's mark it as false by default
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{deployed}';
+
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(json::jsonb, '{deployed}', 'true'::jsonb, true);
