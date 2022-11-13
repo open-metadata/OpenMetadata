@@ -350,7 +350,7 @@ public class DashboardServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted DashboardService.",
-      tags = "tables",
+      tags = "dashboardServices",
       description = "Restore a soft deleted DashboardService.",
       responses = {
         @ApiResponse(

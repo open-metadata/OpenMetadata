@@ -347,7 +347,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Kpi.",
-      tags = "tables",
+      tags = "kpi",
       description = "Restore a soft deleted Kpi.",
       responses = {
         @ApiResponse(

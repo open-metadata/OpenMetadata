@@ -754,7 +754,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted User.",
-      tags = "tables",
+      tags = "users",
       description = "Restore a soft deleted User.",
       responses = {
         @ApiResponse(

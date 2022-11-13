@@ -425,7 +425,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted policy.",
-      tags = "tables",
+      tags = "policies",
       description = "Restore a soft deleted policy.",
       responses = {
         @ApiResponse(

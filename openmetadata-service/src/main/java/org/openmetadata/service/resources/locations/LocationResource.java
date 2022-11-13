@@ -431,7 +431,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted location.",
-      tags = "tables",
+      tags = "locations",
       description = "Restore a soft deleted location.",
       responses = {
         @ApiResponse(

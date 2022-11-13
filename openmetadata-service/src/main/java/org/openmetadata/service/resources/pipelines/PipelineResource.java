@@ -503,7 +503,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Pipeline.",
-      tags = "tables",
+      tags = "pipelines",
       description = "Restore a soft deleted Pipeline.",
       responses = {
         @ApiResponse(

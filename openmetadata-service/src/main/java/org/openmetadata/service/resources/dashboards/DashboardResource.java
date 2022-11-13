@@ -388,7 +388,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted dashboard.",
-      tags = "tables",
+      tags = "dashboards",
       description = "Restore a soft deleted dashboard.",
       responses = {
         @ApiResponse(

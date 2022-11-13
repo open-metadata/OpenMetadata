@@ -431,7 +431,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted TestCase.",
-      tags = "tables",
+      tags = "TestCases",
       description = "Restore a soft deleted TestCase.",
       responses = {
         @ApiResponse(

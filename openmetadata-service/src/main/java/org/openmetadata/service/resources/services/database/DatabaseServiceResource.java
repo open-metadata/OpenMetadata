@@ -93,7 +93,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "listDatabaseServices",
       summary = "List database services",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a list of database services.",
       responses = {
         @ApiResponse(
@@ -144,7 +144,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getDatabaseServiceByID",
       summary = "Get a database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a database service by `id`.",
       responses = {
         @ApiResponse(
@@ -179,7 +179,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getDatabaseServiceByFQN",
       summary = "Get database service by name",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a database service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -214,7 +214,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "listAllDatabaseServiceVersion",
       summary = "List database service versions",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a list of all the versions of a database service identified by `id`",
       responses = {
         @ApiResponse(
@@ -250,7 +250,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getSpecificDatabaseServiceVersion",
       summary = "Get a version of the database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a version of the database service by given `id`",
       responses = {
         @ApiResponse(
@@ -280,7 +280,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "createDatabaseService",
       summary = "Create database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Create a new database service.",
       responses = {
         @ApiResponse(
@@ -303,7 +303,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "createOrUpdateDatabaseService",
       summary = "Update database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Update an existing or create a new database service.",
       responses = {
         @ApiResponse(
@@ -327,7 +327,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "deleteDatabaseService",
       summary = "Delete a database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description =
           "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
       responses = {
@@ -356,7 +356,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted DatabaseService.",
-      tags = "tables",
+      tags = "databaseServices",
       description = "Restore a soft deleted DatabaseService.",
       responses = {
         @ApiResponse(

@@ -386,7 +386,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted chart.",
-      tags = "tables",
+      tags = "charts",
       description = "Restore a soft deleted chart.",
       responses = {
         @ApiResponse(

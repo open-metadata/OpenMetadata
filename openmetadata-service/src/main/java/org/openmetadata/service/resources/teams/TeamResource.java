@@ -414,7 +414,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Team.",
-      tags = "tables",
+      tags = "teams",
       description = "Restore a soft deleted Team.",
       responses = {
         @ApiResponse(

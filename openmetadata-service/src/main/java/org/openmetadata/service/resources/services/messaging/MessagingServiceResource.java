@@ -92,7 +92,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "listMessagingService",
       summary = "List messaging services",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description =
           "Get a list of messaging services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -141,7 +141,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getMessagingServiceByID",
       summary = "Get a messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a messaging service by `id`.",
       responses = {
         @ApiResponse(
@@ -176,7 +176,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getMessagingServiceByFQN",
       summary = "Get messaging service by name",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a messaging service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -211,7 +211,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "listAllMessagingServiceVersion",
       summary = "List messaging service versions",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a list of all the versions of a messaging service identified by `id`",
       responses = {
         @ApiResponse(
@@ -247,7 +247,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getSpecificMessagingServiceVersion",
       summary = "Get a version of the messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a version of the messaging service by given `id`",
       responses = {
         @ApiResponse(
@@ -277,7 +277,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createMessagingService",
       summary = "Create a messaging service",
-      tags = "MessagingService",
+      tags = "messagingService",
       description = "Create a new messaging service.",
       responses = {
         @ApiResponse(
@@ -300,7 +300,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createOrUpdateMessagingService",
       summary = "Update messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -324,7 +324,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingService",
       summary = "Delete a messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -351,7 +351,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted MessagingService.",
-      tags = "tables",
+      tags = "messagingServices",
       description = "Restore a soft deleted MessagingService.",
       responses = {
         @ApiResponse(

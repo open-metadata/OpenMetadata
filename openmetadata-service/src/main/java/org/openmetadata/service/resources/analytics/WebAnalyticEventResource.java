@@ -284,7 +284,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted WebAnalyticEvent.",
-      tags = "tables",
+      tags = "webAnalyticEvent",
       description = "Restore a soft deleted WebAnalyticEvent.",
       responses = {
         @ApiResponse(

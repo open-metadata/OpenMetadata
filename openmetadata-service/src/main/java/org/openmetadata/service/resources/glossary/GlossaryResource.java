@@ -351,7 +351,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Glossary.",
-      tags = "tables",
+      tags = "glossaries",
       description = "Restore a soft deleted Glossary.",
       responses = {
         @ApiResponse(

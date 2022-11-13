@@ -374,7 +374,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted TestDefinition.",
-      tags = "tables",
+      tags = "TestDefinitions",
       description = "Restore a soft deleted TestDefinition.",
       responses = {
         @ApiResponse(

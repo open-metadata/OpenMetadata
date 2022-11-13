@@ -389,7 +389,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted role.",
-      tags = "tables",
+      tags = "roles",
       description = "Restore a soft deleted role.",
       responses = {
         @ApiResponse(

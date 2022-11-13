@@ -339,7 +339,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted TestSuite.",
-      tags = "tables",
+      tags = "TestSuites",
       description = "Restore a soft deleted TestSuite.",
       responses = {
         @ApiResponse(

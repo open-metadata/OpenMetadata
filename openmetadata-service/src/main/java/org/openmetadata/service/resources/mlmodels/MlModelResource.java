@@ -402,7 +402,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted MlModel.",
-      tags = "tables",
+      tags = "mlModels",
       description = "Restore a soft deleted MlModel.",
       responses = {
         @ApiResponse(

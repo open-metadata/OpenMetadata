@@ -424,7 +424,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted topic.",
-      tags = "tables",
+      tags = "topics",
       description = "Restore a soft deleted topic.",
       responses = {
         @ApiResponse(

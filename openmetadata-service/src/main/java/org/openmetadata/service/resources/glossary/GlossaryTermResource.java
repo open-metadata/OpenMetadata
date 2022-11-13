@@ -400,7 +400,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted GlossaryTerm.",
-      tags = "tables",
+      tags = "glossaryTerm",
       description = "Restore a soft deleted GlossaryTerm.",
       responses = {
         @ApiResponse(

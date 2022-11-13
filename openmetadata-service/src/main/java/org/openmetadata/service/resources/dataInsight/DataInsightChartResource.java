@@ -389,7 +389,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted DataInsightChart.",
-      tags = "tables",
+      tags = "dataInsight",
       description = "Restore a soft deleted DataInsightChart.",
       responses = {
         @ApiResponse(

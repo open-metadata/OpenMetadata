@@ -367,7 +367,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted bot.",
-      tags = "tables",
+      tags = "bots",
       description = "Restore a soft deleted bot.",
       responses = {
         @ApiResponse(
