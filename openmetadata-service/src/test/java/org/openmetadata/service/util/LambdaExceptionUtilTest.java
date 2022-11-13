@@ -30,7 +30,7 @@ class LambdaExceptionUtilTest {
   void testThrowingConsumer() {
     assertThrows(
         ClassNotFoundException.class,
-        () -> Stream.of("java.lang.String", "java.bad.Class").forEach(rethrowConsumer(c -> Class.forName(c))));
+        () -> Stream.of("java.lang.String", "java.bad.Class").forEach(rethrowConsumer(Class::forName)));
   }
 
   @Test

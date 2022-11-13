@@ -41,9 +41,12 @@ export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
+export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
+export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
+export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -100,6 +103,9 @@ export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const PLACEHOLDER_TEST_SUITE_FQN = ':testSuiteFQN';
+export const LOG_ENTITY_TYPE = ':logEntityType';
+export const INGESTION_NAME = ':ingestionName';
+export const LOG_ENTITY_NAME = ':logEntityName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -234,6 +240,7 @@ export const ROUTES = {
   PROFILER_DASHBOARD: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  LINEAGE_FULL_SCREEN_VIEW: `/lineage-view/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
@@ -249,9 +256,15 @@ export const ROUTES = {
   EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
 
   // test suites
-  TEST_SUITES: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}`,
+  TEST_SUITES: `/test-suites`,
+  TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}`,
   TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/add-ingestion`,
   TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
+
+  // logs viewer
+  LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
+
+  DATA_INSIGHT: `/data-insights`,
 };
 
 export const SOCKET_EVENTS = {
@@ -445,13 +458,6 @@ export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
   return path;
 };
 
-export const getCustomEntityPath = (entityTypeFQN: string) => {
-  let path = ROUTES.CUSTOM_ENTITY_DETAIL;
-  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
-
-  return path;
-};
-
 export const getCreateUserPath = (bot: boolean) => {
   let path = bot ? ROUTES.CREATE_USER_WITH_BOT : ROUTES.CREATE_USER;
 
@@ -499,3 +505,11 @@ export const configOptions = {
 
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
+
+export const ENTITY_PATH = {
+  tables: 'table',
+  topics: 'topic',
+  dashboards: 'dashboard',
+  pipelines: 'pipeline',
+  mlmodels: 'mlmodel',
+};

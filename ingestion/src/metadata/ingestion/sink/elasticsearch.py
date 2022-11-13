@@ -26,6 +26,8 @@ from elasticsearch.connection import create_ssl_context
 from requests_aws4auth import AWS4Auth
 
 from metadata.config.common import ConfigModel
+from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
+from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -59,6 +61,9 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.sink.elasticsearch_mapping.dashboard_search_index_mapping import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
 )
+from metadata.ingestion.sink.elasticsearch_mapping.entity_report_data_index_mapping import (
+    ENTITY_REPORT_DATA_INDEX_MAPPING,
+)
 from metadata.ingestion.sink.elasticsearch_mapping.glossary_term_search_index_mapping import (
     GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
 )
@@ -82,6 +87,12 @@ from metadata.ingestion.sink.elasticsearch_mapping.topic_search_index_mapping im
 )
 from metadata.ingestion.sink.elasticsearch_mapping.user_search_index_mapping import (
     USER_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.web_analytic_entity_view_report_data_index_mapping import (
+    WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.web_analytic_user_activity_report_data_index_mapping import (
+    WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX_MAPPING,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -120,6 +131,9 @@ class ElasticSearchConfig(ConfigModel):
     index_mlmodels: Optional[bool] = True
     index_glossary_terms: Optional[bool] = True
     index_tags: Optional[bool] = True
+    index_entity_report_data: Optional[bool] = True
+    index_web_analytic_user_activity_report_data: Optional[bool] = True
+    index_web_analytic_entity_view_report_data: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
@@ -129,6 +143,13 @@ class ElasticSearchConfig(ConfigModel):
     glossary_term_index_name: str = "glossary_search_index"
     mlmodel_index_name: str = "mlmodel_search_index"
     tag_index_name: str = "tag_search_index"
+    entity_report_data_index_name: str = "entity_report_data_index"
+    web_analytic_user_activity_report_data_index_name: str = (
+        "web_analytic_user_activity_report_data_index"
+    )
+    web_analytic_entity_view_report_data_name: str = (
+        "web_analytic_entity_view_report_data_index"
+    )
     scheme: str = "http"
     use_ssl: bool = False
     verify_certs: bool = False
@@ -152,6 +173,8 @@ class ElasticsearchSink(Sink[Entity]):
         config = ElasticSearchConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
+    # to be fix in https://github.com/open-metadata/OpenMetadata/issues/8352
+    # pylint: disable=too-many-branches
     def __init__(
         self,
         config: ElasticSearchConfig,
@@ -246,6 +269,24 @@ class ElasticsearchSink(Sink[Entity]):
             self._check_or_create_index(
                 self.config.tag_index_name,
                 TAG_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
+        if self.config.index_entity_report_data:
+            self._check_or_create_index(
+                self.config.entity_report_data_index_name,
+                ENTITY_REPORT_DATA_INDEX_MAPPING,
+            )
+
+        if self.config.index_web_analytic_user_activity_report_data:
+            self._check_or_create_index(
+                self.config.web_analytic_user_activity_report_data_index_name,
+                WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX_MAPPING,
+            )
+
+        if self.config.index_web_analytic_entity_view_report_data:
+            self._check_or_create_index(
+                self.config.web_analytic_entity_view_report_data_name,
+                WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX_MAPPING,
             )
 
         super().__init__()
@@ -368,6 +409,17 @@ class ElasticsearchSink(Sink[Entity]):
                         request_timeout=self.config.timeout,
                     )
                     self.status.records_written(tag_doc.name)
+
+            if isinstance(record, ReportData):
+                self.elasticsearch_client.index(
+                    index=DataInsightEsIndex[record.data.__class__.__name__].value,
+                    id=record.id,
+                    body=record.json(),
+                    request_timeout=self.config.timeout,
+                )
+                self.status.records_written(
+                    f"Event written for record type {record.data.__class__.__name__}"
+                )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

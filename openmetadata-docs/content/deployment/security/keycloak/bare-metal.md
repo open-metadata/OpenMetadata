@@ -36,9 +36,6 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
   adminPrincipals:
     - "admin-user"
-  botPrincipals:
-    - "ingestion-bot"
-    - "service-account-open-metadata"
   principalDomain: "open-metadata.org"
 ```
 

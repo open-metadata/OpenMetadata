@@ -39,7 +39,8 @@
     "s3StagingDir": {
       "title": "S3 Staging Directory",
       "description": "S3 Staging Directory.",
-      "type": "string"
+      "type": "string",
+      "format": "uri"
     },
     "workgroup": {
       "title": "Athena Workgroup",

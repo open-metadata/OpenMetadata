@@ -13,13 +13,11 @@
 
 package org.openmetadata.service.secrets;
 
-import static org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider.NOOP;
-
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
@@ -30,14 +28,9 @@ public class NoopSecretsManager extends SecretsManager {
 
   private Fernet fernet;
 
-  private NoopSecretsManager(String clusterPrefix) {
-    super(NOOP, clusterPrefix);
+  private NoopSecretsManager(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
+    super(secretsManagerProvider, clusterPrefix);
     this.fernet = Fernet.getInstance();
-  }
-
-  @Override
-  public boolean isLocal() {
-    return true;
   }
 
   @Override
@@ -54,33 +47,13 @@ public class NoopSecretsManager extends SecretsManager {
     }
   }
 
-  @Override
-  public Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt) {
-    return dbtConfigSource;
-  }
-
-  @Override
-  public Object storeTestConnectionObject(TestServiceConnection testServiceConnection) {
-    return testServiceConnection.getConnection();
-  }
-
-  @Override
-  public Object encryptOrDecryptBotUserCredentials(String botUserName, Object securityConfig, boolean encrypt) {
-    return securityConfig;
-  }
-
-  @Override
-  public Object encryptOrDecryptBotCredentials(String botName, String botUserName, boolean encrypt) {
-    return null;
-  }
-
   private void encryptOrDecryptField(Object connConfig, String field, Class<?> clazz, boolean encrypt)
       throws InvocationTargetException, IllegalAccessException {
     try {
       Method getPasswordMethod = clazz.getMethod("get" + field);
       Method setPasswordMethod = clazz.getMethod("set" + field, String.class);
       String password = (String) getPasswordMethod.invoke(connConfig);
-      if (password != null) {
+      if (password != null && !password.equals("")) {
         if (!Fernet.isTokenized(password) && encrypt) {
           password = fernet.encrypt(password);
         } else if (Fernet.isTokenized(password) && !encrypt) {
@@ -92,8 +65,8 @@ public class NoopSecretsManager extends SecretsManager {
     }
   }
 
-  public static NoopSecretsManager getInstance(String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new NoopSecretsManager(clusterPrefix);
+  public static NoopSecretsManager getInstance(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
+    if (INSTANCE == null) INSTANCE = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
     return INSTANCE;
   }
 

@@ -14,74 +14,27 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.Objects;
-import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.service.util.JsonUtils;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
-import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
 
   @Mock private SecretsManagerClient secretsManagerClient;
-
-  @Test
-  void testEncryptDatabaseServiceConnectionConfig() {
-    mockClientGetValue(null);
-    testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<CreateSecretRequest> createSecretCaptor = ArgumentCaptor.forClass(CreateSecretRequest.class);
-    verify(secretsManagerClient).createSecret(createSecretCaptor.capture());
-    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
-    assertEquals(EXPECTED_SECRET_ID, createSecretCaptor.getValue().name());
-    assertEquals(EXPECTED_CONNECTION_JSON, createSecretCaptor.getValue().secretString());
-  }
-
-  @Test
-  void testEncryptTestServiceConnection() {
-    String expectedSecretId = String.format("/openmetadata/%s/database", TEST_CONNECTION_SECRET_ID_PREFIX);
-    mockClientGetValue(null);
-    TestServiceConnection testServiceConnection =
-        new TestServiceConnection()
-            .withConnection(new MysqlConnection())
-            .withConnectionType(TestServiceConnection.ConnectionType.Database)
-            .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider());
-    ArgumentCaptor<CreateSecretRequest> createSecretCaptor = ArgumentCaptor.forClass(CreateSecretRequest.class);
-    Object serviceConnection = secretsManager.storeTestConnectionObject(testServiceConnection);
-    verify(secretsManagerClient).createSecret(createSecretCaptor.capture());
-    verifySecretIdGetCalls(expectedSecretId, 1);
-    assertEquals(expectedSecretId, createSecretCaptor.getValue().name());
-    assertEquals(
-        "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true,\"supportsQueryComment\":true}",
-        createSecretCaptor.getValue().secretString());
-    assertNull(serviceConnection);
-  }
-
-  @Test
-  void testEncryptDatabaseServiceConnectionConfigWhenAlreadyExist() {
-    mockClientGetValue(EXPECTED_CONNECTION_JSON);
-    testEncryptDecryptServiceConnection(ENCRYPT);
-    ArgumentCaptor<UpdateSecretRequest> updateSecretCaptor = ArgumentCaptor.forClass(UpdateSecretRequest.class);
-    verify(secretsManagerClient).updateSecret(updateSecretCaptor.capture());
-    verifySecretIdGetCalls(EXPECTED_SECRET_ID, 1);
-    assertEquals(EXPECTED_SECRET_ID, updateSecretCaptor.getValue().secretId());
-    assertEquals(EXPECTED_CONNECTION_JSON, updateSecretCaptor.getValue().secretString());
-  }
 
   @Override
   void setUpSpecific(SecretsManagerConfiguration config) {
@@ -93,10 +46,12 @@ public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
   @Override
   void mockClientGetValue(String value) {
     if (value == null) {
-      when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
+      lenient()
+          .when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
           .thenReturn(GetSecretValueResponse.builder().build());
     } else {
-      when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
+      lenient()
+          .when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
           .thenReturn(GetSecretValueResponse.builder().secretString(value).build());
     }
   }

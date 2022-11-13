@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 
 public final class CatalogExceptionMessage {
   public static final String EMAIL_SENDING_ISSUE =
@@ -47,6 +48,18 @@ public final class CatalogExceptionMessage {
   public static final String CREATE_GROUP =
       "Team of type Group can't have children of type team. Only users are allowed as part of the team";
   public static final String TEAM_HIERARCHY = "Unexpected error occurred while building the teams hierarchy";
+  public static final String LDAP_MISSING_ATTR =
+      "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
+  public static final String MULTIPLE_EMAIl_ENTRIES = "Email corresponds to multiple entries in Directory.";
+
+  public static final String INVALID_EMAIL_PASSWORD = "You have entered an invalid email or password.";
+
+  public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
+  public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
+
+  public static final String FORBIDDEN_AUTHENTICATOR_OP = "Operation is not permitted with the Selected Authenticator.";
+  public static final String TOKEN_EXPIRY_ERROR =
+      "Email Verification Token %s is expired. Please issue a new request for email verification.";
 
   private CatalogExceptionMessage() {}
 
@@ -56,10 +69,6 @@ public final class CatalogExceptionMessage {
 
   public static String entityNotFound(String entityType, UUID id) {
     return entityNotFound(entityType, id.toString());
-  }
-
-  public static String entitiesNotFound(String entityType) {
-    return String.format("%s instances not found", entityType);
   }
 
   public static String readOnlyAttribute(String entityType, String attribute) {
@@ -135,10 +144,6 @@ public final class CatalogExceptionMessage {
     return String.format("%s is not empty", entityType);
   }
 
-  public static String invalidEntity(String entity) {
-    return String.format("Invalid entity %s", entity);
-  }
-
   public static String unknownCustomField(String fieldName) {
     return String.format("Unknown custom field %s", fieldName);
   }
@@ -175,7 +180,13 @@ public final class CatalogExceptionMessage {
     return String.format("Failed to evaluate - %s", message);
   }
 
-  public static String deletionNotAllowed(String entityType, String name) {
-    return String.format("Deletion of %s %s is not allowed", entityType, name);
+  public static String systemEntityDeleteNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
+  }
+
+  public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {
+    return String.format(
+        "Tag labels %s and %s are mutually exclusive and can't be assigned together",
+        tag1.getTagFQN(), tag2.getTagFQN());
   }
 }

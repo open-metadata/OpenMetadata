@@ -42,12 +42,17 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
+import org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Chart;
@@ -67,6 +72,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
@@ -97,6 +103,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -184,6 +191,9 @@ public interface CollectionDAO {
   DatabaseServiceDAO dbServiceDAO();
 
   @CreateSqlObject
+  MetadataServiceDAO metadataServiceDAO();
+
+  @CreateSqlObject
   PipelineServiceDAO pipelineServiceDAO();
 
   @CreateSqlObject
@@ -223,6 +233,12 @@ public interface CollectionDAO {
   TestCaseDAO testCaseDAO();
 
   @CreateSqlObject
+  WebAnalyticEventDAO webAnalyticEventDAO();
+
+  @CreateSqlObject
+  DataInsightChartDAO dataInsightChartDAO();
+
+  @CreateSqlObject
   UtilDAO utilDAO();
 
   @CreateSqlObject
@@ -230,6 +246,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TokenDAO getTokenDAO();
+
+  @CreateSqlObject
+  KpiDAO kpiDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -308,6 +327,23 @@ public interface CollectionDAO {
     @Override
     default Class<DatabaseService> getEntityClass() {
       return DatabaseService.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface MetadataServiceDAO extends EntityDAO<MetadataService> {
+    @Override
+    default String getTableName() {
+      return "metadata_service_entity";
+    }
+
+    @Override
+    default Class<MetadataService> getEntityClass() {
+      return MetadataService.class;
     }
 
     @Override
@@ -459,17 +495,6 @@ public interface CollectionDAO {
             + "ORDER BY toId")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
-        @Bind("fromId") String fromId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
-
-    @SqlQuery(
-        "SELECT count(*) FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
-            + "AND (toEntity = :toEntity OR :toEntity IS NULL) "
-            + "ORDER BY fromId")
-    int findToCount(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -1235,17 +1260,6 @@ public interface CollectionDAO {
         @Bind("resolved") boolean resolved);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM thread_entity WHERE (id IN (<threadIds>)) "
-            + "AND resolved= :isResolved AND (:type IS NULL OR type = :type) "
-            + "AND (:status IS NULL OR taskStatus = :status) GROUP BY entityLink")
-    @RegisterRowMapper(CountFieldMapper.class)
-    List<List<String>> listCountByThreads(
-        @BindList("threadIds") List<String> threadIds,
-        @Bind("type") ThreadType type,
-        @Bind("status") TaskStatus status,
-        @Bind("isResolved") boolean isResolved);
-
-    @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "
             + "(:type IS NULL OR type = :type) AND entityId in ("
             + "SELECT toId FROM entity_relationship WHERE "
@@ -1400,26 +1414,6 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
-    @RegisterRowMapper(FromFieldMapper.class)
-    List<Triple<String, String, String>> listFromByPrefix(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("fromType") String fromType,
-        @Bind("toType") String toType,
-        @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType LIKE CONCAT(:toType, '%') AND relation = :relation")
-    @RegisterRowMapper(FromFieldMapper.class)
-    List<Triple<String, String, String>> listFromByAllPrefix(
-        @Bind("fqnPrefix") String fqnPrefix,
-        @Bind("fromType") String fromType,
-        @Bind("toType") String toType,
-        @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
@@ -1480,13 +1474,6 @@ public interface CollectionDAO {
       @Override
       public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
         return Triple.of(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
-      }
-    }
-
-    class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
-      @Override
-      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Triple.of(rs.getString("toFQN"), rs.getString("fromFQN"), rs.getString("json"));
       }
     }
   }
@@ -1888,27 +1875,14 @@ public interface CollectionDAO {
     @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
     List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
-                + "t.json ->> '$.description' AS description1, "
-                + "g.json ->> '$.description' AS description2 "
-                + "FROM tag_usage tu "
-                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
-                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
-                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
-                + "t.json ->> 'description' AS description1, "
-                + "g.json ->> 'description' AS description2 "
-                + "FROM tag_usage tu "
-                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
-                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
-                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
-        connectionType = POSTGRES)
-    List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
+    default List<TagLabel> getTags(String targetFQN) {
+      List<TagLabel> tags = getTagsInternal(targetFQN);
+      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getInstance().getDescription(tagLabel)));
+      return tags;
+    }
+
+    @SqlQuery("SELECT source, tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
+    List<TagLabel> getTagsInternal(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
     int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
@@ -1928,14 +1902,11 @@ public interface CollectionDAO {
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
-        String description1 = r.getString("description1");
-        String description2 = r.getString("description2");
         return new TagLabel()
             .withSource(TagLabel.TagSource.values()[r.getInt("source")])
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
-            .withTagFQN(r.getString("tagFQN"))
-            .withDescription(description1 == null ? description2 : description1);
+            .withTagFQN(r.getString("tagFQN"));
       }
     }
   }
@@ -2133,21 +2104,9 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("after") String after);
 
-    default List<String> listUsersUnderOrganization(String teamId) {
-      return listUsersUnderOrganization(teamId, Relationship.HAS.ordinal());
-    }
-
     default List<String> listTeamsUnderOrganization(String teamId) {
       return listTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());
     }
-
-    @SqlQuery(
-        "SELECT ue.id "
-            + "FROM user_entity ue "
-            + "WHERE ue.id NOT IN (SELECT :teamId) UNION "
-            + "(SELECT toId FROM entity_relationship "
-            + "WHERE fromId != :teamId AND fromEntity = `team` AND relation = :relation AND toEntity = `user`)")
-    List<String> listUsersUnderOrganization(@Bind("teamId") String teamId, @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT te.id "
@@ -2577,9 +2536,6 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
-
-    @SqlQuery(value = "SELECT json FROM user_entity WHERE email = :email")
-    String findUserByEmail(@Bind("email") String email);
   }
 
   interface ChangeEventDAO {
@@ -2938,6 +2894,40 @@ public interface CollectionDAO {
     }
   }
 
+  interface WebAnalyticEventDAO extends EntityDAO<WebAnalyticEvent> {
+    @Override
+    default String getTableName() {
+      return "web_analytic_event";
+    }
+
+    @Override
+    default Class<WebAnalyticEvent> getEntityClass() {
+      return WebAnalyticEvent.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+  }
+
+  interface DataInsightChartDAO extends EntityDAO<DataInsightChart> {
+    @Override
+    default String getTableName() {
+      return "data_insight_chart";
+    }
+
+    @Override
+    default Class<DataInsightChart> getEntityClass() {
+      return DataInsightChart.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+  }
+
   interface EntityExtensionTimeSeriesDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -2982,12 +2972,6 @@ public interface CollectionDAO {
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
-    @SqlQuery(
-        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
-            + "ORDER BY timestamp DESC LIMIT :limit")
-    List<String> getLastLatestExtension(
-        @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("limit") int limit);
-
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -3005,6 +2989,20 @@ public interface CollectionDAO {
         "DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
     void deleteAtTimestamp(
         @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND jsonSchema = :jsonSchema "
+            + "ORDER BY timestamp DESC LIMIT 1")
+    String getLatestExtensionByFQN(@Bind("entityFQN") String entityFQN, @Bind("jsonSchema") String jsonSchema);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and jsonSchema = :jsonSchema "
+            + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
+    List<String> listBetweenTimestampsByFQN(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") long endTs);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and extension = :extension "
@@ -3099,12 +3097,20 @@ public interface CollectionDAO {
     public static Settings getSettings(SettingsType configType, String json) {
       Settings settings = new Settings();
       settings.setConfigType(configType);
-      Object value = null;
+      Object value;
       try {
-        if (configType == SettingsType.ACTIVITY_FEED_FILTER_SETTING) {
-          value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-        } else {
-          throw new RuntimeException("Invalid Settings Type");
+        switch (configType) {
+          case ACTIVITY_FEED_FILTER_SETTING:
+            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
+            break;
+          case TASK_NOTIFICATION_CONFIGURATION:
+            value = JsonUtils.readValue(json, TaskNotificationConfiguration.class);
+            break;
+          case TEST_RESULT_NOTIFICATION_CONFIGURATION:
+            value = JsonUtils.readValue(json, TestResultNotificationConfiguration.class);
+            break;
+          default:
+            throw new IllegalArgumentException("Invalid Settings Type " + configType);
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -3147,23 +3153,19 @@ public interface CollectionDAO {
     }
 
     public static TokenInterface getToken(TokenType type, String json) throws IOException {
-      TokenInterface resp = null;
-      try {
-        switch (type) {
-          case EMAIL_VERIFICATION:
-            resp = JsonUtils.readValue(json, EmailVerificationToken.class);
-            break;
-          case PASSWORD_RESET:
-            resp = JsonUtils.readValue(json, PasswordResetToken.class);
-            break;
-          case REFRESH_TOKEN:
-            resp = JsonUtils.readValue(json, RefreshToken.class);
-            break;
-          default:
-            throw new RuntimeException("Invalid Token Type.");
-        }
-      } catch (IOException e) {
-        throw e;
+      TokenInterface resp;
+      switch (type) {
+        case EMAIL_VERIFICATION:
+          resp = JsonUtils.readValue(json, EmailVerificationToken.class);
+          break;
+        case PASSWORD_RESET:
+          resp = JsonUtils.readValue(json, PasswordResetToken.class);
+          break;
+        case REFRESH_TOKEN:
+          resp = JsonUtils.readValue(json, RefreshToken.class);
+          break;
+        default:
+          throw new IllegalArgumentException("Invalid Token Type.");
       }
       return resp;
     }
@@ -3198,5 +3200,22 @@ public interface CollectionDAO {
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);
+  }
+
+  interface KpiDAO extends EntityDAO<Kpi> {
+    @Override
+    default String getTableName() {
+      return "kpi_entity";
+    }
+
+    @Override
+    default Class<Kpi> getEntityClass() {
+      return Kpi.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
   }
 }

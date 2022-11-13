@@ -60,8 +60,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public void prepare(Metrics metrics) throws IOException {
     metrics.setService(getService(metrics.getService()));
-    setFullyQualifiedName(metrics);
-    metrics.setTags(addDerivedTags(metrics.getTags()));
   }
 
   @Override
@@ -74,7 +72,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     metrics.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    store(metrics.getId(), metrics, update);
+    store(metrics, update);
 
     // Restore the relationships
     metrics.withOwner(owner).withService(service).withTags(tags);

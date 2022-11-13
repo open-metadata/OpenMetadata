@@ -42,7 +42,7 @@ class OMetaTagMixinPost(TestCase):
         """Test POST category Mixin method"""
 
         tag_category = CreateTagCategoryRequest(
-            categoryType="Descriptive", description="test tag", name=CATEGORY_NAME
+            description="test tag", name=CATEGORY_NAME
         )
 
         self.metadata.create_tag_category(tag_category)
@@ -144,7 +144,7 @@ class OMetaTagMixinPut(TestCase):
 
         rand_name = random.getrandbits(64)
         updated_tag_category = CreateTagCategoryRequest(
-            categoryType="Descriptive", description="test tag", name=f"{rand_name}"
+            description="test tag", name=f"{rand_name}"
         )
 
         self.metadata.create_or_update_tag_category(CATEGORY_NAME, updated_tag_category)

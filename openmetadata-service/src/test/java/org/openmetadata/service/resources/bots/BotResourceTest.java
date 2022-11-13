@@ -1,11 +1,14 @@
 package org.openmetadata.service.resources.bots;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.SneakyThrows;
@@ -16,10 +19,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -30,7 +33,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static EntityReference botUserRef;
 
   public BotResourceTest() {
-    super(Entity.BOT, Bot.class, BotList.class, "bots", ""); // TODO fix this
+    super(Entity.BOT, Bot.class, BotList.class, "bots", "", INGESTION_BOT);
     supportsFieldsQueryParam = false;
   }
 
@@ -53,10 +56,12 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Test
-  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) {
-    // PUT based updates are categorized as create operation
-    // PUT from a bot to update itself is rejected because of that
-    // TODO turning off the test for now which requires BOT to make update using PUT
+  void testBotInitialization() throws IOException {
+    // Ensure all the bots are bootstrapped from the data files
+    List<Bot> bots = EntityRepository.getEntitiesFromSeedData(Entity.BOT, ".*json/data/bot/.*\\.json$", Bot.class);
+    for (Bot bot : bots) {
+      assertNotNull(getEntityByName(bot.getName(), "", ADMIN_AUTH_HEADERS));
+    }
   }
 
   @Test
@@ -100,17 +105,6 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
         () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "User [bot-test-user] is not a bot user");
-  }
-
-  @Test
-  void delete_failIfUserIsIngestionBot(TestInfo test) throws IOException {
-    // get ingestion bot
-    Bot ingestionBot = getEntityByName(BotType.INGESTION_BOT.value(), "", ADMIN_AUTH_HEADERS);
-    // fail because it is a system bot
-    assertResponse(
-        () -> deleteEntity(ingestionBot.getId(), true, true, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[ingestion-bot] can not be deleted.");
   }
 
   @Override

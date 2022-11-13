@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -75,10 +74,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     @SuppressWarnings("unused")
     public TestSuiteList() {
       // Empty constructor needed for deserialization
-    }
-
-    public TestSuiteList(List<TestSuite> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -263,7 +258,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, testSuite, true);
+    return create(uriInfo, securityContext, testSuite);
   }
 
   @PATCH
@@ -308,7 +303,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, testSuite, true);
+    return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
   @DELETE
@@ -335,7 +330,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           boolean hardDelete,
       @Parameter(description = "TestSuite Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private TestSuite getTestSuite(CreateTestSuite create, String user) throws IOException {

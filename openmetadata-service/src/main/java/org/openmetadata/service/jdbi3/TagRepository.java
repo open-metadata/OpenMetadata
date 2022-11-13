@@ -54,7 +54,7 @@ public class TagRepository extends EntityRepository<Tag> {
       String oldFQN = tag.getFullyQualifiedName();
       String newFQN = oldFQN.replace(prefix, newPrefix);
       LOG.info("Replacing tag fqn from {} to {}", oldFQN, newFQN);
-      tag.setFullyQualifiedName(oldFQN.replace(prefix, newPrefix));
+      tag.setFullyQualifiedName(newFQN);
       daoCollection.tagDAO().update(tag.getId(), JsonUtils.pojoToJson(tag));
       updateChildrenTagNames(oldFQN, newFQN);
     }
@@ -77,11 +77,11 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void prepare(Tag entity) {
     String[] split = FullyQualifiedName.split(entity.getFullyQualifiedName());
-    String category = split[0];
-    daoCollection.tagCategoryDAO().existsByName(category);
+    String categoryName = split[0];
+    daoCollection.tagCategoryDAO().findEntityByName(categoryName);
 
     if (split.length == 3) { // Secondary tag is being created. Check the primary tag
-      dao.existsByName(FullyQualifiedName.build(split[0], split[1]));
+      dao.findEntityByName(FullyQualifiedName.build(split[0], split[1]));
     }
   }
 
@@ -89,7 +89,7 @@ public class TagRepository extends EntityRepository<Tag> {
   public void storeEntity(Tag tag, boolean update) throws IOException {
     List<Tag> tags = tag.getChildren();
     tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
-    store(tag.getId(), tag, update);
+    store(tag, update);
     tag.setChildren(tags);
     LOG.info("Added tag {}", tag.getFullyQualifiedName());
 
@@ -129,6 +129,7 @@ public class TagRepository extends EntityRepository<Tag> {
   @Transaction
   public Tag delete(UriInfo uriInfo, UUID id) throws IOException {
     Tag tag = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(tag);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(tag.getFullyQualifiedName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
@@ -143,6 +144,9 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      // TODO mutuallyExclusive from false to true?
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      // TODO check the below
       updateName(original, updated);
     }
 

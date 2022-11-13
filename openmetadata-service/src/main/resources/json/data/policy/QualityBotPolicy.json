@@ -1,0 +1,18 @@
+{
+  "name": "QualityBotPolicy",
+  "displayName": "Quality Bot Policy",
+  "fullyQualifiedName": "QualityBotPolicy",
+  "description": "Policy for Data Quality Bot to perform operations on metadata entities.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "QualityBotBotRule-Allow",
+      "description" : "Allow updating sample data, profile data, and tests for all the resources.",
+      "resources" : ["All"],
+      "operations": ["EditAll", "ViewAll"],
+      "effect": "allow"
+    }
+  ]
+}

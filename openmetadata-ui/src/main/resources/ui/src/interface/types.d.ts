@@ -39,9 +39,6 @@ declare module 'Models' {
       searchQuery: string;
     };
   };
-  export type FilterObject = {
-    [key: string]: Array<string>;
-  };
   export type PaginationProps = {
     sizePerPage: number;
     totalNumberOfValues: number;
@@ -290,7 +287,7 @@ declare module 'Models' {
     _source: FormattedGlossarySuggestion;
   }
 
-  export interface GlossaryTermAssets {
+  export interface AssetsDataType {
     data: FormattedTableData[];
     total: number;
     currPage: number;
@@ -595,6 +592,18 @@ declare module 'Models' {
   }
 
   export type Status = 'initial' | 'waiting' | 'success';
+
+  export interface CurrentState {
+    id: string;
+    state: string;
+  }
+
+  export type EntityType =
+    | 'tables'
+    | 'topics'
+    | 'dashboards'
+    | 'pipelines'
+    | 'mlmodels';
 
   // ES interface end
 

@@ -20,8 +20,10 @@ from metadata.clients.connection_clients import (
     DynamoClient,
     GlueDBClient,
     GluePipelineClient,
+    KinesisClient,
+    QuickSightClient,
+    SageMakerClient,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -32,11 +34,13 @@ class AWSClient:
     AWSClient creates a boto3 Session client based on AWSCredentials.
     """
 
-    config: AWSCredentials
+    def __init__(self, config: "AWSCredentials"):
+        # local import to avoid the creation of circular dependencies with CustomSecretStr
+        from metadata.generated.schema.security.credentials.awsCredentials import (  # pylint: disable=import-outside-toplevel
+            AWSCredentials,
+        )
 
-    def __init__(self, config: AWSCredentials):
-
-        self.config = config
+        self.config = AWSCredentials.parse_obj(config) if config else config
 
     def _get_session(self) -> Session:
         if (
@@ -65,10 +69,6 @@ class AWSClient:
         if self.config is not None:
             logger.info(f"Getting AWS client for service [{service_name}]")
             session = self._get_session()
-            if self.config.endPointURL is not None:
-                return session.client(
-                    service_name=service_name, endpoint_url=self.config.endPointURL
-                )
             return session.client(service_name=service_name)
 
         logger.info(f"Getting AWS default client for service [{service_name}]")
@@ -77,13 +77,9 @@ class AWSClient:
 
     def get_resource(self, service_name: str) -> Any:
         session = self._get_session()
-        if self.config.endPointURL is not None:
-            return session.resource(
-                service_name=service_name, endpoint_url=self.config.endPointURL
-            )
         return session.resource(service_name=service_name)
 
-    def get_dynomo_client(self) -> DynamoClient:
+    def get_dynamo_client(self) -> DynamoClient:
         return DynamoClient(self.get_resource("dynamodb"))
 
     def get_glue_db_client(self) -> GlueDBClient:
@@ -91,3 +87,12 @@ class AWSClient:
 
     def get_glue_pipeline_client(self) -> GluePipelineClient:
         return GluePipelineClient(self.get_client("glue"))
+
+    def get_sagemaker_client(self) -> SageMakerClient:
+        return SageMakerClient(self.get_client("sagemaker"))
+
+    def get_kinesis_client(self) -> KinesisClient:
+        return KinesisClient(self.get_client("kinesis"))
+
+    def get_quicksight_client(self) -> QuickSightClient:
+        return QuickSightClient(self.get_client("quicksight"))

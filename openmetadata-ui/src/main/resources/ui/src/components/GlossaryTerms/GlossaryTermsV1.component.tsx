@@ -16,7 +16,7 @@ import { Button, Card, Col, Divider, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags, FormattedUsersData, GlossaryTermAssets } from 'Models';
+import { AssetsDataType, EntityTags, FormattedUsersData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -45,7 +45,7 @@ import RelatedTerms from './tabs/RelatedTerms';
 const { Text } = Typography;
 
 type Props = {
-  assetData: GlossaryTermAssets;
+  assetData: AssetsDataType;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   currentPage: number;

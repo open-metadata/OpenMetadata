@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/analytics/entityReportData.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "entityReportData",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.analytics.EntityReportData",
+  "description": "Refined data for Entity Report.",
+  "properties": {
+    "entityType": {
+      "type": "string",
+      "description": "type of the entity"
+    },
+    "entityTier": {
+      "type": "string",
+      "description": "Tier for the entity"
+    },
+    "team": {
+      "type": "string",
+      "description": "Team associated with the entity (i.e. owner)"
+    },
+    "organization": {
+      "type": "string",
+      "description": "Organization associated with the entity (i.e. owner)"
+    },
+    "completedDescriptions": {
+      "type": "integer",
+      "description": "Number of completed description for the entity"
+    },
+    "missingDescriptions": {
+      "type": "integer",
+      "description": "Number of missing description for the entity"
+    },
+    "hasOwner": {
+      "type": "integer",
+      "description": "number of entities with owner"
+    },
+    "missingOwner": {
+      "type": "integer",
+      "description": "number of entities missing owners"
+    },
+    "entityCount": {
+      "type": "integer",
+      "description": "number of entities"
+    }
+  },
+  "additionalProperties": false
+}

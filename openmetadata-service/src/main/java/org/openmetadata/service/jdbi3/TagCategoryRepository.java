@@ -88,14 +88,14 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   @Override
   public void prepare(TagCategory entity) {
-    setFullyQualifiedName(entity);
+    /* Nothing to do */
   }
 
   @Override
   public void storeEntity(TagCategory category, boolean update) throws IOException {
     List<Tag> primaryTags = category.getChildren();
     category.setChildren(null); // Children are not stored as json and are constructed on the fly
-    store(category.getId(), category, update);
+    store(category, update);
     category.withChildren(primaryTags);
   }
 
@@ -109,6 +109,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   @Transaction
   public TagCategory delete(UriInfo uriInfo, UUID id) throws IOException {
     TagCategory category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(category);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), category.getName());
@@ -134,7 +135,8 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       // TODO handle name change
-      recordChange("categoryType", original.getCategoryType(), updated.getCategoryType());
+      // TODO mutuallyExclusive from false to true?
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       updateName(original, updated);
     }
 

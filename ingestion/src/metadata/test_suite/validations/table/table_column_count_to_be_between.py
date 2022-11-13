@@ -27,6 +27,7 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
 
@@ -49,6 +50,10 @@ def table_column_count_to_be_between(
 
     try:
         column_count = len(inspect(runner.table).c)
+        if column_count is None:
+            raise ValueError(
+                f"Column Count for test case {test_case.name} returned None"
+            )
 
     except Exception as exc:
         msg = (
@@ -63,19 +68,18 @@ def table_column_count_to_be_between(
             testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
-    min_ = next(
-        (
-            int(param_value.value)
-            for param_value in test_case.parameterValues
-            if param_value.name == "minColValue"
-        ),
-        None,
+    min_ = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minColValue",
+        int,
+        default=float("-inf"),
     )
 
-    max_ = next(
-        int(param_value.value)
-        for param_value in test_case.parameterValues
-        if param_value.name == "maxColValue"
+    max_ = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxColValue",
+        int,
+        default=float("inf"),
     )
 
     status = (

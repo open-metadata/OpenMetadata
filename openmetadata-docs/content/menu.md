@@ -232,12 +232,16 @@ site_menu:
     url: /connectors/database/azuresql/airflow
   - category: Connectors / Database / AzureSQL / CLI
     url: /connectors/database/azuresql/cli
+  - category: Connectors / Database / AzureSQL / Troubleshooting
+    url: /connectors/database/azuresql/troubleshooting
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Airflow
     url: /connectors/database/databricks/airflow
   - category: Connectors / Database / Databricks / CLI
     url: /connectors/database/databricks/cli
+  - category: Connectors / Database / Databricks / Troubleshooting
+    url: /connectors/database/databricks/troubleshooting
   - category: Connectors / Database / Datalake
     url: /connectors/database/datalake
   - category: Connectors / Database / Datalake / Airflow
@@ -314,6 +318,12 @@ site_menu:
     url: /connectors/database/mariadb/airflow
   - category: Connectors / Database / MariaDB / CLI
     url: /connectors/database/mariadb/cli
+  - category: Connectors / Database / Domo Database
+    url: /connectors/database/domo-database
+  - category: Connectors / Database / Domo Database / Airflow
+    url: /connectors/database/domo-database/airflow
+  - category: Connectors / Database / Domo Database / CLI
+    url: /connectors/database/domo-database/cli
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard
@@ -361,6 +371,13 @@ site_menu:
     url: /connectors/dashboard/mode/airflow
   - category: Connectors / Dashboard / Mode / CLI
     url: /connectors/dashboard/mode/cli
+  - category: Connectors / Dashboard
+  - category: Connectors / Dashboard / Domo Dashboard
+    url: /connectors/dashboard/domo-dashboard
+  - category: Connectors / Dashboard / Domo Dashboard / Airflow
+    url: /connectors/dashboard/domo-dashboard/airflow
+  - category: Connectors / Dashboard / Domo Dashboard / CLI
+    url: /connectors/dashboard/domo-dashboard/cli
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -411,6 +428,12 @@ site_menu:
     url: /connectors/pipeline/dagster/airflow
   - category: Connectors / Pipeline / Dagster / CLI
     url: /connectors/pipeline/dagster/cli
+  - category: Connectors / Pipeline / Domo Pipeline
+    url: /connectors/pipeline/domo-pipeline
+  - category: Connectors / Pipeline / Domo Pipeline / Airflow
+    url: /connectors/pipeline/domo-pipeline/airflow
+  - category: Connectors / Pipeline / Domo Pipeline / CLI
+    url: /connectors/pipeline/domo-pipeline/cli
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
@@ -482,6 +505,10 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Run Connectors in your Airflow
     url: /connectors/ingestion/run-connectors-in-airflow
+  - category: Connectors / Ingestion / Run Connectors from MWAA
+    url: /connectors/ingestion/run-connectors-from-mwaa
+  - category: Connectors / Ingestion / Best Practices
+    url: /connectors/ingestion/best-practices
 
   - category: How to guides
     url: /how-to-guides

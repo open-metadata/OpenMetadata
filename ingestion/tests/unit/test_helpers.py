@@ -11,10 +11,19 @@
 """
 Test helpers module
 """
+import uuid
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.utils.helpers import (
     clean_up_starting_ending_double_quotes_in_string,
+    get_entity_tier_from_tags,
     list_to_dict,
 )
 
@@ -36,3 +45,43 @@ class TestHelpers(TestCase):
         output_ = "password"
 
         assert clean_up_starting_ending_double_quotes_in_string(input_) == output_
+
+    def test_get_entity_tier_from_tags(self):
+        """test correct entity tier are returned"""
+        table_entity_w_tier = Table(
+            id=uuid.uuid4(),
+            name="table_entity_test",
+            columns=[Column(name="col1", dataType=DataType.STRING)],
+            tags=[
+                TagLabel(
+                    tagFQN="Tier.Tier1",
+                    source=TagSource.Tag,
+                    labelType=LabelType.Automated,
+                    state=State.Confirmed,
+                ),
+                TagLabel(
+                    tagFQN="Foo.Bar",
+                    source=TagSource.Tag,
+                    labelType=LabelType.Automated,
+                    state=State.Confirmed,
+                ),
+            ],
+        )
+
+        assert get_entity_tier_from_tags(table_entity_w_tier.tags) == "Tier.Tier1"
+
+        table_entity_wo_tier = Table(
+            id=uuid.uuid4(),
+            name="table_entity_test",
+            columns=[Column(name="col1", dataType=DataType.STRING)],
+            tags=[
+                TagLabel(
+                    tagFQN="Foo.Bar",
+                    source=TagSource.Tag,
+                    labelType=LabelType.Automated,
+                    state=State.Confirmed,
+                )
+            ],
+        )
+
+        assert get_entity_tier_from_tags(table_entity_wo_tier.tags) is None

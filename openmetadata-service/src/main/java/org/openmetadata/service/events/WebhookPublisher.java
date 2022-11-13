@@ -106,10 +106,12 @@ public class WebhookPublisher extends AbstractEventPublisher {
     updateFilter(webhook.getEventFilters());
   }
 
-  private void setErrorStatus(Long attemptTime, Integer statusCode, String reason) throws IOException {
+  private void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
+      throws IOException, InterruptedException {
     if (!attemptTime.equals(webhook.getFailureDetails().getLastFailedAt())) {
       setStatus(Webhook.Status.FAILED, attemptTime, statusCode, reason, null);
     }
+    webhookRepository.deleteWebhookPublisher(webhook.getId());
     throw new RuntimeException(reason);
   }
 
@@ -165,7 +167,8 @@ public class WebhookPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(EventResource.ChangeEventList list) throws EventPublisherException, IOException {
+  public void publish(EventResource.ChangeEventList list)
+      throws EventPublisherException, IOException, InterruptedException {
     long attemptTime = System.currentTimeMillis();
     try {
       String json = JsonUtils.pojoToJson(list);
@@ -189,11 +192,11 @@ public class WebhookPublisher extends AbstractEventPublisher {
         if (webhook.getStatus() != Webhook.Status.ACTIVE) {
           setStatus(Webhook.Status.ACTIVE, null, null, null, null);
         }
-        // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       } else if (response.getStatus() >= 300 && response.getStatus() < 400) {
+        // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
         setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-        // 4xx, 5xx response retry delivering events after timeout
       } else if (response.getStatus() >= 300 && response.getStatus() < 600) {
+        // 4xx, 5xx response retry delivering events after timeout
         setNextBackOff();
         setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
         Thread.sleep(currentBackoffTime);

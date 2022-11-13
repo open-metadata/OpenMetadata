@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -82,10 +81,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   public static class DatabaseSchemaList extends ResultList<DatabaseSchema> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
     DatabaseSchemaList() {}
-
-    public DatabaseSchemaList(List<DatabaseSchema> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = "owner,tables,usageSummary";
@@ -279,7 +274,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
     DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, schema, true);
+    return create(uriInfo, securityContext, schema);
   }
 
   @PATCH
@@ -324,7 +319,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
     DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, schema, true);
+    return createOrUpdate(uriInfo, securityContext, schema);
   }
 
   @DELETE
@@ -351,7 +346,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           boolean hardDelete,
       @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {

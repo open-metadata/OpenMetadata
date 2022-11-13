@@ -84,10 +84,6 @@ public class MlModelServiceResource
   public static class MlModelServiceList extends ResultList<MlModelService> {
     @SuppressWarnings("unused") /* Required for tests */
     public MlModelServiceList() {}
-
-    public MlModelServiceList(List<MlModelService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
@@ -293,7 +289,7 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService create)
       throws IOException {
     MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
@@ -316,7 +312,7 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update)
       throws IOException {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
@@ -346,7 +342,7 @@ public class MlModelServiceResource
           boolean hardDelete,
       @Parameter(description = "Id of the mlModel service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   private MlModelService getService(CreateMlModelService create, String user) throws IOException {

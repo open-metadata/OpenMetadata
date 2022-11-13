@@ -24,6 +24,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -32,6 +33,7 @@ import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import {
   getUserPath,
+  LIST_SIZE,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../constants/constants';
@@ -54,9 +56,11 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import UserCard from '../../pages/teams/UserCard';
-import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
-import { filterEntityAssets } from '../../utils/EntityUtils';
+import {
+  getEntityName,
+  getNonDeletedTeams,
+  getTierFromEntityInfo,
+} from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -68,8 +72,11 @@ import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList'
 import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
+import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
@@ -81,6 +88,8 @@ import { userPageFilterList } from './Users.util';
 
 const Users = ({
   userData,
+  followingEntities,
+  ownedEntities,
   feedData,
   isFeedLoading,
   postFeedHandler,
@@ -97,6 +106,8 @@ const Users = ({
   feedFilter,
   setFeedFilter,
   threadType,
+  onFollowingEntityPaginate,
+  onOwnedEntityPaginate,
   onSwitchChange,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
@@ -116,12 +127,16 @@ const Users = ({
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const location = useLocation();
   const isTaskType = isEqual(threadType, ThreadType.Task);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { authConfig } = useAuthContext();
+  const { t } = useTranslation();
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
-      isAuthProviderBasic: authConfig?.provider === AuthTypes.BASIC,
+      isAuthProviderBasic:
+        authConfig?.provider === AuthTypes.BASIC ||
+        authConfig?.provider === AuthTypes.LDAP,
     };
   }, [authConfig]);
 
@@ -241,6 +256,7 @@ const Users = ({
 
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
+      setIsLoading(true);
       const sendData = {
         ...data,
         ...(isAdminUser &&
@@ -256,6 +272,8 @@ const Users = ({
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(true);
     }
   };
 
@@ -368,6 +386,7 @@ const Users = ({
         </Typography.Text>
 
         <ChangePasswordForm
+          isLoading={isLoading}
           isLoggedinUser={isLoggedinUser}
           visible={isChangePassword}
           onCancel={() => setIsChangePassword(false)}
@@ -529,7 +548,9 @@ const Users = ({
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
-          <span className="tw-no-description ">No roles assigned</span>
+          <span className="tw-no-description ">
+            {t('label.no-roles-assigned')}
+          </span>
         )}
       </Fragment>
     );
@@ -545,7 +566,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
             </div>
           }>
           <div className="tw-flex tw-items-center tw-justify-between tw-mb-4">
@@ -564,7 +585,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
               {!isRolesEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
@@ -645,7 +666,7 @@ const Users = ({
         title={
           <div className="tw-flex">
             <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
-              Inherited Roles
+              {t('label.inherited-roles')}
             </h6>
           </div>
         }>
@@ -653,7 +674,7 @@ const Users = ({
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
               <span className="tw-no-description">
-                No inherited roles found
+                {t('label.no-inherited-found')}
               </span>
             </div>
           ) : (
@@ -771,7 +792,7 @@ const Users = ({
           {isTaskType ? (
             <Space align="end" size={5}>
               <Switch onChange={onSwitchChange} />
-              <span className="tw-ml-1">Closed Tasks</span>
+              <span className="tw-ml-1">{t('label.closed-tasks')}</span>
             </Space>
           ) : null}
         </div>
@@ -874,37 +895,59 @@ const Users = ({
   }, [image]);
 
   const getEntityData = useCallback(
-    (entityData: EntityReference[], tabNumber: number) => {
-      const updatedEntityData = filterEntityAssets(entityData || []);
+    (tabNumber: number) => {
+      const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
 
       return (
-        <div
-          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-          data-testid="dataset-card">
-          {isEmpty(updatedEntityData) ? (
-            tabNumber === 3 ? (
-              <div className="tw-mx-2">You have not owned anything yet.</div>
-            ) : (
-              <div className="tw-mx-2">You have not followed anything yet.</div>
-            )
-          ) : null}
-          {updatedEntityData.map((dataset, index) => {
-            const Dataset = {
-              displayName: dataset.displayName || dataset.name || '',
-              type: dataset.type,
-              fqn: dataset.fullyQualifiedName || '',
-              id: dataset.id,
-              name: dataset.name,
-            };
-
-            return (
-              <UserCard isDataset isIconVisible item={Dataset} key={index} />
-            );
-          })}
+        <div data-testid="table-container">
+          {entityData.data.length ? (
+            <>
+              {entityData.data.map((entity, index) => (
+                <div className="m-b-sm" key={`${entity.name}${index}`}>
+                  <TableDataCard
+                    database={entity.database}
+                    databaseSchema={entity.databaseSchema}
+                    deleted={entity.deleted}
+                    description={entity.description}
+                    fullyQualifiedName={entity.fullyQualifiedName}
+                    id={`tabledatacard${index}`}
+                    indexType={entity.index}
+                    name={entity.name}
+                    owner={entity.owner}
+                    service={entity.service}
+                    serviceType={entity.serviceType || '--'}
+                    tags={entity.tags}
+                    tier={getTierFromEntityInfo(entity)}
+                    usage={entity.weeklyPercentileRank}
+                  />
+                </div>
+              ))}
+              {entityData.total > LIST_SIZE && entityData.data.length > 0 && (
+                <NextPrevious
+                  isNumberBased
+                  currentPage={entityData.currPage}
+                  pageSize={LIST_SIZE}
+                  paging={{} as Paging}
+                  pagingHandler={
+                    tabNumber === 3
+                      ? onOwnedEntityPaginate
+                      : onFollowingEntityPaginate
+                  }
+                  totalCount={entityData.total}
+                />
+              )}
+            </>
+          ) : (
+            <ErrorPlaceHolder>
+              {tabNumber === 3
+                ? t('message.no-owned-entities')
+                : t('message.no-followed-entities')}
+            </ErrorPlaceHolder>
+          )}
         </div>
       );
     },
-    []
+    [followingEntities, ownedEntities]
   );
 
   return (
@@ -918,8 +961,8 @@ const Users = ({
         />
       </div>
       <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
-      <div>{activeTab === 3 && getEntityData(userData.owns || [], 3)}</div>
-      <div>{activeTab === 4 && getEntityData(userData.follows || [], 4)}</div>
+      <div>{activeTab === 3 && getEntityData(3)}</div>
+      <div>{activeTab === 4 && getEntityData(4)}</div>
     </PageLayoutV1>
   );
 };

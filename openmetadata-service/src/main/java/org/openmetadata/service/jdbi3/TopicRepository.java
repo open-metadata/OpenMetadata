@@ -60,8 +60,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
-    setFullyQualifiedName(topic);
-    topic.setTags(addDerivedTags(topic.getTags()));
   }
 
   @Override
@@ -74,7 +72,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    store(topic.getId(), topic, update);
+    store(topic, update);
 
     // Restore the relationships
     topic.withOwner(owner).withService(service).withTags(tags);

@@ -36,8 +36,6 @@ authorizerConfiguration:
   adminPrincipals:
     - "user1"
     - "user2"
-  botPrincipals:
-    - "ingestion-bot"
   principalDomain: "open-metadata.org"
 ```
 
