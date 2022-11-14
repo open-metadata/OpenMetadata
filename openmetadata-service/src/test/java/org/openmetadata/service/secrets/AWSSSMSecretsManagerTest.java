@@ -12,16 +12,11 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
 
 import org.mockito.Mock;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import software.amazon.awssdk.services.ssm.SsmClient;
-import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
-import software.amazon.awssdk.services.ssm.model.GetParameterResponse;
-import software.amazon.awssdk.services.ssm.model.Parameter;
 
 public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
 
@@ -35,20 +30,7 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   }
 
   @Override
-  void mockClientGetValue(String value) {
-    if (value == null) {
-      lenient()
-          .when(ssmClient.getParameter(any(GetParameterRequest.class)))
-          .thenReturn(GetParameterResponse.builder().build());
-    } else {
-      lenient()
-          .when(ssmClient.getParameter(any(GetParameterRequest.class)))
-          .thenReturn(GetParameterResponse.builder().parameter(Parameter.builder().value(value).build()).build());
-    }
-  }
-
-  @Override
   SecretsManagerProvider expectedSecretManagerProvider() {
-    return SecretsManagerProvider.AWS_SSM;
+    return SecretsManagerProvider.MANAGED_AWS_SSM;
   }
 }

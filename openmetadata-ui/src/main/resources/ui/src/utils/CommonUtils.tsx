@@ -1003,6 +1003,7 @@ export const getLoadingStatus = (
   );
 };
 
+export const refreshPage = () => window.location.reload();
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);

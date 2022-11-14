@@ -12,11 +12,14 @@
  */
 
 import { Col, Row } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { restoreTable } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -44,6 +47,7 @@ import {
   getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -51,7 +55,7 @@ import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -132,6 +136,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   updateThreadHandler,
   entityFieldTaskCount,
 }: DatasetDetailsProps) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -529,6 +534,26 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const handleRestoreTable = async () => {
+    try {
+      await restoreTable(tableDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.table'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.table'),
+        })
+      );
+    }
+  };
+
   const getSampleDataWithType = () => {
     const updatedColumns = sampleData?.columns?.map((column) => {
       const matchedColumn = columns.find((col) => col.name === column);
@@ -654,6 +679,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreTable}
           onThreadLinkSelect={onThreadLinkSelect}
         />
 

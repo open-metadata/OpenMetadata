@@ -388,6 +388,11 @@ const AddIngestion = ({
   const handleNext = () => {
     let nextStep;
     if (!showDBTConfig && activeIngestionStep === 1) {
+      nextStep = activeIngestionStep + 3;
+      if (isServiceTypeOpenMetadata) {
+        nextStep = activeIngestionStep + 2;
+      }
+    } else if (showDBTConfig && activeIngestionStep === 2) {
       nextStep = activeIngestionStep + 2;
     } else if (showDBTConfig && activeIngestionStep === 2) {
       nextStep = activeIngestionStep + 2;
@@ -399,7 +404,18 @@ const AddIngestion = ({
 
   const handlePrev = () => {
     let prevStep;
-    if (!showDBTConfig && activeIngestionStep === 3) {
+    if (!showDBTConfig && activeIngestionStep === 4) {
+      prevStep = activeIngestionStep - 3;
+      if (isServiceTypeOpenMetadata) {
+        prevStep = activeIngestionStep - 1;
+      }
+    } else if (
+      !showDBTConfig &&
+      isServiceTypeOpenMetadata &&
+      activeIngestionStep === 3
+    ) {
+      prevStep = activeIngestionStep - 2;
+    } else if (showDBTConfig && activeIngestionStep === 4) {
       prevStep = activeIngestionStep - 2;
     } else if (showDBTConfig && activeIngestionStep === 4) {
       prevStep = activeIngestionStep - 2;
