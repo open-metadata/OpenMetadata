@@ -151,3 +151,9 @@ export const fetchTagsAndGlossaryTerms = async () => {
 
   return tagsAndTerms;
 };
+
+export const isSystemTags = (tag: string) => {
+  const systemTag = 'tier';
+
+  return tag.toLowerCase().includes(systemTag);
+};
