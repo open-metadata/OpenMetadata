@@ -74,11 +74,11 @@ const AddKPIPage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: 'Data Insights',
+        name: t('label.data-insight'),
         url: ROUTES.DATA_INSIGHT,
       },
       {
-        name: 'KPI List',
+        name: t('label.kpi-list'),
         url: ROUTES.KPI_LIST,
       },
       {
@@ -227,7 +227,7 @@ const AddKPIPage = () => {
                   <Input
                     disabled
                     data-testid="name"
-                    placeholder="Kpi name"
+                    placeholder={t('label.kpi-name')}
                     type="text"
                   />
                 </Form.Item>
@@ -235,12 +235,14 @@ const AddKPIPage = () => {
                 <Form.Item label={t('label.display-name')} name="displayName">
                   <Input
                     data-testid="displayName"
-                    placeholder="Kpi display name"
+                    placeholder={t('label.kpi-display-name')}
                     type="text"
                   />
                 </Form.Item>
 
-                <Form.Item label="Data insight chart" name="dataInsightChart">
+                <Form.Item
+                  label={t('label.data-insight-chart')}
+                  name="dataInsightChart">
                   <Input
                     disabled
                     value={selectedChart?.displayName || selectedChart?.name}
@@ -348,7 +350,7 @@ const AddKPIPage = () => {
                   <RichTextEditor
                     height="200px"
                     initialValue={description}
-                    placeHolder="write your description"
+                    placeHolder={t('label.write-your-description')}
                     style={{ margin: 0 }}
                     onTextChange={(value) => setDescription(value)}
                   />
@@ -359,7 +361,7 @@ const AddKPIPage = () => {
                     data-testid="cancel-btn"
                     type="link"
                     onClick={handleCancel}>
-                    Back
+                    {t('label.go-back')}
                   </Button>
                   <Tooltip
                     title={
@@ -372,7 +374,7 @@ const AddKPIPage = () => {
                       htmlType="submit"
                       loading={isUpdatingKPI}
                       type="primary">
-                      Save
+                      {t('label.save')}
                     </Button>
                   </Tooltip>
                 </Space>

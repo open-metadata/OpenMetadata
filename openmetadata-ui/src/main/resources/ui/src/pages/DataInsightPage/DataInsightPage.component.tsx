@@ -195,7 +195,7 @@ const DataInsightPage = () => {
                   mode="multiple"
                   notFoundContent={null}
                   options={teamsOptions}
-                  placeholder="Select Teams"
+                  placeholder={t('label.select-teams')}
                   onChange={handleTeamChange}
                   onSearch={handleTeamSearch}
                 />
@@ -206,7 +206,7 @@ const DataInsightPage = () => {
                   mode="multiple"
                   notFoundContent={null}
                   options={TIER_FILTER}
-                  placeholder="Select Tier"
+                  placeholder={t('label.select-tiers')}
                   onChange={handleTierChange}
                 />
               </Space>

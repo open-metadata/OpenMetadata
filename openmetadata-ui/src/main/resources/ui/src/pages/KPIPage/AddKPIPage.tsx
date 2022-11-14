@@ -35,6 +35,7 @@ import RichTextEditor from '../../components/common/rich-text-editor/RichTextEdi
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import './KPIPage.less';
 
+import { t } from 'i18next';
 import { postKPI } from '../../axiosAPIs/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
@@ -61,15 +62,15 @@ const { Option } = Select;
 
 const breadcrumb = [
   {
-    name: 'Data Insights',
+    name: t('label.data-insight'),
     url: ROUTES.DATA_INSIGHT,
   },
   {
-    name: 'KPI List',
+    name: t('label.kpi-list'),
     url: ROUTES.KPI_LIST,
   },
   {
-    name: 'Add New KPI',
+    name: t('label.add-new-kpi'),
     url: '',
     activeTitle: true,
   },
@@ -205,13 +206,17 @@ const AddKPIPage = () => {
                   },
                 },
               ]}>
-              <Input data-testid="name" placeholder="Kpi name" type="text" />
+              <Input
+                data-testid="name"
+                placeholder={t('label.kpi-name')}
+                type="text"
+              />
             </Form.Item>
 
             <Form.Item label={t('label.display-name')} name="displayName">
               <Input
                 data-testid="displayName"
-                placeholder="Kpi display name"
+                placeholder={t('label.kpi-display-name')}
                 type="text"
               />
             </Form.Item>
@@ -227,7 +232,7 @@ const AddKPIPage = () => {
               ]}>
               <Select
                 data-testid="dataInsightChart"
-                placeholder="Select DataInsight Chart"
+                placeholder={t('label.select-a-chart')}
                 value={selectedChart?.id}
                 onChange={handleChartSelect}>
                 {dataInsightCharts.map((chart) => (
@@ -250,7 +255,7 @@ const AddKPIPage = () => {
               <Select
                 data-testid="metricType"
                 disabled={isUndefined(selectedChart)}
-                placeholder="Select a metric type"
+                placeholder={t('label.select-a-metric-type')}
                 value={selectedMetric?.name}
                 onChange={handleMetricSelect}>
                 {metricTypes.map((metric) => (
@@ -356,7 +361,7 @@ const AddKPIPage = () => {
               <RichTextEditor
                 height="200px"
                 initialValue={description}
-                placeHolder="write your description"
+                placeHolder={t('label.write-your-description')}
                 style={{ margin: 0 }}
                 onTextChange={(value) => setDescription(value)}
               />
@@ -367,7 +372,7 @@ const AddKPIPage = () => {
                 data-testid="cancel-btn"
                 type="link"
                 onClick={handleCancel}>
-                Cancel
+                {t('label.cancel')}
               </Button>
               <Button
                 data-testid="submit-btn"
@@ -375,7 +380,7 @@ const AddKPIPage = () => {
                 htmlType="submit"
                 loading={isCreatingKPI}
                 type="primary">
-                Submit
+                {t('label.submit')}
               </Button>
             </Space>
           </Form>

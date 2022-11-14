@@ -175,11 +175,11 @@ const KPIListPage = () => {
             <TitleBreadcrumb
               titleLinks={[
                 {
-                  name: 'Data Insights',
+                  name: t('label.data-insight'),
                   url: ROUTES.DATA_INSIGHT,
                 },
                 {
-                  name: 'KPI List',
+                  name: t('label.kpi-list'),
                   url: '',
                   activeTitle: true,
                 },

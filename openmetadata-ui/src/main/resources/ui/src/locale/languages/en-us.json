@@ -263,7 +263,13 @@
     "column-name": "Column Name",
     "interval-type": "Interval Type",
     "interval": "Interval",
-    "interval-unit": "Interval Unit"
+    "interval-unit": "Interval Unit",
+    "select-teams": "Select Teams",
+    "select-tiers": "Select Tiers",
+    "kpi-list": "Kpi list",
+    "kpi-name": "Kpi name",
+    "kpi-display-name": "Kpi display name",
+    "data-insight-chart": "Data insight chart"
   },
   "message": {
     "service-email-required": "Service account Email is required",
