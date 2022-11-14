@@ -17,7 +17,6 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
 "settings": {
-    "settings": {
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {

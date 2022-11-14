@@ -55,6 +55,9 @@ import org.elasticsearch.index.query.Operator;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
+import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
+import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import org.elasticsearch.search.SearchModule;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -359,6 +362,11 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
+    FieldValueFactorFunctionBuilder boostScoreBuilder =
+        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count").missing(1).factor(2);
+    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder[1];
+    functions[0] = new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder);
     QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_DISPLAY_NAME, 10.0f)
@@ -368,6 +376,7 @@ public class SearchResource {
             .field("columns.children.name", 2.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
+    FunctionScoreQueryBuilder queryBuilder = QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -384,7 +393,9 @@ public class SearchResource {
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryStringBuilder, hb, from, size);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
