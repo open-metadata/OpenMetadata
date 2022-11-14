@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { PagingResponse } from 'Models';
 import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { Include } from '../generated/type/include';
-import { Paging } from '../generated/type/paging';
 import APIClient from './index';
 
 export type ListParams = {
@@ -31,10 +31,7 @@ export type KpiResultParam = {
 };
 
 export const getListKPIs = async (params?: ListParams) => {
-  const response = await APIClient.get<{
-    data: Kpi[];
-    paging: Paging;
-  }>('/kpi', {
+  const response = await APIClient.get<PagingResponse<Kpi[]>>('/kpi', {
     params,
   });
 
@@ -66,7 +63,7 @@ export const getKPIByName = async (kpiName: string, params?: ListParams) => {
 };
 
 export const getListKpiResult = async (fqn: string, params: KpiResultParam) => {
-  const response = await APIClient.get<{ data: KpiResult[]; paging: Paging }>(
+  const response = await APIClient.get<PagingResponse<KpiResult[]>>(
     `/kpi/${fqn}/kpiResult`,
     { params }
   );
