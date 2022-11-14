@@ -151,7 +151,7 @@ const EdgeInfoDrawer = ({
               />
             ) : (
               <Typography.Paragraph className="text-grey-muted m-b-0">
-                {t('message.no-query-available')}
+                {t('server.no-query-available')}
               </Typography.Paragraph>
             )}
           </Col>
