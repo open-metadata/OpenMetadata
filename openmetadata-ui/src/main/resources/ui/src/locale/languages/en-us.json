@@ -269,7 +269,9 @@
     "kpi-list": "Kpi list",
     "kpi-name": "Kpi name",
     "kpi-display-name": "Kpi display name",
-    "data-insight-chart": "Data insight chart"
+    "data-insight-chart": "Data insight chart",
+    "data-assets": "Data Assets",
+    "app-analytics": "App Analytics"
   },
   "message": {
     "service-email-required": "Service account Email is required",
