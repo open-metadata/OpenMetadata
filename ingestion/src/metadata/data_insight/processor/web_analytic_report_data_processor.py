@@ -40,9 +40,7 @@ from metadata.generated.schema.entity.data import (
     table,
     topic,
 )
-from metadata.generated.schema.entity.teams import user
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.tests import testSuite
 from metadata.ingestion.api.source import SourceStatus
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
@@ -59,8 +57,6 @@ ENTITIES = {
     "pipeline": pipeline.Pipeline,
     "table": table.Table,
     "topic": topic.Topic,
-    "user": user.User,
-    "testSuite": testSuite.TestSuite,
 }
 
 CACHED_EVENTS = []

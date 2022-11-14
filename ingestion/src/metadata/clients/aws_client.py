@@ -40,7 +40,11 @@ class AWSClient:
             AWSCredentials,
         )
 
-        self.config = AWSCredentials.parse_obj(config) if config else config
+        self.config = (
+            config
+            if isinstance(config, AWSCredentials)
+            else (AWSCredentials.parse_obj(config) if config else config)
+        )
 
     def _get_session(self) -> Session:
         if (

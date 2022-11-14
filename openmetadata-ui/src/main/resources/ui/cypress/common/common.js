@@ -13,7 +13,7 @@
 
 /// <reference types="cypress" />
 
-import { SEARCH_INDEX } from '../constants/constants';
+import { DELETE_TERM, SEARCH_INDEX } from '../constants/constants';
 
 export const descriptionBox =
     '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
@@ -134,8 +134,9 @@ export const testServiceCreationAndIngestion = (
 
     // Enter service name in step 2
     cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+    interceptURL('GET', 'api/v1/services/ingestionPipelines/*', 'getIngestionPipelineStatus')
     cy.get('[data-testid="next-button"]').click();
-
+verifyResponseStatusCode('@getIngestionPipelineStatus', 200)
     // Connection Details in step 3
     cy.get('[data-testid="add-new-service-container"]')
         .parent()
@@ -160,8 +161,9 @@ export const testServiceCreationAndIngestion = (
     cy.get('[data-testid="test-connection-btn"]').click();
     verifyResponseStatusCode('@testConnection', 200);
     cy.contains('Connection test was successful').should('exist');
+    interceptURL('GET', '/api/v1/services/ingestionPipelines/status', 'getIngestionPipelineStatus')
     cy.get('[data-testid="submit-btn"]').should('exist').click();
-
+verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
     // check success
     cy.get('[data-testid="success-line"]').should('be.visible');
     cy.contains(`"${serviceName}"`).should('be.visible');
@@ -209,13 +211,13 @@ export const testServiceCreationAndIngestion = (
 
     cy.get('[data-testid="view-service-button"]').should('be.visible');
     cy.get('[data-testid="view-service-button"]').click();
-
+    verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
     handleIngestionRetry(type, testIngestionButton);
 };
 
-export const deleteCreatedService = (typeOfService, service_Name) => {
+export const deleteCreatedService = (typeOfService, service_Name, apiService) => {
     //Click on settings page
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click({force : true});
 
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
@@ -256,10 +258,10 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
     cy.get('[data-testid="confirmation-text-input"]')
         .should('be.visible')
-        .type('DELETE');
+        .type(DELETE_TERM);
     interceptURL(
         'DELETE',
-        '/api/v1/services/*/*?hardDelete=true&recursive=true',
+        `/api/v1/services/${apiService}/*`,
         'deleteService'
     );
     interceptURL(
@@ -270,15 +272,20 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
 
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteService', 200);
-    cy.reload();
-    verifyResponseStatusCode('@serviceDetails', 404);
-    cy.contains(`instance for ${service_Name} not found`);
-    //Checking if the service got deleted successfully
-    //Click on settings page
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    
+    //Waiting to check if myData page redirection is proper after deleting service
+    cy.get('[data-testid="tables"]').should('exist').should('be.visible');
 
+    //Closing the toast notification
+    toastNotification(`${typeOfService} Service deleted successfully!`)
+
+    //Checking if the service got deleted successfully
+    interceptURL('GET', '/api/v1/teams/name/Organization?fields=users,owns,defaultRoles,policies,owner,parents,childrenCount&include=all', 'getSettingsPage') 
+    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    verifyResponseStatusCode('@getSettingsPage', 200)
+    
     // Services page
-    cy.get('.ant-menu-title-content')
+    cy.get('[data-testid="settings-left-panel"]')
         .contains(typeOfService)
         .should('be.visible')
         .click();
@@ -506,7 +513,7 @@ export const addNewTagToEntity = (entityObj, term) => {
         .should('be.visible')
         .contains(term);
 
-    cy.get(':nth-child(1) > :nth-child(4) [data-testid="tag-container"]')
+    cy.get('[data-testid="tag-container"]')
         .contains('Tags')
         .should('be.visible')
         .click();
@@ -521,8 +528,7 @@ export const addNewTagToEntity = (entityObj, term) => {
         .scrollIntoView()
         .should('be.visible')
         .click();
-    cy.get(':nth-child(1) > :nth-child(4) [data-testid="tag-container"]')
-        .scrollIntoView()
+    cy.get('[data-testid="tag-container"]')
         .contains(term)
         .should('exist');
 };
@@ -569,7 +575,7 @@ export const softDeleteUser = (username) => {
     cy.get('[data-testid="soft-delete"]').click();
     cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
 
-    interceptURL('DELETE', '/api/v1/users/*', 'softdeleteUser');
+    interceptURL('DELETE', '/api/v1/users/*?hardDelete=false&recursive=false', 'softdeleteUser');
     interceptURL('GET', '/api/v1/users*', 'userDeleted');
     cy.get('[data-testid="confirm-button"]')
         .should('exist')
@@ -578,16 +584,7 @@ export const softDeleteUser = (username) => {
     verifyResponseStatusCode('@softdeleteUser', 200);
     verifyResponseStatusCode('@userDeleted', 200);
 
-    cy.get('.Toastify__toast-body > :nth-child(2)').should(
-        'have.text',
-        'User deleted successfully!'
-    );
-
-    //Closing the toast message
-    cy.get('.Toastify__close-button > svg')
-        .should('exist')
-        .should('be.visible')
-        .click();
+    toastNotification('User deleted successfully!');
 
     interceptURL('GET', '/api/v1/search/query*', 'searchUser');
 
@@ -624,17 +621,8 @@ export const restoreUser = (username) => {
         .should('exist')
         .should('be.visible')
         .click();
-    verifyResponseStatusCode('@restoreUser', 200);
-    cy.get('.Toastify__toast-body > :nth-child(2)').should(
-        'contain',
-        'User restored successfully!'
-    );
-
-    //Closing toast message
-    cy.get('.Toastify__close-button > svg')
-        .should('exist')
-        .should('be.visible')
-        .click();
+    verifyResponseStatusCode('@restoreUser', 200);    
+    toastNotification('User restored successfully!');
 
     //Verifying the restored user
     cy.get('.ant-switch').should('exist').should('be.visible').click();
@@ -659,30 +647,22 @@ export const deleteSoftDeletedUser = (username) => {
         .should('be.visible')
         .click();
     cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+    interceptURL('DELETE', 'api/v1/users/*?hardDelete=true&recursive=false', 'hardDeleteUser')
     cy.get('[data-testid="confirm-button"]')
         .should('exist')
         .should('be.visible')
         .click();
+    verifyResponseStatusCode('@hardDeleteUser', 200)
 
-    cy.wait(1000);
+    toastNotification('User deleted successfully!');
 
-    cy.get('.Toastify__toast-body > :nth-child(2)').should(
-        'have.text',
-        'User deleted successfully!'
-    );
-
-    //Closing toast message
-    cy.get('.Toastify__close-button > svg')
-        .should('exist')
-        .should('be.visible')
-        .click();
+    interceptURL('GET', 'api/v1/search/query?q=**&from=0&size=15&index=user_search_index', 'searchUser')
 
     cy.get('[data-testid="searchbar"]')
         .should('exist')
         .should('be.visible')
         .type(username);
-
-    cy.wait(1000);
+    verifyResponseStatusCode('@searchUser', 200)
 
     cy.get('.ant-table-placeholder > .ant-table-cell').should(
         'not.contain',
@@ -697,13 +677,12 @@ export const toastNotification = (msg) => {
 };
 
 export const addCustomPropertiesForEntity = (
+    propertyName,
     entityType,
     customType,
     value,
     entityObj
 ) => {
-    const propertyName = `entity${entityType.name}test${uuid()}`;
-
     //Add Custom property for selected entity
     cy.get('[data-testid="add-field-button"]')
         .should('exist')
@@ -743,14 +722,7 @@ export const addCustomPropertiesForEntity = (
     //Adding value for the custom property
 
     //Navigating through the created custom property for adding value
-    cy.get('tbody')
-        .contains(propertyName)
-        .scrollIntoView()
-        .next('td')
-        .contains('No data')
-        .next('[data-testid="edit-icon"]')
-        .as('editbutton');
-
+    cy.get(`[data-row-key="${propertyName}"]`).find('[data-testid="edit-icon"]').as('editbutton');
     cy.wait(1000);
 
     cy.get('@editbutton').should('exist').should('be.visible').click();
@@ -772,32 +744,12 @@ export const addCustomPropertiesForEntity = (
         }
     });
 
-    //Checking the added value to the property
-    cy.get('tbody')
-        .contains(propertyName)
-        .scrollIntoView()
-        .next('td')
-        .as('value');
-
-    cy.get('tbody')
-        .contains(propertyName)
-        .scrollIntoView()
-        .next('td')
-        .should('contain', value);
-
-    //returning the property name since it needs to be deleted and updated
-    return propertyName;
+    cy.get(`[data-row-key="${propertyName}"]`).should('contain', value)
 };
 
 export const editCreatedProperty = (propertyName) => {
     //Fetching for edit button
-    cy.get('tbody')
-        .children()
-        .contains(propertyName)
-        .scrollIntoView()
-        .nextUntil('button')
-        .find('[data-testid="edit-button"]')
-        .as('editbutton');
+    cy.get(`[data-row-key="${propertyName}"]`).find('[data-testid="edit-button"]').as('editbutton');
 
     cy.get('@editbutton').click();
 
@@ -815,23 +767,12 @@ export const editCreatedProperty = (propertyName) => {
     cy.get('.tw-modal-container').should('not.exist');
 
     //Fetching for updated descriptions for the created custom property
-    cy.get('tbody')
-        .children()
-        .contains(propertyName)
-        .nextUntil('div')
-        .find('[data-testid="viewer-container"]')
-        .should('contain', 'This is new description');
+    cy.get(`[data-row-key="${propertyName}"]`).find('[data-testid="viewer-container"]').should('contain', 'This is new description');
 };
 
 export const deleteCreatedProperty = (propertyName) => {
     //Fetching for delete button
-
-    cy.get('tbody')
-        .children()
-        .contains(propertyName)
-        .nextUntil('button')
-        .find('[data-testid="delete-button"]')
-        .as('deletebutton');
+    cy.get(`[data-row-key="${propertyName}"]`).find('[data-testid="delete-button"]').as('deletebutton');
 
     cy.get('@deletebutton').click();
 

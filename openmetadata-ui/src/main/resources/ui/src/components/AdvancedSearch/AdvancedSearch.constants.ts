@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { uniq } from 'lodash';
 import {
   BasicConfig,
@@ -281,6 +282,14 @@ const initialConfigWithoutFields: BasicConfig = {
       ...BaseConfig.operators.like,
       elasticSearchQueryType: 'wildcard',
     },
+  },
+  settings: {
+    ...BaseConfig.settings,
+    showLabels: true,
+    canReorder: false,
+    fieldLabel: i18next.t('label.description') + ':',
+    operatorLabel: i18next.t('label.condition') + ':',
+    valueLabel: i18next.t('label.criteria') + ':',
   },
 };
 

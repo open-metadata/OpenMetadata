@@ -21,6 +21,7 @@ import { ResourceEntity } from '../components/PermissionProvider/PermissionProvi
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
   getTeamAndUserDetailsPath,
@@ -91,11 +92,17 @@ export const getEntityOverview = (
 }> => {
   switch (type) {
     case EntityType.TABLE: {
-      const { fullyQualifiedName, owner, tags, usageSummary, profile } =
-        entityDetail as Table;
-      const [service, database] = getPartialNameFromTableFQN(
+      const {
+        fullyQualifiedName,
+        owner,
+        tags,
+        usageSummary,
+        profile,
+        columns,
+      } = entityDetail as Table;
+      const [service, database, schema] = getPartialNameFromTableFQN(
         fullyQualifiedName ?? '',
-        [FqnPart.Service, FqnPart.Database],
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
         FQN_SEPARATOR_CHAR
       ).split(FQN_SEPARATOR_CHAR);
       const tier = getTierFromTableTags(tags || []);
@@ -127,6 +134,18 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
+          name: 'Schema',
+          value: schema,
+          url: getDatabaseSchemaDetailsPath(
+            getPartialNameFromTableFQN(
+              fullyQualifiedName ?? '',
+              [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+              FQN_SEPARATOR_CHAR
+            )
+          ),
+          isLink: true,
+        },
+        {
           name: 'Owner',
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
@@ -149,7 +168,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Columns',
-          value: profile && profile?.columnCount ? profile.columnCount : '--',
+          value: columns ? columns.length : '--',
           isLink: false,
         },
         {

@@ -97,6 +97,7 @@ const AddAnnouncementModal: FC<Props> = ({
       confirmLoading={isLoading}
       data-testid="add-announcement"
       okButtonProps={{
+        id: 'announcement-submit',
         form: 'announcement-form',
         type: 'primary',
         htmlType: 'submit',

@@ -19,9 +19,12 @@ describe('Tags page should work', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     interceptURL('GET', '/api/v1/tags*', 'getTags');
-    
-    cy.get('[data-testid="governance"]').should("exist").should("be.visible").click({ force: true })
-    
+
+    cy.get('[data-testid="governance"]')
+      .should('exist')
+      .should('be.visible')
+      .click({ force: true });
+
     cy.get('[data-testid="appbar-item-tags"]')
       .should('be.visible')
       .click({ force: true });
@@ -104,7 +107,7 @@ describe('Tags page should work', () => {
 
     verifyResponseStatusCode('@createTag', 200);
 
-    cy.get('tbody').should('contain', NEW_TAG.name);
+    cy.get('[data-testid="table"]').should('contain', NEW_TAG.name);
   });
 
   it('Use newly created tag to any entity should work', () => {
@@ -129,9 +132,14 @@ describe('Tags page should work', () => {
         expect(text).to.equal('2');
       });
 
+    interceptURL(
+      'GET',
+      'api/v1/search/query?q=&index=**',
+      'getEntityDetailsPage'
+    );
     cy.get('@count').click();
+    verifyResponseStatusCode('@getEntityDetailsPage', 200);
 
-    cy.wait(500);
     cy.get('[data-testid="table-data-card"]')
       .first()
       .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)

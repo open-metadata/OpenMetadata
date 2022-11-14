@@ -12,7 +12,7 @@
  */
 
 import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
-import { LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Glue';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -73,11 +73,11 @@ describe('Glue Ingestion', () => {
     editOwnerforCreatedService(
       SERVICE_TYPE.Database,
       serviceName,
-      'databaseServices'
+      API_SERVICE.databaseServices
     );
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
   });
 });

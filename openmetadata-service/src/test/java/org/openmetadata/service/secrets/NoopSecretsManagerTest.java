@@ -62,7 +62,7 @@ public class NoopSecretsManagerTest {
 
   @Test
   void testDecryptDatabaseServiceConnectionConfig() {
-    testEncryptDecryptServiceConnection(ENCRYPTED_VALUE, DECRYPTED_VALUE, DECRYPT);
+    testEncryptDecryptServiceConnection(DECRYPTED_VALUE, ENCRYPTED_VALUE, DECRYPT);
   }
 
   @Test
@@ -94,7 +94,7 @@ public class NoopSecretsManagerTest {
 
   private void testEncryptDecryptServiceConnection(String encryptedValue, String decryptedValue, boolean decrypt) {
     MysqlConnection mysqlConnection = new MysqlConnection();
-    mysqlConnection.setPassword(encryptedValue);
+    mysqlConnection.setPassword(decrypt ? encryptedValue : decryptedValue);
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
@@ -102,7 +102,7 @@ public class NoopSecretsManagerTest {
         secretsManager.encryptOrDecryptServiceConnectionConfig(
             mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
 
-    assertEquals(decryptedValue, ((MysqlConnection) actualConfig).getPassword());
+    assertEquals(decrypt ? decryptedValue : encryptedValue, ((MysqlConnection) actualConfig).getPassword());
     assertNotSame(mysqlConnection, actualConfig);
   }
 }
