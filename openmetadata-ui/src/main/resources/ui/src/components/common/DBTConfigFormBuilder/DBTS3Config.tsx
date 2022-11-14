@@ -14,7 +14,7 @@
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   DBTBucketDetails,
-  DbtConfigSource,
+  DbtConfig,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
@@ -71,7 +71,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   };
 
   const [errors, setErrors] = useState<ErrorDbtS3>();
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtS3Config(
       data.dbtSecurityConfig || {}
     );

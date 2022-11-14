@@ -12,7 +12,7 @@
  */
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DbtConfig } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   errorMsg,
   getSeparator,
@@ -51,7 +51,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtCloudConfig(data);
     setErrors(reqErrors);
 
