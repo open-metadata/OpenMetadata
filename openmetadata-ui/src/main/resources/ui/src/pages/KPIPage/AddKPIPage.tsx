@@ -323,31 +323,34 @@ const AddKPIPage = () => {
               </Form.Item>
             )}
 
-            <Space className="w-full kpi-dates-space">
-              <Form.Item
-                label={t('label.start-date')}
-                messageVariables={{ fieldName: 'startDate' }}
-                name="startDate"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input type="datetime-local" />
-              </Form.Item>
-
-              <Form.Item
-                label={t('label.end-date')}
-                messageVariables={{ fieldName: 'endDate' }}
-                name="endDate"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input type="datetime-local" />
-              </Form.Item>
-            </Space>
+            <Row gutter={[8, 8]}>
+              <Col span={12}>
+                <Form.Item
+                  label={t('label.start-date')}
+                  messageVariables={{ fieldName: 'startDate' }}
+                  name="startDate"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}>
+                  <Input type="datetime-local" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label={t('label.end-date')}
+                  messageVariables={{ fieldName: 'endDate' }}
+                  name="endDate"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}>
+                  <Input type="datetime-local" />
+                </Form.Item>
+              </Col>
+            </Row>
 
             <Form.Item label={t('label.description')} name="description">
               <RichTextEditor

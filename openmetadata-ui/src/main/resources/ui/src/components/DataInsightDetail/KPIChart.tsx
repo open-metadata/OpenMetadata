@@ -99,12 +99,14 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
         })
       );
       const responses = await Promise.allSettled(promises);
+      const kpiResultsList: KpiResult[] = [];
 
       responses.forEach((response) => {
         if (response.status === 'fulfilled') {
-          setKpiResults((previous) => [...previous, ...response.value.data]);
+          kpiResultsList.push(...response.value.data);
         }
       });
+      setKpiResults(kpiResultsList);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
