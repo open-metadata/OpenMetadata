@@ -65,10 +65,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public final Fields getFields(String fields) {
-    if (fields != null && fields.equals("*")) {
-      return new Fields(allowedFields, String.join(",", allowedFields));
-    }
-    return new Fields(allowedFields, fields);
+    return dao.getFields(fields);
   }
 
   public abstract T addHref(UriInfo uriInfo, T entity);
