@@ -394,8 +394,6 @@ const AddIngestion = ({
       }
     } else if (showDBTConfig && activeIngestionStep === 2) {
       nextStep = activeIngestionStep + 2;
-    } else if (showDBTConfig && activeIngestionStep === 2) {
-      nextStep = activeIngestionStep + 2;
     } else {
       nextStep = activeIngestionStep + 1;
     }
@@ -414,8 +412,6 @@ const AddIngestion = ({
       isServiceTypeOpenMetadata &&
       activeIngestionStep === 3
     ) {
-      prevStep = activeIngestionStep - 2;
-    } else if (showDBTConfig && activeIngestionStep === 4) {
       prevStep = activeIngestionStep - 2;
     } else if (showDBTConfig && activeIngestionStep === 4) {
       prevStep = activeIngestionStep - 2;
