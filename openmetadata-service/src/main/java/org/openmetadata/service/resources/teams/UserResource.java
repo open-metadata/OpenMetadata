@@ -70,21 +70,22 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.auth.GenerateTokenRequest;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.RevokeTokenRequest;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
-import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
-import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
-import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -574,7 +575,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @PUT
-  @Path("/revokeToken/{id}")
+  @Path("/revokeToken")
   @Operation(
       operationId = "revokeJWTTokenForBotUser",
       summary = "Revoke JWT Token for a Bot User",
@@ -589,9 +590,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response revokeToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") UUID id) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RevokeTokenRequest revokeTokenRequest)
+      throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    User user = dao.get(uriInfo, revokeTokenRequest.getId(), Fields.EMPTY_FIELDS);
+    if (!user.getIsBot()) {
+      throw new IllegalStateException(CatalogExceptionMessage.invalidBotUser());
+    }
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
