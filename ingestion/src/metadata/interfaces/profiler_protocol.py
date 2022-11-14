@@ -38,8 +38,8 @@ class ProfilerInterfaceArgs(BaseModel):
 
     service_connection_config: Any
     metadata_obj: Optional[Union[MetaData, DataLakeProfilerType]]
-    ometa_client: OpenMetadata
-    thread_count: float
+    ometa_client: Optional[OpenMetadata]
+    thread_count: Optional[float]
     table_entity: Optional[Union[Table, Any]]
     table_sample_precentage: Optional[Union[float, int]]
     table_sample_query: Optional[Union[int, str]]

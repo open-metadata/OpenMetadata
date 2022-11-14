@@ -174,8 +174,8 @@ class TestE2EWorkflow(unittest.TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                ProfilerInterfaceArgs(
-                    cls.sqlite_conn.config,
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=cls.sqlite_conn.config,
                     table_entity=table,
                     ometa_client=None,
                 )

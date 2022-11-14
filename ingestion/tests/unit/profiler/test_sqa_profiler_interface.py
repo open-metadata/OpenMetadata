@@ -79,8 +79,10 @@ class SQAInterfaceTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             self.sqa_profiler_interface = SQAProfilerInterface(
-                ProfilerInterfaceArgs(
-                    sqlite_conn, table_entity=table_entity, ometa_client=None
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=sqlite_conn,
+                    table_entity=table_entity,
+                    ometa_client=None,
                 )
             )
         self.table = User
@@ -115,8 +117,10 @@ class SQAInterfaceTestMultiThread(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            ProfilerInterfaceArgs(
-                sqlite_conn, table_entity=table_entity, ometa_client=None
+            profiler_interface_args=ProfilerInterfaceArgs(
+                service_connection_config=sqlite_conn,
+                table_entity=table_entity,
+                ometa_client=None,
             )
         )
 

@@ -84,8 +84,8 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             cls.sqa_profiler_interface = SQAProfilerInterface(
-                ProfilerInterfaceArgs(
-                    cls.sqlite_conn,
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=cls.sqlite_conn,
                     table_entity=cls.table_entity,
                     ometa_client=None,
                 )
@@ -703,7 +703,7 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=EmptyUser
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                ProfilerInterfaceArgs(
+                profiler_interface_args=ProfilerInterfaceArgs(
                     self.sqlite_conn,
                     table_entity=self.table_entity,
                     ometa_client=None,

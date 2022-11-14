@@ -74,8 +74,10 @@ class SampleTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            ProfilerInterfaceArgs(
-                sqlite_conn, table_entity=table_entity, ometa_client=None
+            profiler_interface_args=ProfilerInterfaceArgs(
+                service_connection_config=sqlite_conn,
+                table_entity=table_entity,
+                ometa_client=None,
             )
         )
     engine = sqa_profiler_interface.session.get_bind()
@@ -137,7 +139,7 @@ class SampleTest(TestCase):
         ):
             sqa_profiler_interface = SQAProfilerInterface(
                 ProfilerInterfaceArgs(
-                    self.sqlite_conn,
+                    service_connection_config=self.sqlite_conn,
                     table_entity=self.table_entity,
                     table_sample_precentage=50,
                     ometa_client=None,
@@ -179,11 +181,13 @@ class SampleTest(TestCase):
             profiler = (
                 Profiler(
                     count,
-                    profiler_interface=ProfilerInterfaceArgs(
-                        self.sqlite_conn,
-                        table_entity=self.table_entity,
-                        table_sample_precentage=50,
-                        ometa_client=None,
+                    profiler_interface=SQAProfilerInterface(
+                        profiler_interface_args=ProfilerInterfaceArgs(
+                            self.sqlite_conn,
+                            table_entity=self.table_entity,
+                            table_sample_precentage=50,
+                            ometa_client=None,
+                        ),
                     ),
                 ),
             )
