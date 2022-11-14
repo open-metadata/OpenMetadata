@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -56,12 +57,6 @@ public class KpiRepository extends EntityRepository<Kpi> {
     // validate targetDefinition
     Entity.getEntityReferenceById(Entity.DATA_INSIGHT_CHART, kpi.getDataInsightChart().getId(), Include.NON_DELETED);
     EntityRepository<DataInsightChart> dataInsightChartRepository = Entity.getEntityRepository(DATA_INSIGHT_CHART);
-    // Each Chart has one unique Kpi mapping
-    List<CollectionDAO.EntityRelationshipRecord> record =
-        findFrom(kpi.getDataInsightChart().getId(), DATA_INSIGHT_CHART, Relationship.USES, KPI);
-    if (record.size() > 0) {
-      throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
-    }
     DataInsightChart chart =
         dataInsightChartRepository.get(
             null, kpi.getDataInsightChart().getId(), dataInsightChartRepository.getFields("metrics"));
@@ -174,6 +169,14 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
   private EntityReference getDataInsightChart(Kpi kpi) throws IOException {
     return getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CHART, true);
+  }
+
+  public void validateDataInsightChartMapping(UUID chartId) {
+    // Each Chart has one unique Kpi mapping
+    List<CollectionDAO.EntityRelationshipRecord> record = findFrom(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
+    if (record.size() > 0) {
+      throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
+    }
   }
 
   public KpiResult getKpiResult(String fqn) throws IOException {
