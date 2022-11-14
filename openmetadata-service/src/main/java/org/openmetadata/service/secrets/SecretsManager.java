@@ -23,10 +23,12 @@ import java.util.Locale;
 import lombok.Getter;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class SecretsManager {
@@ -48,16 +50,32 @@ public abstract class SecretsManager {
     try {
       Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
       Object newConnectionConfig = JsonUtils.convertValue(connectionConfig, clazz);
-      if (encrypt) {
-        encryptPasswordFields(newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName));
-      } else {
-        decryptPasswordFields(newConnectionConfig);
-      }
-      return newConnectionConfig;
+      return encryptOrDecryptPasswordFields(
+          newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), encrypt);
     } catch (Exception e) {
       throw InvalidServiceConnectionException.byMessage(
           connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
     }
+  }
+
+  public AuthenticationMechanism encryptOrDecryptAuthenticationMechanism(
+      String name, AuthenticationMechanism authenticationMechanism, boolean encrypt) {
+    authenticationMechanism = AuthenticationMechanismBuilder.build(authenticationMechanism);
+    try {
+      return (AuthenticationMechanism)
+          encryptOrDecryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), encrypt);
+    } catch (Exception e) {
+      throw InvalidServiceConnectionException.byMessage(name, "Failed to encrypt user bot instance.");
+    }
+  }
+
+  private Object encryptOrDecryptPasswordFields(Object targetObject, String name, boolean encrypt) {
+    if (encrypt) {
+      encryptPasswordFields(targetObject, name);
+    } else {
+      decryptPasswordFields(targetObject);
+    }
+    return targetObject;
   }
 
   private void encryptPasswordFields(Object toEncryptObject, String secretId) {

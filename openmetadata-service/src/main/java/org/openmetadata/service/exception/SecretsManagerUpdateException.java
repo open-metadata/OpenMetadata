@@ -13,13 +13,13 @@
 
 package org.openmetadata.service.exception;
 
-public class SecretsManagerMigrationException extends RuntimeException {
+public class SecretsManagerUpdateException extends RuntimeException {
 
-  public SecretsManagerMigrationException(String message, Throwable throwable) {
+  public SecretsManagerUpdateException(String message, Throwable throwable) {
     super(message, throwable);
   }
 
-  public SecretsManagerMigrationException(String message) {
+  public SecretsManagerUpdateException(String message) {
     super(message);
   }
 }

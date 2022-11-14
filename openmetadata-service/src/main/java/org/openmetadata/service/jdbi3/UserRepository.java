@@ -37,6 +37,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -99,6 +101,13 @@ public class UserRepository extends EntityRepository<User> {
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
+
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
+      user.withAuthenticationMechanism(
+          secretsManager.encryptOrDecryptAuthenticationMechanism(
+              user.getName(), user.getAuthenticationMechanism(), true));
+    }
 
     store(user, update);
 
