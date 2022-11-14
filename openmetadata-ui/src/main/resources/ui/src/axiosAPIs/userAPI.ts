@@ -19,8 +19,8 @@ import {
   AuthenticationMechanism,
   CreateUser,
 } from '../generated/api/teams/createUser';
+import { JwtAuth } from '../generated/auth/jwtAuth';
 import { Bot } from '../generated/entity/bot';
-import { JwtAuth } from '../generated/entity/teams/authN/jwtAuth';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';

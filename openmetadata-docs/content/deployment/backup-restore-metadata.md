@@ -1,9 +1,9 @@
 ---
 title: Backup Metadata
-slug: /deployment/upgrade/backup-metadata
+slug: /deployment/backup-restore-metadata
 ---
 
-# Backup Metadata
+# Backup & Restore Metadata
 
 ## Introduction
 

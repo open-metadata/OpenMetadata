@@ -21,7 +21,7 @@ import 'codemirror/addon/selection/active-line';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/sql/sql';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { JSON_TAB_SIZE } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -68,9 +68,7 @@ const SchemaEditor = ({
     readOnly: true,
     ...options,
   };
-  const [internalValue, setInternalValue] = useState(
-    getSchemaEditorValue(value)
-  );
+  const [internalValue, setInternalValue] = useState<string>('');
   const handleEditorInputBeforeChange = (
     _editor: Editor,
     _data: EditorChange,
@@ -85,6 +83,10 @@ const SchemaEditor = ({
   ): void => {
     onChange && onChange(getSchemaEditorValue(value));
   };
+
+  useEffect(() => {
+    setInternalValue(getSchemaEditorValue(value));
+  }, [value]);
 
   return (
     <div className={className}>

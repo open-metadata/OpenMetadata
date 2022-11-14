@@ -22,7 +22,7 @@ describe('Services page should work properly', () => {
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
-    cy.get('.ant-menu-title-content')
+    cy.get('[data-testid="settings-left-panel"]')
       .contains('Database')
       .should('be.visible')
       .click();
