@@ -20,6 +20,7 @@ import {
   Select,
   SelectProps,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { t } from 'i18next';
@@ -48,8 +49,10 @@ import {
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { useAuth } from '../../hooks/authHooks';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getTeamFilter } from '../../utils/DataInsightUtils';
 import {
@@ -62,6 +65,7 @@ import './DataInsight.less';
 const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
 
 const DataInsightPage = () => {
+  const { isAdminUser } = useAuth();
   const history = useHistory();
   const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
   const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.DataAssets);
@@ -167,9 +171,17 @@ const DataInsightPage = () => {
                 {t('label.data-insight-subtitle')}
               </Typography.Text>
             </div>
-            <Button type="primary" onClick={handleAddKPI}>
-              {t('label.add-kpi')}
-            </Button>
+            <Tooltip
+              title={
+                isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                disabled={!isAdminUser}
+                type="primary"
+                onClick={handleAddKPI}>
+                {t('label.add-kpi')}
+              </Button>
+            </Tooltip>
           </Space>
         </Col>
         <Col span={24}>

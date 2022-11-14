@@ -22,6 +22,7 @@ import {
   Row,
   Slider,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -39,10 +40,14 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import { VALIDATE_MESSAGES } from '../../constants/DataInsight.constants';
-import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
+import {
+  ADD_KPI_TEXT,
+  NO_PERMISSION_FOR_ACTION,
+} from '../../constants/HelperTextUtil';
 import { CreateKpiRequest } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { useAuth } from '../../hooks/authHooks';
 import {
   getLocaleDateFromTimeStamp,
   getUTCDateTime,
@@ -50,6 +55,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddKPIPage = () => {
+  const { isAdminUser } = useAuth();
   const { kpiName } = useParams<{ kpiName: string }>();
 
   const { t } = useTranslation();
@@ -352,14 +358,20 @@ const AddKPIPage = () => {
                     onClick={handleCancel}>
                     Back
                   </Button>
-                  <Button
-                    data-testid="submit-btn"
-                    form="kpi-form"
-                    htmlType="submit"
-                    loading={isUpdatingKPI}
-                    type="primary">
-                    Save
-                  </Button>
+                  <Tooltip
+                    title={
+                      isAdminUser ? t('label.save') : NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
+                      data-testid="submit-btn"
+                      disabled={!isAdminUser}
+                      form="kpi-form"
+                      htmlType="submit"
+                      loading={isUpdatingKPI}
+                      type="primary">
+                      Save
+                    </Button>
+                  </Tooltip>
                 </Space>
               </Form>
             </Card>

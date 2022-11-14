@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Space, Tooltip as AntdTooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +31,9 @@ import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
 } from '../../constants/DataInsight.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
+import { useAuth } from '../../hooks/authHooks';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -42,6 +44,7 @@ interface Props {
 }
 
 const KPIChart: FC<Props> = ({ chartFilter }) => {
+  const { isAdminUser } = useAuth();
   const { t } = useTranslation();
   const history = useHistory();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
@@ -110,12 +113,16 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
       <Typography.Text>
         {t('message.no-kpi-available-add-new-one')}
       </Typography.Text>
-      <Button
-        className="tw-border-primary tw-text-primary"
-        type="default"
-        onClick={handleAddKpi}>
-        {t('label.add-kpi')}
-      </Button>
+      <AntdTooltip
+        title={isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION}>
+        <Button
+          className="tw-border-primary tw-text-primary"
+          disabled={!isAdminUser}
+          type="default"
+          onClick={handleAddKpi}>
+          {t('label.add-kpi')}
+        </Button>
+      </AntdTooltip>
     </Space>
   );
 

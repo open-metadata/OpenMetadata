@@ -31,15 +31,18 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 
 import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTime } from '../../utils/TimeUtils';
 
 const KPIListPage = () => {
+  const { isAdminUser } = useAuth();
   const history = useHistory();
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
@@ -118,9 +121,14 @@ const KPIListPage = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip placement="left" title="Delete">
+            <Tooltip
+              placement="left"
+              title={
+                isAdminUser ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
+                disabled={!isAdminUser}
                 icon={
                   <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
                 }
