@@ -38,6 +38,7 @@ import {
   postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
+import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -68,6 +69,7 @@ import {
   getEntityPlaceHolder,
   getFeedCounts,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -82,7 +84,7 @@ import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../utils/TagsUtils';
 import { getDateTimeByTimeStamp } from '../../utils/TimeUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -349,6 +351,26 @@ const PipelineDetails = ({
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedPipeline = { ...pipelineDetails, tags: updatedTags };
       tagUpdateHandler(updatedPipeline);
+    }
+  };
+
+  const handleRestorePipeline = async () => {
+    try {
+      await restorePipeline(pipelineDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.pipeline'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.pipeline'),
+        })
+      );
     }
   };
 
@@ -812,6 +834,7 @@ const PipelineDetails = ({
           }
           version={version + ''}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestorePipeline}
           onThreadLinkSelect={onThreadLinkSelect}
         />
 

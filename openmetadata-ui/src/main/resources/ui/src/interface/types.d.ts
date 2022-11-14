@@ -34,6 +34,10 @@ declare module 'Models' {
     type: string;
   }
 
+  export interface RestoreEntitiesRequestType {
+    id: string;
+  }
+
   export type Match = {
     params: {
       searchQuery: string;
