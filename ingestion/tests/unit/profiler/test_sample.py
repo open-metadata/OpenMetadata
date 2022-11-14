@@ -19,13 +19,14 @@ from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import declarative_base
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
+
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import CustomTypes

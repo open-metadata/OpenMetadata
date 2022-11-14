@@ -17,11 +17,12 @@ from datetime import datetime, timezone
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
+
 import pytest
 import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
+
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -38,6 +39,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics

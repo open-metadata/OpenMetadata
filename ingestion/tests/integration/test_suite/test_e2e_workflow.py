@@ -20,7 +20,7 @@ from unittest.mock import patch
 
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -46,6 +46,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
