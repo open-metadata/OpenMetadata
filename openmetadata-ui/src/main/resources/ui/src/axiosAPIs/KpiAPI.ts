@@ -73,3 +73,10 @@ export const getListKpiResult = async (fqn: string, params: KpiResultParam) => {
 
   return response.data;
 };
+export const getLatestKpiResult = async (fqn: string) => {
+  const response = await APIClient.get<KpiResult>(
+    `/kpi/${fqn}/latestKpiResult`
+  );
+
+  return response.data;
+};

@@ -14,7 +14,7 @@
 import { TooltipProps } from 'recharts';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
-import { KpiTargetType } from '../generated/dataInsight/kpi/kpi';
+import { KpiResult, KpiTargetType } from '../generated/dataInsight/kpi/kpi';
 
 export interface ChartAggregateParam {
   dataInsightChartName: DataInsightChartType;
@@ -35,4 +35,12 @@ export interface ChartFilter {
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   isPercentage?: boolean;
   kpiTooltipRecord?: Record<string, KpiTargetType>;
+}
+
+export interface UIKpiResult extends KpiResult {
+  target: string | undefined;
+  metricType: KpiTargetType;
+  startDate: number;
+  endDate: number;
+  displayName: string;
 }

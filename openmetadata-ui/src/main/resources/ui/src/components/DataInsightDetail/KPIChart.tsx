@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Tooltip as AntdTooltip, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Row,
+  Space,
+  Tooltip as AntdTooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -25,19 +34,31 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getListKpiResult, getListKPIs } from '../../axiosAPIs/KpiAPI';
+import {
+  getLatestKpiResult,
+  getListKpiResult,
+  getListKPIs,
+} from '../../axiosAPIs/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
 } from '../../constants/DataInsight.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
+import {
+  Kpi,
+  KpiResult,
+  KpiTargetType,
+} from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
-import { ChartFilter } from '../../interface/data-insight.interface';
+import {
+  ChartFilter,
+  UIKpiResult,
+} from '../../interface/data-insight.interface';
 import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
+import KPILatestResults from './KPILatestResults';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -49,6 +70,8 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
   const history = useHistory();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
+  const [kpiLatestResults, setKpiLatestResults] =
+    useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
@@ -89,6 +112,51 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
     }
   };
 
+  const fetchKpiLatestResults = async () => {
+    setIsLoading(true);
+    try {
+      const promises = kpiList.map((kpi) =>
+        getLatestKpiResult(kpi.fullyQualifiedName ?? '')
+      );
+      const responses = await Promise.allSettled(promises);
+
+      const latestResults = responses.reduce((previous, curr) => {
+        if (curr.status === 'fulfilled') {
+          const resultValue: KpiResult = curr.value;
+          const kpiName = resultValue.kpiFqn ?? '';
+
+          // get the current kpi
+          const kpi = kpiList.find((k) => k.fullyQualifiedName === kpiName);
+
+          // get the kpiTarget
+          const kpiTarget = kpi?.targetDefinition?.[0];
+
+          if (!isUndefined(kpi) && !isUndefined(kpiTarget)) {
+            return {
+              ...previous,
+              [kpiName]: {
+                ...resultValue,
+                target: kpiTarget?.value,
+                metricType: kpi?.metricType as KpiTargetType,
+                startDate: kpi?.startDate,
+                endDate: kpi?.endDate,
+                displayName: kpi.displayName ?? kpiName,
+              },
+            };
+          }
+        }
+
+        return previous;
+      }, {} as Record<string, UIKpiResult>);
+
+      setKpiLatestResults(latestResults);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const { kpis, graphData, kpiTooltipRecord } = useMemo(() => {
     const kpiTooltipRecord = kpiList.reduce((previous, curr) => {
       return { ...previous, [curr.name]: curr.metricType };
@@ -103,11 +171,13 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
 
   useEffect(() => {
     setKpiResults([]);
+    setKpiLatestResults(undefined);
   }, [chartFilter]);
 
   useEffect(() => {
     if (kpiList.length) {
       fetchKpiResults();
+      fetchKpiLatestResults();
     }
   }, [kpiList, chartFilter]);
 
@@ -149,24 +219,36 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
         </Space>
       }>
       {kpiList.length ? (
-        <ResponsiveContainer debounce={1} minHeight={400}>
-          <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="timestamp" />
-            <YAxis />
-            <Tooltip
-              content={<CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />}
-            />
-            {kpis.map((kpi, i) => (
-              <Line
-                dataKey={kpi}
-                key={i}
-                stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
-                type="monotone"
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+        <Row>
+          {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
+            <Col span={6}>
+              <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
+            </Col>
+          )}
+
+          <Col span={18}>
+            <ResponsiveContainer debounce={1} minHeight={400}>
+              <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="timestamp" />
+                <YAxis />
+                <Tooltip
+                  content={
+                    <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
+                  }
+                />
+                {kpis.map((kpi, i) => (
+                  <Line
+                    dataKey={kpi}
+                    key={i}
+                    stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
+                    type="monotone"
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </Col>
+        </Row>
       ) : (
         addKpiPlaceholder
       )}
