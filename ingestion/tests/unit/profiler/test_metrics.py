@@ -20,7 +20,7 @@ from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
-
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
@@ -83,9 +83,11 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             cls.sqa_profiler_interface = SQAProfilerInterface(
-                cls.sqlite_conn,
-                table_entity=cls.table_entity,
-                ometa_client=None,
+                ProfilerInterfaceArgs(
+                    cls.sqlite_conn,
+                    table_entity=cls.table_entity,
+                    ometa_client=None,
+                )
             )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
 
@@ -700,9 +702,11 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=EmptyUser
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                table_entity=self.table_entity,
-                ometa_client=None,
+                ProfilerInterfaceArgs(
+                    self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    ometa_client=None,
+                )
             )
 
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)

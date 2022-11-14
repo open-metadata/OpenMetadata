@@ -19,7 +19,7 @@ from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import declarative_base
-
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
@@ -73,7 +73,9 @@ class SampleTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, table_entity=table_entity, ometa_client=None
+            ProfilerInterfaceArgs(
+                sqlite_conn, table_entity=table_entity, ometa_client=None
+            )
         )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
@@ -133,10 +135,12 @@ class SampleTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                table_entity=self.table_entity,
-                table_sample_precentage=50,
-                ometa_client=None,
+                ProfilerInterfaceArgs(
+                    self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    table_sample_precentage=50,
+                    ometa_client=None,
+                )
             )
 
         sample = sqa_profiler_interface._create_thread_safe_sampler(
@@ -171,13 +175,15 @@ class SampleTest(TestCase):
         with patch.object(
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
-            profiler = Profiler(
-                count,
-                profiler_interface=SQAProfilerInterface(
-                    self.sqlite_conn,
-                    table_entity=self.table_entity,
-                    table_sample_precentage=50,
-                    ometa_client=None,
+            profiler = (
+                Profiler(
+                    count,
+                    profiler_interface=ProfilerInterfaceArgs(
+                        self.sqlite_conn,
+                        table_entity=self.table_entity,
+                        table_sample_precentage=50,
+                        ometa_client=None,
+                    ),
                 ),
             )
         res = profiler.compute_metrics()._column_results

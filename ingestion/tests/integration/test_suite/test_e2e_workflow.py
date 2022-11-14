@@ -20,7 +20,7 @@ from unittest.mock import patch
 
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
-
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -173,9 +173,11 @@ class TestE2EWorkflow(unittest.TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                cls.sqlite_conn.config,
-                table_entity=table,
-                ometa_client=None,
+                ProfilerInterfaceArgs(
+                    cls.sqlite_conn.config,
+                    table_entity=table,
+                    ometa_client=None,
+                )
             )
         engine = sqa_profiler_interface.session.get_bind()
         session = sqa_profiler_interface.session

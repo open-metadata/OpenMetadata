@@ -17,12 +17,11 @@ from datetime import datetime, timezone
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
-
 import pytest
 import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
-
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -84,7 +83,9 @@ class ProfilerTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, table_entity=table_entity, ometa_client=None
+            ProfilerInterfaceArgs(
+                sqlite_conn, table_entity=table_entity, ometa_client=None
+            )
         )
 
     @classmethod

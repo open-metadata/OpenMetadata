@@ -96,7 +96,7 @@ class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
 
 
-class ProfilerWorkflow:
+class ProfilerWorkflow:  # pylint: disable=too-many-public-methods
     """
     Configure and run the ORM profiler
     """
@@ -139,7 +139,6 @@ class ProfilerWorkflow:
                 "If so, make sure the profiler service name matches the service name specified during ingestion."
             )
         self._table_entity = None
-        self._service_connection_config = None
         self.create_profiler_interface_dispatch = singledispatch(
             self.create_profiler_interface_dispatch
         )
@@ -253,7 +252,9 @@ class ProfilerWorkflow:
 
         return get_partition_details(entity)
 
-    def create_profiler_interface_dispatch(self, metadata_obj):
+    def create_profiler_interface_dispatch(
+        self, metadata_obj
+    ):  # pylint: disable=method-hidden
         raise NotImplementedError(f"{type(metadata_obj)} not implemented for Profiler")
 
     def create_sqa_profiler_interface_dispatch(
@@ -278,9 +279,8 @@ class ProfilerWorkflow:
         try:
 
             self._table_entity = table_entity
-            self._service_connection_config = service_connection_config
             self._profiler_interface_args = ProfilerInterfaceArgs(
-                service_connection_config=self._service_connection_config,
+                service_connection_config=service_connection_config,
                 metadata_obj=metadata_obj,
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,

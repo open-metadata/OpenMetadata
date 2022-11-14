@@ -305,7 +305,7 @@ class DatalakeSource(DatabaseServiceSource):
                 data_frame = self.get_s3_files(
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
-            if len(data_frame):
+            if not data_frame:
                 columns = self.get_columns(data_frame)
                 table_request = CreateTableRequest(
                     name=table_name,
