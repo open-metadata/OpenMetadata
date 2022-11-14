@@ -80,6 +80,9 @@ class Mean(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
+        """
+        Data lake function to calculate mean
+        """
         try:
             if self.col.dataType in QUANTIFIABLE_DICT:
                 return data_frame[self.col.name.__root__].mean()
@@ -97,6 +100,7 @@ class Mean(StaticMetric):
                     .mean()
                     .tolist()[0]
                 )
+            raise Exception()
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(

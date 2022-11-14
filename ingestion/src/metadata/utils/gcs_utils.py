@@ -77,12 +77,14 @@ def read_json_from_gcs(  # pylint: disable=inconsistent-return-statements
         bucket = client.get_bucket(bucket_name)
         data = json.loads(bucket.get_blob(key).download_as_string())
         if isinstance(data, list):
-            return pd.DataFrame.from_records(data)
-        return pd.DataFrame.from_dict(
-            dict(  # pylint: disable=consider-using-dict-comprehension
-                [(k, pd.Series(v)) for k, v in data.items()]
+            return [pd.DataFrame.from_records(data)]
+        return [
+            pd.DataFrame.from_dict(
+                dict(  # pylint: disable=consider-using-dict-comprehension
+                    [(k, pd.Series(v)) for k, v in data.items()]
+                )
             )
-        )
+        ]
 
     except ValueError as verr:
         logger.debug(traceback.format_exc())
@@ -96,4 +98,4 @@ def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:
 
     gcs = gcsfs.GCSFileSystem()
     file = gcs.open(f"gs://{bucket_name}/{key}")
-    return ParquetFile(file).schema.to_arrow_schema().empty_table().to_pandas()
+    return [ParquetFile(file).schema.to_arrow_schema().empty_table().to_pandas()]

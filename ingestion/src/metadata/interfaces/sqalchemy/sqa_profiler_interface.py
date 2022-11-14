@@ -25,7 +25,6 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -142,8 +141,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         logger.debug(
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
-        Session = self.session_factory  # pylint: disable=invalid-name
-        with Session() as session:
+        with self.session_factory() as session:
             self.set_session_tag(session)
             sampler = self._create_thread_safe_sampler(
                 session,

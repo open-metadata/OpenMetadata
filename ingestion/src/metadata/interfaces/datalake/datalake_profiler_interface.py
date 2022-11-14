@@ -23,9 +23,6 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import ColumnName, TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.interfaces.datalake.mixins.datalake_interface_mixin import (
-    DatalakeInterfaceMixin,
-)
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -41,7 +38,7 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
+class DataLakeProfilerInterface(ProfilerProtocol):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -67,6 +64,7 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         self.profile_sample = profiler_interface_args.table_sample_precentage
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = None
+        self.data_frame = None
         self._table = profiler_interface_args.table_entity
 
     def compute_metrics(
@@ -85,11 +83,12 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
             row = compute_metrics_registry.registry[metric_type.value](
                 metrics,
                 session=self.client,
-                data_frame=self.data_frame,
+                data_frame_list=self.data_frame,
                 column=column,
                 processor_status=self.processor_status,
             )
         except Exception as err:
+            logger.error(err)
             row = None
         if column is not None:
             column = (
@@ -145,7 +144,7 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
-        profile_results = {"table": dict(), "columns": defaultdict(dict)}
+        profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
             self.compute_metrics(metric_funcs=metric_func)
             for metric_func in metric_funcs

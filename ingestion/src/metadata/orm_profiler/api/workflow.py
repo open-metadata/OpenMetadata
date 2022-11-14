@@ -21,7 +21,7 @@ from copy import deepcopy
 from functools import singledispatch
 from typing import Iterable, List, Optional, cast
 
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
@@ -114,20 +114,16 @@ class ProfilerWorkflow:
         self.profiler_config = ProfilerProcessorConfig.parse_obj(
             self.config.processor.dict().get("config")
         )
-
         self.metadata = OpenMetadata(self.metadata_config)
-
         self._retrieve_service_connection_if_needed()
-
         self.set_ingestion_pipeline_status(state=PipelineState.running)
-
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
         self.source_status = SQLSourceStatus()
         self.status = ProcessorStatus()
-
+        self._profiler_interface_args = None
         if self.config.sink:
             self.sink = get_sink(
                 sink_type=self.config.sink.type,
@@ -263,11 +259,13 @@ class ProfilerWorkflow:
     def create_sqa_profiler_interface_dispatch(
         self, metadata_obj: MetaData
     ) -> SQAProfilerInterface:
+        logger.debug(f"Creating {type(metadata_obj)} Interface")
         return SQAProfilerInterface(self._profiler_interface_args)
 
     def create_dl_profiler_interface_dispatch(
         self, metadata_obj: DataLakeProfilerType
     ) -> DataLakeProfilerInterface:
+        logger.debug(f"Creating {type(metadata_obj)} Interface")
         return DataLakeProfilerInterface(self._profiler_interface_args)
 
     def create_profiler_interface(

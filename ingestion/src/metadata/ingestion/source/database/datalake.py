@@ -305,7 +305,7 @@ class DatalakeSource(DatabaseServiceSource):
                 data_frame = self.get_s3_files(
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
-            if not data_frame.empty:
+            if len(data_frame):
                 columns = self.get_columns(data_frame)
                 table_request = CreateTableRequest(
                     name=table_name,
@@ -327,6 +327,9 @@ class DatalakeSource(DatabaseServiceSource):
 
     @staticmethod
     def get_gcs_files(client, key, bucket_name):
+        """
+        Fetch GCS Bucket files
+        """
         try:
             if key.endswith(".csv"):
                 return read_csv_from_gcs(key, bucket_name)
@@ -349,6 +352,9 @@ class DatalakeSource(DatabaseServiceSource):
 
     @staticmethod
     def get_s3_files(client, key, bucket_name):
+        """
+        Fetch S3 Bucket files
+        """
         try:
             if key.endswith(".csv"):
                 return read_csv_from_s3(client, key, bucket_name)
@@ -397,6 +403,7 @@ class DatalakeSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
+            return None
 
     def fetch_sample_data(self, data_frame, table: str) -> Optional[TableData]:
         try:

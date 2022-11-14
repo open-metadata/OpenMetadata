@@ -29,8 +29,10 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
-    TableData,
     TableProfile,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
 )
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import ProfilerResponse
@@ -48,10 +50,6 @@ from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
-
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 
 
 class MissingMetricException(Exception):
@@ -101,6 +99,7 @@ class Profiler(Generic[TMetric]):
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
+        self.data_frame_list = None
 
     @property
     def table(self) -> DeclarativeMeta:
@@ -291,7 +290,8 @@ class Profiler(Generic[TMetric]):
         for metric in self.get_col_metrics(self.composed_metrics):
             # Composed metrics require the results as an argument
             logger.debug(
-                f"Running composed metric {metric.name()} for {col.name if not isinstance(col.name, ColumnName) else col.name.__root__}"
+                f"Running composed metric {metric.name()} for"
+                f"{col.name if not isinstance(col.name, ColumnName) else col.name.__root__}"
             )
 
             self._column_results[
@@ -403,9 +403,10 @@ class Profiler(Generic[TMetric]):
             not isinstance(self.table, DeclarativeMeta)
             and self.table.serviceType == DatabaseServiceType.Datalake
         ):
-            sample_data, self.data_frame = self.profiler_interface.fetch_sample_data(
-                self.table
-            )
+            (
+                sample_data,
+                self.data_frame_list,
+            ) = self.profiler_interface.fetch_sample_data(self.table)
             self.compute_metrics()
             profile = self._check_profile_and_handle(self.get_profile())
             table_profile = ProfilerResponse(
@@ -423,7 +424,8 @@ class Profiler(Generic[TMetric]):
                 )
                 sample_data = self.profiler_interface.fetch_sample_data(self.table)
                 logger.info(
-                    f"Successfully fetched sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                    "Successfully fetched sample data for "
+                    f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
             except Exception as err:
                 logger.debug(traceback.format_exc())

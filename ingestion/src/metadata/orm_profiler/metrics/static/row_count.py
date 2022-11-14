@@ -14,7 +14,6 @@ Table Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-import pandas as pd
 from sqlalchemy import func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label

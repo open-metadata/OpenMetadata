@@ -19,7 +19,6 @@ from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.clients.connection_clients import DatalakeClient
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     GCSConfig,
@@ -98,6 +97,7 @@ class Sampler:
 
     def get_col_row(self, data_frame):
         cols = []
+        chunk = None
         if isinstance(data_frame, DataFrame):
             table_columns = DatalakeSource.get_columns(data_frame=data_frame)
             return (
@@ -106,13 +106,12 @@ class Sampler:
                 .where(notnull(data_frame), None)
                 .values.tolist()[:100],
             )
-        else:
-            for chunk in data_frame:
-                table_columns = DatalakeSource.get_columns(data_frame=chunk)
-                cols = [col.name.__root__ for col in table_columns]
-                rows = chunk.values.tolist()
-                break
-            return cols, rows, chunk
+        for chunk in data_frame:
+            table_columns = DatalakeSource.get_columns(data_frame=chunk)
+            cols = [col.name.__root__ for col in table_columns]
+            rows = chunk.values.tolist()
+            break
+        return cols, rows, chunk
 
     def fetch_sqa_sample_data(self) -> TableData:
         """
@@ -138,14 +137,14 @@ class Sampler:
             rows=[list(row) for row in sqa_sample],
         )
 
-    def fetch_dl_sample_data(self, configSource) -> TableData:
-        if isinstance(configSource, GCSConfig):
+    def fetch_dl_sample_data(self, config_source) -> TableData:
+        if isinstance(config_source, GCSConfig):
             data_frame = DatalakeSource.get_gcs_files(
                 client=self.session,
                 key=self.table.name.__root__,
                 bucket_name=self.table.databaseSchema.name,
             )
-        if isinstance(configSource, S3Config):
+        if isinstance(config_source, S3Config):
             data_frame = DatalakeSource.get_s3_files(
                 client=self.session,
                 key=self.table.name.__root__,

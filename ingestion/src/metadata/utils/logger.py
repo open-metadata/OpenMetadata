@@ -35,7 +35,7 @@ class Loggers(Enum):
     INGESTION = "Ingestion"
     UTILS = "Utils"
     GREAT_EXPECTATIONS = "GreatExpectations"
-    ProfilerInterface = "ProfilerInterface"
+    PROFILER_INTERFACE = "ProfilerInterface"
     TEST_SUITE = "TestSuite"
     DATA_INSIGHT = "DataInsight"
 
@@ -77,7 +77,7 @@ def profiler_interface_registry_logger():
     Method to get the PROFILER INTERFACE logger
     """
 
-    return logging.getLogger(Loggers.ProfilerInterface.value)
+    return logging.getLogger(Loggers.PROFILER_INTERFACE.value)
 
 
 def ingestion_logger():

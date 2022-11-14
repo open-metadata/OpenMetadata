@@ -14,7 +14,6 @@ SUM Metric definition
 """
 # pylint: disable=duplicate-code
 
-from pandas import notnull
 from sqlalchemy import column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label

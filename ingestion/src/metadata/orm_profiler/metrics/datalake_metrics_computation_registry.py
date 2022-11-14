@@ -24,13 +24,9 @@ import traceback
 from typing import Dict, List, Optional, Union
 
 import pandas as pd
-from pandas.io.parsers.readers import TextFileReader
 
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.metrics.static.column_count import ColumnCount
-from metadata.orm_profiler.metrics.static.column_names import ColumnNames
-from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.utils.dispatch import enum_register
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -39,7 +35,7 @@ logger = profiler_interface_registry_logger()
 
 def get_table_metrics(
     metrics: List[Metrics],
-    data_frame,
+    data_frame_list,
     *args,
     **kwargs,
 ):
@@ -54,42 +50,12 @@ def get_table_metrics(
     try:
         row = []
         for metric in metrics:
-            row_metric_df = pd.DataFrame()
-            if isinstance(data_frame, TextFileReader):
-                with data_frame as reader:
-                    for chunk in reader:
-                        if not isinstance(metric, ColumnNames):
-                            row_metric_df.loc[len(row_metric_df.index)] = [
-                                metric().dl_fn(
-                                    chunk.astype(object).where(
-                                        pd.notnull(data_frame), None
-                                    )
-                                )
-                                for metric in metrics
-                            ]
-                        else:
-                            row.append(
-                                [metric().dl_fn(data_frame) for metric in metrics]
-                            )
-                    if metric in {ColumnCount, RowCount}:
-                        row.append(row_metric_df.sum().values.tolist())
-                    elif metric in {ColumnNames}:
-                        pass
-                    else:
-                        row.append(
-                            metric().dl_fn(
-                                row_metric_df.astype(object).where(
-                                    pd.notnull(row_metric_df), None
-                                )
-                            )
-                        )
-            else:
+            for data_frame in data_frame_list:
                 row.append(
                     metric().dl_fn(
                         data_frame.astype(object).where(pd.notnull(data_frame), None)
                     )
                 )
-
         if row:
             if isinstance(row, list):
                 row_dict = {}
@@ -109,7 +75,7 @@ def get_static_metrics(
     metrics: List[Metrics],
     processor_status: ProfilerProcessorStatus,
     column,
-    data_frame,
+    data_frame_list,
     *args,
     **kwargs,
 ) -> Optional[Dict[str, Union[str, int]]]:
@@ -125,27 +91,8 @@ def get_static_metrics(
     try:
         row = []
         for metric in metrics:
-            row_metric_df = pd.DataFrame()
-            if not metric.is_window_metric():
-                if isinstance(data_frame, TextFileReader):
-                    with data_frame as reader:
-                        for chunk in reader:
-                            row_metric_df.loc[len(row_metric_df.index)] = [
-                                metric().dl_fn(
-                                    chunk.astype(object).where(
-                                        pd.notnull(data_frame), None
-                                    )
-                                )
-                                for metric in metrics
-                            ]
-                        row.append(
-                            metric().dl_fn(
-                                row_metric_df.astype(object).where(
-                                    pd.notnull(chunk), None
-                                )
-                            )
-                        )
-                else:
+            for data_frame in data_frame_list:
+                if not metric.is_window_metric():
                     row.append(
                         metric(column).dl_fn(
                             data_frame.astype(object).where(
@@ -153,9 +100,8 @@ def get_static_metrics(
                             )
                         )
                     )
-            else:
-                row.append(0)
-
+                else:
+                    row.append(0)
         row_dict = {}
         for index, table_metric in enumerate(metrics):
             row_dict[table_metric.name()] = row[index]
@@ -170,9 +116,8 @@ def get_static_metrics(
 
 def get_query_metrics(
     metrics: List[Metrics],
-    processor_status: ProfilerProcessorStatus,
     column,
-    data_frame,
+    data_frame_list,
     *args,
     **kwargs,
 ) -> Optional[Dict[str, Union[str, int]]]:
@@ -185,7 +130,8 @@ def get_query_metrics(
     Returns:
         dictionnary of results
     """
-    col_metric = metrics(column).dl_query(data_frame)
+    for data_frame in data_frame_list:
+        col_metric = metrics(column).dl_query(data_frame)
     if not col_metric:
         return None
     return {metrics.name(): col_metric}

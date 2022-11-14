@@ -23,11 +23,9 @@ from sqlalchemy import Column, MetaData
 from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
-    DatalakeType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.models import PartitionProfilerConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 
 
