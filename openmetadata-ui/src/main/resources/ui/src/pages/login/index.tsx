@@ -279,7 +279,6 @@ const SigninPage = () => {
                         {t('label.new-to-the-platform')}
                       </Typography.Text>
                       <Button
-                        ghost
                         data-testid="signup"
                         type="link"
                         onClick={onClickSignUp}>

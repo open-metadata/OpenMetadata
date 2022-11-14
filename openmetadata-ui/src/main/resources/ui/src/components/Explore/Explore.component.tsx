@@ -16,10 +16,11 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Tabs } from 'antd';
+import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
+  isEmpty,
   isNil,
   isNumber,
   lowerCase,
@@ -29,7 +30,7 @@ import {
   toUpper,
 } from 'lodash';
 import { EntityType } from 'Models';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
@@ -52,7 +53,6 @@ import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Entities } from '../AddWebhook/WebhookConstants';
-import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
@@ -60,12 +60,15 @@ import {
   OverallTableSummeryType,
   TableTestsType,
 } from '../TableProfiler/TableProfiler.interface';
+import { AdvancedSearchModal } from './AdvanceSearchModal.component';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
   ExploreProps,
+  ExploreQuickFilterField,
   ExploreSearchIndex,
   ExploreSearchIndexKey,
 } from './explore.interface';
+import ExploreQuickFilters from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -88,8 +91,12 @@ const Explore: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
 }) => {
-  const isMounting = useRef(true);
   const { tab } = useParams<{ tab: string }>();
+  const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
+
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
+    ExploreQuickFilterField[]
+  >([] as ExploreQuickFilterField[]);
   const { t } = useTranslation();
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] = useState<Table>();
@@ -233,9 +240,37 @@ const Explore: React.FC<ExploreProps> = ({
     key
   ) => onChangePostFilter(omit(postFilter, key));
 
-  // alwyas Keep this useEffect at the end...
+  const handleAdvanceFieldClear = () => {
+    setSelectedQuickFilters([]);
+  };
+
+  const handleAdvanceFieldRemove = (value: string) => {
+    setSelectedQuickFilters((prev) => prev.filter((p) => p.key !== value));
+  };
+
+  const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
+    setSelectedQuickFilters((pre) => {
+      return pre.map((preField) => {
+        if (preField.key === field.key) {
+          return field;
+        } else {
+          return preField;
+        }
+      });
+    });
+  };
+
+  const handleAdvancedFieldSelect = (value: string) => {
+    const flag = selectedQuickFilters.some((field) => field.key === value);
+    if (!flag) {
+      setSelectedQuickFilters((pre) => [
+        ...pre,
+        { key: value, value: undefined },
+      ]);
+    }
+  };
+
   useEffect(() => {
-    isMounting.current = false;
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         handleClosePanel();
@@ -247,6 +282,23 @@ const Explore: React.FC<ExploreProps> = ({
       document.removeEventListener('keydown', escapeKeyHandler);
     };
   }, []);
+
+  useEffect(() => {
+    const term = {} as Record<string, unknown>;
+    selectedQuickFilters.map((filter) => {
+      if (filter.key) {
+        term[filter.key] = filter.value;
+      }
+    });
+
+    onChangeAdvancedSearchQueryFilter(
+      isEmpty(term)
+        ? {}
+        : {
+            query: { bool: { must: [{ term }] } },
+          }
+    );
+  }, [selectedQuickFilters]);
 
   return (
     <PageLayoutV1
@@ -324,41 +376,49 @@ const Explore: React.FC<ExploreProps> = ({
           />
         ))}
       </Tabs>
+
       <div
         style={{
           marginRight: showSummaryPanel ? '390px' : '',
         }}>
-        <AdvancedSearch
-          jsonTree={advancedSearchJsonTree}
-          searchIndex={searchIndex}
-          onChangeJsonTree={(nTree) => onChangeAdvancedSearchJsonTree(nTree)}
-          onChangeQueryFilter={(nQueryFilter) =>
-            onChangeAdvancedSearchQueryFilter(nQueryFilter)
-          }
-        />
-        {!loading ? (
-          <SearchedData
-            isFilterSelected
-            showResultCount
-            currentPage={page}
-            data={searchResults?.hits.hits ?? []}
-            handleSummaryPanelDisplay={
-              tab === toLower(Entities.table)
-                ? handleSummaryPanelDisplay
-                : undefined
-            }
-            paginate={(value) => {
-              if (isNumber(value)) {
-                onChangePage(value);
-              } else if (!isNaN(Number.parseInt(value))) {
-                onChangePage(Number.parseInt(value));
-              }
-            }}
-            totalValue={searchResults?.hits.total.value ?? 0}
-          />
-        ) : (
-          <Loader />
-        )}
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <ExploreQuickFilters
+              fields={selectedQuickFilters}
+              index={searchIndex}
+              onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
+              onClear={handleAdvanceFieldClear}
+              onFieldRemove={handleAdvanceFieldRemove}
+              onFieldSelect={handleAdvancedFieldSelect}
+              onFieldValueSelect={handleAdvanceFieldValueSelect}
+            />
+          </Col>
+          <Col span={24}>
+            {!loading ? (
+              <SearchedData
+                isFilterSelected
+                showResultCount
+                currentPage={page}
+                data={searchResults?.hits.hits ?? []}
+                handleSummaryPanelDisplay={
+                  tab === toLower(Entities.table)
+                    ? handleSummaryPanelDisplay
+                    : undefined
+                }
+                paginate={(value) => {
+                  if (isNumber(value)) {
+                    onChangePage(value);
+                  } else if (!isNaN(Number.parseInt(value))) {
+                    onChangePage(Number.parseInt(value));
+                  }
+                }}
+                totalValue={searchResults?.hits.total.value ?? 0}
+              />
+            ) : (
+              <Loader />
+            )}
+          </Col>
+        </Row>
       </div>
       {tab === toLower(Entities.table) && (
         <EntitySummaryPanel
@@ -368,6 +428,14 @@ const Explore: React.FC<ExploreProps> = ({
           showPanel={showSummaryPanel}
         />
       )}
+      <AdvancedSearchModal
+        jsonTree={advancedSearchJsonTree}
+        searchIndex={searchIndex}
+        visible={showAdvanceSearchModal}
+        onCancel={() => setShowAdvanceSearchModal(false)}
+        onChangeJsonTree={onChangeAdvancedSearchJsonTree}
+        onSubmit={onChangeAdvancedSearchQueryFilter}
+      />
     </PageLayoutV1>
   );
 };
