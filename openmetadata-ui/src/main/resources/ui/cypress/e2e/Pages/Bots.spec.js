@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
-import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
+import {
+    descriptionBox,
+    interceptURL,
+    login,
+    uuid,
+    verifyResponseStatusCode
+} from '../../common/common';
 import { DELETE_TERM, LOGIN } from '../../constants/constants';
 
 const botName = `Bot-ct-test-${uuid()}`;
@@ -78,7 +84,7 @@ describe('Bots Page should work properly', () => {
       'api/v1/bots?limit=100&include=non-deleted',
       'getBotsList'
     );
-    cy.get('.ant-menu-title-content')
+    cy.get('[data-testid="settings-left-panel"]')
       .contains('Bots')
       .scrollIntoView()
       .should('be.visible')
