@@ -1899,6 +1899,18 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:targetFQN, '%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
 
+    /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
+    default void updateTagPrefix(String oldPrefix, String newPrefix) {
+      String update =
+          String.format(
+              "UPDATE tag_usage set tagFQN = " + "REPLACE(tagFQN, '%s.', '%s.') WHERE tagFQN LIKE '%s.%%'",
+              oldPrefix, newPrefix, oldPrefix);
+      updateTagPrefixInternal(update);
+    }
+
+    @SqlUpdate("<update>")
+    void updateTagPrefixInternal(@Define("update") String update);
+
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {

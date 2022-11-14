@@ -144,7 +144,8 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
       if (!original.getName().equals(updated.getName())) {
         // Category name changed - update tag names starting from category and all the children tags
         LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
-        tagRepository.updateChildrenTagNames(original.getName(), updated.getName());
+        daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
+        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
       }
 

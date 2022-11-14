@@ -59,6 +59,31 @@ public interface EntityDAO<T extends EntityInterface> {
       connectionType = POSTGRES)
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
+  default void updateFqn(String oldPrefix, String newPrefix) {
+    if (!getNameColumn().equals("fullyQualifiedName")) {
+      return;
+    }
+    String mySqlUpdate =
+        String.format(
+            "UPDATE %s SET json = "
+                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(fullyQualifiedName, '^%s\\.', '%s.')) "
+                + "WHERE fullyQualifiedName LIKE '%s.%%'",
+            getTableName(), oldPrefix, newPrefix, oldPrefix);
+
+    String postgresUpdate =
+        String.format(
+            "UPDATE %s SET json = "
+                + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
+                + "'\"fullyQualifiedName\": \"%s.')::jsonb "
+                + "WHERE fullyQualifiedName LIKE '%s.%%'",
+            getTableName(), oldPrefix, newPrefix, oldPrefix);
+    updateFqnInternal(mySqlUpdate, postgresUpdate);
+  }
+
+  @ConnectionAwareSqlUpdate(value = "<mySqlUpdate>", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "<postgresUpdate>", connectionType = POSTGRES)
+  void updateFqnInternal(@Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
+
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);
 
