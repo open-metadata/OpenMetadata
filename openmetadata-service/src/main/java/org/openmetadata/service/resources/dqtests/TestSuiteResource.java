@@ -33,6 +33,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityHistory;
@@ -331,6 +332,25 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "TestSuite Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted TestSuite.",
+      tags = "TestSuites",
+      description = "Restore a soft deleted TestSuite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the TestSuite.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response restoreTestSuite(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private TestSuite getTestSuite(CreateTestSuite create, String user) throws IOException {

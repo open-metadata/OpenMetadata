@@ -37,7 +37,7 @@ wget https://github.com/open-metadata/OpenMetadata/releases/download/{version}-r
 
 ### 2. Backup your Data [IMPORTANT]
 
-Make a backup of your database. You can find the steps to follow [here](/deployment/upgrade/backup-metadata#backup-metadata). Please note this is an important step as it would allow you to revert to a stable state if any issues were to happen during your upgrade.
+Make a backup of your database. You can find the steps to follow [here](/deployment/upgrade//deployment/backup-restore-metadata#backup-metadata). Please note this is an important step as it would allow you to revert to a stable state if any issues were to happen during your upgrade.
 
 ### 3. Add Volumes and Publish Ports
 
