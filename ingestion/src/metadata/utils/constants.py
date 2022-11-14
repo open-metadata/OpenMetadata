@@ -17,7 +17,6 @@ DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
 
-OPENMETADATA_SERVICE_FQN = "Openmetadata"
 
 ES_SOURCE_TO_ES_OBJ_ARGS = {
     "caCerts": "ca_certs",

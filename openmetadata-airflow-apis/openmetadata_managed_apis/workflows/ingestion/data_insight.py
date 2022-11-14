@@ -37,7 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS, OPENMETADATA_SERVICE_FQN
+from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
 
 
 def build_data_insight_workflow_config(
@@ -53,7 +53,7 @@ def build_data_insight_workflow_config(
         raise ClientInitializationError(f"Failed to initialize the client: {exc}")
 
     openmetadata_service = metadata.get_by_name(
-        entity=MetadataService, fqn=OPENMETADATA_SERVICE_FQN
+        entity=MetadataService, fqn=ingestion_pipeline.service.fullyQualifiedName
     )
 
     if not openmetadata_service:
