@@ -78,7 +78,7 @@ then
 fi
 
 echo "Starting Local Docker Containers"
-mkdir docker-volume && mkdir docker-volume/db-data   && mkdir docker-volume/om-server
+mkdir -p docker-volume && mkdir -p docker-volume/db-data
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then

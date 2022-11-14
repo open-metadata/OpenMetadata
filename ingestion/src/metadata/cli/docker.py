@@ -12,17 +12,17 @@
 Docker functions for CLI
 """
 import json
-import os
 import pathlib
+import shutil
 import sys
 import tempfile
 import time
 import traceback
+import os
+import click
 from base64 import b64encode
 from datetime import timedelta
 from typing import Optional
-
-import click
 import requests
 from requests._internal_utils import to_native_string
 
@@ -67,21 +67,19 @@ DEFAULT_JWT_TOKEN = (
     "P49U493VanKpUAfzIiOiIbhg"
 )
 
-
 def docker_volume():
     # create a main directory
     if not os.path.exists(MAIN_DIR):
         os.mkdir(MAIN_DIR)
         db = "db-data"
         om_server = "om-server"
-        path_to_join = [db, om_server]
+        path_to_join = [db]
         final_path = []
         for path in path_to_join:
             temp_path = os.path.join(MAIN_DIR, path)
             final_path.append(temp_path)
         for path in final_path:
             os.makedirs(path, exist_ok=True)
-
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     """
@@ -274,6 +272,10 @@ def run_docker(
             logger.info(
                 "Stopping docker compose for OpenMetadata and removing images, networks, volumes..."
             )
+            logger.info("Do you want to Delete the docker mounted volumes from host")
+            user_response = click.prompt("Please enter [y/N]", type=str)
+            if user_response == "y":
+                shutil.rmtree(MAIN_DIR)
             docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
             logger.info(
                 "Stopped docker compose for OpenMetadata and removing images, networks, volumes."
