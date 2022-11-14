@@ -29,6 +29,8 @@ services:
       - 3306
     ports:
       - "3306:3306"
+    volumes:
+     - $PWD/docker-volume/db-data:/var/lib/mysql
     networks:
       - local_app_net
     healthcheck:

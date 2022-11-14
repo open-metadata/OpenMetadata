@@ -17,6 +17,8 @@ import sys
 import tempfile
 import time
 import traceback
+import os
+import click
 from base64 import b64encode
 from datetime import timedelta
 from typing import Optional
@@ -41,6 +43,7 @@ from metadata.utils.logger import cli_logger, ometa_logger
 logger = cli_logger()
 CALC_GB = 1024 * 1024 * 1024
 MIN_MEMORY_LIMIT = 6 * CALC_GB
+MAIN_DIR = "docker-volume"
 RELEASE_BRANCH_VERSION = get_client_version()
 REQUESTS_TIMEOUT = 60 * 5
 
@@ -64,6 +67,19 @@ DEFAULT_JWT_TOKEN = (
     "P49U493VanKpUAfzIiOiIbhg"
 )
 
+def docker_volume():
+    # create a main directory
+    if not os.path.exists(MAIN_DIR):
+        os.mkdir(MAIN_DIR)
+        db = "db-data"
+        om_server = "om-server"
+        path_to_join = [db, om_server]
+        final_path = []
+        for path in path_to_join:
+            temp_path = os.path.join(MAIN_DIR, path)
+            final_path.append(temp_path)
+        for path in final_path:
+            os.makedirs(path, exist_ok=True)
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     """
@@ -71,6 +87,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     """
 
     logger.info("Running docker compose for OpenMetadata..")
+    docker_volume()
     print_ansi_encoded_string(
         color=ANSI.YELLOW, bold=False, message="It may take some time on the first run "
     )

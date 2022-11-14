@@ -67,8 +67,18 @@ fi
 echo "Stopping any previous Local Docker Containers"
 docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
 docker compose -f docker/local-metadata/docker-compose.yml down
+if [ -d "/docker-volume" ]
+then
+    echo "Do you want to delete the mounted directories from host?"
+    echo "Please enter [y/N]"
+    read  input
+    if [[ $input == "Y" || $input == "y" ]]; then
+      rm -rf $PWD/docker-volume
+    fi
+fi
 
 echo "Starting Local Docker Containers"
+mkdir docker-volume && mkdir docker-volume/db-data   && mkdir docker-volume/om-server
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
