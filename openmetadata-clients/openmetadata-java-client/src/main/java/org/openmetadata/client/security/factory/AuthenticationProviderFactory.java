@@ -21,10 +21,10 @@ import org.openmetadata.client.security.NoOpAuthenticationProvider;
 import org.openmetadata.client.security.OktaAuthenticationProvider;
 import org.openmetadata.client.security.OpenMetadataAuthenticationProvider;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 public class AuthenticationProviderFactory {
-  public AuthenticationProvider getAuthProvider(OpenMetadataServerConnection serverConfig) {
+  public AuthenticationProvider getAuthProvider(OpenMetadataConnection serverConfig) {
     switch (serverConfig.getAuthProvider()) {
       case NO_AUTH:
         return new NoOpAuthenticationProvider();

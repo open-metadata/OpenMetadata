@@ -29,6 +29,8 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
+from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -92,9 +94,7 @@ from metadata.ingestion.ometa.ssl_registry import (
     ssl_verification_registry,
 )
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
-from metadata.utils.secrets.secrets_manager_factory import (
-    get_secrets_manager_from_om_connection,
-)
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = ometa_logger()
 
@@ -182,14 +182,10 @@ class OpenMetadata(
         self.config = config
 
         # Load the secrets' manager client
-        self.secrets_manager_client = get_secrets_manager_from_om_connection(
-            config, config.secretsManagerCredentials
-        )
-
-        # Load auth provider config from Secret Manager if necessary
-        self.secrets_manager_client.add_auth_provider_security_config(
-            self.config, "ingestion-bot"
-        )
+        self.secrets_manager_client = SecretsManagerFactory(
+            config.secretsManagerProvider,
+            config.secretsManagerCredentials,
+        ).get_secrets_manager()
 
         # Load the auth provider init from the registry
         auth_provider_fn = auth_provider_registry.registry.get(
@@ -401,6 +397,15 @@ class OpenMetadata(
 
         if issubclass(entity, WebAnalyticEventData):
             return "/analytics/webAnalyticEvent/collect"
+
+        if issubclass(entity, DataInsightChart):
+            return "/dataInsight"
+
+        if issubclass(
+            entity,
+            Kpi,
+        ):
+            return "/kpi"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"

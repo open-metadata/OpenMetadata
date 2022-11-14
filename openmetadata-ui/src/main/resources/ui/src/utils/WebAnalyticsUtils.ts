@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { getSession, setSession } from '@analytics/session-utils';
+import {
+  getSession,
+  removeSession,
+  setSession,
+} from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
 import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
 import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
@@ -129,4 +133,12 @@ export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
       },
     ],
   });
+};
+
+export const resetWebAnalyticSession = () => {
+  // remove existing session first
+  removeSession();
+
+  // then set new analytics session for 30 minutes
+  setSession(30);
 };

@@ -41,6 +41,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -89,7 +90,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "listPipelineService",
       summary = "List pipeline services",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description =
           "Get a list of pipeline services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -138,7 +139,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getPipelineServiceByID",
       summary = "Get a pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a pipeline service by `id`.",
       responses = {
         @ApiResponse(
@@ -173,7 +174,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getPipelineServiceByFQN",
       summary = "Get pipeline service by name",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a pipeline service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -208,7 +209,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "listAllPipelineServiceVersion",
       summary = "List pipeline service versions",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a list of all the versions of a pipeline service identified by `id`",
       responses = {
         @ApiResponse(
@@ -244,7 +245,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getSpecificPipelineService",
       summary = "Get a version of the pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a version of the pipeline service by given `id`",
       responses = {
         @ApiResponse(
@@ -274,7 +275,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "createPipelineService",
       summary = "Create a pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Create a new pipeline service.",
       responses = {
         @ApiResponse(
@@ -297,7 +298,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "createOrUpdatePipelineService",
       summary = "Update pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -321,7 +322,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "deletePipelineService",
       summary = "Delete a pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description =
           "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -343,6 +344,26 @@ public class PipelineServiceResource
           UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted PipelineService.",
+      tags = "pipelineServices",
+      description = "Restore a soft deleted PipelineService.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the PipelineService ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class)))
+      })
+  public Response restorePipelineService(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private PipelineService getService(CreatePipelineService create, String user) throws IOException {

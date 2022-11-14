@@ -9,7 +9,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
@@ -18,17 +18,16 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
-public class OpenMetadataServerConnectionBuilder {
+public class OpenMetadataConnectionBuilder {
 
-  OpenMetadataServerConnection.AuthProvider authProvider;
+  OpenMetadataConnection.AuthProvider authProvider;
   String bot;
   Object securityConfig;
-  private final OpenMetadataServerConnection.VerifySSL verifySSL;
+  private final OpenMetadataConnection.VerifySSL verifySSL;
   private final String openMetadataURL;
   private final String clusterName;
   private final SecretsManagerProvider secretsManagerProvider;
@@ -36,46 +35,43 @@ public class OpenMetadataServerConnectionBuilder {
   BotRepository botRepository;
   UserRepository userRepository;
 
-  public OpenMetadataServerConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+  public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
     authProvider =
         "basic".equals(openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider())
-            ? OpenMetadataServerConnection.AuthProvider.OPENMETADATA
-            : OpenMetadataServerConnection.AuthProvider.fromValue(
+            ? OpenMetadataConnection.AuthProvider.OPENMETADATA
+            : OpenMetadataConnection.AuthProvider.fromValue(
                 openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider());
 
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (!OpenMetadataServerConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
+    if (!OpenMetadataConnection.AuthProvider.NO_AUTH.equals(authProvider)) {
       botRepository = BotRepository.class.cast(Entity.getEntityRepository(Entity.BOT));
       userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
       User botUser = retrieveBotUser();
-      if (secretsManager.isLocal()) {
-        securityConfig = extractSecurityConfig(botUser);
-      }
+      securityConfig = extractSecurityConfig(botUser);
       authProvider = extractAuthProvider(botUser);
     }
 
     AirflowConfiguration airflowConfiguration = openMetadataApplicationConfig.getAirflowConfiguration();
     openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
     clusterName = openMetadataApplicationConfig.getClusterName();
-    secretsManagerProvider = secretsManager.getSecretsManagerProvider();
-    verifySSL = OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
+    secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
+    verifySSL = OpenMetadataConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     airflowSSLConfig =
         getAirflowSSLConfig(
-            OpenMetadataServerConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL()),
+            OpenMetadataConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL()),
             airflowConfiguration.getSslConfig());
   }
 
-  private OpenMetadataServerConnection.AuthProvider extractAuthProvider(User botUser) {
+  private OpenMetadataConnection.AuthProvider extractAuthProvider(User botUser) {
     AuthenticationMechanism.AuthType authType = botUser.getAuthenticationMechanism().getAuthType();
     switch (authType) {
       case SSO:
-        return OpenMetadataServerConnection.AuthProvider.fromValue(
+        return OpenMetadataConnection.AuthProvider.fromValue(
             JsonUtils.convertValue(botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
                 .getSsoServiceType()
                 .value());
       case JWT:
-        return OpenMetadataServerConnection.AuthProvider.OPENMETADATA;
+        return OpenMetadataConnection.AuthProvider.OPENMETADATA;
       default:
         throw new IllegalArgumentException(
             String.format("Not supported authentication mechanism type: [%s]", authType.value()));
@@ -96,8 +92,8 @@ public class OpenMetadataServerConnectionBuilder {
     }
   }
 
-  public OpenMetadataServerConnection build() {
-    return new OpenMetadataServerConnection()
+  public OpenMetadataConnection build() {
+    return new OpenMetadataConnection()
         .withAuthProvider(authProvider)
         .withHostPort(openMetadataURL)
         .withSecurityConfig(securityConfig)
@@ -116,7 +112,6 @@ public class OpenMetadataServerConnectionBuilder {
   }
 
   private User retrieveIngestionBotUser(String botName) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       Bot bot1 = botRepository.getByName(null, botName, Fields.EMPTY_FIELDS);
       if (bot1.getBotUser() == null) {
@@ -128,10 +123,7 @@ public class OpenMetadataServerConnectionBuilder {
               bot1.getBotUser().getFullyQualifiedName(),
               new EntityUtil.Fields(List.of("authenticationMechanism")));
       if (user.getAuthenticationMechanism() != null) {
-        user.getAuthenticationMechanism()
-            .setConfig(
-                secretsManager.encryptOrDecryptBotUserCredentials(
-                    user.getName(), user.getAuthenticationMechanism().getConfig(), false));
+        user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }
       return user;
     } catch (IOException | EntityNotFoundException ex) {
@@ -140,7 +132,7 @@ public class OpenMetadataServerConnectionBuilder {
     }
   }
 
-  protected Object getAirflowSSLConfig(OpenMetadataServerConnection.VerifySSL verifySSL, SSLConfig sslConfig) {
+  protected Object getAirflowSSLConfig(OpenMetadataConnection.VerifySSL verifySSL, SSLConfig sslConfig) {
     switch (verifySSL) {
       case NO_SSL:
       case IGNORE:

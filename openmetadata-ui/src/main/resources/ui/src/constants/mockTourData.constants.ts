@@ -102,7 +102,7 @@ export const mockLineageData = {
 
 export const mockDatasetData = {
   entityName: 'dim_address',
-  datasetFQN: 'bigquery.shopify.dim_address',
+  datasetFQN: 'sample_data.ecommerce_db.shopify.dim_address',
   activeTab: 1,
   description:
     'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',

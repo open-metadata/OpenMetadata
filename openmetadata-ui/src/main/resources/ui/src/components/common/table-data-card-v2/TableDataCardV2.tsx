@@ -143,6 +143,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
       data-testid="table-data-card"
+      id={id}
       onClick={() => {
         handleSummaryPanelDisplay && handleSummaryPanelDisplay(source as Table);
       }}>

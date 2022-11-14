@@ -58,9 +58,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
     DataInsightChart chart =
         dataInsightChartRepository.get(
             null, kpi.getDataInsightChart().getId(), dataInsightChartRepository.getFields("metrics"));
-    // Valiadte here if this chart already has some kpi in progress
+    // Validate here if this chart already has some kpi in progress
     validateKpiTargetDefinition(kpi.getTargetDefinition(), chart.getMetrics());
-    kpi.setFullyQualifiedName(kpi.getName());
   }
 
   private void validateKpiTargetDefinition(
@@ -89,7 +88,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     kpi.withOwner(null).withHref(null).withDataInsightChart(null);
-    store(kpi.getId(), kpi, update);
+    store(kpi, update);
 
     // Restore the relationships
     kpi.withOwner(owner).withDataInsightChart(dataInsightChart);

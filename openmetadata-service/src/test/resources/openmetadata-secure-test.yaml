@@ -105,7 +105,7 @@ database:
   # the username and password
   user: test
   password:
-  # the JDBC URL; the database is called washvalet
+  # the JDBC URL; the database is called openmetadata_test_db
   url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:

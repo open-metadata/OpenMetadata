@@ -74,9 +74,9 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.secrets.SecretsManagerMigrationService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -156,10 +156,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
     registerEventPublisher(catalogConfig, jdbi);
-
-    // Check if migration is need from local secret manager to configured one and migrate
-    new SecretsManagerMigrationService(secretsManager, catalogConfig.getClusterName())
-        .migrateServicesToSecretManagerIfNeeded();
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
@@ -310,6 +306,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
+    TagLabelCache.initialize();
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
