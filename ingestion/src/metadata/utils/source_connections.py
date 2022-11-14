@@ -403,21 +403,18 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    from google import auth  # pylint: disable=import-outside-toplevel
 
-    _, project_id = auth.default()
     if isinstance(connection.credentials.gcsConfig, GCSValues):
-        if not project_id:
-            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
-        if (
-            not connection.credentials.gcsConfig.privateKey
-            and connection.credentials.gcsConfig.projectId
-        ):
-            # Setting environment variable based on project id given by user / set in ADC
-            project_id = connection.credentials.gcsConfig.projectId
-            os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-        return f"{connection.scheme.value}://{project_id}"
-    return f"{connection.scheme.value}://"
+        for project_id in connection.credentials.gcsConfig.projectId:
+            if not project_id:
+                return f"{connection.scheme.value}://{project_id or ''}"
+            if not connection.credentials.gcsConfig.privateKey and project_id:
+                # Setting environment variable based on project id given by user / set in ADC
+                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+            return f"{connection.scheme.value}://{project_id}"
+        return f"{connection.scheme.value}://"
+
+    return f"{connection}"
 
 
 @get_connection_url.register

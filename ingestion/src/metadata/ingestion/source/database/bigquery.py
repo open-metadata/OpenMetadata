@@ -27,6 +27,7 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
     TablePartition,
@@ -48,6 +49,8 @@ from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
+from metadata.utils.connections import get_connection
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -114,11 +117,7 @@ class BigquerySource(CommonDbSourceService):
         super().__init__(config, metadata_config)
         self.temp_credentials = None
         self.client = None
-        self.project_id = self.set_project_id()
-
-    def prepare(self):
-        self.client = Client()
-        return super().prepare()
+        self.project_ids = self.set_project_id()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -132,8 +131,8 @@ class BigquerySource(CommonDbSourceService):
 
     @staticmethod
     def set_project_id():
-        _, project_id = auth.default()
-        return project_id
+        _, project_ids = auth.default()
+        return project_ids
 
     def yield_tag(self, _: str) -> Iterable[OMetaTagAndCategory]:
         """
@@ -198,9 +197,41 @@ class BigquerySource(CommonDbSourceService):
             ]
         return None
 
-    def get_database_names(self) -> Iterable[str]:
+    def set_inspector(self, database_name: str):
+        self.client = Client(project=database_name)
+        self.service_connection.credentials.gcsConfig.projectId = [database_name]
+        self.engine = get_connection(self.service_connection)
         self.inspector = inspect(self.engine)
-        yield self.project_id
+
+    def get_database_names(self) -> Iterable[str]:
+        for project_id in self.project_ids:
+            database_name = project_id
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.database_service.name.__root__,
+                database_name=database_name,
+            )
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                database_fqn
+                if self.source_config.useFqnForFiltering
+                else database_name,
+            ):
+                self.status.filter(database_fqn, "Database Filtered out")
+                continue
+
+            try:
+                self.set_inspector(database_name=project_id)
+                self.project_id = (  # pylint: disable=attribute-defined-outside-init
+                    project_id
+                )
+                yield project_id
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error trying to connect to database {database_name}: {exc}"
+                )
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
