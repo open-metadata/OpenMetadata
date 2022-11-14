@@ -713,10 +713,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals("ingestion-bot-jwt", jwt.getClaims().get("sub").asString());
     assertEquals(true, jwt.getClaims().get("isBot").asBoolean());
     TestUtils.put(
-        getResource("users/revokeToken"),
-        new RevokeTokenRequest().withId(user.getId()),
-        OK,
-        ADMIN_AUTH_HEADERS);
+        getResource("users/revokeToken"), new RevokeTokenRequest().withId(user.getId()), OK, ADMIN_AUTH_HEADERS);
     jwtAuthMechanism =
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);

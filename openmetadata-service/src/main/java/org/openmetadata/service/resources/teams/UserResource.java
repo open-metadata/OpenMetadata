@@ -590,8 +590,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response revokeToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext,
-      @Valid RevokeTokenRequest revokeTokenRequest) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RevokeTokenRequest revokeTokenRequest)
+      throws IOException {
     authorizer.authorizeAdmin(securityContext);
     User user = dao.get(uriInfo, revokeTokenRequest.getId(), Fields.EMPTY_FIELDS);
     if (!user.getIsBot()) {
