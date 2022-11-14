@@ -171,7 +171,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     return getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CHART, true);
   }
 
-  public void validateDataInsightChartMapping(UUID chartId) {
+  public void validateDataInsightChartOneToOneMapping(UUID chartId) {
     // Each Chart has one unique Kpi mapping
     List<CollectionDAO.EntityRelationshipRecord> record = findFrom(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
     if (record.size() > 0) {

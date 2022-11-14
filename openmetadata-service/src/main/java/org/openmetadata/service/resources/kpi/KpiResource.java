@@ -268,7 +268,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create)
       throws IOException {
     Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
-    dao.validateDataInsightChartMapping(kpi.getDataInsightChart().getId());
+    dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
     return create(uriInfo, securityContext, kpi);
   }
 
@@ -320,7 +320,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       dao.getByName(null, kpi.getName(), dao.getFields("id,name"));
     } catch (EntityNotFoundException ex) {
       // if the kpi doesn't exist , then it can get created so need to ensure one to one validation
-      dao.validateDataInsightChartMapping(kpi.getDataInsightChart().getId());
+      dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
     }
     return createOrUpdate(uriInfo, securityContext, kpi);
   }
