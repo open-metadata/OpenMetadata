@@ -787,7 +787,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .build();
   }
 
-  @GET
+  @PUT
   @Path("/registrationConfirmation")
   @Operation(
       operationId = "confirmUserEmail",
@@ -808,7 +808,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
-  @GET
+  @PUT
   @Path("/resendRegistrationToken")
   @Operation(
       operationId = "resendRegistrationToken",
