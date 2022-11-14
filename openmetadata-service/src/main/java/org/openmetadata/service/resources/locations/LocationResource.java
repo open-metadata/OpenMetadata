@@ -46,6 +46,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateLocation;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -423,6 +424,25 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Parameter(description = "Location Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted location.",
+      tags = "locations",
+      description = "Restore a soft deleted location.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Location ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class)))
+      })
+  public Response restoreLocation(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT

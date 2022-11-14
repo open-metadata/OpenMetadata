@@ -49,6 +49,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -423,6 +424,25 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
       throws IOException {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted table.",
+      tags = "tables",
+      description = "Restore a soft deleted table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Response restoreTable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT

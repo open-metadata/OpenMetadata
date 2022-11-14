@@ -52,6 +52,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -120,7 +121,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "listIngestionPipelines",
       summary = "List Ingestion Pipelines for Metadata Operations",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description =
           "Get a list of Airflow Pipelines for Metadata Operations. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -182,7 +183,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "listAllIngestionPipelineVersion",
       summary = "List ingestion workflow versions",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a list of all the versions of a IngestionPipeline identified by `id`",
       responses = {
         @ApiResponse(
@@ -203,7 +204,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "getIngestionPipelineByID",
       summary = "Get a IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a IngestionPipeline by `id`.",
       responses = {
         @ApiResponse(
@@ -241,7 +242,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "getSpecificIngestionPipelineVersion",
       summary = "Get a version of the IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a version of the IngestionPipeline by given `id`",
       responses = {
         @ApiResponse(
@@ -271,7 +272,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "getSpecificIngestionPipelineByFQN",
       summary = "Get a IngestionPipeline by name",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a ingestion by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -308,7 +309,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "createIngestionPipeline",
       summary = "Create a Ingestion Pipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Create a new Ingestion Pipeline.",
       responses = {
         @ApiResponse(
@@ -332,7 +333,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "patchIngestionPipeline",
       summary = "Update a IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Update an existing IngestionPipeline using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -359,7 +360,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "createOrUpdateIngestionPipeline",
       summary = "Create or update a IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Create a new IngestionPipeline, if it does not exist or update an existing IngestionPipeline.",
       responses = {
         @ApiResponse(
@@ -382,7 +383,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Path("/deploy/{id}")
   @Operation(
       summary = "Deploy a ingestion pipeline run",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Trigger a ingestion pipeline run by id.",
       responses = {
         @ApiResponse(
@@ -409,7 +410,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "triggerIngestionPipelineRun",
       summary = "Trigger a ingestion pipeline run",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Trigger a ingestion pipeline run by id.",
       responses = {
         @ApiResponse(
@@ -433,7 +434,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "toggleIngestionPipelineEnabled",
       summary = "Set an Ingestion pipeline either as Enabled or Disabled",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Toggle an ingestion pipeline state by id.",
       responses = {
         @ApiResponse(
@@ -457,7 +458,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "killIngestionPipelineRuns",
       summary = "Mark as failed and kill any not-finished workflow or task for the IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Kill an ingestion pipeline by ID.",
       responses = {
         @ApiResponse(
@@ -480,7 +481,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "testConnection",
       summary = "Test Connection of a Service",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Test Connection of a Service.",
       responses = {
         @ApiResponse(
@@ -504,7 +505,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "checkAirflowHostIp",
       summary = "Check the Airflow REST host IP",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Check the Airflow REST host IP",
       responses = {
         @ApiResponse(
@@ -522,7 +523,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "checkRestAirflowStatus",
       summary = "Check the Airflow REST status",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Check that the Airflow REST endpoint is reachable and up and running",
       responses = {
         @ApiResponse(
@@ -539,7 +540,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "deleteIngestionPipeline",
       summary = "Delete a Ingestion",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Delete a ingestion by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -555,6 +556,26 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted IngestionPipeline.",
+      tags = "ingestionPipelines",
+      description = "Restore a soft deleted IngestionPipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the IngestionPipeline. ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+      })
+  public Response restoreIngestionPipeline(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET

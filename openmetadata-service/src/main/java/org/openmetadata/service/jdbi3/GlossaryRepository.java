@@ -55,9 +55,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void prepare(Glossary glossary) throws IOException {
-    setFullyQualifiedName(glossary);
     validateUsers(glossary.getReviewers());
-    glossary.setTags(addDerivedTags(glossary.getTags()));
   }
 
   @Override
@@ -70,7 +68,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     glossary.withOwner(null).withHref(null).withTags(null);
 
-    store(glossary.getId(), glossary, update);
+    store(glossary, update);
 
     // Restore the relationships
     glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);

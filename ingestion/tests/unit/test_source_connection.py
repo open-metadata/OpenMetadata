@@ -11,6 +11,8 @@
 
 from unittest import TestCase
 
+from pydantic import AnyUrl
+
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
     AthenaScheme,
@@ -766,20 +768,20 @@ class SouceConnectionTest(TestCase):
             awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
         )
 
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fs3athena-postgres&work_group=primary"
         athena_conn_obj = AthenaConnection(
             awsConfig=awsCreds,
-            s3StagingDir="s3athena-postgres",
+            s3StagingDir=AnyUrl("s3athena-postgres", scheme="s3"),
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
         )
         assert expected_url == get_connection_url(athena_conn_obj)
 
-        # connection arguments witho db
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
+        # connection arguments with db
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fs3athena-postgres&work_group=primary"
         athena_conn_obj = AthenaConnection(
             awsConfig=awsCreds,
-            s3StagingDir="s3athena-postgres",
+            s3StagingDir=AnyUrl("s3athena-postgres", scheme="s3"),
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
         )

@@ -256,7 +256,12 @@
     "data-insight-subtitle": "Get a single pane view of the health of all your data assets over time.",
     "kpi-title": "Key Performance Indicators (KPI)",
     "kpi-subtitle": "Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets.",
-    "edit-kpi": "Edit KPI"
+    "edit-kpi": "Edit KPI",
+    "enable-partition": "Enable Partition",
+    "column-name": "Column Name",
+    "interval-type": "Interval Type",
+    "interval": "Interval",
+    "interval-unit": "Interval Unit"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -288,7 +293,15 @@
     "metric-type-required": "Metric type is required",
     "metric-value-required": "Metric value is required",
     "no-kpi-found": "No Kpi found with name {{name}}",
-    "no-kpi-available-add-new-one": "No kpi's are available, add one by clicking Add KPI button."
+    "no-kpi-available-add-new-one": "No kpi's are available, add one by clicking Add KPI button.",
+    "column-name-required": "Column name is required",
+    "select-column-name": "Select column name",
+    "interval-type-required": "Interval type is required",
+    "select-type-required": "Select interval type",
+    "interval-required": "Interval is required",
+    "enter-interval": "Enter interval",
+    "interval-unit-required": "Interval unit is required",
+    "select-interval-unit": "Select interval unit"
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",
