@@ -45,8 +45,8 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
-  private static final String PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
+  private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
+  private static final String PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "pipelineStatus";
   private static PipelineServiceClient pipelineServiceClient;
@@ -79,7 +79,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
     EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
     ingestionPipeline.setService(entityReference);
-    setFullyQualifiedName(ingestionPipeline);
   }
 
   @Override
@@ -91,7 +90,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Don't store owner. Build it on the fly based on relationships
     ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
-    store(ingestionPipeline.getId(), ingestionPipeline, update);
+    store(ingestionPipeline, update);
 
     // Restore the relationships
     ingestionPipeline.withOwner(owner).withService(service);
@@ -231,6 +230,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
+      updateDeployed(original.getDeployed(), updated.getDeployed());
     }
 
     private void updateSourceConfig() throws JsonProcessingException {
@@ -264,6 +264,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) throws JsonProcessingException {
       if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
         recordChange("loggerLevel", origLevel, updatedLevel);
+      }
+    }
+
+    private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) throws JsonProcessingException {
+      if (updatedDeployed != null && !origDeployed.equals(updatedDeployed)) {
+        recordChange("deployed", origDeployed, updatedDeployed);
       }
     }
 
