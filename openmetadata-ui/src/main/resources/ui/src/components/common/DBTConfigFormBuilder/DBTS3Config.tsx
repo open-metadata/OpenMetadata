@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   DBTBucketDetails,
@@ -105,12 +106,11 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Access Key ID.
         </p>
-        <input
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-access-key-id"
           id="aws-access-key-id"
           name="aws-access-key-id"
-          type="text"
           value={dbtSecurityConfig?.awsAccessKeyId}
           onChange={(e) => updateS3Creds('awsAccessKeyId', e.target.value)}
         />
@@ -124,12 +124,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Secret Access Key.
         </p>
-        <input
+
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-secret-access-key-id"
           id="aws-secret-access-key-id"
           name="aws-secret-access-key-id"
-          type="password"
           value={dbtSecurityConfig?.awsSecretAccessKey}
           onChange={(e) => updateS3Creds('awsSecretAccessKey', e.target.value)}
         />
@@ -161,7 +161,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Session Token.
         </p>
-        <input
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-session-token"
           id="aws-session-token"
