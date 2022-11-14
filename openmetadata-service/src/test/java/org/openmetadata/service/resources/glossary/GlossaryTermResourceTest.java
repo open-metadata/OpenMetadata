@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
@@ -441,6 +442,30 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       default:
         assertCommonFieldChange(fieldName, expected, actual);
         break;
+    }
+  }
+
+  public void renameGlossaryTermAndCheck(GlossaryTerm term, String newName) throws IOException {
+    String oldName = term.getName();
+    String json = JsonUtils.pojoToJson(term);
+    ChangeDescription change = getChangeDescription(term.getVersion());
+    fieldUpdated(change, "name", oldName, newName);
+    term.setName(newName);
+    term.setFullyQualifiedName(FullyQualifiedName.build(term.getGlossary().getFullyQualifiedName(), newName));
+    patchEntityAndCheck(term, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // GET the glossary term and check all the children are renamed
+    GlossaryTerm getTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    for (EntityReference ref : getTerm.getChildren()) {
+      assertTrue(ref.getFullyQualifiedName().startsWith(getTerm.getFullyQualifiedName()));
+    }
+
+    // List children glossary terms with this term as the parent and ensure rename
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parent", term.getId().toString());
+    List<GlossaryTerm> children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
+    for (GlossaryTerm child : listOrEmpty(children)) {
+      assertTrue(child.getFullyQualifiedName().startsWith(getTerm.getFullyQualifiedName()));
     }
   }
 }

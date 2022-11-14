@@ -106,8 +106,17 @@ public class TagResource {
           .getChildren()
           .forEach(
               t -> {
-                t.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-                t.getChildren().forEach(c -> c.withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now));
+                t.withId(UUID.randomUUID())
+                    .withUpdatedBy(ADMIN_USER_NAME)
+                    .withUpdatedAt(now)
+                    .withProvider(tagCategory.getProvider());
+                t.getChildren()
+                    .forEach(
+                        c ->
+                            c.withId(UUID.randomUUID())
+                                .withUpdatedBy(ADMIN_USER_NAME)
+                                .withUpdatedAt(now)
+                                .withProvider(tagCategory.getProvider()));
               });
       daoCategory.initCategory(tagCategory);
     }
