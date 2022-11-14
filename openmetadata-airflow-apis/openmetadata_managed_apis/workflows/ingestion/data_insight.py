@@ -53,7 +53,7 @@ def build_data_insight_workflow_config(
         raise ClientInitializationError(f"Failed to initialize the client: {exc}")
 
     openmetadata_service = metadata.get_by_name(
-        entity=MetadataService, fqn=OPENMETADATA_SERVICE_FQN
+        entity=MetadataService, fqn=ingestion_pipeline.service.fullyQualifiedName
     )
 
     if not openmetadata_service:
