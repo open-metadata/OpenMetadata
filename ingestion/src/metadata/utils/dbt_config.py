@@ -97,9 +97,13 @@ def _(config: DbtLocalConfig):
 def _(config: DbtHttpConfig):
     try:
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_catalog = requests.get(config.dbtCatalogHttpPath)
+        dbt_catalog = requests.get(  # pylint: disable=missing-timeout
+            config.dbtCatalogHttpPath
+        )
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_manifest = requests.get(config.dbtManifestHttpPath)
+        dbt_manifest = requests.get(  # pylint: disable=missing-timeout
+            config.dbtManifestHttpPath
+        )
         dbt_run_results = None
         if (
             config.dbtRunResultsHttpPath is not None
@@ -108,7 +112,9 @@ def _(config: DbtHttpConfig):
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
-            dbt_run_results = requests.get(config.dbtRunResultsHttpPath)
+            dbt_run_results = requests.get(  # pylint: disable=missing-timeout
+                config.dbtRunResultsHttpPath
+            )
         return (
             json.loads(dbt_catalog.text),
             json.loads(dbt_manifest.text),
