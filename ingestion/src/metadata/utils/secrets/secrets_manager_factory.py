@@ -64,9 +64,15 @@ class SecretsManagerFactory(metaclass=Singleton):
             or secrets_manager_provider == SecretsManagerProvider.noop
         ):
             return NoopSecretsManager()
-        if secrets_manager_provider == SecretsManagerProvider.aws:
+        if secrets_manager_provider in (
+            SecretsManagerProvider.aws,
+            SecretsManagerProvider.managed_aws_ssm,
+        ):
             return AWSSecretsManager(credentials)
-        if secrets_manager_provider == SecretsManagerProvider.aws_ssm:
+        if secrets_manager_provider in (
+            SecretsManagerProvider.aws_ssm,
+            SecretsManagerProvider.managed_aws_ssm,
+        ):
             return AWSSSMSecretsManager(credentials)
         raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
 

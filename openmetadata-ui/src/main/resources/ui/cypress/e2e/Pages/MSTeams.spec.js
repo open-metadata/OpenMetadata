@@ -28,7 +28,7 @@ describe('MSTeams Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-menu-title-content')
+      cy.get('[data-testid="settings-left-panel"]')
       .contains('MS Teams')
       .scrollIntoView()
       .should('be.visible')

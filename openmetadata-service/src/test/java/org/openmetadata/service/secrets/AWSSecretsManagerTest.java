@@ -12,23 +12,13 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.Objects;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
-import org.openmetadata.service.util.JsonUtils;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
-import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 
@@ -53,28 +43,6 @@ public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
       lenient()
           .when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
           .thenReturn(GetSecretValueResponse.builder().secretString(value).build());
-    }
-  }
-
-  @Override
-  void verifySecretIdGetCalls(String expectedSecretId, int times) {
-    ArgumentCaptor<GetSecretValueRequest> getSecretCaptor = ArgumentCaptor.forClass(GetSecretValueRequest.class);
-    verify(secretsManagerClient, times(times)).getSecretValue(getSecretCaptor.capture());
-    for (int i = 0; i < times; i++) {
-      assertEquals(expectedSecretId, getSecretCaptor.getAllValues().get(i).secretId());
-    }
-  }
-
-  @Override
-  void verifyClientCalls(Object expectedAuthProviderConfig, String expectedSecretId) throws JsonProcessingException {
-    ArgumentCaptor<CreateSecretRequest> createSecretCaptor = ArgumentCaptor.forClass(CreateSecretRequest.class);
-    if (Objects.isNull(expectedAuthProviderConfig)) {
-      verifyNoInteractions(secretsManagerClient);
-    } else {
-      verify(secretsManagerClient).createSecret(createSecretCaptor.capture());
-      assertEquals(expectedSecretId, createSecretCaptor.getValue().name());
-      assertNotNull(createSecretCaptor.getValue().secretString());
-      assertEquals(JsonUtils.pojoToJson(expectedAuthProviderConfig), createSecretCaptor.getValue().secretString());
     }
   }
 

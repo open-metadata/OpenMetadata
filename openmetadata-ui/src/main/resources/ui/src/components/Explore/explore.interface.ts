@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DefaultOptionType } from 'antd/lib/select';
 import { JsonTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../enums/search.enum';
 import { SearchResponse } from '../../interface/search.interface';
@@ -67,4 +68,25 @@ export interface ExploreProps {
   onChangePage?: (page: number) => void;
 
   loading?: boolean;
+}
+
+export interface ExploreQuickFilterField {
+  key: string;
+  value: string | undefined;
+}
+
+export interface ExploreQuickFilterProps {
+  index: string;
+  field: ExploreQuickFilterField;
+  onFieldRemove: (value: string) => void;
+  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
+}
+
+export interface SearchInputProps {
+  options: DefaultOptionType[];
+  value: string | undefined;
+  handleChange: (value: string) => void;
+  handleSearch: (value: string) => void;
+  handleSelect: (value: string) => void;
+  handleClear: () => void;
 }

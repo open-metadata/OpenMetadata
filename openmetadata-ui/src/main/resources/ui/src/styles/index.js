@@ -20,6 +20,7 @@ import './antd-master.less';
 import './app.less';
 import './components/glossary.less';
 import './components/profiler.less';
+import './components/react-awesome-query.less';
 import './components/size.less';
 import './components/step.less';
 import './fonts.css';

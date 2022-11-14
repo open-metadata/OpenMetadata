@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
@@ -97,9 +99,14 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+    String secretPassword = "secret:/openmetadata/dashboard/" + getEntityName(test) + "/password";
     DashboardConnection dashboardConnection =
         new DashboardConnection()
-            .withConfig(new SupersetConnection().withHostPort(new URI("http://localhost:8080")).withUsername("user"));
+            .withConfig(
+                new SupersetConnection()
+                    .withHostPort(new URI("http://localhost:8080"))
+                    .withUsername("user")
+                    .withPassword(secretPassword));
     DashboardService service =
         createAndCheckEntity(
             createRequest(test).withDescription(null).withConnection(dashboardConnection), ADMIN_AUTH_HEADERS);
@@ -107,10 +114,14 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     // Update dashboard description and ingestion service that are null
     DashboardConnection dashboardConnection1 =
         new DashboardConnection()
-            .withConfig(new SupersetConnection().withHostPort(new URI("http://localhost:9000")).withUsername("user1"));
+            .withConfig(
+                new SupersetConnection()
+                    .withHostPort(new URI("http://localhost:9000"))
+                    .withUsername("user1")
+                    .withPassword(secretPassword));
 
     CreateDashboardService update =
-        createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
+        createPutRequest(test).withDescription("description1").withConnection(dashboardConnection1);
 
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
@@ -129,9 +140,12 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), SupersetConnection.class)
             .getUsername());
     SupersetConnection supersetConnection =
-        new SupersetConnection().withHostPort(new URI("http://localhost:8080")).withUsername("user");
+        new SupersetConnection()
+            .withHostPort(new URI("http://localhost:8080"))
+            .withUsername("user")
+            .withPassword(secretPassword);
     DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(supersetConnection);
-    update = createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
+    update = createPutRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 
     fieldUpdated(change, "connection", dashboardConnection1, dashboardConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
@@ -153,6 +167,26 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                           .withHostPort(new URI("http://localhost:8080"))
                           .withUsername("admin")
                           .withPassword("admin")));
+    } catch (URISyntaxException e) {
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+  @Override
+  public CreateDashboardService createPutRequest(String name) {
+    String secretPassword = "secret:/openmetadata/dashboard/" + name + "/password";
+    try {
+      return new CreateDashboardService()
+          .withName(name)
+          .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
+          .withConnection(
+              new DashboardConnection()
+                  .withConfig(
+                      new SupersetConnection()
+                          .withHostPort(new URI("http://localhost:8080"))
+                          .withUsername("admin")
+                          .withPassword(Fernet.getInstance().encrypt(secretPassword.toLowerCase(Locale.ROOT)))));
     } catch (URISyntaxException e) {
       e.printStackTrace();
     }
@@ -220,7 +254,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
         if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
-          assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
+          assertTrue(actualSupersetConnection.getPassword().startsWith("secret:/openmetadata/dashboard/"));
+          assertTrue(actualSupersetConnection.getPassword().endsWith("/password"));
         } else {
           assertNull(actualSupersetConnection.getUsername());
           assertNull(actualSupersetConnection.getPassword());

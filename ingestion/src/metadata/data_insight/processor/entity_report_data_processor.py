@@ -35,9 +35,7 @@ from metadata.generated.schema.entity.data import (
     table,
     topic,
 )
-from metadata.generated.schema.entity.teams import user
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.tests import testSuite
 from metadata.generated.schema.type.entityReference import (
     EntityReference,
     EntityReferenceList,
@@ -56,8 +54,6 @@ ENTITIES = [
     pipeline.Pipeline,
     table.Table,
     topic.Topic,
-    user.User,
-    testSuite.TestSuite,
 ]
 
 T = TypeVar("T", *ENTITIES)  # type: ignore
