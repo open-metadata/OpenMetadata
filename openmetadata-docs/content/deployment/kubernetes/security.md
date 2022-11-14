@@ -5,7 +5,25 @@ slug: /deployment/kubernetes/security
 
 # Kubernetes Security
 
-<InlineCalloutContainer>
+Follow the steps for setting up the SSO, and then check the specific `Kubernetes` section of your chosen SSO.
+
+<Note>
+
+By default Basic Authentication will be enabled as authentication mechanism.
+
+<InlineCallout
+    color="violet-70"
+    bold="Basic Authentication"
+    icon="add_moderator"
+    href="/deployment/security/basic-auth"
+  >
+    Configure Basic Authentication to access the UI and APIs
+  </InlineCallout>
+
+
+</Note>
+
+<InlineCalloutContainer>  
   <InlineCallout
     color="violet-70"
     bold="Auth0 SSO"

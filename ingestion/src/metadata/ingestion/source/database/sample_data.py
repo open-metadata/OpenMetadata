@@ -728,7 +728,9 @@ class SampleDataSource(
             edge_entity_ref = get_lineage_entity_ref(
                 edge["edge_meta"], self.metadata_config
             )
-            lineage_details = LineageDetails(pipeline=edge_entity_ref)
+            lineage_details = LineageDetails(
+                pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query")
+            )
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=from_entity_ref,
