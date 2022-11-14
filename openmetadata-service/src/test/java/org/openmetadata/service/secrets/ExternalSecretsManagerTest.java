@@ -21,22 +21,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class ExternalSecretsManagerTest {
 
   static final boolean DECRYPT = false;
-  static final String EXPECTED_CONNECTION_JSON =
-      "{\"type\":\"Mysql\",\"scheme\":\"mysql+pymysql\",\"password\":\"openmetadata-test\",\"supportsMetadataExtraction\":true,\"supportsProfiler\":true,\"supportsQueryComment\":true}";
-  static final String EXPECTED_SECRET_ID = "/openmetadata/service/database/mysql/test";
+  static final boolean ENCRYPT = true;
 
   AWSBasedSecretsManager secretsManager;
 
   @BeforeEach
   void setUp() {
+    Fernet fernet = Fernet.getInstance();
+    fernet.setFernetKey("jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=");
     Map<String, String> parameters = new HashMap<>();
     parameters.put("region", "eu-west-1");
     parameters.put("accessKeyId", "123456");
@@ -48,8 +52,22 @@ public abstract class ExternalSecretsManagerTest {
 
   @Test
   void testDecryptDatabaseServiceConnectionConfig() {
-    mockClientGetValue(EXPECTED_CONNECTION_JSON);
     testEncryptDecryptServiceConnection(DECRYPT);
+  }
+
+  @Test
+  void testEncryptDatabaseServiceConnectionConfig() {
+    testEncryptDecryptServiceConnection(ENCRYPT);
+  }
+
+  @Test
+  void testDecryptSSOConfig() {
+    testEncryptDecryptSSOConfig(DECRYPT);
+  }
+
+  @Test
+  void testEncryptSSSOConfig() {
+    testEncryptDecryptSSOConfig(ENCRYPT);
   }
 
   @Test
@@ -59,19 +77,38 @@ public abstract class ExternalSecretsManagerTest {
 
   abstract void setUpSpecific(SecretsManagerConfiguration config);
 
-  abstract void mockClientGetValue(String value);
-
   void testEncryptDecryptServiceConnection(boolean decrypt) {
     MysqlConnection mysqlConnection = new MysqlConnection();
     mysqlConnection.setPassword("openmetadata-test");
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
-    Object actualConfig =
-        secretsManager.encryptOrDecryptServiceConnectionConfig(
-            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
+    MysqlConnection actualConfig =
+        (MysqlConnection)
+            secretsManager.encryptOrDecryptServiceConnectionConfig(
+                mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
+
+    if (decrypt) {
+      mysqlConnection.setPassword("secret:/openmetadata/database/test/password");
+      actualConfig.setPassword(Fernet.getInstance().decrypt(actualConfig.getPassword()));
+    }
 
     assertEquals(mysqlConnection, actualConfig);
+  }
+
+  void testEncryptDecryptSSOConfig(boolean decrypt) {
+    OktaSSOClientConfig config = new OktaSSOClientConfig();
+    config.setPrivateKey("this-is-a-test");
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.SSO)
+            .withConfig(
+                new SSOAuthMechanism().withAuthConfig(config).withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA));
+
+    AuthenticationMechanism actualAuthenticationMechanism =
+        secretsManager.encryptOrDecryptAuthenticationMechanism("bot", authenticationMechanism, decrypt);
+
+    assertEquals(authenticationMechanism, actualAuthenticationMechanism);
   }
 
   abstract SecretsManagerProvider expectedSecretManagerProvider();

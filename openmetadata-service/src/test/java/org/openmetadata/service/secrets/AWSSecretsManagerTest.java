@@ -12,15 +12,11 @@
  */
 package org.openmetadata.service.secrets;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
 
 import org.mockito.Mock;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
-import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
-import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 
 public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
 
@@ -34,20 +30,7 @@ public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
   }
 
   @Override
-  void mockClientGetValue(String value) {
-    if (value == null) {
-      lenient()
-          .when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
-          .thenReturn(GetSecretValueResponse.builder().build());
-    } else {
-      lenient()
-          .when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
-          .thenReturn(GetSecretValueResponse.builder().secretString(value).build());
-    }
-  }
-
-  @Override
   SecretsManagerProvider expectedSecretManagerProvider() {
-    return SecretsManagerProvider.AWS;
+    return SecretsManagerProvider.MANAGED_AWS;
   }
 }
