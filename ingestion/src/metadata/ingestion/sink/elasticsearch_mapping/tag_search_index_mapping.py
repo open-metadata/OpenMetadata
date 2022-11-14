@@ -17,7 +17,7 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
   "settings": {
-    "analysis": {
+   "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
@@ -25,6 +25,21 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           "filter": [
             "lowercase"
           ]
+        }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
         }
       }
     }
@@ -48,7 +63,8 @@ TAG_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "normalizer": "lowercase_normalizer"
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"

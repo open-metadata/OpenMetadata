@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.search;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,6 +51,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.Operator;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
@@ -197,6 +198,9 @@ public class SearchResource {
         break;
       case "pipeline_search_index":
         searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
+        break;
+      case "mlmodel_search_index":
+        searchSourceBuilder = buildMlModelSearchBuilder(query, from, size);
         break;
       case "table_search_index":
         searchSourceBuilder = buildTableSearchBuilder(query, from, size);
@@ -357,14 +361,14 @@ public class SearchResource {
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field("columns.name", 5.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DESCRIPTION, 2.0f)
+            .field("columns.name", 2.0f)
             .field("columns.description", 1.0f)
-            .field("columns.children.name", 5.0f)
-            .lenient(true)
+            .field("columns.children.name", 2.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
-    HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(NAME);
+    HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -390,8 +394,12 @@ public class SearchResource {
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(FIELD_NAME, 10.0f).field(FIELD_DESCRIPTION, 2.0f).lenient(true);
-    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_NAME);
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DESCRIPTION, 2.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -405,12 +413,13 @@ public class SearchResource {
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_DESCRIPTION, 2.0f)
-            .field("chars.name")
+            .field("chars.name", 2.0f)
             .field("charts.description")
-            .lenient(true);
-    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(NAME);
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -432,18 +441,45 @@ public class SearchResource {
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(NAME, 5.0f)
-            .field(DESCRIPTION)
-            .field("tasks.name")
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(DESCRIPTION, 2.0f)
+            .field("tasks.name", 2.0f)
             .field("tasks.description")
-            .lenient(true);
-    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(NAME);
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
     highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("tasks.description");
+    highlightTaskDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightPipelineName);
+    hb.field(highlightTasks);
+    hb.field(highlightTaskDescriptions);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(DESCRIPTION, 2.0f)
+            .field("mlFeatures.name", 2.0f)
+            .field("mlFeatures.description")
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightPipelineName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
+    highlightTasks.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("mlFeatures.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
@@ -491,7 +527,11 @@ public class SearchResource {
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -508,7 +548,11 @@ public class SearchResource {
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
     highlightTagName.highlighterType(UNIFIED);
