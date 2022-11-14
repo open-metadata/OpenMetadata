@@ -11,19 +11,10 @@
  *  limitations under the License.
  */
 
-import { StepperStepType } from 'Models';
-import { FilterPattern } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+@primary-color: #7147e8;
 
-export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
-  { name: 'Configure Ingestion', step: 1 },
-  { name: 'Configure DBT', step: 2 },
-  { name: 'Configure Metadata to ES Config', step: 3 },
-  { name: 'Schedule Interval', step: 4 },
-];
-
-export const INGESTION_SCHEDULER_INITIAL_VALUE = '0 * * * *';
-
-export const INITIAL_FILTER_PATTERN: FilterPattern = {
-  includes: [],
-  excludes: [],
-};
+.kpi-slider {
+  .ant-slider-track {
+    background: @primary-color;
+  }
+}

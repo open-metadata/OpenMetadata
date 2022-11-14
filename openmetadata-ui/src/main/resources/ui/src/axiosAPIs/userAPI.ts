@@ -175,8 +175,9 @@ export const generateUserToken = async (id: string, expiry: string) => {
 };
 
 export const revokeUserToken = async (id: string) => {
-  const response = await APIClient.put<string, AxiosResponse<User>>(
-    `/users/revokeToken/${id}`
+  const response = await APIClient.put<{ id: string }, AxiosResponse<User>>(
+    '/users/revokeToken',
+    { id }
   );
 
   return response.data;

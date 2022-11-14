@@ -68,11 +68,6 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
   'No Tier': '#6A86EB',
 };
 
-export const DATA_INSIGHT_TAB = {
-  DataAssets: 'Data assets',
-  'Web Analytics': 'Web Analytics',
-};
-
 export const DAY_FILTER = [
   {
     value: 7,
@@ -172,4 +167,16 @@ export const ENTITIES_SUMMARY_LIST = [
     latest: 0,
     id: DataInsightChartType.TotalEntitiesByTier,
   },
+];
+
+export const VALIDATE_MESSAGES = {
+  required: '${fieldName} is required!',
+  string: {
+    range: '${fieldName} must be between ${min} and ${max} character.',
+  },
+};
+
+export const SUPPORTED_CHARTS_FOR_KPI = [
+  DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+  DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
 ];

@@ -32,6 +32,7 @@ export enum GlobalSettingOptions {
   POLICIES = 'policies',
   DATABASES = 'databases',
   MESSAGING = 'messaging',
+  METADATA = 'metadata',
   DASHBOARDS = 'dashboards',
   PIPELINES = 'pipelines',
   MLMODELS = 'mlModels',
