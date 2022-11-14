@@ -25,11 +25,13 @@ import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { Connection } from '../../generated/entity/services/databaseService';
 import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Connection as MetadataConnection } from '../../generated/entity/services/metadataService';
 import { getLoadingStatus } from '../../utils/CommonUtils';
 import {
   getAddIngestionPath,
@@ -82,6 +84,12 @@ const Ingestion: React.FC<IngestionProps> = ({
   });
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
   const noConnectionMsg = `${serviceName} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.`;
+  const isOpenmetadataService = useMemo(
+    () =>
+      serviceDetails.connection?.config?.type ===
+      MetadataServiceType.OpenMetadata,
+    [serviceDetails]
+  );
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
@@ -96,6 +104,11 @@ const Ingestion: React.FC<IngestionProps> = ({
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
       config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+      (config as MetadataConnection).supportMetadataToElasticSearchExtraction &&
+        pipelineType.push(PipelineType.DataInsight);
+      (config as MetadataConnection)
+        .supportsElasticSearchReindexingExtraction &&
+        pipelineType.push(PipelineType.ElasticSearchReindex);
     } else {
       pipelineType = [
         PipelineType.Metadata,
@@ -110,7 +123,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const getIngestionPipelineTypeOption = (): PipelineType[] => {
     const pipelineType = getSupportedPipelineTypes();
-    if (ingestionList.length > 0) {
+    if (isOpenmetadataService || ingestionList.length > 0) {
       return pipelineType.reduce((prev, curr) => {
         if (
           // Prevent adding multiple usage pipeline
@@ -271,7 +284,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
     if (types.length) {
       // if service has metedata then show all available option
-      if (hasMetadata) {
+      if (isOpenmetadataService || hasMetadata) {
         element = getAddIngestionDropdown(types);
       } else {
         /**

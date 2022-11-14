@@ -37,6 +37,7 @@ export enum ResourceEntity {
   INGESTION_PIPELINE = 'ingestionPipeline',
   LOCATION = 'location',
   MESSAGING_SERVICE = 'messagingService',
+  METADATA_SERVICE = 'metadataService',
   METRICS = 'metrics',
   ML_MODEL = 'mlmodel',
   ML_MODEL_SERVICE = 'mlmodelService',
