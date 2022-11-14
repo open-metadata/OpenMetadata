@@ -432,15 +432,16 @@ const EntityTable = ({
             lowerCase(dataTypeDisplay)
           ) : (
             <PopOver
+              delay={200}
               html={
                 <div className="break-word">
                   <span>{lowerCase(dataTypeDisplay)}</span>
                 </div>
               }
               key="pop-over"
-              position="bottom"
+              position="top"
               theme="light"
-              trigger="click">
+              trigger="mouseenter">
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay}
               </Typography.Text>
@@ -629,7 +630,7 @@ const EntityTable = ({
         key: 'name',
         accessor: 'name',
         ellipsis: true,
-        width: 180,
+        width: 220,
         render: (name: Column['name'], record: Column) => (
           <Popover destroyTooltipOnHide content={name} trigger="hover">
             {prepareConstraintIcon(name, record.constraint)}
@@ -643,7 +644,7 @@ const EntityTable = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
-        width: 200,
+        width: 220,
         render: renderDataTypeDisplay,
       },
       {
