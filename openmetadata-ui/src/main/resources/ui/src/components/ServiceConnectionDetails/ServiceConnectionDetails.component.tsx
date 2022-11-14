@@ -22,12 +22,14 @@ import { EntityType } from '../../enums/entity.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
+import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
 import { ConfigData } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
+import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import PopOver from '../common/popover/PopOver';
@@ -202,6 +204,10 @@ const ServiceConnectionDetails = ({
         break;
       case EntityType.MLMODEL_SERVICE:
         setSchema(getMlmodelConfig(serviceFQN as MlModelServiceType).schema);
+
+        break;
+      case EntityType.METADATA_SERVICE:
+        setSchema(getMetadataConfig(serviceFQN as MetadataServiceType).schema);
 
         break;
     }

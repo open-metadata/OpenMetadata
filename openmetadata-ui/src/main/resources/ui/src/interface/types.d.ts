@@ -406,7 +406,8 @@ declare module 'Models' {
     | 'messagingServices'
     | 'dashboardServices'
     | 'pipelineServices'
-    | 'mlmodelServices';
+    | 'mlmodelServices'
+    | 'metadataServices';
 
   export type ServiceCategory = {
     databases: string;

@@ -24,6 +24,7 @@ import React, {
 import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
+import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
@@ -35,6 +36,7 @@ import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
+import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import {
@@ -143,6 +145,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         connSch = getMlmodelConfig(serviceType as MlModelServiceType);
 
         break;
+      }
+      case ServiceCategory.METADATA_SERVICES: {
+        connSch = getMetadataConfig(serviceType as MetadataServiceType);
       }
     }
 
