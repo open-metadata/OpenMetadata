@@ -9,28 +9,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Data Insights DAG function builder
+ElasticSearch reindex DAG function builder
 """
-
 from airflow import DAG
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    data_insight_workflow,
-)
-
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import IngestionPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
-    Processor,
     WorkflowConfig,
 )
+from openmetadata_managed_apis.workflows.ingestion.common import build_source, build_dag, metadata_ingestion_workflow
 
 
-def build_data_insight_workflow_config(
+def build_es_reindex_workflow_config(
     ingestion_pipeline: IngestionPipeline,
 ) -> OpenMetadataWorkflowConfig:
     """
@@ -39,12 +30,7 @@ def build_data_insight_workflow_config(
 
     workflow_config = OpenMetadataWorkflowConfig(
         source=build_source(ingestion_pipeline),
-        # ingestion_pipeline.service.serviceConnection.elasticsearch
-        sink=ingestion_pipeline.openMetadataServerConnection.elasticsSearch,
-        processor=Processor(
-            type="data-insight-processor",
-            config={},
-        ),
+        sink=ingestion_pipeline.sink,
         workflowConfig=WorkflowConfig(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
@@ -55,14 +41,14 @@ def build_data_insight_workflow_config(
     return workflow_config
 
 
-def build_data_insight_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
+def build_es_reindex_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
     """Build a simple Data Insight DAG"""
-    workflow_config = build_data_insight_workflow_config(ingestion_pipeline)
+    workflow_config = build_es_reindex_workflow_config(ingestion_pipeline)
     dag = build_dag(
-        task_name="data_insight_task",
+        task_name="elasticsearch_reindex_task",
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=workflow_config,
-        workflow_fn=data_insight_workflow,
+        workflow_fn=metadata_ingestion_workflow,
     )
 
     return dag
