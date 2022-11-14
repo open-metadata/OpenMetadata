@@ -9,38 +9,42 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Data Insights DAG function builder
+ElasticSearch reindex DAG function builder
 """
-
-from typing import cast
-
 from airflow import DAG
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
     build_dag,
-    data_insight_workflow,
+    build_source,
+    metadata_ingestion_workflow,
 )
 
+from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
+    MetadataESConnection,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
-from metadata.generated.schema.entity.services.metadataService import MetadataService
+from metadata.generated.schema.entity.services.metadataService import (
+    MetadataConnection,
+    MetadataService,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
-    ComponentConfig1,
     LogLevels,
     OpenMetadataWorkflowConfig,
-    Processor,
     Sink,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    SourceConfig,
+    WorkflowConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS, OPENMETADATA_SERVICE_FQN
 
 
-def build_data_insight_workflow_config(
+def build_es_reindex_workflow_config(
     ingestion_pipeline: IngestionPipeline,
 ) -> OpenMetadataWorkflowConfig:
     """
@@ -52,45 +56,39 @@ def build_data_insight_workflow_config(
     except Exception as exc:
         raise ClientInitializationError(f"Failed to initialize the client: {exc}")
 
-    openmetadata_service = metadata.get_by_name(
-        entity=MetadataService, fqn=OPENMETADATA_SERVICE_FQN
+    openmetadata_service: MetadataService = metadata.get_by_name(
+        entity=MetadataService, fqn=ingestion_pipeline.service.fullyQualifiedName
     )
-
     if not openmetadata_service:
         raise ValueError(
             "Could not retrieve the OpenMetadata service! This should not happen."
         )
 
-    elasticsearch_service_config_dict = (
-        openmetadata_service.connection.config.elasticsSearch.config.dict()
-    )
+    om_service_elasticsearch_dict = {
+        key: value
+        for key, value in openmetadata_service.connection.config.elasticsSearch.config.dict().items()
+        if value
+    }
 
-    elasticsearch_source_config_dict = {
-        ES_SOURCE_TO_ES_OBJ_ARGS[key]: value
+    ingestion_pipeline_elasticsearch_source_config = {
+        key: value
         for key, value in ingestion_pipeline.sourceConfig.config.dict().items()
         if value and key != "type"
     }
 
-    sink = Sink(
-        type="elasticsearch",
-        config=ComponentConfig1(
-            **elasticsearch_service_config_dict,
-            **elasticsearch_source_config_dict,
-        ),
-    )
-
-    openmetadata_service = cast(MetadataService, openmetadata_service)
-
     workflow_config = OpenMetadataWorkflowConfig(
         source=WorkflowSource(
-            type="dataInsight",
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
+            type="metadata_elasticsearch",
+            serviceName=ingestion_pipeline.service.fullyQualifiedName,
+            serviceConnection=MetadataConnection(config=MetadataESConnection()),
+            sourceConfig=SourceConfig(),
         ),
-        sink=sink,
-        processor=Processor(
-            type="data-insight-processor",
-            config={},
+        sink=Sink(
+            type="elasticsearch",
+            config={
+                **om_service_elasticsearch_dict,
+                **ingestion_pipeline_elasticsearch_source_config,
+            },
         ),
         workflowConfig=WorkflowConfig(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
@@ -102,14 +100,14 @@ def build_data_insight_workflow_config(
     return workflow_config
 
 
-def build_data_insight_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
+def build_es_reindex_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
     """Build a simple Data Insight DAG"""
-    workflow_config = build_data_insight_workflow_config(ingestion_pipeline)
+    workflow_config = build_es_reindex_workflow_config(ingestion_pipeline)
     dag = build_dag(
-        task_name="data_insight_task",
+        task_name="elasticsearch_reindex_task",
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=workflow_config,
-        workflow_fn=data_insight_workflow,
+        workflow_fn=metadata_ingestion_workflow,
     )
 
     return dag
