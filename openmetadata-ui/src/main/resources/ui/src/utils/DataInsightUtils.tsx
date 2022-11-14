@@ -12,7 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
-import { isInteger, isUndefined, last, toNumber } from 'lodash';
+import { isInteger, isString, isUndefined, last, toNumber } from 'lodash';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
@@ -69,6 +69,22 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
 
   const suffix = isPercentage ? '%' : '';
 
+  const getEntryFormattedValue = (value: number | string | undefined) => {
+    if (!isUndefined(value)) {
+      if (isString(value)) {
+        return `${value}${suffix}`;
+      } else if (isInteger(value)) {
+        return `${value}${suffix}`;
+      } else {
+        `${value.toFixed(2)}${suffix}`;
+      }
+    } else {
+      return '';
+    }
+
+    return '';
+  };
+
   if (active && payload && payload.length) {
     return (
       <Card>
@@ -80,10 +96,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
               <rect fill={entry.color} height="14" rx="2" width="14" />
             </Surface>
             <span>
-              {entry.dataKey} -{' '}
-              {isInteger(entry.value)
-                ? `${entry.value}${suffix}`
-                : `${entry.value?.toFixed(2)}${suffix}`}
+              {entry.dataKey} - {getEntryFormattedValue(entry.value)}
             </span>
           </li>
         ))}
