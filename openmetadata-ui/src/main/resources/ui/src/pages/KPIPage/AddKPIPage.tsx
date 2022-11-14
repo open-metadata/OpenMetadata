@@ -42,6 +42,7 @@ import {
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
 import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
+import { nameWithSpace } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   CreateKpiRequest,
@@ -53,6 +54,7 @@ import {
   DataType,
 } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getUTCDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 const { Option } = Select;
@@ -189,7 +191,18 @@ const AddKPIPage = () => {
                   required: true,
                   max: 128,
                   min: 1,
-                  message: 'Invalid name',
+                  validator: (_, value) => {
+                    if (
+                      !isUrlFriendlyName(value) ||
+                      nameWithSpace.test(value)
+                    ) {
+                      return Promise.reject(
+                        t('label.special-character-not-allowed')
+                      );
+                    }
+
+                    return Promise.resolve();
+                  },
                 },
               ]}>
               <Input data-testid="name" placeholder="Kpi name" type="text" />
