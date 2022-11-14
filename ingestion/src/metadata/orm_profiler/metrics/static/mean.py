@@ -84,16 +84,16 @@ class Mean(StaticMetric):
         Data lake function to calculate mean
         """
         try:
-            if self.col.dataType in QUANTIFIABLE_DICT:
-                return data_frame[self.col.name.__root__].mean()
+            if self.col.datatype in QUANTIFIABLE_DICT:
+                return data_frame[self.col.name].mean()
 
-            if self.col.dataType in CONCATENABLE_DICT:
+            if self.col.datatype in CONCATENABLE_DICT:
                 return (
                     pd.DataFrame(
                         [
                             len(f"{concatenable_data}")
                             for concatenable_data in data_frame[
-                                self.col.name.__root__
+                                self.col.name
                             ].values.tolist()
                         ]
                     )
@@ -104,6 +104,6 @@ class Mean(StaticMetric):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Don't know how to process type {self.col.dataType.value} when computing MEAN, Error: {err}"
+                f"Don't know how to process type {self.col.datatype.value} when computing MEAN, Error: {err}"
             )
             return 0

@@ -77,6 +77,11 @@ NOT_COMPUTE = {
     sqa_types.SQASGeography,
 }
 
+NOT_COMPUTE_OM = {
+    DataType.ARRAY,
+    DataType.JSON,
+}
+
 QUANTIFIABLE_DICT = {
     DataType.INT,
     DataType.BIGINT,

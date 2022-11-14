@@ -44,10 +44,10 @@ class Count(StaticMetric):
     @_label
     def dl_fn(self, data_frame=None):
         try:
-            return len(data_frame[self.col.name.__root__])
+            return len(data_frame[self.col.name])
         except Exception as err:
             logger.debug(
-                f"Don't know how to process type {self.col.dataType.value} when computing MEAN"
+                f"Don't know how to process type {self.col.datatype.value} when computing MEAN"
             )
             logger.error(err)
             return 0

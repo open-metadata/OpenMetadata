@@ -110,7 +110,7 @@ def get_static_metrics(
         logger.debug(
             f"{traceback.format_exc()}\nError trying to compute profile for {exc}"
         )
-        processor_status.failure(f"{column.name}", "Static Metrics")
+        processor_status.failure(f"{column.name}", "Static Metrics", exc)
         return None
 
 

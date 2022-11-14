@@ -57,9 +57,9 @@ class Median(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if self.col.dataType in QUANTIFIABLE_DICT:
-            return data_frame[self.col.name.__root__].median().tolist()
+        if self.col.datatype in QUANTIFIABLE_DICT:
+            return data_frame[self.col.name].median().tolist()
         logger.debug(
-            f"Don't know how to process type {self.col.dataType.value} when computing Median"
+            f"Don't know how to process type {self.col.datatype.value} when computing Median"
         )
         return None

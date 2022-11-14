@@ -19,10 +19,16 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict
 
+from pydantic import BaseModel
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import ColumnName, TableData
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    GCSConfig,
+    S3Config,
+)
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
+from metadata.ingestion.source.database.datalake import DatalakeSource
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
@@ -52,7 +58,6 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         self.service_connection_config = (
             profiler_interface_args.service_connection_config
         )
-
         self.client = get_connection(self.service_connection_config).client
         self.processor_status = ProfilerProcessorStatus()
         self.processor_status.entity = (
@@ -64,8 +69,22 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         self.profile_sample = profiler_interface_args.table_sample_precentage
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = None
-        self.data_frame = None
         self._table = profiler_interface_args.table_entity
+        self.data_frame_list = None
+
+    def fetch_dl_data_frame(self, config_source):
+        if isinstance(config_source, GCSConfig):
+            self.data_frame_list = DatalakeSource.get_gcs_files(
+                client=self.client,
+                key=self.table.name.__root__,
+                bucket_name=self.table.databaseSchema.name,
+            )
+        if isinstance(config_source, S3Config):
+            self.data_frame_list = DatalakeSource.get_s3_files(
+                client=self.client,
+                key=self.table.name.__root__,
+                bucket_name=self.table.databaseSchema.name,
+            )
 
     def compute_metrics(
         self,
@@ -80,22 +99,19 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         ) = metric_funcs
         logger.debug(f"Running profiler for {table}")
         try:
+
             row = compute_metrics_registry.registry[metric_type.value](
                 metrics,
                 session=self.client,
-                data_frame_list=self.data_frame,
+                data_frame_list=self.data_frame_list,
                 column=column,
                 processor_status=self.processor_status,
             )
         except Exception as err:
             logger.error(err)
             row = None
-        if column is not None:
-            column = (
-                column.name
-                if not isinstance(column.name, ColumnName)
-                else column.name.__root__
-            )
+        if column:
+            column = column.name
         return row, column
 
     def fetch_sample_data(self, table) -> TableData:
@@ -109,16 +125,12 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         """
         sampler = Sampler(
             session=self.client,
-            table=table,
+            table=self.data_frame_list,
             profile_sample=self.profile_sample,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-        sample_data, data_frame = sampler.fetch_dl_sample_data(
-            self.service_connection_config.configSource
-        )
-        self.data_frame = data_frame
-        return sample_data, data_frame
+        return sampler.fetch_dl_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -144,6 +156,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
+        self.fetch_dl_data_frame(self.service_connection_config.configSource)
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
             self.compute_metrics(metric_funcs=metric_func)
@@ -171,7 +184,15 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         return self._table
 
     def get_columns(self):
-        return self._table.columns
+        return [
+            ColumnBaseModel(name=column.name.__root__, datatype=column.dataType)
+            for column in self._table.columns
+        ]
 
     def close(self):
         pass
+
+
+class ColumnBaseModel(BaseModel):
+    name: str
+    datatype: DataType

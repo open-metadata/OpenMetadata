@@ -49,4 +49,4 @@ class NullCount(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        return data_frame[self.col.name.__root__].isnull().values.tolist().count(True)
+        return data_frame[self.col.name].isnull().values.tolist().count(True)

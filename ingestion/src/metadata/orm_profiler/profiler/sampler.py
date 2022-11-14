@@ -137,25 +137,13 @@ class Sampler:
             rows=[list(row) for row in sqa_sample],
         )
 
-    def fetch_dl_sample_data(self, config_source) -> TableData:
-        if isinstance(config_source, GCSConfig):
-            data_frame = DatalakeSource.get_gcs_files(
-                client=self.session,
-                key=self.table.name.__root__,
-                bucket_name=self.table.databaseSchema.name,
-            )
-        if isinstance(config_source, S3Config):
-            data_frame = DatalakeSource.get_s3_files(
-                client=self.session,
-                key=self.table.name.__root__,
-                bucket_name=self.table.databaseSchema.name,
-            )
+    def fetch_dl_sample_data(self) -> TableData:
         cols, rows = self.get_col_row(
-            data_frame=data_frame[0]
-            if not isinstance(data_frame, DataFrame)
-            else data_frame
+            data_frame=self.table[0]
+            if not isinstance(self.table, DataFrame)
+            else self.table
         )
-        return TableData(columns=cols, rows=rows), data_frame
+        return TableData(columns=cols, rows=rows)
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""

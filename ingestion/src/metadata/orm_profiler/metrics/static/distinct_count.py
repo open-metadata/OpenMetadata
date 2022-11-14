@@ -44,10 +44,10 @@ class DistinctCount(StaticMetric):
     @_label
     def dl_fn(self, data_frame=None):
         try:
-            return len(set(data_frame[self.col.name.__root__].values.tolist()))
+            return len(set(data_frame[self.col.name].values.tolist()))
         except Exception as err:
             logger.debug(
-                f"Don't know how to process type {self.col.dataType.value} "
+                f"Don't know how to process type {self.col.datatype.value} "
                 f"when computing Distinct Count.\n Error: {err}"
             )
             return None

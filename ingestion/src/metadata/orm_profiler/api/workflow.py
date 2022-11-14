@@ -18,7 +18,6 @@ Workflow definition for the ORM Profiler.
 """
 import traceback
 from copy import deepcopy
-from functools import singledispatch
 from typing import Iterable, List, Optional, cast
 
 from pydantic import ValidationError
@@ -41,7 +40,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
@@ -96,7 +98,7 @@ class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
 
 
-class ProfilerWorkflow:  # pylint: disable=too-many-public-methods
+class ProfilerWorkflow:
     """
     Configure and run the ORM profiler
     """
@@ -139,16 +141,6 @@ class ProfilerWorkflow:  # pylint: disable=too-many-public-methods
                 "If so, make sure the profiler service name matches the service name specified during ingestion."
             )
         self._table_entity = None
-        self.create_profiler_interface_dispatch = singledispatch(
-            self.create_profiler_interface_dispatch
-        )
-        self.create_profiler_interface_dispatch.register(
-            DataLakeProfilerType,
-            self.create_dl_profiler_interface_dispatch,
-        )
-        self.create_profiler_interface_dispatch.register(
-            MetaData, self.create_sqa_profiler_interface_dispatch
-        )
 
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
@@ -252,23 +244,6 @@ class ProfilerWorkflow:  # pylint: disable=too-many-public-methods
 
         return get_partition_details(entity)
 
-    def create_profiler_interface_dispatch(
-        self, metadata_obj
-    ):  # pylint: disable=method-hidden
-        raise NotImplementedError(f"{type(metadata_obj)} not implemented for Profiler")
-
-    def create_sqa_profiler_interface_dispatch(
-        self, metadata_obj: MetaData
-    ) -> SQAProfilerInterface:
-        logger.debug(f"Creating {type(metadata_obj)} Interface")
-        return SQAProfilerInterface(self._profiler_interface_args)
-
-    def create_dl_profiler_interface_dispatch(
-        self, metadata_obj: DataLakeProfilerType
-    ) -> DataLakeProfilerInterface:
-        logger.debug(f"Creating {type(metadata_obj)} Interface")
-        return DataLakeProfilerInterface(self._profiler_interface_args)
-
     def create_profiler_interface(
         self,
         service_connection_config,
@@ -295,8 +270,14 @@ class ProfilerWorkflow:  # pylint: disable=too-many-public-methods
                 if not self.get_profile_query(self._table_entity)
                 else None,
             )
-            return self.create_profiler_interface_dispatch(metadata_obj)
 
+            if isinstance(service_connection_config, DatalakeConnection):
+                return DataLakeProfilerInterface(self._profiler_interface_args)
+            if isinstance(service_connection_config, DatabaseConnection):
+                return SQAProfilerInterface(self._profiler_interface_args)
+            raise Exception(
+                f"Couldn't create a profiler interface for {type(service_connection_config)}"
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error("We could not create a profiler interface")

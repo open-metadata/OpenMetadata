@@ -46,7 +46,7 @@ from metadata.orm_profiler.metrics.core import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
-from metadata.orm_profiler.orm.registry import NOT_COMPUTE
+from metadata.orm_profiler.orm.registry import NOT_COMPUTE, NOT_COMPUTE_OM
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -142,18 +142,14 @@ class Profiler(Generic[TMetric]):
             self._columns = [
                 column
                 for column in self.profiler_interface.get_columns()
-                if isinstance(column.name, ColumnName)
-                and column.name.__root__ in self._get_included_columns()
-                or column.name in self._get_included_columns()
+                if column.name in self._get_included_columns()
             ]
 
         if not self._get_included_columns():
             self._columns = [
                 column
                 for column in self._columns or self.profiler_interface.get_columns()
-                if isinstance(column.name, ColumnName)
-                and column.name.__root__ not in self._get_excluded_columns()
-                or column.name not in self._get_excluded_columns()
+                if column.name not in self._get_excluded_columns()
             ]
 
         return self._columns
@@ -325,7 +321,7 @@ class Profiler(Generic[TMetric]):
             for column in self.columns
             if isinstance(column, Column)
             and column.type.__class__ not in NOT_COMPUTE
-            or column.dataType.value not in NOT_COMPUTE
+            or column.datatype not in NOT_COMPUTE_OM
         ]
 
         column_metrics_for_thread_pool = [
@@ -398,23 +394,6 @@ class Profiler(Generic[TMetric]):
         logger.info(
             f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
         )
-
-        if (
-            not isinstance(self.table, DeclarativeMeta)
-            and self.table.serviceType == DatabaseServiceType.Datalake
-        ):
-            (
-                sample_data,
-                self.data_frame_list,
-            ) = self.profiler_interface.fetch_sample_data(self.table)
-            self.compute_metrics()
-            profile = self._check_profile_and_handle(self.get_profile())
-            table_profile = ProfilerResponse(
-                table=self.profiler_interface.table_entity,
-                profile=profile,
-                sample_data=sample_data,
-            )
-            return table_profile
 
         self.compute_metrics()
         if generate_sample_data:

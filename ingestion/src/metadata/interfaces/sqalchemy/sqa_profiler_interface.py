@@ -141,7 +141,8 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         logger.debug(
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
-        with self.session_factory() as session:
+        Session = self.session_factory  # pylint: disable=invalid-name
+        with Session() as session:
             self.set_session_tag(session)
             sampler = self._create_thread_safe_sampler(
                 session,

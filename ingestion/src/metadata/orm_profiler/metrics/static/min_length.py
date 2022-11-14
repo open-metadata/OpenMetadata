@@ -55,18 +55,18 @@ class MinLength(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if self.col.dataType in CONCATENABLE_DICT:
+        if self.col.datatype in CONCATENABLE_DICT:
             return (
                 pd.DataFrame(
                     [
                         len(f"{concatenable_data}")
-                        for concatenable_data in data_frame[self.col.name.__root__]
+                        for concatenable_data in data_frame[self.col.name]
                     ]
                 )
                 .min()
                 .values
             )[0]
         logger.debug(
-            f"Don't know how to process type {self.col.dataType} when computing MAX_LENGTH"
+            f"Don't know how to process type {self.col.datatype} when computing MAX_LENGTH"
         )
         return None

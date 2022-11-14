@@ -43,10 +43,10 @@ class Min(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if self.col.dataType in QUANTIFIABLE_DICT:
+        if self.col.datatype in QUANTIFIABLE_DICT:
             return (
-                data_frame[self.col.name.__root__].min()
-                if not isinstance(data_frame[self.col.name.__root__].min(), list)
-                else data_frame[self.col.name.__root__].min().tolist()
+                data_frame[self.col.name].min()
+                if not isinstance(data_frame[self.col.name].min(), list)
+                else data_frame[self.col.name].min().tolist()
             )
         return 0

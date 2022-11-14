@@ -205,10 +205,12 @@ class SampleTest(TestCase):
             profiler = Profiler(
                 hist,
                 profiler_interface=SQAProfilerInterface(
-                    self.sqlite_conn,
-                    table_entity=self.table_entity,
-                    table_sample_precentage=50,
-                    ometa_client=None,
+                    profiler_interface_args=ProfilerInterfaceArgs(
+                        self.sqlite_conn,
+                        table_entity=self.table_entity,
+                        table_sample_precentage=50,
+                        ometa_client=None,
+                    )
                 ),
             )
         res = profiler.compute_metrics()._column_results

@@ -43,10 +43,10 @@ class Max(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if self.col.dataType in QUANTIFIABLE_DICT:
+        if self.col.datatype in QUANTIFIABLE_DICT:
             return (
-                data_frame[self.col.name.__root__].max()
-                if not isinstance(data_frame[self.col.name.__root__].max(), list)
-                else data_frame[self.col.name.__root__].max().tolist()
+                data_frame[self.col.name].max()
+                if not isinstance(data_frame[self.col.name].max(), list)
+                else data_frame[self.col.name].max().tolist()
             )
         return 0

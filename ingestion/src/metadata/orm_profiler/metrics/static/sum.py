@@ -43,10 +43,10 @@ class Sum(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame):
-        if self.col.dataType in QUANTIFIABLE_DICT:
+        if self.col.datatype in QUANTIFIABLE_DICT:
             return (
-                data_frame[self.col.name.__root__].sum()
-                if not isinstance(data_frame[self.col.name.__root__].sum(), list)
-                else data_frame[self.col.name.__root__].sum().tolist()
+                data_frame[self.col.name].sum()
+                if not isinstance(data_frame[self.col.name].sum(), list)
+                else data_frame[self.col.name].sum().tolist()
             )
         return None

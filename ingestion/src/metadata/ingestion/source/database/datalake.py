@@ -15,6 +15,8 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import traceback
 from typing import Iterable, Optional, Tuple
 
+from pandas import DataFrame
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -26,7 +28,6 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
     Table,
-    TableData,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
@@ -305,21 +306,26 @@ class DatalakeSource(DatabaseServiceSource):
                 data_frame = self.get_s3_files(
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
-            if not data_frame:
+            if isinstance(data_frame, DataFrame):
                 columns = self.get_columns(data_frame)
-                table_request = CreateTableRequest(
-                    name=table_name,
-                    tableType=table_type,
-                    description="",
-                    columns=columns,
-                    tableConstraints=table_constraints if table_constraints else None,
-                    databaseSchema=EntityReference(
-                        id=self.context.database_schema.id,
-                        type="databaseSchema",
-                    ),
-                )
-                yield table_request
-                self.register_record(table_request=table_request)
+            if isinstance(data_frame, list):
+                columns = self.get_columns(data_frame[0])
+                if columns:
+                    table_request = CreateTableRequest(
+                        name=table_name,
+                        tableType=table_type,
+                        description="",
+                        columns=columns,
+                        tableConstraints=table_constraints
+                        if table_constraints
+                        else None,
+                        databaseSchema=EntityReference(
+                            id=self.context.database_schema.id,
+                            type="databaseSchema",
+                        ),
+                    )
+                    yield table_request
+                    self.register_record(table_request=table_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
@@ -404,22 +410,6 @@ class DatalakeSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
             return None
-
-    def fetch_sample_data(self, data_frame, table: str) -> Optional[TableData]:
-        try:
-            cols = []
-            table_columns = self.get_columns(data_frame)
-
-            for col in table_columns:
-                cols.append(col.name.__root__)
-            table_rows = data_frame.values.tolist()
-
-            return TableData(columns=cols, rows=table_rows)
-        # Catch any errors and continue the ingestion
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch sample data for {table}: {exc}")
-        return None
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
