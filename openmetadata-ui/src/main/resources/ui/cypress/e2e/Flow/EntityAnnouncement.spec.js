@@ -72,7 +72,7 @@ describe("Entity Announcement", () => {
     cy.get('[data-testid="inActive-announcements"]').should('be.visible');
 
     // close announcement drawer
-    cy.get('.anticon > svg').should('be.visible').click();
+    cy.get('.anticon-close > svg > path').should('be.visible').click();
 
     // reload page to get the active announcement card
     cy.reload();
