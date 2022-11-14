@@ -184,5 +184,4 @@ export const VALIDATE_MESSAGES = {
 export const SUPPORTED_CHARTS_FOR_KPI = [
   DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
   DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
-  DataInsightChartType.TotalEntitiesByTier,
 ];
