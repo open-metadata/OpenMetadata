@@ -21,3 +21,12 @@ export enum SuggestionField {
   ROOT = 'suggest',
   SERVICE_TYPE = 'serviceType',
 }
+
+export enum AdvancedFields {
+  COLUMN = 'column_suggest',
+  DATABASE = 'database_suggest',
+  SCHEMA = 'schema_suggest',
+  SERVICE = 'service_suggest',
+  CHART = 'chart_suggest',
+  TASK = 'task_suggest',
+}

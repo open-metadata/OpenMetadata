@@ -34,7 +34,7 @@ Before proceeding, pleae make sure you made a backup of your MySQL/Postgres DB b
     color="violet-70"
     icon="luggage"
     bold="Backup Metadata"
-    href="/deployment/upgrade/backup-metadata"
+    href="/deployment/backup-restore-metadata"
   >
     Learn how to back up MySQL data.
   </InlineCallout>

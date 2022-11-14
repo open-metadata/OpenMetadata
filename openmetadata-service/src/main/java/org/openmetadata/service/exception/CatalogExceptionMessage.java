@@ -172,6 +172,10 @@ public final class CatalogExceptionMessage {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
+  public static String invalidBotUser() {
+    return "Revoke Token can only be applied to Bot Users.";
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }

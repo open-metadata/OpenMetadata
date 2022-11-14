@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/teams/authN/ssoAuth.json",
+  "$id": "https://open-metadata.org/schema/api/auth/ssoAuth.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SSOAuthMechanism",
   "description": "User/Bot SSOAuthN.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.teams.authn.SSOAuthMechanism",
+  "javaType": "org.openmetadata.schema.auth.SSOAuthMechanism",
   "properties": {
     "ssoServiceType": {
       "description": "Type of database service such as Amundsen, Atlas...",
@@ -16,23 +16,23 @@
       "oneOf": [
         {
           "description": "Google SSO Configuration",
-          "$ref": "../../../security/client/googleSSOClientConfig.json"
+          "$ref": "../security/client/googleSSOClientConfig.json"
         },
         {
           "description": "Okta SSO Configuration",
-          "$ref": "../../../security/client/oktaSSOClientConfig.json"
+          "$ref": "../security/client/oktaSSOClientConfig.json"
         },
         {
           "description": "Auth0 SSO Configuration",
-          "$ref": "../../../security/client/auth0SSOClientConfig.json"
+          "$ref": "../security/client/auth0SSOClientConfig.json"
         },
         {
           "description": "Azure SSO Configuration",
-          "$ref": "../../../security/client/azureSSOClientConfig.json"
+          "$ref": "../security/client/azureSSOClientConfig.json"
         },
         {
           "description": "Custom OIDC SSO Configuration",
-          "$ref": "../../../security/client/customOidcSSOClientConfig.json"
+          "$ref": "../security/client/customOidcSSOClientConfig.json"
         }
       ]
     }
