@@ -1908,6 +1908,15 @@ public interface CollectionDAO {
       updateTagPrefixInternal(update);
     }
 
+    default void rename(String oldFQN, String newFQN) {
+      renameInternal(oldFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
+      updateTagPrefix(oldFQN, newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
+    }
+
+    /** Rename the tagFQN */
+    @SqlUpdate("Update tag_usage set tagFQN = :newFQN WHERE tagFQN = :oldFQN")
+    void renameInternal(@Bind("oldFQN") String oldFQN, @Bind("newFQN") String newFQN);
+
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 

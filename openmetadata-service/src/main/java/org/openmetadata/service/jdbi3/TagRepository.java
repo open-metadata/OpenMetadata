@@ -24,8 +24,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -132,10 +134,14 @@ public class TagRepository extends EntityRepository<Tag> {
 
     public void updateName(Tag original, Tag updated) throws IOException {
       if (!original.getName().equals(updated.getName())) {
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
         // Category name changed - update tag names starting from category and all the children tags
         LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection.tagUsageDAO().updateTagPrefix(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
       }
 

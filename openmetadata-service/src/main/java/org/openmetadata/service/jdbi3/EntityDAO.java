@@ -37,6 +37,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface EntityDAO<T extends EntityInterface> {
+  org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
+
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
 
@@ -60,6 +62,7 @@ public interface EntityDAO<T extends EntityInterface> {
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
   default void updateFqn(String oldPrefix, String newPrefix) {
+    LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
     if (!getNameColumn().equals("fullyQualifiedName")) {
       return;
     }

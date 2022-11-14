@@ -22,8 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.resources.EntityResourceTest.*;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.TIER1_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER2_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -351,6 +354,21 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void put_renameSystemTag_400() {
+    // Renaming of system tag category and tags are not allowed
+    CreateTagCategory create = new CreateTagCategory().withName("Tier").withDescription("description");
+    assertResponse(
+        () -> renameTagCategory("Tier", "newTier"),
+        Status.BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityRenameNotAllowed("Tier", Entity.TAG_CATEGORY));
+
+    assertResponse(
+        () -> renamePrimaryTag("Tier", "Tier1", "newTier1"),
+        Status.BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityRenameNotAllowed("Tier1", Entity.TAG));
+  }
+
+  @Test
   void put_tagNameChange(TestInfo test) throws HttpResponseException {
     //
     // Create tagCategory with tags t1, t2
@@ -369,16 +387,14 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     updateSecondaryTag(categoryName, "t2", "t22");
 
     // Change the tag t2 name and ensure all the children's FQN are updated
-    CreateTag createTag = new CreateTag().withName("newt2").withDescription("updateDescription");
-    Tag tag = updatePrimaryTag(categoryName, "t2", createTag, OK, ADMIN_AUTH_HEADERS);
+    Tag tag = renamePrimaryTag(categoryName, "t2", "newt2");
     assertEquals("newt2", tag.getName());
     getTag(categoryName + ".newt2.t21", ADMIN_AUTH_HEADERS);
     getTag(categoryName + ".newt2.t21", ADMIN_AUTH_HEADERS);
 
-    // Change category name and ensure all the tags have the new names
+    // Change tag category name and ensure all the tags have the new names
     String newCategoryName = "new" + categoryName;
-    createCategory.withName(newCategoryName);
-    TagCategory category = updateCategory(categoryName, createCategory, ADMIN_AUTH_HEADERS);
+    TagCategory category = renameTagCategory(categoryName, newCategoryName);
     assertEquals(newCategoryName, category.getName());
     getTag(newCategoryName + ".t1", ADMIN_AUTH_HEADERS);
     getTag(newCategoryName + ".t1.t11", ADMIN_AUTH_HEADERS);
@@ -612,5 +628,15 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     for (Tag child : listOrEmpty(actual.getChildren())) {
       validateHRef(actual.getHref().toString(), child);
     }
+  }
+
+  public Tag renamePrimaryTag(String categoryName, String oldName, String newName) throws HttpResponseException {
+    CreateTag create = new CreateTag().withName(newName).withDescription("updateDescription");
+    return updatePrimaryTag(categoryName, oldName, create, OK, ADMIN_AUTH_HEADERS);
+  }
+
+  public TagCategory renameTagCategory(String oldName, String newName) {
+    CreateTagCategory create = new CreateTagCategory().withName(newName).withDescription("description");
+    return updateCategory(oldName, create, ADMIN_AUTH_HEADERS);
   }
 }
