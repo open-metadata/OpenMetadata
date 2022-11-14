@@ -32,4 +32,12 @@ You can find further information about specific version upgrades in the followin
   >
     Upgrade from 0.11 to 0.12 inplace.
   </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    icon="10k"
+    bold="Upgrade 0.13"
+    href="/deployment/upgrade/versions/010-to-011"
+  >
+    Upgrade from 0.12 to 0.13 inplace.
+  </InlineCallout>
 </InlineCalloutContainer>
