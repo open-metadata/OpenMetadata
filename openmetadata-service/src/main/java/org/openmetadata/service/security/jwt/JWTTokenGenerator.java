@@ -20,11 +20,11 @@ import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.auth.GenerateTokenRequest;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
-import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.JsonUtils;
 

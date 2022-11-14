@@ -1,13 +1,13 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/teams/authN/jwtAuth.json",
+  "$id": "https://open-metadata.org/schema/api/auth/jwtAuth.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "JWTAuthMechanism",
   "description": "User/Bot JWTAuthMechanism.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.teams.authn.JWTAuthMechanism",
+  "javaType": "org.openmetadata.schema.auth.JWTAuthMechanism",
   "definitions": {
     "JWTTokenExpiry": {
-      "javaType": "org.openmetadata.schema.teams.authn.JWTTokenExpiry",
+      "javaType": "org.openmetadata.schema.auth.JWTTokenExpiry",
       "description": "JWT Auth Token expiration in days",
       "type": "string",
       "enum": ["OneHour", "1", "7", "30", "60", "90", "Unlimited"],
@@ -46,7 +46,7 @@
     },
     "JWTTokenExpiresAt": {
       "description": "JWT Auth Token expiration time.",
-      "$ref": "../../../type/basic.json#/definitions/timestamp"
+      "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
   "additionalProperties": false,
