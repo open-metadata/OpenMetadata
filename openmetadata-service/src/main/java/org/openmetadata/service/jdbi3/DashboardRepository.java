@@ -102,8 +102,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
-    setFullyQualifiedName(dashboard);
-    dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
 
@@ -117,7 +115,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     dashboard.withOwner(null).withHref(null).withTags(null).withService(null);
 
-    store(dashboard.getId(), dashboard, update);
+    store(dashboard, update);
 
     // Restore the relationships
     dashboard.withOwner(owner).withTags(tags).withService(service);

@@ -46,6 +46,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
@@ -381,6 +382,26 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       @Parameter(description = "Data Insight Chart Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted DataInsightChart.",
+      tags = "dataInsight",
+      description = "Restore a soft deleted DataInsightChart.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the DataInsightChart. ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class)))
+      })
+  public Response restoreDataInsightChart(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET

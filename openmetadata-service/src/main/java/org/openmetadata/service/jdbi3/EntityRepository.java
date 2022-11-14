@@ -46,8 +46,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -87,6 +89,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.TableRepository.TableUpdater;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -425,8 +428,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return createNewEntity(entity);
   }
 
-  private void prepareInternal(T entity) throws IOException {
+  public void prepareInternal(T entity) throws IOException {
+    if (supportsTags) {
+      entity.setTags(addDerivedTags(entity.getTags()));
+      checkMutuallyExclusive(entity.getTags());
+    }
     prepare(entity);
+    setFullyQualifiedName(entity);
     validateExtension(entity);
   }
 
@@ -716,9 +724,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
-  protected void store(UUID id, T entity, boolean update) throws JsonProcessingException {
+  protected void store(T entity, boolean update) throws JsonProcessingException {
     if (update) {
-      dao.update(id, JsonUtils.pojoToJson(entity));
+      dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
     } else {
       dao.insert(entity);
     }
@@ -854,6 +862,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  void checkMutuallyExclusive(List<TagLabel> tagLabels) {
+    Map<String, TagLabel> map = new HashMap<>();
+    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
+      // When two tags have the same parent that is mutuallyExclusive, then throw an error
+      String parentFqn = FullyQualifiedName.getParent(tagLabel.getTagFQN());
+      TagLabel stored = map.put(parentFqn, tagLabel);
+      if (stored != null && TagLabelCache.getInstance().mutuallyExclusive(tagLabel)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
+      }
+    }
+  }
+
   protected List<TagLabel> getTags(String fqn) {
     return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
   }
@@ -881,7 +901,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
+  public T restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
@@ -899,6 +919,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity = dao.findEntityById(id, DELETED);
     entity.setDeleted(false);
     dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+    return entity;
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {

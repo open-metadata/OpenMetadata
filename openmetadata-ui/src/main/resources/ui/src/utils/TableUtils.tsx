@@ -23,7 +23,6 @@ import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getCustomEntityPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -34,6 +33,7 @@ import {
   getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
+import { GlobalSettingsMenuCategory } from '../constants/globalSettings.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
@@ -44,7 +44,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
-import { getGlossaryPath } from './RouterUtils';
+import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -217,7 +217,10 @@ export const getEntityLink = (
       return getEditWebhookPath(fullyQualifiedName);
 
     case EntityType.TYPE:
-      return getCustomEntityPath(fullyQualifiedName);
+      return getSettingPath(
+        GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES,
+        `${fullyQualifiedName}s`
+      );
 
     case EntityType.MLMODEL:
     case SearchIndex.MLMODEL:
