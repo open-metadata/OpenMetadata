@@ -11,8 +11,22 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, interceptURL, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
-import { DBT, HTTP_CONFIG_SOURCE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import {
+    deleteCreatedService,
+    editOwnerforCreatedService,
+    goToAddNewServicePage,
+    interceptURL,
+    login,
+    testServiceCreationAndIngestion,
+    updateDescriptionForIngestedTables,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
+} from '../../common/common';
+import {
+    API_SERVICE, DBT, HTTP_CONFIG_SOURCE,
+    LOGIN,
+    SERVICE_TYPE
+} from '../../constants/constants';
 import { REDSHIFT } from '../../constants/service.constants';
 
 describe('RedShift Ingestion', () => {
@@ -147,11 +161,11 @@ describe('RedShift Ingestion', () => {
     editOwnerforCreatedService(
       SERVICE_TYPE.Database,
       REDSHIFT.serviceName,
-      'databaseServices'
+      API_SERVICE.databaseServices
     );
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, REDSHIFT.serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, REDSHIFT.serviceName, API_SERVICE.databaseServices);
   });
 });

@@ -847,6 +847,7 @@ export const commonUserDetailColumns: ColumnsType<User> = [
     render: (_, record) => (
       <Link
         className="hover:tw-underline tw-cursor-pointer"
+        data-testid={record.name}
         to={getUserPath(record.fullyQualifiedName || record.name)}>
         {getEntityName(record)}
       </Link>
