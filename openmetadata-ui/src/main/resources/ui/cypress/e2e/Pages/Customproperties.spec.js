@@ -23,7 +23,7 @@ import { ENTITIES, LOGIN, uuid } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
   before(() => {
-    cy.clearLocalStorageSnapshot();
+    cy.clearLocalStorageSnapshot('localStorage');
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     cy.saveLocalStorage('localstorage');
@@ -259,4 +259,9 @@ describe('Custom Properties should work properly', () => {
       });
     });
   });
+
+  afterEach(() => {
+    cy.log('Saving Local storage snapshot')
+    cy.saveLocalStorage('localstorage');
+  })
 });
