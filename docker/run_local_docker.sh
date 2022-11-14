@@ -31,6 +31,7 @@ do
       d ) database="$OPTARG" ;;
       s ) skipMaven="$OPTARG" ;;
       x ) debugOM="$OPTARG" ;;
+      r ) cleanDbVolumes="$OPTARG" ;;
       h ) helpFunction ;;
       ? ) helpFunction ;;
    esac
@@ -64,18 +65,17 @@ if [[ $debugOM == "true" ]]; then
  export OPENMETADATA_DEBUG=true
 fi
 
-echo "Stopping any previous Local Docker Containers"
-docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
-docker compose -f docker/local-metadata/docker-compose.yml down
-if [ -d "/docker-volume" ]
+if [[ $cleanDbVolumes == "true" ]]
 then
-    echo "Do you want to delete the mounted directories from host?"
-    echo "Please enter [y/N]"
-    read  input
-    if [[ $input == "Y" || $input == "y" ]]; then
+  if [[ -d "/docker-volume" ]]
+  then
       rm -rf $PWD/docker-volume
     fi
 fi
+echo "Stopping any previous Local Docker Containers"
+docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
+docker compose -f docker/local-metadata/docker-compose.yml down
+
 
 echo "Starting Local Docker Containers"
 mkdir -p docker-volume && mkdir -p docker-volume/db-data
