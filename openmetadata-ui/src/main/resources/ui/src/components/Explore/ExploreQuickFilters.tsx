@@ -29,7 +29,7 @@ interface Props {
   onAdvanceSearch: () => void;
 }
 
-const AdvancedFields: FC<Props> = ({
+const ExploreQuickFilters: FC<Props> = ({
   fields,
   onFieldRemove,
   onClear,
@@ -99,7 +99,7 @@ const AdvancedFields: FC<Props> = ({
       )}
       <span
         className="tw-text-primary tw-self-center tw-cursor-pointer"
-        data-testid="clear-all-button"
+        data-testid="advance-search-button"
         onClick={onAdvanceSearch}>
         Advance Search
       </span>
@@ -107,4 +107,4 @@ const AdvancedFields: FC<Props> = ({
   );
 };
 
-export default AdvancedFields;
+export default ExploreQuickFilters;

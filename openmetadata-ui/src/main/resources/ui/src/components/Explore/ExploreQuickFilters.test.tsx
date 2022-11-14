@@ -14,13 +14,17 @@
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
-import AdvancedFields from './ExploreQuickFilters';
+import ExploreQuickFilters from './ExploreQuickFilters';
 
-jest.mock('./AdvancedField', () =>
+jest.mock('./ExploreQuickFilter', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="advanced-field">AdvancedField</div>)
+    .mockReturnValue(<div data-testid="advanced-field">ExploreQuickFilter</div>)
 );
+
+jest.mock('./AdvanceSearchModal.component', () => ({
+  AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
+}));
 
 const index = 'table_search_index';
 const fields = [
@@ -44,10 +48,10 @@ const mockProps = {
   onFieldSelect,
 };
 
-describe('Test AdvancedFields component', () => {
-  it('Should render AdvancedFields component', async () => {
+describe('Test ExploreQuickFilters component', () => {
+  it('Should render ExploreQuickFilters component', async () => {
     const { findByTestId, findAllByTestId } = render(
-      <AdvancedFields {...mockProps} />
+      <ExploreQuickFilters {...mockProps} />
     );
 
     const fields = await findAllByTestId('advanced-field');
@@ -60,7 +64,7 @@ describe('Test AdvancedFields component', () => {
 
   it('Should call onClear method on click of Clear All button', async () => {
     const { findByTestId, findAllByTestId } = render(
-      <AdvancedFields {...mockProps} />
+      <ExploreQuickFilters {...mockProps} />
     );
 
     const fields = await findAllByTestId('advanced-field');
@@ -71,6 +75,23 @@ describe('Test AdvancedFields component', () => {
     expect(clearButton).toBeInTheDocument();
 
     fireEvent.click(clearButton);
+
+    expect(onClear).toBeCalledWith();
+  });
+
+  it('Should call onAdvanceSearch method on click of Advance Search button', async () => {
+    const { findByTestId, findAllByTestId } = render(
+      <ExploreQuickFilters {...mockProps} />
+    );
+
+    const fields = await findAllByTestId('advanced-field');
+    const advanceSearchButton = await findByTestId('advance-search-button');
+
+    expect(fields).toHaveLength(fields.length);
+
+    expect(advanceSearchButton).toBeInTheDocument();
+
+    fireEvent.click(advanceSearchButton);
 
     expect(onAdvanceSearch).toBeCalled();
   });

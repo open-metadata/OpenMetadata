@@ -68,7 +68,7 @@ import {
   ExploreSearchIndex,
   ExploreSearchIndexKey,
 } from './explore.interface';
-import AdvancedFields from './ExploreQuickFilters';
+import ExploreQuickFilters from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -383,7 +383,7 @@ const Explore: React.FC<ExploreProps> = ({
         }}>
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            <AdvancedFields
+            <ExploreQuickFilters
               fields={selectedQuickFilters}
               index={searchIndex}
               onAdvanceSearch={() => setShowAdvanceSearchModal(true)}

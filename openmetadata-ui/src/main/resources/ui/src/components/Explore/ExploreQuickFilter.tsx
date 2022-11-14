@@ -13,6 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Select } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { FC, useState } from 'react';
@@ -26,33 +27,11 @@ import {
   getAdvancedField,
   getItemLabel,
 } from '../../utils/AdvancedSearchUtils';
-// import {
-//   getAdvancedField,
-//   getItemLabel,
-// } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ExploreQuickFilterField } from '../Explore/explore.interface';
-
-interface Props {
-  index: string;
-  field: ExploreQuickFilterField;
-  onFieldRemove: (value: string) => void;
-  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-}
-
-interface Option {
-  label: string;
-  value: string;
-}
-
-interface InputProps {
-  options: Option[];
-  value: string | undefined;
-  handleChange: (value: string) => void;
-  handleSearch: (value: string) => void;
-  handleSelect: (value: string) => void;
-  handleClear: () => void;
-}
+import {
+  ExploreQuickFilterProps,
+  SearchInputProps,
+} from '../Explore/explore.interface';
 
 const SearchInput = ({
   options,
@@ -61,7 +40,7 @@ const SearchInput = ({
   handleSearch,
   handleSelect,
   handleClear,
-}: InputProps) => {
+}: SearchInputProps) => {
   const { Option } = Select;
 
   const optionsElement = options.map((d) => (
@@ -93,7 +72,7 @@ const SearchInput = ({
   );
 };
 
-const AdvancedField: FC<Props> = ({
+const ExploreQuickFilter: FC<ExploreQuickFilterProps> = ({
   field,
   onFieldRemove,
   index,
@@ -101,7 +80,7 @@ const AdvancedField: FC<Props> = ({
 }) => {
   const advancedField = getAdvancedField(field.key);
 
-  const [options, setOptions] = useState<Option[]>([]);
+  const [options, setOptions] = useState<DefaultOptionType[]>([]);
   const [value, setValue] = useState<string | undefined>(field.value);
 
   const fetchOptions = (query: string) => {
@@ -212,4 +191,4 @@ const AdvancedField: FC<Props> = ({
   );
 };
 
-export default AdvancedField;
+export default ExploreQuickFilter;
