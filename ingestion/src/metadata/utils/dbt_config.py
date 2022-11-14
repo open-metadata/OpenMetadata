@@ -18,11 +18,19 @@ from typing import Optional, Tuple
 
 import requests
 
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
-    DbtGCSConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+    DbtGcsConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtHttpConfig import (
     DbtHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
     DbtLocalConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
 from metadata.ingestion.ometa.utils import ometa_logger
@@ -89,13 +97,9 @@ def _(config: DbtLocalConfig):
 def _(config: DbtHttpConfig):
     try:
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_catalog = requests.get(  # pylint: disable=missing-timeout
-            config.dbtCatalogHttpPath
-        )
+        dbt_catalog = requests.get(config.dbtCatalogHttpPath)
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_manifest = requests.get(  # pylint: disable=missing-timeout
-            config.dbtManifestHttpPath
-        )
+        dbt_manifest = requests.get(config.dbtManifestHttpPath)
         dbt_run_results = None
         if (
             config.dbtRunResultsHttpPath is not None
@@ -104,9 +108,7 @@ def _(config: DbtHttpConfig):
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
-            dbt_run_results = requests.get(  # pylint: disable=missing-timeout
-                config.dbtRunResultsHttpPath
-            )
+            dbt_run_results = requests.get(config.dbtRunResultsHttpPath)
         return (
             json.loads(dbt_catalog.text),
             json.loads(dbt_manifest.text),
@@ -213,7 +215,7 @@ def _(config: DbtS3Config):
 
 
 @get_dbt_details.register
-def _(config: DbtGCSConfig):
+def _(config: DbtGcsConfig):
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None
