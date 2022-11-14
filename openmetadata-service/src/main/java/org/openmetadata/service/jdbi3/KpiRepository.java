@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -55,6 +56,12 @@ public class KpiRepository extends EntityRepository<Kpi> {
     // validate targetDefinition
     Entity.getEntityReferenceById(Entity.DATA_INSIGHT_CHART, kpi.getDataInsightChart().getId(), Include.NON_DELETED);
     EntityRepository<DataInsightChart> dataInsightChartRepository = Entity.getEntityRepository(DATA_INSIGHT_CHART);
+    // Each Chart has one unique Kpi mapping
+    List<CollectionDAO.EntityRelationshipRecord> record =
+        findFrom(kpi.getDataInsightChart().getId(), DATA_INSIGHT_CHART, Relationship.USES, KPI);
+    if (record.size() > 0) {
+      throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
+    }
     DataInsightChart chart =
         dataInsightChartRepository.get(
             null, kpi.getDataInsightChart().getId(), dataInsightChartRepository.getFields("metrics"));
