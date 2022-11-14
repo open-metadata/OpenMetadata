@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -142,6 +144,7 @@ public abstract class ExternalSecretsManagerTest {
         new IngestionPipeline()
             .withName("my-pipeline")
             .withPipelineType(PipelineType.METADATA)
+            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
             .withSourceConfig(
                 new SourceConfig()
                     .withConfig(
@@ -157,6 +160,7 @@ public abstract class ExternalSecretsManagerTest {
         new IngestionPipeline()
             .withName("my-pipeline")
             .withPipelineType(PipelineType.METADATA)
+            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
             .withSourceConfig(
                 new SourceConfig()
                     .withConfig(

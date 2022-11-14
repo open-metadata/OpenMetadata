@@ -89,13 +89,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     EntityReference owner = ingestionPipeline.getOwner();
     EntityReference service = ingestionPipeline.getService();
 
-    // Don't store owner. Build it on the fly based on relationships
-    ingestionPipeline.withOwner(null).withService(null).withHref(null);
-
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null) {
       ingestionPipeline = secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
     }
+
+    // Don't store owner. Build it on the fly based on relationships
+    ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
     store(ingestionPipeline, update);
 

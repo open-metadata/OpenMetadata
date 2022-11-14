@@ -23,6 +23,7 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.service.Entity;
 
 public class IngestionPipelineBuilder {
 
@@ -32,11 +33,13 @@ public class IngestionPipelineBuilder {
   /**
    * Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`.
    *
-   * @param ingestionPipeline
-   * @return
+   * @param ingestionPipeline the ingestion pipeline object
+   * @return ingestion pipeline with concrete classes
    */
   public static IngestionPipeline build(IngestionPipeline ingestionPipeline) {
-    if (METADATA.equals(ingestionPipeline.getPipelineType()) && ingestionPipeline.getSourceConfig() != null) {
+    if (METADATA.equals(ingestionPipeline.getPipelineType())
+        && ingestionPipeline.getService().getType().equals(Entity.DATABASE_SERVICE)
+        && ingestionPipeline.getSourceConfig() != null) {
       DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
           JsonUtils.convertValue(
               ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
