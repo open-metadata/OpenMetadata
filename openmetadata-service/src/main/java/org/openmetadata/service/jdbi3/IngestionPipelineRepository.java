@@ -17,6 +17,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
@@ -193,7 +194,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                 .listBetweenTimestampsByFQN(
                     ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
             PipelineStatus.class);
-    List<PipelineStatus> allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
+    try {
+      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+    } catch (Exception e) {
+      // Ignore if failed
+    }
     allPipelineStatusList.addAll(pipelineStatusList);
     return new ResultList<>(
         allPipelineStatusList, String.valueOf(startTs), String.valueOf(endTs), allPipelineStatusList.size());
