@@ -484,6 +484,8 @@ site_menu:
     url: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / Lineage
     url: /connectors/ingestion/workflows/lineage
+  - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
+    url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
