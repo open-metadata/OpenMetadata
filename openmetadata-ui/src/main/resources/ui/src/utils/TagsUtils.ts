@@ -152,8 +152,15 @@ export const fetchTagsAndGlossaryTerms = async () => {
   return tagsAndTerms;
 };
 
-export const isSystemTags = (tag: string) => {
-  const systemTag = 'tier';
+export const isSystemTierTags = (tag: string) => {
+  const tierTags = [
+    'Tier',
+    'Tier.Tier1',
+    'Tier.Tier2',
+    'Tier.Tier3',
+    'Tier.Tier4',
+    'Tier.Tier5',
+  ];
 
-  return tag.toLowerCase().includes(systemTag);
+  return tierTags.includes(tag);
 };

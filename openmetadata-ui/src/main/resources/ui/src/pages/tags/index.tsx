@@ -67,7 +67,7 @@ import {
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTagCategories, isSystemTags } from '../../utils/TagsUtils';
+import { getTagCategories, isSystemTierTags } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
@@ -593,7 +593,7 @@ const TagsPage = () => {
             className="link-text"
             data-testid="delete-tag"
             disabled={
-              isSystemTags(record.name || record.displayName || '') ||
+              isSystemTierTags(record.fullyQualifiedName || '') ||
               !categoryPermissions.EditAll
             }
             onClick={() => handleActionDeleteTag(record)}>
@@ -665,11 +665,8 @@ const TagsPage = () => {
                     className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
                     disabled={
-                      isSystemTags(
-                        currentCategory.name ||
-                          currentCategory.displayName ||
-                          ''
-                      ) || !categoryPermissions.Delete
+                      isSystemTierTags(currentCategory.name || '') ||
+                      !categoryPermissions.Delete
                     }
                     size="small"
                     onClick={() => {
