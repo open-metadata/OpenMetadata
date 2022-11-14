@@ -86,9 +86,14 @@ const KPIListPage = () => {
         dataIndex: 'description',
         key: 'description',
         width: 300,
-        render: (description: string | undefined) => (
-          <RichTextEditorPreviewer markdown={description || ''} />
-        ),
+        render: (description: string | undefined) =>
+          description ? (
+            <RichTextEditorPreviewer markdown={description} />
+          ) : (
+            <span data-testid="no-description">
+              {t('label.no-description')}
+            </span>
+          ),
       },
       {
         title: t('label.start-date'),
