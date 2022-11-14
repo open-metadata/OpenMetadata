@@ -22,7 +22,10 @@ import {
 } from 'Models';
 import React from 'react';
 import { getEntityCount } from '../axiosAPIs/miscAPI';
-import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../components/PermissionProvider/PermissionProvider.interface';
 import { GlobalSettingOptions } from '../constants/globalSettings.constants';
 import {
   addLineageIngestionGuide,
@@ -91,7 +94,10 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
-import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType as IngestionPipelineType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   MessagingService,
   MessagingServiceType,
@@ -395,7 +401,10 @@ export const servicePageTabs = (entity: string) => [
   },
 ];
 
-export const getCurrentServiceTab = (tab: string) => {
+export const getCurrentServiceTab = (
+  tab: string,
+  serviceName: ServiceTypes
+) => {
   let currentTab;
   switch (tab) {
     case 'ingestions':
@@ -410,7 +419,7 @@ export const getCurrentServiceTab = (tab: string) => {
 
     case 'entity':
     default:
-      currentTab = 1;
+      currentTab = serviceName === ServiceCategory.METADATA_SERVICES ? 2 : 1;
 
       break;
   }
@@ -734,6 +743,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, 'Pipeline')
       );
 
+    case ServiceCategory.METADATA_SERVICES:
+      return getEntityDeleteMessage(
+        service || 'Service',
+        pluralize(instanceCount, 'Metadata')
+      );
+
     default:
       return;
   }
@@ -751,6 +766,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
   if (type === 'mlmodelServices') {
     return GlobalSettingOptions.MLMODELS;
+  }
+  if (type === 'metadataServices') {
+    return GlobalSettingOptions.METADATA;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -779,7 +797,63 @@ export const getResourceEntityFromServiceCategory = (
     case 'pipelines':
     case ServiceCategory.PIPELINE_SERVICES:
       return ResourceEntity.PIPELINE_SERVICE;
+
+    case 'metadata':
+    case ServiceCategory.METADATA_SERVICES:
+      return ResourceEntity.METADATA_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
+};
+
+export const getCountLabel = (serviceName: ServiceTypes) => {
+  switch (serviceName) {
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return 'Dashboards';
+    case ServiceCategory.MESSAGING_SERVICES:
+      return 'Topics';
+    case ServiceCategory.PIPELINE_SERVICES:
+      return 'Pipelines';
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return 'Models';
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return 'Databases';
+  }
+};
+
+export const getServicePageTabs = (
+  serviceName: ServiceTypes,
+  instanceCount: number,
+  ingestions: IngestionPipeline[],
+  servicePermission: OperationPermission
+) => {
+  const tabs = [];
+
+  if (serviceName !== ServiceCategory.METADATA_SERVICES) {
+    tabs.push({
+      name: getCountLabel(serviceName),
+      isProtected: false,
+      position: 1,
+      count: instanceCount,
+    });
+  }
+
+  tabs.push(
+    {
+      name: 'Ingestions',
+      isProtected: false,
+
+      position: 2,
+      count: ingestions.length,
+    },
+    {
+      name: 'Connection',
+      isProtected: !servicePermission.EditAll,
+      isHidden: !servicePermission.EditAll,
+      position: 3,
+    }
+  );
+
+  return tabs;
 };

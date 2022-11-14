@@ -23,6 +23,7 @@ export enum EntityType {
   GLOSSARY_TERM = 'glossaryTerm',
   DATABASE_SERVICE = 'databaseService',
   MESSAGING_SERVICE = 'messagingService',
+  METADATA_SERVICE = 'metadataService',
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',

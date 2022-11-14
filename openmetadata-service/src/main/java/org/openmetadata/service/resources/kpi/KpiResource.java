@@ -42,6 +42,7 @@ import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -266,8 +267,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create)
       throws IOException {
-    Kpi Kpi = getKpi(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, Kpi);
+    Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
+    dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
+    return create(uriInfo, securityContext, kpi);
   }
 
   @PATCH
@@ -311,8 +313,16 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create)
       throws IOException {
-    Kpi Kpi = getKpi(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, Kpi);
+    Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
+    // Check if this kpi exist
+    try {
+      // if a kpi exits it is an update call
+      dao.getByName(null, kpi.getName(), dao.getFields("id,name"));
+    } catch (EntityNotFoundException ex) {
+      // if the kpi doesn't exist , then it can get created so need to ensure one to one validation
+      dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
+    }
+    return createOrUpdate(uriInfo, securityContext, kpi);
   }
 
   @DELETE

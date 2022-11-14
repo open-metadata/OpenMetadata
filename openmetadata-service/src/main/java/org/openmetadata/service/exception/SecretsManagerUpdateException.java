@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.annotations;
+package org.openmetadata.service.exception;
 
-import org.jsonschema2pojo.CompositeAnnotator;
+public class SecretsManagerUpdateException extends RuntimeException {
 
-public class OpenMetadataAnnotator extends CompositeAnnotator {
+  public SecretsManagerUpdateException(String message, Throwable throwable) {
+    super(message, throwable);
+  }
 
-  public OpenMetadataAnnotator() {
-    // we can add multiple annotators
-    super(new ExposedAnnotator(), new MaskedAnnotator(), new PasswordAnnotator());
+  public SecretsManagerUpdateException(String message) {
+    super(message);
   }
 }

@@ -13,6 +13,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -25,6 +26,7 @@ import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.metadata.MetadataServiceResource;
 import org.openmetadata.service.util.JsonUtils;
@@ -98,6 +100,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+    String secretPassword = "secret:/openmetadata/metadata/" + getEntityName(test) + "/password";
     MetadataService service =
         createAndCheckEntity(
             createRequest(test)
@@ -108,7 +111,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
                             new AmundsenConnection()
                                 .withHostPort(new URI("localhost:9092"))
                                 .withUsername("admin")
-                                .withPassword("admin"))),
+                                .withPassword(secretPassword))),
             ADMIN_AUTH_HEADERS);
 
     MetadataConnection metadataConnection =
@@ -117,10 +120,10 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
                 new AmundsenConnection()
                     .withHostPort(new URI("localhost:9092"))
                     .withUsername("admin")
-                    .withPassword("admin"));
+                    .withPassword(secretPassword));
     // Update metadata description
     CreateMetadataService update =
-        createRequest(test).withDescription("description1").withConnection(metadataConnection);
+        createPutRequest(test).withDescription("description1").withConnection(metadataConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
@@ -159,6 +162,18 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         .withName(name)
         .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
         .withConnection(AMUNDSEN_CONNECTION);
+  }
+
+  @Override
+  public CreateMetadataService createPutRequest(String name) {
+    String secretPassword = "secret:/openmetadata/metadata/" + name + "/password";
+    return new CreateMetadataService()
+        .withName(name)
+        .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
+        .withConnection(
+            AMUNDSEN_CONNECTION.withConfig(
+                ((AmundsenConnection) AMUNDSEN_CONNECTION.getConfig())
+                    .withPassword(Fernet.getInstance().encrypt(secretPassword.toLowerCase(Locale.ROOT)))));
   }
 
   @Override

@@ -135,7 +135,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
           ) : (
             status
           );
-        }) ?? 'Queued'
+        }) ?? '--'
       )}
     </Space>
   );

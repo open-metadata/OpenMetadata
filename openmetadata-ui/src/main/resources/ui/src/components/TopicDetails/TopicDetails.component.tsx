@@ -20,7 +20,9 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { restoreTopic } from '../../axiosAPIs/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -38,6 +40,7 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -46,7 +49,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -110,6 +113,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   lineageTabData,
   onExtensionUpdate,
 }: TopicDetailsProps) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -357,6 +361,26 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const handleRestoreTopic = async () => {
+    try {
+      await restoreTopic(topicDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.topic'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.topic'),
+        })
+      );
+    }
+  };
+
   const followTopic = () => {
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
@@ -491,6 +515,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreTopic}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

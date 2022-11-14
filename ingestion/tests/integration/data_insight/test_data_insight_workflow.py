@@ -204,28 +204,6 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
         assert kpi_result
 
-    def test_create_kpi(self):
-        completed_description_chart = self.metadata.get_by_name(
-            DataInsightChart, "PercentageOfEntitiesWithDescriptionByType", fields="*"
-        )
-        create = CreateKpiRequest(
-            name="myKpi",
-            dataInsightChart=EntityReference(
-                type="dataInsightChart", id=completed_description_chart.id
-            ),
-            description="foo",
-            startDate=self.start_ts,
-            endDate=self.end_ts,
-            targetDefinition=[
-                KpiTarget(name="completedDescriptionFraction", value="0.63")
-            ],
-            metricType="PERCENTAGE",
-        )
-
-        kpi = self.metadata.create_kpi(create)
-        assert kpi
-        assert isinstance(kpi, Kpi)
-
     @classmethod
     def tearDownClass(cls) -> None:
         kpis: list[Kpi] = cls.metadata.list_entities(

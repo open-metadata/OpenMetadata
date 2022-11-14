@@ -85,6 +85,7 @@ interface Props {
   removeOwner?: () => void;
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
+  onRestoreEntity?: () => void;
 }
 
 const EntityPageInfo = ({
@@ -115,6 +116,7 @@ const EntityPageInfo = ({
   currentOwner,
   entityFieldTasks,
   removeTier,
+  onRestoreEntity,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -493,12 +495,15 @@ const EntityPageInfo = ({
           ) : null}
           {!isVersionSelected && (
             <ManageButton
+              allowSoftDelete={!deleted}
               canDelete={canDelete}
+              deleted={deleted}
               entityFQN={entityFqn}
               entityId={entityId}
               entityName={entityName}
               entityType={entityType}
               onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
+              onRestoreEntity={onRestoreEntity}
             />
           )}
         </Space>
@@ -520,6 +525,7 @@ const EntityPageInfo = ({
                 <EntitySummaryDetails
                   currentOwner={currentOwner}
                   data={info}
+                  deleted={deleted}
                   removeOwner={removeOwner}
                   removeTier={removeTier}
                   tier={tier}
