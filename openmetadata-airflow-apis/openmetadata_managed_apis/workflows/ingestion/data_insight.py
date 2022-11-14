@@ -37,7 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS, OPENMETADATA_SERVICE_FQN
+from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
 
 
 def build_data_insight_workflow_config(
