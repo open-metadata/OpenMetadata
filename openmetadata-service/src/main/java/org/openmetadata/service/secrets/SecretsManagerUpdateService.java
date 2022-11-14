@@ -13,6 +13,13 @@
 
 package org.openmetadata.service.secrets;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -27,14 +34,6 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.CollectionRegistry.CollectionDetails;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.util.EntityUtil;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Update service using the configured secret manager.
