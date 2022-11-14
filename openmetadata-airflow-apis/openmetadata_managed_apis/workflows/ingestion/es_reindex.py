@@ -12,13 +12,37 @@
 ElasticSearch reindex DAG function builder
 """
 from airflow import DAG
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import IngestionPipeline
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    ClientInitializationError,
+    build_dag,
+    build_source,
+    metadata_ingestion_workflow,
+)
+
+from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
+    MetadataESConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
+from metadata.generated.schema.entity.services.metadataService import (
+    MetadataConnection,
+    MetadataService,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
+    Sink,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    SourceConfig,
     WorkflowConfig,
 )
-from openmetadata_managed_apis.workflows.ingestion.common import build_source, build_dag, metadata_ingestion_workflow
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import OPENMETADATA_SERVICE_FQN
 
 
 def build_es_reindex_workflow_config(
@@ -28,9 +52,45 @@ def build_es_reindex_workflow_config(
     Given an airflow_pipeline, prepare the workflow config JSON
     """
 
+    try:
+        metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+    except Exception as exc:
+        raise ClientInitializationError(f"Failed to initialize the client: {exc}")
+
+    openmetadata_service: MetadataService = metadata.get_by_name(
+        entity=MetadataService, fqn=OPENMETADATA_SERVICE_FQN
+    )
+    if not openmetadata_service:
+        raise ValueError(
+            "Could not retrieve the OpenMetadata service! This should not happen."
+        )
+
+    om_service_elasticsearch_dict = {
+        key: value
+        for key, value in openmetadata_service.connection.config.elasticsSearch.config.dict().items()
+        if value
+    }
+
+    ingestion_pipeline_elasticsearch_source_config = {
+        key: value
+        for key, value in ingestion_pipeline.sourceConfig.config.dict().items()
+        if value and key != "type"
+    }
+
     workflow_config = OpenMetadataWorkflowConfig(
-        source=build_source(ingestion_pipeline),
-        sink=ingestion_pipeline.sink,
+        source=WorkflowSource(
+            type="metadata_elasticsearch",
+            serviceName=OPENMETADATA_SERVICE_FQN,
+            serviceConnection=MetadataConnection(config=MetadataESConnection()),
+            sourceConfig=SourceConfig(),
+        ),
+        sink=Sink(
+            type="elasticsearch",
+            config={
+                **om_service_elasticsearch_dict,
+                **ingestion_pipeline_elasticsearch_source_config,
+            },
+        ),
         workflowConfig=WorkflowConfig(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,

@@ -16,7 +16,9 @@ Add a function for each type from PipelineType
 from openmetadata_managed_apis.workflows.ingestion.data_insight import (
     build_data_insight_dag,
 )
-from openmetadata_managed_apis.workflows.ingestion.es_reindex import build_es_reindex_dag
+from openmetadata_managed_apis.workflows.ingestion.es_reindex import (
+    build_es_reindex_dag,
+)
 from openmetadata_managed_apis.workflows.ingestion.lineage import build_lineage_dag
 from openmetadata_managed_apis.workflows.ingestion.metadata import build_metadata_dag
 from openmetadata_managed_apis.workflows.ingestion.profiler import build_profiler_dag

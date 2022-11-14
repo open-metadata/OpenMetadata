@@ -16,3 +16,5 @@ Define constants useful for the metadata ingestion
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
+
+OPENMETADATA_SERVICE_FQN = "Openmetadata"

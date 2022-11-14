@@ -17,6 +17,8 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.entity.services.metadataService import MetadataService
+
 try:
     from typing import get_args
 except ImportError:
@@ -374,6 +376,14 @@ class OpenMetadata(
             ),
         ):
             return "/services/mlmodelServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[MetadataService, self.get_create_entity_type(MetadataService)]
+            ),
+        ):
+            return "/services/metadataServices"
 
         if issubclass(
             entity,
