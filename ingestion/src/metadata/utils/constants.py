@@ -17,4 +17,4 @@ DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
 
-OPENMETADATA_SERVICE_FQN = "Openmetadata"
+OPENMETADATA_SERVICE_FQN = "OpenMetadata"
