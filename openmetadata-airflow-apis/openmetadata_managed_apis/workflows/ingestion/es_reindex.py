@@ -42,7 +42,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import OPENMETADATA_SERVICE_FQN
 
 
 def build_es_reindex_workflow_config(
@@ -58,7 +57,7 @@ def build_es_reindex_workflow_config(
         raise ClientInitializationError(f"Failed to initialize the client: {exc}")
 
     openmetadata_service: MetadataService = metadata.get_by_name(
-        entity=MetadataService, fqn=OPENMETADATA_SERVICE_FQN
+        entity=MetadataService, fqn=ingestion_pipeline.service.fullyQualifiedName
     )
     if not openmetadata_service:
         raise ValueError(
@@ -80,7 +79,7 @@ def build_es_reindex_workflow_config(
     workflow_config = OpenMetadataWorkflowConfig(
         source=WorkflowSource(
             type="metadata_elasticsearch",
-            serviceName=OPENMETADATA_SERVICE_FQN,
+            serviceName=ingestion_pipeline.service.fullyQualifiedName,
             serviceConnection=MetadataConnection(config=MetadataESConnection()),
             sourceConfig=SourceConfig(),
         ),
