@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Input } from 'antd';
 import { isEmpty, isObject, isString } from 'lodash';
 import React, {
   Fragment,
@@ -194,12 +195,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud Private key id.
           </p>
-          <input
+          <Input.Password
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key-id"
             id="private-key-id"
             name="private-key-id"
-            type="text"
             value={gcsConfig?.privateKeyId}
             onChange={(e) =>
               updateGCSCredsConfig('privateKeyId', e.target.value)
@@ -216,7 +216,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud private key.
           </p>
-          <input
+          <Input.Password
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key"
             id="private-key"
