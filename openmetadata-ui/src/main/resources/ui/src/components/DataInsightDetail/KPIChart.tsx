@@ -183,24 +183,6 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
     }
   }, [kpiList, chartFilter]);
 
-  const addKpiPlaceholder = (
-    <Space className="w-full justify-center items-center" direction="vertical">
-      <Typography.Text>
-        {t('message.no-kpi-available-add-new-one')}
-      </Typography.Text>
-      <AntdTooltip
-        title={isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION}>
-        <Button
-          className="tw-border-primary tw-text-primary"
-          disabled={!isAdminUser}
-          type="default"
-          onClick={handleAddKpi}>
-          {t('label.add-kpi')}
-        </Button>
-      </AntdTooltip>
-    </Space>
-  );
-
   return (
     <Card
       className="data-insight-card"
@@ -252,7 +234,23 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
           </Col>
         </Row>
       ) : (
-        addKpiPlaceholder
+        <Space
+          className="w-full justify-center items-center"
+          direction="vertical">
+          <Typography.Text>
+            {t('message.no-kpi-available-add-new-one')}
+          </Typography.Text>
+          <AntdTooltip
+            title={isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className="tw-border-primary tw-text-primary"
+              disabled={!isAdminUser}
+              type="default"
+              onClick={handleAddKpi}>
+              {t('label.add-kpi')}
+            </Button>
+          </AntdTooltip>
+        </Space>
       )}
     </Card>
   );
