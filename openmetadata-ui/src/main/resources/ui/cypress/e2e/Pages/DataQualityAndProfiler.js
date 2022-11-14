@@ -76,7 +76,7 @@ describe('Data Quality and Profiler should work properly', () => {
     );
   });
 
-  it('Add Profiler ingestion', () => {
+  it.skip('Add Profiler ingestion', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     goToProfilerTab();
@@ -126,7 +126,7 @@ describe('Data Quality and Profiler should work properly', () => {
     handleIngestionRetry('database', true, 0, 'profiler');
   });
 
-  it('Check if profiler is ingested properly or not', () => {
+  it.skip('Check if profiler is ingested properly or not', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
     goToProfilerTab();
