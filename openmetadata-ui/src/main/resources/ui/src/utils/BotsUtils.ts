@@ -14,7 +14,8 @@
 import { isUndefined } from 'lodash';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationMechanism } from '../generated/api/teams/createUser';
-import { SsoServiceType } from '../generated/entity/teams/authN/ssoAuth';
+import { SsoServiceType } from '../generated/auth/ssoAuth';
+
 import { AuthType, JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import {
   getExpiryDateTimeFromDate,
