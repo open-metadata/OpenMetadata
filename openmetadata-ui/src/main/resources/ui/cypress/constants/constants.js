@@ -198,6 +198,8 @@ export const NEW_TAG = {
 export const NEW_GLOSSARY = {
   name: 'Business Glossary',
   description: 'This is the Business glossary',
+  reviewer: 'Aaron Johnson',
+  tag: 'PII.None'
 };
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
@@ -287,3 +289,10 @@ export const DBT = {
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
+
+export const API_SERVICE = {
+  databaseServices: 'databaseServices',
+  messagingServices: 'messagingServices',
+  pipelineServices: 'pipelineServices',
+  dashboardServices: 'dashboardServices',
+}

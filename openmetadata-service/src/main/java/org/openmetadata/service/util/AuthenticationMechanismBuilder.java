@@ -13,26 +13,25 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
-import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.GOOGLE;
-
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
 import org.openmetadata.schema.security.client.AzureSSOClientConfig;
 import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
-import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
+
+import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 
 public class AuthenticationMechanismBuilder {
 
   /**
    * Build `AuthenticationMechanism` object with concrete class for the config which by definition it is a `Object`.
    *
-   * @param authMechanism
-   * @return
+   * @param authMechanism the auth mechanism object
+   * @return auth mechanism object with concrete classes
    */
   public static AuthenticationMechanism build(AuthenticationMechanism authMechanism) {
     if (authMechanism != null) {

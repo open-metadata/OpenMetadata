@@ -27,7 +27,7 @@ describe('Slack Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-menu-title-content')
+      cy.get('[data-testid="settings-left-panel"]')
       .contains('Slack')
       .scrollIntoView()
       .should('be.visible')
