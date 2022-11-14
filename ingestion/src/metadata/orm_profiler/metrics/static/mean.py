@@ -15,6 +15,7 @@ AVG Metric definition
 # pylint: disable=duplicate-code
 
 import traceback
+
 import pandas as pd
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
@@ -81,16 +82,16 @@ class Mean(StaticMetric):
     def dl_fn(self, data_frame=None):
         try:
             if self.col.dataType in QUANTIFIABLE_DICT:
-                return data_frame[self.col.name.__root__].dropna().mean().tolist()
+                return data_frame[self.col.name.__root__].mean()
 
             if self.col.dataType in CONCATENABLE_DICT:
                 return (
                     pd.DataFrame(
                         [
-                            len(concatenable_data) if concatenable_data and not isinstance(concatenable_data, float) else concatenable_data
+                            len(f"{concatenable_data}")
                             for concatenable_data in data_frame[
                                 self.col.name.__root__
-                            ].dropna().values.tolist()
+                            ].values.tolist()
                         ]
                     )
                     .mean()
@@ -101,4 +102,4 @@ class Mean(StaticMetric):
             logger.warning(
                 f"Don't know how to process type {self.col.dataType.value} when computing MEAN, Error: {err}"
             )
-            return None
+            return 0

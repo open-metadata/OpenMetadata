@@ -14,24 +14,15 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-import concurrent.futures
-import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict
 
-from sqlalchemy import Column, MetaData
+from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import ColumnName, Table, TableData
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeType,
-    GCSConfig,
-    S3Config,
-)
+from metadata.generated.schema.entity.data.table import ColumnName, TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.datalake import DatalakeSource
 from metadata.interfaces.datalake.mixins.datalake_interface_mixin import (
     DatalakeInterfaceMixin,
 )
@@ -39,23 +30,15 @@ from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
 )
-from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
-from metadata.orm_profiler.api.models import PartitionProfilerConfig
 from metadata.orm_profiler.metrics.datalake_metrics_computation_registry import (
     compute_metrics_registry,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.utils.connections import (
-    create_and_bind_thread_safe_session,
-    get_connection,
-)
-from metadata.utils.dispatch import enum_register
+from metadata.utils.connections import get_connection
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
-thread_local = threading.local()
 
 
 class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
@@ -86,19 +69,7 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         self.partition_details = None
         self._table = profiler_interface_args.table_entity
 
-    def _create_thread_safe_sampler(self, session, table):
-        """Create thread safe runner"""
-        if not hasattr(thread_local, "sampler"):
-            thread_local.sampler = Sampler(
-                session=session,
-                table=table,
-                profile_sample=self.profile_sample,
-                partition_details=self.partition_details,
-                profile_sample_query=self.profile_query,
-            )
-        return thread_local.sampler
-
-    def compute_metrics_in_thread(
+    def compute_metrics(
         self,
         metric_funcs,
     ):
@@ -109,9 +80,7 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
             column,
             table,
         ) = metric_funcs
-        logger.debug(
-            f"Running profiler for {table} on thread {threading.current_thread()}"
-        )
+        logger.debug(f"Running profiler for {table}")
         try:
             row = compute_metrics_registry.registry[metric_type.value](
                 metrics,
@@ -146,10 +115,11 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-        sample_data, self.data_frame = sampler.fetch_dl_sample_data(
+        sample_data, data_frame = sampler.fetch_dl_sample_data(
             self.service_connection_config.configSource
         )
-        return sample_data, self.data_frame
+        self.data_frame = data_frame
+        return sample_data, data_frame
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -175,10 +145,9 @@ class DataLakeProfilerInterface(DatalakeInterfaceMixin, ProfilerProtocol):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
-        logger.info(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
         metric_list = [
-            self.compute_metrics_in_thread(metric_funcs=metric_func)
+            self.compute_metrics(metric_funcs=metric_func)
             for metric_func in metric_funcs
         ]
         for metric_result in metric_list:

@@ -26,15 +26,7 @@ from metadata.generated.schema.entity.data.table import PartitionProfilerConfig
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
-from metadata.orm_profiler.api.models import PartitionProfilerConfig
 from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
-from metadata.orm_profiler.profiler.handle_partition import (
-    get_partition_cols,
-    is_partitioned,
-)
 from metadata.utils.connections import get_connection
 from metadata.utils.sql_queries import SNOWFLAKE_SESSION_TAG_QUERY
 

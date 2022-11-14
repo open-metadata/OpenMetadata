@@ -21,13 +21,9 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict
 
-from sqlalchemy import Column, MetaData
+from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import (
-    PartitionProfilerConfig,
-    Table,
-    TableData,
-)
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.profiler_protocol import (

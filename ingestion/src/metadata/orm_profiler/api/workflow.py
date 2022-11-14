@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
-    DatalakeType,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,

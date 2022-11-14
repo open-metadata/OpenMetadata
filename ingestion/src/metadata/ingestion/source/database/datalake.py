@@ -326,16 +326,16 @@ class DatalakeSource(DatabaseServiceSource):
             self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     @staticmethod
-    def get_gcs_files(client, key, bucket_name, sample_size: int = None):
+    def get_gcs_files(client, key, bucket_name):
         try:
             if key.endswith(".csv"):
-                return read_csv_from_gcs(key, bucket_name, sample_size)
+                return read_csv_from_gcs(key, bucket_name)
 
             if key.endswith(".tsv"):
-                return read_tsv_from_gcs(key, bucket_name, sample_size)
+                return read_tsv_from_gcs(key, bucket_name)
 
             if key.endswith(".json"):
-                return read_json_from_gcs(client, key, bucket_name, sample_size)
+                return read_json_from_gcs(client, key, bucket_name)
 
             if key.endswith(".parquet"):
                 return read_parquet_from_gcs(key, bucket_name)
@@ -348,16 +348,16 @@ class DatalakeSource(DatabaseServiceSource):
         return None
 
     @staticmethod
-    def get_s3_files(client, key, bucket_name , sample_size: int = None):
+    def get_s3_files(client, key, bucket_name):
         try:
             if key.endswith(".csv"):
-                return read_csv_from_s3(client, key, bucket_name, sample_size)
+                return read_csv_from_s3(client, key, bucket_name)
 
             if key.endswith(".tsv"):
-                return read_tsv_from_s3(client, key, bucket_name, sample_size)
+                return read_tsv_from_s3(client, key, bucket_name)
 
             if key.endswith(".json"):
-                return read_json_from_s3(client, key, bucket_name, sample_size)
+                return read_json_from_s3(client, key, bucket_name)
 
             if key.endswith(".parquet"):
                 return read_parquet_from_s3(client, key, bucket_name)
@@ -374,10 +374,11 @@ class DatalakeSource(DatabaseServiceSource):
         """
         method to process column details
         """
-        if hasattr(data_frame, "columns"):
-            df_columns = list(data_frame.columns)
-            for column in df_columns:
-                try:
+        try:
+            cols = []
+            if hasattr(data_frame, "columns"):
+                df_columns = list(data_frame.columns)
+                for column in df_columns:
                     if (
                         hasattr(data_frame[column], "dtypes")
                         and data_frame[column].dtypes.name in DATALAKE_INT_TYPES
@@ -391,12 +392,11 @@ class DatalakeSource(DatabaseServiceSource):
                     parsed_string["dataType"] = data_type
                     parsed_string["name"] = column[:64]
                     parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-                    yield Column(**parsed_string)
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unexpected exception parsing column [{column}]: {exc}"
-                    )
+                    cols.append(Column(**parsed_string))
+            return cols
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
 
     def fetch_sample_data(self, data_frame, table: str) -> Optional[TableData]:
         try:

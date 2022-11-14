@@ -14,6 +14,7 @@ for the profiler
 """
 from typing import Dict, Optional, Union
 
+from pandas import DataFrame, notnull
 from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
@@ -95,6 +96,24 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
+    def get_col_row(self, data_frame):
+        cols = []
+        if isinstance(data_frame, DataFrame):
+            table_columns = DatalakeSource.get_columns(data_frame=data_frame)
+            return (
+                [col.name.__root__ for col in table_columns],
+                data_frame.astype(object)
+                .where(notnull(data_frame), None)
+                .values.tolist()[:100],
+            )
+        else:
+            for chunk in data_frame:
+                table_columns = DatalakeSource.get_columns(data_frame=chunk)
+                cols = [col.name.__root__ for col in table_columns]
+                rows = chunk.values.tolist()
+                break
+            return cols, rows, chunk
+
     def fetch_sqa_sample_data(self) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
@@ -125,21 +144,19 @@ class Sampler:
                 client=self.session,
                 key=self.table.name.__root__,
                 bucket_name=self.table.databaseSchema.name,
-                sample_size=self.sample_limit
             )
         if isinstance(configSource, S3Config):
             data_frame = DatalakeSource.get_s3_files(
                 client=self.session,
                 key=self.table.name.__root__,
                 bucket_name=self.table.databaseSchema.name,
-                sample_size=self.sample_limit
             )
-        cols = []
-        table_columns = DatalakeSource.get_columns(data_frame=data_frame)
-        for col in table_columns:
-            cols.append(col.name.__root__)
-        self._sample_rows = data_frame.dropna().values.tolist()
-        return TableData(columns=cols, rows=self._sample_rows), data_frame
+        cols, rows = self.get_col_row(
+            data_frame=data_frame[0]
+            if not isinstance(data_frame, DataFrame)
+            else data_frame
+        )
+        return TableData(columns=cols, rows=rows), data_frame
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""

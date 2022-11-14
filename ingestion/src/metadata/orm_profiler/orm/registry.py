@@ -18,9 +18,6 @@ from sqlalchemy import Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
 from metadata.generated.schema.entity.data.table import DataType
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
