@@ -76,15 +76,14 @@ public abstract class SecretsManager {
   }
 
   public IngestionPipeline encryptOrDecryptIngestionPipeline(IngestionPipeline ingestionPipeline, boolean encrypt) {
-    ingestionPipeline = IngestionPipelineBuilder.build(ingestionPipeline);
+    IngestionPipeline ingestion = IngestionPipelineBuilder.build(ingestionPipeline);
     try {
       return (IngestionPipeline)
-          encryptOrDecryptPasswordFields(
-              ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), encrypt);
+          encryptOrDecryptPasswordFields(ingestion, buildSecretId(true, "pipeline", ingestion.getName()), encrypt);
     } catch (Exception e) {
       throw InvalidServiceConnectionException.byMessage(
-          ingestionPipeline.getName(),
-          String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+          ingestion.getName(),
+          String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestion.getName()));
     }
   }
 
