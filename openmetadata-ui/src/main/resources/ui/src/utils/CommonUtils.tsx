@@ -66,6 +66,7 @@ import {
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
+import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
@@ -666,6 +667,7 @@ export const getEntityName = (
     | GlossaryTerm
     | Webhook
     | Bot
+    | Kpi
 ) => {
   return entity?.displayName || entity?.name || '';
 };

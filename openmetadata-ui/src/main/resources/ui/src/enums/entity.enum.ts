@@ -36,6 +36,8 @@ export enum EntityType {
   ROLE = 'role',
   POLICY = 'policy',
   TEST_SUITE = 'testSuite',
+  DATA_INSIGHT_CHART = 'dataInsightChart',
+  KPI = 'kpi',
 }
 
 export enum AssetsType {
