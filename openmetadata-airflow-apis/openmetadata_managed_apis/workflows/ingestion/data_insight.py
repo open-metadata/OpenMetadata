@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-testSuite DAG function builder
+Data Insights DAG function builder
 """
 
 from airflow import DAG
@@ -39,7 +39,8 @@ def build_data_insight_workflow_config(
 
     workflow_config = OpenMetadataWorkflowConfig(
         source=build_source(ingestion_pipeline),
-        sink=ingestion_pipeline.sink,
+        # ingestion_pipeline.service.serviceConnection.elasticsearch
+        sink=ingestion_pipeline.openMetadataServerConnection.elasticsSearch,
         processor=Processor(
             type="data-insight-processor",
             config={},
@@ -55,7 +56,7 @@ def build_data_insight_workflow_config(
 
 
 def build_data_insight_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
-    """Build a simple testSuite DAG"""
+    """Build a simple Data Insight DAG"""
     workflow_config = build_data_insight_workflow_config(ingestion_pipeline)
     dag = build_dag(
         task_name="data_insight_task",

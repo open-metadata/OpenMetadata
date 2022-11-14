@@ -25,9 +25,6 @@
         },
         {
           "$ref": "../mlmodelService.json#/definitions/mlModelConnection"
-        },
-        {
-          "$ref": "../metadataService.json#/definitions/metadataConnection"
         }
       ]
     }
