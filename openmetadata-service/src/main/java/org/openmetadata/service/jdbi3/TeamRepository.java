@@ -103,7 +103,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void prepare(Team team) throws IOException {
-    setFullyQualifiedName(team);
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());
@@ -124,7 +123,7 @@ public class TeamRepository extends EntityRepository<Team> {
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null).withInheritedRoles(null);
 
-    store(team.getId(), team, update);
+    store(team, update);
 
     // Restore the relationships
     team.withUsers(users)

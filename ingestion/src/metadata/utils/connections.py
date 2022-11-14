@@ -16,7 +16,7 @@ import json
 import logging
 import os
 import traceback
-from functools import singledispatch
+from functools import singledispatch, wraps
 from typing import Union
 
 import pkg_resources
@@ -157,7 +157,12 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifiConnecti
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.credentials import set_google_credentials
-from metadata.utils.source_connections import get_connection_args, get_connection_url
+from metadata.utils.source_connections import (
+    get_connection_args,
+    get_connection_url,
+    singledispatch_with_options_secrets,
+    update_connection_opts_args,
+)
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")
@@ -215,7 +220,21 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     return engine
 
 
-@singledispatch
+def singledispatch_with_options_secrets_verbose(fn):
+    """Decorator used for get any secret from the Secrets Manager that has been passed inside connection options
+    or arguments.
+    """
+
+    @wraps(fn)
+    @singledispatch
+    def inner(connection, verbose: bool = False, **kwargs):
+        update_connection_opts_args(connection)
+        return fn(connection, verbose, **kwargs)
+
+    return inner
+
+
+@singledispatch_with_options_secrets_verbose
 def get_connection(
     connection, verbose: bool = False
 ) -> Union[
@@ -402,7 +421,9 @@ def _(
 
 @get_connection.register(KafkaConnection)
 @get_connection.register(RedpandaConnection)
-def _(connection, verbose: bool = False) -> KafkaClient:
+def _(
+    connection, verbose: bool = False  # pylint: disable=unused-argument
+) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
@@ -463,7 +484,7 @@ def create_and_bind_thread_safe_session(engine: Engine) -> Session:
 
 
 @timeout(seconds=120)
-@singledispatch
+@singledispatch_with_options_secrets
 def test_connection(connection) -> None:
     """
     Default implementation is the engine to test.

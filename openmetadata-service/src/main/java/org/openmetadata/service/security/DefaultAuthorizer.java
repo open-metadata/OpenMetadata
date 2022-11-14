@@ -13,13 +13,13 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AUTH_0;
+import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AZURE;
+import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
+import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.GOOGLE;
+import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
-import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.AUTH_0;
-import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.AZURE;
-import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
-import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.GOOGLE;
-import static org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
@@ -38,22 +38,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
-import org.openmetadata.schema.teams.authn.BasicAuthMechanism;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
-import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
-import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyCache;
@@ -231,12 +229,7 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public boolean decryptSecret(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (subjectContext.isAdmin()) { // Always decrypt secrets for admin
-      return true;
-    }
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    // Local secretsManager true means secrets are not encrypted. So allow decrypted secrets for bots.
-    return subjectContext.isBot() && secretsManager.isLocal();
+    return subjectContext.isAdmin() || subjectContext.isBot();
   }
 
   private void addUsers(Set<String> users, String domain, Boolean isAdmin) {
@@ -281,7 +274,7 @@ public class DefaultAuthorizer implements Authorizer {
    * </ul>
    */
   public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    User originalUser = retrieveAuthMechanism(user);
+    User originalUser = retrieveWithAuthMechanism(user);
     // the user did not have an auth mechanism
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     if (authMechanism == null) {
@@ -350,19 +343,10 @@ public class DefaultAuthorizer implements Authorizer {
     return new AuthenticationMechanism().withAuthType(authType).withConfig(config);
   }
 
-  private static User retrieveAuthMechanism(User user) {
+  private static User retrieveWithAuthMechanism(User user) {
     EntityRepository<User> userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
     try {
-      User originalUser =
-          userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
-      AuthenticationMechanism authMechanism = originalUser.getAuthenticationMechanism();
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      if (authMechanism != null) {
-        Object config =
-            secretsManager.encryptOrDecryptBotUserCredentials(user.getName(), authMechanism.getConfig(), false);
-        authMechanism.setConfig(config != null ? config : authMechanism.getConfig());
-      }
-      return originalUser;
+      return userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
     } catch (IOException | EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;

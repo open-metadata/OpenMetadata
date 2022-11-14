@@ -33,7 +33,18 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.Encoded;
+import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -41,11 +52,12 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -57,13 +69,12 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.OpenMetadataServerConnectionBuilder;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.ResultList;
 
@@ -110,7 +121,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "listIngestionPipelines",
       summary = "List Ingestion Pipelines for Metadata Operations",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description =
           "Get a list of Airflow Pipelines for Metadata Operations. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -172,7 +183,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "listAllIngestionPipelineVersion",
       summary = "List ingestion workflow versions",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a list of all the versions of a IngestionPipeline identified by `id`",
       responses = {
         @ApiResponse(
@@ -193,7 +204,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "getIngestionPipelineByID",
       summary = "Get a IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a IngestionPipeline by `id`.",
       responses = {
         @ApiResponse(
@@ -231,7 +242,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "getSpecificIngestionPipelineVersion",
       summary = "Get a version of the IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a version of the IngestionPipeline by given `id`",
       responses = {
         @ApiResponse(
@@ -261,7 +272,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "getSpecificIngestionPipelineByFQN",
       summary = "Get a IngestionPipeline by name",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Get a ingestion by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -298,7 +309,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "createIngestionPipeline",
       summary = "Create a Ingestion Pipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Create a new Ingestion Pipeline.",
       responses = {
         @ApiResponse(
@@ -322,7 +333,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "patchIngestionPipeline",
       summary = "Update a IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Update an existing IngestionPipeline using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -349,7 +360,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "createOrUpdateIngestionPipeline",
       summary = "Create or update a IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Create a new IngestionPipeline, if it does not exist or update an existing IngestionPipeline.",
       responses = {
         @ApiResponse(
@@ -372,7 +383,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Path("/deploy/{id}")
   @Operation(
       summary = "Deploy a ingestion pipeline run",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Trigger a ingestion pipeline run by id.",
       responses = {
         @ApiResponse(
@@ -387,7 +398,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
     ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build());
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     pipelineServiceClient.deployPipeline(ingestionPipeline);
     createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline);
@@ -399,7 +410,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "triggerIngestionPipelineRun",
       summary = "Trigger a ingestion pipeline run",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Trigger a ingestion pipeline run by id.",
       responses = {
         @ApiResponse(
@@ -423,7 +434,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "toggleIngestionPipelineEnabled",
       summary = "Set an Ingestion pipeline either as Enabled or Disabled",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Toggle an ingestion pipeline state by id.",
       responses = {
         @ApiResponse(
@@ -439,7 +450,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
     pipelineServiceClient.toggleIngestion(pipeline);
-    createOrUpdate(uriInfo, securityContext, pipeline);
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
@@ -448,7 +458,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "killIngestionPipelineRuns",
       summary = "Mark as failed and kill any not-finished workflow or task for the IngestionPipeline",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Kill an ingestion pipeline by ID.",
       responses = {
         @ApiResponse(
@@ -471,7 +481,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "testConnection",
       summary = "Test Connection of a Service",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Test Connection of a Service.",
       responses = {
         @ApiResponse(
@@ -483,12 +493,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid TestServiceConnection testServiceConnection) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     testServiceConnection =
-        testServiceConnection
-            .withConnection(secretsManager.storeTestConnectionObject(testServiceConnection))
-            .withSecretsManagerProvider(secretsManager.getSecretsManagerProvider())
-            .withClusterName(openMetadataApplicationConfig.getClusterName());
+        testServiceConnection.withSecretsManagerProvider(
+            SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider());
     HttpResponse<String> response = pipelineServiceClient.testConnection(testServiceConnection);
     return Response.status(200, response.body()).build();
   }
@@ -498,7 +505,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "checkAirflowHostIp",
       summary = "Check the Airflow REST host IP",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Check the Airflow REST host IP",
       responses = {
         @ApiResponse(
@@ -516,7 +523,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "checkRestAirflowStatus",
       summary = "Check the Airflow REST status",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Check that the Airflow REST endpoint is reachable and up and running",
       responses = {
         @ApiResponse(
@@ -533,7 +540,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @Operation(
       operationId = "deleteIngestionPipeline",
       summary = "Delete a Ingestion",
-      tags = "IngestionPipelines",
+      tags = "ingestionPipelines",
       description = "Delete a ingestion by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -549,6 +556,26 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted IngestionPipeline.",
+      tags = "ingestionPipelines",
+      description = "Restore a soft deleted IngestionPipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the IngestionPipeline. ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+      })
+  public Response restoreIngestionPipeline(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -671,8 +698,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
-    OpenMetadataServerConnection openMetadataServerConnection =
-        new OpenMetadataServerConnectionBuilder(openMetadataApplicationConfig).build();
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
@@ -683,19 +710,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
-      if (!secretsManager.isLocal()) { // TODO fix this correctly
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(ingestionPipeline.getId()));
-      }
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+          getResourceContextById(ingestionPipeline.getId()));
     } catch (AuthorizationException | IOException e) {
       ingestionPipeline.getSourceConfig().setConfig(null);
       return ingestionPipeline;
     }
-    secretsManager.encryptOrDecryptDbtConfigSource(ingestionPipeline, false);
     return ingestionPipeline;
   }
 }

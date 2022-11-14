@@ -49,11 +49,11 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -64,8 +64,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.teams.RoleResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.SecurityUtil;
@@ -77,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Bot collection", tags = "Bot collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots")
+@Collection(name = "bots", order = 8) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
@@ -301,15 +299,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
     Bot bot = getBot(securityContext, create);
-    Response response = createOrUpdate(uriInfo, securityContext, bot);
-    // ensures the secrets' manager store the credentials even when the botUser does not change
-    // TODO encrypt decrypt could be done twice
-    bot = (Bot) response.getEntity();
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (ProviderType.SYSTEM.equals(bot.getProvider())) { // User bots credentials are not stored. Only system bots.
-      secretsManager.encryptOrDecryptBotCredentials(bot.getName(), bot.getBotUser().getName(), true);
-    }
-    return response;
+    return createOrUpdate(uriInfo, securityContext, bot);
   }
 
   @PATCH
@@ -359,6 +349,25 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, true, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted bot.",
+      tags = "bots",
+      description = "Restore a soft deleted bot.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Bot ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class)))
+      })
+  public Response restoreBot(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Bot getBot(CreateBot create, String user) throws IOException {

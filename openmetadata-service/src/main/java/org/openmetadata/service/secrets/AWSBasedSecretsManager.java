@@ -20,7 +20,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
-public abstract class AWSBasedSecretsManager extends ThirdPartySecretsManager {
+public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
 
   public static final String ACCESS_KEY_ID = "accessKeyId";
   public static final String SECRET_ACCESS_KEY = "secretAccessKey";
@@ -28,7 +28,7 @@ public abstract class AWSBasedSecretsManager extends ThirdPartySecretsManager {
 
   protected AWSBasedSecretsManager(
       SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, String clusterPrefix) {
-    super(awsProvider, clusterPrefix);
+    super(awsProvider, clusterPrefix, 100);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
     if (config != null
         && config.getParameters() != null

@@ -40,6 +40,9 @@
               "$ref": "testSuitePipeline.json"
             },
             {
+              "$ref": "metadataToElasticSearchPipeline.json"
+            },
+            {
               "$ref": "dataInsightPipeline.json"
             }
           ]

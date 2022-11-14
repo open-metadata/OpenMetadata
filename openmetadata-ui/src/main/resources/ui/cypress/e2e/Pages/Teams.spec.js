@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { addTeam, descriptionBox, interceptURL, login, toastNotification, updateOwner, uuid, verifyResponseStatusCode } from '../../common/common';
+import {
+    addTeam,
+    descriptionBox,
+    interceptURL,
+    login,
+    toastNotification,
+    updateOwner,
+    uuid,
+    verifyResponseStatusCode
+} from '../../common/common';
 import { LOGIN } from '../../constants/constants';
 
 const updateddescription = 'This is updated description';
@@ -50,7 +59,7 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
     //Clicking on teams
-    cy.get('[data-menu-id*="teams"]')
+    cy.get('[data-testid="settings-left-panel"]')
       .should('exist')
       .should('be.visible')
       .click();
@@ -62,15 +71,20 @@ describe('Teams flow should work properly', () => {
     cy.reload();
 
     //asserting the added values
-    cy.get('table').find('.ant-table-row').should('contain', TEAM_DETAILS.name);
-    cy.get('table')
-      .find('.ant-table-row')
-      .should('contain', TEAM_DETAILS.description);
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .should('exist')
+      .should('be.visible');
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`).should(
+      'contain',
+      TEAM_DETAILS.description
+    );
   });
 
   it('Add owner to created team', () => {
     //Clicking on created team
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
     updateOwner();
   });
 
@@ -78,7 +92,9 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', '/api/v1/users*', 'getUsers');
 
     //Click on created team
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
 
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="team-heading"]')
@@ -156,7 +172,9 @@ describe('Teams flow should work properly', () => {
   it('Join team should work properly', () => {
     interceptURL('GET', '/api/v1/users*', 'getUsers');
     //Click on created team
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
 
     verifyResponseStatusCode('@getUsers', 200);
 
@@ -177,7 +195,9 @@ describe('Teams flow should work properly', () => {
     );
     interceptURL('PATCH', `/api/v1/teams/*`, 'patchTeam');
     //Click on created team name
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
     verifyResponseStatusCode('@getUserDetails', 200);
@@ -214,9 +234,8 @@ describe('Teams flow should work properly', () => {
     interceptURL('GET', `/api/v1/teams/name/*`, 'getSelectedTeam');
     interceptURL('PATCH', `/api/v1/teams/*`, 'patchTeam');
     //Click on created team name
-    cy.get('table')
-      .find('.ant-table-row')
-      .contains(TEAM_DETAILS.updatedname)
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
@@ -313,7 +332,9 @@ describe('Teams flow should work properly', () => {
     );
 
     //Click on created team
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
     cy.get('[data-testid="team-heading"]')
@@ -339,7 +360,9 @@ describe('Teams flow should work properly', () => {
     );
 
     //Click on created team
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
     cy.get('[data-testid="team-heading"]')
@@ -452,8 +475,7 @@ describe('Teams flow should work properly', () => {
       'getSelectedTeam'
     );
     //Click on created team
-    cy.get('table')
-      .find('.ant-table-row')
+    cy.get(`[data-row-key="${HARD_DELETE_TEAM_DETAILS.name}"]`)
       .contains(HARD_DELETE_TEAM_DETAILS.name)
       .click();
 

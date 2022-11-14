@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 
 public final class CatalogExceptionMessage {
   public static final String EMAIL_SENDING_ISSUE =
@@ -49,7 +50,6 @@ public final class CatalogExceptionMessage {
   public static final String TEAM_HIERARCHY = "Unexpected error occurred while building the teams hierarchy";
   public static final String LDAP_MISSING_ATTR =
       "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
-  public static final String LDAP_USER_BIND_ERROR = "LDAP authentication failed due to : %s";
   public static final String MULTIPLE_EMAIl_ENTRIES = "Email corresponds to multiple entries in Directory.";
 
   public static final String INVALID_EMAIL_PASSWORD = "You have entered an invalid email or password.";
@@ -172,6 +172,10 @@ public final class CatalogExceptionMessage {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
+  public static String invalidBotUser() {
+    return "Revoke Token can only be applied to Bot Users.";
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }
@@ -182,5 +186,11 @@ public final class CatalogExceptionMessage {
 
   public static String systemEntityDeleteNotAllowed(String name, String entityType) {
     return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
+  }
+
+  public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {
+    return String.format(
+        "Tag labels %s and %s are mutually exclusive and can't be assigned together",
+        tag1.getTagFQN(), tag2.getTagFQN());
   }
 }

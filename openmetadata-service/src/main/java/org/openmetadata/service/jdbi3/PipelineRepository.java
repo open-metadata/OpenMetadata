@@ -176,8 +176,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
-    setFullyQualifiedName(pipeline);
-    pipeline.setTags(addDerivedTags(pipeline.getTags()));
   }
 
   @Override
@@ -190,7 +188,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    store(pipeline.getId(), pipeline, update);
+    store(pipeline, update);
 
     // Restore the relationships
     pipeline.withOwner(owner).withService(service).withTags(tags);

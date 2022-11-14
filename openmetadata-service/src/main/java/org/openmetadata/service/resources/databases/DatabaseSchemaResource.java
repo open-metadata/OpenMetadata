@@ -45,6 +45,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -347,6 +348,25 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted DatabaseSchema.",
+      tags = "tables",
+      description = "Restore a soft deleted DatabaseSchema.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the DatabaseSchema ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+      })
+  public Response restoreDatabaseSchema(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {

@@ -134,8 +134,6 @@ site_menu:
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
-  - category: Deployment / Upgrade OpenMetadata / Backup Metadata
-    url: /deployment/upgrade/backup-metadata
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
     url: /deployment/upgrade/bare-metal
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
@@ -150,6 +148,11 @@ site_menu:
     url: /deployment/upgrade/versions/010-to-011
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
     url: /deployment/upgrade/versions/011-to-012
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
+    url: /deployment/upgrade/versions/012-to-013
+  
+  - category: Deployment / Backup & Restore Metadata
+    url: /deployment/backup-restore-metadata
 
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
@@ -481,6 +484,8 @@ site_menu:
     url: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / Lineage
     url: /connectors/ingestion/workflows/lineage
+  - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
+    url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics

@@ -206,7 +206,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) throws IOException {
-    dao.prepare(entity);
+    dao.prepareInternal(entity);
 
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
@@ -245,6 +245,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         dao.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    T entity = addHref(uriInfo, dao.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id));
+    LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
+    return Response.ok(entity.getHref()).entity(entity).build();
   }
 
   public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {

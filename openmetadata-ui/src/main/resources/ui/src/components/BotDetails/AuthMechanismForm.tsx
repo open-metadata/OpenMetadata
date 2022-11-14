@@ -23,8 +23,9 @@ import { createUserWithPut, getUserByName } from '../../axiosAPIs/userAPI';
 import { BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION } from '../../constants/HelperTextUtil';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { SsoServiceType } from '../../generated/auth/ssoAuth';
 import { Bot } from '../../generated/entity/bot';
-import { SsoServiceType } from '../../generated/entity/teams/authN/ssoAuth';
+
 import {
   AuthenticationMechanism,
   AuthType,
