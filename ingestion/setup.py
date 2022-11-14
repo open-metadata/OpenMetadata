@@ -212,6 +212,7 @@ setup(
         "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(

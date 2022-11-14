@@ -110,7 +110,6 @@ public class ReportDataResource {
   public Response addReportData(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext);
     return dao.addReportData(reportData);
   }
 }

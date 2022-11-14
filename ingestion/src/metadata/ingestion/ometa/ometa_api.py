@@ -51,6 +51,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
@@ -374,6 +375,14 @@ class OpenMetadata(
             ),
         ):
             return "/services/mlmodelServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[MetadataService, self.get_create_entity_type(MetadataService)]
+            ),
+        ):
+            return "/services/metadataServices"
 
         if issubclass(
             entity,
