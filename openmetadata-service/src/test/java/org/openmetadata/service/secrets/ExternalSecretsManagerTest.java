@@ -83,7 +83,7 @@ public abstract class ExternalSecretsManagerTest {
 
   @Test
   void testEncryptIngestionPipelineDBTConfig() {
-    testEncryptDecryptSSOConfig(ENCRYPT);
+    testEncryptDecryptDBTConfig(ENCRYPT);
   }
 
   @Test
@@ -179,7 +179,7 @@ public abstract class ExternalSecretsManagerTest {
       ((DbtS3Config) expectedDbPipeline.getDbtConfigSource())
           .getDbtSecurityConfig()
           .setAwsSecretAccessKey(
-              "secret:openmetadata/pipeline/my-pipeline/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
+              "secret:/openmetadata/pipeline/my-pipeline/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
       ((DbtS3Config) actualDbPipeline.getDbtConfigSource())
           .getDbtSecurityConfig()
           .setAwsSecretAccessKey(

@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
@@ -39,12 +40,17 @@ import org.openmetadata.service.util.EntityUtil;
  * Update service using the configured secret manager.
  *
  * <p>- It will update all the services entities with connection parameters
+ *
+ * <p>- It will update all the user bots with authentication mechanism
+ *
+ * <p>- It will update all the ingestion pipelines of type metadata with DBT config
  */
 @Slf4j
 public class SecretsManagerUpdateService {
   private final SecretsManager secretManager;
   private final SecretsManager oldSecretManager;
   private final EntityRepository<User> userRepository;
+  private final EntityRepository<IngestionPipeline> ingestionPipelineRepository;
 
   private final Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
       connectionTypeRepositoriesMap;
@@ -53,24 +59,39 @@ public class SecretsManagerUpdateService {
     this.secretManager = secretsManager;
     this.connectionTypeRepositoriesMap = retrieveConnectionTypeRepositoriesMap();
     this.userRepository = Entity.getEntityRepository(Entity.USER);
+    this.ingestionPipelineRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     // by default, it is going to be non-managed secrets manager since decrypt is the same for all of them
     this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null, clusterName);
   }
 
   public void updateEntities() {
     updateServices();
-    updateUsersAuthenticationMechanism();
+    updateBotUsers();
+    updateIngestionPipelines();
   }
 
   private void updateServices() {
     LOG.info(
         String.format(
-            "Checking if services updating is needed for secrets manager: [%s]",
+            "Updating services in case of an update on the JSON schema: [%s]",
             secretManager.getSecretsManagerProvider().value()));
-    List<ServiceEntityInterface> notStoredServices = retrieveServices();
-    if (!notStoredServices.isEmpty()) {
-      notStoredServices.forEach(this::updateService);
-    }
+    retrieveServices().forEach(this::updateService);
+  }
+
+  private void updateBotUsers() {
+    LOG.info(
+        String.format(
+            "Updating bot users in case of an update on the JSON schema: [%s]",
+            secretManager.getSecretsManagerProvider().value()));
+    retrieveBotUsers().forEach(this::updateBotUser);
+  }
+
+  private void updateIngestionPipelines() {
+    LOG.info(
+        String.format(
+            "Updating bot users in case of an update on the JSON schema: [%s]",
+            secretManager.getSecretsManagerProvider().value()));
+    retrieveIngestionPipelines().forEach(this::updateIngestionPipelines);
   }
 
   private void updateService(ServiceEntityInterface serviceEntityInterface) {
@@ -164,22 +185,6 @@ public class SecretsManagerUpdateService {
     return collectionDetailsClass;
   }
 
-  private void updateUsersAuthenticationMechanism() {
-    LOG.info(
-        String.format(
-            "Checking if bot users authentication mechanism updating is needed for secrets manager: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
-    List<User> notStoredUsers = retrieveBotUsers();
-    if (!notStoredUsers.isEmpty()) {
-      notStoredUsers.forEach(this::updateBotUser);
-    } else {
-      LOG.info(
-          String.format(
-              "All bot users credentials are already safely stored in [%s] secrets manager",
-              secretManager.getSecretsManagerProvider().value()));
-    }
-  }
-
   private List<User> retrieveBotUsers() {
     try {
       return userRepository
@@ -190,15 +195,11 @@ public class SecretsManagerUpdateService {
               userRepository.dao.listCount(new ListFilter()),
               null)
           .getData().stream()
-          .filter(this::isBotWithAuthenticationMechanism)
+          .filter(user -> Boolean.TRUE.equals(user.getIsBot()))
           .collect(Collectors.toList());
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
-  }
-
-  private boolean isBotWithAuthenticationMechanism(User user) {
-    return Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null;
   }
 
   private void updateBotUser(User botUser) {
@@ -210,6 +211,33 @@ public class SecretsManagerUpdateService {
       userRepository.dao.update(
           user.withAuthenticationMechanism(
               secretManager.encryptOrDecryptAuthenticationMechanism(botUser.getName(), authenticationMechanism, true)));
+    } catch (IOException e) {
+      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+    }
+  }
+
+  private List<IngestionPipeline> retrieveIngestionPipelines() {
+    try {
+      return ingestionPipelineRepository
+          .listAfter(
+              null,
+              EntityUtil.Fields.EMPTY_FIELDS,
+              new ListFilter(),
+              ingestionPipelineRepository.dao.listCount(new ListFilter()),
+              null)
+          .getData();
+    } catch (IOException e) {
+      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+    }
+  }
+
+  private void updateIngestionPipelines(IngestionPipeline ingestionPipeline) {
+    try {
+      IngestionPipeline ingestion = ingestionPipelineRepository.dao.findEntityById(ingestionPipeline.getId());
+      // we have to decrypt using the old secrets manager and encrypt again with the new one
+      oldSecretManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, false);
+      secretManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      ingestionPipelineRepository.dao.update(ingestion);
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
