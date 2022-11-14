@@ -12,7 +12,14 @@
  */
 
 import { Card, Typography } from 'antd';
-import { isInteger, isString, isUndefined, last, toNumber } from 'lodash';
+import {
+  isEmpty,
+  isInteger,
+  isString,
+  isUndefined,
+  last,
+  toNumber,
+} from 'lodash';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
@@ -20,6 +27,7 @@ import {
   ENTITIES_SUMMARY_LIST,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
+import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import {
   DataInsightChartResult,
   DataInsightChartType,
@@ -65,11 +73,27 @@ export const renderLegend = (legendData: LegendProps, latest: string) => {
  */
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], label, isPercentage } = props;
+  const { active, payload = [], label, isPercentage, kpiTooltipRecord } = props;
 
-  const suffix = isPercentage ? '%' : '';
+  let suffix = '';
+  if (isPercentage) {
+    suffix = '%';
+  }
 
-  const getEntryFormattedValue = (value: number | string | undefined) => {
+  const getEntryFormattedValue = (
+    value: number | string | undefined,
+    dataKey: number | string | undefined
+  ) => {
+    // handle kpi metric type check for entry value suffix
+    if (
+      !isUndefined(kpiTooltipRecord) &&
+      !isEmpty(kpiTooltipRecord) &&
+      !isUndefined(dataKey)
+    ) {
+      const metricType = kpiTooltipRecord[dataKey];
+      suffix = metricType === KpiTargetType.Percentage ? '%' : suffix;
+    }
+
     if (!isUndefined(value)) {
       if (isString(value)) {
         return `${value}${suffix}`;
@@ -96,7 +120,8 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
               <rect fill={entry.color} height="14" rx="2" width="14" />
             </Surface>
             <span>
-              {entry.dataKey} - {getEntryFormattedValue(entry.value)}
+              {entry.dataKey} -{' '}
+              {getEntryFormattedValue(entry.value, entry.dataKey)}
             </span>
           </li>
         ))}

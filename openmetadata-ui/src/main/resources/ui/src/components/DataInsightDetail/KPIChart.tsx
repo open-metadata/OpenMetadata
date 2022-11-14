@@ -89,10 +89,13 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
     }
   };
 
-  const { kpis, graphData } = useMemo(
-    () => getKpiGraphData(kpiResults),
-    [kpiResults]
-  );
+  const { kpis, graphData, kpiTooltipRecord } = useMemo(() => {
+    const kpiTooltipRecord = kpiList.reduce((previous, curr) => {
+      return { ...previous, [curr.name]: curr.metricType };
+    }, {});
+
+    return { ...getKpiGraphData(kpiResults), kpiTooltipRecord };
+  }, [kpiResults]);
 
   useEffect(() => {
     fetchKpiList();
@@ -151,7 +154,9 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="timestamp" />
             <YAxis />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={<CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />}
+            />
             {kpis.map((kpi, i) => (
               <Line
                 dataKey={kpi}
