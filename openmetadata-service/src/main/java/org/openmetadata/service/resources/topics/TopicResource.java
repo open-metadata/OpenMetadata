@@ -46,6 +46,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -416,6 +417,25 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Topic Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted topic.",
+      tags = "topics",
+      description = "Restore a soft deleted topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Topic. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
+      })
+  public Response restoreTopic(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Topic getTopic(CreateTopic create, String user) throws IOException {

@@ -49,6 +49,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
@@ -348,6 +349,25 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, true, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted bot.",
+      tags = "bots",
+      description = "Restore a soft deleted bot.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Bot ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class)))
+      })
+  public Response restoreBot(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Bot getBot(CreateBot create, String user) throws IOException {

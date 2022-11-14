@@ -33,7 +33,6 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public void prepare(TestDefinition entity) {
-    setFullyQualifiedName(entity);
     // validate test platforms
     if (CommonUtil.nullOrEmpty(entity.getTestPlatforms())) {
       throw new IllegalArgumentException("testPlatforms must not be empty");
@@ -45,7 +44,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     EntityReference owner = entity.getOwner();
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     entity.withOwner(null).withHref(null);
-    store(entity.getId(), entity, update);
+    store(entity, update);
 
     // Restore the relationships
     entity.withOwner(owner);

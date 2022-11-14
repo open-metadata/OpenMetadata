@@ -49,6 +49,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.type.EntityHistory;
@@ -417,6 +418,25 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     PolicyCache.getInstance().invalidatePolicy(id);
     return response;
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted policy.",
+      tags = "policies",
+      description = "Restore a soft deleted policy.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Policy ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class)))
+      })
+  public Response restorePolicy(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET

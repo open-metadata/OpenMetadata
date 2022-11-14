@@ -248,7 +248,12 @@
     "data-assets-with-field": "Data assets with {{field}}",
     "total-data-assets-with-tiers": "Total Data assets with tiers",
     "most-active-user": "Most active user",
-    "announcements": "Announcements"
+    "announcements": "Announcements",
+    "enable-partition": "Enable Partition",
+    "column-name": "Column Name",
+    "interval-type": "Interval Type",
+    "interval": "Interval",
+    "interval-unit": "Interval Unit"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -280,7 +285,15 @@
     "most-viewed-data-assets": "Displays the most viewed data assets.",
     "delete-action-description": "Deleting this {{entityType}} will permanently remove its metadata from OpenMetadata.",
     "restore-action-description": "Restoring this {{entityType}} will restore its metadata in OpenMetadata.",
-    "announcement-action-description": "Set up banners to inform your team of upcoming maintenance, updates, &amp; deletions."
+    "announcement-action-description": "Set up banners to inform your team of upcoming maintenance, updates, &amp; deletions.",
+    "column-name-required": "Column name is required",
+    "select-column-name": "Select column name",
+    "interval-type-required": "Interval type is required",
+    "select-type-required": "Select interval type",
+    "interval-required": "Interval is required",
+    "enter-interval": "Enter interval",
+    "interval-unit-required": "Interval unit is required",
+    "select-interval-unit": "Select interval unit"
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

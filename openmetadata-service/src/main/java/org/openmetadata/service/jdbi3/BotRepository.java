@@ -38,7 +38,6 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void prepare(Bot entity) throws IOException {
-    setFullyQualifiedName(entity);
     User user = daoCollection.userDAO().findEntityById(entity.getBotUser().getId(), Include.ALL);
     entity.getBotUser().withName(user.getName()).withDisplayName(user.getDisplayName());
   }
@@ -47,7 +46,7 @@ public class BotRepository extends EntityRepository<Bot> {
   public void storeEntity(Bot entity, boolean update) throws IOException {
     EntityReference botUser = entity.getBotUser();
     entity.withBotUser(null);
-    store(entity.getId(), entity, update);
+    store(entity, update);
     entity.withBotUser(botUser);
   }
 

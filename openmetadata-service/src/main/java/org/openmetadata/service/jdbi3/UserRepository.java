@@ -72,7 +72,6 @@ public class UserRepository extends EntityRepository<User> {
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user) throws IOException {
-    setFullyQualifiedName(user);
     validateTeams(user);
     validateRoles(user.getRoles());
   }
@@ -101,7 +100,7 @@ public class UserRepository extends EntityRepository<User> {
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
 
-    store(user.getId(), user, update);
+    store(user, update);
 
     // Restore the relationships
     user.withRoles(roles).withTeams(teams);
