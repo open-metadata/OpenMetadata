@@ -180,9 +180,17 @@ const KPIListPage = () => {
                 },
               ]}
             />
-            <Button type="primary" onClick={handleAddKPI}>
-              Add KPI
-            </Button>
+            <Tooltip
+              title={
+                isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                disabled={!isAdminUser}
+                type="primary"
+                onClick={handleAddKPI}>
+                {t('label.add-kpi')}
+              </Button>
+            </Tooltip>
           </Space>
         </Col>
         <Col span={24}>
