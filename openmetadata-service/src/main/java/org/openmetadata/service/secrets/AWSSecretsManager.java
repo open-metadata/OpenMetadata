@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.secrets;
 
-import static org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider.AWS;
+import static org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider.MANAGED_AWS;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
@@ -31,7 +31,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
   private SecretsManagerClient secretsClient;
 
   private AWSSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
-    super(AWS, config, clusterPrefix);
+    super(MANAGED_AWS, config, clusterPrefix);
   }
 
   @Override

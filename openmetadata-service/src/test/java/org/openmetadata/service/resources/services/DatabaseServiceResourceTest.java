@@ -21,11 +21,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.SNOWFLAKE_DATABASE_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -50,6 +52,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
@@ -124,7 +127,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createRequest(test).withDescription("description1");
+    CreateDatabaseService update = createPutRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
@@ -166,10 +169,10 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertResponseContains(
         () -> createEntity(createRequest(test).withDescription(null).withConnection(dbConn), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to construct connection instance of Snowflake]");
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake]");
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createRequest(test).withDescription("description1");
+    CreateDatabaseService update = createPutRequest(test).withDescription("description1");
 
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
@@ -180,7 +183,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertResponseContains(
         () -> updateEntity(update, OK, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to construct connection instance of Snowflake]");
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake]");
   }
 
   @Test
@@ -250,6 +253,18 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
         .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
+  }
+
+  @Override
+  public CreateDatabaseService createPutRequest(String name) {
+    String secretPassword = "secret:/openmetadata/database/" + name + "/password";
+    return new CreateDatabaseService()
+        .withName(name)
+        .withServiceType(DatabaseServiceType.Snowflake)
+        .withConnection(
+            TestUtils.SNOWFLAKE_DATABASE_CONNECTION.withConfig(
+                ((SnowflakeConnection) SNOWFLAKE_DATABASE_CONNECTION.getConfig())
+                    .withPassword(Fernet.getInstance().encrypt(secretPassword.toLowerCase(Locale.ROOT)))));
   }
 
   @Override
