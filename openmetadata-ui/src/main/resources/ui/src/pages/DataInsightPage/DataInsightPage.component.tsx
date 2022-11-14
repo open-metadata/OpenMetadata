@@ -42,7 +42,6 @@ import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities'
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
 import { ROUTES } from '../../constants/constants';
 import {
-  DATA_INSIGHT_TAB,
   DAY_FILTER,
   DEFAULT_DAYS,
   ENTITIES_CHARTS,
@@ -53,7 +52,10 @@ import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { useAuth } from '../../hooks/authHooks';
-import { ChartFilter } from '../../interface/data-insight.interface';
+import {
+  ChartFilter,
+  DataInsightTabs,
+} from '../../interface/data-insight.interface';
 import { getTeamFilter } from '../../utils/DataInsightUtils';
 import {
   getCurrentDateTimeMillis,
@@ -68,7 +70,7 @@ const DataInsightPage = () => {
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
-  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.DataAssets);
+  const [activeTab, setActiveTab] = useState(DataInsightTabs.DATA_ASSETS);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
 
@@ -135,9 +137,9 @@ const DataInsightPage = () => {
 
   const handleScrollToChart = (chartType: DataInsightChartType) => {
     if (ENTITIES_CHARTS.includes(chartType)) {
-      setActiveTab(DATA_INSIGHT_TAB.DataAssets);
+      setActiveTab(DataInsightTabs.DATA_ASSETS);
     } else {
-      setActiveTab(DATA_INSIGHT_TAB['App Analytics']);
+      setActiveTab(DataInsightTabs.APP_ANALYTICS);
     }
     setSelectedChart(chartType);
   };
@@ -247,12 +249,12 @@ const DataInsightPage = () => {
             className="data-insight-switch"
             data-testid="data-insight-switch"
             optionType="button"
-            options={Object.values(DATA_INSIGHT_TAB)}
+            options={Object.values(DataInsightTabs)}
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
           />
         </Col>
-        {activeTab === DATA_INSIGHT_TAB.DataAssets && (
+        {activeTab === DataInsightTabs.DATA_ASSETS && (
           <>
             <Col span={24}>
               <TotalEntityInsight chartFilter={chartFilter} />
@@ -268,7 +270,7 @@ const DataInsightPage = () => {
             </Col>
           </>
         )}
-        {activeTab === DATA_INSIGHT_TAB['App Analytics'] && (
+        {activeTab === DataInsightTabs.APP_ANALYTICS && (
           <>
             <Col span={24}>
               <TopViewEntities chartFilter={chartFilter} />

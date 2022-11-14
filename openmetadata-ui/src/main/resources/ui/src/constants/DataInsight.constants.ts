@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18n, { t } from 'i18next';
+import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
@@ -66,11 +66,6 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
   'Tier.Tier4': '#8D6AF1',
   'Tier.Tier5': '#699994',
   'No Tier': '#6A86EB',
-};
-
-export const DATA_INSIGHT_TAB = {
-  DataAssets: t('label.data-assets'),
-  'App Analytics': t('label.app-analytics'),
 };
 
 export const DAY_FILTER = [
