@@ -67,7 +67,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.amundsen_helper import SERVICE_TYPE_MAPPER
-from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
