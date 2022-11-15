@@ -808,6 +808,9 @@ const AddIngestion = ({
             handleRepeatFrequencyChange={(value: string) =>
               setRepeatFrequency(value)
             }
+            includePeriodOptions={
+              pipelineType === PipelineType.DataInsight ? ['day'] : undefined
+            }
             repeatFrequency={repeatFrequency}
             status={saveState}
             submitButtonLabel={isUndefined(data) ? 'Add & Deploy' : 'Submit'}

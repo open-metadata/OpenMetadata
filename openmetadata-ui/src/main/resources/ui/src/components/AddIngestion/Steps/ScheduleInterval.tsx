@@ -26,12 +26,14 @@ const ScheduleInterval = ({
   submitButtonLabel,
   onBack,
   onDeploy,
+  includePeriodOptions,
 }: ScheduleIntervalProps) => {
   return (
     <div data-testid="schedule-intervel-container">
       <Field>
         <div>
           <CronEditor
+            includePeriodOptions={includePeriodOptions}
             value={repeatFrequency}
             onChange={handleRepeatFrequencyChange}
           />
