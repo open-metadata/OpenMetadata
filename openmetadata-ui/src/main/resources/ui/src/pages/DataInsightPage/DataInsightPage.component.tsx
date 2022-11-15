@@ -20,9 +20,12 @@ import {
   Select,
   SelectProps,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
+import { t } from 'i18next';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
 
 import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
@@ -30,23 +33,29 @@ import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
 import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
+import KPIChart from '../../components/DataInsightDetail/KPIChart';
 import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
 import PageViewsByEntitiesChart from '../../components/DataInsightDetail/PageViewsByEntitiesChart';
 import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
+import { ROUTES } from '../../constants/constants';
 import {
-  DATA_INSIGHT_TAB,
   DAY_FILTER,
   DEFAULT_DAYS,
   ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
-import { ChartFilter } from '../../interface/data-insight.interface';
+import { useAuth } from '../../hooks/authHooks';
+import {
+  ChartFilter,
+  DataInsightTabs,
+} from '../../interface/data-insight.interface';
 import { getTeamFilter } from '../../utils/DataInsightUtils';
 import {
   getCurrentDateTimeMillis,
@@ -58,8 +67,10 @@ import './DataInsight.less';
 const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
 
 const DataInsightPage = () => {
+  const { isAdminUser } = useAuth();
+  const history = useHistory();
   const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
-  const [activeTab, setActiveTab] = useState(DATA_INSIGHT_TAB.DataAssets);
+  const [activeTab, setActiveTab] = useState(DataInsightTabs.DATA_ASSETS);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
 
@@ -126,11 +137,15 @@ const DataInsightPage = () => {
 
   const handleScrollToChart = (chartType: DataInsightChartType) => {
     if (ENTITIES_CHARTS.includes(chartType)) {
-      setActiveTab(DATA_INSIGHT_TAB.DataAssets);
+      setActiveTab(DataInsightTabs.DATA_ASSETS);
     } else {
-      setActiveTab(DATA_INSIGHT_TAB['Web Analytics']);
+      setActiveTab(DataInsightTabs.APP_ANALYTICS);
     }
     setSelectedChart(chartType);
+  };
+
+  const handleAddKPI = () => {
+    history.push(ROUTES.ADD_KPI);
   };
 
   useLayoutEffect(() => {
@@ -155,10 +170,20 @@ const DataInsightPage = () => {
             <div data-testid="data-insight-header">
               <Typography.Title level={5}>Data Insight</Typography.Title>
               <Typography.Text className="data-insight-label-text">
-                Keep track of OKRs with charts built around OpenMetadata health.
+                {t('label.data-insight-subtitle')}
               </Typography.Text>
             </div>
-            <Button type="primary">Add KPI</Button>
+            <Tooltip
+              title={
+                isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                disabled={!isAdminUser}
+                type="primary"
+                onClick={handleAddKPI}>
+                {t('label.add-kpi')}
+              </Button>
+            </Tooltip>
           </Space>
         </Col>
         <Col span={24}>
@@ -172,7 +197,7 @@ const DataInsightPage = () => {
                   mode="multiple"
                   notFoundContent={null}
                   options={teamsOptions}
-                  placeholder="Select teams"
+                  placeholder={t('label.select-teams')}
                   onChange={handleTeamChange}
                   onSearch={handleTeamSearch}
                 />
@@ -183,7 +208,7 @@ const DataInsightPage = () => {
                   mode="multiple"
                   notFoundContent={null}
                   options={TIER_FILTER}
-                  placeholder="Select tier"
+                  placeholder={t('label.select-tiers')}
                   onChange={handleTierChange}
                 />
               </Space>
@@ -216,17 +241,20 @@ const DataInsightPage = () => {
           />
         </Col>
         <Col span={24}>
+          <KPIChart chartFilter={chartFilter} />
+        </Col>
+        <Col span={24}>
           <Radio.Group
             buttonStyle="solid"
             className="data-insight-switch"
             data-testid="data-insight-switch"
             optionType="button"
-            options={Object.values(DATA_INSIGHT_TAB)}
+            options={Object.values(DataInsightTabs)}
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value)}
           />
         </Col>
-        {activeTab === DATA_INSIGHT_TAB.DataAssets && (
+        {activeTab === DataInsightTabs.DATA_ASSETS && (
           <>
             <Col span={24}>
               <TotalEntityInsight chartFilter={chartFilter} />
@@ -242,7 +270,7 @@ const DataInsightPage = () => {
             </Col>
           </>
         )}
-        {activeTab === DATA_INSIGHT_TAB['Web Analytics'] && (
+        {activeTab === DataInsightTabs.APP_ANALYTICS && (
           <>
             <Col span={24}>
               <TopViewEntities chartFilter={chartFilter} />

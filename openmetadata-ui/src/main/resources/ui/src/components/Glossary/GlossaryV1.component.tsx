@@ -349,6 +349,7 @@ const GlossaryV1 = ({
                     }>
                     <button
                       className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
+                      data-testid="add-glossary"
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
@@ -578,7 +579,7 @@ const GlossaryV1 = ({
           <ButtonAntd
             ghost
             className="tw-h-8 tw-rounded tw-my-3"
-            data-testid="add-webhook-button"
+            data-testid="add-new-glossary"
             disabled={!createGlossaryPermission}
             type="primary"
             onClick={handleAddGlossaryClick}>

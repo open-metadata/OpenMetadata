@@ -22,6 +22,10 @@ import {
   MessagingService,
 } from '../generated/entity/services/messagingService';
 import {
+  MetadataConnection,
+  MetadataService,
+} from '../generated/entity/services/metadataService';
+import {
   MlModelConnection,
   MlmodelService,
 } from '../generated/entity/services/mlmodelService';
@@ -76,7 +80,8 @@ export type ServicesType =
   | MessagingService
   | DashboardService
   | PipelineService
-  | MlmodelService;
+  | MlmodelService
+  | MetadataService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -88,4 +93,5 @@ export type ConfigData =
   | MessagingConnection
   | DashboardConnection
   | PipelineConnection
-  | MlModelConnection;
+  | MlModelConnection
+  | MetadataConnection;

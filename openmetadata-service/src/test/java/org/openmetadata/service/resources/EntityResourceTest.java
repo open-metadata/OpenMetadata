@@ -374,6 +374,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return createRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
   }
 
+  public final K createPutRequest(TestInfo test) {
+    return createPutRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
+  }
+
   public final K createRequest(TestInfo test, int index) {
     return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null).withOwner(null);
   }
@@ -388,7 +392,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .withOwner(reduceEntityReference(owner));
   }
 
+  public final K createPutRequest(String name, String description, String displayName, EntityReference owner) {
+    if (!supportsEmptyDescription && description == null) {
+      throw new IllegalArgumentException("Entity " + entityType + " does not support empty description");
+    }
+    return createPutRequest(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withOwner(reduceEntityReference(owner));
+  }
+
   public abstract K createRequest(String name);
+
+  public K createPutRequest(String name) {
+    return createRequest(name);
+  }
 
   // Add all possible relationships to check if the entity is missing any of them after deletion
   public T beforeDeletion(TestInfo test, T entity) throws HttpResponseException {
@@ -909,7 +927,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update the entity as USER_OWNER1
-    request = createRequest(getEntityName(test), "newDescription", null, USER1_REF);
+    request = createPutRequest(getEntityName(test), "newDescription", null, USER1_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "newDescription");
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
@@ -925,14 +943,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    request = createRequest(getEntityName(test), "description", "displayName", TEAM11_REF);
+    request = createPutRequest(getEntityName(test), "description", "displayName", TEAM11_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
-    request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    request = createPutRequest(getEntityName(test), "description", "displayName", USER1_REF);
     change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -940,14 +958,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
 
     // Set the owner to the existing owner. No ownership change must be recorded.
-    request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    request = createPutRequest(getEntityName(test), "description", "displayName", USER1_REF);
     change = getChangeDescription(entity.getVersion());
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
-    request = createRequest(getEntityName(test), "description", "displayName", null);
+    request = createPutRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
   }
@@ -1046,7 +1064,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update null description with a new description
-    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, "description", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1059,7 +1077,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update empty description with a new description
-    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1073,7 +1091,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // BOT user can update empty description and empty displayName
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    request = createRequest(getEntityName(test), "description", "displayName", null);
+    request = createPutRequest(getEntityName(test), "description", "displayName", null);
     if (supportsEmptyDescription) {
       fieldAdded(change, "description", "description");
     }
@@ -1081,14 +1099,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is allowed for users other than bots
-    request = createRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
+    request = createPutRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
     change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "description", "updatedDescription");
     fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is ignored for bot users
-    request = createRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
+    request = createPutRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
     updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
   }
 

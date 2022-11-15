@@ -97,7 +97,7 @@ describe('Policy page should work properly', () => {
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
-    cy.get('[data-menu-id*="policies"]').should('be.visible').click();
+    cy.get('[data-testid="settings-left-panel"]').contains('Policies').should('be.visible').click();
 
     cy.wait('@getPolicies', { timeout: 15000 })
       .its('response.statusCode')

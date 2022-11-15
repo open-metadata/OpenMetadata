@@ -12,7 +12,7 @@
  */
 
 import {
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -22,11 +22,11 @@ export interface DBTFormCommonProps {
   okText: string;
   cancelText: string;
   onCancel: () => void;
-  onSubmit: (data?: DbtConfigSource) => void;
+  onSubmit: (data?: DbtConfig) => void;
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
-  data: DbtConfigSource;
+  data: DbtConfig;
   gcsType?: GCS_CONFIG;
   source?: DBT_SOURCES;
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;
@@ -34,7 +34,7 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
 }
 
 export type DbtConfigCloud = Pick<
-  DbtConfigSource,
+  DbtConfig,
   | 'dbtCloudAccountId'
   | 'dbtCloudAuthToken'
   | 'dbtUpdateDescriptions'
@@ -42,7 +42,7 @@ export type DbtConfigCloud = Pick<
 >;
 
 export type DbtConfigLocal = Pick<
-  DbtConfigSource,
+  DbtConfig,
   | 'dbtCatalogFilePath'
   | 'dbtManifestFilePath'
   | 'dbtRunResultsFilePath'
@@ -50,7 +50,7 @@ export type DbtConfigLocal = Pick<
 >;
 
 export type DbtConfigHttp = Pick<
-  DbtConfigSource,
+  DbtConfig,
   | 'dbtCatalogHttpPath'
   | 'dbtManifestHttpPath'
   | 'dbtRunResultsHttpPath'
@@ -58,7 +58,7 @@ export type DbtConfigHttp = Pick<
 >;
 
 export type DbtConfigS3GCS = Pick<
-  DbtConfigSource,
+  DbtConfig,
   'dbtSecurityConfig' | 'dbtPrefixConfig' | 'dbtUpdateDescriptions'
 >;
 

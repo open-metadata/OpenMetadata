@@ -28,7 +28,7 @@ public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
 
   protected AWSBasedSecretsManager(
       SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, String clusterPrefix) {
-    super(awsProvider, clusterPrefix);
+    super(awsProvider, clusterPrefix, 100);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
     if (config != null
         && config.getParameters() != null

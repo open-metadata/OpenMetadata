@@ -188,6 +188,10 @@ public final class CatalogExceptionMessage {
     return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
   }
 
+  public static String systemEntityRenameNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be renamed.", name, entityType);
+  }
+
   public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {
     return String.format(
         "Tag labels %s and %s are mutually exclusive and can't be assigned together",

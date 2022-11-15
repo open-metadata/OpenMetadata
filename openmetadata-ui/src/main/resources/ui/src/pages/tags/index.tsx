@@ -67,7 +67,7 @@ import {
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTagCategories } from '../../utils/TagsUtils';
+import { getTagCategories, isSystemTierTags } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
@@ -592,7 +592,10 @@ const TagsPage = () => {
           <button
             className="link-text"
             data-testid="delete-tag"
-            disabled={!categoryPermissions.EditAll}
+            disabled={
+              isSystemTierTags(record.fullyQualifiedName || '') ||
+              !categoryPermissions.EditAll
+            }
             onClick={() => handleActionDeleteTag(record)}>
             {deleteTags.data?.id === record.id ? (
               deleteTags.data?.status === 'success' ? (
@@ -661,7 +664,10 @@ const TagsPage = () => {
                   <Button
                     className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
-                    disabled={!categoryPermissions.Delete}
+                    disabled={
+                      isSystemTierTags(currentCategory.name || '') ||
+                      !categoryPermissions.Delete
+                    }
                     size="small"
                     onClick={() => {
                       deleteTagHandler();
