@@ -103,7 +103,7 @@ public class UserRepository extends EntityRepository<User> {
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
+    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       user.withAuthenticationMechanism(
           secretsManager.encryptOrDecryptAuthenticationMechanism(
               user.getName(), user.getAuthenticationMechanism(), true));

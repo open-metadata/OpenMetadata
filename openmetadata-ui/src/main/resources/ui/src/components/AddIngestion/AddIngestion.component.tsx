@@ -35,7 +35,7 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   DatabaseServiceMetadataPipelineClass,
-  DbtConfigSource,
+  DbtConfig,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   getCurrentUserId,
@@ -149,12 +149,12 @@ const AddIngestion = ({
         ?.dbtConfigSource,
     [data]
   );
-  const [dbtConfigSource, setDbtConfigSource] = useState<
-    DbtConfigSource | undefined
-  >(showDBTConfig ? (configData as DbtConfigSource) : undefined);
+  const [dbtConfigSource, setDbtConfigSource] = useState<DbtConfig | undefined>(
+    showDBTConfig ? (configData as DbtConfig) : undefined
+  );
 
   const sourceTypeData = useMemo(
-    () => getSourceTypeFromConfig(configData as DbtConfigSource | undefined),
+    () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
     [configData]
   );
   const [dbtConfigSourceType, setDbtConfigSourceType] = useState<
