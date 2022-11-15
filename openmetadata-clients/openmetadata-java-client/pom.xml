@@ -15,7 +15,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <springfox-version>2.7.0</springfox-version>
-        <feign-version>11.10</feign-version>
+        <feign-version>9.7.0</feign-version>
     </properties>
     <dependencies>
         <dependency>
@@ -92,7 +92,7 @@
         <dependency>
             <groupId>io.github.openfeign</groupId>
             <artifactId>feign-okhttp</artifactId>
-            <version>${feign-version}</version>
+            <version>11.10</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
