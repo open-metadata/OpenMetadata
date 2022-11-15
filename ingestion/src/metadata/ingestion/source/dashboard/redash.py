@@ -16,8 +16,7 @@ from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
-from metadata.generated.schema.api.data.createDashboard import \
-    CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
@@ -107,15 +106,17 @@ class RedashSource(DashboardServiceSource):
                     for chart in self.context.charts
                 ],
                 service=EntityReference(
-                    id=self.context.dashboard_service.id.__root__, type="dashboardService"
+                    id=self.context.dashboard_service.id.__root__,
+                    type="dashboardService",
                 ),
                 dashboardUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
             )
             self.status.scanned(dashboard_details["name"])
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error to creating dashboard url for {dashboard_details['name']}: {exc}")
-
+            logger.warning(
+                f"Error to creating dashboard url for {dashboard_details['name']}: {exc}"
+            )
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str
