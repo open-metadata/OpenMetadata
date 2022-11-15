@@ -119,13 +119,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             sourceConfig=ingestion_pipeline.sourceConfig,
         )
 
-    if service_type == "dataInsight":
-        return WorkflowSource(
-            type=service_type,
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
-        )
-
     entity_class = None
     try:
         if service_type == "databaseService":

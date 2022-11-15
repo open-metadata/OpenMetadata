@@ -104,7 +104,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
       config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
-      (config as MetadataConnection).supportMetadataToElasticSearchExtraction &&
+      (config as MetadataConnection).supportsDataInsightExtraction &&
         pipelineType.push(PipelineType.DataInsight);
       (config as MetadataConnection)
         .supportsElasticSearchReindexingExtraction &&
