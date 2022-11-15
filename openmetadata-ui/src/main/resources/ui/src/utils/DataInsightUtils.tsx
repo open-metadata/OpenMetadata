@@ -27,6 +27,7 @@ import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import {
   ENTITIES_SUMMARY_LIST,
+  KPI_DATE_PICKER_FORMAT,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
@@ -376,3 +377,6 @@ export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
 
   return current && current.isBefore(moment().subtract(1, 'day'));
 };
+
+export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
+  moment(timestamp).format(KPI_DATE_PICKER_FORMAT);

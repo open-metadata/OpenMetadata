@@ -55,7 +55,10 @@ import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
 import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
-import { getDisabledDates } from '../../utils/DataInsightUtils';
+import {
+  getDisabledDates,
+  getKpiDateFormatByTimeStamp,
+} from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -197,10 +200,8 @@ const AddKPIPage = () => {
 
   useEffect(() => {
     if (kpiData) {
-      const startDate = moment(kpiData.startDate).format(
-        KPI_DATE_PICKER_FORMAT
-      );
-      const endDate = moment(kpiData.endDate).format(KPI_DATE_PICKER_FORMAT);
+      const startDate = getKpiDateFormatByTimeStamp(kpiData.startDate);
+      const endDate = getKpiDateFormatByTimeStamp(kpiData.endDate);
       fetchChartData();
       setDescription(kpiData.description);
       setKpiDates({ startDate, endDate });
