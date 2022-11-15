@@ -13,7 +13,7 @@
 Time utility functions
 """
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 
 
 def datetime_to_timestamp(datetime_value, milliseconds=False) -> int:
@@ -53,6 +53,7 @@ def get_beginning_of_day_timestamp_mill(
         int: timestamp milliseconds
     """
     now_utc = datetime.utcnow()
+    print(now_utc)
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -63,7 +64,8 @@ def get_beginning_of_day_timestamp_mill(
         milliseconds=milliseconds,
     )
     return datetime_to_timestamp(
-        datetime.combine(now_utc - delta, time.min), milliseconds=True
+        datetime.combine(now_utc - delta, time.min, tzinfo=timezone.utc),
+        milliseconds=True,
     )
 
 
@@ -95,5 +97,6 @@ def get_end_of_day_timestamp_mill(
         milliseconds=milliseconds,
     )
     return datetime_to_timestamp(
-        datetime.combine(now_utc - delta, time.max), milliseconds=True
+        datetime.combine(now_utc - delta, time.max, tzinfo=timezone.utc),
+        milliseconds=True,
     )
