@@ -95,21 +95,21 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
         ? entityList.map((item, index) => {
             return (
               <div
-                className="tw-flex tw-items-center tw-justify-between"
+                className="flex items-center justify-between"
                 data-testid={`${testIDText}-${getEntityName(
                   item as unknown as EntityReference
                 )}`}
                 key={index}>
-                <div className="tw-flex">
+                <div className="flex items-center">
                   {getEntityIcon(item.type || '')}
                   <Link
-                    className="tw-font-medium"
+                    className="font-medium"
                     to={getEntityLink(
                       item.type || '',
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      className="tw-text-grey-body hover:text-primary hover:text-underline"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       <Typography.Text
