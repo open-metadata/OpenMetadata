@@ -110,7 +110,7 @@ def get_static_metrics(
 
 
 def get_query_metrics(
-    metrics: List[Metrics],
+    metrics: Metrics,
     column,
     data_frame_list,
     *args,
