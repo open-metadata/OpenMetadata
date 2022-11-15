@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import {
   Button,
   Col,
@@ -5,14 +17,14 @@ import {
   Form,
   Input,
   Row,
-  Space,
   Switch,
   Typography,
 } from 'antd';
 import { startCase } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConfigClass } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import GetFieldLabels from './MetadataToESConfigFieldLabel.component';
 import './MetadataToESConfigForm.less';
 
 interface Props {
@@ -30,15 +42,6 @@ export default function MetadataToESConfigForm({
 }: Props) {
   const { t } = useTranslation();
 
-  const getFieldLabels = (label: string, description: string) => {
-    return (
-      <Space direction="vertical">
-        <Text>{label}</Text>
-        <Text className="input-field-descriptions">{description}</Text>
-      </Space>
-    );
-  };
-
   const handleSubmit = (values: ConfigClass) => {
     handleMetadataToESConfig({
       ...values,
@@ -52,26 +55,32 @@ export default function MetadataToESConfigForm({
       layout="vertical"
       onFinish={handleSubmit}>
       <Form.Item
-        label={getFieldLabels(
-          startCase('caCerts'),
-          t('message.field-ca-certs-description')
-        )}
+        label={
+          <GetFieldLabels
+            description={t('message.field-ca-certs-description')}
+            label={startCase('caCerts')}
+          />
+        }
         name="caCerts">
         <Input />
       </Form.Item>
       <Form.Item
-        label={getFieldLabels(
-          startCase('regionName'),
-          t('message.field-region-name-description')
-        )}
+        label={
+          <GetFieldLabels
+            description={t('message.field-region-name-description')}
+            label={startCase('regionName')}
+          />
+        }
         name="regionName">
         <Input />
       </Form.Item>
       <Form.Item
-        label={getFieldLabels(
-          startCase('timeout'),
-          t('message.field-timeout-description')
-        )}
+        label={
+          <GetFieldLabels
+            description={t('message.field-timeout-description')}
+            label={startCase('timeout')}
+          />
+        }
         name="timeout">
         <Input type="number" />
       </Form.Item>
