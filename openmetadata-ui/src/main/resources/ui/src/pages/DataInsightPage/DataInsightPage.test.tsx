@@ -94,6 +94,9 @@ jest.mock('../../components/DataInsightDetail/PageViewsByEntitiesChart', () =>
       <div data-testid="entities-page-views">PageViewsByEntitiesChart</div>
     )
 );
+jest.mock('../../components/DataInsightDetail/KPIChart', () =>
+  jest.fn().mockReturnValue(<div data-testid="kpi-chart">KPIChart</div>)
+);
 
 describe('Test DataInsightPage Component', () => {
   it('Should render all child elements', async () => {
@@ -122,7 +125,7 @@ describe('Test DataInsightPage Component', () => {
 
     const switchContainer = screen.getByTestId('data-insight-switch');
 
-    const webAnalyticsButton = getByText(switchContainer, 'Web Analytics');
+    const webAnalyticsButton = getByText(switchContainer, 'App Analytics');
 
     act(() => {
       fireEvent.click(webAnalyticsButton);

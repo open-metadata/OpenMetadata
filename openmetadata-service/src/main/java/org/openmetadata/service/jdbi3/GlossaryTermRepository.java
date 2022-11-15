@@ -31,10 +31,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -206,6 +208,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
       updateReviewers(original, updated);
+      updateName(original, updated);
     }
 
     @Override
@@ -266,6 +269,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           Relationship.REVIEWS,
           GLOSSARY_TERM,
           origTerm.getId());
+    }
+
+    public void updateName(GlossaryTerm original, GlossaryTerm updated) throws IOException {
+      if (!original.getName().equals(updated.getName())) {
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
+        // Category name changed - update tag names starting from category and all the children tags
+        LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
+        daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        recordChange("name", original.getName(), updated.getName());
+      }
     }
   }
 }

@@ -282,7 +282,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       description = "Update an existing glossary using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
@@ -369,6 +369,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return copy(new Glossary(), create, user)
         .withReviewers(create.getReviewers())
         .withTags(create.getTags())
+        .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

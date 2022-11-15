@@ -68,6 +68,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { customServiceComparator } from '../utils/StringsUtils';
@@ -126,7 +127,11 @@ export const PIPELINE_DEFAULT = pipelineDefault;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
-export const excludedService = [MlModelServiceType.Sklearn];
+export const excludedService = [
+  MlModelServiceType.Sklearn,
+  MetadataServiceType.MetadataES,
+  MetadataServiceType.OpenMetadata,
+];
 
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
@@ -142,6 +147,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     customServiceComparator
   ),
   mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
 };
@@ -160,6 +168,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   dashboards: ServiceCategory.DASHBOARD_SERVICES,
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
+  metadata: ServiceCategory.METADATA_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -168,6 +177,7 @@ export const servicesDisplayName: { [key: string]: string } = {
   dashboardServices: 'Dashboard Service',
   pipelineServices: 'Pipeline Service',
   mlmodelServices: 'ML Model Service',
+  metadataServices: 'Metadata Service',
 };
 
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [

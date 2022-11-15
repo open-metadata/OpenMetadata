@@ -34,6 +34,10 @@ declare module 'Models' {
     type: string;
   }
 
+  export interface RestoreEntitiesRequestType {
+    id: string;
+  }
+
   export type Match = {
     params: {
       searchQuery: string;
@@ -402,7 +406,8 @@ declare module 'Models' {
     | 'messagingServices'
     | 'dashboardServices'
     | 'pipelineServices'
-    | 'mlmodelServices';
+    | 'mlmodelServices'
+    | 'metadataServices';
 
   export type ServiceCategory = {
     databases: string;

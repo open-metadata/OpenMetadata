@@ -101,6 +101,8 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -787,7 +789,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .build();
   }
 
-  @GET
+  @PUT
   @Path("/registrationConfirmation")
   @Operation(
       operationId = "confirmUserEmail",
@@ -808,7 +810,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
 
-  @GET
+  @PUT
   @Path("/resendRegistrationToken")
   @Operation(
       operationId = "resendRegistrationToken",
@@ -1154,6 +1156,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private User decryptOrNullify(SecurityContext securityContext, User user) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(
@@ -1164,6 +1167,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         user.getAuthenticationMechanism().setConfig(null);
         return user;
       }
+      user.withAuthenticationMechanism(
+          secretsManager.encryptOrDecryptAuthenticationMechanism(
+              user.getName(), user.getAuthenticationMechanism(), false));
     }
     return user;
   }

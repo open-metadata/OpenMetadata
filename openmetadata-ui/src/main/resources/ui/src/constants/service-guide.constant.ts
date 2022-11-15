@@ -21,7 +21,7 @@ export const addServiceGuide = [
       The connection requirements are generated from the JSON schema for that service. The mandatory fields are marked with an asterisk.`,
   },
   {
-    step: 4,
+    step: 5,
     title: 'Service Created Successfully',
     description:
       'The <Service Name> has been created successfully. Visit the newly created service to take a look at the details. You can also set up the metadata ingestion.',
@@ -35,7 +35,7 @@ export const addServiceGuideWOAirflow = {
 };
 
 const schedulingIngestionGuide = {
-  step: 3,
+  step: 4,
   title: 'Schedule for Ingestion',
   description:
     'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC.',
@@ -58,7 +58,7 @@ export const addMetadataIngestionGuide = [
     ...schedulingIngestionGuide,
   },
   {
-    step: 4,
+    step: 5,
     title: 'Metadata Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
@@ -77,7 +77,7 @@ export const addUsageIngestionGuide = [
     ...schedulingIngestionGuide,
   },
   {
-    step: 4,
+    step: 5,
     title: 'Usage Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The usage will be ingested at a regular interval as per the schedule.',
@@ -96,7 +96,7 @@ export const addLineageIngestionGuide = [
     ...schedulingIngestionGuide,
   },
   {
-    step: 4,
+    step: 5,
     title: 'Lineage Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The lineage will be ingested at a regular interval as per the schedule.',
@@ -112,7 +112,7 @@ export const addProfilerIngestionGuide = [
   },
   { ...schedulingIngestionGuide },
   {
-    step: 4,
+    step: 5,
     title: 'Profiler Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The profiler will run at a regular interval as per the schedule.',

@@ -106,8 +106,17 @@ public class TagResource {
           .getChildren()
           .forEach(
               t -> {
-                t.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-                t.getChildren().forEach(c -> c.withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now));
+                t.withId(UUID.randomUUID())
+                    .withUpdatedBy(ADMIN_USER_NAME)
+                    .withUpdatedAt(now)
+                    .withProvider(tagCategory.getProvider());
+                t.getChildren()
+                    .forEach(
+                        c ->
+                            c.withId(UUID.randomUUID())
+                                .withUpdatedBy(ADMIN_USER_NAME)
+                                .withUpdatedAt(now)
+                                .withProvider(tagCategory.getProvider()));
               });
       daoCategory.initCategory(tagCategory);
     }
@@ -384,7 +393,8 @@ public class TagResource {
     if (categoryName.equals(create.getName())) { // Not changing the name
       category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, category).getEntity());
     } else {
-      TagCategory origCategory = getTagCategory(securityContext, create).withName(categoryName);
+      TagCategory origCategory =
+          getTagCategory(securityContext, create).withName(categoryName).withFullyQualifiedName(categoryName);
       category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, origCategory, category).getEntity());
     }
     return Response.ok(category).build();
@@ -423,7 +433,10 @@ public class TagResource {
     if (primaryTag.equals(create.getName())) { // Not changing the name
       response = dao.createOrUpdate(uriInfo, tag);
     } else {
-      Tag origTag = getTag(securityContext, create, FullyQualifiedName.build(categoryName)).withName(primaryTag);
+      Tag origTag =
+          getTag(securityContext, create, FullyQualifiedName.build(categoryName))
+              .withName(primaryTag)
+              .withFullyQualifiedName(FullyQualifiedName.build(categoryName, primaryTag));
       response = dao.createOrUpdate(uriInfo, origTag, tag);
     }
     addHref(categoryHref, (Tag) response.getEntity());
