@@ -55,7 +55,6 @@ from metadata.clients.connection_clients import (
     SupersetClient,
     TableauClient,
 )
-from metadata.clients.neo4j_client import Neo4jHelper
 from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
@@ -1246,9 +1245,9 @@ def _(connection: DomoClient) -> None:
 
 
 @get_connection.register
-def _(connection: AmundsenConnection) -> Neo4jHelper:
+def _(connection: AmundsenConnection) -> AmundsenClient:
 
-    from metadata.clients.neo4j_client import Neo4JConfig
+    from metadata.clients.neo4j_client import Neo4JConfig, Neo4jHelper
 
     try:
         neo4j_config = Neo4JConfig(
