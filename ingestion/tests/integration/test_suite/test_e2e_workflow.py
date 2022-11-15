@@ -46,6 +46,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
@@ -173,9 +174,11 @@ class TestE2EWorkflow(unittest.TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                cls.sqlite_conn.config,
-                table_entity=table,
-                ometa_client=None,
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=cls.sqlite_conn.config,
+                    table_entity=table,
+                    ometa_client=None,
+                )
             )
         engine = sqa_profiler_interface.session.get_bind()
         session = sqa_profiler_interface.session

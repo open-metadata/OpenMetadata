@@ -26,9 +26,9 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByT
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.utils.dispatch import enum_register
-from metadata.utils.logger import sqa_interface_registry_logger
+from metadata.utils.logger import profiler_interface_registry_logger
 
-logger = sqa_interface_registry_logger()
+logger = profiler_interface_registry_logger()
 
 
 def percentage_of_entities_with_description_kpi_result(

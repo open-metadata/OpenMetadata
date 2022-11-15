@@ -20,7 +20,7 @@ from typing import Optional
 class ANSI(Enum):
     BRIGHT_RED = "\u001b[31;1m"
     BOLD = "\u001b[1m"
-    BRIGHT_CYAN = "\u001b[46;1m"
+    BRIGHT_CYAN = "\u001b[36;1m"
     YELLOW = "\u001b[33;1m"
     GREEN = "\u001b[32;1m"
     ENDC = "\033[0m"
