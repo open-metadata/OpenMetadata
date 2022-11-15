@@ -27,10 +27,10 @@ describe('Custom Properties should work properly', () => {
     cy.clearLocalStorageSnapshot('localStorage');
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
+    cy.setCookie(COOKIE_VERSION, 'true');
     cy.saveLocalStorage('localstorage');
   });
   beforeEach(() => {
-    cy.setCookie(COOKIE_VERSION, 'true');
     cy.log('Restoring local storage snapshot');
     cy.restoreLocalStorage('localstorage');
     cy.clickOnLogo();
