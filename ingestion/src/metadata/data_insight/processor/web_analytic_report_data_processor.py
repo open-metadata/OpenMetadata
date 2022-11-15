@@ -62,13 +62,13 @@ ENTITIES = {
 CACHED_EVENTS = []
 START_TS = str(
     int(
-        datetime.combine(datetime.utcnow() - timedelta(days=0), time.min).timestamp()
+        datetime.combine(datetime.utcnow() - timedelta(days=1), time.min).timestamp()
         * 1000
     )
 )
 END_TS = str(
     int(
-        datetime.combine(datetime.utcnow() - timedelta(days=0), time.max).timestamp()
+        datetime.combine(datetime.utcnow() - timedelta(days=1), time.max).timestamp()
         * 1000
     )
 )

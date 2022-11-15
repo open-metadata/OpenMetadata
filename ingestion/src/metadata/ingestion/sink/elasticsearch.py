@@ -425,6 +425,29 @@ class ElasticsearchSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to index entity {record}: {exc}")
 
+    def read_records(self, index: str, query: dict):
+        """Read records from es index
+
+        Args:
+            index: elasticsearch index
+            query: query to be passed to the request body
+        """
+        return self.elasticsearch_client.search(
+            index=index,
+            body=query,
+        )
+
+    def bulk_operation(
+        self,
+        body: List[dict],
+    ):
+        """Perform bulk operations.
+
+        Args:
+            body: https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+        """
+        return self.elasticsearch_client.bulk(body=body)
+
     def _create_table_es_doc(self, table: Table):
         suggest = [
             {"input": [table.fullyQualifiedName.__root__], "weight": 5},
