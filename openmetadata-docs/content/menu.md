@@ -454,6 +454,9 @@ site_menu:
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
 
+  - category: Connectors / Custom Connectors
+    url: /connectors/custom-connectors
+
   - category: Connectors / Managing Credentials
     url: /connectors/credentials
 
