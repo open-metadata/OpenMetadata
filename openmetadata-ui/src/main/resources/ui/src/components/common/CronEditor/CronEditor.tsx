@@ -136,7 +136,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     } else {
       return periodOptions;
     }
-  }, []);
+  }, [props, periodOptions]);
 
   const { className, disabled } = props;
   const { selectedPeriod } = state;
