@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEST_CASE;
 
 import com.github.difflib.text.DiffRow;
@@ -40,6 +41,9 @@ import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.dataInsight.kpi.Kpi;
+import org.openmetadata.schema.dataInsight.type.KpiResult;
+import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -250,6 +254,9 @@ public final class ChangeEventParser {
       EntityLink link = getEntityLink(fieldName, entity);
       if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
         String message = handleTestCaseResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        messages.put(link, message);
+      } else if (link.getEntityType().equals(KPI) && link.getFieldName().equals("kpiResult")) {
+        String message = handleKpiResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
         messages.put(link, message);
       } else if (!fieldName.equals("failureDetails")) {
         String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
@@ -522,6 +529,24 @@ public final class ChangeEventParser {
               EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
               testCaseEntity.getTestSuite().getName());
       return String.format(format, testCaseName);
+    }
+  }
+
+  public static String handleKpiResult(
+      PUBLISH_TO publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+    String kpiName = entity.getName();
+    KpiResult result = (KpiResult) newValue;
+    Kpi kpiEntity = (Kpi) entity;
+    if (result != null) {
+      String format =
+          String.format(
+              "Added Results for %s. Target Name : %s , Current Value: %s, Target Met: %s",
+              getBold(publishTo), getBold(publishTo), getBold(publishTo), getBold(publishTo));
+      KpiTarget target = result.getTargetResult().get(0);
+      return String.format(format, kpiName, target.getName(), target.getValue(), target.getTargetMet());
+    } else {
+      String format = String.format("KpiResult %s is updated.", getBold(publishTo));
+      return String.format(format, kpiName);
     }
   }
 
