@@ -511,6 +511,8 @@
         <version>${maven-surefire.version}</version>
         <configuration>
           <trimStackTrace>false</trimStackTrace>
+          <parallel>all</parallel>
+          <useUnlimitedThreads>true</useUnlimitedThreads>
         </configuration>
         <executions>
           <execution>
