@@ -23,12 +23,14 @@ import java.util.Locale;
 import lombok.Getter;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
+import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class SecretsManager {
@@ -60,12 +62,28 @@ public abstract class SecretsManager {
 
   public AuthenticationMechanism encryptOrDecryptAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism, boolean encrypt) {
-    authenticationMechanism = AuthenticationMechanismBuilder.build(authenticationMechanism);
+    if (authenticationMechanism != null) {
+      authenticationMechanism = AuthenticationMechanismBuilder.build(authenticationMechanism);
+      try {
+        return (AuthenticationMechanism)
+            encryptOrDecryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), encrypt);
+      } catch (Exception e) {
+        throw InvalidServiceConnectionException.byMessage(
+            name, String.format("Failed to encrypt user bot instance [%s]", name));
+      }
+    }
+    return null;
+  }
+
+  public IngestionPipeline encryptOrDecryptIngestionPipeline(IngestionPipeline ingestionPipeline, boolean encrypt) {
+    IngestionPipeline ingestion = IngestionPipelineBuilder.build(ingestionPipeline);
     try {
-      return (AuthenticationMechanism)
-          encryptOrDecryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), encrypt);
+      return (IngestionPipeline)
+          encryptOrDecryptPasswordFields(ingestion, buildSecretId(true, "pipeline", ingestion.getName()), encrypt);
     } catch (Exception e) {
-      throw InvalidServiceConnectionException.byMessage(name, "Failed to encrypt user bot instance.");
+      throw InvalidServiceConnectionException.byMessage(
+          ingestion.getName(),
+          String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestion.getName()));
     }
   }
 

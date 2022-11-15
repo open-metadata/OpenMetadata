@@ -30,7 +30,7 @@ public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
   }
 
   @Override
-  SecretsManagerProvider expectedSecretManagerProvider() {
+  protected SecretsManagerProvider expectedSecretManagerProvider() {
     return SecretsManagerProvider.MANAGED_AWS_SSM;
   }
 }

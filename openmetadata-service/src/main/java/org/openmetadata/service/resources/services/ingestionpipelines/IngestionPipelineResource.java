@@ -69,6 +69,7 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -710,6 +711,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
           securityContext,
@@ -719,6 +721,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       ingestionPipeline.getSourceConfig().setConfig(null);
       return ingestionPipeline;
     }
+    secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, false);
     return ingestionPipeline;
   }
 }

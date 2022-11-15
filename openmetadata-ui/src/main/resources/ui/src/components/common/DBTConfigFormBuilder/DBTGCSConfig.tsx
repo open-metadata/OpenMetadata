@@ -22,7 +22,7 @@ import React, {
 } from 'react';
 import {
   DBTBucketDetails,
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -102,7 +102,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   const [errors, setErrors] = useState<ErrorDbtGCS>();
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     let valid = true;
     const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
     if (gcsType === GCS_CONFIG.GCSValues) {
