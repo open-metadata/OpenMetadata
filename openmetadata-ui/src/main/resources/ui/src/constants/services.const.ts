@@ -17,7 +17,9 @@ import airbyte from '../assets/img/Airbyte.png';
 import noDataFound from '../assets/img/no-data-placeholder.svg';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
+import amundsen from '../assets/img/service-icon-amundsen.png';
 import athena from '../assets/img/service-icon-athena.png';
+import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import dagster from '../assets/img/service-icon-dagster.png';
@@ -121,6 +123,8 @@ export const DATALAKE = datalake;
 export const MODE = mode;
 export const DAGSTER = dagster;
 export const FIVETRAN = fivetran;
+export const AMUNDSEN = amundsen;
+export const ATLAS = atlas;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;

@@ -38,7 +38,9 @@ import {
 import {
   AIRBYTE,
   AIRFLOW,
+  AMUNDSEN,
   ATHENA,
+  ATLAS,
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
@@ -107,6 +109,7 @@ import {
   MessagingService,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
+import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import {
   PipelineService,
@@ -267,6 +270,13 @@ export const serviceTypeLogo = (type: string) => {
       return SCIKIT;
     case MlModelServiceType.SageMaker:
       return SAGEMAKER;
+
+    case MetadataServiceType.Amundsen:
+      return AMUNDSEN;
+
+    case MetadataServiceType.Atlas:
+      return ATLAS;
+
     default: {
       let logo;
       if (serviceTypes.messagingServices.includes(type)) {
