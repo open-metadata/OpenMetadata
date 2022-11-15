@@ -347,7 +347,11 @@ class CliDBBase(TestCase):
             if test_type == E2EType.PROFILER:
                 del config_yaml["source"]["sourceConfig"]["config"]
                 config_yaml["source"]["sourceConfig"] = {
-                    "config": {"type": "Profiler", "generateSampleData": True}
+                    "config": {
+                        "type": "Profiler",
+                        "generateSampleData": True,
+                        "profileSample": 1,
+                    }
                 }
                 config_yaml["processor"] = {"type": "orm-profiler", "config": {}}
             if test_type == E2EType.INGEST_FILTER_SCHEMA:
