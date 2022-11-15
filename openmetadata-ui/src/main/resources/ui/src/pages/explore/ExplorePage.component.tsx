@@ -72,35 +72,54 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
 
+  const handlePageChange: ExploreProps['onChangePage'] = (page) => {
+    history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
+  };
+
+  const updateLocation = (pathname: string, search?: string) => {
+    handlePageChange(1);
+    history.push({
+      pathname,
+      search,
+    });
+  };
+
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
     nSearchIndex
-  ) =>
-    history.push({
-      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
-    });
+  ) => {
+    updateLocation(
+      `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`
+    );
+  };
 
   const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
-    (queryFilter) =>
-      history.push({
-        search: Qs.stringify({
+    (queryFilter) => {
+      updateLocation(
+        history.location.pathname,
+        Qs.stringify({
           ...parsedSearch,
           queryFilter: JSON.stringify(queryFilter),
-        }),
-      });
+        })
+      );
+    };
 
   const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
     postFilter
-  ) =>
-    history.push({
-      search: Qs.stringify({ ...parsedSearch, postFilter }),
-    });
-
-  const handlePageChange: ExploreProps['onChangePage'] = (page) =>
-    history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
+  ) => {
+    updateLocation(
+      history.location.pathname,
+      Qs.stringify({ ...parsedSearch, postFilter })
+    );
+  };
 
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
-  ) => history.push({ search: Qs.stringify({ ...parsedSearch, showDeleted }) });
+  ) => {
+    updateLocation(
+      history.location.pathname,
+      Qs.stringify({ ...parsedSearch, showDeleted })
+    );
+  };
 
   const postFilter = useMemo(
     () =>
@@ -238,19 +257,12 @@ const ExplorePage: FunctionComponent = () => {
     page,
   ]);
 
-  // Return to first page on filter change
-  useDeepCompareEffect(
-    () => handlePageChange(page ?? 1),
-    [
-      searchIndex,
-      searchQueryParam,
-      sortValue,
-      sortOrder,
-      showDeleted,
-      advancesSearchQueryFilter,
-      elasticsearchPostFilterQuery,
-    ]
-  );
+  const handleAdvanceSearchQueryFilterChange = (
+    filter?: Record<string, unknown>
+  ) => {
+    handlePageChange(1);
+    setAdvancedSearchQueryFilter(filter);
+  };
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -270,7 +282,7 @@ const ExplorePage: FunctionComponent = () => {
         sortValue={sortValue}
         tabCounts={searchHitCounts}
         onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
-        onChangeAdvancedSearchQueryFilter={setAdvancedSearchQueryFilter}
+        onChangeAdvancedSearchQueryFilter={handleAdvanceSearchQueryFilterChange}
         onChangePage={handlePageChange}
         onChangePostFilter={handlePostFilterChange}
         onChangeSearchIndex={handleSearchIndexChange}
