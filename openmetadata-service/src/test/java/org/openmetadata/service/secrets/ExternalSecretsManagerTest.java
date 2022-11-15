@@ -22,11 +22,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +79,16 @@ public abstract class ExternalSecretsManagerTest {
   }
 
   @Test
+  void testDecryptIngestionPipelineDBTConfig() {
+    testEncryptDecryptDBTConfig(DECRYPT);
+  }
+
+  @Test
+  void testEncryptIngestionPipelineDBTConfig() {
+    testEncryptDecryptDBTConfig(ENCRYPT);
+  }
+
+  @Test
   void testReturnsExpectedSecretManagerProvider() {
     assertEquals(expectedSecretManagerProvider(), secretsManager.getSecretsManagerProvider());
   }
@@ -78,38 +96,106 @@ public abstract class ExternalSecretsManagerTest {
   abstract void setUpSpecific(SecretsManagerConfiguration config);
 
   void testEncryptDecryptServiceConnection(boolean decrypt) {
-    MysqlConnection mysqlConnection = new MysqlConnection();
-    mysqlConnection.setPassword("openmetadata-test");
+    MysqlConnection expectedMysqlConnection = new MysqlConnection();
+    expectedMysqlConnection.setPassword("openmetadata-test");
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
-    MysqlConnection actualConfig =
+    Map<String, String> mysqlConnection = Map.of("password", "openmetadata-test");
+
+    MysqlConnection actualMysqlConnection =
         (MysqlConnection)
             secretsManager.encryptOrDecryptServiceConnectionConfig(
                 mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
 
     if (decrypt) {
-      mysqlConnection.setPassword("secret:/openmetadata/database/test/password");
-      actualConfig.setPassword(Fernet.getInstance().decrypt(actualConfig.getPassword()));
+      expectedMysqlConnection.setPassword("secret:/openmetadata/database/test/password");
+      actualMysqlConnection.setPassword(Fernet.getInstance().decrypt(actualMysqlConnection.getPassword()));
     }
 
-    assertEquals(mysqlConnection, actualConfig);
+    assertEquals(expectedMysqlConnection, actualMysqlConnection);
   }
 
   void testEncryptDecryptSSOConfig(boolean decrypt) {
     OktaSSOClientConfig config = new OktaSSOClientConfig();
     config.setPrivateKey("this-is-a-test");
-    AuthenticationMechanism authenticationMechanism =
+    AuthenticationMechanism expectedAuthenticationMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.SSO)
             .withConfig(
                 new SSOAuthMechanism().withAuthConfig(config).withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA));
 
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.SSO)
+            .withConfig(
+                new SSOAuthMechanism()
+                    .withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA)
+                    .withAuthConfig(Map.of("privateKey", "this-is-a-test")));
+
     AuthenticationMechanism actualAuthenticationMechanism =
         secretsManager.encryptOrDecryptAuthenticationMechanism("bot", authenticationMechanism, decrypt);
 
-    assertEquals(authenticationMechanism, actualAuthenticationMechanism);
+    assertEquals(expectedAuthenticationMechanism, actualAuthenticationMechanism);
   }
 
-  abstract SecretsManagerProvider expectedSecretManagerProvider();
+  void testEncryptDecryptDBTConfig(boolean decrypt) {
+    IngestionPipeline expectedIngestionPipeline =
+        new IngestionPipeline()
+            .withName("my-pipeline")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        new DatabaseServiceMetadataPipeline()
+                            .withDbtConfigSource(
+                                new DbtS3Config()
+                                    .withDbtSecurityConfig(
+                                        new AWSCredentials()
+                                            .withAwsSecretAccessKey("secret-password")
+                                            .withAwsRegion("eu-west-1")))));
+
+    IngestionPipeline ingestionPipeline =
+        new IngestionPipeline()
+            .withName("my-pipeline")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        Map.of(
+                            "dbtConfigSource",
+                            Map.of(
+                                "dbtSecurityConfig",
+                                Map.of(
+                                    "awsSecretAccessKey", "secret-password",
+                                    "awsRegion", "eu-west-1")))));
+
+    IngestionPipeline actualIngestionPipeline =
+        secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, decrypt);
+
+    if (decrypt) {
+      DatabaseServiceMetadataPipeline expectedDbPipeline =
+          ((DatabaseServiceMetadataPipeline) expectedIngestionPipeline.getSourceConfig().getConfig());
+      DatabaseServiceMetadataPipeline actualDbPipeline =
+          ((DatabaseServiceMetadataPipeline) actualIngestionPipeline.getSourceConfig().getConfig());
+      ((DbtS3Config) expectedDbPipeline.getDbtConfigSource())
+          .getDbtSecurityConfig()
+          .setAwsSecretAccessKey(
+              "secret:/openmetadata/pipeline/my-pipeline/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
+      ((DbtS3Config) actualDbPipeline.getDbtConfigSource())
+          .getDbtSecurityConfig()
+          .setAwsSecretAccessKey(
+              Fernet.getInstance()
+                  .decrypt(
+                      ((DbtS3Config) actualDbPipeline.getDbtConfigSource())
+                          .getDbtSecurityConfig()
+                          .getAwsSecretAccessKey()));
+    }
+
+    assertEquals(expectedIngestionPipeline, actualIngestionPipeline);
+  }
+
+  protected abstract SecretsManagerProvider expectedSecretManagerProvider();
 }
