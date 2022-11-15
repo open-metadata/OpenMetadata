@@ -240,7 +240,7 @@ const ExplorePage: FunctionComponent = () => {
 
   // Return to first page on filter change
   useDeepCompareEffect(
-    () => handlePageChange(1),
+    () => handlePageChange(page ?? 1),
     [
       searchIndex,
       searchQueryParam,
