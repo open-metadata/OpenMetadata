@@ -780,6 +780,8 @@
               <include>org.openmetadata.service.util.*.java</include>
               <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
+            <parallel>all</parallel>
+            <useUnlimitedThreads>true</useUnlimitedThreads>
           </configuration>
         </plugin>
         <plugin>
