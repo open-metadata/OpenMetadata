@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   Col,
+  DatePicker,
   Form,
   FormProps,
   Input,
@@ -39,7 +40,10 @@ import { getKPIByName, putKPI } from '../../axiosAPIs/KpiAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
-import { VALIDATE_MESSAGES } from '../../constants/DataInsight.constants';
+import {
+  KPI_DATE_PICKER_FORMAT,
+  VALIDATE_MESSAGES,
+} from '../../constants/DataInsight.constants';
 import {
   ADD_KPI_TEXT,
   NO_PERMISSION_FOR_ACTION,
@@ -48,9 +52,10 @@ import { CreateKpiRequest } from '../../generated/api/dataInsight/kpi/createKpiR
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
+import { getDisabledDates } from '../../utils/DataInsightUtils';
 import {
-  getLocaleDateFromTimeStamp,
-  getUTCDateTime,
+  getDateTimeFromMilliSeconds,
+  getTimeStampByDateTime,
 } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -102,8 +107,8 @@ const AddKPIPage = () => {
     if (kpiData) {
       const metric = kpiData.targetDefinition[0];
       const chart = kpiData.dataInsightChart;
-      const startDate = getLocaleDateFromTimeStamp(kpiData.startDate);
-      const endDate = getLocaleDateFromTimeStamp(kpiData.endDate);
+      const startDate = getDateTimeFromMilliSeconds(kpiData.startDate);
+      const endDate = getDateTimeFromMilliSeconds(kpiData.endDate);
 
       return {
         name: kpiData.name,
@@ -149,8 +154,8 @@ const AddKPIPage = () => {
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     if (kpiData && metricData) {
-      const startDate = getUTCDateTime(values.startDate);
-      const endDate = getUTCDateTime(values.endDate);
+      const startDate = getTimeStampByDateTime(values.startDate);
+      const endDate = getTimeStampByDateTime(values.endDate);
       const formData: CreateKpiRequest = {
         dataInsightChart: kpiData.dataInsightChart,
         description,
@@ -328,7 +333,12 @@ const AddKPIPage = () => {
                           required: true,
                         },
                       ]}>
-                      <Input type="datetime-local" />
+                      <DatePicker
+                        showTime
+                        className="w-full"
+                        disabledDate={getDisabledDates}
+                        format={KPI_DATE_PICKER_FORMAT}
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -341,7 +351,12 @@ const AddKPIPage = () => {
                           required: true,
                         },
                       ]}>
-                      <Input type="datetime-local" />
+                      <DatePicker
+                        showTime
+                        className="w-full"
+                        disabledDate={getDisabledDates}
+                        format={KPI_DATE_PICKER_FORMAT}
+                      />
                     </Form.Item>
                   </Col>
                 </Row>

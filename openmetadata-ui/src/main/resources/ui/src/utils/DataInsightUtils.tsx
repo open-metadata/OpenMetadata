@@ -12,6 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
+import { RangePickerProps } from 'antd/lib/date-picker';
 import {
   isEmpty,
   isInteger,
@@ -20,6 +21,7 @@ import {
   last,
   toNumber,
 } from 'lodash';
+import moment from 'moment';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
@@ -367,4 +369,10 @@ export const getKpiGraphData = (kpiResults: KpiResult[]) => {
   });
 
   return { graphData: prepareGraphData(timeStamps, formattedData), kpis };
+};
+
+export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
+  // Can not select days before today
+
+  return current && current.isBefore(moment().subtract(1, 'day'));
 };
