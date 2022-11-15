@@ -87,7 +87,6 @@ def read_parquet_from_s3(client: Any, key: str, bucket_name: str):
     s3_file = fs.S3FileSystem(region=client.meta.region_name)
     return [
         ParquetFile(s3_file.open_input_file(os.path.join(bucket_name, key)))
-        .schema.to_arrow_schema()
-        .empty_table()
+        .read()
         .to_pandas()
     ]
