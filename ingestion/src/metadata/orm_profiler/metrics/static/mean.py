@@ -24,8 +24,6 @@ from sqlalchemy.sql.functions import GenericFunction
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
 from metadata.orm_profiler.orm.registry import (
-    CONCATENABLE_DICT,
-    QUANTIFIABLE_DICT,
     Dialects,
     is_concatenable,
     is_quantifiable,
@@ -84,10 +82,10 @@ class Mean(StaticMetric):
         Data lake function to calculate mean
         """
         try:
-            if self.col.datatype in QUANTIFIABLE_DICT:
+            if is_quantifiable(self.col.datatype):
                 return data_frame[self.col.name].mean()
 
-            if self.col.datatype in CONCATENABLE_DICT:
+            if is_concatenable(self.col.datatype):
                 return (
                     pd.DataFrame(
                         [
@@ -104,6 +102,6 @@ class Mean(StaticMetric):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Don't know how to process type {self.col.datatype.value} when computing MEAN, Error: {err}"
+                f"Don't know how to process type {self.col.datatype} when computing MEAN, Error: {err}"
             )
             return 0

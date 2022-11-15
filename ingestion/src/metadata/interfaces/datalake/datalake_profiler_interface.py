@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Dict, Union
 
 from pydantic import BaseModel
 from sqlalchemy import Column
@@ -188,8 +188,10 @@ class DataLakeProfilerInterface(ProfilerProtocol):
 
     def get_columns(self):
         return [
-            ColumnBaseModel(name=column.name.__root__, datatype=column.dataType)
-            for column in self._table.columns
+            ColumnBaseModel(
+                name=column, datatype=self.data_frame_list[0][column].dtype.name
+            )
+            for column in self.data_frame_list[0].columns
         ]
 
     def close(self):
@@ -198,4 +200,4 @@ class DataLakeProfilerInterface(ProfilerProtocol):
 
 class ColumnBaseModel(BaseModel):
     name: str
-    datatype: DataType
+    datatype: Union[DataType, str]

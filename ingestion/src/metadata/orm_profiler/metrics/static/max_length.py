@@ -19,7 +19,7 @@ from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
-from metadata.orm_profiler.orm.registry import CONCATENABLE_DICT, is_concatenable
+from metadata.orm_profiler.orm.registry import is_concatenable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -55,7 +55,7 @@ class MaxLength(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if self.col.datatype in CONCATENABLE_DICT:
+        if is_concatenable(self.col.datatype):
             return (
                 pd.DataFrame(
                     [

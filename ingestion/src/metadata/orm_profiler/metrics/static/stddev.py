@@ -12,6 +12,7 @@
 """
 Population Standard deviation Metric definition
 """
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy import column
@@ -19,11 +20,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.orm_profiler.orm.registry import (
-    QUANTIFIABLE_DICT,
-    Dialects,
-    is_quantifiable,
-)
+from metadata.orm_profiler.orm.registry import Dialects, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -92,10 +89,10 @@ class StdDev(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if self.col.datatype in QUANTIFIABLE_DICT:
+        if is_quantifiable(self.col.datatype):
             return data_frame[self.col.name].std()
         logger.debug(
             f"{self.col.name} has type {self.col.datatype}, which is not listed as quantifiable."
             + " We won't compute STDDEV for it."
         )
-        return None
+        return 0

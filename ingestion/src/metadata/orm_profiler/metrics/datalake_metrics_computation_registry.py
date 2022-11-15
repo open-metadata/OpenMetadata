@@ -92,16 +92,11 @@ def get_static_metrics(
         row = []
         for metric in metrics:
             for data_frame in data_frame_list:
-                if not metric.is_window_metric():
-                    row.append(
-                        metric(column).dl_fn(
-                            data_frame.astype(object).where(
-                                pd.notnull(data_frame), None
-                            )
-                        )
+                row.append(
+                    metric(column).dl_fn(
+                        data_frame.astype(object).where(pd.notnull(data_frame), None)
                     )
-                else:
-                    row.append(0)
+                )
         row_dict = {}
         for index, table_metric in enumerate(metrics):
             row_dict[table_metric.name()] = row[index]

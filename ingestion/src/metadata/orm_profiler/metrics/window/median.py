@@ -18,7 +18,7 @@ from sqlalchemy import column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.median import MedianFn
-from metadata.orm_profiler.orm.registry import QUANTIFIABLE_DICT, is_quantifiable
+from metadata.orm_profiler.orm.registry import is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -57,9 +57,9 @@ class Median(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
-        if self.col.datatype in QUANTIFIABLE_DICT:
+        if is_quantifiable(self.col.datatype):
             return data_frame[self.col.name].median().tolist()
         logger.debug(
-            f"Don't know how to process type {self.col.datatype.value} when computing Median"
+            f"Don't know how to process type {self.col.datatype} when computing Median"
         )
         return None

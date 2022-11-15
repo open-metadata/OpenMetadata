@@ -18,7 +18,7 @@ from sqlalchemy import column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.sum import SumFn
-from metadata.orm_profiler.orm.registry import QUANTIFIABLE_DICT, is_quantifiable
+from metadata.orm_profiler.orm.registry import is_quantifiable
 
 
 class Sum(StaticMetric):
@@ -43,7 +43,7 @@ class Sum(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame):
-        if self.col.datatype in QUANTIFIABLE_DICT:
+        if is_quantifiable(self.col.datatype):
             return (
                 data_frame[self.col.name].sum()
                 if not isinstance(data_frame[self.col.name].sum(), list)

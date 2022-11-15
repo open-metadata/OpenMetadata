@@ -73,7 +73,7 @@ class UniqueCount(QueryMetric):
             return data_frame[self.col.name].nunique()
         except Exception as err:
             logger.debug(
-                f"Don't know how to process type {self.col.datatype.value}"
+                f"Don't know how to process type {self.col.datatype}"
                 f"when computing Distinct Count.\n Error: {err}"
             )
-            return None
+            return 0
