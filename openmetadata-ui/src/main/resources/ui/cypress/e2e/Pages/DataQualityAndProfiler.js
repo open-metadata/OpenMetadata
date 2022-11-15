@@ -106,7 +106,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();
-    cy.get('[data-testid="profileSample"]').should('be.visible').type(0.01);
+    cy.get('[data-testid="profileSample"]').should('be.visible').type(10);
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
