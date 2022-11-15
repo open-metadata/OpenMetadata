@@ -1250,7 +1250,6 @@ def _(connection: AmundsenConnection) -> Neo4jHelper:
 
     from metadata.clients.neo4j_client import Neo4JConfig
 
-    print("connection_in_get_connection", connection)
     try:
         neo4j_config = Neo4JConfig(
             username=connection.username,
@@ -1268,7 +1267,6 @@ def _(connection: AmundsenConnection) -> Neo4jHelper:
 
 @test_connection.register
 def _(connection: AmundsenClient) -> None:
-    print("connection_in_test_connection", connection)
     try:
         connection.client.execute_query(query=NEO4J_AMUNDSEN_USER_QUERY)
     except Exception as exc:
