@@ -22,35 +22,31 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class RoleCache {
-  private static final RoleCache INSTANCE = new RoleCache();
-  private static volatile boolean INITIALIZED = false;
+  private static RoleCache INSTANCE = new RoleCache();
   protected static LoadingCache<UUID, Role> ROLE_CACHE;
   private static EntityRepository<Role> ROLE_REPOSITORY;
   private static Fields FIELDS;
 
-  public static RoleCache getInstance() {
-    return INSTANCE;
+  private RoleCache() {
+    ROLE_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
+    ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
+    FIELDS = ROLE_REPOSITORY.getFields("policies");
   }
 
-  /** To be called only once during the application start from DefaultAuthorizer */
-  public static void initialize(Jdbi jdbi) {
-    if (!INITIALIZED) {
-      ROLE_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
-      ROLE_REPOSITORY = new RoleRepository(jdbi.onDemand(CollectionDAO.class));
-      FIELDS = ROLE_REPOSITORY.getFields("policies");
-      INITIALIZED = true;
+  public static RoleCache getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE = new RoleCache();
     }
+    return INSTANCE;
   }
 
   public Role getRole(UUID roleId) {
@@ -80,6 +76,6 @@ public class RoleCache {
 
   public static void cleanUp() {
     ROLE_CACHE.cleanUp();
-    INITIALIZED = false;
+    INSTANCE = null;
   }
 }

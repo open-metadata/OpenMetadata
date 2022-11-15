@@ -50,15 +50,12 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EmailUtil;
@@ -72,24 +69,20 @@ public class DefaultAuthorizer implements Authorizer {
   private boolean isSmtpEnabled;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  public void init(OpenMetadataApplicationConfig config, Jdbi dbi) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isSmtpEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    SubjectCache.initialize(jdbi);
-    PolicyCache.initialize(jdbi);
-    RoleCache.initialize(jdbi);
-    CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
-    initializeUsers(config, collectionDAO);
+    initializeUsers(config);
   }
 
-  private void initializeUsers(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
+  private void initializeUsers(OpenMetadataApplicationConfig config) {
     Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
     LOG.debug("Checking user entries for admin users {}", adminUsers);
     String domain = SecurityUtil.getDomain(config);
     String providerType = config.getAuthenticationConfiguration().getProvider();
     if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
-      handleBasicAuth(adminUsers, domain, collectionDAO);
+      handleBasicAuth(adminUsers, domain);
     } else {
       addUsers(adminUsers, domain, true);
     }
@@ -99,19 +92,19 @@ public class DefaultAuthorizer implements Authorizer {
     addUsers(testUsers, domain, null);
   }
 
-  private void handleBasicAuth(Set<String> adminUsers, String domain, CollectionDAO collectionDAO) {
+  private void handleBasicAuth(Set<String> adminUsers, String domain) {
     try {
       for (String adminUser : adminUsers) {
         if (adminUser.contains(COLON_DELIMITER)) {
           String[] tokens = adminUser.split(COLON_DELIMITER);
-          addUserForBasicAuth(tokens[0], tokens[1], domain, collectionDAO);
+          addUserForBasicAuth(tokens[0], tokens[1], domain);
         } else {
           boolean isDefaultAdmin = adminUser.equals(ADMIN_USER_NAME);
           String token = PasswordUtil.generateRandomPassword();
           if (isDefaultAdmin || !isSmtpEnabled) {
             token = ADMIN_USER_NAME;
           }
-          addUserForBasicAuth(adminUser, token, domain, collectionDAO);
+          addUserForBasicAuth(adminUser, token, domain);
         }
       }
     } catch (IOException e) {
@@ -119,9 +112,8 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
-  private void addUserForBasicAuth(String username, String pwd, String domain, CollectionDAO collectionDAO)
-      throws IOException {
-    EntityRepository<User> userRepository = new UserRepository(collectionDAO);
+  private void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
+    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     User originalUser;
     try {
       List<String> fields = userRepository.getAllowedFieldsCopy();

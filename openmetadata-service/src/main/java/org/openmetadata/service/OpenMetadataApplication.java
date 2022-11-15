@@ -130,7 +130,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerAuthorizer(catalogConfig, environment);
 
     // Register Authenticator
-    registerAuthenticator(catalogConfig);
+    registerAuthenticator(catalogConfig, jdbi);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -150,20 +150,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
+    registerResources(catalogConfig, environment, jdbi);
+
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
     registerEventPublisher(catalogConfig, jdbi);
 
+    // update entities secrets if required
+    new SecretsManagerUpdateService(secretsManager, catalogConfig.getClusterName()).updateEntities();
+
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig, jdbi);
-
-    registerResources(catalogConfig, environment, jdbi);
-
-    // update entities secrets if required
-    new SecretsManagerUpdateService(secretsManager, catalogConfig.getClusterName()).updateEntities();
 
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig, jdbi);
@@ -276,7 +276,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
+  private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig, Jdbi jdbi) {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
       case "basic":

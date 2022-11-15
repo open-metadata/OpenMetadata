@@ -24,37 +24,37 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class PolicyCache {
-  private static final PolicyCache INSTANCE = new PolicyCache();
+  private static PolicyCache INSTANCE = null;
   private static volatile boolean INITIALIZED = false;
 
   protected static LoadingCache<UUID, List<CompiledRule>> POLICY_CACHE;
   private static EntityRepository<Policy> POLICY_REPOSITORY;
   private static Fields FIELDS;
 
-  public static PolicyCache getInstance() {
-    return INSTANCE;
-  }
-
-  /** To be called during application startup by Default Authorizer */
-  public static void initialize(Jdbi jdbi) {
+  private PolicyCache() {
     if (!INITIALIZED) {
       POLICY_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
-      POLICY_REPOSITORY = new PolicyRepository(jdbi.onDemand(CollectionDAO.class));
+      POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
       FIELDS = POLICY_REPOSITORY.getFields("rules");
       INITIALIZED = true;
     }
+  }
+
+  public static PolicyCache getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE = new PolicyCache();
+    }
+    return INSTANCE;
   }
 
   public List<CompiledRule> getPolicyRules(UUID policyId) {
@@ -83,7 +83,7 @@ public class PolicyCache {
 
   public static void cleanUp() {
     POLICY_CACHE.cleanUp();
-    INITIALIZED = false;
+    INSTANCE = null;
   }
 
   static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
