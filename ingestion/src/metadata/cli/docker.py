@@ -74,7 +74,6 @@ def docker_volume():
     if not os.path.exists(MAIN_DIR):
         os.mkdir(MAIN_DIR)
         db = "db-data"
-        om_server = "om-server"
         path_to_join = [db]
         final_path = []
         for path in path_to_join:
@@ -209,7 +208,7 @@ def file_path_check(file_path, database: str):
     return docker_compose_file_path
 
 
-def run_docker(
+def run_docker(  # pylint: disable=too-many-branches
     docker_obj_instance: DockerActions,
     file_path: str,
     env_file_path: str,
