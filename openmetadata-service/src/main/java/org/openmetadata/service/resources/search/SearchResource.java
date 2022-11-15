@@ -395,7 +395,8 @@ public class SearchResource {
     hb.field(highlightColumnChildren);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
