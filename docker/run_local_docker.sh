@@ -21,6 +21,7 @@ helpFunction()
    printf "\t-s Skip maven build: [true, false]. Default [false]\n"
    printf "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
    printf "\t-h For usage help\n"
+   printf "\t-r For Cleaning DB Volumes"
    exit 1 # Exit script after printing help
 }
 
