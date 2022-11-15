@@ -37,7 +37,7 @@ from metadata.orm_profiler.metrics.datalake_metrics_computation_registry import 
     compute_metrics_registry,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiler.sampler import Sampler
+from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.utils.connections import get_connection
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -126,7 +126,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         Returns:
             TableData: sample table data
         """
-        sampler = Sampler(
+        sampler = DatalakeSampler(
             session=self.client,
             table=self.data_frame_list,
             profile_sample=self.profile_sample,

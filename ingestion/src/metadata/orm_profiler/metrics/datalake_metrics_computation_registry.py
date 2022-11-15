@@ -72,7 +72,7 @@ def get_table_metrics(
 
 
 def get_static_metrics(
-    metrics: List[Metrics],
+    metrics: Metrics,
     processor_status: ProfilerProcessorStatus,
     column,
     data_frame_list,
@@ -137,12 +137,15 @@ def get_query_metrics(
     return {metrics.name(): col_metric}
 
 
-def pass_func(*args, **kwargs):
-    pass
+def get_window_metrics(*args, **kwargs):
+    """
+    TODO: Add Functionality for Window Metric
+    """
+    return None
 
 
 compute_metrics_registry = enum_register()
 compute_metrics_registry.add("Table")(get_table_metrics)
 compute_metrics_registry.add("Static")(get_static_metrics)
 compute_metrics_registry.add("Query")(get_query_metrics)
-compute_metrics_registry.add("Window")(pass_func)
+compute_metrics_registry.add("Window")(get_window_metrics)

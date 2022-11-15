@@ -69,7 +69,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         )
 
         self._table = self._convert_table_to_orm_object(
-            profiler_interface_args.metadata_obj
+            profiler_interface_args.sqa_metadata_obj
         )
 
         self.session_factory = self._session_factory(

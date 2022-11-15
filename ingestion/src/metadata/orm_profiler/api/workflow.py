@@ -40,10 +40,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
@@ -65,7 +62,6 @@ from metadata.interfaces.datalake.datalake_profiler_interface import (
     DataLakeProfilerInterface,
 )
 from metadata.interfaces.profiler_protocol import (
-    DataLakeProfilerType,
     ProfilerInterfaceArgs,
     ProfilerProtocol,
 )
@@ -248,7 +244,7 @@ class ProfilerWorkflow:
         self,
         service_connection_config,
         table_entity: Table,
-        metadata_obj,
+        sqa_metadata_obj,
     ):
         """Creates a profiler interface object"""
         try:
@@ -256,7 +252,7 @@ class ProfilerWorkflow:
             self._table_entity = table_entity
             self._profiler_interface_args = ProfilerInterfaceArgs(
                 service_connection_config=service_connection_config,
-                metadata_obj=metadata_obj,
+                sqa_metadata_obj=sqa_metadata_obj,
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,
                 table_entity=self._table_entity,
@@ -270,14 +266,9 @@ class ProfilerWorkflow:
                 if not self.get_profile_query(self._table_entity)
                 else None,
             )
-            try:
-                if isinstance(service_connection_config, DatalakeConnection):
-                    return DataLakeProfilerInterface(self._profiler_interface_args)
-                return SQAProfilerInterface(self._profiler_interface_args)
-            except Exception as err:
-                logger.error(
-                    f"Couldn't create a profiler interface for {type(service_connection_config)}: {err}"
-                )
+            if isinstance(service_connection_config, DatalakeConnection):
+                return DataLakeProfilerInterface(self._profiler_interface_args)
+            return SQAProfilerInterface(self._profiler_interface_args)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error("We could not create a profiler interface")
@@ -439,11 +430,11 @@ class ProfilerWorkflow:
         for database in databases:
             copied_service_config = self.copy_service_config(database)
             try:
-                metadata_obj = MetaData()
+                sqa_metadata_obj = MetaData()
                 for entity in self.get_table_entities(database=database):
                     try:
                         profiler_interface = self.create_profiler_interface(
-                            metadata_obj=metadata_obj,
+                            sqa_metadata_obj=sqa_metadata_obj,
                             service_connection_config=copied_service_config,
                             table_entity=entity,
                         )

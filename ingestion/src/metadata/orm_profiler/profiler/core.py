@@ -280,7 +280,7 @@ class Profiler(Generic[TMetric]):
 
         for metric in self.get_col_metrics(self.composed_metrics):
             # Composed metrics require the results as an argument
-            logger.debug(f"Running composed metric {metric.name()} for" f"{col.name}")
+            logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
             self._column_results[col.name][
                 metric.name()

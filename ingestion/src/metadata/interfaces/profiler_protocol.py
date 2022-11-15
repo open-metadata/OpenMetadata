@@ -29,15 +29,11 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.metrics.registry import Metrics
 
 
-class DataLakeProfilerType(BaseModel):
-    pass
-
-
 class ProfilerInterfaceArgs(BaseModel):
     """Profiler Interface Args Model"""
 
     service_connection_config: Any
-    metadata_obj: Optional[MetaData]
+    sqa_metadata_obj: Optional[MetaData]
     ometa_client: Optional[OpenMetadata]
     thread_count: Optional[float]
     table_entity: Optional[Union[Table, Any]]

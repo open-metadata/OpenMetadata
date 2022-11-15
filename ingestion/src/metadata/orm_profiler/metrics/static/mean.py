@@ -100,7 +100,7 @@ class Mean(StaticMetric):
                     .mean()
                     .tolist()[0]
                 )
-            raise Exception()
+            raise NotImplementedError()
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(

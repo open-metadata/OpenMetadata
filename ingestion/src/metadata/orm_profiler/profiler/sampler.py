@@ -14,13 +14,11 @@ for the profiler
 """
 from typing import Dict, Optional, Union
 
-from pandas import DataFrame, notnull
 from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.ingestion.source.database.datalake import DatalakeSource
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects
@@ -91,24 +89,6 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def get_col_row(self, data_frame):
-        cols = []
-        chunk = None
-        if isinstance(data_frame, DataFrame):
-            table_columns = DatalakeSource.get_columns(data_frame=data_frame)
-            return (
-                [col.name.__root__ for col in table_columns],
-                data_frame.astype(object)
-                .where(notnull(data_frame), None)
-                .values.tolist()[:100],
-            )
-        for chunk in data_frame:
-            table_columns = DatalakeSource.get_columns(data_frame=chunk)
-            cols = [col.name.__root__ for col in table_columns]
-            rows = chunk.values.tolist()
-            break
-        return cols, rows, chunk
-
     def fetch_sqa_sample_data(self) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
@@ -132,14 +112,6 @@ class Sampler:
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
         )
-
-    def fetch_dl_sample_data(self) -> TableData:
-        cols, rows = self.get_col_row(
-            data_frame=self.table[0]
-            if not isinstance(self.table, DataFrame)
-            else self.table
-        )
-        return TableData(columns=cols, rows=rows)
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
