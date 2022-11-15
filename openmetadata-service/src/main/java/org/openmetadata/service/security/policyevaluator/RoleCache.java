@@ -22,10 +22,12 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.Role;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
@@ -42,10 +44,10 @@ public class RoleCache {
   }
 
   /** To be called only once during the application start from DefaultAuthorizer */
-  public static void initialize() {
+  public static void initialize(Jdbi jdbi) {
     if (!INITIALIZED) {
       ROLE_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
-      ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
+      ROLE_REPOSITORY = new RoleRepository(jdbi.onDemand(CollectionDAO.class));
       FIELDS = ROLE_REPOSITORY.getFields("policies");
       INITIALIZED = true;
     }

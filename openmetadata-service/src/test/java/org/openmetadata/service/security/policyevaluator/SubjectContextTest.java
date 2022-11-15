@@ -15,15 +15,18 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -32,14 +35,8 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.PolicyDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RoleDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.TeamDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
-import org.openmetadata.service.jdbi3.PolicyRepository;
-import org.openmetadata.service.jdbi3.RoleRepository;
-import org.openmetadata.service.jdbi3.TeamRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
 public class SubjectContextTest {
@@ -63,14 +60,13 @@ public class SubjectContextTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
-    Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
-    Entity.registerEntity(
-        Policy.class, Entity.POLICY, Mockito.mock(PolicyDAO.class), Mockito.mock(PolicyRepository.class));
-    Entity.registerEntity(Role.class, Entity.ROLE, Mockito.mock(RoleDAO.class), Mockito.mock(RoleRepository.class));
-    PolicyCache.initialize();
-    RoleCache.initialize();
-    SubjectCache.initialize();
+    Jdbi jdbiMock = mock(Jdbi.class);
+    CollectionDAO collectionDAOMock = mock(CollectionDAO.class);
+    when(collectionDAOMock.teamDAO()).thenReturn(mock(TeamDAO.class));
+    when(jdbiMock.onDemand(any())).thenReturn(collectionDAOMock);
+    PolicyCache.initialize(jdbiMock);
+    RoleCache.initialize(jdbiMock);
+    SubjectCache.initialize(jdbiMock);
 
     // Create team hierarchy:
     // team1, has  team11, team12, team13 as children

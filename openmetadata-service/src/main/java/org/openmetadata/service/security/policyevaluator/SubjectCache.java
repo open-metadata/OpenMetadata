@@ -29,12 +29,15 @@ import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
@@ -52,15 +55,15 @@ public class SubjectCache {
   protected static Fields TEAM_FIELDS;
 
   // Expected to be called only once from the DefaultAuthorizer
-  public static void initialize() {
+  public static void initialize(Jdbi jdbi) {
     if (!INITIALIZED) {
       USER_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new UserLoader());
       TEAM_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new TeamLoader());
-      USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
+      USER_REPOSITORY = new UserRepository(jdbi.onDemand(CollectionDAO.class));
       USER_FIELDS = USER_REPOSITORY.getFields("roles, teams");
-      TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
+      TEAM_REPOSITORY = new TeamRepository(jdbi.onDemand(CollectionDAO.class));
       TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
       INSTANCE = new SubjectCache();
       INITIALIZED = true;

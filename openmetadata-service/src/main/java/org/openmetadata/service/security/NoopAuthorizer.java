@@ -37,7 +37,7 @@ import org.openmetadata.service.util.RestUtil;
 public class NoopAuthorizer implements Authorizer {
   @Override
   public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
-    SubjectCache.initialize();
+    SubjectCache.initialize(jdbi);
     addAnonymousUser();
   }
 

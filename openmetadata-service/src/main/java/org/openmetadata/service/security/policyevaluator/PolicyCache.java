@@ -24,11 +24,13 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
@@ -46,10 +48,10 @@ public class PolicyCache {
   }
 
   /** To be called during application startup by Default Authorizer */
-  public static void initialize() {
+  public static void initialize(Jdbi jdbi) {
     if (!INITIALIZED) {
       POLICY_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
-      POLICY_REPOSITORY = Entity.getEntityRepository(Entity.POLICY);
+      POLICY_REPOSITORY = new PolicyRepository(jdbi.onDemand(CollectionDAO.class));
       FIELDS = POLICY_REPOSITORY.getFields("rules");
       INITIALIZED = true;
     }
