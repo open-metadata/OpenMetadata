@@ -30,7 +30,7 @@ the KMS will act as a mediator, as we can observe in the diagram below:
 <Image src="/images/deployment/secrets-manager/om-secrets-manager-enabled.png" alt="om-secrets-manager-enabled"/>
 <p/>
 
-In 0.12 and up, OpenMetadata will communicate through an interface to read/write sensitive information -- removing the 
+In 0.13 and up, OpenMetadata will communicate through an interface to read/write sensitive information -- removing the 
 need to store sensitive data in OM systems. This new interface works whether users keep using the underlying database of 
 OpenMetadata to store credentials (as it was set up thus far) or any external system such as AWS Secrets Manager or AWS 
 SSM Parameter Store.
