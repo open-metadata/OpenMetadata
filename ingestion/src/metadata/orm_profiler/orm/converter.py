@@ -129,7 +129,7 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     )
 
 
-def ometa_to_orm(
+def ometa_to_sqa_orm(
     table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
 ) -> DeclarativeMeta:
     """
