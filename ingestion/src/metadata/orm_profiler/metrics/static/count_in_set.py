@@ -61,3 +61,7 @@ class CountInSet(StaticMetric):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None
+
+    @_label
+    def dl_fn(self):
+        return self.fn()
