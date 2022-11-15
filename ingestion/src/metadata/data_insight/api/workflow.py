@@ -20,7 +20,7 @@ Workflow definition for the ORM Profiler.
 from __future__ import annotations
 
 import traceback
-from datetime import datetime, time
+from datetime import datetime
 from typing import Optional, Union, cast
 
 from pydantic import ValidationError
@@ -54,6 +54,10 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
 from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
 from metadata.utils.logger import data_insight_logger
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
 from metadata.utils.workflow_helper import (
     set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
 )
@@ -152,8 +156,8 @@ class DataInsightWorkflow:
         If we find some data for the execution date we should deleted those documents before
         re indexing new documents.
         """
-        gte = int(datetime.combine(datetime.utcnow(), time.min).timestamp() * 1000)
-        lte = int(datetime.combine(datetime.utcnow(), time.max).timestamp() * 1000)
+        gte = get_beginning_of_day_timestamp_mill()
+        lte = get_end_of_day_timestamp_mill()
         query = {
             "query": {
                 "range": {
