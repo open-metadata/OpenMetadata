@@ -29,8 +29,10 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -38,6 +40,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -97,8 +100,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void prepare(GlossaryTerm entity) throws IOException {
     // Validate glossary
-    EntityReference glossary = Entity.getEntityReference(entity.getGlossary());
-    entity.setGlossary(glossary);
+    Fields glossaryFields = Entity.getFields(Entity.GLOSSARY, "reviewers");
+    Glossary glossary = Entity.getEntity(entity.getGlossary(), glossaryFields, Include.NON_DELETED);
+    entity.setGlossary(glossary.getEntityReference());
+
+    // If reviewers is not set in the glossary term, then carry it from the glossary
+    System.out.println("XXX reviewers " + entity.getReviewers());
+    System.out.println("XXX glossary reviewers " + glossary.getReviewers());
+    entity.setReviewers(entity.getReviewers() == null ? glossary.getReviewers() : entity.getReviewers());
 
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent());
