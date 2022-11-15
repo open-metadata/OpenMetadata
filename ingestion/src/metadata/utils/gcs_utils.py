@@ -98,4 +98,4 @@ def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:
 
     gcs = gcsfs.GCSFileSystem()
     file = gcs.open(f"gs://{bucket_name}/{key}")
-    return [ParquetFile(file).schema.to_arrow_schema().empty_table().to_pandas()]
+    return [ParquetFile(file).read().to_pandas()]

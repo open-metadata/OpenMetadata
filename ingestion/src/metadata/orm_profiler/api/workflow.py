@@ -440,8 +440,6 @@ class ProfilerWorkflow:
             copied_service_config = self.copy_service_config(database)
             try:
                 metadata_obj = MetaData()
-                if isinstance(copied_service_config, DatalakeConnection):
-                    metadata_obj = DataLakeProfilerType()
                 for entity in self.get_table_entities(database=database):
                     try:
                         profiler_interface = self.create_profiler_interface(

@@ -37,7 +37,7 @@ class ProfilerInterfaceArgs(BaseModel):
     """Profiler Interface Args Model"""
 
     service_connection_config: Any
-    metadata_obj: Optional[Union[MetaData, DataLakeProfilerType]]
+    metadata_obj: Optional[MetaData]
     ometa_client: Optional[OpenMetadata]
     thread_count: Optional[float]
     table_entity: Optional[Union[Table, Any]]

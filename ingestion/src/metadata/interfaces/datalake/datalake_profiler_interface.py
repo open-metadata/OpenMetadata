@@ -70,21 +70,24 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = None
         self._table = profiler_interface_args.table_entity
-        self.data_frame_list = None
+        self.data_frame_list = self.ometa_to_dataframe(
+            self.service_connection_config.configSource
+        )
 
-    def fetch_dl_data_frame(self, config_source):
+    def ometa_to_dataframe(self, config_source):
         if isinstance(config_source, GCSConfig):
-            self.data_frame_list = DatalakeSource.get_gcs_files(
+            return DatalakeSource.get_gcs_files(
                 client=self.client,
                 key=self.table.name.__root__,
                 bucket_name=self.table.databaseSchema.name,
             )
         if isinstance(config_source, S3Config):
-            self.data_frame_list = DatalakeSource.get_s3_files(
+            return DatalakeSource.get_s3_files(
                 client=self.client,
                 key=self.table.name.__root__,
                 bucket_name=self.table.databaseSchema.name,
             )
+        return None
 
     def compute_metrics(
         self,
@@ -156,7 +159,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         metric_funcs: list,
     ):
         """get all profiler metrics"""
-        self.fetch_dl_data_frame(self.service_connection_config.configSource)
+
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
             self.compute_metrics(metric_funcs=metric_func)
