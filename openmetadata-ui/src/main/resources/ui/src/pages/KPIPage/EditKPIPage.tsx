@@ -35,12 +35,15 @@ import RichTextEditor from '../../components/common/rich-text-editor/RichTextEdi
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import './KPIPage.less';
 
+import { compare } from 'fast-json-patch';
+import moment from 'moment';
 import { getChartById } from '../../axiosAPIs/DataInsightAPI';
-import { getKPIByName, putKPI } from '../../axiosAPIs/KpiAPI';
+import { getKPIByName, patchKPI } from '../../axiosAPIs/KpiAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import {
+  KPI_DATES,
   KPI_DATE_PICKER_FORMAT,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
@@ -48,15 +51,12 @@ import {
   ADD_KPI_TEXT,
   NO_PERMISSION_FOR_ACTION,
 } from '../../constants/HelperTextUtil';
-import { CreateKpiRequest } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
+import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import { getDisabledDates } from '../../utils/DataInsightUtils';
-import {
-  getDateTimeFromMilliSeconds,
-  getTimeStampByDateTime,
-} from '../../utils/TimeUtils';
+import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddKPIPage = () => {
@@ -75,6 +75,8 @@ const AddKPIPage = () => {
 
   const [metricValue, setMetricValue] = useState<number>(0);
   const [isUpdatingKPI, setIsUpdatingKPI] = useState<boolean>(false);
+
+  const [kpiDates, setKpiDates] = useState<KpiDates>(KPI_DATES);
 
   const breadcrumb = useMemo(
     () => [
@@ -107,8 +109,8 @@ const AddKPIPage = () => {
     if (kpiData) {
       const metric = kpiData.targetDefinition[0];
       const chart = kpiData.dataInsightChart;
-      const startDate = getDateTimeFromMilliSeconds(kpiData.startDate);
-      const endDate = getDateTimeFromMilliSeconds(kpiData.endDate);
+      const startDate = moment(kpiData.startDate);
+      const endDate = moment(kpiData.endDate);
 
       return {
         name: kpiData.name,
@@ -152,17 +154,20 @@ const AddKPIPage = () => {
 
   const handleCancel = () => history.goBack();
 
+  const handleDateChange = (dateString: string, key: KpiDate) => {
+    setKpiDates((previous) => ({ ...previous, [key]: dateString }));
+  };
+
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     if (kpiData && metricData) {
-      const startDate = getTimeStampByDateTime(values.startDate);
-      const endDate = getTimeStampByDateTime(values.endDate);
-      const formData: CreateKpiRequest = {
-        dataInsightChart: kpiData.dataInsightChart,
+      const startDate = getTimeStampByDateTime(kpiDates.startDate);
+      const endDate = getTimeStampByDateTime(kpiDates.endDate);
+
+      const updatedData = {
+        ...kpiData,
         description,
         displayName: values.displayName,
         endDate,
-        metricType: kpiData.metricType,
-        name: kpiData.name,
         startDate,
         targetDefinition: [
           {
@@ -172,9 +177,11 @@ const AddKPIPage = () => {
         ],
       };
 
+      const patch = compare(kpiData, updatedData);
+
       setIsUpdatingKPI(true);
       try {
-        await putKPI(formData);
+        await patchKPI(kpiData.id ?? '', patch);
         history.push(ROUTES.KPI_LIST);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -190,8 +197,13 @@ const AddKPIPage = () => {
 
   useEffect(() => {
     if (kpiData) {
+      const startDate = moment(kpiData.startDate).format(
+        KPI_DATE_PICKER_FORMAT
+      );
+      const endDate = moment(kpiData.endDate).format(KPI_DATE_PICKER_FORMAT);
       fetchChartData();
       setDescription(kpiData.description);
+      setKpiDates({ startDate, endDate });
     }
   }, [kpiData]);
 
@@ -338,6 +350,9 @@ const AddKPIPage = () => {
                         className="w-full"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
+                        onChange={(_, dateString) =>
+                          handleDateChange(dateString, KpiDate.START_DATE)
+                        }
                       />
                     </Form.Item>
                   </Col>
@@ -356,6 +371,9 @@ const AddKPIPage = () => {
                         className="w-full"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
+                        onChange={(_, dateString) =>
+                          handleDateChange(dateString, KpiDate.END_DATE)
+                        }
                       />
                     </Form.Item>
                   </Col>
