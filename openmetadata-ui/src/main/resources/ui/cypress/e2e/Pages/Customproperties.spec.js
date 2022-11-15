@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { COOKIE_VERSION } from '../../../src/components/Modals/WhatsNewModal/whatsNewData.ts';
 import {
     addCustomPropertiesForEntity,
     deleteCreatedProperty,
@@ -29,6 +30,7 @@ describe('Custom Properties should work properly', () => {
     cy.saveLocalStorage('localstorage');
   });
   beforeEach(() => {
+    cy.setCookie(COOKIE_VERSION, 'true');
     cy.log('Restoring local storage snapshot');
     cy.restoreLocalStorage('localstorage');
     cy.clickOnLogo();
@@ -261,7 +263,7 @@ describe('Custom Properties should work properly', () => {
   });
 
   afterEach(() => {
-    cy.log('Saving Local storage snapshot')
+    cy.log('Saving Local storage snapshot');
     cy.saveLocalStorage('localstorage');
-  })
+  });
 });
