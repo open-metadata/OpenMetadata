@@ -10,13 +10,12 @@ import {
   Typography,
 } from 'antd';
 import { startCase } from 'lodash';
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import './MetadataToESConfigForm.less';
 
 interface Props {
-  metadataToESConfig?: ConfigClass;
   handleMetadataToESConfig: (data: ConfigClass) => void;
   handlePrev: () => void;
   handleNext: () => void;
@@ -25,109 +24,87 @@ interface Props {
 const { Text } = Typography;
 
 export default function MetadataToESConfigForm({
-  metadataToESConfig,
   handleMetadataToESConfig,
   handlePrev,
   handleNext,
 }: Props) {
   const { t } = useTranslation();
-  const [caCerts, SetCaCerts] = useState<string>('');
-  const [regionName, SetRegionName] = useState<string>('');
-  const [timeout, SetTimeout] = useState<number>(0);
-  const [useAwsCredentials, SetUseAwsCredentials] = useState<boolean>(false);
-  const [useSSL, SetUseSSL] = useState<boolean>(false);
-  const [verifyCerts, SetVerifyCerts] = useState<boolean>(false);
 
-  const handleCaCertsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    SetCaCerts(event.target.value);
+  const getFieldLabels = (label: string, description: string) => {
+    return (
+      <Space direction="vertical">
+        <Text>{label}</Text>
+        <Text className="input-field-descriptions">{description}</Text>
+      </Space>
+    );
   };
-  const handleRegionNameChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    SetRegionName(event.target.value);
-  };
-  const handleTimeoutChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    SetTimeout(Number(event.target.value));
-  };
-  const handleAwaCredentialsChange = (checked: boolean) => {
-    SetUseAwsCredentials(checked);
-  };
-  const handleUseSSLChange = (checked: boolean) => {
-    SetUseSSL(checked);
-  };
-  const handleVerifyCertsChange = (checked: boolean) => {
-    SetVerifyCerts(checked);
+
+  const handleSubmit = (values: ConfigClass) => {
+    handleMetadataToESConfig({
+      ...values,
+    });
+    handleNext();
   };
 
   return (
-    <Form className="metadata-to-es-config-form" layout="vertical">
-      <Form.Item label={startCase('caCerts')}>
-        <Text className="input-field-descriptions">
-          {t('message.field-ca-certs-description')}
-        </Text>
-        <Input
-          value={metadataToESConfig?.caCerts}
-          onChange={handleCaCertsChange}
-        />
+    <Form
+      className="metadata-to-es-config-form"
+      layout="vertical"
+      onFinish={handleSubmit}>
+      <Form.Item
+        label={getFieldLabels(
+          startCase('caCerts'),
+          t('message.field-ca-certs-description')
+        )}
+        name="caCerts">
+        <Input />
       </Form.Item>
-      <Form.Item label={startCase('regionName')}>
-        <Text className="input-field-descriptions">
-          {t('message.field-region-name-description')}
-        </Text>
-        <Input
-          value={metadataToESConfig?.regionName}
-          onChange={handleRegionNameChange}
-        />
+      <Form.Item
+        label={getFieldLabels(
+          startCase('regionName'),
+          t('message.field-region-name-description')
+        )}
+        name="regionName">
+        <Input />
       </Form.Item>
-      <Form.Item label={startCase('timeout')}>
-        <Text className="input-field-descriptions">
-          {t('message.field-timeout-description')}
-        </Text>
-        <Input
-          type="number"
-          value={metadataToESConfig?.timeout}
-          onChange={handleTimeoutChange}
-        />
-      </Form.Item>
-      <Divider />
-      <Form.Item>
-        <Space>
-          <Text>{startCase('useAwsCredentials')}</Text>
-          <Switch
-            checked={metadataToESConfig?.useAwsCredentials}
-            onClick={handleAwaCredentialsChange}
-          />
-        </Space>
-        <Text className="switch-field-descriptions">
-          {t('message.field-use-aws-credentials-description')}
-        </Text>
+      <Form.Item
+        label={getFieldLabels(
+          startCase('timeout'),
+          t('message.field-timeout-description')
+        )}
+        name="timeout">
+        <Input type="number" />
       </Form.Item>
       <Divider />
-      <Form.Item>
-        <Space>
-          <Text>{startCase('useSSL')}</Text>
-          <Switch
-            checked={metadataToESConfig?.useSSL}
-            onClick={handleUseSSLChange}
-          />
-        </Space>
-        <Text className="switch-field-descriptions">
-          {t('message.field-use-ssl-description')}
-        </Text>
+      <Form.Item
+        className="switch-item"
+        label={startCase('useAwsCredentials')}
+        name="useAwsCredentials">
+        <Switch />
       </Form.Item>
+      <Text className="switch-field-descriptions">
+        {t('message.field-use-aws-credentials-description')}
+      </Text>
       <Divider />
-      <Form.Item>
-        <Space>
-          <Text>{startCase('verifyCerts')}</Text>
-          <Switch
-            checked={metadataToESConfig?.verifyCerts}
-            onClick={handleVerifyCertsChange}
-          />
-        </Space>
-        <Text className="switch-field-descriptions">
-          {t('message.field-verify-certs-description')}
-        </Text>
+      <Form.Item
+        className="switch-item"
+        label={startCase('useSSL')}
+        name="useSSL">
+        <Switch />
       </Form.Item>
+      <Text className="switch-field-descriptions">
+        {t('message.field-use-ssl-description')}
+      </Text>
+      <Divider />
+      <Form.Item
+        className="switch-item"
+        label={startCase('verifyCerts')}
+        name="verifyCerts">
+        <Switch />
+      </Form.Item>
+      <Text className="switch-field-descriptions">
+        {t('message.field-verify-certs-description')}
+      </Text>
       <Divider />
       <Row justify="end">
         <Col>
@@ -136,19 +113,7 @@ export default function MetadataToESConfigForm({
           </Button>
         </Col>
         <Col>
-          <Button
-            type="primary"
-            onClick={() => {
-              handleMetadataToESConfig({
-                caCerts,
-                regionName,
-                timeout,
-                useAwsCredentials,
-                useSSL,
-                verifyCerts,
-              });
-              handleNext();
-            }}>
+          <Button htmlType="submit" type="primary">
             {t('label.next')}
           </Button>
         </Col>

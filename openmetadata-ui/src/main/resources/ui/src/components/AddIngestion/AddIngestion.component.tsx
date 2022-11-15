@@ -799,7 +799,6 @@ const AddIngestion = ({
             handleMetadataToESConfig={handleMetadataToESConfig}
             handleNext={handleNext}
             handlePrev={handlePrev}
-            metadataToESConfig={metadataToESConfig}
           />
         )}
 
