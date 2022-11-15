@@ -94,7 +94,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .createRequest("g1t1", "", "", null)
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1_REF)
-            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
+            .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
     GLOSSARY1_TERM1_LABEL = EntityUtil.getTagLabel(GLOSSARY1_TERM1);
@@ -104,7 +105,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         glossaryTermResourceTest
             .createRequest("g2t1", "", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
-            .withGlossary(GLOSSARY2_REF);
+            .withGlossary(GLOSSARY2_REF)
+            .withReviewers(GLOSSARY1.getReviewers());
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_REF = GLOSSARY2_TERM1.getEntityReference();
     GLOSSARY2_TERM1_LABEL = EntityUtil.getTagLabel(GLOSSARY2_TERM1);
@@ -141,7 +143,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   @Test
   void patch_renameSystemGlossary_400() throws IOException {
     // Renaming of system glossary and terms are not allowed
-    CreateGlossary create = createRequest("renameGlossaryNotAllowed", "", "", null).withProvider(SYSTEM);
+    CreateGlossary create = createRequest("renameGlossaryNotAllowed").withProvider(ProviderType.SYSTEM);
     Glossary glossary = createEntity(create, ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
@@ -163,7 +165,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Create glossary with terms t1, t2
     // Create children terms t11, t12 under t1
     // Create children terms t21, t22 under t2
-    CreateGlossary create = createRequest("renameGlossary", "", "", null);
+    CreateGlossary create = createRequest("renameGlossary");
     Glossary glossary = createEntity(create, ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
@@ -203,7 +205,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   @Override
   public CreateGlossary createRequest(String name) {
-    return new CreateGlossary().withName(name);
+    return new CreateGlossary().withName(name).withDescription("d");
   }
 
   @Override

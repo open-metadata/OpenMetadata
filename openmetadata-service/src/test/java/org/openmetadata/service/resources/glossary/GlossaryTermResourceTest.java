@@ -158,6 +158,24 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  void test_inheritGlossaryReviewer(TestInfo test) throws IOException {
+    //
+    // When reviewers are not set for a glossary term, carry it forward from the glossary
+    //
+    GlossaryResourceTest glossaryTest = new GlossaryResourceTest();
+    CreateGlossary create =
+        glossaryTest.createRequest(getEntityName(test)).withReviewers(List.of(USER1_REF)).withDescription("d");
+    Glossary glossary = glossaryTest.createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create terms t1 and a term t12 under t1 in the glossary without reviewers
+    GlossaryTerm t1 = createTerm(glossary, null, "t1", null);
+    assertEquals(create.getReviewers(), t1.getReviewers()); // Reviewers are inherited
+
+    GlossaryTerm t12 = createTerm(glossary, t1, "t12", null);
+    assertEquals(create.getReviewers(), t12.getReviewers()); // Reviewers are inherited
+  }
+
+  @Test
   void patch_addDeleteReviewers(TestInfo test) throws IOException {
     CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
@@ -309,10 +327,15 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws IOException {
+    return createTerm(glossary, parent, termName, glossary.getReviewers());
+  }
+
+  public GlossaryTerm createTerm(
+      Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers) throws IOException {
     EntityReference glossaryRef = glossary.getEntityReference();
     EntityReference parentRef = parent != null ? parent.getEntityReference() : null;
     CreateGlossaryTerm createGlossaryTerm =
-        createRequest(termName, "", "", null).withGlossary(glossaryRef).withParent(parentRef);
+        createRequest(termName, "", "", null).withGlossary(glossaryRef).withParent(parentRef).withReviewers(reviewers);
     return createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
   }
 

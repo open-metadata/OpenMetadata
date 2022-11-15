@@ -1103,6 +1103,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final Fields getFields(String fields) {
+    if (fields != null && fields.equals("*")) {
+      return new Fields(allowedFields, String.join(",", allowedFields));
+    }
     return new Fields(allowedFields, fields);
   }
 
