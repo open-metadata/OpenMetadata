@@ -64,7 +64,13 @@ public class ElasticSearchIndexDefinition {
     TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
     GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json"),
     MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/mlmodel_index_mapping.json"),
-    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/tag_index_mapping.json");
+    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/tag_index_mapping.json"),
+    ENTITY_REPORT_DATA_INDEX("entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
+    WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
+        "web_analytic_entity_view_report_data_index", "/elasticsearch/web_analytic_entity_view_report_data_index.json"),
+    WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX(
+        "web_analytic_user_activity_report_data_index",
+        "/elasticsearch/web_analytic_user_activity_report_data_index.json");
 
     public final String indexName;
     public final String indexMappingFile;
