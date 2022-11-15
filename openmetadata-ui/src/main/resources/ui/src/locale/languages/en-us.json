@@ -274,7 +274,8 @@
     "kpi-display-name": "Kpi display name",
     "data-insight-chart": "Data insight chart",
     "data-assets": "Data Assets",
-    "app-analytics": "App Analytics"
+    "app-analytics": "App Analytics",
+    "no-team-found": "No team found with name given."
   },
   "message": {
     "service-email-required": "Service account Email is required",
