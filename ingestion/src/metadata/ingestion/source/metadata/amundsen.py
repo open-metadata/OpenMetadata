@@ -136,7 +136,6 @@ class AmundsenSource(Source[Entity]):
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
-        test_connection(self.connection)
         self.client = self.connection.client
         self.status = AmundsenStatus()
         self.database_service_map = {
