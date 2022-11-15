@@ -57,7 +57,6 @@ import {
   getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from '../../utils/TasksUtils';
-import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
@@ -431,21 +430,15 @@ const EntityTable = ({
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
             lowerCase(dataTypeDisplay)
           ) : (
-            <PopOver
-              delay={200}
-              html={
-                <div className="break-word">
-                  <span>{lowerCase(dataTypeDisplay)}</span>
-                </div>
-              }
-              key="pop-over"
-              position="top"
-              theme="light"
-              trigger="mouseenter">
+            <Popover
+              destroyTooltipOnHide
+              content={lowerCase(dataTypeDisplay)}
+              overlayInnerStyle={{ maxWidth: '420px' }}
+              trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay}
               </Typography.Text>
-            </PopOver>
+            </Popover>
           )
         ) : (
           '--'
