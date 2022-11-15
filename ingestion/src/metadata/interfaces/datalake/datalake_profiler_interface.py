@@ -22,7 +22,7 @@ from typing import Dict
 from pydantic import BaseModel
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
+from metadata.generated.schema.entity.data.table import DataType, TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     GCSConfig,
     S3Config,

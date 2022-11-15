@@ -20,10 +20,6 @@ from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    GCSConfig,
-    S3Config,
-)
 from metadata.ingestion.source.database.datalake import DatalakeSource
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn

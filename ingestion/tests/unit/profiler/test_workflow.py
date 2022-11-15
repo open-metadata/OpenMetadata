@@ -217,7 +217,7 @@ def test_profile_def(mocked_method, mocked_orm):
     profiler_interface = profile_workflow.create_profiler_interface(
         service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
         table_entity=TABLE,
-        metadata_obj=MetaData,
+        metadata_obj=MetaData(),
     )
     profile_workflow.create_profiler_obj(TABLE, profiler_interface)
     profiler_obj_metrics = [
@@ -250,7 +250,7 @@ def test_default_profile_def(mocked_method, mocked_orm):
     profiler_interface = profile_workflow.create_profiler_interface(
         service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
         table_entity=TABLE,
-        metadata_obj=MetaData,
+        metadata_obj=MetaData(),
     )
     profile_workflow.create_profiler_obj(TABLE, profiler_interface)
 

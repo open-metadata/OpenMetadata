@@ -178,17 +178,15 @@ class SampleTest(TestCase):
         with patch.object(
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
-            profiler = (
-                Profiler(
-                    count,
-                    profiler_interface=SQAProfilerInterface(
-                        profiler_interface_args=ProfilerInterfaceArgs(
-                            self.sqlite_conn,
-                            table_entity=self.table_entity,
-                            table_sample_precentage=50,
-                            ometa_client=None,
-                        ),
-                    ),
+            profiler = Profiler(
+                count,
+                profiler_interface=SQAProfilerInterface(
+                    profiler_interface_args=ProfilerInterfaceArgs(
+                        service_connection_config=self.sqlite_conn,
+                        table_entity=self.table_entity,
+                        table_sample_precentage=50,
+                        ometa_client=None,
+                    )
                 ),
             )
         res = profiler.compute_metrics()._column_results
@@ -206,7 +204,7 @@ class SampleTest(TestCase):
                 hist,
                 profiler_interface=SQAProfilerInterface(
                     profiler_interface_args=ProfilerInterfaceArgs(
-                        self.sqlite_conn,
+                        service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
                         table_sample_precentage=50,
                         ometa_client=None,

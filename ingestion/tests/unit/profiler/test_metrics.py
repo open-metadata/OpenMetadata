@@ -704,7 +704,7 @@ class MetricsTest(TestCase):
         ):
             sqa_profiler_interface = SQAProfilerInterface(
                 profiler_interface_args=ProfilerInterfaceArgs(
-                    self.sqlite_conn,
+                    service_connection_config=self.sqlite_conn,
                     table_entity=self.table_entity,
                     ometa_client=None,
                 )

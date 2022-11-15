@@ -270,14 +270,14 @@ class ProfilerWorkflow:
                 if not self.get_profile_query(self._table_entity)
                 else None,
             )
-
-            if isinstance(service_connection_config, DatalakeConnection):
-                return DataLakeProfilerInterface(self._profiler_interface_args)
-            if isinstance(service_connection_config, DatabaseConnection):
+            try:
+                if isinstance(service_connection_config, DatalakeConnection):
+                    return DataLakeProfilerInterface(self._profiler_interface_args)
                 return SQAProfilerInterface(self._profiler_interface_args)
-            raise Exception(
-                f"Couldn't create a profiler interface for {type(service_connection_config)}"
-            )
+            except Exception as err:
+                logger.error(
+                    f"Couldn't create a profiler interface for {type(service_connection_config)}: {err}"
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error("We could not create a profiler interface")

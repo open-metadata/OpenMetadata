@@ -31,9 +31,6 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     TableProfile,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
@@ -274,9 +271,7 @@ class Profiler(Generic[TMetric]):
 
         logger.debug("Running post Profiler...")
 
-        current_col_results: Dict[str, Any] = self._column_results.get(
-            col.name if not isinstance(col.name, ColumnName) else col.name.__root__
-        )
+        current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:
             logger.error(
                 "We do not have any results to base our Composed Metrics. Stopping!"
@@ -285,14 +280,11 @@ class Profiler(Generic[TMetric]):
 
         for metric in self.get_col_metrics(self.composed_metrics):
             # Composed metrics require the results as an argument
-            logger.debug(
-                f"Running composed metric {metric.name()} for"
-                f"{col.name if not isinstance(col.name, ColumnName) else col.name.__root__}"
-            )
+            logger.debug(f"Running composed metric {metric.name()} for" f"{col.name}")
 
-            self._column_results[
-                col.name if not isinstance(col.name, ColumnName) else col.name.__root__
-            ][metric.name()] = self.profiler_interface.get_composed_metrics(
+            self._column_results[col.name][
+                metric.name()
+            ] = self.profiler_interface.get_composed_metrics(
                 col,
                 metric,
                 current_col_results,
