@@ -157,7 +157,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             createEntity(
                 createRequest(test).withDescription(null).withConnection(pipelineConnection), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Airflow] due to [Failed to construct connection instance of Airflow]");
+        "InvalidServiceConnectionException for service [Airflow] due to [Failed to encrypt connection instance of Airflow]");
   }
 
   @Test

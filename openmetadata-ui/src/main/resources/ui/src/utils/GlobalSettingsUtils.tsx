@@ -20,6 +20,7 @@ import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg'
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
+import { ReactComponent as OMLogo } from '../../src/assets/svg/logo-monogram.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
 import { ReactComponent as MSTeamsIcon } from '../../src/assets/svg/ms-teams.svg';
 import { ReactComponent as PipelineIcon } from '../../src/assets/svg/pipeline-grey.svg';
@@ -143,6 +144,14 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <MlModelIcon className="side-panel-icons" />,
+        },
+        {
+          label: 'Metadata',
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.METADATA_SERVICE,
+            permissions
+          ),
+          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
         },
       ],
     },

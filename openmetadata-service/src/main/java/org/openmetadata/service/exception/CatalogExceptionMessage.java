@@ -172,6 +172,10 @@ public final class CatalogExceptionMessage {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
+  public static String invalidBotUser() {
+    return "Revoke Token can only be applied to Bot Users.";
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }
@@ -182,6 +186,10 @@ public final class CatalogExceptionMessage {
 
   public static String systemEntityDeleteNotAllowed(String name, String entityType) {
     return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
+  }
+
+  public static String systemEntityRenameNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be renamed.", name, entityType);
   }
 
   public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {

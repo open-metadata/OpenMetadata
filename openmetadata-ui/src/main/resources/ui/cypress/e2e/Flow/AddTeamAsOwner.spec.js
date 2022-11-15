@@ -38,7 +38,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
     interceptURL('GET', '/api/v1/users*', 'getTeams');
 
     //Clicking on teams
-    cy.get('[data-menu-id*="teams"]')
+    cy.get('[data-testid="settings-left-panel"]').contains('Teams')
       .should('exist')
       .should('be.visible')
       .click();

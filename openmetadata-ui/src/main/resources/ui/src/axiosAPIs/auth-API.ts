@@ -68,7 +68,7 @@ export const resetPassword = async (payload: PasswordResetRequest) => {
 };
 
 export const confirmRegistration = async (token: string) => {
-  const response = await axiosClient.get(
+  const response = await axiosClient.put(
     `${apiPath}/registrationConfirmation?token=${token}`
   );
 
@@ -76,7 +76,7 @@ export const confirmRegistration = async (token: string) => {
 };
 
 export const resendRegistrationToken = async () => {
-  const response = await axiosClient.get(`${apiPath}/resendRegistrationToken`);
+  const response = await axiosClient.put(`${apiPath}/resendRegistrationToken`);
 
   return response;
 };

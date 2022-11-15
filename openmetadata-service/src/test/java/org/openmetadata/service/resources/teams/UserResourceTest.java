@@ -79,8 +79,13 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.GenerateTokenRequest;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.RevokeTokenRequest;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
@@ -88,11 +93,6 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
-import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
-import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
-import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
-import org.openmetadata.schema.teams.authn.SSOAuthMechanism.SsoServiceType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
@@ -688,7 +688,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withAuthType(AuthType.SSO)
             .withConfig(
                 new SSOAuthMechanism()
-                    .withSsoServiceType(SsoServiceType.GOOGLE)
+                    .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
                     .withAuthConfig(new GoogleSSOClientConfig().withSecretKey("/path/to/secret.json")));
     CreateUser create =
         createBotUserRequest("ingestion-bot-jwt")
@@ -712,7 +712,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertTrue(daysBetween >= 6);
     assertEquals("ingestion-bot-jwt", jwt.getClaims().get("sub").asString());
     assertEquals(true, jwt.getClaims().get("isBot").asBoolean());
-    TestUtils.put(getResource(String.format("users/revokeToken/%s", user.getId())), User.class, OK, ADMIN_AUTH_HEADERS);
+    TestUtils.put(
+        getResource("users/revokeToken"), new RevokeTokenRequest().withId(user.getId()), OK, ADMIN_AUTH_HEADERS);
     jwtAuthMechanism =
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);

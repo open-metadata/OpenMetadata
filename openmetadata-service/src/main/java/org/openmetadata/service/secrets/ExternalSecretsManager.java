@@ -13,33 +13,48 @@
 
 package org.openmetadata.service.secrets;
 
-import org.openmetadata.schema.entity.services.ServiceType;
+import java.util.Locale;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
+  public static final String SECRET_FIELD_PREFIX = "secret:";
 
-  protected ExternalSecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
+  private final long WAIT_TIME_BETWEEN_STORE_CALLS;
+
+  protected ExternalSecretsManager(
+      SecretsManagerProvider secretsManagerProvider, String clusterPrefix, long waitTimeBetweenCalls) {
     super(secretsManagerProvider, clusterPrefix);
+    WAIT_TIME_BETWEEN_STORE_CALLS = waitTimeBetweenCalls;
   }
 
   @Override
-  public Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
-    return connectionConfig;
+  protected String storeValue(String fieldName, String value, String secretId) {
+    String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    // check if value does not start with 'config:' only String can have password annotation
+    if (!value.startsWith(SECRET_FIELD_PREFIX)) {
+      upsertSecret(fieldSecretId, value);
+      return SECRET_FIELD_PREFIX + fieldSecretId;
+    } else {
+      return value;
+    }
   }
 
   public void upsertSecret(String secretName, String secretValue) {
     if (existSecret(secretName)) {
       updateSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      sleep();
     } else {
       storeSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      sleep();
     }
   }
 
   public boolean existSecret(String secretName) {
     try {
-      return getSecret(secretName) != null;
+      boolean exists = getSecret(secretName) != null;
+      sleep();
+      return exists;
     } catch (Exception e) {
       return false;
     }
@@ -50,4 +65,15 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   abstract void updateSecret(String secretName, String secretValue);
 
   abstract String getSecret(String secretName);
+
+  private void sleep() {
+    // delay reaching secrets manager quotas
+    if (WAIT_TIME_BETWEEN_STORE_CALLS > 0) {
+      try {
+        Thread.sleep(WAIT_TIME_BETWEEN_STORE_CALLS);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
@@ -101,12 +102,11 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT cloud account authentication token.
         </p>
-        <input
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="cloud-auth-token"
           id="cloud-auth-token"
           name="cloud-auth-token"
-          type="text"
           value={dbtCloudAuthToken}
           onChange={(e) => handleCloudAuthTokenChange(e.target.value)}
         />

@@ -110,7 +110,7 @@ plugins: Dict[str, Set[str]] = {
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.4.0"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
-    "pymssql": {"pymssql~=2.2.5"},
+    "pymssql": {"pymssql==2.2.5"},
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle", "oracledb==1.0.3"},
@@ -212,6 +212,7 @@ setup(
         "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(

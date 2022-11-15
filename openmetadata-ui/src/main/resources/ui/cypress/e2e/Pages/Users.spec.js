@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { addUser, deleteSoftDeletedUser, interceptURL, login, restoreUser, softDeleteUser, uuid, verifyResponseStatusCode } from '../../common/common';
+import {
+    addUser,
+    deleteSoftDeletedUser,
+    interceptURL,
+    login,
+    restoreUser,
+    softDeleteUser,
+    uuid,
+    verifyResponseStatusCode
+} from '../../common/common';
 import { LOGIN } from '../../constants/constants';
 
 const userName = `Usercttest${uuid()}`;
@@ -29,8 +38,12 @@ describe('Users flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15', 'getUsers');
-    cy.get('.ant-menu-title-content')
+    interceptURL(
+      'GET',
+      '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15',
+      'getUsers'
+    );
+    cy.get('[data-testid="settings-left-panel"]')
       .contains('Users')
       .should('exist')
       .should('be.visible')
@@ -39,7 +52,7 @@ describe('Users flow should work properly', () => {
 
   it('Add new User', () => {
     //Clicking on Add user button
-    cy.get('.ant-btn').contains('Add User').click();
+    cy.get('[data-testid="add-user"]').click();
 
     addUser(userName, userEmail);
     verifyResponseStatusCode('@getUsers', 200);
@@ -76,7 +89,11 @@ describe('Admin flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-      interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isAdmin=true&isBot=false&limit=15', 'getAdmins');
+    interceptURL(
+      'GET',
+      '/api/v1/users?fields=profile,teams,roles&&isAdmin=true&isBot=false&limit=15',
+      'getAdmins'
+    );
     cy.get('.ant-menu-title-content')
       .contains('Admins')
       .should('exist')
@@ -86,7 +103,7 @@ describe('Admin flow should work properly', () => {
 
   it('Add admin user', () => {
     //Clicking on add user button
-    cy.get('.ant-btn').contains('Add User').click();
+    cy.get('[data-testid="add-user"]').click();
 
     //Setting the user to admin before adding user
     cy.get('[data-testid="admin"]')

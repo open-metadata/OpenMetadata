@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.exception;
+package org.openmetadata.annotations;
 
-public class SecretsManagerMigrationException extends RuntimeException {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-  public SecretsManagerMigrationException(String message, Throwable throwable) {
-    super(message, throwable);
-  }
-
-  public SecretsManagerMigrationException(String message) {
-    super(message);
-  }
-}
+/**
+ * Specifies that the field or method is exposed, i.e., if the serialization will take into account those fields
+ * annotated with
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
+public @interface PasswordField {}

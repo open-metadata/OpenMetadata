@@ -254,6 +254,7 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockTagsCategory })),
   getTaglist: jest.fn().mockReturnValue(['tag 1', 'tag 2']),
   getTagOptionsFromFQN: jest.fn().mockReturnValue([]),
+  isSystemTierTags: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock(
