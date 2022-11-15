@@ -22,10 +22,10 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -38,7 +38,7 @@ public class NoopAuthorizer implements Authorizer {
   @Override
   public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
     SubjectCache.initialize(jdbi);
-    addAnonymousUser();
+    addAnonymousUser(jdbi);
   }
 
   @Override
@@ -64,10 +64,11 @@ public class NoopAuthorizer implements Authorizer {
     /* Always authorize */
   }
 
-  private void addAnonymousUser() {
+  private void addAnonymousUser(Jdbi jdbi) {
     String username = "anonymous";
+    UserRepository userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
     try {
-      Entity.getEntityRepository(Entity.USER).getByName(null, username, Fields.EMPTY_FIELDS);
+      userRepository.getByName(null, username, Fields.EMPTY_FIELDS);
     } catch (EntityNotFoundException ex) {
       User user =
           new User()
@@ -76,15 +77,14 @@ public class NoopAuthorizer implements Authorizer {
               .withEmail(username + "@domain.com")
               .withUpdatedBy(username)
               .withUpdatedAt(System.currentTimeMillis());
-      addOrUpdateUser(user);
+      addOrUpdateUser(user, userRepository);
     } catch (IOException e) {
       LOG.error("Failed to create anonymous user {}", username, e);
     }
   }
 
-  private void addOrUpdateUser(User user) {
+  private void addOrUpdateUser(User user, UserRepository userRepository) {
     try {
-      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added anonymous user entry: {}", addedUser);
     } catch (IOException exception) {
