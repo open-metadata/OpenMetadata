@@ -276,7 +276,10 @@
     "data-assets": "Data Assets",
     "app-analytics": "App Analytics",
     "back": "Back",
-    "next": "Next"
+    "next": "Next",
+    "quality": "Quality",
+    "insight": "Insight",
+    "govern": "Govern"
   },
   "message": {
     "service-email-required": "Service account Email is required",
