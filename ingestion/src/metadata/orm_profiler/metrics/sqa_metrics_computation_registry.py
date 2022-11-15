@@ -31,9 +31,9 @@ from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.dispatch import enum_register
-from metadata.utils.logger import sqa_interface_registry_logger
+from metadata.utils.logger import profiler_interface_registry_logger
 
-logger = sqa_interface_registry_logger()
+logger = profiler_interface_registry_logger()
 
 
 def get_table_metrics(

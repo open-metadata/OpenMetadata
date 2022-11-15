@@ -190,14 +190,14 @@ def print_status(workflow) -> None:
         print_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
-            message="Workflow finished in time"
+            message="Workflow finished in time: "
             f"{pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)}",
         )
 
         print_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
-            message=f"Success % :"
+            message=f"Success %: "
             f"{workflow.source.get_status().calculate_success()}",
         )
 

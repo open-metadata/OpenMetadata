@@ -16,7 +16,6 @@ Processor class used to compute refined report data
 from __future__ import annotations
 
 from collections import namedtuple
-from datetime import datetime, time, timedelta
 from typing import Generator, Iterable, Optional
 
 from metadata.data_insight.processor.data_processor import DataProcessor
@@ -44,6 +43,10 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.api.source import SourceStatus
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
 
 logger = data_insight_logger()
 
@@ -60,18 +63,8 @@ ENTITIES = {
 }
 
 CACHED_EVENTS = []
-START_TS = str(
-    int(
-        datetime.combine(datetime.utcnow() - timedelta(days=0), time.min).timestamp()
-        * 1000
-    )
-)
-END_TS = str(
-    int(
-        datetime.combine(datetime.utcnow() - timedelta(days=0), time.max).timestamp()
-        * 1000
-    )
-)
+START_TS = str(get_beginning_of_day_timestamp_mill(days=1))
+END_TS = str(get_end_of_day_timestamp_mill(days=1))
 
 
 class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
