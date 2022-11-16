@@ -66,8 +66,8 @@ public class RuleEvaluator {
       name = "matchAnyTag",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has at least one of the tags given as input",
-      examples = {"matchAnyTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
-  public boolean matchAnyTag(List<String> tagFQNs) throws IOException {
+      examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+  public boolean matchAnyTag(String... tagFQNs) throws IOException {
     if (resourceContext == null) {
       return false;
     }
