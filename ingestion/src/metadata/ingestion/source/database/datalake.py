@@ -55,19 +55,7 @@ from metadata.ingestion.source.database.database_service import (
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.gcs_utils import (
-    read_csv_from_gcs,
-    read_json_from_gcs,
-    read_parquet_from_gcs,
-    read_tsv_from_gcs,
-)
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.s3_utils import (
-    read_csv_from_s3,
-    read_json_from_s3,
-    read_parquet_from_s3,
-    read_tsv_from_s3,
-)
 
 logger = ingestion_logger()
 
@@ -336,6 +324,13 @@ class DatalakeSource(DatabaseServiceSource):
         """
         Fetch GCS Bucket files
         """
+        from metadata.utils.gcs_utils import (  # pylint: disable=import-outside-toplevel
+            read_csv_from_gcs,
+            read_json_from_gcs,
+            read_parquet_from_gcs,
+            read_tsv_from_gcs,
+        )
+
         try:
             if key.endswith(".csv"):
                 return read_csv_from_gcs(key, bucket_name)
@@ -361,6 +356,13 @@ class DatalakeSource(DatabaseServiceSource):
         """
         Fetch S3 Bucket files
         """
+        from metadata.utils.s3_utils import (  # pylint: disable=import-outside-toplevel
+            read_csv_from_s3,
+            read_json_from_s3,
+            read_parquet_from_s3,
+            read_tsv_from_s3,
+        )
+
         try:
             if key.endswith(".csv"):
                 return read_csv_from_s3(client, key, bucket_name)
@@ -386,30 +388,35 @@ class DatalakeSource(DatabaseServiceSource):
         """
         method to process column details
         """
-        try:
-            cols = []
-            if hasattr(data_frame, "columns"):
-                df_columns = list(data_frame.columns)
-                for column in df_columns:
+        cols = []
+        if hasattr(data_frame, "columns"):
+            df_columns = list(data_frame.columns)
+            for column in df_columns:
+                # use String by default
+                data_type = DataType.STRING.value
+
+                try:
                     if (
                         hasattr(data_frame[column], "dtypes")
                         and data_frame[column].dtypes.name in DATALAKE_INT_TYPES
                     ):
                         if data_frame[column].dtypes.name == "int64":
                             data_type = DataType.INT.value
-                    else:
-                        data_type = DataType.STRING.value
-                    parsed_string = {}
-                    parsed_string["dataTypeDisplay"] = data_type
-                    parsed_string["dataType"] = data_type
-                    parsed_string["name"] = column[:64]
+
+                    parsed_string = {
+                        "dataTypeDisplay": data_type,
+                        "dataType": data_type,
+                        "name": column[:64],
+                    }
                     parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                     cols.append(Column(**parsed_string))
-            return cols
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
-            return None
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Unexpected exception parsing column [{column}]: {exc}"
+                    )
+
+        return cols
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
