@@ -5,12 +5,12 @@ slug: /deployment/security/ldap
 
 # Ldap Authentication
 
-OpenMetadata allows to use LDAP for validating email and password.
+OpenMetadata allows using LDAP for validating email and password authentication.
 Once setup successfully, the user should be able to sign in to OpenMetadata using the Ldap credentials.
 
 # Setting up Ldap Authentication
 
-Below are the required steps to set up the Ldap Login:
+Below are the required steps to set up the LDAP Authentication:
 
 ## Set up Configurations in openmetadata.yaml
 
@@ -40,7 +40,7 @@ authenticationConfiguration:
     "verifyCertificateHostname": ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-"false"}
 ```
 
-For the Ldap auth we need to set:
+For the LDAP auth we need to set:
 
 OpenMetadata Specific Configuration :-
  
@@ -54,7 +54,7 @@ OpenMetadata Specific Configuration :-
 
 <Note>
 
-Mandatory Ldap Specific Configuration :-
+Mandatory LDAP Specific Configuration:
 
 - `host -> hostName for the Ldap Server (Ex - localhost)`
 
@@ -68,11 +68,11 @@ Mandatory Ldap Specific Configuration :-
 
 </Note>
 
-Please see the below image for sample Ldap Configuration in ApacheDS.
+Please see the below image for a sample LDAP Configuration in ApacheDS.
 
 <Image src="/images/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap"/>
 
-Advanced Ldap Specific Configuration(Optional) :-
+Advanced LDAP Specific Configuration (Optional):
 
 - `maxPoolSize -> Connection Pool Size to use to connect to LDAP Server.`
 
@@ -116,15 +116,15 @@ keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 <Note>
 
-By Default the jwtTokenConfiguration is shipped with OM. 
+By default, the `jwtTokenConfiguration` is shipped with OM.
 
 ### For Local/Testing Deployment
 
-- You can work with existing configuration as well or if you want you can generate your own private/public key.
+- You can work with the existing configuration or generate private/public keys.
 
 ### For Production Deployment
 
-- It is a MUST! to update the JWT configuration. The following steps can be used.
+- It is a **MUST** to update the JWT configuration. The following steps can be used.
 
 - Generating Private/Public Keys
 
@@ -141,13 +141,13 @@ rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
 rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-"./conf/private_key.der"}
 ```
 
-Jwt Issuer can be your {principalDomain}
+Jwt Issuer can be your `principalDomain`
 
 ```yaml
 jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
 ```
 
-KeyID is random generated UUID string, use any UUID generator to get a new KeyID.
+The `KeyID` is a randomly generated UUID string. Use any UUID generator to get a new `KeyID`.
 
 ```yaml
 keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
