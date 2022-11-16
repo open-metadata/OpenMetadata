@@ -104,7 +104,7 @@ For the Ldap we need to set:
 
 ### Jwt Configuration
 
-- Please note that the JWT Configuration is mandatory to work with UserName/Password Login.
+- Please note that the JWT Configuration is mandatory to work with Ldap Authentication.
 
 ```yaml
 jwtTokenConfiguration:
