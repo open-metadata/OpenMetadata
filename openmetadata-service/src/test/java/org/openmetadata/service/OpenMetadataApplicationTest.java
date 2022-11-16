@@ -58,7 +58,7 @@ public abstract class OpenMetadataApplicationTest {
     JdbcDatabaseContainer<?> sqlContainer =
         (JdbcDatabaseContainer<?>)
             Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
-    sqlContainer.withReuse(true);
+    sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();

@@ -568,6 +568,11 @@
         <version>${maven-surefire.version}</version>
         <configuration>
           <trimStackTrace>false</trimStackTrace>
+          <useUnlimitedThreads>true</useUnlimitedThreads>
+          <parallel>all</parallel>
+          <forkCount>3</forkCount>
+          <reuseForks>true</reuseForks>
+          <argLine>-Xmx1024m</argLine>
         </configuration>
         <executions>
           <execution>
