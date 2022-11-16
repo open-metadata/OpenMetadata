@@ -23,7 +23,6 @@ from typing import List, Optional
 import boto3
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.connection import create_ssl_context
-from requests_aws4auth import AWS4Auth
 
 from metadata.config.common import ConfigModel
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
@@ -180,6 +179,9 @@ class ElasticsearchSink(Sink[Entity]):
         config: ElasticSearchConfig,
         metadata_config: OpenMetadataConnection,
     ) -> None:
+        from requests_aws4auth import (  # pylint: disable=import-outside-toplevel
+            AWS4Auth,
+        )
 
         self.config = config
         self.metadata_config = metadata_config
