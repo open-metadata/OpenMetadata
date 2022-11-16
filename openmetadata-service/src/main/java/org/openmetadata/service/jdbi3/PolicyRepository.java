@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
 import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
@@ -92,7 +93,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /** Generate EntityReference for a given Policy's Location. * */
   @Transaction
   private EntityReference getLocationReference(Policy policy) throws IOException {
-    if (policy == null || policy.getLocation() == null || policy.getLocation().getId() == null) {
+    if (policy == null || getId(policy.getLocation()) == null) {
       return null;
     }
 
@@ -163,7 +164,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   private void setLocation(Policy policy, EntityReference location) {
-    if (location == null || location.getId() == null) {
+    if (getId(location) == null) {
       return;
     }
     addRelationship(policy.getId(), policy.getLocation().getId(), POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
@@ -184,12 +185,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
       // remove original Policy --> Location relationship if exists.
-      if (origPolicy.getLocation() != null && origPolicy.getLocation().getId() != null) {
+      if (getId(origPolicy.getLocation()) != null) {
         deleteRelationship(
             origPolicy.getId(), POLICY, origPolicy.getLocation().getId(), Entity.LOCATION, Relationship.APPLIED_TO);
       }
       // insert updated Policy --> Location relationship.
-      if (updatedPolicy.getLocation() != null && updatedPolicy.getLocation().getId() != null) {
+      if (getId(updatedPolicy.getLocation()) != null) {
         addRelationship(
             updatedPolicy.getId(),
             updatedPolicy.getLocation().getId(),

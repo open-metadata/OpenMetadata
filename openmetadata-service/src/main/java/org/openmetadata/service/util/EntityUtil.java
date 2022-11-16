@@ -460,4 +460,20 @@ public final class EntityUtil {
   public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) throws IOException {
     return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
   }
+
+  public static UUID getId(EntityReference ref) {
+    return ref == null ? null : ref.getId();
+  }
+
+  public static String getFqn(EntityReference ref) {
+    return ref == null ? null : ref.getFullyQualifiedName();
+  }
+
+  public static String getFqn(EntityInterface entity) {
+    return entity == null ? null : entity.getFullyQualifiedName();
+  }
+
+  public static EntityReference getEntityReference(EntityInterface entity) {
+    return entity == null ? null : entity.getEntityReference();
+  }
 }

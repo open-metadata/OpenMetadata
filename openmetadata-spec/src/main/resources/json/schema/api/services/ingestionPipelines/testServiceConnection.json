@@ -22,13 +22,16 @@
         },
         {
           "$ref": "../../../entity/services/mlmodelService.json#/definitions/mlModelConnection"
+        },
+        {
+          "$ref": "../../../entity/services/metadataService.json#/definitions/metadataConnection"
         }
       ]
     },
     "connectionType": {
       "description": "Type of service such as Database, Dashboard, Messaging, etc.",
       "type": "string",
-      "enum": ["Database", "Dashboard", "Messaging", "Pipeline", "MlModel"],
+      "enum": ["Database", "Dashboard", "Messaging", "Pipeline", "MlModel", "Metadata"],
       "javaEnums": [
         {
           "name": "Database"
@@ -44,6 +47,9 @@
         },
         {
           "name": "MlModel"
+        },
+        {
+          "name": "Metadata"
         }
       ]
     },

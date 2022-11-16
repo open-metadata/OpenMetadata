@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
@@ -49,6 +50,20 @@ export const putKPI = async (data: CreateKpiRequest) => {
   const response = await APIClient.put<CreateKpiRequest, AxiosResponse<Kpi>>(
     '/kpi',
     data
+  );
+
+  return response.data;
+};
+
+export const patchKPI = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<Kpi>>(
+    `/kpi/${id}`,
+    data,
+    configOptions
   );
 
   return response.data;
