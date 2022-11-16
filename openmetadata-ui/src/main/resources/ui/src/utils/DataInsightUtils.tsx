@@ -380,3 +380,14 @@ export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
 
 export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
   moment(timestamp).format(KPI_DATE_PICKER_FORMAT);
+
+export const getKpiTargetValueByMetricType = (
+  metricType: KpiTargetType,
+  metricValue: number
+) => {
+  if (metricType === KpiTargetType.Percentage) {
+    return metricValue / 100;
+  }
+
+  return metricValue;
+};
