@@ -1517,10 +1517,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(3, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY1.getName(), ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary2 tags  - 1 table
-    assertEquals(1, getGlossaryUsageCount("g2", ADMIN_AUTH_HEADERS));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY2.getName(), ADMIN_AUTH_HEADERS));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
     assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
