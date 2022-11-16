@@ -399,9 +399,9 @@ class DatalakeSource(DatabaseServiceSource):
                     if (
                         hasattr(data_frame[column], "dtypes")
                         and data_frame[column].dtypes.name in DATALAKE_INT_TYPES
+                        and data_frame[column].dtypes.name == "int64"
                     ):
-                        if data_frame[column].dtypes.name == "int64":
-                            data_type = DataType.INT.value
+                        data_type = DataType.INT.value
 
                     parsed_string = {
                         "dataTypeDisplay": data_type,
