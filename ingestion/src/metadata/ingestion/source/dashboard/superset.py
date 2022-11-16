@@ -19,6 +19,7 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
@@ -160,6 +161,9 @@ class SupersetSource(DashboardServiceSource):
             displayName=dashboard_details["dashboard_title"],
             description="",
             dashboardUrl=dashboard_details["url"],
+            owner=EntityReference(id=self.context.owner.id.__root__, type="user")
+            if self.context.owner
+            else None,
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts
@@ -276,3 +280,26 @@ class SupersetSource(DashboardServiceSource):
                     f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
                 )
         return None
+
+    def yield_owner(  # pylint: disable=arguments-differ
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[CreateUserRequest]]:
+        """Get dashboard owner
+
+        Args:
+            dashboard_details:
+        Returns:
+            Optional[EntityReference]
+        """
+        for owner in dashboard_details.get("owners", []):
+            if owner.get("username") and owner.get("email"):
+                display_name = (
+                    f"{owner.get('first_name')} {owner.get('last_name','')}"
+                    if owner.get("first_name")
+                    else owner.get("username")
+                )
+                yield CreateUserRequest(
+                    name=owner.get("username"),
+                    displayName=display_name,
+                    email=owner.get("email"),
+                )
