@@ -74,28 +74,27 @@ export const handleIngestionRetry = (
         }
     };
     const checkSuccessState = () => {
-        testIngestionsTab();
-        retryCount++;
-        // the latest run should be success
-        cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
-            ($ingestionStatus) => {
-                if (
-                    ($ingestionStatus.text() === 'Running' ||
-                        $ingestionStatus.text() === 'Queued' || $ingestionStatus.text() === '--') &&
-                    retryCount <= RETRY_TIMES
-                ) {
-                    // retry after waiting for 20 seconds
-                    cy.wait(20000);
-                    cy.reload();
-                    checkSuccessState();
-                } else {
-                    cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
-                        'have.text',
-                        'Success'
-                    );
-                }
-            }
-        );
+      testIngestionsTab();
+      retryCount++;
+      // the latest run should be success
+      cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+        ($ingestionStatus) => {
+          console.log($ingestionStatus.text());
+          if (
+            $ingestionStatus.text() !== 'Success' &&
+            retryCount <= RETRY_TIMES
+          ) {
+            // retry after waiting for 20 seconds
+            cy.wait(20000);
+            cy.reload();
+            checkSuccessState();
+          } else {
+            cy.get(
+              `.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`
+            ).should('have.text', 'Success');
+          }
+        }
+      );
     };
 
     checkSuccessState();
@@ -903,28 +902,25 @@ export const retryIngestionRun = () => {
     };
 
     const checkSuccessState = () => {
-        testIngestionsTab();
-        retryCount++;
-        // the latest run should be success
-        cy.get('[data-testid="pipeline-status"]').then(
-            ($ingestionStatus) => {
-                if (
-                    ($ingestionStatus.text() === 'Running' ||
-                        $ingestionStatus.text() === 'Queued' || $ingestionStatus.text() === '--') &&
-                    retryCount <= RETRY_TIMES
-                ) {
-                    // retry after waiting for 20 seconds
-                    cy.wait(20000);
-                    cy.reload();
-                    checkSuccessState();
-                } else {
-                    cy.get('[data-testid="pipeline-status"]').should(
-                        'have.text',
-                        'Success'
-                    );
-                }
-            }
-        );
+      testIngestionsTab();
+      retryCount++;
+      // the latest run should be success
+      cy.get('[data-testid="pipeline-status"]').then(($ingestionStatus) => {
+        if (
+          $ingestionStatus.text() === 'Success' &&
+          retryCount <= RETRY_TIMES
+        ) {
+          // retry after waiting for 20 seconds
+          cy.wait(20000);
+          cy.reload();
+          checkSuccessState();
+        } else {
+          cy.get('[data-testid="pipeline-status"]').should(
+            'have.text',
+            'Success'
+          );
+        }
+      });
     };
 
     checkSuccessState();
