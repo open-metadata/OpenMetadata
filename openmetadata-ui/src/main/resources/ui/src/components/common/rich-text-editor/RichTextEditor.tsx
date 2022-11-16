@@ -37,6 +37,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       useCommandShortcut = true,
       extendedAutolinks = true,
       hideModeSwitch = true,
+      autofocus = false,
       initialValue = '',
       readonly,
       height,
@@ -87,6 +88,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
         ) : (
           <div data-testid="editor">
             <Editor
+              autofocus={autofocus}
               extendedAutolinks={extendedAutolinks}
               height={height ?? '320px'}
               hideModeSwitch={hideModeSwitch}
