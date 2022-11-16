@@ -16,7 +16,7 @@ package org.openmetadata.service.secrets;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 @Getter
 @Setter
