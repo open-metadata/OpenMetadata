@@ -1090,7 +1090,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Remove owner relationship for a given entity */
   private void removeOwner(T entity, EntityReference owner) {
-    if (owner != null && owner.getId() != null) {
+    if (EntityUtil.getId(owner) != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), entity.getId());
       deleteRelationship(owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
     }

@@ -23,6 +23,8 @@ import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -36,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -65,6 +68,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
+@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
   public GlossaryResourceTest() {
@@ -203,6 +207,102 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertTagPrefixAbsent(table.getColumns().get(0).getTags(), "renameGlossary");
   }
 
+  @Test
+  void patch_moveGlossaryTerm(TestInfo test) throws IOException {
+    //
+    // These test move a glossary term to different parts of the glossary hierarchy and to different glossaries
+    //
+
+    // Create glossary with the following hierarchy
+    //    -> t1 -> t11 -> t111
+    // g  -> t12 -> t121
+    //    -> t2 -> t21 -> t211
+    //
+    // h  -> h1 -> h11 -> h111
+    Glossary g = createEntity(createRequest("changeParent_g"), ADMIN_AUTH_HEADERS);
+    Glossary h = createEntity(createRequest("changeParent_h"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    GlossaryTerm t1 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t1");
+    GlossaryTerm t11 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t11");
+    GlossaryTerm t111 = createGlossaryTerm(glossaryTermResourceTest, g, t11, "t111");
+    GlossaryTerm t12 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t12");
+    GlossaryTerm t121 = createGlossaryTerm(glossaryTermResourceTest, g, t12, "t121");
+    GlossaryTerm t13 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t13");
+    GlossaryTerm t131 = createGlossaryTerm(glossaryTermResourceTest, g, t13, "t131");
+    GlossaryTerm t2 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t2");
+    GlossaryTerm t21 = createGlossaryTerm(glossaryTermResourceTest, g, t2, "t21");
+    GlossaryTerm t211 = createGlossaryTerm(glossaryTermResourceTest, g, t21, "t211");
+    GlossaryTerm h1 = createGlossaryTerm(glossaryTermResourceTest, h, null, "h1");
+    GlossaryTerm h11 = createGlossaryTerm(glossaryTermResourceTest, h, h1, "h11");
+    GlossaryTerm h111 = createGlossaryTerm(glossaryTermResourceTest, h, h11, "h111");
+
+    // Create a table with all the terms as tag labels
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<TagLabel> tagLabels = toTagLabels(t1, t11, t111, t12, t121, t13, t131, t2, t21, t211, h1, h11, h111);
+    Column column = new Column().withName("c1").withDataType(ColumnDataType.INT).withTags(tagLabels);
+    CreateTable createTable =
+        tableResourceTest.createRequest(getEntityName(test)).withTags(tagLabels).withColumns(CommonUtil.listOf(column));
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    Object[][] scenarios = {
+      // { glossaryTerm being moved, parent/glossary to move to, [... parent/glossary to move to] }
+      // Leaf node t111 is moved in these tests
+      {t111, g, t1, t11},
+      {t111, t2, t21, t211}, // Diff hierarchy and glossary
+      {t111, h, h1, h11, h111}, // Diff hierarchy and diff glossary
+
+      // Middle node t11 is moved in these tests
+      {t11, g, t1}, // Same hierarchy and glossary
+      {t11, t2, t21, t211}, // Diff hierarchy and same glossary
+      {t11, h, h1, h11, h111}, // Diff hierarchy and diff glossary
+
+      // Top node t1 is moved in these tests
+      {t1, g}, // Same hierarchy and glossary
+      {t1, t2, t21, t211}, // Diff hierarchy and same glossary
+      {t1, h, h1, h11, h111} // Diff hierarchy and diff glossary
+    };
+
+    for (int i = 0; i < scenarios.length; i++) {
+      GlossaryTerm termToMove = (GlossaryTerm) scenarios[i][0];
+
+      // Moving to another glossary term as parent
+      for (int j = 1; j < scenarios[i].length; j++) {
+        GlossaryTerm updatedTerm;
+
+        EntityReference newGlossary;
+        EntityReference newParent;
+        if (scenarios[i][j] instanceof Glossary) { // Moving to root of another glossary
+          newGlossary = ((Glossary) scenarios[i][j]).getEntityReference();
+          newParent = null;
+        } else { // Moving to another glossary term as parent
+          GlossaryTerm newParentTerm = (GlossaryTerm) scenarios[i][j];
+          newGlossary = newParentTerm.getGlossary();
+          newParent = newParentTerm.getEntityReference();
+        }
+        LOG.info(
+            "Scenario iteration [{}, {}] move {} from glossary{} parent {} to glossary {} and parent {}",
+            i,
+            j,
+            getFqn(termToMove),
+            getFqn(termToMove.getGlossary()),
+            getFqn(termToMove.getParent()),
+            getFqn(newParent),
+            getFqn(newGlossary));
+        updatedTerm = moveGlossaryTermAndBack(newGlossary, newParent, termToMove, table);
+        copyGlossaryTerm(updatedTerm, termToMove);
+      }
+    }
+  }
+
+  private void copyGlossaryTerm(GlossaryTerm from, GlossaryTerm to) {
+    to.withGlossary(from.getGlossary())
+        .withParent(from.getParent())
+        .withFullyQualifiedName(from.getFullyQualifiedName())
+        .withChangeDescription(from.getChangeDescription())
+        .withVersion(from.getVersion());
+  }
+
   @Override
   public CreateGlossary createRequest(String name) {
     return new CreateGlossary().withName(name).withDescription("d");
@@ -270,7 +370,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withName(name)
             .withDescription("d")
             .withGlossary(glossary.getEntityReference())
-            .withParent(parent == null ? null : parent.getEntityReference())
+            .withParent(getEntityReference(parent))
             .withProvider(provider);
     return resource.createEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -304,9 +404,44 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     }
   }
 
+  /** Change the parent of a glossary term to another glossary term then move it back to the previous hierarchy */
+  private GlossaryTerm moveGlossaryTermAndBack(
+      EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table) throws IOException {
+    EntityReference previousParent = term.getParent();
+    EntityReference previousGlossary = term.getGlossary();
+
+    // Change the parent to new parent
+    GlossaryTerm updatedTerm = moveGlossaryTerm(newGlossary, newParent, term, table);
+    // Change the parent back to old parent
+    return moveGlossaryTerm(previousGlossary, previousParent, updatedTerm, table);
+  }
+
+  private GlossaryTerm moveGlossaryTerm(
+      EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table) throws IOException {
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    String previousTermFqn = term.getFullyQualifiedName();
+
+    // Update the parent
+    GlossaryTerm updatedTerm = glossaryTermResourceTest.moveGlossaryTerm(newGlossary, newParent, term);
+    assertTagLabelsChanged(table, previousTermFqn, updatedTerm.getFullyQualifiedName());
+    return updatedTerm;
+  }
+
   private void assertTagPrefixAbsent(List<TagLabel> labels, String prefix) {
     for (TagLabel tag : labels) {
       assertFalse(tag.getTagFQN().startsWith(prefix), tag.getTagFQN());
+    }
+  }
+
+  private void assertTagLabelsChanged(Table table, String previousTermFqn, String newTermFqn)
+      throws HttpResponseException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table = tableResourceTest.getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+    // Ensure the previous term is no longer used as tags due tag label renaming
+    if (!previousTermFqn.equals(newTermFqn)) { // Old and new parent are different
+      assertTagPrefixAbsent(table.getTags(), previousTermFqn);
+      assertTagPrefixAbsent(table.getColumns().get(0).getTags(), previousTermFqn);
     }
   }
 }
