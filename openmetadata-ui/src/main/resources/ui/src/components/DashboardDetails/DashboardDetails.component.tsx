@@ -69,7 +69,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -655,8 +655,8 @@ const DashboardDetails = ({
   );
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-page-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
           currentOwner={dashboardDetails.owner}
@@ -723,7 +723,7 @@ const DashboardDetails = ({
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full tw--ml-5">
+                    <div className="tw-col-span-full">
                       <Description
                         description={description}
                         entityFieldTasks={getEntityFieldThreadCounts(
@@ -754,6 +754,7 @@ const DashboardDetails = ({
                   </div>
                   <Table
                     bordered
+                    className="p-t-xs"
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}
@@ -856,7 +857,7 @@ const DashboardDetails = ({
           onCancel={closeRequestModal}
         />
       ) : null}
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

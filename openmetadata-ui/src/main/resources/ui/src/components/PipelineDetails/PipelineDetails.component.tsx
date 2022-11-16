@@ -92,7 +92,7 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
@@ -782,8 +782,8 @@ const PipelineDetails = ({
   }, [pipelineFQN, description, pipelineDetails, tasks]);
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-page-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
           currentOwner={pipelineDetails.owner}
@@ -846,7 +846,9 @@ const PipelineDetails = ({
                 {t('label.tasks')}
               </span>
             }>
-            <Row gutter={[16, 16]}>
+            <Row
+              className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
+              gutter={[0, 16]}>
               <Col span={24}>
                 <Description
                   description={description}
@@ -887,7 +889,9 @@ const PipelineDetails = ({
               </Col>
               {!isEmpty(tasks) ? (
                 <Col span={24}>
-                  <Card title={t('label.dag-view')}>
+                  <Card
+                    headStyle={{ background: '#fafafa' }}
+                    title={t('label.dag-view')}>
                     <div className="h-100">
                       <TasksDAGView
                         selectedExec={selectedExecution}
@@ -1039,7 +1043,7 @@ const PipelineDetails = ({
           onCancel={closeRequestModal}
         />
       ) : null}
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

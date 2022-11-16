@@ -67,7 +67,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -517,9 +517,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   ]);
 
   return (
-    <PageContainer>
+    <PageContainerV1>
       <div
-        className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
+        className="entity-details-page-container"
         data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
@@ -579,7 +579,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
             <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
               {activeTab === 1 && (
                 <Fragment>
@@ -689,7 +689,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onCancel={handleThreadPanelClose}
         />
       ) : null}
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

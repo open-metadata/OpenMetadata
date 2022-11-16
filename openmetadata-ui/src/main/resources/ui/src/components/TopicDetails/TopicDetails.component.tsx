@@ -57,7 +57,7 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
@@ -465,8 +465,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-page-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
           currentOwner={topicDetails.owner}
@@ -524,12 +524,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
             <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full tw--ml-5">
+                    <div className="tw-col-span-full">
                       <Description
                         description={description}
                         entityFieldTasks={getEntityFieldThreadCounts(
@@ -672,7 +672,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           ) : null}
         </div>
       </div>
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 
