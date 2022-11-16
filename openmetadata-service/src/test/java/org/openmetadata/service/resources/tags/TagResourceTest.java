@@ -100,7 +100,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
-    return EntityUtil.getTagLabel(TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS));
+    return EntityUtil.toTagLabel(TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS));
   }
 
   @Test

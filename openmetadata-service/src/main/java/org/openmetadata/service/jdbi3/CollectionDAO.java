@@ -1886,7 +1886,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT COUNT(*) FROM tag_usage "
-            + "WHERE (tagFQN LIKE CONCAT(:tagFqn, '.%') || tagFQN = :tagFqn) "
+            + "WHERE (tagFQN LIKE CONCAT(:tagFqn, '.%') OR tagFQN = :tagFqn) "
             + "AND source = :source")
     int getTagCount(@Bind("source") int source, @Bind("tagFqn") String tagFqn);
 
