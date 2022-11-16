@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AUTH_0;
 import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AZURE;
 import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
@@ -31,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
@@ -329,7 +331,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
-    return jwtClientConfig == null || jwtClientConfig.getJwtToken() == null
+    return Objects.isNull(jwtClientConfig) || nullOrEmpty(jwtClientConfig.getJwtToken())
         ? JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited)
         : new JWTAuthMechanism()
             .withJWTToken(jwtClientConfig.getJwtToken())
