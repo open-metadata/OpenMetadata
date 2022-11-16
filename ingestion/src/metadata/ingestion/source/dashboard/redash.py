@@ -200,7 +200,9 @@ class RedashSource(DashboardServiceSource):
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to creating dashboard chart url for {dashboard_details['name']}: {exc}")
+                logger.warning(
+                    f"Error to yield dashboard chart for widget_id: {widgets['id']} and {dashboard_details}: {exc}"
+                )
 
     def close(self):
         self.client.session.close()
