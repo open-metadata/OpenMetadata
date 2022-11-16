@@ -48,6 +48,8 @@ base_requirements = {
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
     "croniter~=1.3.0",
+    "requests-aws4auth==1.1.2",
+    "pymysql>=1.0.2",
 }
 
 
