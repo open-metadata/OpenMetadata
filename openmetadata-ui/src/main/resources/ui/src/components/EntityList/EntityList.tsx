@@ -44,22 +44,22 @@ const EntityList: FunctionComponent<Prop> = ({
 }: Prop) => {
   return (
     <Fragment>
-      <Text className="tw-font-semibold" type="secondary">
+      <Text className="text-600" type="secondary">
         {headerText}
       </Text>
       {entityList.length
         ? entityList.map((item, index) => {
             return (
               <div
-                className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+                className="flex items-center justify-between m-b-xs"
                 data-testid={`${testIDText}-${getEntityName(
                   item as unknown as EntityReference
                 )}`}
                 key={index}>
-                <div className="tw-flex">
+                <div className="flex">
                   {getEntityIcon(item.type || '')}
                   <Link
-                    className="tw-font-medium"
+                    className="font-medium"
                     to={getEntityLink(
                       item.type || '',
                       item.fullyQualifiedName as string
@@ -114,7 +114,7 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       <Typography.Text
-                        className="ant-typography-ellipsis-custom w-48 text-left"
+                        className="w-48 text-left"
                         ellipsis={{ tooltip: true }}>
                         {getEntityName(item as unknown as EntityReference)}
                       </Typography.Text>
