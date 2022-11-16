@@ -96,7 +96,7 @@ class MysqlCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 44
+        return 43
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
