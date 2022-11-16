@@ -693,7 +693,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       String origJson = JsonUtils.pojoToJson(entity);
       entity.setTags(new ArrayList<>());
       entity.getTags().add(USER_ADDRESS_TAG_LABEL);
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL);
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
     }
     if (supportsFollowers) {
@@ -1252,8 +1252,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.setTags(new ArrayList<>());
       entity.getTags().add(USER_ADDRESS_TAG_LABEL);
       entity.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
       fieldAdded(change, FIELD_TAGS, List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
     }
     fieldAdded(change, "displayName", "displayName");
@@ -1656,6 +1656,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     UUID id = entity.getId();
 
     // Delete entity
+    hardDelete = false;
     T deletedEntity = deleteEntity(id, recursive, hardDelete, authHeaders); // TODO fix this to include
     long timestamp = deletedEntity.getUpdatedAt();
 
