@@ -157,3 +157,9 @@ class DomoClient:
 class NifiClientWrapper:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class AmundsenClient:
+    def __init__(self, client) -> None:
+        self.client = client
