@@ -114,9 +114,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private void populateDatabase(DatabaseSchema schema) throws IOException {
-    Database database = Entity.getEntity(schema.getDatabase(), Fields.EMPTY_FIELDS, ALL);
-    schema.setDatabase(database.getEntityReference());
-    schema.setService(database.getService());
-    schema.setServiceType(database.getServiceType());
+    Database database = Entity.getEntity(schema.getDatabase(), "owner", ALL);
+    schema
+        .withDatabase(database.getEntityReference())
+        .withService(database.getService())
+        .withServiceType(database.getServiceType());
+
+    // Carry forward ownership from database, if necessary
+    schema.withOwner(schema.getOwner() == null ? database.getOwner() : schema.getOwner());
   }
 }
