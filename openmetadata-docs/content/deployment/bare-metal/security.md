@@ -26,6 +26,14 @@ By default Basic Authentication will be enabled as authentication mechanism.
 <InlineCalloutContainer>
   <InlineCallout
     color="violet-70"
+    bold="Ldap Authentication"
+    icon="add_moderator"
+    href="/deployment/security/ldap"
+  >
+    Configure Ldap Authentication to access the UI and APIs
+  </InlineCallout>
+  <InlineCallout
+    color="violet-70"
     bold="Auth0 SSO"
     icon="add_moderator"
     href="/deployment/security/auth0"
