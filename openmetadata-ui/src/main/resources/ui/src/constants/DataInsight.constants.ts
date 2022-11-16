@@ -180,3 +180,10 @@ export const SUPPORTED_CHARTS_FOR_KPI = [
   DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
   DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
 ];
+
+export const KPI_DATE_PICKER_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+
+export const KPI_DATES = {
+  startDate: '',
+  endDate: '',
+};
