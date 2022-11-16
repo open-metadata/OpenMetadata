@@ -31,6 +31,7 @@ from sqlalchemy.pool import QueuePool
 
 from metadata.clients.connection_clients import (
     AirByteClient,
+    AmundsenClient,
     DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
@@ -123,6 +124,9 @@ from metadata.generated.schema.entity.services.connections.messaging.kinesisConn
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.amundsenConnection import (
+    AmundsenConnection,
+)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
@@ -163,6 +167,7 @@ from metadata.utils.source_connections import (
     singledispatch_with_options_secrets,
     update_connection_opts_args,
 )
+from metadata.utils.sql_queries import NEO4J_AMUNDSEN_USER_QUERY
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")
@@ -1234,6 +1239,35 @@ def _(connection: DomoDatabaseConnection) -> None:
 def _(connection: DomoClient) -> None:
     try:
         connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: AmundsenConnection) -> AmundsenClient:
+
+    from metadata.clients.neo4j_client import Neo4JConfig, Neo4jHelper
+
+    try:
+        neo4j_config = Neo4JConfig(
+            username=connection.username,
+            password=connection.password.get_secret_value(),
+            neo4j_url=connection.hostPort,
+            max_connection_life_time=connection.maxConnectionLifeTime,
+            neo4j_encrypted=connection.encrypted,
+            neo4j_validate_ssl=connection.validateSSL,
+        )
+        return AmundsenClient(Neo4jHelper(neo4j_config))
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@test_connection.register
+def _(connection: AmundsenClient) -> None:
+    try:
+        connection.client.execute_query(query=NEO4J_AMUNDSEN_USER_QUERY)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)
