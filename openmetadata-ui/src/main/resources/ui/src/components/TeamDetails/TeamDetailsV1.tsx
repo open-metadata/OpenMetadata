@@ -170,7 +170,7 @@ const TeamDetailsV1 = ({
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [selectedEntity, setEntity] = useState<{
     attribute: 'defaultRoles' | 'policies';
     record: EntityReference;
