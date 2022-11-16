@@ -274,7 +274,10 @@
     "kpi-display-name": "Kpi display name",
     "data-insight-chart": "Data insight chart",
     "data-assets": "Data Assets",
-    "app-analytics": "App Analytics"
+    "app-analytics": "App Analytics",
+    "quality": "Quality",
+    "insight": "Insight",
+    "govern": "Govern"
   },
   "message": {
     "service-email-required": "Service account Email is required",

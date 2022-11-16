@@ -12,6 +12,7 @@
  */
 
 import { Card, Typography } from 'antd';
+import { RangePickerProps } from 'antd/lib/date-picker';
 import {
   isEmpty,
   isInteger,
@@ -20,11 +21,13 @@ import {
   last,
   toNumber,
 } from 'lodash';
+import moment from 'moment';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import {
   ENTITIES_SUMMARY_LIST,
+  KPI_DATE_PICKER_FORMAT,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
@@ -368,3 +371,12 @@ export const getKpiGraphData = (kpiResults: KpiResult[]) => {
 
   return { graphData: prepareGraphData(timeStamps, formattedData), kpis };
 };
+
+export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
+  // Can not select days before today
+
+  return current && current.isBefore(moment().subtract(1, 'day'));
+};
+
+export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
+  moment(timestamp).format(KPI_DATE_PICKER_FORMAT);

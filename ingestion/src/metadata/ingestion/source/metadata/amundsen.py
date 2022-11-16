@@ -19,7 +19,6 @@ from typing import Iterable, List, Optional
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
 
-from metadata.clients.neo4j_client import Neo4JConfig, Neo4jHelper
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -68,6 +67,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.amundsen_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -135,15 +135,8 @@ class AmundsenSource(Source[Entity]):
         self.database_object = None
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        neo4j_config = Neo4JConfig(
-            username=self.service_connection.username,
-            password=self.service_connection.password.get_secret_value(),
-            neo4j_url=self.service_connection.hostPort,
-            max_connection_life_time=self.service_connection.maxConnectionLifeTime,
-            neo4j_encrypted=self.service_connection.encrypted,
-            neo4j_validate_ssl=self.service_connection.validateSSL,
-        )
-        self.neo4j_helper = Neo4jHelper(neo4j_config)
+        self.connection = get_connection(self.service_connection)
+        self.client = self.connection.client
         self.status = AmundsenStatus()
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
@@ -164,18 +157,16 @@ class AmundsenSource(Source[Entity]):
         pass
 
     def next_record(self) -> Iterable[Entity]:
-        table_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
+        table_entities = self.client.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
         for table in table_entities:
             yield from self.create_table_entity(table)
 
-        user_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
+        user_entities = self.client.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
         for user in user_entities:
             yield from self.create_user_entity(user)
             yield from self.add_owner_to_entity(user)
 
-        dashboard_entities = self.neo4j_helper.execute_query(
-            NEO4J_AMUNDSEN_DASHBOARD_QUERY
-        )
+        dashboard_entities = self.client.execute_query(NEO4J_AMUNDSEN_DASHBOARD_QUERY)
         for dashboard in dashboard_entities:
             yield from self.create_dashboard_service(dashboard)
             yield from self.create_chart_entity(dashboard)
@@ -486,8 +477,8 @@ class AmundsenSource(Source[Entity]):
             yield chart
 
     def close(self):
-        if self.neo4j_helper is not None:
-            self.neo4j_helper.close()
+        if self.client is not None:
+            self.client.close()
 
     def get_status(self) -> SourceStatus:
         return self.status

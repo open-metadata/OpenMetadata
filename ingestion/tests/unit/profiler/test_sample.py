@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import CustomTypes
@@ -73,7 +74,11 @@ class SampleTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, table_entity=table_entity, ometa_client=None
+            profiler_interface_args=ProfilerInterfaceArgs(
+                service_connection_config=sqlite_conn,
+                table_entity=table_entity,
+                ometa_client=None,
+            )
         )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
@@ -133,10 +138,12 @@ class SampleTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                table_entity=self.table_entity,
-                table_sample_precentage=50,
-                ometa_client=None,
+                ProfilerInterfaceArgs(
+                    service_connection_config=self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    table_sample_precentage=50,
+                    ometa_client=None,
+                )
             )
 
         sample = sqa_profiler_interface._create_thread_safe_sampler(
@@ -174,10 +181,12 @@ class SampleTest(TestCase):
             profiler = Profiler(
                 count,
                 profiler_interface=SQAProfilerInterface(
-                    self.sqlite_conn,
-                    table_entity=self.table_entity,
-                    table_sample_precentage=50,
-                    ometa_client=None,
+                    profiler_interface_args=ProfilerInterfaceArgs(
+                        service_connection_config=self.sqlite_conn,
+                        table_entity=self.table_entity,
+                        table_sample_precentage=50,
+                        ometa_client=None,
+                    )
                 ),
             )
         res = profiler.compute_metrics()._column_results
@@ -194,10 +203,12 @@ class SampleTest(TestCase):
             profiler = Profiler(
                 hist,
                 profiler_interface=SQAProfilerInterface(
-                    self.sqlite_conn,
-                    table_entity=self.table_entity,
-                    table_sample_precentage=50,
-                    ometa_client=None,
+                    profiler_interface_args=ProfilerInterfaceArgs(
+                        service_connection_config=self.sqlite_conn,
+                        table_entity=self.table_entity,
+                        table_sample_precentage=50,
+                        ometa_client=None,
+                    )
                 ),
             )
         res = profiler.compute_metrics()._column_results
@@ -245,7 +256,7 @@ class SampleTest(TestCase):
         We should be able to pick up sample data from the sampler
         """
         sampler = Sampler(session=self.session, table=User)
-        sample_data = sampler.fetch_sample_data()
+        sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 6
         assert len(sample_data.rows) == 30
@@ -287,7 +298,7 @@ class SampleTest(TestCase):
             self.session.commit()
 
         sampler = Sampler(session=self.session, table=UserBinary)
-        sample_data = sampler.fetch_sample_data()
+        sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 7
         assert len(sample_data.rows) == 10
@@ -313,7 +324,7 @@ class SampleTest(TestCase):
         """
         stmt = "SELECT id, name FROM users"
         sampler = Sampler(session=self.session, table=User, profile_sample_query=stmt)
-        sample_data = sampler.fetch_sample_data()
+        sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 2
         names = [col.__root__ for col in sample_data.columns]
