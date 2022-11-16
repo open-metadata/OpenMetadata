@@ -24,7 +24,6 @@ install_apis:  ## Install the REST APIs module to the current environment
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
 	python -m pip install "ingestion[test]/"
-	playwright install --with-deps
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
@@ -70,7 +69,7 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight ingestion/tests/playwright/data_insight
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests

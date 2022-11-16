@@ -164,7 +164,6 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    "pytest-playwright",
     "faker",
     "coverage",
     # sklearn integration
