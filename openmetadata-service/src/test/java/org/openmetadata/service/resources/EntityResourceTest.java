@@ -1656,7 +1656,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     UUID id = entity.getId();
 
     // Delete entity
-    hardDelete = false;
     T deletedEntity = deleteEntity(id, recursive, hardDelete, authHeaders); // TODO fix this to include
     long timestamp = deletedEntity.getUpdatedAt();
 
