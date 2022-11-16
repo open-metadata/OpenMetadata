@@ -15,7 +15,7 @@ import React from 'react';
 
 const { Text } = Typography;
 
-const EsConfigFieldLabels = ({
+const EsConfigFieldLabel = ({
   label,
   description,
 }: {
@@ -30,4 +30,4 @@ const EsConfigFieldLabels = ({
   );
 };
 
-export default EsConfigFieldLabels;
+export default EsConfigFieldLabel;

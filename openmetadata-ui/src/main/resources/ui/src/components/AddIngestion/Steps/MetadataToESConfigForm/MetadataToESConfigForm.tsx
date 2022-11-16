@@ -24,7 +24,7 @@ import { startCase } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import EsConfigFieldLabels from './EsConfigFieldLabels.component';
+import EsConfigFieldLabel from './EsConfigFieldLabel.component';
 import './MetadataToESConfigForm.less';
 
 interface Props {
@@ -56,7 +56,7 @@ const MetadataToESConfigForm = ({
       onFinish={handleSubmit}>
       <Form.Item
         label={
-          <EsConfigFieldLabels
+          <EsConfigFieldLabel
             description={t('message.field-ca-certs-description')}
             label={startCase('caCerts')}
           />
@@ -66,7 +66,7 @@ const MetadataToESConfigForm = ({
       </Form.Item>
       <Form.Item
         label={
-          <EsConfigFieldLabels
+          <EsConfigFieldLabel
             description={t('message.field-region-name-description')}
             label={startCase('regionName')}
           />
@@ -76,7 +76,7 @@ const MetadataToESConfigForm = ({
       </Form.Item>
       <Form.Item
         label={
-          <EsConfigFieldLabels
+          <EsConfigFieldLabel
             description={t('message.field-timeout-description')}
             label={startCase('timeout')}
           />
