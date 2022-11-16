@@ -37,7 +37,7 @@ import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
-import { KpiResult } from '../generated/dataInsight/kpi/kpi';
+import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
 import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
 import {
@@ -81,40 +81,43 @@ export const renderLegend = (legendData: LegendProps, latest: string) => {
   );
 };
 
-export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], label, isPercentage, kpiTooltipRecord } = props;
-
+const getEntryFormattedValue = (
+  value: number | string | undefined,
+  dataKey: number | string | undefined,
+  kpiTooltipRecord: DataInsightChartTooltipProps['kpiTooltipRecord'],
+  isPercentage?: boolean
+) => {
   let suffix = '';
   if (isPercentage) {
     suffix = '%';
   }
 
-  const getEntryFormattedValue = (
-    value: number | string | undefined,
-    dataKey: number | string | undefined
-  ) => {
-    // handle kpi metric type check for entry value suffix
-    if (
-      !isUndefined(kpiTooltipRecord) &&
-      !isEmpty(kpiTooltipRecord) &&
-      !isUndefined(dataKey)
-    ) {
-      const metricType = kpiTooltipRecord[dataKey];
-      suffix = metricType === KpiTargetType.Percentage ? '%' : suffix;
-    }
+  // handle kpi metric type check for entry value suffix
 
-    if (!isUndefined(value)) {
-      if (isString(value)) {
-        return `${value}${suffix}`;
-      } else if (isInteger(value)) {
-        return `${value}${suffix}`;
-      } else {
-        return `${value.toFixed(2)}${suffix}`;
-      }
+  if (
+    !isUndefined(kpiTooltipRecord) &&
+    !isEmpty(kpiTooltipRecord) &&
+    !isUndefined(dataKey)
+  ) {
+    const metricType = kpiTooltipRecord[dataKey];
+    suffix = metricType === KpiTargetType.Percentage ? '%' : suffix;
+  }
+
+  if (!isUndefined(value)) {
+    if (isString(value)) {
+      return `${value}${suffix}`;
+    } else if (isInteger(value)) {
+      return `${value}${suffix}`;
     } else {
-      return '';
+      return `${value.toFixed(2)}${suffix}`;
     }
-  };
+  } else {
+    return '';
+  }
+};
+
+export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
+  const { active, payload = [], label, isPercentage, kpiTooltipRecord } = props;
 
   if (active && payload && payload.length) {
     return (
@@ -128,7 +131,12 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
             </Surface>
             <span>
               {entry.dataKey} -{' '}
-              {getEntryFormattedValue(entry.value, entry.dataKey)}
+              {getEntryFormattedValue(
+                entry.value,
+                entry.dataKey,
+                kpiTooltipRecord,
+                isPercentage
+              )}
             </span>
           </li>
         ))}
@@ -449,14 +457,16 @@ export const getWebChartSummary = (
   return updatedSummary;
 };
 
-export const getKpiGraphData = (kpiResults: KpiResult[]) => {
+export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
   const kpis: string[] = [];
   const timeStamps: string[] = [];
 
   const formattedData = kpiResults.map((kpiResult) => {
     const timestamp = getFormattedDateFromMilliSeconds(kpiResult.timestamp);
     const kpiFqn = kpiResult.kpiFqn ?? '';
+    const currentKpi = kpiList.find((kpi) => kpi.fullyQualifiedName === kpiFqn);
     const kpiTarget = kpiResult.targetResult[0];
+    const kpiValue = toNumber(kpiTarget.value);
     if (!timeStamps.includes(timestamp)) {
       timeStamps.push(timestamp);
     }
@@ -466,7 +476,10 @@ export const getKpiGraphData = (kpiResults: KpiResult[]) => {
 
     return {
       timestamp,
-      [kpiFqn]: kpiTarget.value,
+      [kpiFqn]:
+        currentKpi?.metricType === KpiTargetType.Percentage
+          ? kpiValue * 100
+          : kpiValue,
     };
   });
 
