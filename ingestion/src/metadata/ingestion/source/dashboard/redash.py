@@ -16,23 +16,27 @@ from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
-from metadata.generated.schema.api.data.createDashboard import \
-    CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboard import \
-    Dashboard as Lineage_Dashboard
-from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import \
-    RedashConnection
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import \
-    OpenMetadataConnection
-from metadata.generated.schema.metadataIngestion.workflow import \
-    Source as WorkflowSource
+from metadata.generated.schema.entity.data.dashboard import (
+    Dashboard as Lineage_Dashboard,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
+    RedashConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import (clean_raw_query,
-                                                    search_table_entities)
-from metadata.ingestion.source.dashboard.dashboard_service import \
-    DashboardServiceSource
+from metadata.ingestion.lineage.sql_lineage import (
+    clean_raw_query,
+    search_table_entities,
+)
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
@@ -113,9 +117,7 @@ class RedashSource(DashboardServiceSource):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error to yield dashboard for {dashboard_details}: {exc}"
-            )
+            logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str
@@ -165,7 +167,6 @@ class RedashSource(DashboardServiceSource):
                 logger.warning(
                     f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
                 )
-        
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
