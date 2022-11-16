@@ -84,6 +84,12 @@ Cypress.on('uncaught:exception', (err) => {
 });
 
 Cypress.Commands.add('storeSession', (username, password) => {
+  /* 
+  Reference docs for session https://docs.cypress.io/api/commands/session
+  Its currently Experimental feature, but cypress is encouraging to use this feature
+  as Cypress.Cookies.preserveOnce() and Cypress.Cookies.defaults() has been deprecated
+  */
+ 
   cy.session([username, password], () => {
     cy.visit('/');
     cy.get('[id="email"]').should('be.visible').clear().type(username);
