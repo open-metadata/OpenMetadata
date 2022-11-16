@@ -112,10 +112,11 @@ class RedashSource(DashboardServiceSource):
                 dashboardUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
             )
             self.status.scanned(dashboard_details["name"])
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error to creating dashboard url for {dashboard_details['name']}: {exc}"
+                f"Error to creating dashboard for {dashboard_details}: {exc}"
             )
 
     def yield_dashboard_lineage_details(
@@ -127,41 +128,45 @@ class RedashSource(DashboardServiceSource):
         the lineage is being generated based on the query
         """
 
-        to_fqn = fqn.build(
-            self.metadata,
-            entity_type=LineageDashboard,
-            service_name=self.config.serviceName,
-            dashboard_name=str(dashboard_details.get("id")),
-        )
-        to_entity = self.metadata.get_by_name(
-            entity=LineageDashboard,
-            fqn=to_fqn,
-        )
-        for widgets in dashboard_details.get("widgets", []):
-            visualization = widgets.get("visualization")
-            if not visualization:
-                continue
-            if visualization.get("query", {}).get("query"):
-                parser = LineageRunner(clean_raw_query(visualization["query"]["query"]))
-            for table in parser.source_tables:
-                table_name = str(table)
-                database_schema_table = fqn.split_table_name(table_name)
-                from_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
-                    schema_name=database_schema_table.get("database_schema"),
-                    table_name=database_schema_table.get("table"),
-                    database_name=database_schema_table.get("database"),
-                )
-                from_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=from_fqn,
-                )
-                if from_entity and to_entity:
-                    yield self._get_add_lineage_request(
-                        to_entity=to_entity, from_entity=from_entity
+        try:
+            for widgets in dashboard_details.get("widgets", []):
+                visualization = widgets.get("visualization")
+                if not visualization.get("query"):
+                    continue
+                if visualization.get("query", {}).get("query"):
+                    parser = LineageRunner(
+                        clean_raw_query(visualization["query"]["query"])
                     )
+                for table in parser.source_tables:
+                    table_name = str(table)
+                    database_schema = None
+                    if "." in table:
+                        database_schema, table = fqn.split(table_name)[-2:]
+                    table_entities = search_table_entities(
+                        metadata=self.metadata,
+                        database=None,
+                        service_name=db_service_name,
+                        database_schema=database_schema,
+                        table=table_name,
+                    )
+                    for from_entity in table_entities:
+                        to_entity = self.metadata.get_by_name(
+                            entity=Lineage_Dashboard,
+                            fqn=fqn.build(
+                                self.metadata,
+                                Lineage_Dashboard,
+                                service_name=self.config.serviceName,
+                                dashboard_name=str(dashboard_details.get("id")),
+                            ),
+                        )
+                        yield self._get_add_lineage_request(
+                            to_entity=to_entity, from_entity=from_entity
+                        )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error to creating dashboard chart for {dashboard_details}: {exc}"
+            )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -181,11 +186,8 @@ class RedashSource(DashboardServiceSource):
                     self.status.filter(chart_display_name, "Chart Pattern not allowed")
                     continue
                 yield CreateChartRequest(
-                    name=widgets["id"]====
-                    
-                    displayName=chart_display_name
-                    if visualization and visualization["query"]
-                    else "",
+                    name=widgets["id"],
+                    displayName=chart_display_name if visualization and visualization["query"] else "",
                     chartType=get_standard_chart_type(
                         visualization["type"] if visualization else ""
                     ),
