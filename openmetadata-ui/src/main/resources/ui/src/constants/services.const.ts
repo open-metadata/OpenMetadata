@@ -202,3 +202,5 @@ export const COMMON_UI_SCHEMA = {
     ...DEF_UI_SCHEMA,
   },
 };
+
+export const OPENMETADATA = 'Openmetadata';
