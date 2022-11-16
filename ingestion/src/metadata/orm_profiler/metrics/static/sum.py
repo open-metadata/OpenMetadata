@@ -40,3 +40,13 @@ class Sum(StaticMetric):
             return SumFn(column(self.col.name))
 
         return None
+
+    @_label
+    def dl_fn(self, data_frame):
+        if is_quantifiable(self.col.datatype):
+            return (
+                data_frame[self.col.name].sum()
+                if not isinstance(data_frame[self.col.name].sum(), list)
+                else data_frame[self.col.name].sum().tolist()
+            )
+        return None

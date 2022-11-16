@@ -117,7 +117,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           aria-orientation="vertical"
           className="tw-origin-top-right tw-absolute tw-z-20
           tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none text-body"
           role="menu">
           {data.map((entity) => (
             <div

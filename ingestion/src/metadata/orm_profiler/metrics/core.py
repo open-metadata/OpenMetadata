@@ -20,6 +20,7 @@ from enum import Enum
 from functools import wraps
 from typing import Any, Dict, Optional, Tuple, TypeVar
 
+import pandas as pd
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta, Session
 
@@ -44,9 +45,15 @@ def _label(_fn):
     @wraps(_fn)
     def inner(self, *args, **kwargs):
         res = _fn(self, *args, **kwargs)
-
         # If the metric computation returns some value
         if res is not None:
+            try:
+                if pd.isnull(res):
+                    res = None
+            except ValueError:
+                pass
+            if not hasattr(res, "label"):
+                return res
             return res.label(self.name())
 
         return None
