@@ -32,8 +32,11 @@ import static org.openmetadata.service.resources.databases.TableResourceTest.get
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -47,6 +50,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -73,6 +77,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
@@ -333,7 +338,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public GlossaryTerm createTerm(
       Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers) throws IOException {
     EntityReference glossaryRef = glossary.getEntityReference();
-    EntityReference parentRef = parent != null ? parent.getEntityReference() : null;
+    EntityReference parentRef = getEntityReference(parent);
     CreateGlossaryTerm createGlossaryTerm =
         createRequest(termName, "", "", null).withGlossary(glossaryRef).withParent(parentRef).withReviewers(reviewers);
     return createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
@@ -434,29 +439,29 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     }
     switch (fieldName) {
       case "reviewers":
-        {
-          @SuppressWarnings("unchecked")
-          List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-          List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-          assertEntityReferences(expectedRefs, actualRefs);
-          break;
-        }
+        @SuppressWarnings("unchecked")
+        List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+        List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+        assertEntityReferences(expectedRefs, actualRefs);
+        break;
+      case "parent":
+      case "glossary":
+        EntityReference expectedRef = (EntityReference) expected;
+        EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
+        assertEquals(expectedRef.getId(), actualRef.getId());
+        break;
       case "synonyms":
-        {
-          @SuppressWarnings("unchecked")
-          List<String> expectedRefs = (List<String>) expected;
-          List<String> actualRefs = JsonUtils.readObjects(actual.toString(), String.class);
-          assertStrings(expectedRefs, actualRefs);
-          break;
-        }
+        @SuppressWarnings("unchecked")
+        List<String> expectedStrings = (List<String>) expected;
+        List<String> actualStrings = JsonUtils.readObjects(actual.toString(), String.class);
+        assertStrings(expectedStrings, actualStrings);
+        break;
       case "references":
-        {
-          @SuppressWarnings("unchecked")
-          List<TermReference> expectedRefs = (List<TermReference>) expected;
-          List<TermReference> actualRefs = JsonUtils.readObjects(actual.toString(), TermReference.class);
-          assertTermReferences(expectedRefs, actualRefs);
-          break;
-        }
+        @SuppressWarnings("unchecked")
+        List<TermReference> expectedTermRefs = (List<TermReference>) expected;
+        List<TermReference> actualTermRefs = JsonUtils.readObjects(actual.toString(), TermReference.class);
+        assertTermReferences(expectedTermRefs, actualTermRefs);
+        break;
       case "status":
         Status expectedStatus = (Status) expected;
         Status actualStatus = Status.fromValue(actual.toString());
@@ -489,6 +494,55 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     List<GlossaryTerm> children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
     for (GlossaryTerm child : listOrEmpty(children)) {
       assertTrue(child.getFullyQualifiedName().startsWith(getTerm.getFullyQualifiedName()));
+    }
+  }
+
+  public GlossaryTerm moveGlossaryTerm(EntityReference newGlossary, EntityReference newParent, GlossaryTerm term)
+      throws IOException {
+    EntityReference oldGlossary = term.getGlossary();
+    EntityReference oldParent = term.getParent();
+    String json = JsonUtils.pojoToJson(term);
+    ChangeDescription change = getChangeDescription(term.getVersion());
+
+    // Changes description for glossary term parent change
+    UpdateType update = MINOR_UPDATE;
+    if (newParent == null && oldParent != null) {
+      fieldDeleted(change, "parent", oldParent);
+    } else if (oldParent == null && newParent != null) {
+      fieldAdded(change, "parent", newParent);
+    } else if (Objects.equals(getId(newParent), getId(oldParent))) {
+      update = NO_CHANGE;
+    } else {
+      fieldUpdated(change, "parent", oldParent, newParent);
+    }
+
+    // Changes description for glossary change for glossary term
+    if (!newGlossary.getId().equals(oldGlossary.getId())) {
+      update = MINOR_UPDATE;
+      fieldUpdated(change, "glossary", oldGlossary, newGlossary);
+    }
+    String parentFQN = newParent == null ? newGlossary.getFullyQualifiedName() : newParent.getFullyQualifiedName();
+    term.setFullyQualifiedName(FullyQualifiedName.add(parentFQN, term.getName()));
+    term.setParent(newParent);
+    term.setGlossary(newGlossary);
+    term = patchEntityAndCheck(term, json, ADMIN_AUTH_HEADERS, update, change);
+    assertChildrenFqnChanged(term);
+    return term;
+  }
+
+  public void assertChildrenFqnChanged(GlossaryTerm term) throws HttpResponseException {
+    // GET the glossary term and check all the children are renamed
+    GlossaryTerm newTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    for (EntityReference ref : newTerm.getChildren()) {
+      assertTrue(ref.getFullyQualifiedName().startsWith(newTerm.getFullyQualifiedName()));
+    }
+
+    // List children glossary terms with this term as the parent and ensure rename
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parent", term.getId().toString());
+    List<GlossaryTerm> children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
+    for (GlossaryTerm child : listOrEmpty(children)) {
+      assertTrue(child.getFullyQualifiedName().startsWith(newTerm.getFullyQualifiedName()));
     }
   }
 }
