@@ -283,12 +283,7 @@ public class DefaultAuthorizer implements Authorizer {
       // if the auth provider is "openmetadata" in the configuration set JWT as auth mechanism
       if ("openmetadata".equals(airflowConfig.getAuthProvider()) && !"basic".equals(authConfig.getProvider())) {
         OpenMetadataJWTClientConfig jwtClientConfig = airflowConfig.getAuthConfig().getOpenmetadata();
-        authMechanism =
-            buildAuthMechanism(
-                JWT,
-                new JWTAuthMechanism()
-                    .withJWTToken(jwtClientConfig.getJwtToken())
-                    .withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+        authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(jwtClientConfig, user));
       } else {
         // Otherwise, set auth mechanism from airflow configuration
         // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
@@ -323,8 +318,7 @@ public class DefaultAuthorizer implements Authorizer {
                       "Unexpected auth provider [%s] for bot [%s]", authConfig.getProvider(), user.getName()));
           }
         } else if ("basic".equals(authConfig.getProvider())) {
-          authMechanism =
-              buildAuthMechanism(JWT, JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited));
+          authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
         }
       }
     }
@@ -332,6 +326,14 @@ public class DefaultAuthorizer implements Authorizer {
     user.setDescription(user.getDescription());
     user.setDisplayName(user.getDisplayName());
     return addOrUpdateUser(user);
+  }
+
+  private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
+    return jwtClientConfig == null || jwtClientConfig.getJwtToken() == null
+        ? JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited)
+        : new JWTAuthMechanism()
+            .withJWTToken(jwtClientConfig.getJwtToken())
+            .withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
   }
 
   private static SSOAuthMechanism buildAuthMechanismConfig(
