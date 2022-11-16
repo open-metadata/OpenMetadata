@@ -423,8 +423,6 @@ def _(connection: BigQueryConnection):
             return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId.__root__}"
         elif isinstance(connection.credentials.gcsConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcsConfig.projectId.__root__:
-                if not project_id:
-                    return f"{connection.scheme.value}://{project_id or ''}"
                 if not connection.credentials.gcsConfig.privateKey and project_id:
                     # Setting environment variable based on project id given by user / set in ADC
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id

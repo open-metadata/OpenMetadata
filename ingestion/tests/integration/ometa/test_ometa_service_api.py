@@ -148,7 +148,7 @@ class OMetaServiceTest(TestCase):
                     "credentials": {
                         "gcsConfig": {
                             "type": "service_account",
-                            "projectId": ["projectID"],
+                            "projectId": "projectID",
                             "privateKeyId": "privateKeyId",
                             "privateKey": "privateKey",
                             "clientEmail": "clientEmail",
