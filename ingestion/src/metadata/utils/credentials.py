@@ -82,7 +82,7 @@ def build_google_credentials_dict(gcs_values: GCSValues) -> Dict[str, str]:
 
     return {
         "type": gcs_values.type,
-        "project_id": gcs_values.projectId,
+        "project_id": gcs_values.projectId.__root__,
         "private_key_id": gcs_values.privateKeyId,
         "private_key": private_key_str,
         "client_email": gcs_values.clientEmail,
@@ -106,7 +106,7 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
         os.environ[GOOGLE_CREDENTIALS] = str(gcs_credentials.gcsConfig.__root__)
         return
 
-    if gcs_credentials.gcsConfig.projectId is None:
+    if gcs_credentials.gcsConfig.projectId.__root__ is None:
         logger.info(
             "No credentials available, using the current environment permissions authenticated via gcloud SDK."
         )
@@ -122,7 +122,6 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
             )
             return
         credentials_dict = build_google_credentials_dict(gcs_credentials.gcsConfig)
-
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return

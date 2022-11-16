@@ -43,6 +43,12 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.credentials.gcsCredentials import (
+    GCSCredentialsPath,
+    GCSValues,
+    MultipleProjectId,
+    SingleProjectId,
+)
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
@@ -141,7 +147,7 @@ class BigquerySource(CommonDbSourceService):
         :return:
         """
         try:
-            list_project_ids = [self.project_id]
+            list_project_ids = [self.context.database.name.__root__]
             if not self.service_connection.taxonomyProjectID:
                 self.service_connection.taxonomyProjectID = []
             list_project_ids.extend(self.service_connection.taxonomyProjectID)
@@ -199,39 +205,60 @@ class BigquerySource(CommonDbSourceService):
 
     def set_inspector(self, database_name: str):
         self.client = Client(project=database_name)
-        self.service_connection.credentials.gcsConfig.projectId = [database_name]
+        if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
+            self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
+                __root__=database_name
+            )
         self.engine = get_connection(self.service_connection)
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        for project_id in self.project_ids:
-            database_name = project_id
-            database_fqn = fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.database_service.name.__root__,
-                database_name=database_name,
-            )
-            if filter_by_database(
-                self.source_config.databaseFilterPattern,
-                database_fqn
-                if self.source_config.useFqnForFiltering
-                else database_name,
-            ):
-                self.status.filter(database_fqn, "Database Filtered out")
-                continue
+        if isinstance(
+            self.service_connection.credentials.gcsConfig, GCSCredentialsPath
+        ):
+            self.set_inspector(database_name=self.project_ids)
+            yield self.project_ids
+        elif isinstance(
+            self.service_connection.credentials.gcsConfig.projectId, SingleProjectId
+        ):
+            self.set_inspector(database_name=self.project_ids)
+            yield self.project_ids
+        if hasattr(
+            self.service_connection.credentials.gcsConfig, "projectId"
+        ) and isinstance(
+            self.service_connection.credentials.gcsConfig.projectId, MultipleProjectId
+        ):
+            for project_id in self.project_ids:
+                database_name = project_id
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=database_name,
+                )
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else database_name,
+                ):
+                    self.status.filter(database_fqn, "Database Filtered out")
+                    continue
 
-            try:
-                self.set_inspector(database_name=project_id)
-                self.project_id = (  # pylint: disable=attribute-defined-outside-init
-                    project_id
-                )
-                yield project_id
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error trying to connect to database {database_name}: {exc}"
-                )
+                try:
+                    self.set_inspector(database_name=database_name)
+                    self.project_id = (  # pylint: disable=attribute-defined-outside-init
+                        database_name
+                    )
+                    yield database_name
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Error trying to connect to database {database_name}: {exc}"
+                    )
+        else:
+            self.set_inspector(database_name=self.project_ids)
+            yield self.project_ids
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -239,7 +266,7 @@ class BigquerySource(CommonDbSourceService):
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.project_id}.{schema_name}.{table_name}"
+                    f"{self.context.database.name.__root__}.{schema_name}.{table_name}"
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)

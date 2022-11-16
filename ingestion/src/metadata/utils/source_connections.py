@@ -87,7 +87,11 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
+from metadata.generated.schema.security.credentials.gcsCredentials import (
+    GCSValues,
+    MultipleProjectId,
+    SingleProjectId,
+)
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
@@ -405,16 +409,29 @@ def _(connection: HiveConnection):
 def _(connection: BigQueryConnection):
 
     if isinstance(connection.credentials.gcsConfig, GCSValues):
-        for project_id in connection.credentials.gcsConfig.projectId:
-            if not project_id:
-                return f"{connection.scheme.value}://{project_id or ''}"
-            if not connection.credentials.gcsConfig.privateKey and project_id:
-                # Setting environment variable based on project id given by user / set in ADC
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcsConfig.projectId, SingleProjectId
+        ):
+            if not connection.credentials.gcsConfig.projectId.__root__:
+                return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
+            if (
+                not connection.credentials.gcsConfig.privateKey
+                and connection.credentials.gcsConfig.projectId.__root__
+            ):
+                project_id = connection.credentials.gcsConfig.projectId.__root__
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{project_id}"
-        return f"{connection.scheme.value}://"
+            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId.__root__}"
+        elif isinstance(connection.credentials.gcsConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcsConfig.projectId.__root__:
+                if not project_id:
+                    return f"{connection.scheme.value}://{project_id or ''}"
+                if not connection.credentials.gcsConfig.privateKey and project_id:
+                    # Setting environment variable based on project id given by user / set in ADC
+                    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+                return f"{connection.scheme.value}://{project_id}"
+            return f"{connection.scheme.value}://"
 
-    return f"{connection}"
+    return f"{connection.scheme.value}://"
 
 
 @get_connection_url.register
