@@ -15,17 +15,19 @@ import React from 'react';
 
 const { Text } = Typography;
 
-export default function GetFieldLabels({
+const EsConfigFieldLabels = ({
   label,
   description,
 }: {
   label: string;
   description: string;
-}) {
+}) => {
   return (
     <Space direction="vertical">
       <Text>{label}</Text>
       <Text className="input-field-descriptions">{description}</Text>
     </Space>
   );
-}
+};
+
+export default EsConfigFieldLabels;
