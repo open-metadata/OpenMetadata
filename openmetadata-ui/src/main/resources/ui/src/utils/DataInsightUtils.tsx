@@ -14,11 +14,13 @@
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import {
+  groupBy,
   isEmpty,
   isInteger,
   isString,
   isUndefined,
   last,
+  sortBy,
   toNumber,
 } from 'lodash';
 import moment from 'moment';
@@ -38,8 +40,17 @@ import {
 import { KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
 import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
-import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
+import {
+  ChartValue,
+  DataInsightChartTooltipProps,
+} from '../interface/data-insight.interface';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
+
+const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
+  [
+    DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+    DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+  ].includes(dataInsightChartType);
 
 export const renderLegend = (legendData: LegendProps, latest: string) => {
   const { payload = [] } = legendData;
@@ -70,11 +81,6 @@ export const renderLegend = (legendData: LegendProps, latest: string) => {
   );
 };
 
-/**
- * we don't have type for Tooltip value and Tooltip
- * that's why we have to use the type "any"
- */
-
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   const { active, payload = [], label, isPercentage, kpiTooltipRecord } = props;
 
@@ -103,13 +109,11 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
       } else if (isInteger(value)) {
         return `${value}${suffix}`;
       } else {
-        `${value.toFixed(2)}${suffix}`;
+        return `${value.toFixed(2)}${suffix}`;
       }
     } else {
       return '';
     }
-
-    return '';
   };
 
   if (active && payload && payload.length) {
@@ -145,7 +149,7 @@ const prepareGraphData = (
   timestamps: string[],
   rawData: (
     | {
-        [x: string]: string | number | undefined;
+        [x: string]: ChartValue;
         timestamp: string;
       }
     | undefined
@@ -164,6 +168,11 @@ const prepareGraphData = (
   );
 };
 
+/**
+ *
+ * @param latestData latest chart data
+ * @returns latest sum count for chart
+ */
 const getLatestCount = (latestData = {}) => {
   let total = 0;
   const latestEntries = Object.entries(latestData ?? {});
@@ -174,71 +183,163 @@ const getLatestCount = (latestData = {}) => {
     }
   }
 
-  return isInteger(total) ? total : total.toFixed(2);
+  return total;
 };
 
-export const getGraphDataByEntityType = (
+/**
+ *
+ * @param rawData raw chart data
+ * @param dataInsightChartType chart type
+ * @returns latest percentage for the chart
+ */
+const getLatestPercentage = (
+  rawData: DataInsightChartResult['data'] = [],
+  dataInsightChartType: DataInsightChartType
+) => {
+  let totalEntityCount = 0;
+  let totalEntityWithDescription = 0;
+  let totalEntityWithOwner = 0;
+
+  const modifiedData = rawData
+    .map((raw) => {
+      const timestamp = raw.timestamp;
+      if (timestamp) {
+        return {
+          ...raw,
+          timestamp: getFormattedDateFromMilliSeconds(raw.timestamp ?? 0),
+        };
+      }
+
+      return;
+    })
+    .filter(Boolean);
+
+  const sortedData = sortBy(modifiedData, 'timestamp');
+  const groupDataByTimeStamp = groupBy(sortedData, 'timestamp');
+  const latestData = last(sortedData);
+  if (latestData) {
+    const latestChartRecords = groupDataByTimeStamp[latestData.timestamp];
+
+    latestChartRecords.forEach((record) => {
+      totalEntityCount += record?.entityCount ?? 0;
+      totalEntityWithDescription += record?.completedDescription ?? 0;
+      totalEntityWithOwner += record?.hasOwner ?? 0;
+    });
+    switch (dataInsightChartType) {
+      case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+        return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
+          2
+        );
+
+      case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+        return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
+
+      default:
+        return 0;
+    }
+  }
+
+  return 0;
+};
+
+/**
+ *
+ * @param rawData raw chart data
+ * @param dataInsightChartType chart type
+ * @returns formatted chart for graph
+ */
+const getGraphFilteredData = (
   rawData: DataInsightChartResult['data'] = [],
   dataInsightChartType: DataInsightChartType
 ) => {
   const entities: string[] = [];
   const timestamps: string[] = [];
 
-  const filteredData = rawData.map((data) => {
-    if (data.timestamp && data.entityType) {
-      let value;
-      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
-      if (!entities.includes(data.entityType ?? '')) {
-        entities.push(data.entityType ?? '');
+  const filteredData = rawData
+    .map((data) => {
+      if (data.timestamp && data.entityType) {
+        let value;
+        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+        if (!entities.includes(data.entityType ?? '')) {
+          entities.push(data.entityType ?? '');
+        }
+
+        if (!timestamps.includes(timestamp)) {
+          timestamps.push(timestamp);
+        }
+
+        switch (dataInsightChartType) {
+          case DataInsightChartType.TotalEntitiesByType:
+            value = data.entityCount;
+
+            break;
+          case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+            value = (data.completedDescriptionFraction ?? 0) * 100;
+
+            break;
+          case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+            value = (data.hasOwnerFraction ?? 0) * 100;
+
+            break;
+
+          case DataInsightChartType.PageViewsByEntities:
+            value = data.pageViews;
+
+            break;
+
+          default:
+            break;
+        }
+
+        return {
+          timestamp: timestamp,
+          [data.entityType]: value,
+        };
       }
 
-      if (!timestamps.includes(timestamp)) {
-        timestamps.push(timestamp);
-      }
+      return;
+    })
+    .filter(Boolean);
 
-      switch (dataInsightChartType) {
-        case DataInsightChartType.TotalEntitiesByType:
-          value = data.entityCount;
+  return { filteredData, entities, timestamps };
+};
 
-          break;
-        case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-          value = data.completedDescriptionFraction;
+/**
+ *
+ * @param rawData raw chart data
+ * @param dataInsightChartType chart type
+ * @returns required graph data by entity type
+ */
+export const getGraphDataByEntityType = (
+  rawData: DataInsightChartResult['data'] = [],
+  dataInsightChartType: DataInsightChartType
+) => {
+  const isPercentageGraph = checkIsPercentageGraph(dataInsightChartType);
 
-          break;
-        case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-          value = data.hasOwnerFraction;
-
-          break;
-
-        case DataInsightChartType.PageViewsByEntities:
-          value = data.pageViews;
-
-          break;
-
-        default:
-          break;
-      }
-
-      return {
-        timestamp: timestamp,
-        [data.entityType]: value,
-      };
-    }
-
-    return;
-  });
+  const { filteredData, entities, timestamps } = getGraphFilteredData(
+    rawData,
+    dataInsightChartType
+  );
 
   const graphData = prepareGraphData(timestamps, filteredData);
   const latestData = last(graphData);
 
+  getLatestPercentage(rawData, dataInsightChartType);
+
   return {
     data: graphData,
     entities,
-    total: getLatestCount(latestData),
-    latestData,
+    total: isPercentageGraph
+      ? getLatestPercentage(rawData, dataInsightChartType)
+      : getLatestCount(latestData),
   };
 };
 
+/**
+ *
+ * @param rawData raw chart data
+ * @returns required graph data by tier type
+ */
 export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   const tiers: string[] = [];
   const timestamps: string[] = [];
