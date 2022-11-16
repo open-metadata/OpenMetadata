@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -86,18 +87,18 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   public void setupGlossaries() throws IOException {
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1" + UUID.randomUUID(), "", "", null);
     GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
     GLOSSARY1_REF = GLOSSARY1.getEntityReference();
 
-    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
+    createGlossary = glossaryResourceTest.createRequest("g2" + UUID.randomUUID(), "", "", null);
     GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
     GLOSSARY2_REF = GLOSSARY2.getEntityReference();
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("g1t1", "", "", null)
+            .createRequest("g1t1" + UUID.randomUUID(), "", "", null)
             .withRelatedTerms(null)
             .withGlossary(GLOSSARY1_REF)
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
@@ -109,7 +110,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("g2t1", "", "", null)
+            .createRequest("g2t1" + UUID.randomUUID(), "", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
             .withGlossary(GLOSSARY2_REF)
             .withReviewers(GLOSSARY1.getReviewers());

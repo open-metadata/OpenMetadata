@@ -1730,12 +1730,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = recursive ? target.queryParam("recursive", true) : target;
     hardDelete = false;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
-    assertEntityDeleted(id, hardDelete);
-    return entity;
-  }
-
-  public final void deleteByNameAndCheckEntity(
-      T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
     T deletedEntity = deleteEntityByName(entity.getFullyQualifiedName(), recursive, hardDelete, authHeaders);
     assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
   }
@@ -1764,6 +1758,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       validateDeletedEvent(
           deletedEntity.getId(), timestamp, EventType.ENTITY_DELETED, deletedEntity.getVersion(), authHeaders);
     }
+  }
+
+  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    return deleteEntity(id, false, false, authHeaders);
   }
 
   public final T deleteEntityByName(String name, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
