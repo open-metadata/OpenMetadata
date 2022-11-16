@@ -46,6 +46,12 @@ class TestIngestionFileLoad(TestCase):
             "my-project-id",
         )
         self.assertEqual(
+            config_dict["source"]["serviceConnection"]["config"]["credentials"][
+                "gcsConfig"
+            ],
+            "/random/path",
+        )
+        self.assertEqual(
             config_dict["workflowConfig"]["openMetadataServerConfig"]["securityConfig"][
                 "jwtToken"
             ],
