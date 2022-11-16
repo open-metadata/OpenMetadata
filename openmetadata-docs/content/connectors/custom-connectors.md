@@ -5,8 +5,8 @@ slug: /connectors/custom-connectors
 
 # Custom Connectors
 
-Each of the services support providing a Custom Connector. It should be a Python class available from the Ingestion
-image. It should also match specific constraints on the methods to implement and how to send the Entities to be
+Each of the services support providing a Custom Connector. It should be a Python class available in the Python environment
+running the ingestion process (e.g., EC2 instance, Airflow host, Docker Image...). It should also match specific constraints on the methods to implement and how to send the Entities to be
 created.
 
 In this guide, we'll walk through a possible implementation. The example is based on a Database Service, but the
@@ -28,7 +28,7 @@ all the required methods ([docs](https://docs.open-metadata.org/sdk/python/build
 
 In [connector/my_awesome_connector.py](https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_awesome_connector.py) you have a minimal example of it.
 
-Note how te important method is the `next_record`. This is the generator function that will be iterated over
+Note how the important method is the `next_record`. This is the generator function that will be iterated over
 to send all the Create Entity Requests to the `Sink`. Read more about the `Workflow` [here](https://docs.open-metadata.org/sdk/python/build-connector).
 
 ## Step 2 - Yield the data
@@ -46,7 +46,9 @@ you can find a simple `setup.py` that builds the `connector` module.
 
 ## Step 4 - Prepare the Ingestion Image
 
-If you want to use the connector from the UI, the `openmetadata-ingestion` image should be aware of your new package.
+If you want to use the connector from the UI, the Python environment running the ingestion process should contain
+the new code you just created. For example, if running via Docker, the `openmetadata-ingestion` image should be 
+aware of your new package.
 
 We will be running the demo against the OpenMetadata version `0.12.2`, therefore, our Dockerfile looks like:
 
