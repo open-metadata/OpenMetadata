@@ -70,7 +70,7 @@ data_insight_config = {
     "processor": {"type": "data-insight-processor", "config": {}},
     "sink": {
         "type": "elasticsearch",
-        "config": {"es_host": "localhost", "es_port": 9200, "recreate_indexes": True},
+        "config": {"es_host": "localhost", "es_port": 9200, "recreate_indexes": False},
     },
     "workflowConfig": {
         "openMetadataServerConfig": {
@@ -157,6 +157,9 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
 
         cls.metadata.create_kpi(create)
+
+        for event in WEB_EVENT_DATA:
+            cls.metadata.add_web_analytic_events(event)
 
     def test_create_method(self):
         """Test validation of the workflow config is properly happening"""
