@@ -82,7 +82,7 @@ def percentage_of_entities_with_description_kpi_result(
                 KpiTarget(
                     name=target.name,
                     value=value,
-                    targetMet=value > ast.literal_eval(target.value),
+                    targetMet=(value * 100) > ast.literal_eval(target.value),
                 )
             )
 
