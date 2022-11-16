@@ -43,7 +43,7 @@ from metadata.orm_profiler.metrics.core import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
-from metadata.orm_profiler.orm.registry import NOT_COMPUTE, NOT_COMPUTE_OM
+from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -311,9 +311,7 @@ class Profiler(Generic[TMetric]):
         columns = [
             column
             for column in self.columns
-            if isinstance(column, Column)
-            and column.type.__class__ not in NOT_COMPUTE
-            or column.datatype not in NOT_COMPUTE_OM
+            if isinstance(column, Column) and column.type.__class__ not in NOT_COMPUTE
         ]
 
         column_metrics_for_thread_pool = [

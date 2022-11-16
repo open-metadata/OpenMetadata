@@ -14,14 +14,11 @@
 import {
     addTeam,
     descriptionBox,
-    interceptURL,
-    login,
-    toastNotification,
+    interceptURL, toastNotification,
     updateOwner,
     uuid,
     verifyResponseStatusCode
 } from '../../common/common';
-import { LOGIN } from '../../constants/constants';
 
 const updateddescription = 'This is updated description';
 
@@ -44,17 +41,9 @@ const HARD_DELETE_TEAM_DETAILS = {
 };
 
 describe('Teams flow should work properly', () => {
-  before(() => {
-    cy.clearLocalStorageSnapshot();
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
-    cy.saveLocalStorage('localstorage');
-  });
   beforeEach(() => {
     interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
-    cy.log('Restoring local storage snapshot');
-    cy.restoreLocalStorage('localstorage');
-    cy.clickOnLogo();
+    cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
