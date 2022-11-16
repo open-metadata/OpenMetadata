@@ -76,10 +76,16 @@ export const handleIngestionRetry = (
     const checkSuccessState = () => {
       testIngestionsTab();
       retryCount++;
+      cy.get('body').then(($body) => {
+        if ($body.find('.ant-skeleton-input').length) {
+          cy.wait(1000);
+        }
+      });
+
       // the latest run should be success
       cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
         ($ingestionStatus) => {
-          console.log($ingestionStatus.text());
+          
           if (
             $ingestionStatus.text() !== 'Success' &&
             retryCount <= RETRY_TIMES
