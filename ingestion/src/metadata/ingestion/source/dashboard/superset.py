@@ -150,6 +150,14 @@ class SupersetSource(DashboardServiceSource):
         """
         return dashboard
 
+    def get_owner_details(self, dashboard_details: dict) -> EntityReference:
+        if dashboard_details.get("owners"):
+            owner = dashboard_details["owners"][0]
+            user = self.metadata.get_user_by_email(owner.get("email"))
+            if user:
+                return EntityReference(id=user.id.__root__, type="user")
+        return None
+
     def yield_dashboard(
         self, dashboard_details: dict
     ) -> Iterable[CreateDashboardRequest]:
@@ -161,9 +169,7 @@ class SupersetSource(DashboardServiceSource):
             displayName=dashboard_details["dashboard_title"],
             description="",
             dashboardUrl=dashboard_details["url"],
-            owner=EntityReference(id=self.context.owner.id.__root__, type="user")
-            if self.context.owner
-            else None,
+            owner=self.get_owner_details(dashboard_details),
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts
@@ -280,26 +286,3 @@ class SupersetSource(DashboardServiceSource):
                     f"Failed to fetch Datasource with id [{datasource_id}]: {err}"
                 )
         return None
-
-    def yield_owner(  # pylint: disable=arguments-differ
-        self, dashboard_details: dict
-    ) -> Optional[Iterable[CreateUserRequest]]:
-        """Get dashboard owner
-
-        Args:
-            dashboard_details:
-        Returns:
-            Optional[EntityReference]
-        """
-        for owner in dashboard_details.get("owners", []):
-            if owner.get("username") and owner.get("email"):
-                display_name = (
-                    f"{owner.get('first_name')} {owner.get('last_name','')}"
-                    if owner.get("first_name")
-                    else owner.get("username")
-                )
-                yield CreateUserRequest(
-                    name=owner.get("username"),
-                    displayName=display_name,
-                    email=owner.get("email"),
-                )

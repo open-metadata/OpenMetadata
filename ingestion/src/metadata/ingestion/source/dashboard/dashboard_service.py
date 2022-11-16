@@ -109,13 +109,6 @@ class DashboardServiceTopology(ServiceTopology):
                 clear_cache=True,
             ),
             NodeStage(
-                type_=User,
-                context="owner",
-                processor="yield_owner",
-                nullable=True,
-                clear_cache=True,
-            ),
-            NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
@@ -221,14 +214,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to fetch dashboard tags
         """
         return  # Dashboard does not support fetching tags except Tableau
-
-    def yield_owner(
-        self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[CreateUserRequest]]:
-        """
-        Method to fetch dashboard owner
-        """
-        return  # Dashboard does not support fetching owner details except Tableau
 
     def yield_dashboard_usage(
         self, *args, **kwargs  # pylint: disable=W0613
