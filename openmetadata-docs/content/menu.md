@@ -57,6 +57,8 @@ site_menu:
     url: /deployment/security
   - category: Deployment / Enable Security / Basic Authentication
     url: /deployment/security/basic-auth
+  - category: Deployment / Enable Security / Ldap Authentication
+    url: /deployment/security/ldap
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -453,6 +455,9 @@ site_menu:
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
+
+  - category: Connectors / Custom Connectors
+    url: /connectors/custom-connectors
 
   - category: Connectors / Managing Credentials
     url: /connectors/credentials
