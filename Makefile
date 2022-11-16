@@ -24,7 +24,7 @@ install_apis:  ## Install the REST APIs module to the current environment
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
 	python -m pip install "ingestion[test]/"
-	playwright install
+	playwright install --with-deps
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
