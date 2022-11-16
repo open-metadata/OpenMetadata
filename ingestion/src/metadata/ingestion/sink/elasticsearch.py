@@ -315,10 +315,14 @@ class ElasticsearchSink(Sink[Entity]):
                     request_timeout=self.config.timeout,
                 )
         else:
-            logger.warning(
-                "Received index not found error from Elasticsearch. "
-                + "The index doesn't exist for a newly created ES. It's OK on first run."
-            )
+            # Show different logs if we are recreating indexes, or we have a possibly unexpected index miss
+            if self.config.recreate_indexes:
+                logger.info(f"Recreating Elasticsearch index {index_name}...")
+            else:
+                logger.warning(
+                    f"Received index {index_name} not found error from Elasticsearch. "
+                    + "The index doesn't exist for a newly created ES. It's OK on first run."
+                )
             # create new index with mapping
             if self.elasticsearch_client.indices.exists(index=index_name):
                 self.elasticsearch_client.indices.delete(
