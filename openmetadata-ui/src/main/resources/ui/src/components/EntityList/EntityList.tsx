@@ -18,6 +18,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import './entity.less';
 interface Prop {
   entityList: Array<EntityReference>;
   headerText: string | JSX.Element;
@@ -64,7 +65,7 @@ const EntityList: FunctionComponent<Prop> = ({
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      className="entity-button"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       {getEntityName(item as unknown as EntityReference)}
@@ -109,7 +110,7 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="tw-text-grey-body hover:text-primary hover:text-underline"
+                      className="entity-button"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       <Typography.Text
