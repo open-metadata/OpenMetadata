@@ -276,11 +276,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Table TEST_TABLE1;
   public static Table TEST_TABLE2;
+  public static TestSuite TEST_SUITE1;
+  public static EntityReference TEST_SUITE1_REFERENCE;
 
   public static TestSuite TEST_SUITE1;
   public static TestSuite TEST_SUITE2;
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
+  public static EntityReference TEST_DEFINITION2_REFERENCE;
+
   public static TestDefinition TEST_DEFINITION3;
 
   public static DataInsightChart DI_CHART1;
@@ -701,7 +705,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       String origJson = JsonUtils.pojoToJson(entity);
       entity.setTags(new ArrayList<>());
       entity.getTags().add(USER_ADDRESS_TAG_LABEL);
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL);
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
     }
     if (supportsFollowers) {
@@ -916,6 +920,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!supportedNameCharacters.contains(" ")) { // Name does not support space
       return;
     }
+    // Entity without "." should not have quoted fullyQualifiedName
+    String name = format("%s_foo_bar", entityType);
+    K request = createRequest(name, "", null, null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    assertFalse(entity.getFullyQualifiedName().contains("\""));
 
     // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
     String name = format("%s_foo.bar", entityType);
@@ -1288,8 +1297,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.setTags(new ArrayList<>());
       entity.getTags().add(USER_ADDRESS_TAG_LABEL);
       entity.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
-      entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      // entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
       fieldAdded(change, FIELD_TAGS, List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
     }
     fieldAdded(change, "displayName", "displayName");
@@ -1719,7 +1728,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws HttpResponseException {
     WebTarget target = getResource(id);
     target = recursive ? target.queryParam("recursive", true) : target;
-    target = hardDelete ? target.queryParam("hardDelete", true) : target;
+    hardDelete = false;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(id, hardDelete);
     return entity;
@@ -1908,10 +1917,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return returned;
   }
 
+  T patchEntityAndCheckAuthorization(T entity, String userName, boolean shouldThrowException) throws IOException {
+    String originalJson = JsonUtils.pojoToJson(entity);
+
+    String originalDescription = entity.getDescription();
+    String newDescription = format("Description added by %s", userName);
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    fieldUpdated(change, "description", originalDescription, newDescription);
+
   protected T patchEntityAndCheckAuthorization(T entity, String userName, boolean shouldThrowException)
       throws IOException {
     return patchEntityAndCheckAuthorization(entity, userName, MetadataOperation.EDIT_OWNER, shouldThrowException);
-  }
 
   protected T patchEntityAndCheckAuthorization(
       T entity, String userName, MetadataOperation disallowedOperation, boolean shouldThrowException)
