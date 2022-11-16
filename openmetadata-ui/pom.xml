@@ -17,30 +17,6 @@
     <skipTests>false</skipTests>
   </properties>
 
-  <dependencies>
-    <dependency>
-      <groupId>org.open-metadata</groupId>
-      <artifactId>common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.open-metadata</groupId>
-      <artifactId>openmetadata-spec</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.open-metadata</groupId>
-      <artifactId>openmetadata-service</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.github.artsok</groupId>
-      <artifactId>rerunner-jupiter</artifactId>
-      <version>${rerunner-jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
   <build>
     <resources>
       <resource>

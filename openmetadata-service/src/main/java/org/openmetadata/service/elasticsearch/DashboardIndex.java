@@ -9,7 +9,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class DashboardIndex implements ElasticSearchIndex {
-  Dashboard dashboard;
+  final Dashboard dashboard;
   final List<String> excludeFields = List.of("changeDescription");
 
   public DashboardIndex(Dashboard dashboard) {

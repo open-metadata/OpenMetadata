@@ -8,10 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""Db2 source module"""
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
 
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    Db2Connection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -23,19 +26,20 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 
 
 @reflection.cache
-def get_pk_constraint(self, bind, table_name, schema=None, **kw):
+def get_pk_constraint(
+    self, bind, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
     return {"constrained_columns": [], "name": "undefined"}
 
 
 DB2Dialect.get_pk_constraint = get_pk_constraint
-from metadata.generated.schema.entity.services.connections.database.db2Connection import (
-    Db2Connection,
-)
 
 
 class Db2Source(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    """
+    Implements the necessary methods to extract
+    Database metadata from Db2 Source
+    """
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

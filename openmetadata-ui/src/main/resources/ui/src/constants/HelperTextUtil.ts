@@ -43,6 +43,8 @@ Policies are assigned to Teams. In OpenMetadata, a Policy is a collection of Rul
 Create well-defined policies based on conditional rules to build rich access control roles.
         `;
 
+export const ADD_KPI_TEXT = `Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets. Review your data assets based on Description, Ownership, and Tier. Define the metrics by percentage or number to track your progress. Finally, set a start and end date to start achieving your data goals`;
+
 export const NO_PERMISSION_FOR_ACTION =
   'You do not have the necessary permissions to perform this action.';
 
@@ -51,3 +53,11 @@ export const NO_PERMISSION_TO_VIEW =
 
 export const GROUP_TEAM_TYPE_CHANGE_MSG =
   "The team type 'Group' cannot be changed. Please create a new team with the preferred type.";
+
+export const INGESTION_BOT_CANT_BE_DELETED =
+  'You can not delete the ingestion bot.';
+
+export const BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION =
+  'Changing account email will update or create a new bot user';
+
+export const ADMIN_ONLY_ACTION = 'Only admin can perform this action.';

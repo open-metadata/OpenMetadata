@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/analytics/webAnalyticEventData.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "webAnalyticEventData",
+  "description": "web analytics event data",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.analytics.WebAnalyticEventData",
+  "properties": {
+      "eventId": {
+        "description": "Unique identifier of the report.",
+        "$ref": "../type/basic.json#/definitions/uuid"
+      },
+      "timestamp": {
+        "description": "event timestamp",
+        "$ref": "../type/basic.json#/definitions/timestamp"
+      },
+      "eventType": {
+        "description": "event type",
+        "$ref": "./basic.json#/definitions/webAnalyticEventType"
+      },
+      "eventData": {
+        "description": "Web analytic data captured",
+        "oneOf": [
+          {"$ref": "webAnalyticEventType/pageViewEvent.json"}
+        ]
+      }
+    },
+  "required": ["eventType"],
+  "additionalProperties": false
+}

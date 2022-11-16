@@ -19,11 +19,12 @@ from typing import Dict, List, Optional, Tuple
 from sqlparse.sql import Comparison, Identifier, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
-from metadata.utils.helpers import find_in_list, get_formatted_entity_name
+from metadata.utils.helpers import find_in_iter, get_formatted_entity_name
 from metadata.utils.logger import ingestion_logger
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
+# pylint: disable=wrong-import-position
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
 from sqllineage.core import models
@@ -36,7 +37,9 @@ DictConfigurator.configure = configure
 logger = ingestion_logger()
 
 
-def get_involved_tables_from_parser(parser: LineageRunner) -> List[models.Table]:
+def get_involved_tables_from_parser(
+    parser: LineageRunner,
+) -> Optional[List[models.Table]]:
     """
     Use the LineageRunner parser and combine
     source and intermediate tables into
@@ -56,6 +59,7 @@ def get_involved_tables_from_parser(parser: LineageRunner) -> List[models.Table]
         logger.warning(
             f"Cannot extract source table information from query [{parser._sql}]: {exc}"  # pylint: disable=protected-access
         )
+        return None
 
 
 def get_clean_parser_table_list(tables: List[models.Table]) -> List[str]:
@@ -92,15 +96,15 @@ def get_table_name_from_list(
     :param tables: Contains all involved tables
     :return: table name from parser info
     """
-    table = find_in_list(element=table_name, container=tables)
+    table = find_in_iter(element=table_name, container=tables)
     if table:
         return table
 
-    schema_table = find_in_list(element=f"{schema_name}.{table_name}", container=tables)
+    schema_table = find_in_iter(element=f"{schema_name}.{table_name}", container=tables)
     if schema_table:
         return schema_table
 
-    db_schema_table = find_in_list(
+    db_schema_table = find_in_iter(
         element=f"{database_name}.{schema_name}.{table_name}", container=tables
     )
     if db_schema_table:
@@ -169,7 +173,7 @@ def stateful_add_table_joins(
         table_columns = [
             join_info.tableColumn for join_info in statement_joins[source.table]
         ]
-        existing_table_column = find_in_list(element=source, container=table_columns)
+        existing_table_column = find_in_iter(element=source, container=table_columns)
         if existing_table_column:
             existing_join_info = [
                 join_info

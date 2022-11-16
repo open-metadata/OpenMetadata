@@ -33,6 +33,9 @@ logger = ingestion_logger()
 
 
 class SqlAlchemySource(ABC):
+    """
+    Sqlalchemy Source Abstract Class
+    """
 
     engine: Engine
     metadata: OpenMetadata

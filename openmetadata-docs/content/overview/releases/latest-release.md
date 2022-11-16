@@ -3,6 +3,35 @@ title: Latest Release
 slug: /overview/latest-release
 ---
 
+# 0.12.1 Release - Oct 3rd 2022 🎉
+This is our stable release and we recommend community to upgrade to the 0.12.1 release
+
+## Basic Authentication
+
+- User/Password signup and login
+- Email notifications for forgotten password and new user signed up
+- Admin can add new users and send an email 
+
+## ElasticSearch full re-index through Uigur
+
+- Now admins can full re-index elasticsearch through the UI itself
+
+## Versioning Support for Custom Attributes
+
+- Any changes to entity custom attributes are now versioned
+
+## DBT Metadata - Tags
+
+- We support ingesting DBT tags into OpenMetadata
+
+## Bots Integration 
+
+- Admins can create bots and their security mechanism from UI itself
+
+## Bug Fixes
+
+- Around 136 Features/Improvements/Tests made it into 0.12.1 release 
+
 # 0.12.0 Release - Sept 7th 2022 🎉
 
 You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)

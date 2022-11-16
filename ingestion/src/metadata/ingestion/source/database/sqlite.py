@@ -28,8 +28,10 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 
 
 class SqliteSource(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    """
+    Implements the necessary methods to extract
+    Database metadata from Sqlite Source
+    """
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

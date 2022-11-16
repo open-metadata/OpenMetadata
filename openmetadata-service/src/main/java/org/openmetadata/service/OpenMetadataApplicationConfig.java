@@ -22,6 +22,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
@@ -33,7 +34,6 @@ import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.secrets.SecretsManagerConfiguration;
-import org.openmetadata.service.validators.AirflowConfigValidation;
 
 @Getter
 @Setter
@@ -61,7 +61,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @AirflowConfigValidation
   @NotNull
   @Valid
   @JsonProperty("airflowConfiguration")
@@ -93,6 +92,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
+
+  @JsonProperty("login")
+  private LoginConfiguration loginSettings;
 
   @Override
   public String toString() {

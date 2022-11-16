@@ -12,7 +12,7 @@
 """
 ColumnValuesToBeUnique validation implementation
 """
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,protected-access
 
 import traceback
 from datetime import datetime

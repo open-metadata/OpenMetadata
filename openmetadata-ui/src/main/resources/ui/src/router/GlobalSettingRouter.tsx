@@ -71,15 +71,15 @@ const SlackSettingsPage = withSuspenseFallback(
     () => import('../pages/SlackSettingsPage/SlackSettingsPage.component')
   )
 );
-const TestSuitePage = withSuspenseFallback(
-  React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
-);
 const MsTeamsPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MsTeamsPage/MsTeamsPage.component'))
 );
 const ElasticSearchIndexPage = withSuspenseFallback(
   React.lazy(
-    () => import('../pages/ElasticSearchIndexPage/elastic-search-index-page')
+    () =>
+      import(
+        '../pages/ElasticSearchIndexPage/ElasticSearchReIndexPage.component'
+      )
   )
 );
 
@@ -96,30 +96,17 @@ const GlobalSettingRouter = () => {
         component={TeamsPage}
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.TEAMS
-        )}
-      />
-      <Route
-        exact
-        component={TeamsPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true
         )}
       />
-      <AdminProtectedRoute
-        exact
-        component={TestSuitePage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
-          permissions
-        )}
+      <Route
         path={getSettingPath(
-          GlobalSettingsMenuCategory.DATA_QUALITY,
-          GlobalSettingOptions.TEST_SUITE
-        )}
-      />
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS
+        )}>
+        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
+      </Route>
       {/* Roles route start
        * Do not change the order of these route
        */}

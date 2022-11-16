@@ -26,12 +26,17 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { generateRandomPwd } from '../../axiosAPIs/auth-API';
+import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { validEmailRegEx } from '../../constants/regex.constants';
+import { passwordErrorMessage } from '../../constants/error-message';
+import {
+  passwordRegex,
+  validEmailRegEx,
+} from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
+import { AuthTypes } from '../../enums/signin.enum';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
 import {
   CreatePasswordType,
@@ -42,13 +47,9 @@ import {
   AuthType,
   EntityReference as UserTeams,
   JWTTokenExpiry,
+  SsoClientConfig,
   SsoServiceType,
 } from '../../generated/entity/teams/user';
-import { Auth0SSOClientConfig } from '../../generated/security/client/auth0SSOClientConfig';
-import { AzureSSOClientConfig } from '../../generated/security/client/azureSSOClientConfig';
-import { CustomOidcSSOClientConfig } from '../../generated/security/client/customOidcSSOClientConfig';
-import { GoogleSSOClientConfig } from '../../generated/security/client/googleSSOClientConfig';
-import { OktaSSOClientConfig } from '../../generated/security/client/oktaSSOClientConfig';
 import jsonData from '../../jsons/en';
 import {
   getAuthMechanismTypeOptions,
@@ -64,7 +65,7 @@ import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
 import Loader from '../Loader/Loader';
 import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
-import { CreateUserProps, SSOClientConfig } from './CreateUser.interface';
+import { CreateUserProps } from './CreateUser.interface';
 
 const { Option } = Select;
 
@@ -101,8 +102,13 @@ const CreateUser = ({
     JWTTokenExpiry.OneHour
   );
 
-  const [ssoClientConfig, setSSOClientConfig] = useState<SSOClientConfig>(
-    {} as SSOClientConfig
+  const [ssoClientConfig, setSSOClientConfig] = useState<SsoClientConfig>();
+
+  const isAuthProviderBasic = useMemo(
+    () =>
+      authConfig?.provider === AuthTypes.BASIC ||
+      authConfig?.provider === AuthTypes.LDAP,
+    [authConfig]
   );
 
   const slashedBreadcrumbList = [
@@ -311,11 +317,6 @@ const CreateUser = ({
       email: email,
       isAdmin: isAdmin,
       isBot: isBot,
-      password: isPasswordGenerated ? generatedPassword : password,
-      confirmPassword: isPasswordGenerated
-        ? generatedPassword
-        : confirmPassword,
-      createPasswordType: CreatePasswordType.Admincreate,
       ...(forceBot
         ? {
             authenticationMechanism: {
@@ -333,7 +334,13 @@ const CreateUser = ({
                     },
             },
           }
-        : {}),
+        : {
+            password: isPasswordGenerated ? generatedPassword : password,
+            confirmPassword: isPasswordGenerated
+              ? generatedPassword
+              : confirmPassword,
+            createPasswordType: CreatePasswordType.AdminCreate,
+          }),
     };
     onSave(userProfile);
   };
@@ -341,8 +348,6 @@ const CreateUser = ({
   const getSSOConfig = () => {
     switch (authConfig?.provider) {
       case SsoServiceType.Google: {
-        const googleConfig = ssoClientConfig as GoogleSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -358,7 +363,7 @@ const CreateUser = ({
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder="secretKey"
-                value={googleConfig.secretKey}
+                value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -367,7 +372,7 @@ const CreateUser = ({
                 data-testid="audience"
                 name="audience"
                 placeholder="audience"
-                value={googleConfig.audience}
+                value={ssoClientConfig?.audience}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -376,8 +381,6 @@ const CreateUser = ({
       }
 
       case SsoServiceType.Auth0: {
-        const auth0Config = ssoClientConfig as Auth0SSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -393,7 +396,7 @@ const CreateUser = ({
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder="secretKey"
-                value={auth0Config.secretKey}
+                value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -410,7 +413,7 @@ const CreateUser = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={auth0Config.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -427,7 +430,7 @@ const CreateUser = ({
                 data-testid="domain"
                 name="domain"
                 placeholder="domain"
-                value={auth0Config.domain}
+                value={ssoClientConfig?.domain}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -435,8 +438,6 @@ const CreateUser = ({
         );
       }
       case SsoServiceType.Azure: {
-        const azureConfig = ssoClientConfig as AzureSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -452,7 +453,7 @@ const CreateUser = ({
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder="clientSecret"
-                value={azureConfig.clientSecret}
+                value={ssoClientConfig?.clientSecret}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -469,7 +470,7 @@ const CreateUser = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={azureConfig.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -486,7 +487,7 @@ const CreateUser = ({
                 data-testid="authority"
                 name="authority"
                 placeholder="authority"
-                value={azureConfig.authority}
+                value={ssoClientConfig?.authority}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -503,7 +504,7 @@ const CreateUser = ({
                 data-testid="scopes"
                 name="scopes"
                 placeholder="Scopes value comma separated"
-                value={azureConfig.scopes}
+                value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -511,8 +512,6 @@ const CreateUser = ({
         );
       }
       case SsoServiceType.Okta: {
-        const oktaConfig = ssoClientConfig as OktaSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -528,7 +527,7 @@ const CreateUser = ({
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder="privateKey"
-                value={oktaConfig.privateKey}
+                value={ssoClientConfig?.privateKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -545,7 +544,7 @@ const CreateUser = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={oktaConfig.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -562,7 +561,7 @@ const CreateUser = ({
                 data-testid="orgURL"
                 name="orgURL"
                 placeholder="orgURL"
-                value={oktaConfig.orgURL}
+                value={ssoClientConfig?.orgURL}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -580,7 +579,7 @@ const CreateUser = ({
                 data-testid="oktaEmail"
                 name="oktaEmail"
                 placeholder="Okta Service account Email"
-                value={oktaConfig.email}
+                value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -589,7 +588,7 @@ const CreateUser = ({
                 data-testid="scopes"
                 name="scopes"
                 placeholder="Scopes value comma separated"
-                value={oktaConfig.scopes}
+                value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -597,8 +596,6 @@ const CreateUser = ({
         );
       }
       case SsoServiceType.CustomOidc: {
-        const customOidcConfig = ssoClientConfig as CustomOidcSSOClientConfig;
-
         return (
           <>
             <Form.Item
@@ -614,7 +611,7 @@ const CreateUser = ({
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder="secretKey"
-                value={customOidcConfig.secretKey}
+                value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -631,7 +628,7 @@ const CreateUser = ({
                 data-testid="clientId"
                 name="clientId"
                 placeholder="clientId"
-                value={customOidcConfig.clientId}
+                value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -648,7 +645,7 @@ const CreateUser = ({
                 data-testid="tokenEndpoint"
                 name="tokenEndpoint"
                 placeholder="tokenEndpoint"
-                value={customOidcConfig.tokenEndpoint}
+                value={ssoClientConfig?.tokenEndpoint}
                 onChange={handleOnChange}
               />
             </Form.Item>
@@ -681,14 +678,26 @@ const CreateUser = ({
             name="email"
             rules={[
               {
+                pattern: validEmailRegEx,
                 required: true,
                 type: 'email',
-                message: jsonData['form-error-messages']['empty-email'],
+                message: jsonData['form-error-messages']['invalid-email'],
               },
               {
-                pattern: validEmailRegEx,
                 type: 'email',
-                message: jsonData['form-error-messages']['invalid-email'],
+                required: true,
+                validator: async (_, value) => {
+                  if (validEmailRegEx.test(value) && !forceBot) {
+                    const isEmailAlreadyExists = await checkEmailInUse(value);
+                    if (isEmailAlreadyExists) {
+                      return Promise.reject(
+                        jsonData['form-error-messages']['email-is-in-use']
+                      );
+                    }
+
+                    return Promise.resolve();
+                  }
+                },
               },
             ]}>
             <Input
@@ -771,103 +780,111 @@ const CreateUser = ({
             <RichTextEditor initialValue={description} ref={markdownRef} />
           </Form.Item>
 
-          <Radio.Group
-            name="passwordGenerator"
-            value={passwordGenerator}
-            onChange={handleOnChange}>
-            <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
-              Automatic Generate
-            </Radio>
-            <Radio value={CreatePasswordGenerator.CreatePassword}>
-              Create Password
-            </Radio>
-          </Radio.Group>
-
-          {passwordGenerator === CreatePasswordGenerator.CreatePassword ? (
-            <div className="m-t-sm">
-              <Form.Item
-                label="Password"
-                name="password"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input.Password
-                  name="password"
-                  placeholder="Enter a Password"
-                  value={password}
-                  onChange={handleOnChange}
-                />
-              </Form.Item>
-
-              <Form.Item
-                label="Confirm Password"
-                name="confirmPassword"
-                rules={[
-                  {
-                    required: true,
-                  },
-                  {
-                    validator: (_, value) => {
-                      if (value !== password) {
-                        return Promise.reject("Password doesn't match");
-                      }
-
-                      return Promise.resolve();
-                    },
-                  },
-                ]}>
-                <Input.Password
-                  name="confirmPassword"
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChange={handleOnChange}
-                />
-              </Form.Item>
-            </div>
-          ) : (
-            <div className="m-t-sm">
-              <Form.Item
-                label="Generated Password"
-                name="generatedPassword"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}>
-                <Input
-                  readOnly
-                  addonAfter={
-                    <div className="flex-center w-16">
-                      <div
-                        className="w-8 h-7 flex-center cursor-pointer"
-                        onClick={generateRandomPassword}>
-                        {isPasswordGenerating ? (
-                          <Loader size="small" type="default" />
-                        ) : (
-                          <SVGIcons
-                            alt="generate"
-                            icon={Icons.SYNC}
-                            width="16"
-                          />
-                        )}
-                      </div>
-
-                      <div className="w-8 h-7 flex-center">
-                        <CopyToClipboardButton copyText={generatedPassword} />
-                      </div>
-                    </div>
-                  }
-                  name="generatedPassword"
-                  value={generatedPassword}
-                />
-              </Form.Item>
-            </div>
-          )}
-
           {!forceBot && (
             <>
+              {isAuthProviderBasic && (
+                <>
+                  <Radio.Group
+                    name="passwordGenerator"
+                    value={passwordGenerator}
+                    onChange={handleOnChange}>
+                    <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
+                      Automatic Generate
+                    </Radio>
+                    <Radio value={CreatePasswordGenerator.CreatePassword}>
+                      Create Password
+                    </Radio>
+                  </Radio.Group>
+
+                  {passwordGenerator ===
+                  CreatePasswordGenerator.CreatePassword ? (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Password"
+                        name="password"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                          {
+                            pattern: passwordRegex,
+                            message: passwordErrorMessage,
+                          },
+                        ]}>
+                        <Input.Password
+                          name="password"
+                          placeholder="Enter a Password"
+                          value={password}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        label="Confirm Password"
+                        name="confirmPassword"
+                        rules={[
+                          {
+                            validator: (_, value) => {
+                              if (value !== password) {
+                                return Promise.reject("Password doesn't match");
+                              }
+
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}>
+                        <Input.Password
+                          name="confirmPassword"
+                          placeholder="Confirm Password"
+                          value={confirmPassword}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+                    </div>
+                  ) : (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Generated Password"
+                        name="generatedPassword"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                        ]}>
+                        <Input.Password
+                          readOnly
+                          addonAfter={
+                            <div className="flex-center w-16">
+                              <div
+                                className="w-8 h-7 flex-center cursor-pointer"
+                                data-testid="password-generator"
+                                onClick={generateRandomPassword}>
+                                {isPasswordGenerating ? (
+                                  <Loader size="small" type="default" />
+                                ) : (
+                                  <SVGIcons
+                                    alt="generate"
+                                    icon={Icons.SYNC}
+                                    width="16"
+                                  />
+                                )}
+                              </div>
+
+                              <div className="w-8 h-7 flex-center">
+                                <CopyToClipboardButton
+                                  copyText={generatedPassword}
+                                />
+                              </div>
+                            </div>
+                          }
+                          name="generatedPassword"
+                          value={generatedPassword}
+                        />
+                      </Form.Item>
+                    </div>
+                  )}
+                </>
+              )}
               <Form.Item label="Teams" name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>

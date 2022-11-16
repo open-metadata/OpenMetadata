@@ -8,7 +8,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class UserIndex implements ElasticSearchIndex {
-  User user;
+  final User user;
   final List<String> excludeFields = List.of("owns", "changeDescription");
 
   public UserIndex(User user) {

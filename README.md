@@ -24,7 +24,7 @@
 # What is OpenMetadata?
 [OpenMetadata](https://open-metadata.org/) is an all-in-one platform for data discovery, data lineage, data quality, observability, governance, and team collaboration. It is one of the fastest growing open-source projects with a vibrant community and adoption by a diverse set of companies in a variety of industry verticals. Powered by a centralized metadata store based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services, OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
 
-<img src="https://user-images.githubusercontent.com/1417689/129423079-d21cbf3f-786f-4d4a-b6c3-b66feca234b8.png"  width="800">
+<img src="./openmetadata-docs/images/readme/components.png" width="800">
 
 OpenMetadata includes the following:
 - **Metadata Schemas** - Defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard. Also supports extensibility of entities and types with custom properties.
@@ -33,7 +33,7 @@ OpenMetadata includes the following:
 
 - **Metadata APIs** - For producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
 
-- **Ingestion Framework** - A pluggable framework for integrating tools and ingesting metadata to the metadata store, supporting about 55 connectors. The ingestion framework supports well know data warehouses like Google BigQuery, Snowflake, Amazon Redshift, Apache Hive; databases like MySQL, Postgres, Oracle, MSSQL; dashboard services like Tableau, Superset, Metabase; Messaging services like Kafka, Redpanda; and pipeline services like Airflow, Glue, Fivetran, Dagster, and many more.
+- **Ingestion Framework** - A pluggable framework for integrating tools and ingesting metadata to the metadata store, supporting about 55 connectors. The ingestion framework supports well know data warehouses like Google BigQuery, Snowflake, Amazon Redshift, Apache Hive; databases like MySQL, Postgres, Oracle, MSSQL; dashboard services like Tableau, Superset, Metabase; messaging services like Kafka, Redpanda; and pipeline services like Airflow, Glue, Fivetran, Dagster, and many more.
 
 - **OpenMetadata User Interface** - A single place for users to discover, and collaborate on all data.
 

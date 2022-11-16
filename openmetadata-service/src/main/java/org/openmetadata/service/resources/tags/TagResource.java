@@ -14,6 +14,10 @@
 package org.openmetadata.service.resources.tags;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.TAG_CATEGORY;
+import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -43,24 +47,26 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.tags.CreateTag;
 import org.openmetadata.schema.api.tags.CreateTagCategory;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagCategoryRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -79,10 +85,6 @@ public class TagResource {
   static class CategoryList extends ResultList<TagCategory> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
     CategoryList() {}
-
-    CategoryList(List<TagCategory> data) {
-      super(data);
-    }
   }
 
   public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
@@ -92,31 +94,32 @@ public class TagResource {
     this.authorizer = authorizer;
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @SuppressWarnings("unused") // Method used by reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    List<String> tagFiles = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");
-    tagFiles.forEach(
-        tagFile -> {
-          try {
-            LOG.info("Loading tag definitions from file {}", tagFile);
-            String tagJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), tagFile);
-            tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
-            TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
-            long now = System.currentTimeMillis();
-            tagCategory.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
-            tagCategory
-                .getChildren()
-                .forEach(
-                    t -> {
-                      t.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
-                      t.getChildren().forEach(c -> c.withUpdatedBy("admin").withUpdatedAt(now));
-                    });
-            daoCategory.initCategory(tagCategory);
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the tag files {}", tagFile, e);
-          }
-        });
+    List<TagCategory> tagCategories =
+        EntityRepository.getEntitiesFromSeedData(TAG_CATEGORY, ".*json/data/tags/.*\\.json$", TagCategory.class);
+    for (TagCategory tagCategory : tagCategories) {
+      long now = System.currentTimeMillis();
+      tagCategory.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
+      tagCategory
+          .getChildren()
+          .forEach(
+              t -> {
+                t.withId(UUID.randomUUID())
+                    .withUpdatedBy(ADMIN_USER_NAME)
+                    .withUpdatedAt(now)
+                    .withProvider(tagCategory.getProvider());
+                t.getChildren()
+                    .forEach(
+                        c ->
+                            c.withId(UUID.randomUUID())
+                                .withUpdatedBy(ADMIN_USER_NAME)
+                                .withUpdatedAt(now)
+                                .withProvider(tagCategory.getProvider()));
+              });
+      daoCategory.initCategory(tagCategory);
+    }
   }
 
   static final String FIELDS = "usageCount";
@@ -289,7 +292,9 @@ public class TagResource {
   public Response createCategory(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(TAG_CATEGORY, MetadataOperation.CREATE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(TAG_CATEGORY, daoCategory).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     TagCategory category = getTagCategory(securityContext, create);
     category = addHref(uriInfo, daoCategory.create(uriInfo, category));
     return Response.created(category.getHref()).entity(category).build();
@@ -316,7 +321,9 @@ public class TagResource {
           String category,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(TAG, MetadataOperation.CREATE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     tag = addHref(categoryHref, dao.create(uriInfo, tag));
@@ -352,7 +359,9 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(TAG, MetadataOperation.CREATE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
@@ -374,13 +383,18 @@ public class TagResource {
           String categoryName,
       @Valid CreateTagCategory create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
     TagCategory category = getTagCategory(securityContext, create);
+    ResourceContext resourceContext =
+        EntityResource.getResourceContext(TAG_CATEGORY, daoCategory).name(categoryName).build();
+    OperationContext operationContext = new OperationContext(TAG_CATEGORY, createOrUpdateOperation(resourceContext));
+
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     // TODO clean this up
     if (categoryName.equals(create.getName())) { // Not changing the name
       category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, category).getEntity());
     } else {
-      TagCategory origCategory = getTagCategory(securityContext, create).withName(categoryName);
+      TagCategory origCategory =
+          getTagCategory(securityContext, create).withName(categoryName).withFullyQualifiedName(categoryName);
       category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, origCategory, category).getEntity());
     }
     return Response.ok(category).build();
@@ -408,14 +422,21 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
+
+    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).name(categoryName).build();
+    OperationContext operationContext = new OperationContext(TAG, createOrUpdateOperation(resourceContext));
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     RestUtil.PutResponse<?> response;
     if (primaryTag.equals(create.getName())) { // Not changing the name
       response = dao.createOrUpdate(uriInfo, tag);
     } else {
-      Tag origTag = getTag(securityContext, create, FullyQualifiedName.build(categoryName)).withName(primaryTag);
+      Tag origTag =
+          getTag(securityContext, create, FullyQualifiedName.build(categoryName))
+              .withName(primaryTag)
+              .withFullyQualifiedName(FullyQualifiedName.build(categoryName, primaryTag));
       response = dao.createOrUpdate(uriInfo, origTag, tag);
     }
     addHref(categoryHref, (Tag) response.getEntity());
@@ -452,10 +473,14 @@ public class TagResource {
           String secondaryTag,
       @Valid CreateTag create)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, false);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
-    URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
+
+    // If entity does not exist, this is a create operation, else update operation
+    ResourceContext resourceContext =
+        EntityResource.getResourceContext(TAG, dao).name(tag.getFullyQualifiedName()).build();
+    OperationContext operationContext = new OperationContext(TAG, createOrUpdateOperation(resourceContext));
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     RestUtil.PutResponse<?> response;
     // TODO clean this up
     if (secondaryTag.equals(create.getName())) { // Not changing the name
@@ -465,6 +490,9 @@ public class TagResource {
           getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag)).withName(secondaryTag);
       response = dao.createOrUpdate(uriInfo, origTag, tag);
     }
+
+    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
+    URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
     addHref(parentHRef, (Tag) response.getEntity());
     return response.toResponse();
   }
@@ -481,7 +509,9 @@ public class TagResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Tag category id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(TAG_CATEGORY, MetadataOperation.DELETE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(TAG_CATEGORY, daoCategory).id(id).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     TagCategory tagCategory = daoCategory.delete(uriInfo, id);
     addHref(uriInfo, tagCategory);
     return new RestUtil.DeleteResponse<>(tagCategory, RestUtil.ENTITY_DELETED).toResponse();
@@ -497,10 +527,14 @@ public class TagResource {
   public Response deleteTags(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
+          String category,
       @Parameter(description = "Tag id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(TAG, MetadataOperation.DELETE);
+    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).id(id).build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
     Tag tag = dao.delete(uriInfo, id);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     addHref(categoryHref, tag);
@@ -530,7 +564,7 @@ public class TagResource {
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withFullyQualifiedName(create.getName())
-        .withCategoryType(create.getCategoryType())
+        .withMutuallyExclusive(create.getMutuallyExclusive())
         .withDescription(create.getDescription())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
@@ -543,6 +577,7 @@ public class TagResource {
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
         .withDescription(create.getDescription())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withUpdatedAt(System.currentTimeMillis())
+        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

@@ -14,7 +14,8 @@
 import { AxiosError } from 'axios';
 import { SlackChatConfig } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
+import { useAnalytics } from 'use-analytics';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { fetchSlackConfig } from '../axiosAPIs/miscAPI';
 import Loader from '../components/Loader/Loader';
@@ -22,6 +23,7 @@ import SlackChat from '../components/SlackChat/SlackChat';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
 import AccountActivationConfirmation from '../pages/signup/account-activation-confirmation.component';
+import { isProtectedRoute } from '../utils/AuthProvider.util';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AuthenticatedAppRouter = withSuspenseFallback(
@@ -47,9 +49,13 @@ const BasicSignupPage = withSuspenseFallback(
 );
 
 const AppRouter = () => {
+  const location = useLocation();
+
+  // web analytics instance
+  const analytics = useAnalytics();
+
   const {
     authConfig,
-    isAuthDisabled,
     isAuthenticated,
     loading,
     isSigningIn,
@@ -65,6 +71,11 @@ const AppRouter = () => {
   ];
   const isOidcProvider =
     authConfig?.provider && oidcProviders.includes(authConfig.provider);
+
+  const isBasicAuthProvider =
+    authConfig &&
+    (authConfig.provider === AuthTypes.BASIC ||
+      authConfig.provider === AuthTypes.LDAP);
 
   const fetchSlackChatConfig = () => {
     fetchSlackConfig()
@@ -95,95 +106,73 @@ const AppRouter = () => {
       <SlackChat slackConfig={slackConfig} />
     ) : null;
 
-  return loading ? (
-    <Loader />
-  ) : (
-    <>
-      {isOidcProvider || isAuthenticated ? (
-        <>
-          <AuthenticatedAppRouter />
-          {slackChat}
-        </>
-      ) : (
-        <>
-          {slackChat}
-          <Switch>
-            <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
+  useEffect(() => {
+    const { pathname } = location;
 
-            <Route exact path={ROUTES.HOME}>
-              {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
-                <>
-                  <Redirect to={ROUTES.SIGNIN} />
-                  <Route
-                    exact
-                    component={ForgotPassword}
-                    path={ROUTES.FORGOT_PASSWORD}
-                  />
-                  <Route
-                    exact
-                    component={ResetPassword}
-                    path={ROUTES.RESET_PASSWORD}
-                  />
-                  <Route
-                    exact
-                    component={AccountActivationConfirmation}
-                    path={ROUTES.ACCOUNT_ACTIVATION}
-                  />
-                </>
-              ) : (
-                <Redirect to={ROUTES.MY_DATA} />
-              )}
-            </Route>
-            {!isSigningIn ? (
-              <>
-                <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-                <Route
-                  exact
-                  component={ForgotPassword}
-                  path={ROUTES.FORGOT_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={ResetPassword}
-                  path={ROUTES.RESET_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={AccountActivationConfirmation}
-                  path={ROUTES.ACCOUNT_ACTIVATION}
-                />
-              </>
-            ) : null}
-            {callbackComponent ? (
-              <Route component={callbackComponent} path={ROUTES.CALLBACK} />
-            ) : null}
-            {isAuthDisabled || isAuthenticated ? (
-              <AuthenticatedAppRouter />
-            ) : (
-              <>
-                <Redirect to={ROUTES.SIGNIN} />
-                <Route
-                  exact
-                  component={ForgotPassword}
-                  path={ROUTES.FORGOT_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={ResetPassword}
-                  path={ROUTES.RESET_PASSWORD}
-                />
-                <Route
-                  exact
-                  component={AccountActivationConfirmation}
-                  path={ROUTES.ACCOUNT_ACTIVATION}
-                />
-              </>
-            )}
-            <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-          </Switch>
+    /**
+     * Ignore the slash path because we are treating my data as
+     * default path.
+     */
+    if (pathname !== '/') {
+      // track page view on route change
+      analytics.page();
+    }
+  }, [location.pathname]);
+
+  if (loading) {
+    return <Loader />;
+  }
+
+  if (!isAuthenticated && isProtectedRoute(location.pathname)) {
+    return <Redirect to={ROUTES.SIGNIN} />;
+  }
+
+  if (isOidcProvider || isAuthenticated) {
+    return (
+      <>
+        <AuthenticatedAppRouter />
+        {slackChat}
+      </>
+    );
+  }
+
+  return (
+    <Switch>
+      {slackChat}
+      <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+      {callbackComponent ? (
+        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+      ) : null}
+
+      <Route exact path={ROUTES.HOME}>
+        {!isAuthenticated && !isSigningIn ? (
+          <>
+            <Redirect to={ROUTES.SIGNIN} />
+          </>
+        ) : (
+          <Redirect to={ROUTES.MY_DATA} />
+        )}
+      </Route>
+
+      {isBasicAuthProvider && (
+        <>
+          <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
+          <Route
+            exact
+            component={ForgotPassword}
+            path={ROUTES.FORGOT_PASSWORD}
+          />
+          <Route exact component={ResetPassword} path={ROUTES.RESET_PASSWORD} />
+          <Route
+            exact
+            component={AccountActivationConfirmation}
+            path={ROUTES.ACCOUNT_ACTIVATION}
+          />
         </>
       )}
-    </>
+      {isAuthenticated && <AuthenticatedAppRouter />}
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+    </Switch>
   );
 };
 

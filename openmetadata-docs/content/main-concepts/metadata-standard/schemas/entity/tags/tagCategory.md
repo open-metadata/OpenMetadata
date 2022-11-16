@@ -17,7 +17,6 @@ slug: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`categoryType`**: Refer to *#/definitions/tagCategoryType*.
 - **`href`**: Link to the resource corresponding to the tag category. Refer to *../../type/basic.json#/definitions/href*.
 - **`usageCount`** *(integer)*: Count of how many times the tags from this tag category are used.
 - **`children`** *(array)*: Tags under this category.
@@ -27,7 +26,6 @@ slug: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
 ## Definitions
 
 - **`tagName`** *(string)*: Name of the tag.
-- **`tagCategoryType`** *(string)*: Type of tag category. Must be one of: `['Descriptive', 'Classification']`.
 - **`tag`**: Cannot contain additional properties.
   - **`id`**: Unique identifier of this entity instance. Refer to *../../type/basic.json#/definitions/uuid*.
   - **`name`**: Name of the tag. Refer to *#/definitions/tagName*.

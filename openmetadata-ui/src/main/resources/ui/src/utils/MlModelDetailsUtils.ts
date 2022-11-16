@@ -22,6 +22,11 @@ export const mlModelTabs = [
     path: 'features',
   },
   {
+    name: 'Activity Feed',
+    path: 'activity_feed',
+    field: TabSpecificField.ACTIVITY_FEED,
+  },
+  {
     name: 'Details',
     path: 'details',
   },
@@ -39,16 +44,20 @@ export const mlModelTabs = [
 export const getCurrentMlModelTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'details':
+    case 'activity_feed':
       currentTab = 2;
 
       break;
-    case 'lineage':
+    case 'details':
       currentTab = 3;
 
       break;
-    case 'custom_properties':
+    case 'lineage':
       currentTab = 4;
+
+      break;
+    case 'custom_properties':
+      currentTab = 5;
 
       break;
 

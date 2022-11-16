@@ -21,6 +21,10 @@ from metadata.ingestion.ometa.client import REST, ClientConfig
 
 
 class FivetranClient:
+    """
+    Client to interact with fivetran apis
+    """
+
     def __init__(self, config: FivetranConnection):
         self.config = config
         api_token = str(

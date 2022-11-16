@@ -159,7 +159,7 @@ class TestAirflowOps(TestCase):
         res = status(dag_id="dag_status")
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json[0].get("state"), "running")
+        self.assertEqual(res.json[0].get("pipelineState"), "running")
 
         self.dag.create_dagrun(
             run_type=DagRunType.MANUAL,
@@ -182,7 +182,7 @@ class TestAirflowOps(TestCase):
 
         self.assertEqual(res.status_code, 200)
 
-        res_status = {elem.get("state") for elem in res.json}
+        res_status = {elem.get("pipelineState") for elem in res.json}
         self.assertEqual(res_status, {"failed", "success"})
 
     def test_dag_state(self):
@@ -227,6 +227,7 @@ class TestAirflowOps(TestCase):
             id=uuid.uuid4(),
             pipelineType=PipelineType.metadata,
             name="my_new_dag",
+            fullyQualifiedName="test-service-ops.my_new_dag",
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,
             airflowConfig=AirflowConfig(),

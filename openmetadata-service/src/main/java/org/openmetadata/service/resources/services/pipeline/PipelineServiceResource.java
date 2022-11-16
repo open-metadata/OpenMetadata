@@ -41,6 +41,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -53,7 +54,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -77,29 +77,20 @@ public class PipelineServiceResource
     return service;
   }
 
-  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
-    super(
-        PipelineService.class,
-        new PipelineServiceRepository(dao, secretsManager),
-        authorizer,
-        secretsManager,
-        ServiceType.PIPELINE);
+  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
+    super(PipelineService.class, new PipelineServiceRepository(dao), authorizer, ServiceType.PIPELINE);
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {
     @SuppressWarnings("unused") /* Required for tests */
     public PipelineServiceList() {}
-
-    public PipelineServiceList(List<PipelineService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
   @Operation(
       operationId = "listPipelineService",
       summary = "List pipeline services",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description =
           "Get a list of pipeline services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -148,7 +139,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getPipelineServiceByID",
       summary = "Get a pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a pipeline service by `id`.",
       responses = {
         @ApiResponse(
@@ -183,7 +174,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getPipelineServiceByFQN",
       summary = "Get pipeline service by name",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a pipeline service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -218,7 +209,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "listAllPipelineServiceVersion",
       summary = "List pipeline service versions",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a list of all the versions of a pipeline service identified by `id`",
       responses = {
         @ApiResponse(
@@ -254,7 +245,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "getSpecificPipelineService",
       summary = "Get a version of the pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Get a version of the pipeline service by given `id`",
       responses = {
         @ApiResponse(
@@ -284,7 +275,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "createPipelineService",
       summary = "Create a pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Create a new pipeline service.",
       responses = {
         @ApiResponse(
@@ -298,7 +289,7 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
       throws IOException {
     PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
@@ -307,7 +298,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "createOrUpdatePipelineService",
       summary = "Update pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -321,7 +312,7 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException {
     PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
@@ -331,7 +322,7 @@ public class PipelineServiceResource
   @Operation(
       operationId = "deletePipelineService",
       summary = "Delete a pipeline service",
-      tags = "pipelineService",
+      tags = "pipelineServices",
       description =
           "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -352,7 +343,27 @@ public class PipelineServiceResource
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
           UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted PipelineService.",
+      tags = "pipelineServices",
+      description = "Restore a soft deleted PipelineService.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the PipelineService ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class)))
+      })
+  public Response restorePipelineService(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private PipelineService getService(CreatePipelineService create, String user) throws IOException {

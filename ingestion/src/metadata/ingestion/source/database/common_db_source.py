@@ -11,7 +11,6 @@
 """
 Generic source to build SQL connectors.
 """
-
 import traceback
 from abc import ABC
 from copy import deepcopy
@@ -42,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.sql_lineage import (
+    clean_raw_query,
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
@@ -254,7 +254,7 @@ class CommonDbSourceService(
                         continue
                     yield view_name, TableType.View
         except Exception as err:
-            logger.error(
+            logger.warning(
                 f"Fetching tables names failed for schema {schema_name} due to - {err}"
             )
             logger.debug(traceback.format_exc())
@@ -273,23 +273,29 @@ class CommonDbSourceService(
 
             except NotImplementedError:
                 logger.warning("View definition not implemented")
-                return ""
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Failed to fetch view definition for {table_name}: {exc}"
                 )
-                return ""
+            return None
+        return None
 
-    def is_partition(
-        self, table_name: str, schema_name: str, inspector: Inspector
+    def is_partition(  # pylint: disable=unused-argument
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
     ) -> bool:
         return False
 
-    def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, TablePartition]:
+    def get_table_partition_details(  # pylint: disable=unused-argument
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
         """
@@ -366,12 +372,10 @@ class CommonDbSourceService(
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
-        logger.info(f"Processing Lineage for Views")
+        logger.info("Processing Lineage for Views")
         for view in self.context.table_views:
             table_name = view.get("table_name")
             table_type = view.get("table_type")
@@ -399,13 +403,15 @@ class CommonDbSourceService(
             # Disable the DictConfigurator.configure method while importing LineageRunner
             configure = DictConfigurator.configure
             DictConfigurator.configure = lambda _: None
-            from sqllineage.runner import LineageRunner
+            from sqllineage.runner import (  # pylint: disable=import-outside-toplevel
+                LineageRunner,
+            )
 
             # Reverting changes after import is done
             DictConfigurator.configure = configure
 
             try:
-                result = LineageRunner(view_definition)
+                result = LineageRunner(clean_raw_query(view_definition))
                 if result.source_tables and result.target_tables:
                     yield from get_lineage_by_query(
                         self.metadata,
@@ -450,16 +456,19 @@ class CommonDbSourceService(
     def close(self):
         if self.connection is not None:
             self.connection.close()
+        self.engine.dispose()
 
     def fetch_table_tags(
-        self, table_name: str, schema_name: str, inspector: Inspector
+        self,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
     ) -> None:
         """
         Method to fetch tags associated with table
         """
-        pass
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
+    def standardize_table_name(self, schema_name: str, table: str) -> str:
         """
         This method is interesting to be maintained in case
         some connector, such as BigQuery, needs to perform

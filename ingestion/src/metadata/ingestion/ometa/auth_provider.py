@@ -337,9 +337,7 @@ class AzureAuthenticationProvider(AuthenticationProvider):
         return cls(config)
 
     def auth_token(self) -> None:
-        from msal import (
-            ConfidentialClientApplication,  # pylint: disable=import-outside-toplevel
-        )
+        from msal import ConfidentialClientApplication
 
         app = ConfidentialClientApplication(
             client_id=self.security_config.clientId,
@@ -393,6 +391,7 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         response = requests.post(
             url=self.security_config.tokenEndpoint,
             data=data,
+            timeout=60 * 5,
         )
         if response.ok:
             response_json = response.json()

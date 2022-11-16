@@ -18,10 +18,13 @@ on:
       - '0.[0-9]+.[0-9]+'
     paths:
       - 'openmetadata-docs/**'
-  pull_request_target:
+  pull_request:
     types: [labeled, opened, synchronize, reopened]
     paths:
       - 'openmetadata-docs/**'
+
+permissions:
+  contents: read
 
 concurrency: 
   group: docs-tests-${{ github.head_ref || github.run_id }}
@@ -32,9 +35,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 0
 
     - name: Run Docs export
       run: make docker-docs-validate

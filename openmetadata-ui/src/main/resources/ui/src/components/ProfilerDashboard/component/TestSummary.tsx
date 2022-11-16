@@ -14,8 +14,7 @@
 import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import moment from 'moment';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import {
   Legend,
   Line,
@@ -40,6 +39,11 @@ import {
   TestCaseStatus,
 } from '../../../generated/tests/testCase';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
+import {
+  getCurrentDateTimeStamp,
+  getFormattedDateFromSeconds,
+  getPastDatesTimeStampFromCurrentDate,
+} from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
@@ -85,7 +89,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       }, {});
 
       chartData.push({
-        name: moment.unix(result.timestamp || 0).format('DD/MMM HH:mm'),
+        name: getFormattedDateFromSeconds(result.timestamp as number),
         status: result.testCaseStatus || '',
         ...values,
       });
@@ -100,7 +104,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     });
   };
 
-  const updatedDot: LineProps['dot'] = (props) => {
+  const updatedDot: LineProps['dot'] = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    props: any
+  ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
     const fill =
       payload.status === TestCaseStatus.Success
@@ -126,10 +133,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (isEmpty(data)) return;
 
     try {
-      const startTs = moment()
-        .subtract(PROFILER_FILTER_RANGE[selectedTimeRange].days, 'days')
-        .unix();
-      const endTs = moment().unix();
+      const startTs = getPastDatesTimeStampFromCurrentDate(
+        PROFILER_FILTER_RANGE[selectedTimeRange].days
+      );
+
+      const endTs = getCurrentDateTimeStamp();
+
       const { data: chartData } = await getListTestCaseResults(
         getEncodedFqn(data.fullyQualifiedName || ''),
         {
@@ -211,7 +220,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             </Space>
 
             {results.length ? (
-              <ResponsiveContainer className="tw-bg-white" minHeight={300}>
+              <ResponsiveContainer
+                className="tw-bg-white"
+                id={`${data.name}_graph`}
+                minHeight={300}>
                 <LineChart
                   data={chartData.data}
                   margin={{

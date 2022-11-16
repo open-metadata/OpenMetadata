@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
@@ -58,9 +60,11 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
+import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.schema.services.connections.pipeline.GlueConnection;
+import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
@@ -81,10 +85,10 @@ public final class TestUtils {
   public static final String ENTITY_NAME_LENGTH_ERROR =
       String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
-  public static final String ADMIN_USER_NAME = "admin";
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
-  public static final String BOT_USER_NAME = "ingestion-bot";
-  public static final Map<String, String> BOT_AUTH_HEADERS = authHeaders(BOT_USER_NAME + "@open-metadata.org");
+  public static final String INGESTION_BOT = "ingestion-bot";
+  public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
+      authHeaders(INGESTION_BOT + "@open-metadata.org");
   public static final String TEST_USER_NAME = "test";
   public static final Map<String, String> TEST_AUTH_HEADERS = authHeaders(TEST_USER_NAME + "@open-metadata.org");
 
@@ -101,7 +105,9 @@ public final class TestUtils {
   public static MessagingConnection KAFKA_CONNECTION;
   public static DashboardConnection SUPERSET_CONNECTION;
 
-  public static MlModelConnection MLFLOW_CONNECTION;
+  public static final MlModelConnection MLFLOW_CONNECTION;
+  public static MetadataConnection AMUNDSEN_CONNECTION;
+  public static MetadataConnection ATLAS_CONNECTION;
 
   public static URI PIPELINE_URL;
 
@@ -192,7 +198,7 @@ public final class TestUtils {
       GLUE_CONNECTION =
           new PipelineConnection()
               .withConfig(
-                  new GlueConnection()
+                  new GluePipelineConnection()
                       .withAwsConfig(
                           new AWSCredentials()
                               .withAwsAccessKeyId("ABCD")
@@ -200,6 +206,36 @@ public final class TestUtils {
                               .withAwsRegion("eu-west-2")));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      AMUNDSEN_CONNECTION =
+          new MetadataConnection()
+              .withConfig(
+                  new AmundsenConnection()
+                      .withHostPort(new URI("http://localhost:8080"))
+                      .withUsername("admin")
+                      .withPassword("admin"));
+    } catch (URISyntaxException e) {
+      AMUNDSEN_CONNECTION = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      ATLAS_CONNECTION =
+          new MetadataConnection()
+              .withConfig(
+                  new AtlasConnection()
+                      .withHostPort(new URI("http://localhost:8080"))
+                      .withUsername("admin")
+                      .withPassword("admin"));
+    } catch (URISyntaxException e) {
+      ATLAS_CONNECTION = null;
       e.printStackTrace();
     }
   }
@@ -271,12 +307,26 @@ public final class TestUtils {
     return readResponse(response, clz, Status.CREATED.getStatusCode());
   }
 
+  public static <T, K> T post(
+      WebTarget target, K request, Class<T> clz, int expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    return readResponse(response, clz, expectedStatus);
+  }
+
   public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
       throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers)
             .method("PATCH", Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
     return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
+  public static <T> T put(WebTarget target, Class<T> clz, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response = SecurityUtil.addHeaders(target, headers).method("PUT");
+    return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
   public static <K> void put(WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
@@ -430,7 +480,7 @@ public final class TestUtils {
     for (UUID id : listOrEmpty(expected)) {
       actual = listOrEmpty(actual);
       assertEquals(expected.size(), actual.size());
-      assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().get());
+      assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().orElse(null));
     }
     validateEntityReferences(actual);
   }

@@ -19,8 +19,8 @@ authenticationConfiguration:
   provider: "custom-oidc"
   providerName: "KeyCloak"
   publicKeyUrls:
-    - "http://localhost:8080/realms/data-sec/protocol/openid-connect/certs"
-  authority: "http://localhost:8080/realms/data-sec"
+    - "http://localhost:8081/realms/data-sec/protocol/openid-connect/certs"
+  authority: "http://localhost:8081/realms/data-sec"
   clientId: "open-metadata"
   callbackUrl: "http://localhost:8585/callback"
 ```
@@ -31,18 +31,19 @@ Then,
 
 ```yaml
 authorizerConfiguration:
-  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
   # JWT Filter
-  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
   adminPrincipals:
     - "admin-user"
-  botPrincipals:
-    - "ingestion-bot"
-    - "service-account-open-metadata"
   principalDomain: "open-metadata.org"
 ```
 
+In `0.12.1` the `className` and `containerRequestFilter` must replace `org.openmetadata.catalog` by `org.openmetadata.service`.
+
 Finally, update the Airflow information:
+
+**Before 0.12.1**
 
 ```yaml
 airflowConfiguration:
@@ -56,3 +57,16 @@ airflowConfiguration:
       secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
       tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
 ```
+
+**After 0.12.1**
+
+```yaml
+airflowConfiguration:
+  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
+  username: ${AIRFLOW_USERNAME:-admin}
+  password: ${AIRFLOW_PASSWORD:-admin}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+```
+
+**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+ingesting data from Airflow.

@@ -9,10 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""Athena source module"""
+
 from typing import Iterable, Optional, Tuple
 
 from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
+from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
@@ -26,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source import sqa_types
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_table
@@ -39,7 +43,8 @@ def _get_column_type(self, type_):
     Function overwritten from AthenaDialect
     to add custom SQA typing.
     """
-    match = self._pattern_column_type.match(type_)
+    type_ = type_.replace(" ", "").lower()
+    match = self._pattern_column_type.match(type_)  # pylint: disable=protected-access
     if match:
         name = match.group(1).lower()
         length = match.group(2)
@@ -48,15 +53,28 @@ def _get_column_type(self, type_):
         length = None
 
     args = []
-    if name in ["boolean"]:
-        col_type = types.BOOLEAN
-    elif name in ["float", "double", "real"]:
-        col_type = types.FLOAT
-    elif name in ["tinyint", "smallint", "integer", "int"]:
-        col_type = types.INTEGER
-    elif name in ["bigint"]:
-        col_type = types.BIGINT
-    elif name in ["decimal"]:
+    col_map = {
+        "boolean": types.BOOLEAN,
+        "float": types.FLOAT,
+        "double": types.FLOAT,
+        "real": types.FLOAT,
+        "tinyint": types.INTEGER,
+        "smallint": types.INTEGER,
+        "integer": types.INTEGER,
+        "int": types.INTEGER,
+        "bigint": types.BIGINT,
+        "string": types.String,
+        "date": types.DATE,
+        "timestamp": types.TIMESTAMP,
+        "binary": types.BINARY,
+        "varbinary": types.BINARY,
+        "array": types.ARRAY,
+        "json": types.JSON,
+        "struct": sqa_types.SQAStruct,
+        "row": sqa_types.SQAStruct,
+        "map": sqa_types.SQAMap,
+    }
+    if name in ["decimal"]:
         col_type = types.DECIMAL
         if length:
             precision, scale = length.split(",")
@@ -69,34 +87,77 @@ def _get_column_type(self, type_):
         col_type = types.VARCHAR
         if length:
             args = [int(length)]
-    elif name in ["string"]:
-        col_type = types.String
-    elif name in ["date"]:
-        col_type = types.DATE
-    elif name in ["timestamp"]:
-        col_type = types.TIMESTAMP
-    elif name in ["binary", "varbinary"]:
-        col_type = types.BINARY
-    elif name in ["array"]:
-        col_type = types.ARRAY
-    elif name in ["json"]:
-        col_type = types.JSON
-    elif name in ["struct", "row"]:
-        col_type = sqa_types.SQAStruct
-    elif name in ["map"]:
-        col_type = sqa_types.SQAMap
+    elif type_.startswith("array"):
+        parsed_type = (
+            ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                type_
+            )
+        )
+        col_type = col_map["array"]
+        args = [col_map.get(parsed_type.get("arrayDataType").lower(), types.String)]
+    elif col_map.get(name):
+        col_type = col_map.get(name)
     else:
         logger.warning(f"Did not recognize type '{type_}'")
         col_type = types.NullType
     return col_type(*args)
 
 
-AthenaDialect._get_column_type = _get_column_type
+def is_complex(type_: str):
+    return (
+        type_.startswith("array")
+        or type_.startswith("map")
+        or type_.startswith("struct")
+        or type_.startswith("row")
+    )
+
+
+@reflection.cache
+def get_columns(self, connection, table_name, schema=None, **kw):
+    """
+    Method to handle table columns
+    """
+    metadata = self._get_table(  # pylint: disable=protected-access
+        connection, table_name, schema=schema, **kw
+    )
+    columns = [
+        {
+            "name": c.name,
+            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
+            "nullable": True,
+            "default": None,
+            "autoincrement": False,
+            "comment": c.comment,
+            "raw_data_type": c.type if is_complex(c.type) else None,
+            "dialect_options": {"awsathena_partition": None},
+        }
+        for c in metadata.columns
+    ]
+    columns += [
+        {
+            "name": c.name,
+            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
+            "nullable": True,
+            "default": None,
+            "autoincrement": False,
+            "comment": c.comment,
+            "raw_data_type": c.type if is_complex(c.type) else None,
+            "dialect_options": {"awsathena_partition": True},
+        }
+        for c in metadata.partition_keys
+    ]
+    return columns
+
+
+AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
+AthenaDialect.get_columns = get_columns
 
 
 class AthenaSource(CommonDbSourceService):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    """
+    Implements the necessary methods to extract
+    Database metadata from Athena Source
+    """
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

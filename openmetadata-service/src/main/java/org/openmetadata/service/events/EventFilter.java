@@ -43,6 +43,7 @@ public class EventFilter implements ContainerResponseFilter {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
       for (String eventHandlerClassName : eventHandlerClassNames) {
+        @SuppressWarnings("unchecked")
         EventHandler eventHandler =
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
         eventHandler.init(config, jdbi);

@@ -90,12 +90,14 @@ logging:
   level: INFO
   appenders:
     - type: console
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
     - type: file
       currentLogFilename: './logs/openmetadata.log'
       archivedLogFilenamePattern: './logs/openmetadata-%d-%i.log.gz'
       archive: true
       archivedFileCount: 7
       maxFileSize: '1MiB'
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
 
 database:
   # the name of the JDBC driver, h2 is used for testing
@@ -103,7 +105,7 @@ database:
   # the username and password
   user: test
   password:
-  # the JDBC URL; the database is called washvalet
+  # the JDBC URL; the database is called openmetadata_test_db
   url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
@@ -130,14 +132,14 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
-  botPrincipals:
-    - "ingestion-bot"
   # Added only for test purposes and not for production setup
   testPrincipals:
     - "test"
   principalDomain: "open-metadata.org"
   enforcePrincipalDomain: false
   enableSecureSocketConnection: false
+  allowedEmailRegistrationDomains:
+    - "all"
 
 authenticationConfiguration:
   provider: "basic"
@@ -151,6 +153,7 @@ authenticationConfiguration:
     - "email"
     - "preferred_username"
     - "sub"
+  enableSelfSignup : true
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
@@ -171,25 +174,20 @@ airflowConfiguration:
   authProvider: "openmetadata"
 
 email:
-  enableSmtpServer : "false"
+  enableSmtpServer : false
+  emailingEntity: ""
+  supportUrl: ""
   openMetadataUrl: ""
+  senderMail: ""
   serverEndpoint: ""
   serverPort: ""
   username: ""
   password: ""
   transportationStrategy: "SMTP_TLS"
 
-elasticsearch:
-  host: "localhost"
-  port: "9200"
-  scheme: "http"
-  username: ""
-  password: ""
-  truststorePath: ""
-  truststorePassword: ""
-  connectionTimeoutSecs: 5
-  socketTimeoutSecs: 60
-  batchSize: 10
-
 slackChat:
   slackUrl: "http://localhost:8080"
+
+login:
+  maxLoginFailAttempts: 3
+  accessBlockTime: 600

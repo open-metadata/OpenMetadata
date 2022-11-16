@@ -18,11 +18,19 @@ from typing import Optional, Tuple
 
 import requests
 
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
-    DbtGCSConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+    DbtGcsConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtHttpConfig import (
     DbtHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
     DbtLocalConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
 from metadata.ingestion.ometa.utils import ometa_logger
@@ -37,6 +45,10 @@ DBT_RUN_RESULTS_FILE_NAME = "run_results.json"
 
 @singledispatch
 def get_dbt_details(config):
+    """
+    Single dispatch method to get the DBT files from different sources
+    """
+
     if config:
         raise NotImplementedError(
             f"Config not implemented for type {type(config)}: {config}"
@@ -61,7 +73,7 @@ def _(config: DbtLocalConfig):
                 dbt_manifest = manifest.read()
         if (
             config.dbtRunResultsFilePath is not None
-            and config.dbtRunResultsFilePath is not ""
+            and config.dbtRunResultsFilePath != ""
         ):
             logger.debug(
                 f"Reading [dbtRunResultsFilePath] from: {config.dbtRunResultsFilePath}"
@@ -85,18 +97,24 @@ def _(config: DbtLocalConfig):
 def _(config: DbtHttpConfig):
     try:
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_catalog = requests.get(config.dbtCatalogHttpPath)
+        dbt_catalog = requests.get(  # pylint: disable=missing-timeout
+            config.dbtCatalogHttpPath
+        )
         logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_manifest = requests.get(config.dbtManifestHttpPath)
+        dbt_manifest = requests.get(  # pylint: disable=missing-timeout
+            config.dbtManifestHttpPath
+        )
         dbt_run_results = None
         if (
             config.dbtRunResultsHttpPath is not None
-            and config.dbtRunResultsHttpPath is not ""
+            and config.dbtRunResultsHttpPath != ""
         ):
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
-            dbt_run_results = requests.get(config.dbtRunResultsHttpPath)
+            dbt_run_results = requests.get(  # pylint: disable=missing-timeout
+                config.dbtRunResultsHttpPath
+            )
         return (
             json.loads(dbt_catalog.text),
             json.loads(dbt_manifest.text),
@@ -109,12 +127,15 @@ def _(config: DbtHttpConfig):
 
 
 @get_dbt_details.register
-def _(config: DbtCloudConfig):
+def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None
     try:
-        from metadata.ingestion.ometa.client import REST, ClientConfig
+        from metadata.ingestion.ometa.client import (  # pylint: disable=import-outside-toplevel
+            REST,
+            ClientConfig,
+        )
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -127,24 +148,26 @@ def _(config: DbtCloudConfig):
         )
         client = REST(client_config)
         account_id = config.dbtCloudAccountId
+        project_id = config.dbtCloudProjectId
         logger.debug(
             "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
         )
-        response = client.get(
-            f"/accounts/{account_id}/runs/?order_by=-finished_at&limit=1"
-        )
+        params_data = {"order_by": "-finished_at", "limit": "1"}
+        if project_id:
+            params_data["project_id"] = project_id
+        response = client.get(f"/accounts/{account_id}/runs", data=params_data)
         runs_data = response.get("data")
         if runs_data:
             run_id = runs_data[0]["id"]
-            logger.debug(f"Requesting [dbt_catalog]")
+            logger.debug("Requesting [dbt_catalog]")
             dbt_catalog = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
             )
-            logger.debug(f"Requesting [dbt_manifest]")
+            logger.debug("Requesting [dbt_manifest]")
             dbt_manifest = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}"
             )
-            logger.debug(f"Requesting [dbt_run_results]")
+            logger.debug("Requesting [dbt_run_results]")
             dbt_run_results = client.get(
                 f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
             )
@@ -161,7 +184,9 @@ def _(config: DbtS3Config):
     dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from metadata.clients.aws_client import AWSClient
+        from metadata.clients.aws_client import (  # pylint: disable=import-outside-toplevel
+            AWSClient,
+        )
 
         aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
 
@@ -196,13 +221,13 @@ def _(config: DbtS3Config):
 
 
 @get_dbt_details.register
-def _(config: DbtGCSConfig):
+def _(config: DbtGcsConfig):
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from google.cloud import storage
+        from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
         set_google_credentials(gcs_credentials=config.dbtSecurityConfig)
         client = storage.Client()

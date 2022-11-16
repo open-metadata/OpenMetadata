@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
 import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
@@ -44,7 +45,6 @@ import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
@@ -93,7 +93,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /** Generate EntityReference for a given Policy's Location. * */
   @Transaction
   private EntityReference getLocationReference(Policy policy) throws IOException {
-    if (policy == null || policy.getLocation() == null || policy.getLocation().getId() == null) {
+    if (policy == null || getId(policy.getLocation()) == null) {
       return null;
     }
 
@@ -106,7 +106,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void prepare(Policy policy) throws IOException {
-    setFullyQualifiedName(policy);
     validateRules(policy);
     policy.setLocation(getLocationReference(policy));
   }
@@ -121,7 +120,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     // Don't store owner, location and href as JSON. Build it on the fly based on relationships
     policy.withOwner(null).withLocation(null).withHref(null);
 
-    store(policy.getId(), policy, update);
+    store(policy, update);
 
     // Restore the relationships
     policy.withOwner(owner).withLocation(location).withHref(href);
@@ -143,11 +142,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   protected void preDelete(Policy entity) {
     if (FALSE.equals(entity.getAllowDelete())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, entity.getName()));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));
     }
   }
 
-  public void validateRules(Policy policy) throws IOException {
+  public void validateRules(Policy policy) {
     // Resolve JSON blobs into Rule object and perform schema based validation
     List<Rule> rules = policy.getRules();
     if (listOrEmpty(rules).isEmpty()) {
@@ -163,23 +163,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     rules.sort(Comparator.comparing(Rule::getName));
   }
 
-  public List<Policy> getAccessControlPolicies() throws IOException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(List.of("rules", ENABLED));
-    ListFilter filter = new ListFilter();
-    List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
-    List<Policy> policies = new ArrayList<>(jsons.size());
-    for (String json : jsons) {
-      Policy policy = setFieldsInternal(JsonUtils.readValue(json, Policy.class), fields);
-      if (!Boolean.TRUE.equals(policy.getEnabled())) {
-        continue;
-      }
-      policies.add(policy);
-    }
-    return policies;
-  }
-
   private void setLocation(Policy policy, EntityReference location) {
-    if (location == null || location.getId() == null) {
+    if (getId(location) == null) {
       return;
     }
     addRelationship(policy.getId(), policy.getLocation().getId(), POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
@@ -200,12 +185,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
       // remove original Policy --> Location relationship if exists.
-      if (origPolicy.getLocation() != null && origPolicy.getLocation().getId() != null) {
+      if (getId(origPolicy.getLocation()) != null) {
         deleteRelationship(
             origPolicy.getId(), POLICY, origPolicy.getLocation().getId(), Entity.LOCATION, Relationship.APPLIED_TO);
       }
       // insert updated Policy --> Location relationship.
-      if (updatedPolicy.getLocation() != null && updatedPolicy.getLocation().getId() != null) {
+      if (getId(updatedPolicy.getLocation()) != null) {
         addRelationship(
             updatedPolicy.getId(),
             updatedPolicy.getLocation().getId(),

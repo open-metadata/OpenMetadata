@@ -14,6 +14,9 @@ AVG Metric definition
 """
 # pylint: disable=duplicate-code
 
+import traceback
+
+import pandas as pd
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
@@ -29,7 +32,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
-
+# pylint: disable=invalid-name
 class avg(GenericFunction):
     name = "avg"
     inherit_cache = CACHE
@@ -39,7 +42,7 @@ class avg(GenericFunction):
 def _(element, compiler, **kw):
     """Handle case for empty table. If empty, clickhouse returns NaN"""
     proc = compiler.process(element.clauses, **kw)
-    return "if(isNaN(avg(%s)), null, avg(%s))" % ((proc,) * 2)
+    return f"if(isNaN(avg({proc})), null, avg({proc}))"
 
 
 class Mean(StaticMetric):
@@ -72,3 +75,33 @@ class Mean(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
         return None
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        """
+        Data lake function to calculate mean
+        """
+        try:
+            if is_quantifiable(self.col.datatype):
+                return data_frame[self.col.name].mean()
+
+            if is_concatenable(self.col.datatype):
+                return (
+                    pd.DataFrame(
+                        [
+                            len(f"{concatenable_data}")
+                            for concatenable_data in data_frame[
+                                self.col.name
+                            ].values.tolist()
+                        ]
+                    )
+                    .mean()
+                    .tolist()[0]
+                )
+            raise NotImplementedError()
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Don't know how to process type {self.col.datatype} when computing MEAN, Error: {err}"
+            )
+            return 0

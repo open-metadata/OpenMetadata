@@ -13,26 +13,47 @@
 
 package org.openmetadata.service.secrets;
 
+import com.google.common.annotations.VisibleForTesting;
+import lombok.Getter;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 
 public class SecretsManagerFactory {
+  @Getter private static SecretsManager secretsManager;
 
+  private SecretsManagerFactory() {}
+
+  /** Expected to be called only once when the Application starts */
   public static SecretsManager createSecretsManager(SecretsManagerConfiguration config, String clusterName) {
-    SecretsManagerProvider secretManager =
+    if (secretsManager != null) {
+      return secretsManager;
+    }
+    SecretsManagerProvider secretsManagerProvider =
         config != null && config.getSecretsManager() != null
             ? config.getSecretsManager()
             : SecretsManagerConfiguration.DEFAULT_SECRET_MANAGER;
-    switch (secretManager) {
+    switch (secretsManagerProvider) {
       case NOOP:
-        return NoopSecretsManager.getInstance(clusterName);
-      case AWS:
-        return AWSSecretsManager.getInstance(config, clusterName);
       case AWS_SSM:
-        return AWSSSMSecretsManager.getInstance(config, clusterName);
+      case AWS:
+        secretsManager = NoopSecretsManager.getInstance(clusterName, secretsManagerProvider);
+        break;
+      case MANAGED_AWS:
+        secretsManager = AWSSecretsManager.getInstance(config, clusterName);
+        break;
+      case MANAGED_AWS_SSM:
+        secretsManager = AWSSSMSecretsManager.getInstance(config, clusterName);
+        break;
       case IN_MEMORY:
-        return InMemorySecretsManager.getInstance(clusterName);
+        secretsManager = InMemorySecretsManager.getInstance(clusterName);
+        break;
       default:
-        throw new IllegalArgumentException("Not implemented secret manager store: " + secretManager);
+        throw new IllegalArgumentException("Not implemented secret manager store: " + secretsManagerProvider);
     }
+    return secretsManager;
+  }
+
+  @VisibleForTesting
+  public static void setSecretsManager(SecretsManager secretsManager) {
+    SecretsManagerFactory.secretsManager = secretsManager;
   }
 }

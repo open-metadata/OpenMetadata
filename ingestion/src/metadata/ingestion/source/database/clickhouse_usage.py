@@ -19,6 +19,10 @@ from metadata.utils.sql_queries import CLICKHOUSE_SQL_STATEMENT
 
 
 class ClickhouseUsageSource(ClickhouseQueryParserSource, UsageSource):
+    """
+    Implements the necessary methods to extract
+    Database Usage from Clickhouse Source
+    """
 
     sql_stmt = CLICKHOUSE_SQL_STATEMENT
 

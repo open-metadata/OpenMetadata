@@ -25,13 +25,20 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
 class SqlColumnHandlerMixin:
-    def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
+    """
+    Mixin class to handle sql source columns
+    """
+
+    def fetch_column_tags(  # pylint: disable=unused-argument
+        self, column: dict, col_obj: Column
+    ) -> None:
         if self.source_config.includeTags:
             logger.info("Fetching tags not implemented for this connector")
             self.source_config.includeTags = False
@@ -50,18 +57,18 @@ class SqlColumnHandlerMixin:
                 if data_type_display
                 else f"{col_type}({precision[0]},{precision[1]})"
             )
-        dataTypeDisplay = (
+        data_type_display = (
             f"{data_type_display}"
             if data_type_display
-            else "{}({})".format(col_type, col_data_length)
+            else f"{col_type}({col_data_length})"
             if col_data_length
             else col_type
         )
         if col_type == "ARRAY":
             if arr_data_type is None:
                 arr_data_type = DataType.VARCHAR.value
-            dataTypeDisplay = f"array<{arr_data_type}>"
-        return dataTypeDisplay
+            data_type_display = f"array<{arr_data_type}>"
+        return data_type_display
 
     def _process_col_type(self, column: dict, schema: str) -> Tuple:
         data_type_display = None
@@ -70,7 +77,7 @@ class SqlColumnHandlerMixin:
         if "raw_data_type" in column and column["raw_data_type"] is not None:
             column["raw_data_type"] = self.parse_raw_data_type(column["raw_data_type"])
             if not column["raw_data_type"].startswith(schema):
-                parsed_string = ColumnTypeParser._parse_datatype_string(
+                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     column["raw_data_type"]
                 )
                 parsed_string["name"] = column["name"]
@@ -82,7 +89,7 @@ class SqlColumnHandlerMixin:
                 arr_data_type = re.match(
                     r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
                 ).groups()
-                if isinstance(arr_data_type, list) or isinstance(arr_data_type, tuple):
+                if isinstance(arr_data_type, (list, tuple)):
                     arr_data_type = ColumnTypeParser.get_column_type(arr_data_type[0])
                 data_type_display = column["type"]
             if col_type == DataType.ARRAY.value and not arr_data_type:
@@ -128,6 +135,18 @@ class SqlColumnHandlerMixin:
         for constraint in unique_constraints:
             if constraint.get("column_names"):
                 unique_columns.extend(constraint.get("column_names"))
+        pk_columns = [
+            clean_up_starting_ending_double_quotes_in_string(pk_column)
+            for pk_column in pk_columns
+        ]
+        unique_columns = [
+            clean_up_starting_ending_double_quotes_in_string(unique_column)
+            for unique_column in unique_columns
+        ]
+        foreign_columns = [
+            clean_up_starting_ending_double_quotes_in_string(foreign_column)
+            for foreign_column in foreign_columns
+        ]
         return pk_columns, unique_columns, foreign_columns
 
     def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
@@ -147,14 +166,14 @@ class SqlColumnHandlerMixin:
             parsed_string["dataTypeDisplay"] = f"{array_data_type_display}"
             parsed_string[
                 "arrayDataType"
-            ] = ColumnTypeParser._parse_primitive_datatype_string(
+            ] = ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
                 array_data_type_display[6:-1]
             )[
                 "dataType"
             ]
         return Column(**parsed_string)
 
-    def get_columns_and_constraints(
+    def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
     ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]]]:
         """
@@ -204,11 +223,9 @@ class SqlColumnHandlerMixin:
                         col_type = DataType.VARCHAR.name
                         data_type_display = col_type.lower()
                         logger.warning(
-                            "Unknown type {} mapped to VARCHAR: {}".format(
-                                repr(column["type"]), column["name"]
-                            )
+                            f"Unknown type {repr(column['type'])} mapped to VARCHAR: {column['name']}"
                         )
-                    dataTypeDisplay = self._get_display_datatype(
+                    data_type_display = self._get_display_datatype(
                         data_type_display,
                         col_type,
                         col_data_length,
@@ -218,11 +235,12 @@ class SqlColumnHandlerMixin:
                     col_data_length = 1 if col_data_length is None else col_data_length
                     om_column = Column(
                         name=column["name"]
-                        if column["name"]
-                        else " ",  # Passing whitespace if column name is an empty string since pydantic doesn't accept empty string
+                        # Passing whitespace if column name is an empty string
+                        # since pydantic doesn't accept empty string
+                        if column["name"] else " ",
                         description=column.get("comment", None),
                         dataType=col_type,
-                        dataTypeDisplay=dataTypeDisplay,
+                        dataTypeDisplay=data_type_display,
                         dataLength=col_data_length,
                         constraint=col_constraint,
                         children=children,
@@ -256,6 +274,7 @@ class SqlColumnHandlerMixin:
                 return col_raw_type.length if col_raw_type.length else 1
             except AttributeError:
                 return 1
+        return None
 
     @staticmethod
     def _get_column_constraints(

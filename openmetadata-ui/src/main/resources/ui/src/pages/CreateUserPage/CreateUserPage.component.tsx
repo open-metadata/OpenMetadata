@@ -16,9 +16,13 @@ import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { createBot } from '../../axiosAPIs/botsAPI';
+import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import { getRoles } from '../../axiosAPIs/rolesAPIV1';
-import { createUser } from '../../axiosAPIs/userAPI';
+import {
+  createUser,
+  createUserWithPut,
+  getBotByName,
+} from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
@@ -72,56 +76,86 @@ const CreateUserPage = () => {
     setStatus('initial');
   };
 
+  const checkBotInUse = async (name: string) => {
+    try {
+      const response = await getBotByName(name);
+
+      return Boolean(response);
+    } catch (_error) {
+      return false;
+    }
+  };
+
   /**
    * Submit handler for new user form.
    * @param userData Data for creating new user
    */
-  const handleAddUserSave = (userData: CreateUser) => {
-    setStatus('waiting');
-    createUser(userData)
-      .then((res) => {
-        if (res) {
-          if (bot) {
-            createBot({
-              botUser: { id: res.id, type: EntityType.USER },
-              name: res.name,
-              displayName: res.displayName,
-              description: res.description,
-            } as Bot)
-              .then((res) => {
-                setStatus('success');
-                res && showSuccessToast(`Bot created successfully`);
-                setTimeout(() => {
-                  setStatus('initial');
+  const handleAddUserSave = async (userData: CreateUser) => {
+    if (bot) {
+      const isBotExists = await checkBotInUse(userData.name);
+      if (isBotExists) {
+        showErrorToast(`${userData.name} bot already exists.`);
+      } else {
+        try {
+          setStatus('waiting');
+          // Create a user with isBot:true
+          const userResponse = await createUserWithPut({
+            ...userData,
+            botName: userData.name,
+          });
 
-                  goToUserListPage();
-                }, 500);
-              })
-              .catch((err: AxiosError) => {
-                handleSaveFailure(
-                  err,
-                  jsonData['api-error-messages']['create-bot-error']
-                );
-              });
-          } else {
+          // Create a bot entity with botUser data
+          const botResponse = await createBotWithPut({
+            botUser: { id: userResponse.id, type: EntityType.USER },
+            name: userResponse.name,
+            displayName: userResponse.displayName,
+            description: userResponse.description,
+          } as Bot);
+
+          if (botResponse) {
             setStatus('success');
+            showSuccessToast(`Bot created successfully`);
             setTimeout(() => {
               setStatus('initial');
+
               goToUserListPage();
             }, 500);
+          } else {
+            handleSaveFailure(
+              jsonData['api-error-messages']['create-bot-error']
+            );
           }
+        } catch (error) {
+          handleSaveFailure(
+            error as AxiosError,
+            jsonData['api-error-messages']['create-bot-error']
+          );
+        }
+      }
+    } else {
+      try {
+        setStatus('waiting');
+
+        const response = await createUser(userData);
+
+        if (response) {
+          setStatus('success');
+          setTimeout(() => {
+            setStatus('initial');
+            goToUserListPage();
+          }, 500);
         } else {
           handleSaveFailure(
             jsonData['api-error-messages']['create-user-error']
           );
         }
-      })
-      .catch((err: AxiosError) => {
+      } catch (error) {
         handleSaveFailure(
-          err,
+          error as AxiosError,
           jsonData['api-error-messages']['create-user-error']
         );
-      });
+      }
+    }
   };
 
   const fetchRoles = async () => {

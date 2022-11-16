@@ -259,7 +259,7 @@ public class UsageResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityUsage.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createorUpdateByName(
+  public Response createOrUpdateByName(
       @Context UriInfo uriInfo,
       @Parameter(
               description = "Entity type for which usage is reported",

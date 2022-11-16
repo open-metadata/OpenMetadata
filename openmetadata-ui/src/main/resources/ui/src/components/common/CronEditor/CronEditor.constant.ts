@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Combination, ToDisplay } from './CronEditor.interface';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const getPeriodOptions = () => {
   return [
@@ -52,7 +54,7 @@ export const getPeriodOptions = () => {
   ];
 };
 
-export const toDisplay = {
+export const toDisplay: ToDisplay = {
   minute: [],
   hour: ['min'],
   day: ['time'],
@@ -61,7 +63,7 @@ export const toDisplay = {
   year: ['dom', 'mon', 'time'],
 };
 
-export const combinations = {
+export const combinations: Combination = {
   minute: /^(\*\/\d{1,2})\s(\*\s){3}\*$/, // "*/? * * * *"
   hour: /^\d{1,2}\s(\*\s){3}\*$/, // "? * * * *"
   day: /^(\d{1,2}\s){2}(\*\s){2}\*$/, // "? ? * * *"

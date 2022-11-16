@@ -5,12 +5,13 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.DASHBOARD,
   EntityType.TOPIC,
   EntityType.PIPELINE,
+  EntityType.MLMODEL,
 ];
 
 export const validateMessages = {
-  required: '${name} is required!',
+  required: '${fieldName} is required!',
   string: {
-    range: '${name} must be between ${min} and ${max} character.',
+    range: '${fieldName} must be between ${min} and ${max} character.',
   },
 };
 

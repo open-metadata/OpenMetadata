@@ -15,30 +15,27 @@ Main Profile definition and queries to execute
 from __future__ import annotations
 
 import traceback
-import warnings
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
 from pydantic import ValidationError
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.entity.data.table import (
+    ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
     TableProfile,
 )
-from metadata.interfaces.interface_protocol import InterfaceProtocol
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    Metric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
@@ -46,7 +43,7 @@ from metadata.orm_profiler.metrics.core import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
-from metadata.orm_profiler.orm.registry import NOT_COMPUTE
+from metadata.orm_profiler.orm.registry import NOT_COMPUTE, NOT_COMPUTE_OM
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -69,15 +66,13 @@ class Profiler(Generic[TMetric]):
     - A tuple of metrics, from which we will construct queries.
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-public-methods
-
     def __init__(
         self,
         *metrics: Type[TMetric],
-        profiler_interface: InterfaceProtocol,
+        profiler_interface: ProfilerProtocol,
         profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
-        include_columns: List[Optional[ColumnProfilerConfig]] = None,
-        exclude_columns: List[Optional[str]] = None,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,
+        exclude_columns: Optional[List[str]] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -101,21 +96,7 @@ class Profiler(Generic[TMetric]):
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
-
-    @property
-    def session(self) -> Session:
-        """Kept for backward compatibility"""
-        warnings.warn(
-            "`<instance>`.session will be retired as platform specific. Instead use"
-            "`<instance>.profiler_interface` to see if session is supported by the profiler interface",
-            DeprecationWarning,
-        )
-        if isinstance(self.profiler_interface, SQAInterface):
-            return self.profiler_interface.session
-
-        raise ValueError(
-            f"session is not supported for profiler interface {self.profiler_interface.__class__.__name__}"
-        )
+        self.data_frame_list = None
 
     @property
     def table(self) -> DeclarativeMeta:
@@ -330,7 +311,9 @@ class Profiler(Generic[TMetric]):
         columns = [
             column
             for column in self.columns
-            if column.type.__class__ not in NOT_COMPUTE
+            if isinstance(column, Column)
+            and column.type.__class__ not in NOT_COMPUTE
+            or column.datatype not in NOT_COMPUTE_OM
         ]
 
         column_metrics_for_thread_pool = [
@@ -383,7 +366,6 @@ class Profiler(Generic[TMetric]):
         profile_results = self.profiler_interface.get_all_metrics(
             all_metrics_for_thread_pool,
         )
-
         self._table_results = profile_results["table"]
         self._column_results = profile_results["columns"]
 
@@ -395,7 +377,7 @@ class Profiler(Generic[TMetric]):
 
         return self
 
-    def process(self, generate_sample_data: bool) -> ProfilerResponse:
+    def process(self, generate_sample_data: Optional[bool]) -> ProfilerResponse:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers
@@ -404,14 +386,18 @@ class Profiler(Generic[TMetric]):
         logger.info(
             f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
         )
-        self.compute_metrics()
 
+        self.compute_metrics()
         if generate_sample_data:
             try:
                 logger.info(
                     f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
-                sample_data = self.profiler_interface.fetch_sample_data()
+                sample_data = self.profiler_interface.fetch_sample_data(self.table)
+                logger.info(
+                    "Successfully fetched sample data for "
+                    f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
+                )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error fetching sample data: {err}")
@@ -459,9 +445,19 @@ class Profiler(Generic[TMetric]):
             # computing metrics, if the type is not supported.
             # Let's filter those out.
             computed_profiles = [
-                ColumnProfile(**self.column_results.get(col.name))
+                ColumnProfile(
+                    **self.column_results.get(
+                        col.name
+                        if not isinstance(col.name, ColumnName)
+                        else col.name.__root__
+                    )
+                )
                 for col in self.columns
-                if self.column_results.get(col.name)
+                if self.column_results.get(
+                    col.name
+                    if not isinstance(col.name, ColumnName)
+                    else col.name.__root__
+                )
             ]
             table_profile = TableProfile(
                 timestamp=self.profile_date,

@@ -23,5 +23,5 @@ export type EntityDetails = Table & Topic & Dashboard & Pipeline & Mlmodel;
 export interface CustomPropertyProps {
   entityDetails: EntityDetails;
   entityType: EntityType;
-  handleExtentionUpdate: (updatedTable: EntityDetails) => Promise<void>;
+  handleExtensionUpdate: (updatedTable: EntityDetails) => Promise<void>;
 }

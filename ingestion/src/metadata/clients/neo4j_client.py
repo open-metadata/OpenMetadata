@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Neo4J helper
+"""
 import importlib
 import traceback
 from typing import Any, Iterable, Iterator, Optional, Union
@@ -69,12 +71,12 @@ class Neo4jHelper:
             trust=trust,
         )
 
-    def _execute_query(self, tx: Any, query: str) -> Any:
+    def _execute_query(self, transaction: Any, query: str) -> Any:
         """
         Create an iterator to execute sql.
         """
         logger.debug("Executing query %s", query)
-        result = tx.run(query)
+        result = transaction.run(query)
         entities = []
         for record in result:
             entities.append(record.data())

@@ -63,9 +63,10 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata_config)
 
-    def get_sql_statement(self) -> str:
+    def get_sql_statement(self, *_) -> str:
         """
-        returns sql statement to fetch query logs
+        returns sql statement to fetch query logs.
+        We don't use any start or end times as they are not available
         """
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
@@ -78,11 +79,13 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             if self.config.sourceConfig.config.queryLogFilePath:
                 table_query_list = []
                 with open(
-                    self.config.sourceConfig.config.queryLogFilePath, "r"
+                    self.config.sourceConfig.config.queryLogFilePath,
+                    "r",
+                    encoding="utf-8",
                 ) as query_log_file:
 
-                    for i in csv.DictReader(query_log_file):
-                        query_dict = dict(i)
+                    for record in csv.DictReader(query_log_file):
+                        query_dict = dict(record)
 
                         analysis_date = (
                             datetime.utcnow()
@@ -132,6 +135,9 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             logger.debug(traceback.format_exc())
 
     def process_table_query(self) -> Optional[Iterable[TableQuery]]:
+        """
+        Process Query
+        """
         try:
             with get_connection(self.connection).connect() as conn:
                 rows = conn.execute(self.get_sql_statement())
@@ -158,7 +164,8 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
 
-    def get_database_name(self, data: dict) -> str:
+    @staticmethod
+    def get_database_name(data: dict) -> str:
         """
         Method to get database name
         """

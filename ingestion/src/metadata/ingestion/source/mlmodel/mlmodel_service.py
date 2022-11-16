@@ -89,16 +89,16 @@ class MlModelSourceStatus(SourceStatus):
     ML Model specific Status
     """
 
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
 
     def scanned(self, record: str) -> None:
         """
         Log successful ML Model scans
         """
         self.success.append(record)
-        logger.info("ML Model scanned: %s", record)
+        logger.debug("ML Model scanned: %s", record)
 
     def failed(self, model_name: str, reason: str) -> None:
         """

@@ -17,16 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
-from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
-from metadata.ingestion.ometa.ssl_registry import (
-    InvalidSSLVerificationException,
-    ssl_verification_registry,
-)
-from metadata.utils.secrets.secrets_manager_factory import (
-    get_secrets_manager_from_om_connection,
-)
-
 try:
     from typing import get_args
 except ImportError:
@@ -35,7 +25,12 @@ except ImportError:
 from pydantic import BaseModel
 from requests.utils import quote
 
+from metadata.generated.schema.analytics.webAnalyticEventData import (
+    WebAnalyticEventData,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
+from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -56,6 +51,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
@@ -73,9 +69,15 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInisghtMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
+from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
+    OMetaIngestionPipelineMixin,
+)
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
+from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
@@ -88,7 +90,12 @@ from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
+from metadata.ingestion.ometa.ssl_registry import (
+    InvalidSSLVerificationException,
+    ssl_verification_registry,
+)
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = ometa_logger()
 
@@ -146,6 +153,8 @@ class OpenMetadata(
     OMetaDashboardMixin,
     OMetaPatchMixin,
     OMetaTestsMixin,
+    DataInisghtMixin,
+    OMetaIngestionPipelineMixin,
     Generic[T, C],
 ):
     """
@@ -158,6 +167,7 @@ class OpenMetadata(
 
     client: REST
     _auth_provider: AuthenticationProvider
+    config: OpenMetadataConnection
 
     class_root = ".".join(["metadata", "generated", "schema"])
     entity_path = "entity"
@@ -173,12 +183,10 @@ class OpenMetadata(
         self.config = config
 
         # Load the secrets' manager client
-        self.secrets_manager_client = get_secrets_manager_from_om_connection(
-            config, config.secretsManagerCredentials
-        )
-
-        # Load auth provider config from Secret Manager if necessary
-        self.secrets_manager_client.add_auth_provider_security_config(self.config)
+        self.secrets_manager_client = SecretsManagerFactory(
+            config.secretsManagerProvider,
+            config.secretsManagerCredentials,
+        ).get_secrets_manager()
 
         # Load the auth provider init from the registry
         auth_provider_fn = auth_provider_registry.registry.get(
@@ -371,6 +379,14 @@ class OpenMetadata(
         if issubclass(
             entity,
             get_args(
+                Union[MetadataService, self.get_create_entity_type(MetadataService)]
+            ),
+        ):
+            return "/services/metadataServices"
+
+        if issubclass(
+            entity,
+            get_args(
                 Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
             ),
         ):
@@ -387,6 +403,18 @@ class OpenMetadata(
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
             return "/testCase"
+
+        if issubclass(entity, WebAnalyticEventData):
+            return "/analytics/webAnalyticEvent/collect"
+
+        if issubclass(entity, DataInsightChart):
+            return "/dataInsight"
+
+        if issubclass(
+            entity,
+            Kpi,
+        ):
+            return "/kpi"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"
@@ -555,8 +583,8 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "GET %s for %s." "Error %s - %s",
+            logger.debug(
+                "GET %s for %s. Error %s - %s",
                 entity.__name__,
                 path,
                 err.status_code,
@@ -583,10 +611,9 @@ class OpenMetadata(
                 description=instance.description,
                 href=instance.href,
             )
-        logger.warning("Cannot find the Entity %s", fqn)
+        logger.debug("Cannot find the Entity %s", fqn)
         return None
 
-    # pylint: disable=too-many-arguments,dangerous-default-value
     def list_entities(
         self,
         entity: Type[T],

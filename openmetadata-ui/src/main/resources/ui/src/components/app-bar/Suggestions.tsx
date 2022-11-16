@@ -298,7 +298,6 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (res.data as any).suggest['metadata-suggest'][0].options
             );
-            setIsOpen(true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }

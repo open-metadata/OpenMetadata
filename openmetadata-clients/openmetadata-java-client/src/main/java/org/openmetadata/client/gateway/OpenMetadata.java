@@ -27,7 +27,7 @@ import org.openmetadata.client.api.CatalogApi;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.utils.VersionUtils;
 
 @Slf4j
@@ -39,22 +39,19 @@ public class OpenMetadata {
   }
 
   private ApiClient apiClient;
-  private OpenMetadataServerConnection serverConfig;
-  private String basePath;
-  private final String requestInterceptorKey = "custom";
+  private static final String REQUEST_INTERCEPTOR_KEY = "custom";
 
-  public OpenMetadata(OpenMetadataServerConnection config) {
+  public OpenMetadata(OpenMetadataConnection config) {
     initClient(config);
     validateVersion();
   }
 
-  public OpenMetadata(OpenMetadataServerConnection config, boolean validateVersion) {
+  public OpenMetadata(OpenMetadataConnection config, boolean validateVersion) {
     initClient(config);
     if (validateVersion) validateVersion();
   }
 
-  public void initClient(OpenMetadataServerConnection config) {
-    serverConfig = config;
+  public void initClient(OpenMetadataConnection config) {
     apiClient = new ApiClient();
     Feign.Builder builder =
         Feign.builder()
@@ -65,7 +62,7 @@ public class OpenMetadata {
     apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
-    basePath = config.getHostPort() + "/";
+    String basePath = config.getHostPort() + "/";
     apiClient.setBasePath(basePath);
     apiClient.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
   }
@@ -80,12 +77,12 @@ public class OpenMetadata {
   }
 
   public <K> void updateRequestType(Class<K> requestClass) {
-    if (apiClient.getApiAuthorizations().containsKey(requestInterceptorKey)) {
-      apiClient.getApiAuthorizations().remove(requestInterceptorKey);
+    if (apiClient.getApiAuthorizations().containsKey(REQUEST_INTERCEPTOR_KEY)) {
+      apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
     }
     CustomRequestInterceptor<K> newInterceptor =
         new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
-    apiClient.addAuthorization(requestInterceptorKey, newInterceptor);
+    apiClient.addAuthorization(REQUEST_INTERCEPTOR_KEY, newInterceptor);
   }
 
   public void addRequestInterceptor(String requestInterceptorKey, RequestInterceptor interceptor) {

@@ -20,6 +20,7 @@ import {
   basicAuthSignIn,
   checkEmailInUse,
   generatePasswordResetLink,
+  logoutUser,
   resetPassword,
 } from '../../axiosAPIs/auth-API';
 import {
@@ -36,6 +37,7 @@ import {
   showInfoToast,
   showSuccessToast,
 } from '../../utils/ToastUtils';
+import { resetWebAnalyticSession } from '../../utils/WebAnalyticsUtils';
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -82,12 +84,10 @@ const BasicAuthProvider = ({
 }: BasicAuthProps) => {
   const { setLoadingIndicator } = useAuthContext();
   const [loginError, setLoginError] = useState<string | null>(null);
-
   const history = useHistory();
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      setLoadingIndicator(true);
       setLoginError(null);
       try {
         const response = await basicAuthSignIn({ email, password });
@@ -107,6 +107,9 @@ const BasicAuthProvider = ({
             scope: '',
           });
         }
+
+        // reset web analytic session
+        resetWebAnalyticSession();
       } catch (error) {
         const err = error as AxiosError<{ code: number; message: string }>;
 
@@ -118,8 +121,6 @@ const BasicAuthProvider = ({
         err as AxiosError,
         jsonData['api-error-messages']['unauthorized-user']
       );
-    } finally {
-      setLoadingIndicator(false);
     }
   };
 
@@ -128,19 +129,13 @@ const BasicAuthProvider = ({
       const isEmailAlreadyExists = await checkEmailInUse(request.email);
       if (!isEmailAlreadyExists) {
         setLoadingIndicator(true);
-        const response = await basicAuthRegister(request);
+        await basicAuthRegister(request);
 
-        if (response === HTTP_STATUS_CODE.SUCCESS) {
-          showSuccessToast(
-            jsonData['api-success-messages']['create-user-account']
-          );
-          showInfoToast(jsonData['label']['email-confirmation']);
-          history.push(ROUTES.SIGNIN);
-        } else {
-          return showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
-        }
+        showSuccessToast(
+          jsonData['api-success-messages']['create-user-account']
+        );
+        showInfoToast(jsonData['label']['email-confirmation']);
+        history.push(ROUTES.SIGNIN);
       } else {
         return showErrorToast(jsonData['api-error-messages']['email-found']);
       }
@@ -202,8 +197,16 @@ const BasicAuthProvider = ({
   };
 
   const handleLogout = async () => {
-    localState.removeOidcToken();
-    history.push(ROUTES.SIGNIN);
+    const token = localState.getOidcToken();
+    if (token) {
+      try {
+        await logoutUser(token);
+        localState.removeOidcToken();
+        history.push(ROUTES.SIGNIN);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
   };
 
   const contextValue = {

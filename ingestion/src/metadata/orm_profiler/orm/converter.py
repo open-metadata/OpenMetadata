@@ -55,7 +55,7 @@ _TYPE_MAP = {
     DataType.BINARY: CustomTypes.BYTES.value,
     DataType.VARBINARY: sqlalchemy.VARBINARY,
     DataType.ARRAY: sqlalchemy.ARRAY,
-    DataType.BLOB: sqlalchemy.BLOB,
+    DataType.BLOB: CustomTypes.BYTES.value,
     DataType.LONGBLOB: sqlalchemy.LargeBinary,
     DataType.MEDIUMBLOB: sqlalchemy.LargeBinary,
     DataType.MAP: sqa_types.SQAMap,
@@ -82,6 +82,7 @@ def map_types(col: Column, table_service_type):
         table_service_type == databaseService.DatabaseServiceType.Snowflake
         and col.dataType == DataType.JSON
     ):
+        # pylint: disable=import-outside-toplevel
         from snowflake.sqlalchemy import VARIANT
 
         return VARIANT
@@ -128,7 +129,7 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     )
 
 
-def ometa_to_orm(
+def ometa_to_sqa_orm(
     table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
 ) -> DeclarativeMeta:
     """

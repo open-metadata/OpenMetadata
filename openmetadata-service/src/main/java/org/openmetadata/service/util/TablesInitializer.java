@@ -14,7 +14,6 @@
 package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
-import static org.openmetadata.service.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -31,7 +30,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
-import java.util.UUID;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -45,18 +43,12 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.GenerateTokenRequest;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
-import org.openmetadata.schema.teams.authn.JWTTokenExpiry;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
@@ -103,8 +95,6 @@ public final class TablesInitializer {
     OPTIONS.addOption(
         null, SchemaMigrationOption.ES_DROP.toString(), false, "Drop all the indexes in the elastic search");
     OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
-    OPTIONS.addOption(null, SchemaMigrationOption.CREATE_INGESTION_BOT.toString(), false, "Create Ingestion Bot");
-    OPTIONS.addOption(null, SchemaMigrationOption.UPDATE_INGESTION_BOT.toString(), false, "Update Ingestion Bot");
   }
 
   private TablesInitializer() {}
@@ -235,7 +225,19 @@ public final class TablesInitializer {
       RestHighLevelClient client,
       SchemaMigrationOption schemaMigrationOption)
       throws SQLException {
+    final Jdbi jdbi =
+        Jdbi.create(
+            config.getDataSourceFactory().getUrl(),
+            config.getDataSourceFactory().getUser(),
+            config.getDataSourceFactory().getPassword());
+    jdbi.installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     ElasticSearchIndexDefinition esIndexDefinition;
+
+    // Initialize secrets manager
+    SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
+
     switch (schemaMigrationOption) {
       case CREATE:
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
@@ -278,22 +280,16 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.createIndexes();
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.updateIndexes();
         break;
       case ES_DROP:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client);
+        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.dropIndexes();
-        break;
-      case CREATE_INGESTION_BOT:
-        createIngestionBot(config);
-        break;
-      case UPDATE_INGESTION_BOT:
-        updateIngestionBot(config);
         break;
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
@@ -319,105 +315,6 @@ public final class TablesInitializer {
     System.out.println(message);
   }
 
-  private static void createIngestionBot(OpenMetadataApplicationConfig config) {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    String domain =
-        config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
-            ? DEFAULT_PRINCIPAL_DOMAIN
-            : config.getAuthorizerConfiguration().getPrincipalDomain();
-    String botUser = "ingestion-bot";
-
-    User user =
-        new User()
-            .withId(UUID.randomUUID())
-            .withName(botUser)
-            .withEmail(botUser + "@" + domain)
-            .withIsBot(true)
-            .withUpdatedBy(botUser)
-            .withUpdatedAt(System.currentTimeMillis());
-    JWTAuthMechanism jwtAuthMechanism = null;
-    if (config.getJwtTokenConfiguration() != null) {
-      JWTTokenGenerator.getInstance().init(config.getJwtTokenConfiguration());
-      GenerateTokenRequest generateTokenRequest =
-          new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
-      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
-      jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
-      AuthenticationMechanism authenticationMechanism =
-          new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
-      user.setAuthenticationMechanism(authenticationMechanism);
-    }
-    try {
-      addOrUpdateUser(user, jdbi);
-      if (jwtAuthMechanism != null) {
-        printToConsoleMandatory(JsonUtils.pojoToJson(user));
-      }
-    } catch (Exception exception) {
-      printToConsoleMandatory("User entry:" + user.getName() + "already exists.");
-      throw new RuntimeException("Failed to create ingestion-bot");
-    }
-  }
-
-  private static void updateIngestionBot(OpenMetadataApplicationConfig config) {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    String domain =
-        config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
-            ? DEFAULT_PRINCIPAL_DOMAIN
-            : config.getAuthorizerConfiguration().getPrincipalDomain();
-    String botUser = "ingestion-bot";
-
-    User user =
-        new User()
-            .withId(UUID.randomUUID())
-            .withName(botUser)
-            .withEmail(botUser + "@" + domain)
-            .withIsBot(true)
-            .withUpdatedBy(botUser)
-            .withUpdatedAt(System.currentTimeMillis());
-    JWTAuthMechanism jwtAuthMechanism = null;
-    if (config.getJwtTokenConfiguration() != null) {
-      JWTTokenGenerator.getInstance().init(config.getJwtTokenConfiguration());
-      GenerateTokenRequest generateTokenRequest =
-          new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
-      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
-      jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
-      AuthenticationMechanism authenticationMechanism =
-          new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
-      user.setAuthenticationMechanism(authenticationMechanism);
-    }
-    try {
-      CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-      UserRepository userRepository = new UserRepository(daoObject);
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
-      printToConsoleInDebug("Updated user entry: " + addedUser.getEntity());
-      if (jwtAuthMechanism != null) {
-        printToConsoleMandatory(JsonUtils.pojoToJson(user));
-      }
-    } catch (Exception exception) {
-      throw new RuntimeException("Failed to update ingestion-bot");
-    }
-  }
-
-  private static void addOrUpdateUser(User user, Jdbi jdbi) throws Exception {
-    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-    UserRepository userRepository = new UserRepository(daoObject);
-    User addedUser = userRepository.create(null, user);
-    printToConsoleInDebug("Added user entry: " + addedUser.getName());
-  }
-
   enum SchemaMigrationOption {
     CHECK_CONNECTION("check-connection"),
     CREATE("create"),
@@ -428,9 +325,7 @@ public final class TablesInitializer {
     REPAIR("repair"),
     ES_DROP("es-drop"),
     ES_CREATE("es-create"),
-    ES_MIGRATE("es-migrate"),
-    CREATE_INGESTION_BOT("create-ingestion-bot"),
-    UPDATE_INGESTION_BOT("update-ingestion-bot");
+    ES_MIGRATE("es-migrate");
     private final String value;
 
     SchemaMigrationOption(String schemaMigrationOption) {

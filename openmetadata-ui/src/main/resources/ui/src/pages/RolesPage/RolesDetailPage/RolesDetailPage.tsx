@@ -11,22 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Empty,
-  Modal,
-  Space,
-  Table,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Modal, Space, Table, Tabs, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getRoleByName, patchRole } from '../../../axiosAPIs/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../axiosAPIs/teamsAPI';
@@ -157,10 +149,12 @@ const List = ({
 
   return (
     <Table
+      bordered
       className="list-table"
       columns={columns}
       dataSource={list}
       pagination={false}
+      rowKey="id"
       size="small"
     />
   );
@@ -168,11 +162,13 @@ const List = ({
 
 const RolesDetailPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useParams<{ fqn: string }>();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
+  const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
@@ -263,6 +259,8 @@ const RolesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoadingOnSave(false);
     }
   };
 
@@ -288,10 +286,13 @@ const RolesDetailPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoadingOnSave(false);
     }
   };
 
   const handleDelete = async (data: EntityReference, attribute: Attribute) => {
+    setIsLoadingOnSave(true);
     if (attribute === 'teams') {
       handleTeamsUpdate(data);
     } else if (attribute === 'users') {
@@ -312,12 +313,15 @@ const RolesDetailPage = () => {
         setRole(data);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoadingOnSave(false);
       }
     }
   };
 
   const handleAddAttribute = async (selectedIds: string[]) => {
     if (addAttribute) {
+      setIsLoadingOnSave(true);
       const updatedPolicies = selectedIds.map((id) => {
         const existingData = addAttribute.selectedData.find(
           (data) => data.id === id
@@ -329,10 +333,11 @@ const RolesDetailPage = () => {
       try {
         const data = await patchRole(patch, role.id);
         setRole(data);
+        setAddAttribute(undefined);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setAddAttribute(undefined);
+        setIsLoadingOnSave(false);
       }
     }
   };
@@ -357,16 +362,20 @@ const RolesDetailPage = () => {
       {rolePermission.ViewAll || rolePermission.ViewBasic ? (
         <>
           {isEmpty(role) ? (
-            <Empty
-              data-testid="no-data"
-              description={`No roles found for ${fqn}`}>
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => history.push(rolesPath)}>
-                Go Back
-              </Button>
-            </Empty>
+            <ErrorPlaceHolder dataTestId="no-data">
+              <div className="text-center">
+                <p>
+                  {t('label.no-roles-found')} {t('label.go-back')} {fqn}
+                </p>
+                <Button
+                  className="m-t-sm"
+                  size="small"
+                  type="primary"
+                  onClick={() => history.push(rolesPath)}>
+                  {t('label.go-back')}
+                </Button>
+              </div>
+            </ErrorPlaceHolder>
           ) : (
             <div className="roles-detail" data-testid="role-details">
               <div className="tw--ml-5">
@@ -390,7 +399,7 @@ const RolesDetailPage = () => {
                     <Tooltip
                       title={
                         rolePermission.EditAll
-                          ? 'Add Policy'
+                          ? t('label.add-policy')
                           : NO_PERMISSION_FOR_ACTION
                       }>
                       <Button
@@ -403,7 +412,7 @@ const RolesDetailPage = () => {
                             selectedData: role.policies || [],
                           })
                         }>
-                        Add Policy
+                        {t('label.add-policy')}
                       </Button>
                     </Tooltip>
                     <List
@@ -446,29 +455,32 @@ const RolesDetailPage = () => {
       {selectedEntity && (
         <Modal
           centered
-          okText="Confirm"
-          title={`Remove ${getEntityName(
+          closable={false}
+          confirmLoading={isLoadingOnSave}
+          okText={t('label.confirm')}
+          title={`${t('label.remove')} ${getEntityName(
             selectedEntity.record
-          )} from ${getEntityName(role)}`}
+          )} ${t('label.from')} ${getEntityName(role)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
-          onOk={() => {
-            handleDelete(selectedEntity.record, selectedEntity.attribute);
+          onOk={async () => {
+            await handleDelete(selectedEntity.record, selectedEntity.attribute);
             setEntity(undefined);
           }}>
           <Typography.Text>
-            Are you sure you want to remove the{' '}
-            {`${getEntityName(selectedEntity.record)} from ${getEntityName(
-              role
-            )}?`}
+            {t('label.sure-to-remove')}{' '}
+            {`${getEntityName(selectedEntity.record)} ${t(
+              'label.from'
+            )} ${getEntityName(role)}?`}
           </Typography.Text>
         </Modal>
       )}
       {addAttribute && (
         <AddAttributeModal
+          isModalLoading={isLoadingOnSave}
           isOpen={!isUndefined(addAttribute)}
           selectedKeys={addAttribute.selectedData.map((data) => data.id)}
-          title={`Add ${addAttribute.type}`}
+          title={`${t('label.add')} ${addAttribute.type}`}
           type={addAttribute.type}
           onCancel={() => setAddAttribute(undefined)}
           onSave={(data) => handleAddAttribute(data)}

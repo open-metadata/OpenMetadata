@@ -1,6 +1,5 @@
 package org.openmetadata.service.elasticsearch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -15,13 +14,13 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class TableIndex implements ElasticSearchIndex {
   final List<String> excludeFields = List.of("sampleData", "tableProfile", "joins", "changeDescription");
-  Table table;
+  final Table table;
 
   public TableIndex(Table table) {
     this.table = table;
   }
 
-  public Map<String, Object> buildESDoc() throws JsonProcessingException {
+  public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(table);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();

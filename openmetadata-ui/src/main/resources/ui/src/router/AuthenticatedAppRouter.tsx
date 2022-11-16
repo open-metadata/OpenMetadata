@@ -19,6 +19,7 @@ import { usePermissionProvider } from '../components/PermissionProvider/Permissi
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { Operation } from '../generated/entity/policies/policy';
+import LineagePage from '../pages/LineagePage/LineagePage';
 import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -207,6 +208,28 @@ const EditRulePage = withSuspenseFallback(
   React.lazy(
     () => import('../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
   )
+);
+
+const TestSuitePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TestSuitePage/TestSuitePage'))
+);
+
+const LogsViewer = withSuspenseFallback(
+  React.lazy(() => import('../pages/LogsViewer/LogsViewer.component'))
+);
+
+const DataInsightPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/DataInsightPage/DataInsightPage.component'))
+);
+const KPIListPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/KPIPage/KPIListPage'))
+);
+const AddKPIPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/KPIPage/AddKPIPage'))
+);
+
+const EditKPIPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/KPIPage/EditKPIPage'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -442,6 +465,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
+      <Route
+        exact
+        component={LineagePage}
+        path={ROUTES.LINEAGE_FULL_SCREEN_VIEW}
+      />
 
       {/* keep these route above the setting route always */}
       <AdminProtectedRoute
@@ -478,7 +506,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlobalSettingPage}
         path={ROUTES.SETTINGS_WITH_TAB_FQN}
       />
-      <Route exact component={TestSuiteDetailsPage} path={ROUTES.TEST_SUITES} />
+      <Route
+        exact
+        component={TestSuiteDetailsPage}
+        path={ROUTES.TEST_SUITES_WITH_FQN}
+      />
+      <Route exact component={LogsViewer} path={ROUTES.LOGS} />
       <Route
         exact
         component={TestSuiteIngestionPage}
@@ -489,6 +522,19 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={TestSuiteIngestionPage}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
       />
+      <AdminProtectedRoute
+        exact
+        component={TestSuitePage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.TEST_SUITES}
+      />
+      <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
+      <Route exact component={KPIListPage} path={ROUTES.KPI_LIST} />
+      <Route exact component={AddKPIPage} path={ROUTES.ADD_KPI} />
+      <Route exact component={EditKPIPage} path={ROUTES.EDIT_KPI} />
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>

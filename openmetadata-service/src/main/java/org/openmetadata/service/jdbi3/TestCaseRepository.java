@@ -54,17 +54,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  public void setFullyQualifiedName(TestCase test) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+    test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
+    test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
+  }
+
+  @Override
   public void prepare(TestCase test) throws IOException {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
+
     // validate test definition and test suite
     Entity.getEntityReferenceById(Entity.TEST_DEFINITION, test.getTestDefinition().getId(), Include.NON_DELETED);
     Entity.getEntityReferenceById(Entity.TEST_SUITE, test.getTestSuite().getId(), Include.NON_DELETED);
     TestDefinition testDefinition =
         Entity.getEntity(test.getTestDefinition(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
-    test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
-    test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
@@ -85,7 +91,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
     }
     for (TestCaseParameter parameter : parameterDefinition) {
-      if (parameter.getRequired()
+      if (Boolean.TRUE.equals(parameter.getRequired())
           && (!values.containsKey(parameter.getName()) || values.get(parameter.getName()) == null)) {
         throw new IllegalArgumentException(
             "Required parameter " + parameter.getName() + " is not passed in parameterValues");
@@ -101,7 +107,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     test.withOwner(null).withHref(null).withTestSuite(null).withTestDefinition(null);
-    store(test.getId(), test, update);
+    store(test, update);
 
     // Restore the relationships
     test.withOwner(owner).withTestSuite(testSuite).withTestDefinition(testDefinition);

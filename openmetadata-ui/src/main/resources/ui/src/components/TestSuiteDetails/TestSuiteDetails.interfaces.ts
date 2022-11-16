@@ -12,6 +12,7 @@ export interface TestSuiteDetailsProps {
   isTagEditable?: boolean;
   isDescriptionEditable: boolean;
   testSuite: TestSuite | undefined;
+  handleRemoveOwner: () => void;
   handleUpdateOwner: (updatedOwner: TestSuite['owner']) => void;
   testSuiteDescription: string | undefined;
   descriptionHandler: (value: boolean) => void;

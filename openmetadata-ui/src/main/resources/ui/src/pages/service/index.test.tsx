@@ -22,54 +22,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import ServicePage from './index';
-
-const mockData = {
-  description: '',
-  href: 'link',
-  id: 'd3b225a2-e4a2-4f4e-834e-b1c03112f139',
-  jdbc: {
-    connectionUrl:
-      'postgresql+psycopg2://awsuser:focguC-kaqqe5-nepsok@redshift-cluster-1.clot5cqn1cnb.us-west-2.redshift.amazonaws.com:5439/warehouse',
-    driverClass: 'jdbc',
-  },
-  name: 'aws_redshift',
-  serviceType: 'Redshift',
-  connection: {
-    config: {
-      username: 'test_user',
-      password: 'test_pass',
-    },
-  },
-};
-
-const mockDatabase = {
-  data: [
-    {
-      description: ' ',
-      fullyQualifiedName: 'aws_redshift.information_schema',
-      href: 'http://localhost:8585/api/v1/databases/c86f4fed-f259-43d8-b031-1ce0b7dd4e41',
-      id: 'c86f4fed-f259-43d8-b031-1ce0b7dd4e41',
-      name: 'information_schema',
-      service: {
-        description: '',
-        href: 'http://localhost:8585/api/v1/services/databaseServices/d3b225a2-e4a2-4f4e-834e-b1c03112f139',
-        id: 'd3b225a2-e4a2-4f4e-834e-b1c03112f139',
-        name: 'aws_redshift',
-        type: 'databaseService',
-      },
-      usageSummary: {
-        date: '2021-08-04',
-        dailyStats: { count: 0, percentileRank: 0 },
-        monthlyStats: { count: 0, percentileRank: 0 },
-        weeklyStats: { count: 0, percentileRank: 0 },
-      },
-    },
-  ],
-  paging: {
-    after: null,
-    before: null,
-  },
-};
+import { mockData, mockDatabase, mockTabs } from './mocks/servicePage.mock';
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -149,6 +102,7 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockData)),
   updateService: jest.fn().mockImplementation(() => Promise.resolve()),
+  TestConnection: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../axiosAPIs/databaseAPI', () => ({
@@ -160,7 +114,7 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
 jest.mock(
   '../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () => {
-    return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+    return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
   }
 );
 
@@ -205,6 +159,9 @@ jest.mock('../../utils/ServiceUtils', () => ({
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
   getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),
+  shouldTestConnection: jest.fn().mockReturnValue(true),
+  getCountLabel: jest.fn().mockReturnValue('Dashboards'),
+  getServicePageTabs: jest.fn().mockImplementation(() => mockTabs),
 }));
 
 jest.mock(
@@ -227,23 +184,23 @@ jest.mock(
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
-      .mockReturnValue(<p>ModalWithMarkdownEditor</p>),
+      .mockReturnValue(<div>ModalWithMarkdownEditor</div>),
   })
 );
 
 jest.mock(
   '../../components/common/EntitySummaryDetails/EntitySummaryDetails',
-  () => jest.fn().mockReturnValue(<p>EntitySummaryDetails</p>)
+  () => jest.fn().mockReturnValue(<div>EntitySummaryDetails</div>)
 );
 
 jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
-  return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
+  return jest.fn().mockReturnValue(<div>ServiceConfig</div>);
 });
 
 jest.mock(
   '../../components/common/entityPageInfo/ManageButton/ManageButton',
   () => {
-    return jest.fn().mockReturnValue(<p>ManageButton</p>);
+    return jest.fn().mockReturnValue(<div>ManageButton</div>);
   }
 );
 
@@ -258,8 +215,8 @@ jest.mock('../../utils/TableUtils', () => ({
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
-  Row: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
-  Col: jest.fn().mockImplementation(({ children }) => <p>{children}</p>),
+  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({

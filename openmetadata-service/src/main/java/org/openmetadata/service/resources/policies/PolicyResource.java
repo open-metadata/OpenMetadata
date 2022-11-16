@@ -49,12 +49,14 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
@@ -95,21 +97,32 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     super(Policy.class, new PolicyRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method is used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
-    ResourceRegistry.add(listOrEmpty(PolicyResource.getResourceDescriptors()));
+    ResourceRegistry.initialize(listOrEmpty(PolicyResource.getResourceDescriptors()));
+  }
+
+  @Override
+  public void upgrade() throws IOException {
+    // OrganizationPolicy rule change
+    Policy originalOrgPolicy = dao.getByName(null, Entity.ORGANIZATION_POLICY_NAME, dao.getPatchFields());
+    Policy updatedOrgPolicy = JsonUtils.readValue(JsonUtils.pojoToJson(originalOrgPolicy), Policy.class);
+
+    // Rules are in alphabetical order - change second rule "OrganizationPolicy-Owner-Rule"
+    // from ALL operation to remove CREATE operation and allow all the other operations for the owner
+    updatedOrgPolicy
+        .getRules()
+        .get(1)
+        .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.VIEW_ALL, MetadataOperation.DELETE));
+    dao.patch(null, originalOrgPolicy.getId(), "admin", JsonUtils.getJsonPatch(originalOrgPolicy, updatedOrgPolicy));
   }
 
   public static class PolicyList extends ResultList<Policy> {
     @SuppressWarnings("unused")
     PolicyList() {
       // Empty constructor needed for deserialization
-    }
-
-    public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -328,7 +341,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, policy, true);
+    return create(uriInfo, securityContext, policy);
   }
 
   @PATCH
@@ -377,7 +390,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, policy, true);
+    Response response = createOrUpdate(uriInfo, securityContext, policy);
     PolicyCache.getInstance().invalidatePolicy(policy.getId());
     return response;
   }
@@ -402,9 +415,28 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           boolean hardDelete,
       @Parameter(description = "Policy Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     PolicyCache.getInstance().invalidatePolicy(id);
     return response;
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted policy.",
+      tags = "policies",
+      description = "Restore a soft deleted policy.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Policy ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class)))
+      })
+  public Response restorePolicy(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
@@ -419,8 +451,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(responseCode = "400", description = "Invalid expression")
       })
   public void validateCondition(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("expression") String expression) {
     CompiledRule.validateExpression(expression, Boolean.class);
   }
 

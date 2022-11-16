@@ -12,7 +12,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/over
 
 </Note>
 
-## Latest Release - 0.12.0 Release - Sept 7th 2022
+## Latest Release - 0.12.1 Release - Oct 3rd 2022
 
 # 0.12.0 Release - Sept 7th 2022 🎉
 

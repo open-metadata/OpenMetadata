@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { isNil } from 'lodash';
+import { omitDeep } from './APIUtils';
+
 const APIHits = [
   {
     _source: {
@@ -50,5 +53,28 @@ describe('Test APIUtils utility', () => {
         tableType: 'REGULAR',
       },
     ]);
+  });
+
+  it('omitDeep w isNil removes nested undefined and null', () => {
+    const obj = {
+      key1: undefined,
+      key2: null,
+      key3: {
+        key4: undefined,
+        key5: null,
+        key6: [
+          {
+            key7: undefined,
+            key8: null,
+          },
+        ],
+      },
+    };
+
+    const omitObj = omitDeep(obj, isNil);
+
+    expect(omitObj).toEqual({
+      key3: { key6: [{}] },
+    });
   });
 });

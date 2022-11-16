@@ -55,9 +55,6 @@
       "href": {
         "type": "text"
       },
-      "categoryType": {
-        "type": "text"
-      },
       "deleted": {
         "type": "text"
       },

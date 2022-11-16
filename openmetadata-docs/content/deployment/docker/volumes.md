@@ -8,7 +8,10 @@ Advance section
 
 Volumes provide the ability to connect specific filesystem paths of the container back to the host machine. If a directory or a file in the container is mounted, changes in that directory  or file can also be seen on the host machine.we are going to use a mapping of a directory present on the host macine with the container path.
 
-# Docker Volumes
+<Note>
+
+To make changes to the `docker-compose.yaml` file you will need to download it from the release page [here](https://github.com/open-metadata/OpenMetadata/releases). The latest version is at the top of the page
+</Note>
 
 ## Volumes for MYSQL container:
 Following are the changes we have to do while mounting the directory for mysql in OpenMetadata.
@@ -17,7 +20,7 @@ Following are the changes we have to do while mounting the directory for mysql i
 mkdir -p /opt/openmetadata/db
 ```
 - Update or add the volume in the docker-compose.yml file
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.11.5-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -25,7 +28,7 @@ services:
   mysql:
     ...
     volumes:
-     - /opt/openmetadata/db:/var/lib/mysql
+      - /opt/openmetadata/db:/var/lib/mysql
     ...
 ```
 ## Volumes for PostgreSQL container:
@@ -35,15 +38,15 @@ Following are the changes we have to do while mounting the directory for postgre
 mkdir -p /opt/openmetadata/db
 ```
 - Update or add the volume in the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.11.5-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
 services:
- postgressql:
+ postgresql:
     ...
     volumes:
-     - /opt/openmetadata/db:/var/lib/postgressql
+      - /opt/openmetadata/db:/var/lib/postgresql
     ...
 ```
 
@@ -53,8 +56,17 @@ Following are the changes we have to do while mounting the directory for ingesti
 ```commandline
 mkdir -p /opt/openmetadata/dag_config /opt/openmetadata/dags /opt/openmetadata/secrets
 ```
+- Remove the below section from the docker-compose.yml file.
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
+
+```commandline
+volumes:
+  ingestion-volume-dag-airflow:
+  ingestion-volume-dags:
+  ingestion-volume-tmp:
+```
 - Update or add the volume in the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.11.5-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -62,8 +74,8 @@ services:
   ingestion:
     ...
     volumes:
-      - /opt/openmetadata/dag_config:/airflow/dag_generated_configs
-      - /opt/openmetadata/dags:/ingestion/examples/airflow/dags
+      - /opt/openmetadata/dag_config:/opt/airflow/dag_generated_configs
+      - /opt/openmetadata/dags:/opt/airflow/dags
       - /opt/openmetadata/secrets:/tmp
     ...
 ```
@@ -75,20 +87,20 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.11.5
+    image: openmetadata/db:0.12.2
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
     expose:
       - 3306
     volumes:
-     - /opt/openmetadata/db:/var/lib/mysql
+      - /opt/openmetadata/db:/var/lib/mysql
     networks:
       app_net:
         ipv4_address: 172.16.240.10
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.11.5
+    image: openmetadata/ingestion:0.12.2
     depends_on:
       - mysql
     expose:
@@ -102,8 +114,8 @@ services:
       - "localhost:172.16.240.11"
       - "localhost:172.16.240.13"
     volumes:
-      - /opt/openmetadata/dag_config:/airflow/dag_generated_configs
-      - /opt/openmetadata/dags:/ingestion/examples/airflow/dags
+      - /opt/openmetadata/dag_config:/opt/airflow/dag_generated_configs
+      - /opt/openmetadata/dags:/opt/airflow/dags
       - /opt/openmetadata/secrets:/tmp
 ```
 

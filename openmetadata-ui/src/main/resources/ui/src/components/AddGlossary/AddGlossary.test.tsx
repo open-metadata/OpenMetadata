@@ -13,7 +13,7 @@
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
 import { LoadingState } from 'Models';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import AddGlossary from './AddGlossary.component';
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
@@ -33,7 +33,20 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditor', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditor</p>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }) => {
+      return (
+        <div
+          ref={(input) => {
+            return {
+              getEditorContent: input,
+            };
+          }}>
+          {initialValue}RichTextEditor
+        </div>
+      );
+    })
+  );
 });
 
 jest.mock('../../axiosAPIs/glossaryAPI', () => ({

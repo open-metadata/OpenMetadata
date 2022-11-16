@@ -38,6 +38,7 @@ import {
   getEntityId,
   getEntityName,
   getEntityPlaceHolder,
+  getNameFromFQN,
   getOwnerValue,
   getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
@@ -161,7 +162,7 @@ const TableDataCard: FunctionComponent<Props> = ({
         className="tw-text-grey-body tw-font-semibold"
         data-testid={`${getPartialNameFromTableFQN(fullyQualifiedName, [
           FqnPart.Service,
-        ])}-${getPartialNameFromTableFQN(fullyQualifiedName, [FqnPart.Table])}`}
+        ])}-${getNameFromFQN(fullyQualifiedName)}`}
         id={`${id}Title`}
         onClick={handleLinkClick}>
         {stringToHTML(name)}

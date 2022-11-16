@@ -10,7 +10,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
 public class JwtTokenCacheManager {
-  private static volatile JwtTokenCacheManager instance;
+  private static final JwtTokenCacheManager instance = new JwtTokenCacheManager();
   private final ExpiringMap<String, LogoutRequest> tokenEventMap;
 
   private JwtTokenCacheManager() {
@@ -18,13 +18,6 @@ public class JwtTokenCacheManager {
   }
 
   public static JwtTokenCacheManager getInstance() {
-    if (instance == null) {
-      synchronized (JWTTokenGenerator.class) {
-        if (instance == null) {
-          instance = new JwtTokenCacheManager();
-        }
-      }
-    }
     return instance;
   }
 

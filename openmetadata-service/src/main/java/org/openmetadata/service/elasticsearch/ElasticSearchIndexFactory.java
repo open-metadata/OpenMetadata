@@ -15,6 +15,8 @@ import org.openmetadata.service.Entity;
 
 @Slf4j
 public class ElasticSearchIndexFactory {
+  private ElasticSearchIndexFactory() {}
+
   public static ElasticSearchIndex buildIndex(String entityType, EntityInterface entity) {
     switch (entityType) {
       case Entity.TABLE:

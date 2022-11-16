@@ -31,7 +31,7 @@ In the cases where we need aggregation over the records, we can use the **stage*
     color="violet-70"
     icon="source"
     bold="Source"
-    href="sdk/python/build-connector/source"
+    href="/sdk/python/build-connector/source"
   >
     The connector to external systems which outputs a record for downstream to process.
   </InlineCallout>
@@ -39,7 +39,7 @@ In the cases where we need aggregation over the records, we can use the **stage*
     color="violet-70"
     icon="filter_alt"
     bold="Sink"
-    href="sdk/python/build-connector/source"
+    href="/sdk/python/build-connector/source"
   >
     It will get the event emitted by the source, one at a time.
   </InlineCallout>
@@ -47,7 +47,7 @@ In the cases where we need aggregation over the records, we can use the **stage*
     color="violet-70"
     icon="storage"
     bold="Stage"
-    href="sdk/python/build-connector/source"
+    href="/sdk/python/build-connector/source"
   >
     It can be used to store the records or to aggregate the work done by a processor.
   </InlineCallout>
@@ -55,7 +55,7 @@ In the cases where we need aggregation over the records, we can use the **stage*
     color="violet-70"
     icon="filter_list"
     bold="BullSink"
-    href="sdk/python/build-connector/bulk-sink"
+    href="/sdk/python/build-connector/bulk-sink"
   >
     It can be used to bulk update the records generated in a workflow.
   </InlineCallout>

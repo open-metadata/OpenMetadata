@@ -18,8 +18,15 @@ import java.util.UUID;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 
 public final class CatalogExceptionMessage {
+  public static final String EMAIL_SENDING_ISSUE =
+      "There is some issue in sending the Mail. Please contact your administrator.";
+  public static final String PASSWORD_INVALID_FORMAT =
+      "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.";
+  public static final String MAX_FAILED_LOGIN_ATTEMPT = "Failed Login Attempts Exceeded. Please try after some time.";
+  public static final String INVALID_USERNAME_PASSWORD = "You have entered an invalid username or password.";
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
   public static final String FERNET_KEY_NULL = "Fernet key is null";
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
@@ -41,6 +48,18 @@ public final class CatalogExceptionMessage {
   public static final String CREATE_GROUP =
       "Team of type Group can't have children of type team. Only users are allowed as part of the team";
   public static final String TEAM_HIERARCHY = "Unexpected error occurred while building the teams hierarchy";
+  public static final String LDAP_MISSING_ATTR =
+      "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
+  public static final String MULTIPLE_EMAIl_ENTRIES = "Email corresponds to multiple entries in Directory.";
+
+  public static final String INVALID_EMAIL_PASSWORD = "You have entered an invalid email or password.";
+
+  public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
+  public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
+
+  public static final String FORBIDDEN_AUTHENTICATOR_OP = "Operation is not permitted with the Selected Authenticator.";
+  public static final String TOKEN_EXPIRY_ERROR =
+      "Email Verification Token %s is expired. Please issue a new request for email verification.";
 
   private CatalogExceptionMessage() {}
 
@@ -50,10 +69,6 @@ public final class CatalogExceptionMessage {
 
   public static String entityNotFound(String entityType, UUID id) {
     return entityNotFound(entityType, id.toString());
-  }
-
-  public static String entitiesNotFound(String entityType) {
-    return String.format("%s instances not found", entityType);
   }
 
   public static String readOnlyAttribute(String entityType, String attribute) {
@@ -109,11 +124,6 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
-  // TODO delete this
-  public static String noPermission(String name) {
-    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
-  }
-
   public static String permissionDenied(
       String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
     if (roleName != null) {
@@ -132,10 +142,6 @@ public final class CatalogExceptionMessage {
 
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
-  }
-
-  public static String invalidEntity(String entity) {
-    return String.format("Invalid entity %s", entity);
   }
 
   public static String unknownCustomField(String fieldName) {
@@ -166,6 +172,10 @@ public final class CatalogExceptionMessage {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
+  public static String invalidBotUser() {
+    return "Revoke Token can only be applied to Bot Users.";
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }
@@ -174,7 +184,17 @@ public final class CatalogExceptionMessage {
     return String.format("Failed to evaluate - %s", message);
   }
 
-  public static String deletionNotAllowed(String entityType, String name) {
-    return String.format("Deletion of %s %s is not allowed", entityType, name);
+  public static String systemEntityDeleteNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
+  }
+
+  public static String systemEntityRenameNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be renamed.", name, entityType);
+  }
+
+  public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {
+    return String.format(
+        "Tag labels %s and %s are mutually exclusive and can't be assigned together",
+        tag1.getTagFQN(), tag2.getTagFQN());
   }
 }

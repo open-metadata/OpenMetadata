@@ -22,7 +22,9 @@
         "activityFeedFilterSetting",
         "secretsManagerConfiguration",
         "sandboxModeEnabled",
-        "slackChat"
+        "slackChat",
+        "taskNotificationConfiguration",
+        "testResultNotificationConfiguration"
       ]
     }
   },
@@ -59,7 +61,11 @@
         },
         {
           "$ref": "../configuration/slackEventPubConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/taskNotificationConfiguration.json"
         }
+
       ]
     }
   },

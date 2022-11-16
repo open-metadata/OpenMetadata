@@ -15,6 +15,8 @@ Base class for ingesting messaging services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -39,9 +41,17 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_topic
+
+
+class BrokerTopicDetails(BaseModel):
+    """
+    Wrapper Class to combine the topic_name with topic_metadata
+    """
+
+    topic_name: str
+    topic_metadata: Any
 
 
 class MessagingServiceTopology(ServiceTopology):
@@ -84,8 +94,8 @@ class MessagingSourceStatus(SourceStatus):
     Reports the source status after ingestion
     """
 
-    topics_scanned: List[str] = list()
-    filtered: List[str] = list()
+    topics_scanned: List[str] = []
+    filtered: List[str] = []
 
     def topic_scanned(self, topic: str) -> None:
         self.topics_scanned.append(topic)
@@ -101,7 +111,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     @abstractmethod
-    def yield_topic(self, messaging_details: Any) -> Iterable[CreateTopicRequest]:
+    def yield_topic(self, topic_details: Any) -> Iterable[CreateTopicRequest]:
         """
         Method to Get Messaging Entity
         """
@@ -128,7 +138,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = MessagingServiceTopology()
     context = create_source_context(topology)
 
-    @abstractmethod
     def __init__(
         self,
         config: WorkflowSource,

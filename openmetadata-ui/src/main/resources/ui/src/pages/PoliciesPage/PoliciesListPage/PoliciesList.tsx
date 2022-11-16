@@ -175,11 +175,13 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
   return (
     <>
       <Table
+        bordered
         className="policies-list-table"
         columns={columns}
         data-testid="policies-list-table"
         dataSource={policies}
         pagination={false}
+        rowKey="id"
         size="small"
       />
       {selectedPolicy && deletePolicyPermission && (

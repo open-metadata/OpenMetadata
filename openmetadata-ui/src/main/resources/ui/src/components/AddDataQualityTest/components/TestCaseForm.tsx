@@ -11,20 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, FormProps, Input, Row, Select, Space } from 'antd';
+import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useParams } from 'react-router-dom';
 import {
   getListTestCase,
   getListTestDefinitions,
 } from '../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
-import { codeMirrorOption } from '../../../constants/profiler.constant';
+import { CSMode } from '../../../enums/codemirror.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
@@ -45,6 +43,7 @@ import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestCaseFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
@@ -113,23 +112,22 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       const name = selectedDefinition.parameterDefinition[0]?.name;
       if (name === 'sqlExpression') {
         return (
-          <Row>
-            <Col data-testid="sql-editor-container" span={24}>
-              <p className="tw-mb-1.5">Profile Sample Query</p>
-              <CodeMirror
-                className="profiler-setting-sql-editor"
-                data-testid="profiler-setting-sql-editor"
-                options={codeMirrorOption}
-                value={sqlQuery.value}
-                onBeforeChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
-                onChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
-              />
-            </Col>
-          </Row>
+          <Form.Item
+            data-testid="sql-editor-container"
+            key={name}
+            label="SQL Query"
+            name={name}
+            tooltip="Queries returning 1 or more rows will result in the test failing.">
+            <SchemaEditor
+              className="profiler-setting-sql-editor"
+              mode={{ name: CSMode.SQL }}
+              options={{
+                readOnly: false,
+              }}
+              value={sqlQuery.value || ''}
+              onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
+            />
+          </Form.Item>
         );
       }
 

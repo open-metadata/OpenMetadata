@@ -14,7 +14,7 @@ Here are the articles in this section:
     color="violet-70"
     icon="model_training"
     bold="ML Model"
-    href="sdk/python/entities/ml-model"
+    href="/sdk/python/entities/ml-model"
   >
     Let's dive deeper into the ML Model (`MlModel`) Entity shape and usage with the Python SDK.
   </InlineCallout>

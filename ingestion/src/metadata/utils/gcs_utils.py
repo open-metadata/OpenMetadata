@@ -9,49 +9,82 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Utils module to convert different file types from gcs buckets into a dataframe
+"""
+
 import json
 import traceback
+from typing import Any
 
-import dask.dataframe as dd
 import gcsfs
 import pandas as pd
-import pyarrow.parquet as pq
 from pandas import DataFrame
+from pyarrow.parquet import ParquetFile
 
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 
-def read_csv_from_gcs(key: str, bucket_name: str) -> DataFrame:
+def read_csv_from_gcs(  # pylint: disable=inconsistent-return-statements
+    key: str, bucket_name: str
+) -> DataFrame:
+    """
+    Read the csv file from the gcs bucket and return a dataframe
+    """
+
     try:
-        return dd.read_csv(f"gs://{bucket_name}/{key}")
+        chunk_list = []
+        with pd.read_csv(
+            f"gs://{bucket_name}/{key}", sep=",", chunksize=200000
+        ) as reader:
+            for chunks in reader:
+                chunk_list.append(chunks)
+        return chunk_list
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_tsv_from_gcs(key: str, bucket_name: str) -> DataFrame:
+def read_tsv_from_gcs(  # pylint: disable=inconsistent-return-statements
+    key: str, bucket_name: str
+) -> DataFrame:
+    """
+    Read the tsv file from the gcs bucket and return a dataframe
+    """
     try:
-        return dd.read_csv(f"gs://{bucket_name}/{key}", sep="\t")
+        chunk_list = []
+        with pd.read_csv(
+            f"gs://{bucket_name}/{key}", sep="\t", chunksize=200000
+        ) as reader:
+            for chunks in reader:
+                chunk_list.append(chunks)
+        return chunk_list
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Error reading TSV from GCS - {exc}")
+        logger.warning(f"Error reading CSV from GCS - {exc}")
 
 
-def read_json_from_gcs(client, key: str, bucket_name: str) -> DataFrame:
+def read_json_from_gcs(  # pylint: disable=inconsistent-return-statements
+    client: Any, key: str, bucket_name: str
+) -> DataFrame:
+    """
+    Read the json file from the gcs bucket and return a dataframe
+    """
+
     try:
         bucket = client.get_bucket(bucket_name)
-        blob = bucket.get_blob(key)
-        data = blob.download_as_string().decode()
-        data = json.loads(data)
+        data = json.loads(bucket.get_blob(key).download_as_string())
         if isinstance(data, list):
-            df = pd.DataFrame.from_records(data)
-        else:
-            df = pd.DataFrame.from_dict(
-                dict([(k, pd.Series(v)) for k, v in data.items()])
+            return [pd.DataFrame.from_records(data)]
+        return [
+            pd.DataFrame.from_dict(
+                dict(  # pylint: disable=consider-using-dict-comprehension
+                    [(k, pd.Series(v)) for k, v in data.items()]
+                )
             )
-        return df
+        ]
 
     except ValueError as verr:
         logger.debug(traceback.format_exc())
@@ -59,7 +92,10 @@ def read_json_from_gcs(client, key: str, bucket_name: str) -> DataFrame:
 
 
 def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:
-    gs = gcsfs.GCSFileSystem()
-    arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key}", filesystem=gs)
-    df = arrow_df.read_pandas().to_pandas()
-    return df
+    """
+    Read the parquet file from the gcs bucket and return a dataframe
+    """
+
+    gcs = gcsfs.GCSFileSystem()
+    file = gcs.open(f"gs://{bucket_name}/{key}")
+    return [ParquetFile(file).read().to_pandas()]

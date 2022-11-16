@@ -36,7 +36,7 @@ getTypes(){
     for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/openmetadata-spec\/src\/main\/resources\/json\/schema\///g')
     do
         joblist=$(jobs | wc -l)
-        while (( ${joblist} >= 30 ))
+        while [ ${joblist} -ge 30 ]
             do
                 sleep 1
                 joblist=$(jobs | wc -l)

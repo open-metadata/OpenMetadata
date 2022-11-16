@@ -69,10 +69,6 @@ pre {
   color: #c45296 !important;
 }
 
-.bg-primary {
-  color: #ffffff;
-  background-color: #2eaadc !important;
-}
 .bg-success {
   color: #ffffff;
   background-color: #28a745 !important;
@@ -734,12 +730,6 @@ body .profiler-graph .recharts-active-dot circle {
   pointer-events: all;
   cursor: pointer;
 }
-.react-flow__node-default .react-flow__handle,
-.react-flow__node-group .react-flow__handle,
-.react-flow__node-input .react-flow__handle,
-.react-flow__node-output .react-flow__handle {
-  background-color: #7147e8 !important;
-}
 
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
@@ -1060,14 +1050,6 @@ code {
   background-color: #dbd1f9;
 }
 
-.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
-  padding: 0px 4px;
-}
-
-.ant-select-single .ant-select-selector .ant-select-selection-search {
-  left: 4px;
-}
-
 @media only screen and (max-width: 1440px) {
   #left-panel {
     width: 284px;
@@ -1347,4 +1329,12 @@ div.ant-typography-ellipsis-custom {
 
 .left-panel-container::-webkit-scrollbar {
   display: none;
+}
+
+/**
+* This is to override tailwind default behavior for svg alignment
+* It was causing issue to antD styling hence resetting it to default
+*/
+svg {
+  vertical-align: baseline;
 }

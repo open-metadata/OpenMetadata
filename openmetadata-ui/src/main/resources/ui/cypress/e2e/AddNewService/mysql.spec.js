@@ -12,7 +12,7 @@
  */
 
 import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, mySqlConnectionInput, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
-import { LOGIN, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import { API_SERVICE, LOGIN, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -42,7 +42,7 @@ describe('MySQL Ingestion', () => {
     );
   });
 
-  it('Update table description and verify', () => {
+  it('Update table description and verify description after re-run', () => {
     updateDescriptionForIngestedTables(
       serviceName,
       tableName,
@@ -53,10 +53,14 @@ describe('MySQL Ingestion', () => {
   });
 
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Database, serviceName);
+    editOwnerforCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      API_SERVICE.databaseServices
+    );
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
   });
 });

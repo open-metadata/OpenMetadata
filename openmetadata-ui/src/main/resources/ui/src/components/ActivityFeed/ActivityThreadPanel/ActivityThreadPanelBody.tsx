@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Empty, Switch } from 'antd';
+import { Button, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -32,6 +32,7 @@ import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -285,18 +286,16 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                   </Fragment>
                 )}
                 {isTaskType && (
-                  <Empty
-                    className="ant-empty-tasks"
-                    description={
-                      isTaskClosed ? 'No Closed Tasks' : 'No Open Tasks'
-                    }
-                  />
+                  <ErrorPlaceHolder>
+                    <p>{isTaskClosed ? 'No Closed Tasks' : 'No Open Tasks'}</p>
+                  </ErrorPlaceHolder>
                 )}
                 {isAnnouncementType && (
-                  <Empty
-                    className="ant-empty-tasks"
-                    description="No Announcements, Click on add announcement to add one."
-                  />
+                  <ErrorPlaceHolder>
+                    <p data-testid="announcement-error">
+                      No Announcements, Click on add announcement to add one.
+                    </p>
+                  </ErrorPlaceHolder>
                 )}
               </Fragment>
             ) : null}

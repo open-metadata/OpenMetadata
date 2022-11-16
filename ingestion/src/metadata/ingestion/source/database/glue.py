@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Glue source methods.
+"""
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
@@ -54,6 +56,11 @@ logger = ingestion_logger()
 
 
 class GlueSource(DatabaseServiceSource):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Glue Source
+    """
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
@@ -67,11 +74,6 @@ class GlueSource(DatabaseServiceSource):
         self.glue = self.connection.client
         self.data_models = {}
         self.dbt_tests = {}
-
-        self.database_name = None
-        self.next_db_token = None
-        self.table_constraints = None
-        self.database_source_state = set()
         super().__init__()
 
     @classmethod
@@ -138,7 +140,7 @@ class GlueSource(DatabaseServiceSource):
                         f"Unexpected exception to get database name [{schema}]: {exc}"
                     )
                     self.status.failures.append(
-                        "{}.{}".format(self.config.serviceName, schema["CatalogId"])
+                        f"{self.config.serviceName}.{schema['CatalogId']}"
                     )
         yield from database_names
 
@@ -184,7 +186,7 @@ class GlueSource(DatabaseServiceSource):
                         f"Unexpected exception to get database schema [{schema}]: {exc}"
                     )
                     self.status.failures.append(
-                        "{}.{}".format(self.config.serviceName, schema["Name"])
+                        f"{self.config.serviceName}.{schema['Name']}"
                     )
 
     def yield_database_schema(
@@ -261,7 +263,7 @@ class GlueSource(DatabaseServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception to get table [{table}]: {exc}")
                 self.status.failures.append(
-                    "{}.{}".format(self.config.serviceName, table.get("Name"))
+                    f"{self.config.serviceName}.{table.get('Name')}"
                 )
 
     def yield_table(
@@ -293,9 +295,7 @@ class GlueSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def yield_location(
         self, table_name_and_type: Tuple[str, str]
@@ -325,9 +325,7 @@ class GlueSource(DatabaseServiceSource):
             logger.warning(
                 f"Unexpected exception to yield location for table [{table_name}]: {exc}"
             )
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def prepare(self):
         pass
@@ -336,7 +334,7 @@ class GlueSource(DatabaseServiceSource):
         for column in column_data["Columns"]:
             if column["Type"].lower().startswith("union"):
                 column["Type"] = column["Type"].replace(" ", "")
-            parsed_string = ColumnTypeParser._parse_datatype_string(
+            parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                 column["Type"].lower()
             )
             if isinstance(parsed_string, list):
@@ -375,7 +373,7 @@ class GlueSource(DatabaseServiceSource):
         if table_fqn and location_fqn:
             yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
+    def standardize_table_name(self, _: str, table: str) -> str:
         return table[:128]
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:

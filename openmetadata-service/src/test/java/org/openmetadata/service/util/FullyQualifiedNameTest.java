@@ -79,4 +79,12 @@ class FullyQualifiedNameTest {
   void test_invalid() {
     assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a\""));
   }
+
+  @Test
+  void test_getParent() {
+    assertEquals("a.b.c", FullyQualifiedName.getParent("a.b.c.d"));
+    assertEquals("a.b", FullyQualifiedName.getParent("a.b.c"));
+    assertEquals("a", FullyQualifiedName.getParent("a.b"));
+    assertEquals(null, FullyQualifiedName.getParent("a"));
+  }
 }

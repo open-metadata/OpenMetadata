@@ -107,7 +107,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
                     {getEntityName(policy)}
                   </Link>
                 ) : (
-                  <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
                     {getEntityName(policy)}
                   </Tooltip>
                 )
@@ -127,7 +127,9 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
                             {getEntityName(policy)}
                           </Link>
                         ) : (
-                          <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                          <Tooltip
+                            key={uniqueId()}
+                            title={NO_PERMISSION_TO_VIEW}>
                             {getEntityName(policy)}
                           </Tooltip>
                         )
@@ -178,11 +180,13 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
   return (
     <>
       <Table
+        bordered
         className="roles-list-table"
         columns={columns}
         data-testid="roles-list-table"
         dataSource={roles}
         pagination={false}
+        rowKey="name"
         size="small"
       />
       {selectedRole && (

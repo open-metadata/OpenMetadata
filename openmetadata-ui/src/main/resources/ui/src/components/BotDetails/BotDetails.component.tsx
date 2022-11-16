@@ -22,20 +22,22 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import {
+  createUserWithPut,
   getAuthMechanismForBotUser,
-  updateUser,
 } from '../../axiosAPIs/userAPI';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { Bot } from '../../generated/entity/bot';
 import {
   AuthenticationMechanism,
   AuthType,
   User,
 } from '../../generated/entity/teams/user';
-import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -51,19 +53,23 @@ import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
-  botsData: User;
+  botUserData: User;
+  botData: Bot;
   botPermission: OperationPermission;
   updateBotsDetails: (data: UserDetails) => Promise<void>;
   revokeTokenHandler: () => void;
+  onEmailChange: () => void;
 }
 
 const BotDetails: FC<BotsDetailProp> = ({
-  botsData,
+  botData,
+  botUserData,
   updateBotsDetails,
   revokeTokenHandler,
   botPermission,
+  onEmailChange,
 }) => {
-  const [displayName, setDisplayName] = useState(botsData.displayName);
+  const [displayName, setDisplayName] = useState(botData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
@@ -92,7 +98,7 @@ const BotDetails: FC<BotsDetailProp> = ({
 
   const fetchAuthMechanismForBot = async () => {
     try {
-      const response = await getAuthMechanismForBotUser(botsData.id);
+      const response = await getAuthMechanismForBotUser(botUserData.id);
       setAuthenticationMechanism(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -106,7 +112,6 @@ const BotDetails: FC<BotsDetailProp> = ({
     try {
       const {
         isAdmin,
-        teams,
         timezone,
         name,
         description,
@@ -114,11 +119,9 @@ const BotDetails: FC<BotsDetailProp> = ({
         profile,
         email,
         isBot,
-        roles,
-      } = botsData;
-      const response = await updateUser({
+      } = botUserData;
+      const response = await createUserWithPut({
         isAdmin,
-        teams,
         timezone,
         name,
         description,
@@ -126,9 +129,8 @@ const BotDetails: FC<BotsDetailProp> = ({
         profile,
         email,
         isBot,
-        roles,
         authenticationMechanism: {
-          ...botsData.authenticationMechanism,
+          ...botUserData.authenticationMechanism,
           authType: updatedAuthMechanism.authType,
           config:
             updatedAuthMechanism.authType === AuthType.Jwt
@@ -140,8 +142,15 @@ const BotDetails: FC<BotsDetailProp> = ({
                   authConfig: updatedAuthMechanism.config?.authConfig,
                 },
         },
-      } as User);
-      if (response.data) {
+        botName: botData.name,
+      });
+      if (response) {
+        await createBotWithPut({
+          name: botData.name,
+          description: botData.description,
+          displayName: botData.displayName,
+          botUser: { id: response.id, type: EntityType.USER },
+        });
         fetchAuthMechanismForBot();
       }
     } catch (error) {
@@ -159,7 +168,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   };
 
   const handleDisplayNameChange = () => {
-    if (displayName !== botsData.displayName) {
+    if (displayName !== botData.displayName) {
       updateBotsDetails({ displayName: displayName || '' });
     }
     setIsDisplayNameEdit(false);
@@ -243,8 +252,8 @@ const BotDetails: FC<BotsDetailProp> = ({
     return (
       <div className="tw--ml-5">
         <Description
-          description={botsData.description || ''}
-          entityName={getEntityName(botsData as unknown as EntityReference)}
+          description={botData.description || ''}
+          entityName={getEntityName(botData)}
           hasEditAccess={descriptionPermission || editAllPermission}
           isEdit={isDescriptionEdit}
           onCancel={() => setIsDescriptionEdit(false)}
@@ -303,10 +312,10 @@ const BotDetails: FC<BotsDetailProp> = ({
   );
 
   useEffect(() => {
-    if (botsData.id) {
+    if (botUserData.id) {
       fetchAuthMechanismForBot();
     }
-  }, [botsData]);
+  }, [botUserData]);
 
   return (
     <PageLayout
@@ -322,7 +331,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                 GlobalSettingOptions.BOTS
               ),
             },
-            { name: botsData.name || '', url: '', activeTitle: true },
+            { name: botData.name || '', url: '', activeTitle: true },
           ]}
         />
       }
@@ -339,13 +348,17 @@ const BotDetails: FC<BotsDetailProp> = ({
             {isAuthMechanismEdit ? (
               <AuthMechanismForm
                 authenticationMechanism={authenticationMechanism}
+                botData={botData}
+                botUser={botUserData}
                 isUpdating={isUpdating}
                 onCancel={() => setIsAuthMechanismEdit(false)}
+                onEmailChange={onEmailChange}
                 onSave={handleAuthMechanismUpdate}
               />
             ) : (
               <AuthMechanism
                 authenticationMechanism={authenticationMechanism}
+                botUser={botUserData}
                 hasPermission={editAllPermission}
                 onEdit={handleAuthMechanismEdit}
                 onTokenRevoke={() => setIsRevokingToken(true)}
@@ -355,8 +368,11 @@ const BotDetails: FC<BotsDetailProp> = ({
         ) : (
           <AuthMechanismForm
             authenticationMechanism={{} as AuthenticationMechanism}
+            botData={botData}
+            botUser={botUserData}
             isUpdating={isUpdating}
             onCancel={() => setIsAuthMechanismEdit(false)}
+            onEmailChange={onEmailChange}
             onSave={handleAuthMechanismUpdate}
           />
         )}

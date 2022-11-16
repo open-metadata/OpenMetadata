@@ -19,13 +19,13 @@ on:
     paths:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
   pull_request_target:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
+    types: [labeled, opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  checks: write
 
 concurrency: 
   group: maven-build-${{ github.head_ref || github.run_id }}
@@ -42,6 +42,25 @@ jobs:
           - 16.x
 
     steps:
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.2.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
       - name: install libssl
         run: |
          sudo su -c "echo 'deb http://security.ubuntu.com/ubuntu xenial-security main' >> /etc/apt/sources.list"

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { orderBy } from 'lodash';
+import { isArray, isObject, orderBy, transform } from 'lodash';
 import { getTableDetails } from '../axiosAPIs/tableAPI';
 import { SearchIndex } from '../enums/search.enum';
 import { getRelativeTime } from './TimeUtils';
@@ -283,4 +283,20 @@ export const getURLWithQueryFields = (url, lstQueryFields, qParams = '') => {
   }
 
   return url + queryParam;
+};
+
+export const omitDeep = (obj, predicate) => {
+  return transform(obj, function (result, value, key) {
+    if (isObject(value)) {
+      value = omitDeep(value, predicate);
+    }
+    const doOmit = predicate(value, key);
+    if (!doOmit) {
+      if (isArray(obj)) {
+        result.push(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  });
 };

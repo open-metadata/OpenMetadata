@@ -27,7 +27,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
 
 jest.mock('../../../utils/TimeUtils', () => ({
   getUTCDateTime: jest.fn(),
-  getLocaleDate: jest.fn(),
+  getLocaleDateFromTimeStamp: jest.fn(),
   getTimeZone: jest.fn(),
 }));
 

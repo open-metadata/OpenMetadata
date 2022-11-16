@@ -8,12 +8,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Defines the Elasticsearch mapping for Tables
+"""
 import textwrap
 
 TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
-     {
+{
   "settings": {
     "analysis": {
       "normalizer": {
@@ -409,5 +411,5 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     }
   }
 }
-    """
+"""
 )

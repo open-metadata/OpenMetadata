@@ -83,7 +83,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   private static Location location;
 
   public PolicyResourceTest() {
-    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS);
+    super(
+        Entity.POLICY,
+        Policy.class,
+        PolicyList.class,
+        "policies",
+        PolicyResource.FIELDS,
+        Entity.ORGANIZATION_POLICY_NAME);
     supportsAuthorizedMetadataOperations = false; // TODO why
   }
 
@@ -137,6 +143,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       EntityReference actualLocation = JsonUtils.readValue(actual.toString(), EntityReference.class);
       assertEquals(expectedLocation.getId(), actualLocation.getId());
     } else if (fieldName.equals("rules")) {
+      @SuppressWarnings("unchecked")
       List<Rule> expectedRule = (List<Rule>) expected;
       List<Rule> actualRule = JsonUtils.readObjects(actual.toString(), Rule.class);
       assertEquals(expectedRule, actualRule);
@@ -215,18 +222,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Incomplete expressions
     failsToParse(policyName, "!");
 
-    // matchAnyTag() method does not input parameters
-    failsToEvaluate(policyName, "!matchAnyTag()");
-
     // isOwner() has Unexpected input parameter
     failsToEvaluate(policyName, "!isOwner('unexpectedParam')");
 
     // Invalid function name
     failsToEvaluate(policyName, "invalidFunction()");
     failsToEvaluate(policyName, "isOwner() || invalidFunction()");
-
-    // Function matchTags() has no input parameter
-    failsToEvaluate(policyName, "matchTags()");
 
     // Invalid text
     failsToEvaluate(policyName, "a");
@@ -243,7 +244,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       assertResponse(
           () -> deleteEntity(policy.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
-          CatalogExceptionMessage.deletionNotAllowed(Entity.POLICY, policy.getName()));
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(policy.getName(), Entity.POLICY));
     }
   }
 

@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 8;
+export const LATEST_VERSION_ID = 9;
 
-export const COOKIE_VERSION = 'VERSION_0_12_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_12_1'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -529,6 +529,23 @@ export const WHATS_NEW = [
 -   Supports space in the Tags category and Primary Tags.
 
 -   The [OpenMetadata documentation](https://docs.open-metadata.org) site has been revamped.`,
+    },
+  },
+  {
+    id: 9,
+    version: 'v0.12.1',
+    description: 'Released on 3 October 2022.',
+    features: [],
+    changeLogs: {
+      'Basic Authentication': `- User/Password signup and login
+- Email notifications for forgot password
+- Admin can add new users and send an email`,
+      'ElasticSearch Full Re-index Through UI': `- Now admins can fully re-index elasticsearch through the UI.`,
+
+      'Versioning Support For Custom Attributes': `- Any changes to entities custom attributes are now versioned.`,
+      'DBT Metadata - Tag': `- We support ingesting DBT tags into OpenMetadata.`,
+      'Bots Integration': `- Admins can create bots and their security mechanism from UI.`,
+      'Bug Fixes': `- Around 136 Features/Bug fixes/improvements/Tests made it into 0.12.1 release.`,
     },
   },
 ];

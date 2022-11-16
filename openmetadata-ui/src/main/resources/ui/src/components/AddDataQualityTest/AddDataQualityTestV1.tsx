@@ -129,7 +129,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
 
   const handleViewTestSuiteClick = () => {
     history.push(
-      getTestSuitePath(selectedTestSuite?.data?.fullyQualifiedName || '')
+      getTestSuitePath(
+        selectedTestSuite?.data?.fullyQualifiedName ||
+          testSuiteData?.fullyQualifiedName ||
+          ''
+      )
     );
   };
 

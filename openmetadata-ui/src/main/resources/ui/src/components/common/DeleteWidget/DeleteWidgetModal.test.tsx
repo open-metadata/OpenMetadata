@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
@@ -25,9 +25,24 @@ const mockProps: DeleteWidgetModalProps = {
   entityId: 'entityId',
 };
 
+jest.mock('lodash', () => ({
+  ...jest.requireActual('lodash'),
+  startCase: jest.fn(),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+}));
+
+jest.mock('../../../axiosAPIs/miscAPI', () => ({
+  deleteEntity: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
 describe('Test DeleteWidgetV1 Component', () => {
   it('Component should render properly', async () => {
-    render(<DeleteWidgetModal {...mockProps} />);
+    await act(async () => {
+      render(<DeleteWidgetModal {...mockProps} />);
+    });
 
     const deleteModal = await screen.findByTestId('delete-modal');
     const footer = await screen.findByTestId('footer');
@@ -47,26 +62,31 @@ describe('Test DeleteWidgetV1 Component', () => {
   });
 
   it('Delete click should work properly', async () => {
-    render(<DeleteWidgetModal {...mockProps} />);
-    const inputBox = await screen.findByTestId('confirmation-text-input');
-    const confirmButton = await screen.findByTestId('confirm-button');
-    const hardDelete = await screen.findByTestId('hard-delete');
+    await act(async () => {
+      render(<DeleteWidgetModal {...mockProps} />);
 
-    userEvent.click(hardDelete);
+      const inputBox = await screen.findByTestId('confirmation-text-input');
+      const confirmButton = await screen.findByTestId('confirm-button');
+      const hardDelete = await screen.findByTestId('hard-delete');
 
-    userEvent.type(inputBox, 'DELETE');
+      userEvent.click(hardDelete);
 
-    expect(confirmButton).not.toBeDisabled();
+      userEvent.type(inputBox, 'DELETE');
 
-    userEvent.click(confirmButton);
+      expect(confirmButton).not.toBeDisabled();
+
+      userEvent.click(confirmButton);
+    });
   });
 
   it('Discard click should work properly', async () => {
-    render(<DeleteWidgetModal {...mockProps} />);
-    const discardButton = await screen.findByTestId('discard-button');
+    await act(async () => {
+      render(<DeleteWidgetModal {...mockProps} />);
+      const discardButton = await screen.findByTestId('discard-button');
 
-    userEvent.click(discardButton);
+      userEvent.click(discardButton);
 
-    expect(mockProps.onCancel).toBeCalledTimes(1);
+      expect(mockProps.onCancel).toBeCalled();
+    });
   });
 });

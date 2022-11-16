@@ -30,6 +30,10 @@
       "description": "When true indicates user is a bot with appropriate privileges",
       "type": "boolean"
     },
+    "botName": {
+      "description": "User bot name if we want to associate this bot with an specific bot",
+      "type": "string"
+    },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges",
       "type": "boolean",
@@ -63,8 +67,8 @@
     "createPasswordType": {
       "description": "User Password Method",
       "type": "string",
-      "enum": ["ADMINCREATE", "USERCREATE"],
-      "default": "USERCREATE"
+      "enum": ["ADMIN_CREATE", "USER_CREATE"],
+      "default": "USER_CREATE"
     },
     "password": {
       "description": "Password for User",

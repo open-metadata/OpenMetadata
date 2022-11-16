@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
+import {
+    descriptionBox,
+    interceptURL,
+    login,
+    uuid,
+    verifyResponseStatusCode
+} from '../../common/common';
 import { LOGIN } from '../../constants/constants';
-
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -60,7 +65,7 @@ describe('Roles page should work properly', () => {
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
-    cy.get('[data-menu-id*="roles"]').should('be.visible').click();
+    cy.get('[data-testid="settings-left-panel"]').contains('Roles').should('be.visible').click();
 
     verifyResponseStatusCode('@getRoles', 200);
 
@@ -111,8 +116,6 @@ describe('Roles page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Clicking outside to close the dropdown
-    cy.get('.ant-card-body').click();
     //Save the role
     cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
@@ -158,9 +161,9 @@ describe('Roles page should work properly', () => {
     //Navigating to roles tab to verify the added role
     cy.get('[data-testid="breadcrumb-link"]').first().click();
     cy.get('table').should('be.visible').should('contain', roleName);
-    cy.get('[data-testid="plus-more-count"]')
+    cy.get(`[data-row-key="${roleName}"]`)
+      .find('[data-testid="plus-more-count"]')
       .should('be.visible')
-      .contains('+1 more')
       .click();
 
     // second policy should be visible on tooltip
@@ -267,9 +270,7 @@ describe('Roles page should work properly', () => {
   });
 
   it('Check if last policy is not removed', () => {
-    cy.intercept({ method: 'GET', url: `/api/v1/roles/name/${roleName}*` }).as(
-      'getSelectedRole'
-    );
+    interceptURL('GET', `/api/v1/roles/name/${roleName}*`, 'getSelectedRole');
 
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
@@ -281,11 +282,9 @@ describe('Roles page should work properly', () => {
       .should('contain', roleName)
       .should('be.visible');
 
-    cy.wait('@getSelectedRole').its('response.statusCode').should('eq', 200);
+    verifyResponseStatusCode('@getSelectedRole', 200);
 
-    cy.intercept({ method: 'PATCH', url: '/api/v1/roles/*' }).as(
-      'checkDeletedRole'
-    );
+    interceptURL('PATCH', '/api/v1/roles/*', 'checkDeletedRole');
     //Removing second policy from the role
     removePolicyFromRole(policies.dataStewardPolicy);
 
@@ -294,8 +293,7 @@ describe('Roles page should work properly', () => {
       'not.contain',
       policies.dataStewardPolicy
     );
-
-    cy.wait('@checkDeletedRole').its('response.statusCode').should('eq', 200);
+    verifyResponseStatusCode('@checkDeletedRole', 200);
 
     //Removing the last policy and validating the error message
     removePolicyFromRole(policies.dataConsumerPolicy);

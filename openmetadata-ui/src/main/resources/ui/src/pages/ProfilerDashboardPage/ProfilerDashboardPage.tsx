@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import moment from 'moment';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -46,6 +45,10 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
+import {
+  getCurrentDateTimeStamp,
+  getPastDatesTimeStampFromCurrentDate,
+} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
@@ -86,14 +89,15 @@ const ProfilerDashboardPage = () => {
 
   const fetchProfilerData = async (fqn: string, days = 3) => {
     try {
-      const startTs = moment().subtract(days, 'days').unix();
-      const endTs = moment().unix();
+      const startTs = getPastDatesTimeStampFromCurrentDate(days);
+
+      const endTs = getCurrentDateTimeStamp();
 
       const { data } = await getColumnProfilerList(fqn, {
         startTs,
         endTs,
       });
-      setProfilerData(data || []);
+      setProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

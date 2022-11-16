@@ -25,7 +25,7 @@ from metadata.generated.schema.api.tags.createTagCategory import (
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.utils import ometa_logger
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 logger = ometa_logger()
 
 
@@ -156,7 +156,6 @@ class OMetaTagMixin:
             f"under primary tag {primary_tag_fqn}: {resp}"
         )
 
-    # pylint: disable=too-many-arguments
     def get_secondary_tag(
         self,
         entity: Type[T],

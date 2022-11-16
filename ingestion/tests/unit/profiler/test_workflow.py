@@ -18,6 +18,7 @@ from unittest.mock import patch
 
 import sqlalchemy as sqa
 from pytest import raises
+from sqlalchemy import MetaData
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import (
@@ -33,7 +34,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.profiler.default import DefaultProfiler
@@ -88,7 +89,7 @@ class User(Base):
 
 
 @patch.object(
-    SQAInterface,
+    SQAProfilerInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -190,7 +191,7 @@ def test_filter_entities(mocked_method):
 
 
 @patch.object(
-    SQAInterface,
+    SQAProfilerInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -214,8 +215,9 @@ def test_profile_def(mocked_method, mocked_orm):
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
     profiler_interface = profile_workflow.create_profiler_interface(
-        profile_workflow.config.source.serviceConnection.__root__.config,
-        TABLE,
+        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
+        table_entity=TABLE,
+        sqa_metadata_obj=MetaData(),
     )
     profile_workflow.create_profiler_obj(TABLE, profiler_interface)
     profiler_obj_metrics = [
@@ -227,7 +229,7 @@ def test_profile_def(mocked_method, mocked_orm):
 
 
 @patch.object(
-    SQAInterface,
+    SQAProfilerInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -246,8 +248,9 @@ def test_default_profile_def(mocked_method, mocked_orm):
     mocked_method.assert_called()
 
     profiler_interface = profile_workflow.create_profiler_interface(
-        profile_workflow.config.source.serviceConnection.__root__.config,
-        TABLE,
+        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
+        table_entity=TABLE,
+        sqa_metadata_obj=MetaData(),
     )
     profile_workflow.create_profiler_obj(TABLE, profiler_interface)
 

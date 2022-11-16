@@ -55,7 +55,7 @@ describe('MyData page should work', () => {
   };
 
   const checkRecentlySearchElement = (term) => {
-    searchEntity(term);
+    searchEntity(term, false);
     cy.clickOnLogo();
     cy.get(`[data-testid="search-term-${term}"]`)
       .scrollIntoView()
@@ -176,27 +176,19 @@ describe('MyData page should work', () => {
   });
 
   it('My data, following & feed section should work properly for table entity', () => {
-    tables.forEach((table) => {
-      followAndOwnTheEntity(table);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_TABLE.table_1);
   });
 
   it('My data, following & feed section should work properly for topic entity', () => {
-    topics.forEach((topic) => {
-      followAndOwnTheEntity(topic);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_TOPIC.topic_1);
   });
 
-  it('My data, following & feed section should work properly for dashboard entity', () => {
-    dashboards.forEach((dashboard) => {
-      followAndOwnTheEntity(dashboard);
-    });
+  it.skip('My data, following & feed section should work properly for dashboard entity', () => {
+    followAndOwnTheEntity(SEARCH_ENTITY_DASHBOARD.dashboard_1);
   });
 
   it('My data, following & feed section should work properly for pipeline entity', () => {
-    pipelines.forEach((pipeline) => {
-      followAndOwnTheEntity(pipeline);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_PIPELINE.pipeline_1);
   });
 
   it.skip('My data and following section, CTA should work properly', () => {

@@ -46,7 +46,9 @@ class LineageSource(QueryParserSource, ABC):
         This is a simplified version of the UsageSource query parsing.
         """
         if self.config.sourceConfig.config.queryLogFilePath:
-            with open(self.config.sourceConfig.config.queryLogFilePath, "r") as file:
+            with open(
+                self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
+            ) as file:
                 for row in csv.DictReader(file):
                     query_dict = dict(row)
                     yield TableQuery(

@@ -29,8 +29,6 @@ import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
-const DATE_NOW = Date.now();
-
 export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
 
 export const getOidcExpiry = () => {
@@ -148,6 +146,7 @@ export const getAuthConfig = (
 
       break;
     }
+    case AuthTypes.LDAP:
     case AuthTypes.BASIC: {
       config = {
         auth: {
@@ -232,6 +231,10 @@ export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
 };
 
+export const getUrlPathnameExpiryAfterRoute = () => {
+  return new Date(Date.now() + 1000);
+};
+
 /**
  * @exp expiry of token
  * @isExpired wether token is already expired or not
@@ -244,13 +247,14 @@ export const extractDetailsFromToken = () => {
   if (token) {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
+      const dateNow = Date.now();
 
-      const diff = exp && exp * 1000 - DATE_NOW;
+      const diff = exp && exp * 1000 - dateNow;
       const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
 
       return {
         exp,
-        isExpired: exp && DATE_NOW >= exp * 1000,
+        isExpired: exp && dateNow >= exp * 1000,
         diff,
         timeoutExpiry,
       };

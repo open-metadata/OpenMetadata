@@ -19,15 +19,16 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SettingsRepository;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SettingsCache {
@@ -61,6 +62,15 @@ public class SettingsCache {
     }
   }
 
+  public <T> T getSetting(SettingsType settingName, Class<T> clazz) throws RuntimeException {
+    try {
+      String json = JsonUtils.pojoToJson(SETTINGS_CACHE.get(settingName.toString()).getConfigValue());
+      return JsonUtils.readValue(json, clazz);
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   public void putSettings(Settings setting) throws RuntimeException {
     SETTINGS_CACHE.put(setting.getConfigType().toString(), setting);
   }
@@ -80,7 +90,7 @@ public class SettingsCache {
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
-    public Settings load(@CheckForNull String settingsName) throws IOException {
+    public Settings load(@CheckForNull String settingsName) {
       Settings setting = SETTINGS_REPOSITORY.getConfigWithKey(settingsName);
       LOG.info("Loaded Setting {}", setting.getConfigType());
       return setting;

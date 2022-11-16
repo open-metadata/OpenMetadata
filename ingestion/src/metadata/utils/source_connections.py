@@ -13,7 +13,7 @@
 Hosts the singledispatch to build source URLs
 """
 import os
-from functools import singledispatch
+from functools import singledispatch, wraps
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
@@ -88,15 +88,53 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaConnection,
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
 
 
+def update_connection_opts_args(connection):
+    if hasattr(connection, "connectionOptions") and connection.connectionOptions:
+        for key, value in connection.connectionOptions.dict().items():
+            if isinstance(value, str):
+                setattr(
+                    connection.connectionOptions,
+                    key,
+                    CustomSecretStr(value).get_secret_value(),
+                )
+    if hasattr(connection, "connectionArguments") and connection.connectionArguments:
+        for key, value in connection.connectionArguments.dict().items():
+            if isinstance(value, str):
+                setattr(
+                    connection.connectionArguments,
+                    key,
+                    CustomSecretStr(value).get_secret_value(),
+                )
+
+
+def singledispatch_with_options_secrets(fn):
+    """Decorator used for get any secret from the Secrets Manager that has been passed inside connection options
+    or arguments.
+    """
+
+    @wraps(fn)
+    @singledispatch
+    def inner(connection, **kwargs):
+        update_connection_opts_args(connection)
+        return fn(connection, **kwargs)
+
+    return inner
+
+
 def get_connection_url_common(connection):
+    """
+    Common method for building the source connection urls
+    """
+
     url = f"{connection.scheme.value}://"
 
     if connection.username:
-        url += f"{connection.username}"
+        url += f"{quote_plus(connection.username)}"
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
@@ -126,9 +164,13 @@ def get_connection_url_common(connection):
     return url
 
 
-@singledispatch
+@singledispatch_with_options_secrets
 def get_connection_url(connection):
-    raise NotImplemented(
+    """
+    Single dispatch method to get the source connection url
+    """
+
+    raise NotImplementedError(
         f"Connection URL build not implemented for type {type(connection)}: {connection}"
     )
 
@@ -158,16 +200,16 @@ def _(connection: OracleConnection):
     # Patching the cx_Oracle module with oracledb lib
     # to work take advantage of the thin mode of oracledb
     # which doesn't require the oracle client libs to be installed
-    import sys
+    import sys  # pylint: disable=import-outside-toplevel
 
-    import oracledb
+    import oracledb  # pylint: disable=import-outside-toplevel
 
     oracledb.version = CX_ORACLE_LIB_VERSION
     sys.modules["cx_Oracle"] = oracledb
 
     url = f"{connection.scheme.value}://"
     if connection.username:
-        url += f"{connection.username}"
+        url += f"{quote_plus(connection.username)}"
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
@@ -222,7 +264,8 @@ def _(connection: TrinoConnection):
             url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
     url += f"{connection.hostPort}"
-    url += f"/{connection.catalog}"
+    if connection.catalog:
+        url += f"/{connection.catalog}"
     if connection.params is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"
@@ -248,14 +291,19 @@ def _(connection: PrestoConnection):
             url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
     url += f"{connection.hostPort}"
-    url += f"/{connection.catalog}"
+    if connection.catalog:
+        url += f"/{connection.catalog}"
     if connection.databaseSchema:
         url += f"?schema={quote_plus(connection.databaseSchema)}"
     return url
 
 
-@singledispatch
+@singledispatch_with_options_secrets
 def get_connection_args(connection):
+    """
+    Single dispatch method to get the connection arguments
+    """
+
     return connection.connectionArguments or {}
 
 
@@ -268,10 +316,8 @@ def _(connection: TrinoConnection):
             connection_args = connection.connectionArguments.dict()
             connection_args.update({"http_session": session})
             return connection_args
-        else:
-            return {"http_session": session}
-    else:
-        return connection.connectionArguments if connection.connectionArguments else {}
+        return {"http_session": session}
+    return connection.connectionArguments if connection.connectionArguments else {}
 
 
 @get_connection_url.register
@@ -279,7 +325,7 @@ def _(connection: SnowflakeConnection):
     url = f"{connection.scheme.value}://"
 
     if connection.username:
-        url += f"{connection.username}"
+        url += f"{quote_plus(connection.username)}"
         if not connection.password:
             connection.password = SecretStr("")
         url += (
@@ -324,10 +370,16 @@ def _(connection: HiveConnection):
         and hasattr(connection.connectionArguments, "auth")
         and connection.connectionArguments.auth in ("LDAP", "CUSTOM")
     ):
-        url += f"{connection.username}"
+        url += quote_plus(connection.username)
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+
+    elif connection.username:
+        url += quote_plus(connection.username)
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
 
     url += connection.hostPort
@@ -340,9 +392,6 @@ def _(connection: HiveConnection):
     )
 
     if options:
-        if not connection.databaseSchema:
-            url += "/"
-        url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
@@ -354,23 +403,20 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    from google import auth
+    from google import auth  # pylint: disable=import-outside-toplevel
 
     _, project_id = auth.default()
     if isinstance(connection.credentials.gcsConfig, GCSValues):
-        has_project_id = hasattr(connection.credentials.gcsConfig, "projectId")
-
         if not project_id:
-            if has_project_id:
-                project_id = connection.credentials.gcsConfig.projectId
-        else:
-            if has_project_id and not hasattr(
-                connection.credentials.gcsConfig, "privateKey"
-            ):
-                # Setting environment variable based on project id given by user / set in ADC
-                project_id = connection.credentials.gcsConfig.projectId
+            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
+        if (
+            not connection.credentials.gcsConfig.privateKey
+            and connection.credentials.gcsConfig.projectId
+        ):
+            # Setting environment variable based on project id given by user / set in ADC
+            project_id = connection.credentials.gcsConfig.projectId
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{project_id}"
+        return f"{connection.scheme.value}://{project_id}"
     return f"{connection.scheme.value}://"
 
 
@@ -380,8 +426,12 @@ def _(connection: AzureSQLConnection):
     url = f"{connection.scheme.value}://"
 
     if connection.username:
-        url += f"{connection.username}"
-        url += f":{connection.password.get_secret_value()}" if connection else ""
+        url += f"{quote_plus(connection.username)}"
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
         url += "@"
 
     url += f"{connection.hostPort}"
@@ -414,7 +464,9 @@ def _(connection: AthenaConnection):
         url += ":"
     url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
 
-    url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
+    staging_url = connection.s3StagingDir.scheme + "://" + str(connection.s3StagingDir)
+
+    url += f"?s3_staging_dir={quote_plus(staging_url)}"
     if connection.workgroup:
         url += f"&work_group={connection.workgroup}"
     if connection.awsConfig.awsSessionToken:

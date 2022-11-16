@@ -16,7 +16,11 @@ import { Icons } from './SvgUtils';
 
 export const getStatusResultBadgeIcon = (status: string) => {
   switch (status) {
+    case Status.Idle:
+      return Icons.TASK_OPEN;
+    case Status.Starting:
     case Status.Active:
+    case Status.Completed:
       return Icons.SUCCESS_BADGE;
 
     case Status.Activewitherror:
@@ -32,6 +36,12 @@ export const getStatusResultBadgeIcon = (status: string) => {
 
 export const getEventPublisherStatusText = (status?: string) => {
   switch (status) {
+    case Status.Starting:
+      return 'Starting';
+    case Status.Idle:
+      return 'Idle';
+    case Status.Completed:
+      return 'Completed';
     case Status.Active:
       return 'Active';
 

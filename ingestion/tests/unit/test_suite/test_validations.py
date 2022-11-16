@@ -18,6 +18,7 @@ Each test should validate the Success, Failure and Aborted statuses
 import os
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import sqlalchemy as sqa
@@ -32,7 +33,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.test_suite.validations.core import validation_enum_registry
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -78,11 +79,14 @@ class testSuiteValidation(unittest.TestCase):
         databaseMode=db_path + "?check_same_thread=False",
     )
 
-    sqa_profiler_interface = SQAInterface(
-        sqlite_conn,
-        table=User,
-        table_entity=TABLE,
-    )
+    with patch.object(
+        SQATestSuiteInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQATestSuiteInterface(
+            sqlite_conn,
+            table_entity=TABLE,
+            ometa_client=None,
+        )
     runner = sqa_profiler_interface.runner
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
@@ -170,6 +174,25 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testResultValue[0].value == "2"
         assert res.testResultValue[1].value == "3"
 
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users::columns::first+name>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="maxLength", value="10"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
+
     def test_column_value_max_to_be_between(self):
         """test column value max to be between"""
         test_case = TestCase(
@@ -192,6 +215,25 @@ class testSuiteValidation(unittest.TestCase):
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "31"
+
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users::columns::age>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="maxValueForMaxInCol", value="10"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValueMaxToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Failed
 
     def test_column_value_mean_to_be_between(self):
         """test column value mean to be between"""
@@ -216,6 +258,25 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "30.5"
 
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users::columns::age>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValueMeanToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
+
     def test_column_value_median_to_be_between(self):
         """test column value median to be between"""
         test_case = TestCase(
@@ -225,7 +286,7 @@ class testSuiteValidation(unittest.TestCase):
             testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
                 TestCaseParameterValue(name="minValueForMedianInCol", value="1"),
-                TestCaseParameterValue(name="maxValueForMedianInCol", value="10"),
+                TestCaseParameterValue(name="maxColValue", value="10"),
             ],
         )
 
@@ -262,6 +323,25 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "30"
 
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users::columns::age>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="maxValueForMinInCol", value="40"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValueMinToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
+
     def test_column_value_stddev_to_be_between(self):
         """test column value stddev to be between"""
         test_case = TestCase(
@@ -284,6 +364,25 @@ class testSuiteValidation(unittest.TestCase):
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "0.25"
+
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users::columns::age>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="maxValueForStdDevInCol", value="40"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValueStdDevToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_value_in_set(self):
         """test column value in set"""
@@ -392,6 +491,25 @@ class testSuiteValidation(unittest.TestCase):
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "610"
 
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users::columns::age>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="minValueForColSum", value="10"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValuesSumToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
+
     def test_column_values_to_be_between(self):
         """test column value to be between"""
         test_case = TestCase(
@@ -414,6 +532,25 @@ class testSuiteValidation(unittest.TestCase):
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "30"
+
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users::columns::age>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="minValue", value="29"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["columnValuesToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_values_to_be_not_null(self):
         """test column value to be not null"""
@@ -520,6 +657,25 @@ class testSuiteValidation(unittest.TestCase):
         assert isinstance(res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "6"
+
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="maxColValue", value="10"),
+            ],
+        )
+
+        res = validation_enum_registry.registry["tableColumnCountToBeBetween"](
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+            runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
 
     def test_table_column_count_to_equal(self):
         """test column value to be equal"""
@@ -688,6 +844,20 @@ class testSuiteValidation(unittest.TestCase):
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
             runner=self.runner,
+        )
+
+        assert isinstance(res, TestCaseResult)
+        assert res.testCaseStatus == TestCaseStatus.Success
+        assert res.testResultValue[0].value == "30"
+
+        test_case = TestCase(
+            name="my_test_case_two",
+            entityLink="<#E::table::service.db.users>",
+            testSuite=EntityReference(id=uuid4(), type="TestSuite"),
+            testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
+            parameterValues=[
+                TestCaseParameterValue(name="minValue", value="10"),
+            ],
         )
 
         assert isinstance(res, TestCaseResult)

@@ -20,10 +20,14 @@ from metadata.utils.logger import cli_logger
 logger = cli_logger()
 
 V115_IMPORT_STRING = "from openmetadata."
+V115_DAG_CONFIG_PATH = '"/airflow/dag_generated_configs/'
 V12_IMPORT_STRING = "from openmetadata_managed_apis."
+V12_DAG_CONFIG_PATH = '"/opt/airflow/dag_generated_configs/'
 
 
-def run_openmetadata_imports_migration(dir_path: str) -> None:
+def run_openmetadata_imports_migration(
+    dir_path: str, change_config_file_path: bool
+) -> None:
     """Given a path to the DAG folder we'll look for openmetadata import and update the package to
     `openmetadata_managed_apis`
 
@@ -31,11 +35,10 @@ def run_openmetadata_imports_migration(dir_path: str) -> None:
         dir_path (str): path to the DAG folder
     """
 
-    if not os.path.isdir(dir_path):
-        logger.error(f"{dir_path} is not a valid directory")
-        raise ValueError
-
     for root, _, filenames in os.walk(dir_path):
+        filenames = [
+            filename for filename in filenames if os.path.splitext(filename)[1] == ".py"
+        ]
         logger.info(
             f"{len(filenames)} files found in `{root}`."
             "\nChecking for imports in the following files:\n\t{file_list}".format(
@@ -44,19 +47,25 @@ def run_openmetadata_imports_migration(dir_path: str) -> None:
         )
         for filename in filenames:
             logger.info(f"Checking imports in {filename}")
-            if os.path.splitext(filename)[1] == ".py":
+            with open(os.path.join(root, filename), "r", encoding="utf-8") as dag_fle:
+                orig_fle_data = dag_fle.read()
+
+            fle_data = orig_fle_data  # We keep a copy of the original file data to see if any change was made
+
+            if V115_IMPORT_STRING in fle_data:
+                fle_data = fle_data.replace(V115_IMPORT_STRING, V12_IMPORT_STRING)
+                logger.info(
+                    f"Imports found in {filename}. Replaced `{V115_IMPORT_STRING}` with `{V12_IMPORT_STRING}`"
+                )
+
+            if change_config_file_path and V115_DAG_CONFIG_PATH in fle_data:
+                fle_data = fle_data.replace(V115_DAG_CONFIG_PATH, V12_DAG_CONFIG_PATH)
+                logger.info(
+                    f"Old config path found. Replaced {V115_DAG_CONFIG_PATH} with {V12_DAG_CONFIG_PATH}."
+                )
+
+            if orig_fle_data != fle_data:
                 with open(
-                    os.path.join(root, filename), "r", encoding="utf-8"
-                ) as dag_fle:
-                    fle_data = dag_fle.read()
-
-                if V115_IMPORT_STRING in fle_data:
-                    fle_data = fle_data.replace(V115_IMPORT_STRING, V12_IMPORT_STRING)
-
-                    with open(
-                        os.path.join(root, filename), "w", encoding="utf-8"
-                    ) as dag_file:
-                        dag_file.write(fle_data)
-                    logger.info(
-                        f"Imports found in {filename}. Replaced `{V115_IMPORT_STRING}` with `{V12_IMPORT_STRING}`"
-                    )
+                    os.path.join(root, filename), "w", encoding="utf-8"
+                ) as dag_file:
+                    dag_file.write(fle_data)

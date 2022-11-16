@@ -97,7 +97,7 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
                 self.set_session_query_tag()
                 yield from super().get_table_query()
 
-    def get_database_name(self, data: dict) -> str:
+    def get_database_name(self, data: dict) -> str:  # pylint: disable=arguments-differ
         """
         Method to get database name
         """

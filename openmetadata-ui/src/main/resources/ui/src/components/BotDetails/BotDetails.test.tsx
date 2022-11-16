@@ -20,8 +20,9 @@ import BotDetails from './BotDetails.component';
 
 const revokeTokenHandler = jest.fn();
 const updateBotsDetails = jest.fn();
+const onEmailChange = jest.fn();
 
-const botsData = {
+const botUserData = {
   id: 'ea09aed1-0251-4a75-b92a-b65641610c53',
   name: 'sachinchaurasiyachotey87',
   fullyQualifiedName: 'sachinchaurasiyachotey87',
@@ -33,6 +34,26 @@ const botsData = {
   href: 'http://localhost:8585/api/v1/users/ea09aed1-0251-4a75-b92a-b65641610c53',
   isBot: true,
   isAdmin: false,
+  deleted: false,
+};
+
+const botData = {
+  id: '4755f87d-2a53-4376-97e6-fc072f29cf5a',
+  name: 'ingestion-bot',
+  fullyQualifiedName: 'ingestion-bot',
+  displayName: 'ingestion-bot',
+  botUser: {
+    id: 'b91d42cb-2a02-4364-ae80-db08b77f1b0c',
+    type: 'user',
+    name: 'ingestion-bot',
+    fullyQualifiedName: 'ingestion-bot',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/users/b91d42cb-2a02-4364-ae80-db08b77f1b0c',
+  },
+  version: 0.1,
+  updatedAt: 1664267598781,
+  updatedBy: 'ingestion-bot',
+  href: 'http://localhost:8585/api/v1/bots/4755f87d-2a53-4376-97e6-fc072f29cf5a',
   deleted: false,
 };
 
@@ -48,7 +69,8 @@ const mockAuthMechanism = {
 };
 
 const mockProp = {
-  botsData,
+  botUserData,
+  botData,
   botPermission: {
     Create: true,
     Delete: true,
@@ -60,6 +82,7 @@ const mockProp = {
   } as OperationPermission,
   revokeTokenHandler,
   updateBotsDetails,
+  onEmailChange,
 };
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -68,7 +91,9 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../axiosAPIs/userAPI', () => {
   return {
-    updateUser: jest.fn().mockImplementation(() => Promise.resolve(botsData)),
+    createUserWithPut: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve(botUserData)),
     getAuthMechanismForBotUser: jest
       .fn()
       .mockImplementation(() => Promise.resolve(mockAuthMechanism)),

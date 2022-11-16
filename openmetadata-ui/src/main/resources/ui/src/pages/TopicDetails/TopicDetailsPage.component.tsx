@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -359,7 +359,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   };
 
   const saveUpdatedTopicData = (updatedData: Topic) => {
-    const jsonPatch = compare(topicDetails, updatedData);
+    const jsonPatch = compare(omitBy(topicDetails, isUndefined), updatedData);
 
     return patchTopicDetails(topicId, jsonPatch);
   };
@@ -542,10 +542,10 @@ const TopicDetailsPage: FunctionComponent = () => {
       saveUpdatedTopicData(updatedTopic)
         .then((res) => {
           if (res) {
-            setTopicDetails(res);
+            setTopicDetails({ ...res, tags: res.tags ?? [] });
             setCurrentVersion(res.version?.toString());
             setOwner(res.owner);
-            setTier(getTierTags(res.tags as EntityTags[]));
+            setTier(getTierTags((res.tags ?? []) as EntityTags[]));
             getEntityFeedCount();
             resolve();
           } else {

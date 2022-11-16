@@ -54,6 +54,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
 	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
 	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
+	pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 
 ## Ingestion models generation
 .PHONY: generate
@@ -61,14 +62,14 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
 	mkdir -p ingestion/src/metadata/generated
-	datamodel-codegen --input openmetadata-spec/src/main/resources/json/schema --input-file-type jsonschema --output ingestion/src/metadata/generated/schema --set-default-enum-member
+	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
@@ -84,14 +85,15 @@ run_python_tests:  ## Run all Python tests with coverage
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
-	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
+	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml || true
+	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
 	docker run \
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
+		-e SONAR_SCANNER_OPTS="-Xmx1g" \
 		-e SONAR_LOGIN=$(token) \
 		-v ${PWD}/ingestion:/usr/src \
 		sonarsource/sonar-scanner-cli \
@@ -107,7 +109,7 @@ run_apis_tests:  ## Run the openmetadata airflow apis tests
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	$(MAKE) run_apis_tests
 	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g' openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
+	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
 ## Ingestion publish
 .PHONY: publish
@@ -117,12 +119,6 @@ publish:  ## Publish the ingestion module to PyPI
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
 	  twine upload dist/*
-
-## Docker operators
-.PHONY: build_docker_base
-build_docker_base:  ## Build the base Docker image for the Ingestion Framework Sources
-	$(MAKE) install_dev generate
-	docker build -f ingestion/connectors/Dockerfile-base ingestion/ -t openmetadata/ingestion-connector-base
 
 .PHONY: build_docker_connectors
 build_docker_connectors:  ## Build all Ingestion Framework Sources Images to be used as Docker Operators in Airflow
@@ -269,3 +265,9 @@ export-snyk-html-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
 	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
+
+# Ingestion Operators
+.PHONY: build-ingestion-base-local
+build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
+	$(MAKE) install_dev generate
+	docker build -f ingestion/operators/docker/Dockerfile-dev . -t openmetadata/ingestion-base:local

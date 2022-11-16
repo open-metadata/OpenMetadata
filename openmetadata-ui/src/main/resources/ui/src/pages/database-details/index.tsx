@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
+import { Col, Row, Space, Table } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
@@ -23,6 +23,7 @@ import React, {
   FunctionComponent,
   RefObject,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -79,10 +80,11 @@ import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
+import { TypeUsedToReturnUsageDetailsOfAnEntity } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import { getEntityName, isEven } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
@@ -437,6 +439,34 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const handleRemoveOwner = () => {
+    const updatedData = {
+      ...database,
+      owner: undefined,
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      saveUpdatedDatabaseData(updatedData as Database)
+        .then((res) => {
+          if (res) {
+            setDatabase(res);
+            resolve();
+          } else {
+            reject();
+
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-database-error']
+          );
+          reject();
+        });
+    });
+  };
+
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
     getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN), after)
@@ -549,7 +579,7 @@ const DatabaseDetails: FunctionComponent = () => {
         getExplorePathWithInitFilters(
           appState.inPageSearchText,
           undefined,
-          `database=${databaseName}&service_type=${serviceType}`
+          `postFilter[serviceType][0]=${serviceType}&postFilter[database.name.keyword][0]=${databaseName}`
         )
       );
     }
@@ -589,6 +619,51 @@ const DatabaseDetails: FunctionComponent = () => {
     appState.inPageSearchText = '';
   }, []);
 
+  const tableColumn: ColumnsType<DatabaseSchema> = useMemo(
+    () => [
+      {
+        title: ' Schema Name',
+        dataIndex: 'name',
+        key: 'name',
+        render: (text: string, record: DatabaseSchema) => (
+          <Link
+            to={
+              record.fullyQualifiedName
+                ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
+                : ''
+            }>
+            {text}
+          </Link>
+        ),
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string) =>
+          text?.trim() ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            <span className="tw-no-description">No description</span>
+          ),
+      },
+      {
+        title: 'Owner',
+        dataIndex: 'owner',
+        key: 'owner',
+        render: (text: EntityReference) => getEntityName(text) || '--',
+      },
+      {
+        title: 'Usage',
+        dataIndex: 'usageSummary',
+        key: 'usageSummary',
+        render: (text: TypeUsedToReturnUsageDetailsOfAnEntity) =>
+          getUsagePercentile(text?.weeklyStats?.percentileRank || 0),
+      },
+    ],
+    []
+  );
+
   return (
     <>
       {isLoading ? (
@@ -624,7 +699,9 @@ const DatabaseDetails: FunctionComponent = () => {
                   {extraInfo.map((info, index) => (
                     <span className="tw-flex" key={index}>
                       <EntitySummaryDetails
+                        currentOwner={database?.owner}
                         data={info}
+                        removeOwner={handleRemoveOwner}
                         updateOwner={
                           databasePermission.EditOwner ||
                           databasePermission.EditAll
@@ -675,94 +752,15 @@ const DatabaseDetails: FunctionComponent = () => {
                   <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                     {activeTab === 1 && (
                       <Fragment>
-                        <div className="tw-table-container tw-mb-4">
-                          <table
-                            className="tw-bg-white tw-w-full"
-                            data-testid="database-databaseSchemas">
-                            <thead data-testid="table-header">
-                              <tr className="tableHead-row">
-                                <th
-                                  className="tableHead-cell"
-                                  data-testid="header-name">
-                                  Schema Name
-                                </th>
-                                <th
-                                  className="tableHead-cell"
-                                  data-testid="header-description">
-                                  Description
-                                </th>
-                                <th
-                                  className="tableHead-cell"
-                                  data-testid="header-owner">
-                                  Owner
-                                </th>
-                                <th
-                                  className="tableHead-cell"
-                                  data-testid="header-usage">
-                                  Usage
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="tableBody">
-                              {schemaData.length > 0 ? (
-                                schemaData.map((schema, index) => (
-                                  <tr
-                                    className={classNames(
-                                      'tableBody-row',
-                                      !isEven(index + 1) ? 'odd-row' : null
-                                    )}
-                                    data-testid="table-column"
-                                    key={index}>
-                                    <td className="tableBody-cell">
-                                      <Link
-                                        to={
-                                          schema.fullyQualifiedName
-                                            ? getDatabaseSchemaDetailsPath(
-                                                schema.fullyQualifiedName
-                                              )
-                                            : ''
-                                        }>
-                                        {schema.name}
-                                      </Link>
-                                    </td>
-                                    <td className="tableBody-cell">
-                                      {schema.description?.trim() ? (
-                                        <RichTextEditorPreviewer
-                                          markdown={schema.description}
-                                        />
-                                      ) : (
-                                        <span className="tw-no-description">
-                                          No description
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="tableBody-cell">
-                                      <p>
-                                        {getEntityName(schema?.owner) || '--'}
-                                      </p>
-                                    </td>
-                                    <td className="tableBody-cell">
-                                      <p>
-                                        {getUsagePercentile(
-                                          schema.usageSummary?.weeklyStats
-                                            ?.percentileRank || 0
-                                        )}
-                                      </p>
-                                    </td>
-                                  </tr>
-                                ))
-                              ) : (
-                                <tr className="tableBody-row">
-                                  <td
-                                    className="tableBody-cell tw-text-center"
-                                    colSpan={5}>
-                                    No records found.
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                        <Table
+                          bordered
+                          columns={tableColumn}
+                          data-testid="database-databaseSchemas"
+                          dataSource={schemaData}
+                          pagination={false}
+                          rowKey="id"
+                          size="small"
+                        />
                         {Boolean(
                           !isNil(databaseSchemaPaging.after) ||
                             !isNil(databaseSchemaPaging.before)

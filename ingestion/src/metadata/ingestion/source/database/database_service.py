@@ -200,21 +200,23 @@ class SQLSourceStatus(SourceStatus):
     Reports the source status after ingestion
     """
 
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
-    filtered: List[str] = list()
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
+    filtered: List[str] = []
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
-        logger.info(f"Scanned [{record}]")
+        logger.debug(f"Scanned [{record}]")
 
-    def filter(self, record: str, err: str) -> None:
-        self.filtered.append(record)
-        logger.warning(f"Filtered [{record}] due to {err}")
+    def filter(self, key: str, reason: str) -> None:
+        logger.debug(f"Filtered [{key}] due to {reason}")
+        self.filtered.append({key: reason})
 
 
-class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
+class DatabaseServiceSource(
+    DBTMixin, TopologyRunnerMixin, Source, ABC
+):  # pylint: disable=too-many-public-methods
     """
     Base class for Database Services.
     It implements the topology and context.
@@ -224,7 +226,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
-    database_source_state: Set
+    database_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.__fields__["config"].type_
 
@@ -353,7 +355,8 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
 
     def yield_location(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
     ) -> Iterable[CreateLocationRequest]:
         """
         From topology.
@@ -404,7 +407,6 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
                         category_name=CreateTagCategoryRequest(
                             name="DBTTags",
                             description="",
-                            categoryType="Classification",
                         ),
                         category_details=CreateTagRequest(
                             name=tag_label.tagFQN.__root__.split(".")[1],
@@ -417,7 +419,8 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             )
 
     def yield_table_location_link(
-        self, table_name_and_type: Tuple[str, TableType]
+        self,
+        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
     ) -> Iterable[TableLocationLink]:
         """
         Gets the current location being processed, fetches its data model
@@ -506,6 +509,22 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
                 yield DeleteTable(table=table)
 
+    def fetch_all_schema_and_delete_tables(self):
+        """
+        Fetch all schemas and delete tables
+        """
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.config.serviceName,
+            database_name=self.context.database.name.__root__,
+        )
+        schema_list = self.metadata.list_all_entities(
+            entity=DatabaseSchema, params={"database": database_fqn}
+        )
+        for schema in schema_list:
+            yield from self.delete_schema_tables(schema.fullyQualifiedName.__root__)
+
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
@@ -514,18 +533,17 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            schema_names_list = (
-                self.get_database_schema_names()
-                if self.source_config.markDeletedTablesFromFilterOnly
-                else self.get_raw_database_schema_names()
-            )
-            for schema_name in schema_names_list:
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.config.serviceName,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=schema_name,
-                )
+            if self.source_config.markDeletedTablesFromFilterOnly:
+                schema_names_list = self.get_database_schema_names()
+                for schema_name in schema_names_list:
+                    schema_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.config.serviceName,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=schema_name,
+                    )
 
-                yield from self.delete_schema_tables(schema_fqn)
+                    yield from self.delete_schema_tables(schema_fqn)
+            else:
+                yield from self.fetch_all_schema_and_delete_tables()

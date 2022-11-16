@@ -39,9 +39,11 @@ class UsageSource(QueryParserSource, ABC):
         """
         if self.config.sourceConfig.config.queryLogFilePath:
             query_list = []
-            with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
-                for i in csv.DictReader(fin):
-                    query_dict = dict(i)
+            with open(
+                self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
+            ) as fin:
+                for record in csv.DictReader(fin):
+                    query_dict = dict(record)
                     analysis_date = (
                         datetime.utcnow()
                         if not query_dict.get("start_time")
@@ -66,17 +68,17 @@ class UsageSource(QueryParserSource, ABC):
 
         else:
             daydiff = self.end - self.start
-            for i in range(daydiff.days):
+            for days in range(daydiff.days):
                 logger.info(
-                    f"Scanning query logs for {(self.start + timedelta(days=i)).date()} - "
-                    f"{(self.start + timedelta(days=i+1)).date()}"
+                    f"Scanning query logs for {(self.start + timedelta(days=days)).date()} - "
+                    f"{(self.start + timedelta(days=days+1)).date()}"
                 )
                 try:
                     with get_connection(self.connection).connect() as conn:
                         rows = conn.execute(
                             self.get_sql_statement(
-                                start_time=self.start + timedelta(days=i),
-                                end_time=self.start + timedelta(days=i + 1),
+                                start_time=self.start + timedelta(days=days),
+                                end_time=self.start + timedelta(days=days + 1),
                             )
                         )
                         queries = []

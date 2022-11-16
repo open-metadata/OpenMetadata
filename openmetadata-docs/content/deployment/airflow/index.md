@@ -25,7 +25,7 @@ well. Here we will guide you on the different aspects to consider when configuri
 
 There are three different angles here:
 
-1. Installing the ingestion modules directly on the host to enable the [Airflow Lineage Backend](/openmetadata/connectors/pipeline/airflow/lineage-backend).
+1. Installing the ingestion modules directly on the host to enable the [Airflow Lineage Backend](/connectors/pipeline/airflow/lineage-backend).
 2. Installing connector modules on the host to run specific workflows. 
 3. Installing the Airflow APIs to enable the workflow deployment through the UI.
 
@@ -40,7 +40,7 @@ Goals:
 - Track DAG and Task status. 
 - Document lineage as code directly on the DAG definition and ingest it when the DAGs run.
 
-Get the necessary information to install and extract metadata from the Lineage Backend [here](/openmetadata/connectors/pipeline/airflow/lineage-backend).
+Get the necessary information to install and extract metadata from the Lineage Backend [here](/connectors/pipeline/airflow/lineage-backend).
 
 ### Connector Modules
 
@@ -57,9 +57,19 @@ You will need to install:
 pip3 install "openmetadata-ingestion[<connector-name>]"
 ```
 
-And then run the DAG as explained in each [Connector](/openmetadata/connectors).
+And then run the DAG as explained in each [Connector](/connectors).
 
 ### Airflow APIs
+
+<Note>
+
+Note that these steps are required if you are reusing a host that already has Airflow installed.
+
+The `openmetadata-ingestion-apis` has a dependency on `apache-airflow>=2.2.2`. Please make sure that
+your host satisfies such requirement. Only installing the `openmetadata-ingestion-apis` won't result
+in a proper full Airflow installation. For that, please follow the Airflow [docs](https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html).
+
+</Note>
 
 Goal:
 
@@ -68,27 +78,36 @@ Goal:
 This process consists of three steps:
 
 1. Install the APIs module,
-2. Install the required plugins, and
+2. Install the `openmetadata-ingestion` library and any extras you might need, and
 3. Configure the OpenMetadata server.
 
 The goal of this module is to add some HTTP endpoints that the UI calls for deploying the Airflow DAGs.
 The first step can be achieved by running:
 
 ```python
-pip3 install "openmetadata-airflow-managed-apis"
+pip3 install "openmetadata-managed-apis"
 ```
 
 Then, check the Connector Modules guide above to learn how to install the `openmetadata-ingestion` package with the
 necessary plugins. They are necessary because even if we install the APIs, the Airflow instance needs to have the
 required libraries to connect to each source.
 
-On top of this installation, you'll need to follow these steps:
+### AIRFLOW_HOME
 
-1. Download the latest `openmetadata-airflow-apis-plugins` release from [here](https://github.com/open-metadata/OpenMetadata/releases)
-2. Untar it under the `{AIRFLOW_HOME}` directory. This will create and `setup` a `plugins` directory under `{AIRFLOW_HOME}`.
-3. `cp -r {AIRFLOW_HOME}/plugins/dag_templates {AIRFLOW_HOME}`.
-4. `mkdir -p {AIRFLOW_HOME}/dag_generated_configs`.
-5. (re)start the airflow webserver and scheduler.
+The APIs will look for the `AIRFLOW_HOME` environment variable to place the dynamically generated DAGs. Make
+sure that the variable is set and reachable from Airflow.
+
+### Airflow APIs Basic Auth
+
+Note that the integration of OpenMetadata with Airflow requires Basic Auth in the APIs. Make sure that your
+Airflow configuration supports that. You can read more about it [here](https://airflow.apache.org/docs/apache-airflow/stable/security/api.html).
+
+A possible approach here is to update your `airflow.cfg` entries with:
+
+```
+[api]
+auth_backends = airflow.api.auth.backend.basic_auth
+```
 
 ### Configure in the OpenMetadata Server
 
@@ -101,58 +120,54 @@ The OpenMetadata server takes all its configurations from a YAML file. You can f
 [...]
 
 airflowConfiguration:
-  apiEndpoint: http://${AIRFLOW_HOST:-localhost}:${AIRFLOW_PORT:-8080}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
-  authProvider: "no-auth"
+   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
+   username: ${AIRFLOW_USERNAME:-admin}
+   password: ${AIRFLOW_PASSWORD:-admin}
+   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+   authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"}
+
+[...]
 ```
 
-Note that we also support picking up these values from environment variables, so you can safely set that up in the
-machine hosting the OpenMetadata server.
+If using Docker, make sure that you are passing the correct environment variables:
 
-If you are running OpenMetadata with the security enabled, you can take a look at the server
-configuration for each security mode:
+```env
+AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
+SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://openmetadata-server:8585/api}
+```
 
-<InlineCalloutContainer>
-  <InlineCallout
-    color="violet-70"
-    bold="Auth0 SSO"
-    icon="add_moderator"
-    href="/deployment/security/auth0"
-  >
-    Configure Auth0 SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Azure SSO"
-    icon="add_moderator"
-    href="/deployment/security/azure"
-  >
-    Configure Azure SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Custom OIDC SSO"
-    icon="add_moderator"
-    href="/deployment/security/custom-oidc"
-  >
-    Configure a Custom OIDC SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Google SSO"
-    icon="add_moderator"
-    href="/deployment/security/google"
-  >
-    Configure Google SSO to access the UI and APIs
-  </InlineCallout>
-  <InlineCallout
-    color="violet-70"
-    bold="Okta SSO"
-    icon="add_moderator"
-    href="/deployment/security/okta"
-  >
-    Configure Okta SSO to access the UI and APIs
-  </InlineCallout>
-</InlineCalloutContainer>
+#### Validating the installation
+
+What we need to verify here is that the OpenMetadata server can reach the Airflow APIs endpoints 
+(wherever they live: bare metal, containers, k8s pods...). One way to ensure that is to connect to the deployment
+hosting your OpenMetadata server and running a query against the `/health` endpoint. For example:
+
+```bash
+$ curl -XGET ${AIRFLOW_HOST}/api/v1/openmetadata/health
+{"status": "healthy", "version": "x.y.z"}
+```
+
+It is important to do this validation passing the command as is (i.e., `curl -XGET ${AIRFLOW_HOST}/api/v1/openmetadata/health`)
+and allowing the environment to do the substitution for you. That's the only way we can be sure that the setup is
+correct.
+
+#### More validations in the installation
+
+If you have an existing DAG in Airflow, you can further test your setup by running the following:
+
+```bash
+curl -XPOST http://localhost:8080/api/v1/openmetadata/enable --data-raw '{"dag_id": "example_bash_operator"}' -u "admin:admin" --header 'Content-Type: application/json'
+```
+
+Note that in this example we are assuming:
+- There is an Airflow instance running at `localhost:8080`,
+- There is a user `admin` with password `admin`
+- There is a DAG named `example_bash_operator`.
+
+A generic call would look like:
+
+```bash
+curl -XPOST <AIRFLOW_HOST>/api/v1/openmetadata/enable --data-raw '{"dag_id": "<DAG name>"}' -u "<user>:<password>" --header 'Content-Type: application/json'
+```
+
+Please update it accordingly.

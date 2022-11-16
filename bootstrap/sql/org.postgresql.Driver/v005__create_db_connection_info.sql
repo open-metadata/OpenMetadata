@@ -331,3 +331,17 @@ AND supported_data_types IS NULL;
 UPDATE pipeline_service_entity
 SET json = json::jsonb #- '{connection,config,dbConnection}'
 WHERE serviceType = 'Dagster';
+
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+      jsonb_set(
+        json,
+        '{serviceType}',
+        '"GluePipeline"',
+        true
+      ),
+      '{connection,config,type}',
+      '"GluePipeline"',
+      true
+  )
+WHERE serviceType = 'Glue';

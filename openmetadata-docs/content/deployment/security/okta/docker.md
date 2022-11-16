@@ -14,10 +14,12 @@ generated when setting up the account.
 
 Note: Make sure to add the Ingestion Client ID for the Service application in `AUTHORIZER_INGESTION_PRINCIPALS`. This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
 
+### 1.1 Before 0.12.1
+
 ```shell
 # OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.catalog.security.JwtFilter
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
 AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot, <service_application_client_id>]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
@@ -36,6 +38,26 @@ OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY={OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
 OM_AUTH_AIRFLOW_OKTA_SA_EMAIL={OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
 OM_AUTH_AIRFLOW_OKTA_SCOPES={OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
 ```
+
+### 1.2 After 0.12.1
+
+```shell
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
+AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot, <service_application_client_id>]
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+
+AUTHENTICATION_PROVIDER=okta
+AUTHENTICATION_PUBLIC_KEYS={ISSUER_URL}/v1/keys # Update with your Issuer URL
+AUTHENTICATION_AUTHORITY={ISSUER_URL} # Update with your Issuer URL
+AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+```
+
+**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
+ingesting data from Airflow.
 
 ## 2. Start Docker
 

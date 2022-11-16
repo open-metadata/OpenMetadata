@@ -78,7 +78,8 @@ class OMetaTestsMixin:
 
         Args:
             test_suite_name (str): test suite name
-            test_suite_description (Optional[str], optional): test suite description. Defaults to f"Test Suite created on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}".
+            test_suite_description (Optional[str], optional): test suite description.
+                Defaults to f"Test Suite created on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}".
 
         Returns:
             TestSuite:
@@ -116,10 +117,12 @@ class OMetaTestsMixin:
 
         Args:
             test_definition_fqn (str): test definition fully qualified name
-            test_definition_description (Optional[str], optional): description for the test definition. Defaults to None.
+            test_definition_description (Optional[str], optional): description for the test definition.
+                Defaults to None.
             entity_type (Optional[EntityType], optional): entity type (COLUMN or TABLE). Defaults to None.
             test_platforms (Optional[List[TestPlatform]], optional): test platforms. Defaults to None.
-            test_case_parameter_definition (Optional[List[TestCaseParameterDefinition]], optional): parameters for the test case defintion. Defaults to None.
+            test_case_parameter_definition (Optional[List[TestCaseParameterDefinition]], optional): parameters for the
+                test case defintion. Defaults to None.
 
         Returns:
             TestDefinition: a test definition object

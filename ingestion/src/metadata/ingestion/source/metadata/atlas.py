@@ -1,3 +1,18 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Atlas source to extract metadata
+"""
+
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,8 +55,8 @@ logger = ingestion_logger()
 
 
 class AtlasSourceStatus(SourceStatus):
-    tables_scanned: List[str] = list()
-    filtered: List[str] = list()
+    tables_scanned: List[str] = []
+    filtered: List[str] = []
 
     def table_scanned(self, table: str) -> None:
         self.tables_scanned.append(table)
@@ -52,6 +67,10 @@ class AtlasSourceStatus(SourceStatus):
 
 @dataclass
 class AtlasSource(Source):
+    """
+    Atlas source class
+    """
+
     config: WorkflowSource
     atlas_client: AtlasClient
     status: AtlasSourceStatus
@@ -63,7 +82,6 @@ class AtlasSource(Source):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
@@ -78,10 +96,17 @@ class AtlasSource(Source):
         if not path.is_file():
             logger.error(f"File not found {self.service_connection.entityTypes}")
             raise FileNotFoundError()
-        with open(self.service_connection.entityTypes, "r") as f:
-            self.service_connection.entityTypes = yaml.load(f, Loader=yaml.SafeLoader)
+        with open(
+            self.service_connection.entityTypes, "r", encoding="utf-8"
+        ) as entity_types_file:
+            self.service_connection.entityTypes = yaml.load(
+                entity_types_file, Loader=yaml.SafeLoader
+            )
         self.tables: Dict[str, Any] = {}
         self.topics: Dict[str, Any] = {}
+
+        self.service = None
+        self.message_service = None
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -98,7 +123,6 @@ class AtlasSource(Source):
         """
         Not required to implement
         """
-        pass
 
     def next_record(self):
         for key in self.service_connection.entityTypes["Table"].keys():
@@ -121,13 +145,15 @@ class AtlasSource(Source):
                 yield from self._parse_topic_entity(topic)
 
     def close(self):
-        return super().close()
+        """
+        Not required to implement
+        """
 
     def get_status(self) -> SourceStatus:
         return self.status
 
     def _parse_topic_entity(self, name):
-        for key in self.topics.keys():
+        for key in self.topics:
             topic_entity = self.atlas_client.get_entity(self.topics[key])
             tpc_entities = topic_entity["entities"]
             for tpc_entity in tpc_entities:
@@ -164,55 +190,45 @@ class AtlasSource(Source):
                     db_entity = tbl_entity["relationshipAttributes"][
                         self.service_connection.entityTypes["Table"][name]["db"]
                     ]
-                    database_request = self.get_database_entity(
-                        db_entity["displayText"]
-                    )
-                    table_name = tbl_attrs["name"]
-                    tbl_description = tbl_attrs["description"]
-                    yield database_request
+                    yield self.get_database_entity(db_entity["displayText"])
 
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
                         service_name=self.service_connection.dbService,
-                        database_name=database_request.name.__root__,
+                        database_name=db_entity["displayText"],
                     )
 
                     database_object = self.metadata.get_by_name(
                         entity=Database, fqn=database_fqn
                     )
 
-                    tbl_attrs = tbl_entity["attributes"]
-                    db_entity = tbl_entity["relationshipAttributes"]["db"]
-
-                    database_schema_request = CreateDatabaseSchemaRequest(
+                    yield CreateDatabaseSchemaRequest(
                         name=db_entity["displayText"],
                         database=EntityReference(
                             id=database_object.id, type="database"
                         ),
                     )
-                    yield database_schema_request
 
                     database_schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,
                         service_name=self.config.serviceConnection.__root__.config.dbService,
-                        database_name=database_request.name.__root__,
-                        schema_name=database_schema_request.name.__root__,
+                        database_name=db_entity["displayText"],
+                        schema_name=db_entity["displayText"],
                     )
                     database_schema_object = self.metadata.get_by_name(
                         entity=DatabaseSchema, fqn=database_schema_fqn
                     )
 
-                    table_request = CreateTableRequest(
-                        name=table_name,
+                    yield CreateTableRequest(
+                        name=tbl_attrs["name"],
                         databaseSchema=EntityReference(
                             id=database_schema_object.id, type="databaseSchema"
                         ),
-                        description=tbl_description,
+                        description=tbl_attrs["description"],
                         columns=tbl_columns,
                     )
-                    yield table_request
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
 
@@ -239,7 +255,7 @@ class AtlasSource(Source):
                     dataType=ColumnTypeParser.get_column_type(
                         column["dataType"].upper()
                     ),
-                    dataTypeDisplay="{}({})".format(column["dataType"], "1"),
+                    dataTypeDisplay=column["dataType"],
                     dataLength=col_data_length,
                     ordinalPosition=ordinal_pos,
                 )
@@ -257,6 +273,9 @@ class AtlasSource(Source):
         )
 
     def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
+        """
+        Fetch and ingest lineage
+        """
         lineage_response = self.atlas_client.get_lineage(source_guid)
         lineage_relations = lineage_response["relations"]
         tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
@@ -321,18 +340,19 @@ class AtlasSource(Source):
             )
             yield lineage
 
-    def get_lineage_entity_ref(self, fqn, metadata_config, type) -> EntityReference:
+    def get_lineage_entity_ref(
+        self, to_fqn, metadata_config, entity_type
+    ) -> EntityReference:
         metadata = OpenMetadata(metadata_config)
-        if type == "table":
-            table = metadata.get_by_name(entity=Table, fqn=fqn)
-            if not table:
-                return
-            return EntityReference(id=table.id.__root__, type="table")
-        elif type == "pipeline":
-            pipeline = metadata.get_by_name(entity=Pipeline, fqn=fqn)
-            if not pipeline:
-                return
-            return EntityReference(id=pipeline.id.__root__, type="pipeline")
+        if entity_type == "table":
+            table = metadata.get_by_name(entity=Table, fqn=to_fqn)
+            if table:
+                return EntityReference(id=table.id.__root__, type="table")
+        if entity_type == "pipeline":
+            pipeline = metadata.get_by_name(entity=Pipeline, fqn=to_fqn)
+            if pipeline:
+                return EntityReference(id=pipeline.id.__root__, type="pipeline")
+        return None
 
     def test_connection(self) -> None:
         pass
