@@ -42,9 +42,7 @@ jest.mock('./index', () => ({
     .mockImplementation((url, data) => ({ url: `put_request${url}`, data })),
 }));
 
-// TODO: improve API unit tests as per standards
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip('API functions should work properly', () => {
+describe('API functions should work properly', () => {
   it('getTags function should work properly', () => {
     const result = getTags('querry');
 

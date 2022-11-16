@@ -19,22 +19,26 @@ import { AirflowConfiguration } from '../generated/configuration/airflowConfigur
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
+import {
+  RawSuggestResponse,
+  SearchResponse,
+} from '../interface/search.interface';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
 
-export const searchData: Function = (
+export const searchData = (
   queryString: string,
   from: number,
   size: number,
   filters: string,
   sortField: string,
   sortOrder: string,
-  searchIndex: string,
+  searchIndex: SearchIndex,
   onlyDeleted = false,
   trackTotalHits = false
-): Promise<AxiosResponse> => {
-  return APIClient.get(
+) => {
+  return APIClient.get<SearchResponse<typeof searchIndex>>(
     `/search/query?${getSearchAPIQuery(
       queryString,
       from,
@@ -85,16 +89,19 @@ export const fetchAirflowConfig = async () => {
 
 export const getSuggestions = (
   queryString: string,
-  searchIndex?: string
-): Promise<AxiosResponse> => {
+  searchIndex?: SearchIndex
+) => {
   const params = {
     q: queryString,
     index:
       searchIndex ??
-      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`,
+      (`${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}` as SearchIndex),
   };
 
-  return APIClient.get(`/search/suggest`, { params });
+  return APIClient.get<RawSuggestResponse<typeof params.index>>(
+    `/search/suggest`,
+    { params }
+  );
 };
 
 export const getVersion = async () => {
@@ -133,27 +140,28 @@ export const getInitialEntity = (
   });
 };
 
-export const getSuggestedUsers = (
-  term: string
-  // TODO: improve types below
-): Promise<AxiosResponse<unknown>> => {
-  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.USER}`);
+export const getSuggestedUsers = (term: string) => {
+  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
+    `/search/suggest?q=${term}&index=${SearchIndex.USER}`
+  );
 };
 
-export const getSuggestedTeams = (
-  term: string
-  // TODO: improve types below
-): Promise<AxiosResponse<unknown>> => {
-  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.TEAM}`);
+export const getSuggestedTeams = (term: string) => {
+  return APIClient.get<RawSuggestResponse<SearchIndex.TEAM>>(
+    `/search/suggest?q=${term}&index=${SearchIndex.TEAM}`
+  );
 };
 
-export const getUserSuggestions = (term: string): Promise<AxiosResponse> => {
+export const getUserSuggestions = (term: string) => {
   const params = {
     q: term,
     index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
   };
 
-  return APIClient.get(`/search/suggest`, { params });
+  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
+    `/search/suggest`,
+    { params }
+  );
 };
 
 export const getTeamsByQuery = async (params: {
@@ -175,20 +183,23 @@ export const getTeamsByQuery = async (params: {
   return response.data;
 };
 
-export const getTagSuggestions = (term: string): Promise<AxiosResponse> => {
+export const getTagSuggestions = (term: string) => {
   const params = {
     q: term,
     index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
   };
 
-  return APIClient.get(`/search/suggest`, { params });
+  return APIClient.get<RawSuggestResponse<SearchIndex.GLOSSARY>>(
+    `/search/suggest`,
+    { params }
+  );
 };
 
 export const getSearchedUsers = (
   queryString: string,
   from: number,
   size = 10
-): Promise<AxiosResponse> => {
+) => {
   return searchData(queryString, from, size, '', '', '', SearchIndex.USER);
 };
 
@@ -196,7 +207,7 @@ export const getSearchedTeams = (
   queryString: string,
   from: number,
   size = 10
-): Promise<AxiosResponse> => {
+) => {
   return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
 };
 
@@ -204,7 +215,7 @@ export const getSearchedUsersAndTeams = (
   queryString: string,
   from: number,
   size = 10
-): Promise<AxiosResponse> => {
+) => {
   return searchData(
     queryString,
     from,
@@ -212,7 +223,7 @@ export const getSearchedUsersAndTeams = (
     '',
     '',
     '',
-    `${SearchIndex.USER},${SearchIndex.TEAM}`
+    `${SearchIndex.USER},${SearchIndex.TEAM}` as SearchIndex
   );
 };
 
@@ -234,12 +245,14 @@ export const deleteEntity = async (
 
 export const getAdvancedFieldOptions = (
   q: string,
-  index: string,
+  index: SearchIndex,
   field: string | undefined
-): Promise<AxiosResponse> => {
+) => {
   const params = { index, field, q };
 
-  return APIClient.get(`/search/suggest`, { params });
+  return APIClient.get<RawSuggestResponse<typeof index>>(`/search/suggest`, {
+    params,
+  });
 };
 
 export const getEntityCount = async (

@@ -13,13 +13,13 @@
 
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import { FormattedUsersData } from 'Models';
 import React, { useState } from 'react';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
+import { EntityReference } from '../../generated/type/entityLineage';
 import SVGIcons from '../../utils/SvgUtils';
 
 type Props = {
-  item: Pick<FormattedUsersData, 'displayName' | 'id' | 'name' | 'type'> & {
+  item: Pick<EntityReference, 'displayName' | 'id' | 'name' | 'type'> & {
     email?: string;
     isChecked: boolean;
   };

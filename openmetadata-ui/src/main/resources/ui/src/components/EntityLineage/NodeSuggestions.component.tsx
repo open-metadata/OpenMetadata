@@ -29,7 +29,7 @@ import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
-import { formatDataResponse } from '../../utils/APIUtils';
+import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -71,7 +71,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         '',
         SearchIndex[entityType as keyof typeof SearchIndex]
       );
-      setData(formatDataResponse(data.data.hits.hits));
+      setData(formatDataResponse(data.data.hits.hits as SearchEntityHits));
     } catch (error) {
       showErrorToast(
         error as AxiosError,

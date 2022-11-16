@@ -414,7 +414,6 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                       )}
                       columns={updatedColumns()}
                       joins={
-                        // TODO: Below we should have separate type for Dataset instead casting it to `Table`
                         (currentVersionData as Table).joins as ColumnJoins[]
                       }
                     />

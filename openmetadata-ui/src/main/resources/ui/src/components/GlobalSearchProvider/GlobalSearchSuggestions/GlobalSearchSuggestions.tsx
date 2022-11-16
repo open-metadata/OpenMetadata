@@ -115,8 +115,7 @@ const GlobalSearchSuggestions = ({
         break;
       case SearchIndex.MLMODEL:
         label = 'ML Models';
-        // TODO: Change this to mlmodel icon
-        icon = Icons.SERVICE;
+        icon = Icons.MLMODAL;
 
         break;
       case SearchIndex.TABLE:
@@ -268,15 +267,8 @@ const GlobalSearchSuggestions = ({
       getSuggestions(searchText)
         .then((res) => {
           if (res.data) {
-            // TODO: improve suggest api types
-            setOptions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            );
-            setSuggestions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
-            );
+            setOptions(res.data.suggest['metadata-suggest'][0].options);
+            setSuggestions(res.data.suggest['metadata-suggest'][0].options);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }

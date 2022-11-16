@@ -10,30 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// organize-imports-ignore
 
 declare module 'Models' {
+  import { ChangeDescription } from '../generated/entity/data/dashboard';
+  import { EntityReference } from '../generated/type/entityLineage';
   import { TagLabel } from '../generated/type/tagLabel';
   import { Paging } from './../generated/type/paging';
-
-  export interface EntityReference {
-    deleted?: boolean;
-
-    description?: string;
-
-    displayName?: string;
-
-    fullyQualifiedName?: string;
-
-    href?: string;
-
-    id: string;
-
-    name?: string;
-
-    type: string;
-  }
-
   export interface RestoreEntitiesRequestType {
     id: string;
   }
@@ -187,19 +169,6 @@ declare module 'Models' {
     images: Record<string, string>;
   };
 
-  export type User = {
-    displayName: string;
-    isBot: boolean;
-    isAdmin: boolean;
-    id: string;
-    name: string;
-    profile: UserProfile;
-    teams: Array<UserTeam>;
-    follows?: Array<UserTeam>;
-    timezone: string;
-    href: string;
-  };
-
   export type SlackChatConfig = {
     slackUrl: string;
   };
@@ -210,7 +179,7 @@ declare module 'Models' {
     displayName: string;
     description: string;
     fullyQualifiedName: string;
-    owner: EntityReference;
+    owner?: EntityReference;
     tableType?: string;
     tags: string[] | TagLabel[];
     dailyStats?: number;
@@ -220,24 +189,14 @@ declare module 'Models' {
     service?: string;
     serviceType?: string;
     tier: string | TagLabel;
-    highlight?: {
-      description: string[];
-      name: string[];
-    };
+    highlight?: Record<string, string[]>;
     index: string;
     type?: string;
     database?: string;
     databaseSchema?: string;
     deleted?: boolean;
     entityType?: string;
-  };
-
-  export type FormattedUsersData = {
-    name: string;
-    displayName: string;
-    email: string;
-    type: string;
-    id: string;
+    changeDescription?: ChangeDescription;
   };
 
   export type FormattedTeamsData = {
@@ -248,19 +207,9 @@ declare module 'Models' {
     teamType: string;
   };
 
-  export type FormattedGlossaryTermData = {
-    name: string;
-    displayName: string;
-    fullyQualifiedName: string;
-    fqdn?: string;
-    type: string;
-    id: string;
-    description?: string;
-  };
-
   export type SearchedUsersAndTeams = {
-    users: FormattedUsersData[];
-    teams: FormattedTeamsData[];
+    users: User[];
+    teams: Team[];
     usersTotal?: number;
     teamsTotal?: number;
   };
@@ -307,7 +256,7 @@ declare module 'Models' {
   export type ClientAuth = {
     authority: string;
     client_id: string;
-    provider?: 'google' | 'okta' | 'auth0'; // TODO: add 'github' after adding support for Github SSO
+    provider?: 'google' | 'okta' | 'auth0';
     callbackUrl?: string;
     signingIn?: boolean;
   };
@@ -377,15 +326,6 @@ declare module 'Models' {
       };
       aggregations: Record<string, Sterm>;
     };
-  };
-  export type Team = {
-    id: string;
-    name: string;
-    displayName: string;
-    description: string;
-    href: string;
-    users: Array<UserTeam>;
-    owns: Array<UserTeam>;
   };
 
   export type ServiceCollection = {
@@ -609,8 +549,4 @@ declare module 'Models' {
     | 'dashboards'
     | 'pipelines'
     | 'mlmodels';
-
-  // ES interface end
-
-  //   interface ESUserResponse {}
 }

@@ -80,7 +80,12 @@ export const formatSearchQueryResponse = <
   /* Elasticsearch responses use 'null' for missing values, we want undefined
        omitDeep is untyped, so this will return unknown, which is not necessarily bad
        since we need to do some more transformations to the response */
-  _data = omitDeep(_data, isNil);
+  _data = omitDeep<
+    SearchResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
+  >(_data, isNil);
 
   /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
       This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
@@ -248,7 +253,12 @@ export const formatSuggestQueryResponse = <
   _data = data;
 
   // Elasticsearch responses use 'null' for missing values, we want undefined
-  _data = omitDeep(_data.suggest['metadata-suggest'][0].options, isNil);
+  _data = omitDeep<
+    SuggestResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
+  >(_data.suggest['metadata-suggest'][0].options, isNil);
 
   /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
       This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */

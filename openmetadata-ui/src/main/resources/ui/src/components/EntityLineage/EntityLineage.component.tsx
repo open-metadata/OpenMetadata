@@ -71,7 +71,7 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
 import jsonData from '../../jsons/en';
-import { formatDataResponse } from '../../utils/APIUtils';
+import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
@@ -1183,7 +1183,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         '',
         SearchIndex.PIPELINE
       );
-      setPipelineOptions(formatDataResponse(data.data.hits.hits));
+      setPipelineOptions(
+        formatDataResponse(data.data.hits.hits as SearchEntityHits)
+      );
     } catch (error) {
       showErrorToast(
         error as AxiosError,

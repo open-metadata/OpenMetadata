@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
 import { isUndefined } from 'lodash';
-import { FormattedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/type/entityLineage';
+import {
+  RawSuggestResponse,
+  SearchResponse,
+} from '../../../interface/search.interface';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -25,9 +28,9 @@ import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
 
 type ReviewerModalProp = {
-  reviewer?: Array<FormattedUsersData>;
+  reviewer?: Array<EntityReference>;
   onCancel: () => void;
-  onSave: (reviewer: Array<FormattedUsersData>) => void;
+  onSave: (reviewer: Array<EntityReference>) => void;
   header: string;
 };
 
@@ -39,14 +42,14 @@ const ReviewerModal = ({
 }: ReviewerModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [options, setOptions] = useState<FormattedUsersData[]>([]);
-  const [selectedOption, setSelectedOption] = useState<FormattedUsersData[]>(
+  const [options, setOptions] = useState<EntityReference[]>([]);
+  const [selectedOption, setSelectedOption] = useState<EntityReference[]>(
     reviewer ?? []
   );
 
-  const getSearchedReviewers = (searchedData: FormattedUsersData[]) => {
+  const getSearchedReviewers = (searchedData: EntityReference[]) => {
     const currOptions = selectedOption.map((item) => item.name);
-    const data = searchedData.filter((item: FormattedUsersData) => {
+    const data = searchedData.filter((item) => {
       return !currOptions.includes(item.name);
     });
 
@@ -56,9 +59,11 @@ const ReviewerModal = ({
   const querySearch = () => {
     setIsLoading(true);
     searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER)
-      .then((res: SearchResponse) => {
+      .then((res) => {
         const data = getSearchedReviewers(
-          formatUsersResponse(res.data.hits.hits)
+          formatUsersResponse(
+            (res.data as SearchResponse<SearchIndex.USER>).hits.hits
+          ) as unknown as EntityReference[]
         );
         setOptions(data);
       })
@@ -73,13 +78,13 @@ const ReviewerModal = ({
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
     getSuggestions(searchText, SearchIndex.USER)
-      // TODO: fix types for below suggest api
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then((res: AxiosResponse<any>) => {
+      .then((res) => {
         const data = formatUsersResponse(
-          res.data.suggest['metadata-suggest'][0].options
+          (res.data as RawSuggestResponse<SearchIndex.USER>).suggest[
+            'metadata-suggest'
+          ][0].options
         );
-        setOptions(data);
+        setOptions(data as unknown as EntityReference[]);
       })
       .catch(() => {
         setOptions(selectedOption);
@@ -104,8 +109,8 @@ const ReviewerModal = ({
     if (!isChecked) {
       setSelectedOption((pre) => pre.filter((option) => option.id !== id));
     } else {
-      const newOption: FormattedUsersData =
-        options.find((d) => d.id === id) || ({} as FormattedUsersData);
+      const newOption =
+        options.find((d) => d.id === id) || ({} as EntityReference);
       setSelectedOption([...selectedOption, newOption]);
     }
   };
