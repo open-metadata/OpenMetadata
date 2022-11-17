@@ -104,4 +104,4 @@ class MysqlCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 43
+        return 44
