@@ -75,6 +75,7 @@
         "MEDIUMTEXT",
         "TEXT",
         "CHAR",
+        "LONG",
         "VARCHAR",
         "BOOLEAN",
         "BINARY",
@@ -94,7 +95,8 @@
         "VARIANT",
         "GEOMETRY",
         "POINT",
-        "POLYGON"
+        "POLYGON",
+        "BYTEA"
       ]
     },
     "constraint": {
@@ -500,6 +502,40 @@
         }
       }
     },
+    "partitionProfilerConfig": {
+      "description": "This schema defines the partition configuration used by profiler.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.PartitionProfilerConfig",
+      "properties": {
+        "enablePartitioning": {
+          "description": "whether to use partition",
+          "type": "boolean",
+          "default": false
+        },
+        "partitionColumnName": {
+          "description": "name of the column to use for the partition",
+          "type": "string"
+        },
+        "partitionIntervalType": {
+          "description": "type of partition interval",
+          "type": "string",
+          "enum": ["TIME-UNIT", "INGESTION-TIME"]
+        },
+        "partitionInterval": {
+          "description": "The interval to use for the partitioning",
+          "type": "integer"
+        },
+        "partitionIntervalUnit": {
+          "description": "unit used for the partition interval",
+          "type": "string",
+          "enum": ["YEAR", "MONTH", "DAY", "HOUR"]
+        },
+        "partitionValues": {
+          "description": "unit used for the partition interval",
+          "type": "array"
+        }
+      }
+    },
     "tableProfilerConfig": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
@@ -532,6 +568,10 @@
             "$ref": "#/definitions/columnProfilerConfig"
           },
           "default": null
+        },
+        "partitioning": {
+          "description": "Partitioning configuration",
+          "$ref": "#/definitions/partitionProfilerConfig"
         }
       }
     },
@@ -576,9 +616,12 @@
           "description": "How long did the query took to run in seconds.",
           "type": "number"
         },
-        "user": {
-          "description": "User who ran this query.",
-          "$ref": "../../type/entityReference.json",
+        "users": {
+          "description": "List of users who ran this query.",
+          "type":"array",
+          "items": {
+            "$ref": "../../type/entityReference.json"
+          },
           "default": null
         },
         "vote": {
@@ -640,6 +683,14 @@
         "owner": {
           "description": "Owner of this Model.",
           "$ref": "../../type/entityReference.json",
+          "default": null
+        },
+        "tags": {
+          "description": "Tags for this data model.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
           "default": null
         },
         "columns": {

@@ -60,7 +60,6 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void prepare(Type type) {
-    setFullyQualifiedName(type);
     TypeRegistry.instance().validateCustomProperties(type);
   }
 
@@ -69,7 +68,7 @@ public class TypeRepository extends EntityRepository<Type> {
     URI href = type.getHref();
     List<CustomProperty> customProperties = type.getCustomProperties();
     type.withHref(null).withCustomProperties(null);
-    store(type.getId(), type, update);
+    store(type, update);
     type.withHref(href).withCustomProperties(customProperties);
     updateTypeMap(type);
   }
@@ -80,7 +79,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void storeRelationships(Type type) {
-    // Nothing to do
+    /* Nothing to do */
   }
 
   private void updateTypeMap(Type entity) {
@@ -98,14 +97,14 @@ public class TypeRepository extends EntityRepository<Type> {
     return new TypeUpdater(original, updated, operation);
   }
 
-  public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, String id, CustomProperty property)
+  public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property)
       throws IOException {
-    Type type = dao.findEntityById(UUID.fromString(id), Include.NON_DELETED);
+    Type type = dao.findEntityById(id, Include.NON_DELETED);
     property.setPropertyType(dao.findEntityReferenceById(property.getPropertyType().getId(), Include.NON_DELETED));
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException("Only entity types can be extended and field types can't be extended");
     }
-    setFields(type, putFields);
+    setFieldsInternal(type, putFields);
 
     dao.findEntityById(property.getPropertyType().getId()); // Validate customProperty type exists
 
@@ -196,7 +195,7 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
       }
 
-      // Record changes to updated custome properties (only description can be updated)
+      // Record changes to updated custom properties (only description can be updated)
       for (CustomProperty updated : updatedFields) {
         // Find property that matches name and type
         CustomProperty stored =

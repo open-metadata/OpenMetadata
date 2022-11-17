@@ -56,6 +56,9 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
+  userPermissions: {
+    hasViewPermissions: jest.fn(),
+  },
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -78,6 +81,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 });
 
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Card: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
@@ -120,6 +124,15 @@ jest.mock('antd', () => ({
 
 jest.mock('./SummaryDetail', () =>
   jest.fn().mockReturnValue(<div>SummaryDetails</div>)
+);
+jest.mock('./tabs/RelatedTerms', () =>
+  jest.fn().mockReturnValue(<div>RelatedTermsComponent</div>)
+);
+jest.mock('./tabs/GlossaryTermSynonyms', () =>
+  jest.fn().mockReturnValue(<div>GlossaryTermSynonymsComponent</div>)
+);
+jest.mock('./tabs/GlossaryTermReferences', () =>
+  jest.fn().mockReturnValue(<div>GlossaryTermReferencesComponent</div>)
 );
 
 const mockProps = {

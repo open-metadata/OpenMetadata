@@ -12,6 +12,7 @@
  */
 
 import { Typography } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
 import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
@@ -29,6 +30,7 @@ type Props = {
   description?: React.ReactNode;
   classes?: string;
   size?: string;
+  dataTestId?: string;
 };
 
 const ErrorPlaceHolder = ({
@@ -40,11 +42,12 @@ const ErrorPlaceHolder = ({
   description,
   classes,
   size = SIZE.LARGE,
+  dataTestId,
 }: Props) => {
   const { Paragraph, Link } = Typography;
 
   return type === 'ADD_DATA' ? (
-    <>
+    <div data-testid={dataTestId}>
       <div className="flex-center flex-col tw-mt-24 " data-testid="error">
         {' '}
         <img data-testid="no-data-image" src={AddPlaceHolder} width={size} />
@@ -71,9 +74,11 @@ const ErrorPlaceHolder = ({
 
         <div className="tw-text-lg tw-text-center">{buttons}</div>
       </div>
-    </>
+    </div>
   ) : (
-    <div className={`${classes} flex-center flex-col w-full mt-24`}>
+    <div
+      className={classNames(classes, 'flex-center flex-col w-full mt-24')}
+      data-testid={dataTestId}>
       <div data-testid="error">
         <img
           data-testid="no-data-image"

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
@@ -40,14 +41,10 @@ import {
 } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
 import { NO_AUTH } from '../../constants/auth.constants';
-import {
-  oidcTokenKey,
-  REDIRECT_PATHNAME,
-  ROUTES,
-} from '../../constants/constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { AuthTypes } from '../../enums/signin.enum';
-import { User } from '../../generated/entity/teams/user';
+import { AuthType, User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
   EXPIRY_THRESHOLD_MILLES,
@@ -61,18 +58,22 @@ import {
   msalInstance,
   setMsalInstance,
 } from '../../utils/AuthProvider.util';
+import localState from '../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   fetchAllUsers,
   getUserDataFromOidc,
   matchUserDetails,
 } from '../../utils/UserDataUtils';
+import { resetWebAnalyticSession } from '../../utils/WebAnalyticsUtils';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
+import BasicAuthAuthenticator from '../authenticators/basic-auth.authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
 import Auth0Callback from '../callbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
+import BasicAuthProvider from './basic-auth.provider';
 import OktaAuthProvider from './okta-auth-provider';
 
 interface AuthProviderProps {
@@ -84,6 +85,8 @@ const cookieStorage = new CookieStorage();
 
 const userAPIQueryFields = 'profile,teams,roles';
 
+const isEmailVerifyField = 'isEmailVerified';
+
 export const AuthProvider = ({
   childComponentType,
   children,
@@ -93,7 +96,8 @@ export const AuthProvider = ({
   const [timeoutId, setTimeoutId] = useState<number>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
-  const oidcUserToken = localStorage.getItem(oidcTokenKey);
+  const oidcUserToken = localState.getOidcToken();
+
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
     Boolean(oidcUserToken)
   );
@@ -102,17 +106,25 @@ export const AuthProvider = ({
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isUserCreated, setIsUserCreated] = useState(false);
 
   let silentSignInRetries = 0;
+
+  const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
 
   const onLoginHandler = () => {
     setLoading(true);
     authenticatorRef.current?.invokeLogin();
+
+    resetWebAnalyticSession();
   };
 
   const onLogoutHandler = useCallback(() => {
     clearTimeout(timeoutId);
     authenticatorRef.current?.invokeLogout();
+
+    // remove analytics session on logout
+    removeSession();
     setLoading(false);
   }, [timeoutId]);
 
@@ -122,13 +134,7 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
-      const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
-      if (urlPathname) {
-        cookieStorage.removeItem(REDIRECT_PATHNAME);
-        history.push(urlPathname);
-      } else {
-        history.push(ROUTES.HOME);
-      }
+      history.push(ROUTES.HOME);
     }
   };
 
@@ -140,21 +146,16 @@ export const AuthProvider = ({
    * Stores redirect URL for successful login
    */
   function storeRedirectPath() {
-    const redirectPathExists = Boolean(
-      cookieStorage.getItem(REDIRECT_PATHNAME)
-    );
-    if (!redirectPathExists) {
-      cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
-        expires: getUrlPathnameExpiry(),
-        path: '/',
-      });
-    }
+    cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
+      expires: getUrlPathnameExpiry(),
+      path: '/',
+    });
   }
 
   const resetUserDetails = (forceLogout = false) => {
     appState.updateUserDetails({} as User);
     appState.updateUserPermissions([]);
-    localStorage.removeItem(oidcTokenKey);
+    localState.removeOidcToken();
     setIsUserAuthenticated(false);
     setLoadingIndicator(false);
     clearTimeout(timeoutId);
@@ -246,13 +247,13 @@ export const AuthProvider = ({
       if (onRenewIdTokenHandlerPromise) {
         onRenewIdTokenHandlerPromise
           .then(() => {
-            resolve(localStorage.getItem(oidcTokenKey) || '');
+            resolve(localState.getOidcToken() || '');
           })
           .catch((error) => {
             if (error.message !== 'Frame window timed out') {
               reject(error);
             } else {
-              resolve(localStorage.getItem(oidcTokenKey) || '');
+              resolve(localState.getOidcToken() || '');
             }
           });
       } else {
@@ -283,7 +284,7 @@ export const AuthProvider = ({
               silentSignInRetries += 1;
               trySilentSignIn();
             })
-        : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
+        : resetUserDetails(); // Logout if we reaches max silent signIn limit;
     }
   };
 
@@ -337,7 +338,11 @@ export const AuthProvider = ({
   const handleSuccessfulLogin = (user: OidcUser) => {
     setLoading(true);
     setIsUserAuthenticated(true);
-    getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
+    const fields =
+      authConfig?.provider === AuthType.Basic
+        ? userAPIQueryFields + ',' + isEmailVerifyField
+        : userAPIQueryFields;
+    getUserByName(getNameFromEmail(user.profile.email), fields)
       .then((res) => {
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, user);
@@ -392,7 +397,7 @@ export const AuthProvider = ({
   const initializeAxiosInterceptors = () => {
     // Axios Request interceptor to add Bearer tokens in Header
     axiosClient.interceptors.request.use(async function (config) {
-      const token: string | void = localStorage.getItem(oidcTokenKey) || '';
+      const token: string = localState.getOidcToken() || '';
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;
@@ -428,20 +433,13 @@ export const AuthProvider = ({
       .then((authRes) => {
         const isSecureMode = !isNil(authRes) && authRes.provider !== NO_AUTH;
         if (isSecureMode) {
-          const { provider, providerName, authority, clientId, callbackUrl } =
-            authRes;
+          const provider = authRes?.provider;
           // show an error toast if provider is null or not supported
           if (
             provider &&
             Object.values(AuthTypes).includes(provider as AuthTypes)
           ) {
-            const configJson = getAuthConfig({
-              authority,
-              clientId,
-              callbackUrl,
-              provider,
-              providerName,
-            });
+            const configJson = getAuthConfig(authRes);
             initializeAxiosInterceptors();
             setAuthConfig(configJson);
             updateAuthInstance(configJson);
@@ -457,7 +455,7 @@ export const AuthProvider = ({
             // provider is either null or not supported
             setLoading(false);
             showErrorToast(
-              `The configured SSO Provider "${provider}" is not supported. Please check the authentication configuration in the server.`
+              `The configured SSO Provider "${authRes?.provider}" is not supported. Please check the authentication configuration in the server.`
             );
           }
         } else {
@@ -491,6 +489,18 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     switch (authConfig?.provider) {
+      case AuthTypes.LDAP:
+      case AuthTypes.BASIC: {
+        return (
+          <BasicAuthProvider
+            onLoginFailure={handleFailedLogin}
+            onLoginSuccess={handleSuccessfulLogin}>
+            <BasicAuthAuthenticator ref={authenticatorRef}>
+              {children}
+            </BasicAuthAuthenticator>
+          </BasicAuthProvider>
+        );
+      }
       case AuthTypes.AUTH0: {
         return (
           <Auth0Provider
@@ -574,6 +584,7 @@ export const AuthProvider = ({
           (!location.pathname.includes(ROUTES.CALLBACK) &&
             location.pathname !== ROUTES.HOME &&
             location.pathname !== ROUTES.SIGNUP &&
+            location.pathname !== ROUTES.REGISTER &&
             location.pathname !== ROUTES.SIGNIN)
         ) {
           getLoggedInUserDetails();
@@ -583,7 +594,9 @@ export const AuthProvider = ({
   }, [history]);
 
   useEffect(() => {
-    appState.updateUrlPathname(location.pathname);
+    if (isProtectedRoute(location.pathname)) {
+      appState.updateUrlPathname(location.pathname);
+    }
   }, [location.pathname]);
 
   const isLoading =
@@ -594,6 +607,7 @@ export const AuthProvider = ({
     isAuthenticated: isUserAuthenticated,
     setIsAuthenticated: setIsUserAuthenticated,
     isAuthDisabled,
+    isUserCreated,
     setIsAuthDisabled,
     authConfig,
     setAuthConfig,
@@ -607,6 +621,7 @@ export const AuthProvider = ({
     loading,
     setLoadingIndicator,
     handleSuccessfulLogin,
+    handleUserCreated,
   };
 
   return (

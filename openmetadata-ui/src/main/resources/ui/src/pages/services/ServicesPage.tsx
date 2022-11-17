@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Col, Empty, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { ServiceCategory } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getServices } from '../../axiosAPIs/serviceAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import Services from '../../components/Services/Services';
@@ -25,11 +26,10 @@ import { pagingObject } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SERVICE_CATEGORY } from '../../constants/services.const';
 import { ServiceCategory as Category } from '../../enums/service.enum';
-import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
-import { checkPermission } from '../../utils/PermissionsUtils';
+import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -49,8 +49,7 @@ const ServicesPage = () => {
   const viewAllPermission = useMemo(() => {
     return (
       !isEmpty(permissions) &&
-      checkPermission(
-        Operation.ViewAll,
+      userPermissions.hasViewPermissions(
         getResourceEntityFromServiceCategory(tab),
         permissions
       )
@@ -109,7 +108,9 @@ const ServicesPage = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <Empty description={NO_PERMISSION_TO_VIEW} />
+        <ErrorPlaceHolder>
+          <p>{NO_PERMISSION_TO_VIEW}</p>
+        </ErrorPlaceHolder>
       </Col>
     </Row>
   );

@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   findByText,
   getByTestId,
   queryByText,
@@ -80,6 +81,11 @@ jest.mock('antd', () => ({
   Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Tree: {
+    DirectoryTree: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
   Typography: {
     Title: jest
       .fn()
@@ -118,6 +124,11 @@ jest.mock('antd', () => ({
   Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Tree: {
+    DirectoryTree: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  },
   Typography: {
     Title: jest
       .fn()
@@ -178,12 +189,14 @@ const mockProps = {
 };
 
 describe('Test Glossary component', () => {
-  it('Should render Glossary header', () => {
-    const { container } = render(<GlossaryV1 {...mockProps} />);
+  it('Should render Glossary header', async () => {
+    await act(async () => {
+      const { container } = render(<GlossaryV1 {...mockProps} />);
 
-    const header = getByTestId(container, 'header');
+      const header = getByTestId(container, 'header');
 
-    expect(header).toBeInTheDocument();
+      expect(header).toBeInTheDocument();
+    });
   });
 
   it('Should render Glossary-details', async () => {

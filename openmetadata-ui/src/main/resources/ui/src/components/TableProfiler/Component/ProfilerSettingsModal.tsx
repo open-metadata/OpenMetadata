@@ -12,16 +12,26 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, InputNumber, Modal, Select, Slider, TreeSelect } from 'antd';
+import {
+  Button,
+  InputNumber,
+  Modal,
+  Select,
+  Slider,
+  Space,
+  Switch,
+  TreeSelect,
+} from 'antd';
 import Form from 'antd/lib/form';
 import { List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
-import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
+import { isEmpty, isEqual, isUndefined, omit, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
+import { useTranslation } from 'react-i18next';
 import {
   getTableProfilerConfig,
   putTableProfileConfig,
@@ -29,10 +39,14 @@ import {
 import {
   codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,
+  INTERVAL_TYPE_OPTIONS,
+  INTERVAL_UNIT_OPTIONS,
   PROFILER_METRIC,
+  SUPPORTED_PARTITION_TYPE,
 } from '../../../constants/profiler.constant';
 import {
   ColumnProfilerConfig,
+  PartitionProfilerConfig,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
 import jsonData from '../../../jsons/en';
@@ -47,6 +61,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   visible,
   onVisibilityChange,
 }) => {
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
   const [profileSample, setProfileSample] = useState<number>(100);
@@ -54,6 +70,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
     DEFAULT_INCLUDE_PROFILE
   );
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [enablePartition, setEnablePartition] = useState(false);
+  const [partitionData, setPartitionData] = useState<PartitionProfilerConfig>();
 
   const selectOptions = useMemo(() => {
     return columns.map(({ name }) => ({
@@ -64,7 +84,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const metricsOptions = useMemo(() => {
     const metricsOptions = [
       {
-        title: 'All',
+        title: t('label.all'),
         value: 'all',
         key: 'all',
         children: PROFILER_METRIC.map((metric) => ({
@@ -78,8 +98,30 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     return metricsOptions;
   }, [columns]);
 
+  const { partitionColumnOptions, isPartitionDisabled } = useMemo(() => {
+    const partitionColumnOptions = columns.reduce((result, column) => {
+      if (SUPPORTED_PARTITION_TYPE.includes(column.dataType)) {
+        return [
+          ...result,
+          {
+            value: column.name,
+            label: column.name,
+          },
+        ];
+      }
+
+      return result;
+    }, [] as { value: string; label: string }[]);
+    const isPartitionDisabled = partitionColumnOptions.length === 0;
+
+    return {
+      partitionColumnOptions,
+      isPartitionDisabled,
+    };
+  }, [columns]);
+
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
-    const { includeColumns } = tableProfilerConfig;
+    const { includeColumns, partitioning } = tableProfilerConfig;
     setSqlQuery(tableProfilerConfig.profileQuery || '');
     setProfileSample(tableProfilerConfig.profileSample || 100);
     setExcludeCol(tableProfilerConfig.excludeColumns || []);
@@ -94,7 +136,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
         return col;
       });
+      form.setFieldsValue({ includeColumns: includeColValue });
       setIncludeCol(includeColValue);
+    }
+    if (partitioning) {
+      setEnablePartition(partitioning.enablePartitioning || false);
+      form.setFieldsValue({ ...partitioning });
     }
   };
 
@@ -138,6 +185,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   };
 
   const handleSave = async () => {
+    setIsLoading(true);
     const profileConfig: TableProfilerConfig = {
       excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
       profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
@@ -145,8 +193,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
         ? getIncludesColumns()
         : undefined,
+      partitioning: enablePartition
+        ? {
+            ...partitionData,
+            enablePartitioning: enablePartition,
+          }
+        : undefined,
     };
-
     try {
       const data = await putTableProfileConfig(tableId, profileConfig);
       if (data) {
@@ -162,6 +215,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         error as AxiosError,
         jsonData['api-error-messages']['update-profiler-config-error']
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -178,20 +233,29 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     <Modal
       centered
       destroyOnClose
+      bodyStyle={{
+        maxHeight: 600,
+        overflowY: 'scroll',
+      }}
       cancelButtonProps={{
         type: 'link',
       }}
+      closable={false}
+      confirmLoading={isLoading}
       data-testid="profiler-settings-modal"
       maskClosable={false}
-      okText="Save"
-      title="Settings"
+      okButtonProps={{
+        form: 'profiler-setting-form',
+        htmlType: 'submit',
+      }}
+      okText={t('label.save')}
+      title={t('label.settings')}
       visible={visible}
       width={630}
-      onCancel={handleCancel}
-      onOk={handleSave}>
+      onCancel={handleCancel}>
       <Row gutter={[16, 16]}>
         <Col data-testid="profile-sample-container" span={24}>
-          <p>Profile Sample %</p>
+          <p>{t('label.profile-sample-percentage')}</p>
           <div className="tw-px-2 tw-mb-1.5">
             <Row gutter={20}>
               <Col span={20}>
@@ -200,7 +264,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   marks={{
                     0: '0%',
                     100: '100%',
-                    [profileSample as number]: `${profileSample}%`,
                   }}
                   max={100}
                   min={0}
@@ -228,7 +291,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </div>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
-          <p className="tw-mb-1.5">Profile Sample Query</p>
+          <p className="tw-mb-1.5">{t('label.profile-sample-query')} </p>
           <CodeMirror
             className="profiler-setting-sql-editor"
             data-testid="profiler-setting-sql-editor"
@@ -243,15 +306,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <p className="tw-mb-4">Enable column profile</p>
-          <p className="tw-text-xs tw-mb-1.5">Exclude:</p>
+          <p className="tw-mb-4">{t('label.enable-column-profile')}</p>
+          <p className="tw-text-xs tw-mb-1.5">{t('label.exclude')}:</p>
           <Select
             allowClear
             className="tw-w-full"
             data-testid="exclude-column-select"
             mode="tags"
             options={selectOptions}
-            placeholder="Select columns to exclude"
+            placeholder={t('label.select-column-exclude')}
             size="middle"
             value={excludeCol}
             onChange={(value) => setExcludeCol(value)}
@@ -261,19 +324,26 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         <Col span={24}>
           <Form
             autoComplete="off"
+            form={form}
+            id="profiler-setting-form"
             initialValues={{
               includeColumns: includeCol,
+              ...data?.partitioning,
             }}
             layout="vertical"
             name="includeColumnsProfiler"
+            onFinish={handleSave}
             onValuesChange={(_, data) => {
               setIncludeCol(data.includeColumns);
+              setPartitionData(omit(data, 'includeColumns'));
             }}>
             <List name="includeColumns">
               {(fields, { add, remove }) => (
                 <>
                   <div className="tw-flex tw-items-center tw-mb-1.5">
-                    <p className="w-form-label tw-text-xs tw-mr-3">Include:</p>
+                    <p className="w-form-label tw-text-xs tw-mr-3">
+                      {t('label.include')}:
+                    </p>
                     <Button
                       className="include-columns-add-button"
                       icon={<PlusOutlined />}
@@ -284,53 +354,182 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   </div>
                   <div
                     className={classNames({
-                      'tw-h-40 tw-overflow-auto': includeCol.length > 1,
+                      'tw-max-h-40 tw-overflow-y-auto': includeCol.length > 1,
                     })}
                     data-testid="include-column-container">
                     {fields.map(({ key, name, ...restField }) => (
-                      <div className="tw-flex tw-gap-2 tw-w-full" key={key}>
-                        <Form.Item
-                          className="tw-w-11/12 tw-mb-4"
-                          {...restField}
-                          name={[name, 'columnName']}>
-                          <Select
-                            className="tw-w-full"
-                            data-testid="exclude-column-select"
-                            options={selectOptions}
-                            placeholder="Select columns to include"
-                            size="middle"
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          className="tw-w-11/12 tw-mb-4"
-                          {...restField}
-                          name={[name, 'metrics']}>
-                          <TreeSelect
-                            treeCheckable
-                            className="tw-w-full"
-                            maxTagCount={2}
-                            placeholder="Please select"
-                            showCheckedStrategy="SHOW_PARENT"
-                            treeData={metricsOptions}
-                          />
-                        </Form.Item>
-                        <Button
-                          icon={
-                            <SVGIcons
-                              alt="delete"
-                              className="tw-w-4"
-                              icon={Icons.DELETE}
+                      <Row gutter={16} key={key}>
+                        <Col span={12}>
+                          <Form.Item
+                            className="w-full m-b-md"
+                            {...restField}
+                            name={[name, 'columnName']}>
+                            <Select
+                              className="w-full"
+                              data-testid="exclude-column-select"
+                              options={selectOptions}
+                              placeholder={t('label.select-column-include')}
+                              size="middle"
                             />
-                          }
-                          type="text"
-                          onClick={() => remove(name)}
-                        />
-                      </div>
+                          </Form.Item>
+                        </Col>
+                        <Col className="flex" span={12}>
+                          <Form.Item
+                            className="w-full m-b-md"
+                            {...restField}
+                            name={[name, 'metrics']}>
+                            <TreeSelect
+                              treeCheckable
+                              className="w-full"
+                              maxTagCount={2}
+                              placeholder={t('label.please-select')}
+                              showCheckedStrategy="SHOW_PARENT"
+                              treeData={metricsOptions}
+                            />
+                          </Form.Item>
+                          <Button
+                            icon={
+                              <SVGIcons
+                                alt={t('label.delete')}
+                                className="w-4"
+                                icon={Icons.DELETE}
+                              />
+                            }
+                            type="text"
+                            onClick={() => remove(name)}
+                          />
+                        </Col>
+                      </Row>
                     ))}
                   </div>
                 </>
               )}
             </List>
+            <Form.Item className="m-b-xs">
+              <Space size={12}>
+                <p>{t('label.enable-partition')}</p>
+                <Switch
+                  checked={enablePartition}
+                  data-testid="enable-partition-switch"
+                  disabled={isPartitionDisabled}
+                  onChange={(value) => setEnablePartition(value)}
+                />
+              </Space>
+            </Form.Item>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Form.Item
+                  className="m-b-0"
+                  label={
+                    <span className="text-xs">{t('label.column-name')}</span>
+                  }
+                  labelCol={{
+                    style: {
+                      paddingBottom: 8,
+                    },
+                  }}
+                  name="partitionColumnName"
+                  rules={[
+                    {
+                      required: isPartitionDisabled || enablePartition,
+                      message: t('message.column-name-required'),
+                    },
+                  ]}>
+                  <Select
+                    allowClear
+                    className="w-full"
+                    data-testid="column-name"
+                    disabled={isPartitionDisabled || !enablePartition}
+                    options={partitionColumnOptions}
+                    placeholder={t('message.select-column-name')}
+                    size="middle"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  className="m-b-0"
+                  label={
+                    <span className="text-xs">{t('label.interval-type')}</span>
+                  }
+                  labelCol={{
+                    style: {
+                      paddingBottom: 8,
+                    },
+                  }}
+                  name="partitionIntervalType"
+                  rules={[
+                    {
+                      required: isPartitionDisabled || enablePartition,
+                      message: t('message.interval-type-required'),
+                    },
+                  ]}>
+                  <Select
+                    allowClear
+                    className="w-full"
+                    data-testid="interval-type"
+                    disabled={isPartitionDisabled || !enablePartition}
+                    options={INTERVAL_TYPE_OPTIONS}
+                    placeholder={t('message.select-type-required')}
+                    size="middle"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  className="m-b-0"
+                  label={<span className="text-xs">{t('label.interval')}</span>}
+                  labelCol={{
+                    style: {
+                      paddingBottom: 8,
+                    },
+                  }}
+                  name="partitionInterval"
+                  rules={[
+                    {
+                      required: isPartitionDisabled || enablePartition,
+                      message: t('message.interval-required'),
+                    },
+                  ]}>
+                  <InputNumber
+                    className="w-full"
+                    data-testid="interval-required"
+                    disabled={isPartitionDisabled || !enablePartition}
+                    placeholder={t('message.enter-interval')}
+                    size="middle"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  className="m-b-0"
+                  label={
+                    <span className="text-xs">{t('label.interval-unit')}</span>
+                  }
+                  labelCol={{
+                    style: {
+                      paddingBottom: 8,
+                    },
+                  }}
+                  name="partitionIntervalUnit"
+                  rules={[
+                    {
+                      required: isPartitionDisabled || enablePartition,
+                      message: t('message.interval-unit-required'),
+                    },
+                  ]}>
+                  <Select
+                    allowClear
+                    className="w-full"
+                    data-testid="select-interval-unit"
+                    disabled={isPartitionDisabled || !enablePartition}
+                    options={INTERVAL_UNIT_OPTIONS}
+                    placeholder={t('message.select-interval-unit')}
+                    size="middle"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
           </Form>
         </Col>
       </Row>

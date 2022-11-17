@@ -37,12 +37,15 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
-  private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;
 
-  public ConfigResource(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    this.openMetadataApplicationConfig = openMetadataApplicationConfig;
+  public ConfigResource() {
     this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) {
+    this.openMetadataApplicationConfig = config;
   }
 
   @GET

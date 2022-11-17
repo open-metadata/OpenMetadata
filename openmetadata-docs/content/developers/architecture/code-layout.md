@@ -16,7 +16,7 @@ OpenMetadata takes a schema-first approach to model metadata. We define entities
 We convert models defined using JSON Schema to [Plain Old Java Objects (POJOs)](https://www.jsonschema2pojo.org/) using the `jsonschema2pojo-maven-plugin` plugin as defined in [`pom.xml`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/pom.xml#L517). You can find the generated POJOs under `OpenMetadata/openmetadata-service/target/generated-sources/jsonschema2pojo`.
 
 ### Entities
-You can locate defined entities in the directory [`OpenMetadata/openmetadata-service/src/main/resources/json/schema/entity`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/entity). Currently, OpenMetadata supports the following entities:
+You can locate defined entities in the directory [`OpenMetadata/openmetadata-spec/src/main/resources/json/schema/entity`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/entity). Currently, OpenMetadata supports the following entities:
 
 - data
 - feed
@@ -26,13 +26,12 @@ You can locate defined entities in the directory [`OpenMetadata/openmetadata-ser
 - teams
 
 ### Types
-All OpenMetadata supported types are defined under [`OpenMetadata/openmetadata-service/src/main/resources/json/schema/type`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/type).
-
+All OpenMetadata supported types are defined under [`OpenMetadata/openmetadata-spec/src/main/resources/json/schema/type`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/type). 
 ### API request objects
-The API request objects are defined under [`OpenMetadata/openmetadata-service/src/main/resources/json/schema/api`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/resources/json/schema/api).
+The API request objects are defined under [`OpenMetadata/openmetadata-spec/src/main/resources/json/schema/api`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/api).
 
 ## API
-OpenMetadata uses the [Dropwizard](https://www.dropwizard.io/) Java framework to build REST APIs. You can locate defined APIs in the directory [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/catalog/resources`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/catalog/resources). OpenMetadata uses [Swagger](https://swagger.io/) to generate API documentation following OpenAPI standards.
+OpenMetadata uses the [Dropwizard](https://www.dropwizard.io/) Java framework to build REST APIs. You can locate defined APIs in the directory [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/service/resources`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/service/resources). OpenMetadata uses [Swagger](https://swagger.io/) to generate API documentation following OpenAPI standards.
 
 ## System and Components
 
@@ -41,20 +40,20 @@ OpenMetadata uses the [Dropwizard](https://www.dropwizard.io/) Java framework to
 ### Events
 OpenMetadata captures changes to entities as `events` and stores them in the OpenMetadata server database. OpenMetadata also indexes change events in Elasticsearch to make them searchable.
 
-The event handlers are defined under [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/catalog/events`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/catalog/events) and are applied globally to any outgoing response using the `ContainerResponseFilter`.
+The event handlers are defined under [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/service/events`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/service/events) and are applied globally to any outgoing response using the `ContainerResponseFilter`.
 
 ### Database
-OpenMetadata uses MySQL for the metadata catalog. The catalog code is located in the directory [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/catalog/jdbi3`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/catalog/jdbi3).
+OpenMetadata uses MySQL for the metadata catalog. The catalog code is located in the directory [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/service/jdbi3`](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-service/src/main/java/org/openmetadata/service/jdbi3).
 
 The database entity tables are created using the command [`OpenMetadata/bootstrap/bootstrap_storage.sh`](https://github.com/open-metadata/OpenMetadata/blob/main/bootstrap/bootstrap_storage.sh). [Flyway](https://flywaydb.org/) is used for managing the database table versions.
 
 ### Elasticsearch
-OpenMetadata uses Elasticsearch to store the Entity change events and makes it searchable by search index. The [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventHandler.java`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/catalog/elasticsearch/ElasticSearchEventHandler.java) is responsible for capturing the change events and updating Elasticsearch.
+OpenMetadata uses Elasticsearch to store the Entity change events and makes it searchable by search index. The [`OpenMetadata/openmetadata-service/src/main/java/org/openmetadata/service/elasticsearch/ElasticSearchEventPublisher.java`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/elasticsearch/ElasticSearchEventPublisher.java) is responsible for capturing the change events and updating Elasticsearch.
 
 Elasticsearch indices are created when the [`OpenMetadata/ingestion/pipelines/metadata_to_es.json`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/pipelines/metadata_to_es.json) ingestion connector is run.
 
 ### Authentication/Authorization
-OpenMetadata uses Google OAuth for authentication. All incoming requests are filtered by validating the JWT token using the Google OAuth provider. Access control is provided by [`Authorizer`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/catalog/security/Authorizer.java).
+OpenMetadata uses Google OAuth for authentication. All incoming requests are filtered by validating the JWT token using the Google OAuth provider. Access control is provided by [`Authorizer`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-service/src/main/java/org/openmetadata/service/security/Authorizer.java).
 
 See the configuration file `OpenMetadata` [`/conf/openmetadata.yaml`](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml) for the authentication and authorization configurations.
 
@@ -72,7 +71,7 @@ OpenMetadata defines and uses a set of components called `Connectors` for metada
 5. Stage [`OpenMetadata/ingestion/src/metadata/ingestion/api/stage.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/stage.py)
 6. BulkSink [`OpenMetadata/ingestion/src/metadata/ingestion/api/bulk_sink.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/bulk_sink.py)
 
-Workflow is a simple orchestration job that runs `Source`, `Processor`, `Sink`, `Stage` and `BulkSink` based on the configurations present under [`OpenMetadata/ingestion/examples/workflows`](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows).
+Workflow is a simple orchestration job that runs `Source`, `Processor`, `Sink`, `Stage` and `BulkSink` based on the configurations present under [`OpenMetadata/ingestion/examples/workflows`](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/examples/workflows).
 
 There are some popular connectors already developed and can be found under:
 
@@ -90,4 +89,4 @@ See the directory [`OpenMetadata/ingestion/examples/airflow/dags`](https://githu
 
 **JsonSchema python typings**
 
-You can generate Python types for OpenMetadata models defined using Json Schema using the make generate command of the [`Makefile`](https://github.com/open-metadata/OpenMetadata/blob/main/Makefile/README.md). Generated files are located in the directory `OpenMetadata/ingestion/src/metadata/generated`
+You can generate Python types for OpenMetadata models defined using Json Schema using the make generate command of the [`Makefile`](https://github.com/open-metadata/OpenMetadata/blob/main/Makefile). Generated files are located in the directory `OpenMetadata/ingestion/src/metadata/generated`

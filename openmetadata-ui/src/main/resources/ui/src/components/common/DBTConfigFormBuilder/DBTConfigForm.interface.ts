@@ -12,7 +12,7 @@
  */
 
 import {
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -22,11 +22,11 @@ export interface DBTFormCommonProps {
   okText: string;
   cancelText: string;
   onCancel: () => void;
-  onSubmit: (data?: DbtConfigSource) => void;
+  onSubmit: (data?: DbtConfig) => void;
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
-  data: DbtConfigSource;
+  data: DbtConfig;
   gcsType?: GCS_CONFIG;
   source?: DBT_SOURCES;
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;
@@ -34,23 +34,32 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
 }
 
 export type DbtConfigCloud = Pick<
-  DbtConfigSource,
-  'dbtCloudAccountId' | 'dbtCloudAuthToken'
+  DbtConfig,
+  | 'dbtCloudAccountId'
+  | 'dbtCloudAuthToken'
+  | 'dbtUpdateDescriptions'
+  | 'dbtCloudProjectId'
 >;
 
 export type DbtConfigLocal = Pick<
-  DbtConfigSource,
-  'dbtCatalogFilePath' | 'dbtManifestFilePath' | 'dbtRunResultsFilePath'
+  DbtConfig,
+  | 'dbtCatalogFilePath'
+  | 'dbtManifestFilePath'
+  | 'dbtRunResultsFilePath'
+  | 'dbtUpdateDescriptions'
 >;
 
 export type DbtConfigHttp = Pick<
-  DbtConfigSource,
-  'dbtCatalogHttpPath' | 'dbtManifestHttpPath' | 'dbtRunResultsHttpPath'
+  DbtConfig,
+  | 'dbtCatalogHttpPath'
+  | 'dbtManifestHttpPath'
+  | 'dbtRunResultsHttpPath'
+  | 'dbtUpdateDescriptions'
 >;
 
 export type DbtConfigS3GCS = Pick<
-  DbtConfigSource,
-  'dbtSecurityConfig' | 'dbtPrefixConfig'
+  DbtConfig,
+  'dbtSecurityConfig' | 'dbtPrefixConfig' | 'dbtUpdateDescriptions'
 >;
 
 export type DbtS3Creds = Pick<
@@ -63,6 +72,11 @@ export type DbtS3Creds = Pick<
 >;
 
 export type DbtS3CredsReq = Pick<DbtS3Creds, 'awsRegion'>;
+
+export type DbtConfigCloudReq = Pick<
+  DbtConfigCloud,
+  'dbtCloudAccountId' | 'dbtCloudAuthToken'
+>;
 
 export interface DbtSourceTypes {
   sourceType: DBT_SOURCES;

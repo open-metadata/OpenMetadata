@@ -22,13 +22,13 @@ from sqlalchemy import inspect
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import BigQueryDialect, _types
-from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
     TablePartition,
@@ -44,29 +44,37 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.credentials.gcsCredentials import (
+    GCSCredentialsPath,
+    GCSValues,
+    MultipleProjectId,
+    SingleProjectId,
+)
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_table
+from metadata.utils.connections import get_connection
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
-_types._type_map["GEOGRAPHY"] = GEOGRAPHY
+_types._type_map["GEOGRAPHY"] = GEOGRAPHY  # pylint: disable=protected-access
 
 
 def get_columns(bq_schema):
+    """
+    get_columns method overwritten to include tag details
+    """
     col_list = []
     for field in bq_schema:
         col_obj = {
             "name": field.name,
-            "type": _get_sqla_column_type(field)
-            if "STRUCT" or "RECORD" not in field
-            else STRUCT,
-            "nullable": field.mode == "NULLABLE" or field.mode == "REPEATED",
+            "type": _get_sqla_column_type(field),
+            "nullable": field.mode in ("NULLABLE", "REPEATED"),
             "comment": field.description,
             "default": None,
             "precision": field.precision,
@@ -117,20 +125,24 @@ def _build_formatted_table_id(table):
     return f"{table.table_id}"
 
 
-BigQueryDialect._build_formatted_table_id = _build_formatted_table_id
+BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-access
+    _build_formatted_table_id
+)
 
 BigQueryDialect.get_table_names = get_table_names
 
 
 class BigquerySource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Bigquery Source
+    """
+
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
         self.temp_credentials = None
-        self.project_id = self.set_project_id()
-
-    def prepare(self):
-        self.client = Client()
-        return super().prepare()
+        self.client = None
+        self.project_ids = self.set_project_id()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -144,8 +156,8 @@ class BigquerySource(CommonDbSourceService):
 
     @staticmethod
     def set_project_id():
-        _, project_id = auth.default()
-        return project_id
+        _, project_ids = auth.default()
+        return project_ids
 
     def yield_tag(self, _: str) -> Iterable[OMetaTagAndCategory]:
         """
@@ -153,24 +165,32 @@ class BigquerySource(CommonDbSourceService):
         :param _:
         :return:
         """
-        taxonomies = PolicyTagManagerClient().list_taxonomies(
-            parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
-        )
-        for taxonomy in taxonomies:
-            policiy_tags = PolicyTagManagerClient().list_policy_tags(
-                parent=taxonomy.name
-            )
-            for tag in policiy_tags:
-                yield OMetaTagAndCategory(
-                    category_name=CreateTagCategoryRequest(
-                        name=self.service_connection.tagCategoryName,
-                        description="",
-                        categoryType="Classification",
-                    ),
-                    category_details=CreateTagRequest(
-                        name=tag.display_name, description="Bigquery Policy Tag"
-                    ),
+        try:
+            list_project_ids = [self.context.database.name.__root__]
+            if not self.service_connection.taxonomyProjectID:
+                self.service_connection.taxonomyProjectID = []
+            list_project_ids.extend(self.service_connection.taxonomyProjectID)
+            for project_ids in list_project_ids:
+                taxonomies = PolicyTagManagerClient().list_taxonomies(
+                    parent=f"projects/{project_ids}/locations/{self.service_connection.taxonomyLocation}"
                 )
+                for taxonomy in taxonomies:
+                    policy_tags = PolicyTagManagerClient().list_policy_tags(
+                        parent=taxonomy.name
+                    )
+                    for tag in policy_tags:
+                        yield OMetaTagAndCategory(
+                            category_name=CreateTagCategoryRequest(
+                                name=self.service_connection.tagCategoryName,
+                                description="",
+                            ),
+                            category_details=CreateTagRequest(
+                                name=tag.display_name, description="Bigquery Policy Tag"
+                            ),
+                        )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Skipping Policy Tag: {exc}")
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
@@ -186,9 +206,7 @@ class BigquerySource(CommonDbSourceService):
         This will only get executed if the tags context
         is properly informed
         """
-        if not self.source_config.includeTags:
-            return
-        if column.get("policy_tags"):
+        if self.source_config.includeTags and column.get("policy_tags"):
             return [
                 TagLabel(
                     tagFQN=fqn.build(
@@ -202,10 +220,64 @@ class BigquerySource(CommonDbSourceService):
                     source="Tag",
                 )
             ]
+        return None
+
+    def set_inspector(self, database_name: str):
+        self.client = Client(project=database_name)
+        if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
+            self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
+                __root__=database_name
+            )
+        self.engine = get_connection(self.service_connection)
+        self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        self.inspector = inspect(self.engine)
-        yield self.project_id
+        if isinstance(
+            self.service_connection.credentials.gcsConfig, GCSCredentialsPath
+        ):
+            self.set_inspector(database_name=self.project_ids)
+            yield self.project_ids
+        elif isinstance(
+            self.service_connection.credentials.gcsConfig.projectId, SingleProjectId
+        ):
+            self.set_inspector(database_name=self.project_ids)
+            yield self.project_ids
+        if hasattr(
+            self.service_connection.credentials.gcsConfig, "projectId"
+        ) and isinstance(
+            self.service_connection.credentials.gcsConfig.projectId, MultipleProjectId
+        ):
+            for project_id in self.project_ids:
+                database_name = project_id
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=database_name,
+                )
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else database_name,
+                ):
+                    self.status.filter(database_fqn, "Database Filtered out")
+                    continue
+
+                try:
+                    self.set_inspector(database_name=database_name)
+                    self.project_id = (  # pylint: disable=attribute-defined-outside-init
+                        database_name
+                    )
+                    yield database_name
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Error trying to connect to database {database_name}: {exc}"
+                    )
+        else:
+            self.set_inspector(database_name=self.project_ids)
+            yield self.project_ids
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -213,7 +285,7 @@ class BigquerySource(CommonDbSourceService):
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.project_id}.{schema_name}.{table_name}"
+                    f"{self.context.database.name.__root__}.{schema_name}.{table_name}"
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -222,6 +294,7 @@ class BigquerySource(CommonDbSourceService):
                 logger.warning("View definition not implemented")
                 view_definition = ""
             return view_definition
+        return None
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
@@ -232,17 +305,20 @@ class BigquerySource(CommonDbSourceService):
         database = self.context.database.name.__root__
         table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
         if table.time_partitioning is not None:
-            table_partition = TablePartition(
-                interval=str(table.partitioning_type),
-                intervalType=IntervalType.TIME_UNIT.value,
-            )
-            if (
-                hasattr(table.time_partitioning, "field")
-                and table.time_partitioning.field
-            ):
+
+            if table.time_partitioning.field:
+                table_partition = TablePartition(
+                    interval=str(table.time_partitioning.type_),
+                    intervalType=IntervalType.TIME_UNIT.value,
+                )
                 table_partition.columns = [table.time_partitioning.field]
-            return True, table_partition
-        elif table.range_partitioning:
+                return True, table_partition
+
+            return True, TablePartition(
+                interval=str(table.time_partitioning.type_),
+                intervalType=IntervalType.INGESTION_TIME.value,
+            )
+        if table.range_partitioning:
             table_partition = TablePartition(
                 intervalType=IntervalType.INTEGER_RANGE.value,
             )

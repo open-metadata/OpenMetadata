@@ -27,6 +27,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
+  TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -46,7 +47,6 @@ const Description: FC<DescriptionProps> = ({
   entityName,
   entityFieldThreads,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   entityType,
   entityFqn,
   entityFieldTasks,
@@ -87,10 +87,10 @@ const Description: FC<DescriptionProps> = ({
   const RequestDescriptionEl = () => {
     const hasDescription = Boolean(description.trim());
 
-    return onEntityFieldSelect ? (
+    return TASK_ENTITIES.includes(entityType as EntityType) ? (
       <button
         className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
-        data-testid="request-description"
+        data-testid="request-entity-description"
         onClick={
           hasDescription ? handleUpdateDescription : handleRequestDescription
         }>
@@ -173,7 +173,7 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-0.5')}>
+      <div className={classNames('tw-w-5 tw-min-w-max tw-flex')}>
         {hasEditAccess && (
           <button
             className="tw-w-7 tw-h-7 tw-flex-none focus:tw-outline-none"
@@ -197,10 +197,10 @@ const Description: FC<DescriptionProps> = ({
 
   return (
     <div className={`schema-description tw-relative ${className}`}>
-      <div className="tw-px-3 tw-py-1 tw-flex description-inner-main-container">
+      <div className="tw-px-3 tw-flex description-inner-main-container tw-items-end">
         <div className="tw-relative">
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"
+            className="description tw-h-full tw-overflow-y-scroll tw-relative "
             data-testid="description"
             id="center">
             {description?.trim() ? (

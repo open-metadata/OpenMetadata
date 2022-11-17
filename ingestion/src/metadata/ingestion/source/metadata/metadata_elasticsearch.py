@@ -27,6 +27,10 @@ logger = ingestion_logger()
 
 
 class MetadataElasticsearchSource(MetadataSource):
+    """
+    Metadata Elastic Search Source
+    Used for metadata to ES pipeline
+    """
 
     config: WorkflowSource
     report: SourceStatus

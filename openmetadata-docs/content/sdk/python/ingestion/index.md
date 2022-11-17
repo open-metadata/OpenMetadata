@@ -12,7 +12,7 @@ Snippets and knowledge specific to ingesting metadata using Python.
     color="violet-70"
     icon="source"
     bold="DBT"
-    href="sdk/python/ingestion/dbt"
+    href="/sdk/python/ingestion/dbt"
   >
     Example of the integration of DBT with the Python SDK.
   </InlineCallout>
@@ -20,7 +20,7 @@ Snippets and knowledge specific to ingesting metadata using Python.
     color="violet-70"
     icon="source"
     bold="Add Lineage Request"
-    href="sdk/python/ingestion/lineage"
+    href="/sdk/python/ingestion/lineage"
   >
     Learn how to use the Python client to interact with the Lineage.
   </InlineCallout>

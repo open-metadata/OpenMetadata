@@ -96,15 +96,15 @@ class OpenMetadataValidationAction(ValidationAction):
         """Handle depracation warning"""
         if self._ometa_service_name:
             warnings.warn(
-                "`ometa_service_name` will be deperacted in  openmetadata-ingestion==0.13. Use `database_service_name` instead",
+                "`ometa_service_name` will be deperacted in  openmetadata-ingestion==0.13."
+                " Use `database_service_name` instead",
                 DeprecationWarning,
             )
 
             return self._ometa_service_name
         return self._database_service_name
 
-    # pylint: disable=arguments-differ,unused-argument
-    def _run(
+    def _run(  # pylint: disable=arguments-renamed,unused-argument
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
         validation_result_suite_identifier: Union[

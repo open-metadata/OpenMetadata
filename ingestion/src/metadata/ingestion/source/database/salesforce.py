@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Salesforce source ingestion
+"""
 import traceback
 from typing import Iterable, Optional, Tuple
 
@@ -18,7 +20,12 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Column, Constraint, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
@@ -39,6 +46,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -47,6 +55,11 @@ logger = ingestion_logger()
 
 
 class SalesforceSource(DatabaseServiceSource):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Salesforce Source
+    """
+
     def __init__(self, config, metadata_config: OpenMetadataConnection):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
@@ -138,24 +151,34 @@ class SalesforceSource(DatabaseServiceSource):
             else:
                 for salesforce_object in self.client.describe()["sobjects"]:
                     table_name = salesforce_object["name"]
+                    table_name = self.standardize_table_name(schema_name, table_name)
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
+                    )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern, table_name
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name,
                     ):
                         self.status.filter(
-                            "{}".format(table_name),
-                            "Table pattern not allowed",
+                            table_fqn,
+                            "Table Filtered Out",
                         )
                         continue
-                    table_name = self.standardize_table_name(schema_name, table_name)
+
                     yield table_name, TableType.Regular
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Unexpected exception for schema name [{schema_name}]: {exc}"
             )
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -169,7 +192,7 @@ class SalesforceSource(DatabaseServiceSource):
 
             table_constraints = None
             salesforce_objects = self.client.restful(
-                "sobjects/{}/describe/".format(table_name),
+                f"sobjects/{table_name}/describe/",
                 params=None,
             )
             columns = self.get_columns(salesforce_objects["fields"])
@@ -190,11 +213,12 @@ class SalesforceSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception for table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def get_columns(self, salesforce_fields):
+        """
+        Method to handle column details
+        """
         row_order = 1
         columns = []
         for column in salesforce_fields:
@@ -230,7 +254,9 @@ class SalesforceSource(DatabaseServiceSource):
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
+    def standardize_table_name(  # pylint: disable=unused-argument
+        self, schema: str, table: str
+    ) -> str:
         return table
 
     def prepare(self):

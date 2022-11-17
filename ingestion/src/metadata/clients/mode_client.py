@@ -13,6 +13,7 @@ REST Auth & Client for Mode
 """
 import traceback
 from base64 import b64encode
+from typing import Optional
 
 from requests._internal_utils import to_native_string
 
@@ -40,6 +41,10 @@ HREF = "href"
 
 
 class ModeApiClient:
+    """
+    REST Auth & Client for Mode
+    """
+
     client: REST
 
     def __init__(self, config):
@@ -62,7 +67,7 @@ class ModeApiClient:
         )
         self.client = REST(client_config)
 
-    def fetch_all_reports(self, workspace_name: str) -> list:
+    def fetch_all_reports(self, workspace_name: str) -> Optional[list]:
         """Method to fetch all reports for Mode
         Args:
             workspace_name:
@@ -85,9 +90,11 @@ class ModeApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching all reports: {exc}")
 
+        return None
+
     def get_all_reports_for_collection(
         self, workspace_name: str, collection_token: str
-    ) -> dict:
+    ) -> Optional[dict]:
         """Method to fetch all reports for a collection
         Args:
             workspace_name:
@@ -104,7 +111,9 @@ class ModeApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching charts: {exc}")
 
-    def get_all_queries(self, workspace_name: str, report_token: str) -> dict:
+        return None
+
+    def get_all_queries(self, workspace_name: str, report_token: str) -> Optional[dict]:
         """Method to fetch all queries
         Args:
             workspace_name:
@@ -121,9 +130,11 @@ class ModeApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching all queries: {exc}")
 
+        return None
+
     def get_all_charts(
         self, workspace_name: str, report_token: str, query_token: str
-    ) -> dict:
+    ) -> Optional[dict]:
         """Method to fetch all charts
         Args:
             workspace_name:
@@ -141,7 +152,9 @@ class ModeApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching all charts: {exc}")
 
-    def get_all_data_sources(self, workspace_name: str) -> dict:
+        return None
+
+    def get_all_data_sources(self, workspace_name: str) -> Optional[dict]:
         """Method to get all data sources
         Args:
             workspace_name:
@@ -166,10 +179,12 @@ class ModeApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching all data sources: {exc}")
 
+        return None
+
     def get_user_account(self) -> dict:
         """Method to fetch account details
         Returns:
             dict
         """
-        response = self.client.get(f"/account")
+        response = self.client.get("/account")
         return response

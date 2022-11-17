@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
     TableJoins,
-    TableProfile,
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -64,7 +63,7 @@ class OMetaTableMixin:
 
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData
-    ) -> TableData:
+    ) -> Optional[TableData]:
         """
         PUT sample data for a table
 
@@ -96,6 +95,8 @@ class OMetaTableMixin:
                 logger.warning(
                     f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
                 )
+
+        return None
 
     def ingest_profile_data(
         self, table: Table, profile_request: CreateTableProfileRequest

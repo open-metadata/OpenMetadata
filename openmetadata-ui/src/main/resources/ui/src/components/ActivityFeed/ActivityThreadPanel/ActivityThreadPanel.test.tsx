@@ -12,10 +12,11 @@
  */
 
 import {
+  act,
   findAllByText,
-  findByTestId,
   findByText,
   render,
+  screen,
 } from '@testing-library/react';
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -72,28 +73,31 @@ describe('Test ActivityThreadPanel Component', () => {
   });
 
   it('Check if it has all child elements', async () => {
-    const { container } = render(
-      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
-      { wrapper: MemoryRouter }
-    );
-    const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
+    await act(async () => {
+      const { container } = render(
+        <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+        { wrapper: MemoryRouter }
+      );
+      const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
 
-    const panelThreadList = await findAllByText(
-      container,
-      /ActivityThreadList/i
-    );
+      const panelThreadList = await findAllByText(
+        container,
+        /ActivityThreadList/i
+      );
 
-    expect(panelOverlay).toBeInTheDocument();
-    expect(panelThreadList).toHaveLength(1);
+      expect(panelOverlay).toBeInTheDocument();
+      expect(panelThreadList).toHaveLength(1);
+    });
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
-    const { container } = render(
-      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
-      { wrapper: MemoryRouter }
-    );
+    await act(async () => {
+      render(<ActivityThreadPanel {...mockActivityThreadPanelProp} />, {
+        wrapper: MemoryRouter,
+      });
+    });
 
-    const obServerElement = await findByTestId(container, 'observer-element');
+    const obServerElement = await screen.findByTestId('observer-element');
 
     expect(obServerElement).toBeInTheDocument();
 

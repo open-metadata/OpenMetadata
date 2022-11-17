@@ -10,17 +10,18 @@
     "authenticationMechanism": {
       "type": "object",
       "description": "User/Bot Authentication Mechanism.",
+      "javaType": "org.openmetadata.schema.entity.teams.AuthenticationMechanism",
       "properties": {
         "config": {
           "oneOf": [
             {
-              "$ref": "./authN/ssoAuth.json"
+              "$ref": "../../auth/ssoAuth.json"
             },
             {
-              "$ref": "./authN/jwtAuth.json"
+              "$ref": "../../auth/jwtAuth.json"
             },
             {
-              "$ref": "./authN/basicAuth.json"
+              "$ref": "../../auth/basicAuth.json"
             }
           ]
         },

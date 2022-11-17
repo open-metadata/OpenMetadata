@@ -11,20 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, FormProps, Input, Row, Select, Space } from 'antd';
+import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useParams } from 'react-router-dom';
 import {
   getListTestCase,
   getListTestDefinitions,
 } from '../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
-import { codeMirrorOption } from '../../../constants/profiler.constant';
+import { CSMode } from '../../../enums/codemirror.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
@@ -35,11 +33,17 @@ import {
   EntityType,
   TestDataType,
   TestDefinition,
+  TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/CommonUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestCaseFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
@@ -47,8 +51,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   initialValue,
   onSubmit,
   onCancel,
+  table,
 }) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
@@ -67,6 +73,12 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       const { data } = await getListTestDefinitions({
         limit: API_RES_MAX_SIZE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
+        testPlatform: TestPlatform.OpenMetadata,
+        supportedDataType: isColumnFqn
+          ? table.columns.find(
+              (column) => column.fullyQualifiedName === decodedEntityFQN
+            )?.dataType
+          : undefined,
       });
 
       setTestDefinitions(data);
@@ -79,7 +91,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       const { data } = await getListTestCase({
         fields: 'testDefinition',
         limit: API_RES_MAX_SIZE,
-        entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
+        entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
       });
 
       setTestCases(data);
@@ -100,23 +112,22 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       const name = selectedDefinition.parameterDefinition[0]?.name;
       if (name === 'sqlExpression') {
         return (
-          <Row>
-            <Col data-testid="sql-editor-container" span={24}>
-              <p className="tw-mb-1.5">Profile Sample Query</p>
-              <CodeMirror
-                className="profiler-setting-sql-editor"
-                data-testid="profiler-setting-sql-editor"
-                options={codeMirrorOption}
-                value={sqlQuery.value}
-                onBeforeChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
-                onChange={(_Editor, _EditorChange, value) => {
-                  setSqlQuery((pre) => ({ ...pre, value }));
-                }}
-              />
-            </Col>
-          </Row>
+          <Form.Item
+            data-testid="sql-editor-container"
+            key={name}
+            label="SQL Query"
+            name={name}
+            tooltip="Queries returning 1 or more rows will result in the test failing.">
+            <SchemaEditor
+              className="profiler-setting-sql-editor"
+              mode={{ name: CSMode.SQL }}
+              options={{
+                readOnly: false,
+              }}
+              value={sqlQuery.value || ''}
+              onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
+            />
+          </Form.Item>
         );
       }
 
@@ -150,7 +161,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
     return {
       name: value.testName,
-      entityLink: generateEntityLink(entityTypeFQN, isColumnFqn),
+      entityLink: generateEntityLink(
+        getEncodedFqn(decodedEntityFQN, true),
+        isColumnFqn
+      ),
       parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: {
         id: value.testTypeId,
@@ -193,13 +207,16 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       );
       setSelectedTestType(value.testTypeId);
       const testCount = testCases.filter((test) =>
-        test.name.includes(`${getNameFromFQN(entityTypeFQN)}_${testType?.name}`)
+        test.name.includes(
+          `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
+        )
       );
       // generating dynamic unique name based on entity_testCase_number
+      const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
+        testCount.length ? `_${testCount.length}` : ''
+      }`;
       form.setFieldsValue({
-        testName: `${getNameFromFQN(entityTypeFQN)}_${testType?.name}${
-          testCount.length ? `_${testCount.length}` : ''
-        }`,
+        testName: replaceAllSpacialCharWith_(name),
       });
     }
   };
@@ -212,7 +229,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       fetchAllTestCases();
     }
     form.setFieldsValue({
-      testName: initialValue?.name ?? getNameFromFQN(entityTypeFQN),
+      testName: replaceAllSpacialCharWith_(
+        initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
+      ),
       testTypeId: initialValue?.testDefinition?.id,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
@@ -234,6 +253,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           {
             required: true,
             message: 'Name is required!',
+          },
+          {
+            pattern: /^[A-Za-z0-9_]*$/g,
+            message: 'Spacial character is not allowed!',
           },
           {
             validator: (_, value) => {

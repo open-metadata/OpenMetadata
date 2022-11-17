@@ -12,7 +12,7 @@
 """
 TableColumnCountToBeBetween validation implementation
 """
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,protected-access
 
 import traceback
 from datetime import datetime
@@ -75,9 +75,6 @@ def table_custom_sql_query(
     if not rows:
         status = TestCaseStatus.Success
         result_value = 0
-    elif len(rows) == 1:
-        status = TestCaseStatus.Success if rows[0].count == 0 else TestCaseStatus.Failed
-        result_value = rows[0].count
     else:
         status = TestCaseStatus.Failed
         result_value = len(rows)

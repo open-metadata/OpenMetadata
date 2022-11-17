@@ -24,7 +24,6 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import io.dropwizard.util.Strings;
-import java.io.IOException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
@@ -43,14 +42,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.schema.auth.LogoutRequest;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
 @Provider
@@ -62,18 +58,18 @@ public class JwtFilter implements ContainerRequestFilter {
   private JwkProvider jwkProvider;
   private String principalDomain;
   private boolean enforcePrincipalDomain;
-
+  private String providerType;
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
-          "config",
-          "version",
-          "signup",
-          "registrationConfirmation",
-          "resendRegistrationToken",
-          "generatePasswordResetLink",
-          "password/reset",
-          "checkEmailInUse",
-          "login");
+          "v1/config",
+          "v1/users/signup",
+          "v1/version",
+          "v1/users/registrationConfirmation",
+          "v1/users/resendRegistrationToken",
+          "v1/users/generatePasswordResetLink",
+          "v1/users/password/reset",
+          "v1/users/checkEmailInUse",
+          "v1/users/login");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
@@ -81,6 +77,7 @@ public class JwtFilter implements ContainerRequestFilter {
   @SneakyThrows
   public JwtFilter(
       AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
+    this.providerType = authenticationConfiguration.getProvider();
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
@@ -117,6 +114,11 @@ public class JwtFilter implements ContainerRequestFilter {
     String tokenFromHeader = extractToken(headers);
     LOG.debug("Token from header:{}", tokenFromHeader);
 
+    // the case where OMD generated the Token for the Client
+    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString())) {
+      validateTokenIsNotUsedAfterLogout(tokenFromHeader);
+    }
+
     DecodedJWT jwt = validateAndReturnDecodedJwtToken(tokenFromHeader);
 
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -125,7 +127,7 @@ public class JwtFilter implements ContainerRequestFilter {
     String userName = validateAndReturnUsername(claims);
 
     // validate bot token
-    if (claims.containsKey(BOT_CLAIM) && claims.get(BOT_CLAIM).asBoolean()) {
+    if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
       validateBotToken(tokenFromHeader, userName);
     }
 
@@ -191,11 +193,9 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     // validate principal domain
-    if (enforcePrincipalDomain) {
-      if (!domain.equals(principalDomain)) {
-        throw new AuthenticationException(
-            String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
-      }
+    if (enforcePrincipalDomain && !domain.equals(principalDomain)) {
+      throw new AuthenticationException(
+          String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
     }
     return userName;
   }
@@ -225,17 +225,17 @@ public class JwtFilter implements ContainerRequestFilter {
     throw new AuthenticationException("Not Authorized! Token not present");
   }
 
-  private void validateBotToken(String tokenFromHeader, String userName) throws IOException {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-    User user = userRepository.getByName(null, userName, new EntityUtil.Fields(List.of("authenticationMechanism")));
-    AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
-    if (authenticationMechanism != null) {
-      JWTAuthMechanism jwtAuthMechanism =
-          JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
-      if (tokenFromHeader.equals(jwtAuthMechanism.getJWTToken())) {
-        return;
-      }
+  private void validateBotToken(String tokenFromHeader, String userName) {
+    if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
+      return;
     }
     throw new AuthenticationException("Not Authorized! Invalid Token");
+  }
+
+  private void validateTokenIsNotUsedAfterLogout(String authToken) {
+    LogoutRequest previouslyLoggedOutEvent = JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
+    if (previouslyLoggedOutEvent != null) {
+      throw new AuthenticationException("Expired token!");
+    }
   }
 }

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col } from 'antd';
+import { Col, Switch } from 'antd';
+import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { orderBy } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Operation } from '../../generated/entity/policies/policy';
 import { TestCase } from '../../generated/tests/testCase';
 import { Paging } from '../../generated/type/paging';
@@ -24,10 +25,11 @@ import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 
 interface TestCasesTabProps {
+  isDataLoading: boolean;
   testCases: Array<TestCase>;
   testCasesPaging: Paging;
   currentPage: number;
-  onTestUpdate: () => void;
+  onTestUpdate: (deleted?: boolean) => void;
   testCasePageHandler: (
     cursorValue: string | number,
     activePage?: number | undefined
@@ -35,6 +37,7 @@ interface TestCasesTabProps {
 }
 
 const TestCasesTab = ({
+  isDataLoading,
   testCases,
   testCasesPaging,
   currentPage,
@@ -43,6 +46,7 @@ const TestCasesTab = ({
 }: TestCasesTabProps) => {
   const { permissions } = usePermissionProvider();
   const sortedTestCases = orderBy(testCases || [], ['name'], 'asc');
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const createPermission = useMemo(() => {
     return checkPermission(
@@ -51,6 +55,11 @@ const TestCasesTab = ({
       permissions
     );
   }, [permissions]);
+
+  const handleDeletedTestCaseClick: SwitchChangeEventHandler = (value) => {
+    setDeleted(value);
+    onTestUpdate(value);
+  };
 
   return (
     <TestCaseCommonTabContainer
@@ -61,13 +70,21 @@ const TestCasesTab = ({
       paging={testCasesPaging}
       showButton={false}
       testCasePageHandler={testCasePageHandler}>
-      <Col span={24}>
-        <DataQualityTab
-          hasAccess
-          testCases={sortedTestCases}
-          onTestUpdate={onTestUpdate}
-        />
-      </Col>
+      <>
+        <Col className="flex justify-end items-center" span={24}>
+          <span className="m-r-xs">Deleted Tests</span>
+          <Switch checked={deleted} onClick={handleDeletedTestCaseClick} />
+        </Col>
+        <Col span={24}>
+          <DataQualityTab
+            hasAccess
+            deletedTable={deleted}
+            isLoading={isDataLoading}
+            testCases={sortedTestCases}
+            onTestUpdate={() => onTestUpdate(deleted)}
+          />
+        </Col>
+      </>
     </TestCaseCommonTabContainer>
   );
 };

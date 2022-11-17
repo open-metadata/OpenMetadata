@@ -42,7 +42,7 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 ## Elasticsearch (version 7.X)
 
-To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
+OpenMetadata supports ElasticSearch version upto 7.13. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
 [Installing ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
 
 We do not support ElasticSearch 8.x yet.

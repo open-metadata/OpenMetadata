@@ -22,7 +22,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 
 
 def ometa_logger():

@@ -22,7 +22,9 @@
         "Metabase",
         "PowerBI",
         "Mode",
-        "CustomDashboard"
+        "CustomDashboard",
+        "DomoDashboard",
+        "QuickSight"
       ],
       "javaEnums": [
         {
@@ -48,6 +50,12 @@
         },
         {
           "name": "CustomDashboard"
+        },
+        {
+          "name": "DomoDashboard"
+        },
+        {
+          "name": "QuickSight"
         }
       ]
     },
@@ -85,6 +93,12 @@
             },
             {
               "$ref": "./connections/dashboard/customDashboardConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/domodashboardConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/quickSightConnection.json"
             }
           ]
         }

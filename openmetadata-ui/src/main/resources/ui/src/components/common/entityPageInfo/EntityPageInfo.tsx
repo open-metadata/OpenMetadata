@@ -25,6 +25,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -81,6 +82,10 @@ interface Props {
   versionHandler?: () => void;
   updateOwner?: (value: Table['owner']) => void;
   updateTier?: (value: string) => void;
+  removeOwner?: () => void;
+  currentOwner?: Dashboard['owner'];
+  removeTier?: () => void;
+  onRestoreEntity?: () => void;
 }
 
 const EntityPageInfo = ({
@@ -106,8 +111,12 @@ const EntityPageInfo = ({
   entityType,
   updateOwner,
   updateTier,
+  removeOwner,
   canDelete,
+  currentOwner,
   entityFieldTasks,
+  removeTier,
+  onRestoreEntity,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -297,8 +306,7 @@ const EntityPageInfo = ({
 
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
-      return !isUndefined(tagThread) &&
-        TASK_ENTITIES.includes(entityType as EntityType) ? (
+      return !isUndefined(tagThread) ? (
         <button
           className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
           data-testid="tag-thread"
@@ -337,10 +345,11 @@ const EntityPageInfo = ({
     const hasTags = !isEmpty(tags);
     const text = hasTags ? 'Update request tags' : 'Request tags';
 
-    return onThreadLinkSelect ? (
+    return onThreadLinkSelect &&
+      TASK_ENTITIES.includes(entityType as EntityType) ? (
       <button
         className="tw-w-7 tw-h-7 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
-        data-testid="request-description"
+        data-testid="request-entity-tags"
         onClick={hasTags ? handleUpdateTags : handleRequestTags}>
         <Popover
           destroyTooltipOnHide
@@ -486,12 +495,15 @@ const EntityPageInfo = ({
           ) : null}
           {!isVersionSelected && (
             <ManageButton
+              allowSoftDelete={!deleted}
               canDelete={canDelete}
+              deleted={deleted}
               entityFQN={entityFqn}
               entityId={entityId}
               entityName={entityName}
               entityType={entityType}
               onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
+              onRestoreEntity={onRestoreEntity}
             />
           )}
         </Space>
@@ -511,7 +523,11 @@ const EntityPageInfo = ({
                 data-testid={info.key || `info${index}`}
                 key={index}>
                 <EntitySummaryDetails
+                  currentOwner={currentOwner}
                   data={info}
+                  deleted={deleted}
+                  removeOwner={removeOwner}
+                  removeTier={removeTier}
                   tier={tier}
                   updateOwner={updateOwner}
                   updateTier={updateTier}

@@ -16,9 +16,6 @@ import json
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.utils import ometa_logger
@@ -97,7 +94,7 @@ class SupersetAPIClient:
         Returns:
             int
         """
-        response = self.client.get("/dashboard?q=(page:0,page_size:1)")
+        response = self.client.get("/dashboard/?q=(page:0,page_size:1)")
         return response.get("count") or 0
 
     def fetch_dashboards(self, current_page: int, page_size: int):
@@ -112,7 +109,7 @@ class SupersetAPIClient:
             requests.Response
         """
         response = self.client.get(
-            f"/dashboard?q=(page:{current_page},page_size:{page_size})"
+            f"/dashboard/?q=(page:{current_page},page_size:{page_size})"
         )
         return response
 
@@ -123,7 +120,7 @@ class SupersetAPIClient:
         Returns:
              int
         """
-        response = self.client.get("/chart?q=(page:0,page_size:1)")
+        response = self.client.get("/chart/?q=(page:0,page_size:1)")
         return response.get("count") or 0
 
     def fetch_charts(self, current_page: int, page_size: int):
@@ -138,7 +135,7 @@ class SupersetAPIClient:
             requests.Response
         """
         response = self.client.get(
-            f"/chart?q=(page:{current_page},page_size:{page_size})"
+            f"/chart/?q=(page:{current_page},page_size:{page_size})"
         )
         return response
 

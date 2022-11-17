@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
-import { SERVICE_TYPE } from '../../constants/constants';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Metabase';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const tableName = 'jaffle_shop dashboard';
+const description = `This is ${serviceName} description`;
 
 describe('Metabase Ingestion', () => {
+  beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
+  });
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Dashboard);
 
@@ -47,11 +53,25 @@ describe('Metabase Ingestion', () => {
     );
   });
 
+  it('Update table description and verify description after re-run', () => {
+    updateDescriptionForIngestedTables(
+      serviceName,
+      tableName,
+      description,
+      SERVICE_TYPE.Dashboard,
+      'dashboards'
+    );
+  });
+
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Dashboard, serviceName);
+    editOwnerforCreatedService(
+      SERVICE_TYPE.Dashboard,
+      serviceName,
+      API_SERVICE.dashboardServices
+    );
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName, API_SERVICE.dashboardServices);
   });
 });

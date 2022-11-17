@@ -51,3 +51,23 @@ class MaxLength(StaticMetric):
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )
         return None
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
+        if is_concatenable(self.col.datatype):
+            return (
+                pd.DataFrame(
+                    [
+                        len(f"{concatenable_data}")
+                        for concatenable_data in data_frame[self.col.name]
+                    ]
+                )
+                .max()
+                .values
+            )[0]
+        logger.debug(
+            f"Don't know how to process type {self.col.datatype} when computing MAX_LENGTH"
+        )
+        return 0

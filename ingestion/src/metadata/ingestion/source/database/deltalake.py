@@ -1,9 +1,21 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Deltalake source methods.
+"""
 import re
 import traceback
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from pyspark.sql import SparkSession
 from pyspark.sql.utils import AnalysisException, ParseException
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -12,7 +24,8 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Column, TableType
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
@@ -34,6 +47,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -57,6 +71,10 @@ TABLE_TYPE_MAP = {
 }
 
 
+ARRAY_CHILD_START_INDEX = 6
+ARRAY_CHILD_END_INDEX = -1
+
+
 class MetaStoreNotFoundException(Exception):
     """
     Metastore is not passed thorugh file or url
@@ -64,7 +82,10 @@ class MetaStoreNotFoundException(Exception):
 
 
 class DeltalakeSource(DatabaseServiceSource):
-    spark: SparkSession = None
+    """
+    Implements the necessary methods to extract
+    Database metadata from Deltalake Source
+    """
 
     def __init__(
         self,
@@ -80,8 +101,6 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
-        self.data_models = {}
-        self.dbt_tests = {}
 
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
@@ -93,8 +112,6 @@ class DeltalakeSource(DatabaseServiceSource):
             TableType.Iceberg.value.lower(): TableType.Iceberg.value,
         }
         self.array_datatype_replace_map = {"(": "<", ")": ">", "=": ":", "<>": ""}
-        self.ARRAY_CHILD_START_INDEX = 6
-        self.ARRAY_CHILD_END_INDEX = -1
         self.table_constraints = None
         self.database_source_state = set()
         super().__init__()
@@ -140,10 +157,20 @@ class DeltalakeSource(DatabaseServiceSource):
         """
         schemas = self.spark.catalog.listDatabases()
         for schema in schemas:
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema.name,
+            )
             if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern, schema.name
+                self.config.sourceConfig.config.schemaFilterPattern,
+                schema_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else schema.name,
             ):
-                self.status.filter(schema.name, "Schema pattern not allowed")
+                self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema.name
 
@@ -172,12 +199,21 @@ class DeltalakeSource(DatabaseServiceSource):
         for table in self.spark.catalog.listTables(schema_name):
             try:
                 table_name = table.name
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table.name,
+                )
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table_name
+                    self.source_config.tableFilterPattern,
+                    table_fqn if self.source_config.useFqnForFiltering else table.name,
                 ):
                     self.status.filter(
-                        f"{table_name}",
-                        "Table pattern not allowed",
+                        table_fqn,
+                        "Table Filtered Out",
                     )
                     continue
                 if (
@@ -206,9 +242,7 @@ class DeltalakeSource(DatabaseServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception for table [{table}]: {exc}")
-                self.status.warnings.append(
-                    "{}.{}".format(self.config.serviceName, table.name)
-                )
+                self.status.warnings.append(f"{self.config.serviceName}.{table.name}")
 
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
@@ -246,9 +280,7 @@ class DeltalakeSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def get_status(self):
         return self.status
@@ -282,6 +314,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 return col_raw_type.length if col_raw_type.length else 1
             except AttributeError:
                 return 1
+        return None
 
     def _get_display_data_type(self, row):
         display_data_type = repr(row["data_type"]).lower()
@@ -290,7 +323,11 @@ class DeltalakeSource(DatabaseServiceSource):
         return display_data_type
 
     def _get_col_info(self, row):
-        parsed_string = ColumnTypeParser._parse_datatype_string(row["data_type"])
+        parsed_string = (
+            ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                row["data_type"]
+            )
+        )
         if parsed_string:
             parsed_string["dataLength"] = self._check_col_length(
                 parsed_string["dataType"], row["data_type"]
@@ -302,9 +339,9 @@ class DeltalakeSource(DatabaseServiceSource):
                 # if Datatype is Arrya(int) -> Parse int
                 parsed_string[
                     "arrayDataType"
-                ] = ColumnTypeParser._parse_primitive_datatype_string(
+                ] = ColumnTypeParser._parse_primitive_datatype_string(  # pylint: disable=protected-access
                     array_data_type_display[
-                        self.ARRAY_CHILD_START_INDEX : self.ARRAY_CHILD_END_INDEX
+                        ARRAY_CHILD_START_INDEX:ARRAY_CHILD_END_INDEX
                     ]
                 )[
                     "dataType"
@@ -331,6 +368,9 @@ class DeltalakeSource(DatabaseServiceSource):
         return column
 
     def get_columns(self, schema: str, table: str) -> List[Column]:
+        """
+        Method to handle table columns
+        """
         field_dict: Dict[str, Any] = {}
         table_name = f"{schema}.{table}"
         try:

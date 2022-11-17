@@ -12,28 +12,62 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  Button,
+  Form,
+  Input,
+  Radio,
+  RadioChangeEvent,
+  Select,
+  Space,
+  Switch,
+} from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { validEmailRegEx } from '../../constants/regex.constants';
+import { passwordErrorMessage } from '../../constants/error-message';
+import {
+  passwordRegex,
+  validEmailRegEx,
+} from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
-import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
+import { AuthTypes } from '../../enums/signin.enum';
+import { CreatePasswordGenerator } from '../../enums/user.enum';
+import {
+  CreatePasswordType,
+  CreateUser as CreateUserSchema,
+} from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import {
+  AuthType,
+  EntityReference as UserTeams,
+  JWTTokenExpiry,
+  SsoClientConfig,
+  SsoServiceType,
+} from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import { errorMsg, requiredField } from '../../utils/CommonUtils';
-import { Button } from '../buttons/Button/Button';
+import {
+  getAuthMechanismTypeOptions,
+  getJWTTokenExpiryOptions,
+} from '../../utils/BotsUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
-import { Field } from '../Field/Field';
 import Loader from '../Loader/Loader';
 import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
+
+const { Option } = Select;
 
 const CreateUser = ({
   roles,
@@ -42,6 +76,8 @@ const CreateUser = ({
   onSave,
   forceBot,
 }: CreateUserProps) => {
+  const [form] = Form.useForm();
+  const { authConfig } = useAuthContext();
   const markdownRef = useRef<EditorContentRef>();
   const [description] = useState<string>('');
   const [email, setEmail] = useState('');
@@ -54,11 +90,26 @@ const CreateUser = ({
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
     []
   );
-  const [showErrorMsg, setShowErrorMsg] = useState({
-    email: false,
-    displayName: false,
-    validEmail: false,
-  });
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordGenerator, setPasswordGenerator] = useState(
+    CreatePasswordGenerator.AutomatciGenerate
+  );
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
+  const [authMechanism, setAuthMechanism] = useState<AuthType>(AuthType.Jwt);
+  const [tokenExpiry, setTokenExpiry] = useState<JWTTokenExpiry>(
+    JWTTokenExpiry.OneHour
+  );
+
+  const [ssoClientConfig, setSSOClientConfig] = useState<SsoClientConfig>();
+
+  const isAuthProviderBasic = useMemo(
+    () =>
+      authConfig?.provider === AuthTypes.BASIC ||
+      authConfig?.provider === AuthTypes.LDAP,
+    [authConfig]
+  );
 
   const slashedBreadcrumbList = [
     {
@@ -73,12 +124,13 @@ const CreateUser = ({
   ];
 
   /**
-   * common function to update user input in to the state
-   * @param event change event for input/selection field
-   * @returns if user dont have access to the page it will not update data.
+   * Handle on change event
+   * @param event
    */
-  const handleValidation = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  const handleOnChange = (
+    event:
+      | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      | RadioChangeEvent
   ) => {
     const value = event.target.value;
     const eleName = event.target.name;
@@ -86,13 +138,103 @@ const CreateUser = ({
     switch (eleName) {
       case 'email':
         setEmail(value);
-        setShowErrorMsg({ ...showErrorMsg, email: false });
 
         break;
 
       case 'displayName':
         setDisplayName(value);
-        setShowErrorMsg({ ...showErrorMsg, displayName: false });
+
+        break;
+      case 'secretKey':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          secretKey: value,
+        }));
+
+        break;
+      case 'audience':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          audience: value,
+        }));
+
+        break;
+      case 'clientId':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          clientId: value,
+        }));
+
+        break;
+      case 'domain':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          domain: value,
+        }));
+
+        break;
+      case 'clientSecret':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          clientSecret: value,
+        }));
+
+        break;
+      case 'authority':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          authority: value,
+        }));
+
+        break;
+      case 'scopes':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          scopes: value ? value.split(',') : [],
+        }));
+
+        break;
+      case 'privateKey':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          privateKey: value,
+        }));
+
+        break;
+      case 'orgURL':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          orgURL: value,
+        }));
+
+        break;
+      case 'oktaEmail':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          email: value,
+        }));
+
+        break;
+      case 'tokenEndpoint':
+        setSSOClientConfig((previous) => ({
+          ...previous,
+          tokenEndpoint: value,
+        }));
+
+        break;
+
+      case 'password':
+        setPassword(value);
+
+        break;
+
+      case 'confirmPassword':
+        setConfirmPassword(value);
+
+        break;
+
+      case 'passwordGenerator':
+        setPasswordGenerator(value);
 
         break;
 
@@ -137,85 +279,383 @@ const CreateUser = ({
     });
   };
 
-  /**
-   * Validate if required value is provided or not.
-   * @returns boolean
-   */
-  const validateForm = () => {
-    const errMsg = cloneDeep(showErrorMsg);
-    if (isEmpty(email)) {
-      errMsg.email = true;
-    } else {
-      errMsg.validEmail = !validEmailRegEx.test(email);
+  //   *******  Generate Random Passwprd  *****
+  const generateRandomPassword = async () => {
+    setIsPasswordGenerating(true);
+    try {
+      const password = await generateRandomPwd();
+      setTimeout(() => {
+        setGeneratedPassword(password);
+        form.setFieldsValue({ generatedPassword: password });
+      }, 500);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsPasswordGenerating(false);
     }
-    setShowErrorMsg(errMsg);
-
-    return !Object.values(errMsg).includes(true);
   };
 
   /**
    * Form submit handler
    */
   const handleSave = () => {
+    const isPasswordGenerated =
+      passwordGenerator === CreatePasswordGenerator.AutomatciGenerate;
     const validRole = selectedRoles.filter(
       (id) => !isUndefined(id)
     ) as string[];
     const validTeam = selectedTeams.filter(
       (id) => !isUndefined(id)
     ) as string[];
-    if (validateForm()) {
-      const userProfile: CreateUserSchema = {
-        description: markdownRef.current?.getEditorContent() || undefined,
-        name: email.split('@')[0],
-        displayName,
-        roles: validRole.length ? validRole : undefined,
-        teams: validTeam.length ? validTeam : undefined,
-        email: email,
-        isAdmin: isAdmin,
-        isBot: isBot,
-      };
-      onSave(userProfile);
-    }
+
+    const userProfile: CreateUserSchema = {
+      description: markdownRef.current?.getEditorContent() || undefined,
+      name: email.split('@')[0],
+      displayName,
+      roles: validRole.length ? validRole : undefined,
+      teams: validTeam.length ? validTeam : undefined,
+      email: email,
+      isAdmin: isAdmin,
+      isBot: isBot,
+      ...(forceBot
+        ? {
+            authenticationMechanism: {
+              authType: authMechanism,
+              config:
+                authMechanism === AuthType.Jwt
+                  ? {
+                      JWTTokenExpiry: tokenExpiry,
+                    }
+                  : {
+                      ssoServiceType: authConfig?.provider as SsoServiceType,
+                      authConfig: {
+                        ...ssoClientConfig,
+                      },
+                    },
+            },
+          }
+        : {
+            password: isPasswordGenerated ? generatedPassword : password,
+            confirmPassword: isPasswordGenerated
+              ? generatedPassword
+              : confirmPassword,
+            createPasswordType: CreatePasswordType.AdminCreate,
+          }),
+    };
+    onSave(userProfile);
   };
 
-  /**
-   * Dynamic button provided as per its state, useful for micro interaction
-   * @returns Button
-   */
-  const getSaveButton = () => {
-    return (
-      <>
-        {saveState === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : saveState === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10')}
-            data-testid="save-user"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Create
-          </Button>
-        )}
-      </>
-    );
+  const getSSOConfig = () => {
+    switch (authConfig?.provider) {
+      case SsoServiceType.Google: {
+        return (
+          <>
+            <Form.Item
+              label="SecretKey"
+              name="secretKey"
+              rules={[
+                {
+                  required: true,
+                  message: 'SecretKey is required',
+                },
+              ]}>
+              <Input.Password
+                data-testid="secretKey"
+                name="secretKey"
+                placeholder="secretKey"
+                value={ssoClientConfig?.secretKey}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item label="Audience" name="audience">
+              <Input
+                data-testid="audience"
+                name="audience"
+                placeholder="audience"
+                value={ssoClientConfig?.audience}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+          </>
+        );
+      }
+
+      case SsoServiceType.Auth0: {
+        return (
+          <>
+            <Form.Item
+              label="SecretKey"
+              name="secretKey"
+              rules={[
+                {
+                  required: true,
+                  message: 'SecretKey is required',
+                },
+              ]}>
+              <Input.Password
+                data-testid="secretKey"
+                name="secretKey"
+                placeholder="secretKey"
+                value={ssoClientConfig?.secretKey}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="ClientId"
+              name="clientId"
+              rules={[
+                {
+                  required: true,
+                  message: 'ClientId is required',
+                },
+              ]}>
+              <Input
+                data-testid="clientId"
+                name="clientId"
+                placeholder="clientId"
+                value={ssoClientConfig?.clientId}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Domain"
+              name="domain"
+              rules={[
+                {
+                  required: true,
+                  message: 'Domain is required',
+                },
+              ]}>
+              <Input
+                data-testid="domain"
+                name="domain"
+                placeholder="domain"
+                value={ssoClientConfig?.domain}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+          </>
+        );
+      }
+      case SsoServiceType.Azure: {
+        return (
+          <>
+            <Form.Item
+              label="ClientSecret"
+              name="clientSecret"
+              rules={[
+                {
+                  required: true,
+                  message: 'ClientSecret is required',
+                },
+              ]}>
+              <Input.Password
+                data-testid="clientSecret"
+                name="clientSecret"
+                placeholder="clientSecret"
+                value={ssoClientConfig?.clientSecret}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="ClientId"
+              name="clientId"
+              rules={[
+                {
+                  required: true,
+                  message: 'ClientId is required',
+                },
+              ]}>
+              <Input
+                data-testid="clientId"
+                name="clientId"
+                placeholder="clientId"
+                value={ssoClientConfig?.clientId}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Authority"
+              name="authority"
+              rules={[
+                {
+                  required: true,
+                  message: 'Authority is required',
+                },
+              ]}>
+              <Input
+                data-testid="authority"
+                name="authority"
+                placeholder="authority"
+                value={ssoClientConfig?.authority}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Scopes"
+              name="scopes"
+              rules={[
+                {
+                  required: true,
+                  message: 'Scopes is required',
+                },
+              ]}>
+              <Input
+                data-testid="scopes"
+                name="scopes"
+                placeholder="Scopes value comma separated"
+                value={ssoClientConfig?.scopes}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+          </>
+        );
+      }
+      case SsoServiceType.Okta: {
+        return (
+          <>
+            <Form.Item
+              label="PrivateKey"
+              name="privateKey"
+              rules={[
+                {
+                  required: true,
+                  message: 'PrivateKey is required',
+                },
+              ]}>
+              <Input.Password
+                data-testid="privateKey"
+                name="privateKey"
+                placeholder="privateKey"
+                value={ssoClientConfig?.privateKey}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="ClientId"
+              name="clientId"
+              rules={[
+                {
+                  required: true,
+                  message: 'ClientId is required',
+                },
+              ]}>
+              <Input
+                data-testid="clientId"
+                name="clientId"
+                placeholder="clientId"
+                value={ssoClientConfig?.clientId}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="OrgURL"
+              name="orgURL"
+              rules={[
+                {
+                  required: true,
+                  message: 'OrgURL is required',
+                },
+              ]}>
+              <Input
+                data-testid="orgURL"
+                name="orgURL"
+                placeholder="orgURL"
+                value={ssoClientConfig?.orgURL}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="Email"
+              name="oktaEmail"
+              rules={[
+                {
+                  required: true,
+                  type: 'email',
+                  message: 'Service account Email is required',
+                },
+              ]}>
+              <Input
+                data-testid="oktaEmail"
+                name="oktaEmail"
+                placeholder="Okta Service account Email"
+                value={ssoClientConfig?.email}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item label="Scopes" name="scopes">
+              <Input
+                data-testid="scopes"
+                name="scopes"
+                placeholder="Scopes value comma separated"
+                value={ssoClientConfig?.scopes}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+          </>
+        );
+      }
+      case SsoServiceType.CustomOidc: {
+        return (
+          <>
+            <Form.Item
+              label="SecretKey"
+              name="secretKey"
+              rules={[
+                {
+                  required: true,
+                  message: 'SecretKey is required',
+                },
+              ]}>
+              <Input.Password
+                data-testid="secretKey"
+                name="secretKey"
+                placeholder="secretKey"
+                value={ssoClientConfig?.secretKey}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="ClientId"
+              name="clientId"
+              rules={[
+                {
+                  required: true,
+                  message: 'ClientId is required',
+                },
+              ]}>
+              <Input
+                data-testid="clientId"
+                name="clientId"
+                placeholder="clientId"
+                value={ssoClientConfig?.clientId}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+            <Form.Item
+              label="TokenEndpoint"
+              name="tokenEndpoint"
+              rules={[
+                {
+                  required: true,
+                  message: 'TokenEndpoint is required',
+                },
+              ]}>
+              <Input
+                data-testid="tokenEndpoint"
+                name="tokenEndpoint"
+                placeholder="tokenEndpoint"
+                value={ssoClientConfig?.tokenEndpoint}
+                onChange={handleOnChange}
+              />
+            </Form.Item>
+          </>
+        );
+      }
+
+      default:
+        return null;
+    }
   };
 
   return (
@@ -227,102 +667,282 @@ const CreateUser = ({
         <h6 className="tw-heading tw-text-base">
           Create {forceBot ? 'Bot' : 'User'}
         </h6>
-        <Field>
-          <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
-            {requiredField('Email')}
-          </label>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="email"
-            id="email"
+        <Form
+          form={form}
+          id="create-user-bot-form"
+          layout="vertical"
+          validateMessages={{ required: '${label} is required' }}
+          onFinish={handleSave}>
+          <Form.Item
+            label="Email"
             name="email"
-            placeholder="email"
-            type="text"
-            value={email}
-            onChange={handleValidation}
-          />
+            rules={[
+              {
+                pattern: validEmailRegEx,
+                required: true,
+                type: 'email',
+                message: jsonData['form-error-messages']['invalid-email'],
+              },
+              {
+                type: 'email',
+                required: true,
+                validator: async (_, value) => {
+                  if (validEmailRegEx.test(value) && !forceBot) {
+                    const isEmailAlreadyExists = await checkEmailInUse(value);
+                    if (isEmailAlreadyExists) {
+                      return Promise.reject(
+                        jsonData['form-error-messages']['email-is-in-use']
+                      );
+                    }
 
-          {showErrorMsg.email
-            ? errorMsg(jsonData['form-error-messages']['empty-email'])
-            : showErrorMsg.validEmail
-            ? errorMsg(jsonData['form-error-messages']['invalid-email'])
-            : null}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-0"
-            htmlFor="displayName">
-            Display Name
-          </label>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="displayName"
-            id="displayName"
-            name="displayName"
-            placeholder="displayName"
-            type="text"
-            value={displayName}
-            onChange={handleValidation}
-          />
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-0"
-            htmlFor="description">
-            Description
-          </label>
-          <RichTextEditor initialValue={description} ref={markdownRef} />
-        </Field>
-        {!forceBot && (
-          <>
-            <Field>
-              <label className="tw-block tw-form-label tw-mb-0">Teams</label>
-              <TeamsSelectable onSelectionChange={setSelectedTeams} />
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
-                Roles
-              </label>
-              <DropDown
-                className={classNames('tw-bg-white', {
-                  'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
-                })}
-                dataTestId="roles-dropdown"
-                dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-                label="Roles"
-                selectedItems={selectedRoles as Array<string>}
-                type="checkbox"
-                onSelect={(_e, value) => selectedRolesHandler(value)}
-              />
-            </Field>
+                    return Promise.resolve();
+                  }
+                },
+              },
+            ]}>
+            <Input
+              data-testid="email"
+              name="email"
+              placeholder="email"
+              value={email}
+              onChange={handleOnChange}
+            />
+          </Form.Item>
+          <Form.Item label="Display Name" name="displayName">
+            <Input
+              data-testid="displayName"
+              name="displayName"
+              placeholder="displayName"
+              value={displayName}
+              onChange={handleOnChange}
+            />
+          </Form.Item>
+          {forceBot && (
+            <>
+              <Form.Item
+                label="Auth Mechanism"
+                name="auth-mechanism"
+                rules={[
+                  {
+                    required: true,
+                    validator: () => {
+                      if (!authMechanism) {
+                        return Promise.reject('Auth Mechanism is required');
+                      }
 
-            <Field className="tw-flex tw-gap-5">
-              <div className="tw-flex tw-pt-1">
-                <label>Admin</label>
-                <div
-                  className={classNames('toggle-switch', { open: isAdmin })}
-                  data-testid="admin"
-                  onClick={() => {
-                    setIsAdmin((prev) => !prev);
-                    setIsBot(false);
-                  }}>
-                  <div className="switch" />
-                </div>
-              </div>
-            </Field>
-          </>
-        )}
-        <Field className="tw-flex tw-justify-end">
-          <Button
-            data-testid="cancel-user"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={onCancel}>
-            Cancel
-          </Button>
-          {getSaveButton()}
-        </Field>
+                      return Promise.resolve();
+                    },
+                  },
+                ]}>
+                <Select
+                  className="w-full"
+                  data-testid="auth-mechanism"
+                  defaultValue={authMechanism}
+                  placeholder="Select Auth Mechanism"
+                  onChange={(value) => setAuthMechanism(value)}>
+                  {getAuthMechanismTypeOptions(authConfig).map((option) => (
+                    <Option key={option.value}>{option.label}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              {authMechanism === AuthType.Jwt && (
+                <Form.Item
+                  label="Token Expiration"
+                  name="token-expiration"
+                  rules={[
+                    {
+                      required: true,
+                      validator: () => {
+                        if (!tokenExpiry) {
+                          return Promise.reject('Token Expiration is required');
+                        }
+
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}>
+                  <Select
+                    className="w-full"
+                    data-testid="token-expiry"
+                    defaultValue={tokenExpiry}
+                    placeholder="Select Token Expiration"
+                    onChange={(value) => setTokenExpiry(value)}>
+                    {getJWTTokenExpiryOptions().map((option) => (
+                      <Option key={option.value}>{option.label}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+              {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
+            </>
+          )}
+          <Form.Item label="Description" name="description">
+            <RichTextEditor initialValue={description} ref={markdownRef} />
+          </Form.Item>
+
+          {!forceBot && (
+            <>
+              {isAuthProviderBasic && (
+                <>
+                  <Radio.Group
+                    name="passwordGenerator"
+                    value={passwordGenerator}
+                    onChange={handleOnChange}>
+                    <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
+                      Automatic Generate
+                    </Radio>
+                    <Radio value={CreatePasswordGenerator.CreatePassword}>
+                      Create Password
+                    </Radio>
+                  </Radio.Group>
+
+                  {passwordGenerator ===
+                  CreatePasswordGenerator.CreatePassword ? (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Password"
+                        name="password"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                          {
+                            pattern: passwordRegex,
+                            message: passwordErrorMessage,
+                          },
+                        ]}>
+                        <Input.Password
+                          name="password"
+                          placeholder="Enter a Password"
+                          value={password}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        label="Confirm Password"
+                        name="confirmPassword"
+                        rules={[
+                          {
+                            validator: (_, value) => {
+                              if (value !== password) {
+                                return Promise.reject("Password doesn't match");
+                              }
+
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}>
+                        <Input.Password
+                          name="confirmPassword"
+                          placeholder="Confirm Password"
+                          value={confirmPassword}
+                          onChange={handleOnChange}
+                        />
+                      </Form.Item>
+                    </div>
+                  ) : (
+                    <div className="m-t-sm">
+                      <Form.Item
+                        label="Generated Password"
+                        name="generatedPassword"
+                        rules={[
+                          {
+                            required: true,
+                          },
+                        ]}>
+                        <Input.Password
+                          readOnly
+                          addonAfter={
+                            <div className="flex-center w-16">
+                              <div
+                                className="w-8 h-7 flex-center cursor-pointer"
+                                data-testid="password-generator"
+                                onClick={generateRandomPassword}>
+                                {isPasswordGenerating ? (
+                                  <Loader size="small" type="default" />
+                                ) : (
+                                  <SVGIcons
+                                    alt="generate"
+                                    icon={Icons.SYNC}
+                                    width="16"
+                                  />
+                                )}
+                              </div>
+
+                              <div className="w-8 h-7 flex-center">
+                                <CopyToClipboardButton
+                                  copyText={generatedPassword}
+                                />
+                              </div>
+                            </div>
+                          }
+                          name="generatedPassword"
+                          value={generatedPassword}
+                        />
+                      </Form.Item>
+                    </div>
+                  )}
+                </>
+              )}
+              <Form.Item label="Teams" name="teams">
+                <TeamsSelectable onSelectionChange={setSelectedTeams} />
+              </Form.Item>
+              <Form.Item label="Roles" name="roles">
+                <DropDown
+                  className={classNames('tw-bg-white', {
+                    'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
+                  })}
+                  dataTestId="roles-dropdown"
+                  dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
+                  label="Roles"
+                  selectedItems={selectedRoles as Array<string>}
+                  type="checkbox"
+                  onSelect={(_e, value) => selectedRolesHandler(value)}
+                />
+              </Form.Item>
+
+              <Form.Item>
+                <Space>
+                  <span>Admin</span>
+                  <Switch
+                    checked={isAdmin}
+                    data-testid="admin"
+                    onChange={() => {
+                      setIsAdmin((prev) => !prev);
+                      setIsBot(false);
+                    }}
+                  />
+                </Space>
+              </Form.Item>
+            </>
+          )}
+
+          <Space className="w-full tw-justify-end" size={4}>
+            <Button data-testid="cancel-user" type="link" onClick={onCancel}>
+              Cancel
+            </Button>
+            <>
+              {saveState === 'waiting' ? (
+                <Button disabled type="primary">
+                  <Loader size="small" type="white" />
+                </Button>
+              ) : saveState === 'success' ? (
+                <Button disabled type="primary">
+                  <FontAwesomeIcon icon="check" />
+                </Button>
+              ) : (
+                <Button
+                  data-testid="save-user"
+                  form="create-user-bot-form"
+                  htmlType="submit"
+                  type="primary">
+                  Create
+                </Button>
+              )}
+            </>
+          </Space>
+        </Form>
       </div>
     </PageLayout>
   );

@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Image, Space, Switch } from 'antd';
+import { Card, Image, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -24,11 +24,19 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
-import AppState from '../../AppState';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { changePassword } from '../../axiosAPIs/auth-API';
+import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { getUserPath, TERM_ADMIN } from '../../constants/constants';
+import {
+  getUserPath,
+  LIST_SIZE,
+  PAGE_SIZE_LARGE,
+  TERM_ADMIN,
+} from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
   getUserCurrentTab,
@@ -36,6 +44,11 @@ import {
   USER_PROFILE_TABS,
 } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { AuthTypes } from '../../enums/signin.enum';
+import {
+  ChangePasswordRequest,
+  RequestType,
+} from '../../generated/auth/changePasswordRequest';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
@@ -43,33 +56,40 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import UserCard from '../../pages/teams/UserCard';
-import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
-import { filterEntityAssets } from '../../utils/EntityUtils';
+import {
+  getEntityName,
+  getNonDeletedTeams,
+  getTierFromEntityInfo,
+} from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
-import Ellipses from '../common/Ellipses/Ellipses';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
+import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
+import ChangePasswordForm from './ChangePasswordForm';
 import { Option, Props } from './Users.interface';
 import { userPageFilterList } from './Users.util';
 
 const Users = ({
   userData,
+  followingEntities,
+  ownedEntities,
   feedData,
   isFeedLoading,
   postFeedHandler,
@@ -86,6 +106,8 @@ const Users = ({
   feedFilter,
   setFeedFilter,
   threadType,
+  onFollowingEntityPaginate,
+  onOwnedEntityPaginate,
   onSwitchChange,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
@@ -102,10 +124,21 @@ const Users = ({
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
   const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
-
+  const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const location = useLocation();
-
   const isTaskType = isEqual(threadType, ThreadType.Task);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { authConfig } = useAuthContext();
+  const { t } = useTranslation();
+
+  const { isAuthProviderBasic } = useMemo(() => {
+    return {
+      isAuthProviderBasic:
+        authConfig?.provider === AuthTypes.BASIC ||
+        authConfig?.provider === AuthTypes.LDAP,
+    };
+  }, [authConfig]);
 
   const handleFilterDropdownChange = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
@@ -221,6 +254,29 @@ const Users = ({
     }
   };
 
+  const handleChangePassword = async (data: ChangePasswordRequest) => {
+    try {
+      setIsLoading(true);
+      const sendData = {
+        ...data,
+        ...(isAdminUser &&
+          !isLoggedinUser && {
+            username: userData.name,
+            requestType: RequestType.User,
+          }),
+      };
+      await changePassword(sendData);
+      setIsChangePassword(false);
+      showSuccessToast(
+        jsonData['api-success-messages']['update-password-success']
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(true);
+    }
+  };
+
   useEffect(() => {
     setActiveTab(getUserCurrentTab(tab));
   }, [tab]);
@@ -228,7 +284,7 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-mt-4 tw-w-full tw-px-3">
+        <div className="tw-w-full">
           {isDisplayNameEdit ? (
             <Space className="tw-w-full" direction="vertical">
               <input
@@ -285,7 +341,7 @@ const Users = ({
       );
     } else {
       return (
-        <p className="tw-mt-2 tw-px-3">
+        <p className="tw-mt-2">
           {getEntityName(userData as unknown as EntityReference)}
         </p>
       );
@@ -295,7 +351,7 @@ const Users = ({
   const getDescriptionComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between tw-px-3">
+        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between">
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
@@ -312,12 +368,32 @@ const Users = ({
         <div className="tw--ml-2 tw-px-3">
           <p className="tw-mt-2">
             {userData.description || (
-              <span className="tw-no-description tw-p-2">No description </span>
+              <span className="tw-no-description">No description </span>
             )}
           </p>
         </div>
       );
     }
+  };
+
+  const getChangePasswordComponent = () => {
+    return (
+      <div>
+        <Typography.Text
+          className="text-primary text-xs cursor-pointer"
+          onClick={() => setIsChangePassword(true)}>
+          Change Password
+        </Typography.Text>
+
+        <ChangePasswordForm
+          isLoading={isLoading}
+          isLoggedinUser={isLoggedinUser}
+          visible={isChangePassword}
+          onCancel={() => setIsChangePassword(false)}
+          onSave={(data) => handleChangePassword(data)}
+        />
+      </div>
+    );
   };
 
   const getTeamsComponent = () => {
@@ -329,9 +405,11 @@ const Users = ({
             data-testid={team.name}
             key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
-            <Ellipses tooltip className="tw-w-48">
+            <Typography.Text
+              className="ant-typography-ellipsis-custom w-48"
+              ellipsis={{ tooltip: true }}>
               {getEntityName(team)}
-            </Ellipses>
+            </Typography.Text>
           </div>
         ))}
         {isEmpty(userData.teams) && (
@@ -391,9 +469,9 @@ const Users = ({
                 <Select
                   isClearable
                   isMulti
+                  isSearchable
                   aria-label="Select teams"
                   className="tw-w-full"
-                  isSearchable={false}
                   options={teams?.map((team) => ({
                     label: getEntityName(team as unknown as EntityReference),
                     value: team.id,
@@ -462,13 +540,17 @@ const Users = ({
         {userData.roles?.map((role, i) => (
           <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-            <Ellipses tooltip className="tw-w-48">
+            <Typography.Text
+              className="ant-typography-ellipsis-custom w-48"
+              ellipsis={{ tooltip: true }}>
               {getEntityName(role)}
-            </Ellipses>
+            </Typography.Text>
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
-          <span className="tw-no-description ">No roles assigned</span>
+          <span className="tw-no-description ">
+            {t('label.no-roles-assigned')}
+          </span>
         )}
       </Fragment>
     );
@@ -484,7 +566,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
             </div>
           }>
           <div className="tw-flex tw-items-center tw-justify-between tw-mb-4">
@@ -503,7 +585,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
               {!isRolesEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
@@ -526,10 +608,10 @@ const Users = ({
                 <Select
                   isClearable
                   isMulti
+                  isSearchable
                   aria-label="Select roles"
                   className="tw-w-full"
                   id="select-role"
-                  isSearchable={false}
                   options={userRolesOption}
                   placeholder="Roles..."
                   styles={reactSingleSelectCustomStyle}
@@ -584,7 +666,7 @@ const Users = ({
         title={
           <div className="tw-flex">
             <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
-              Inherited Roles
+              {t('label.inherited-roles')}
             </h6>
           </div>
         }>
@@ -592,7 +674,7 @@ const Users = ({
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
               <span className="tw-no-description">
-                No inherited roles found
+                {t('label.no-inherited-found')}
               </span>
             </div>
           ) : (
@@ -602,9 +684,12 @@ const Users = ({
                   className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
                   key={i}>
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-                  <Ellipses tooltip className="tw-w-48">
+
+                  <Typography.Text
+                    className="ant-typography-ellipsis-custom w-48"
+                    ellipsis={{ tooltip: true }}>
                     {getEntityName(inheritedRole)}
-                  </Ellipses>
+                  </Typography.Text>
                 </div>
               ))}
             </div>
@@ -632,34 +717,37 @@ const Users = ({
           style={{
             ...leftPanelAntCardStyle,
           }}>
-          <div className="tw-flex tw-flex-col">
-            {isImgUrlValid ? (
-              <Image
-                alt="profile"
-                className="tw-w-full"
-                preview={false}
-                referrerPolicy="no-referrer"
-                src={image || ''}
-                onError={() => {
-                  SetIsImgUrlValid(false);
-                }}
+          {isImgUrlValid ? (
+            <Image
+              alt="profile"
+              className="tw-w-full"
+              preview={false}
+              referrerPolicy="no-referrer"
+              src={image || ''}
+              onError={() => {
+                SetIsImgUrlValid(false);
+              }}
+            />
+          ) : (
+            <div style={{ width: 'inherit' }}>
+              <ProfilePicture
+                displayName={userData?.displayName || userData.name}
+                height="150"
+                id={userData?.id || ''}
+                name={userData?.name || ''}
+                textClass="tw-text-5xl"
+                width=""
               />
-            ) : (
-              <div style={{ width: 'inherit' }}>
-                <ProfilePicture
-                  displayName={userData?.displayName || userData.name}
-                  height="150"
-                  id={userData?.id || ''}
-                  name={userData?.name || ''}
-                  textClass="tw-text-5xl"
-                  width=""
-                />
-              </div>
-            )}
+            </div>
+          )}
+          <Space className="p-sm" direction="vertical" size={8}>
             {getDisplayNameComponent()}
-            <p className="tw-mt-2 tw-mx-3">{userData.email}</p>
+            <p>{userData.email}</p>
             {getDescriptionComponent()}
-          </div>
+            {isAuthProviderBasic &&
+              (isAdminUser || isLoggedinUser) &&
+              getChangePasswordComponent()}
+          </Space>
         </Card>
         {getTeamsComponent()}
         {getRolesComponent()}
@@ -704,7 +792,7 @@ const Users = ({
           {isTaskType ? (
             <Space align="end" size={5}>
               <Switch onChange={onSwitchChange} />
-              <span className="tw-ml-1">Closed Tasks</span>
+              <span className="tw-ml-1">{t('label.closed-tasks')}</span>
             </Space>
           ) : null}
         </div>
@@ -767,16 +855,32 @@ const Users = ({
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const response = await getRoles(
+        '',
+        undefined,
+        undefined,
+        false,
+        PAGE_SIZE_LARGE
+      );
+      setRoles(response.data);
+    } catch (err) {
+      setRoles([]);
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['fetch-roles-error']
+      );
+    }
+  };
+
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
 
   useEffect(() => {
-    setRoles(AppState.userRoles);
-  }, [AppState.userRoles]);
-
-  useEffect(() => {
     fetchTeams();
+    fetchRoles();
   }, []);
 
   useEffect(() => {
@@ -791,37 +895,59 @@ const Users = ({
   }, [image]);
 
   const getEntityData = useCallback(
-    (entityData: EntityReference[], tabNumber: number) => {
-      const updatedEntityData = filterEntityAssets(entityData || []);
+    (tabNumber: number) => {
+      const entityData = tabNumber === 3 ? ownedEntities : followingEntities;
 
       return (
-        <div
-          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-          data-testid="dataset-card">
-          {isEmpty(updatedEntityData) ? (
-            tabNumber === 3 ? (
-              <div className="tw-mx-2">You have not owned anything yet.</div>
-            ) : (
-              <div className="tw-mx-2">You have not followed anything yet.</div>
-            )
-          ) : null}
-          {updatedEntityData.map((dataset, index) => {
-            const Dataset = {
-              displayName: dataset.displayName || dataset.name || '',
-              type: dataset.type,
-              fqn: dataset.fullyQualifiedName || '',
-              id: dataset.id,
-              name: dataset.name,
-            };
-
-            return (
-              <UserCard isDataset isIconVisible item={Dataset} key={index} />
-            );
-          })}
+        <div data-testid="table-container">
+          {entityData.data.length ? (
+            <>
+              {entityData.data.map((entity, index) => (
+                <div className="m-b-sm" key={`${entity.name}${index}`}>
+                  <TableDataCard
+                    database={entity.database}
+                    databaseSchema={entity.databaseSchema}
+                    deleted={entity.deleted}
+                    description={entity.description}
+                    fullyQualifiedName={entity.fullyQualifiedName}
+                    id={`tabledatacard${index}`}
+                    indexType={entity.index}
+                    name={entity.name}
+                    owner={entity.owner}
+                    service={entity.service}
+                    serviceType={entity.serviceType || '--'}
+                    tags={entity.tags}
+                    tier={getTierFromEntityInfo(entity)}
+                    usage={entity.weeklyPercentileRank}
+                  />
+                </div>
+              ))}
+              {entityData.total > LIST_SIZE && entityData.data.length > 0 && (
+                <NextPrevious
+                  isNumberBased
+                  currentPage={entityData.currPage}
+                  pageSize={LIST_SIZE}
+                  paging={{} as Paging}
+                  pagingHandler={
+                    tabNumber === 3
+                      ? onOwnedEntityPaginate
+                      : onFollowingEntityPaginate
+                  }
+                  totalCount={entityData.total}
+                />
+              )}
+            </>
+          ) : (
+            <ErrorPlaceHolder>
+              {tabNumber === 3
+                ? t('message.no-owned-entities')
+                : t('message.no-followed-entities')}
+            </ErrorPlaceHolder>
+          )}
         </div>
       );
     },
-    []
+    [followingEntities, ownedEntities]
   );
 
   return (
@@ -835,8 +961,8 @@ const Users = ({
         />
       </div>
       <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
-      <div>{activeTab === 3 && getEntityData(userData.owns || [], 3)}</div>
-      <div>{activeTab === 4 && getEntityData(userData.follows || [], 4)}</div>
+      <div>{activeTab === 3 && getEntityData(3)}</div>
+      <div>{activeTab === 4 && getEntityData(4)}</div>
     </PageLayoutV1>
   );
 };

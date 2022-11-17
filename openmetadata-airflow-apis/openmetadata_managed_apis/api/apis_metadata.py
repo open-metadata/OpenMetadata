@@ -11,7 +11,6 @@
 
 DAG_ID_DESCRIPTION = "The ID of the DAG."
 
-# TODO https://github.com/open-metadata/OpenMetadata/issues/6215
 APIS_METADATA = [
     {
         "name": "deploy",
@@ -92,9 +91,15 @@ APIS_METADATA = [
                 "required": True,
             },
             {
-                "name": "compress",
-                "description": "Return the logs as gzip",
-                "form_input_type": "bool",
+                "name": "task_id",
+                "description": "DAG task to fetch",
+                "form_input_type": "text",
+                "required": True,
+            },
+            {
+                "name": "after",
+                "description": "Return the log piece after this cursor",
+                "form_input_type": "int",
                 "required": False,
             },
         ],

@@ -39,7 +39,7 @@ def get_version_from_string(raw_version: str) -> str:
     except AttributeError as err:
         raise VersionParsingException(
             f"Can't extract version from {raw_version}: {err}"
-        )
+        ) from err
 
 
 def get_client_version() -> str:

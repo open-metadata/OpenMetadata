@@ -12,6 +12,7 @@
 import traceback
 from typing import Iterable
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -23,6 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
@@ -30,6 +32,11 @@ logger = ingestion_logger()
 
 
 class MssqlSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from MSSQL Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -53,11 +60,20 @@ class MssqlSource(CommonDbSourceService):
             for res in results:
                 row = list(res)
                 new_database = row[0]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
 
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_name=row[0]
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else new_database,
                 ):
-                    self.status.filter(new_database, "Database pattern not allowed")
+                    self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
                 try:

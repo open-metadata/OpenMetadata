@@ -8,12 +8,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Defines the Elasticsearch mapping for Tables
+"""
 import textwrap
 
 TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
-     {
+{
   "settings": {
     "analysis": {
       "normalizer": {
@@ -23,6 +25,21 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           "filter": [
             "lowercase"
           ]
+        }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
         }
       }
     }
@@ -47,17 +64,13 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "displayName": {
         "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "om_analyzer"
       },
       "description": {
         "type": "text",
         "index_options": "docs",
-        "norms": false
+        "norms": false,
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -75,7 +88,8 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "columns": {
         "properties": {
           "name": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "dataType": {
             "type": "text"
@@ -86,7 +100,8 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           "description": {
             "type": "text",
             "index_options": "docs",
-            "norms": false
+            "norms": false,
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -409,5 +424,5 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     }
   }
 }
-    """
+"""
 )

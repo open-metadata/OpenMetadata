@@ -18,9 +18,14 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
     AirbyteConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.utils.credentials import generate_http_basic_token
 
 
 class AirbyteClient:
+    """
+    Client handling API communication with Airbyte
+    """
+
     def __init__(self, config: AirbyteConnection):
         self.config = config
         client_config: ClientConfig = ClientConfig(
@@ -29,6 +34,15 @@ class AirbyteClient:
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),
         )
+        if self.config.username:
+            client_config.auth_token_mode = "Basic"
+            client_config.auth_token = lambda: (
+                generate_http_basic_token(
+                    self.config.username, self.config.password.get_secret_value()
+                ),
+                0,
+            )
+
         self.client = REST(client_config)
 
     def list_workspaces(self) -> List[dict]:
@@ -36,7 +50,7 @@ class AirbyteClient:
         Method returns the list of workflows
         an airbyte instance can contain multiple workflows
         """
-        response = self.client.post(f"/workspaces/list")
+        response = self.client.post("/workspaces/list")
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response.get("workspaces")
@@ -46,7 +60,7 @@ class AirbyteClient:
         Method returns the list all of connections of workflow
         """
         data = {"workspaceId": workflow_id}
-        response = self.client.post(f"/connections/list", data=json.dumps(data))
+        response = self.client.post("/connections/list", data=json.dumps(data))
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response.get("connections")
@@ -56,7 +70,7 @@ class AirbyteClient:
         Method returns the list all of jobs of a connection
         """
         data = {"configId": connection_id, "configTypes": ["sync", "reset_connection"]}
-        response = self.client.post(f"/jobs/list", data=json.dumps(data))
+        response = self.client.post("/jobs/list", data=json.dumps(data))
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response.get("jobs")
@@ -66,7 +80,7 @@ class AirbyteClient:
         Method returns source details
         """
         data = {"sourceId": source_id}
-        response = self.client.post(f"/sources/get", data=json.dumps(data))
+        response = self.client.post("/sources/get", data=json.dumps(data))
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response
@@ -76,7 +90,7 @@ class AirbyteClient:
         Method returns destination details
         """
         data = {"destinationId": destination_id}
-        response = self.client.post(f"/destinations/get", data=json.dumps(data))
+        response = self.client.post("/destinations/get", data=json.dumps(data))
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response

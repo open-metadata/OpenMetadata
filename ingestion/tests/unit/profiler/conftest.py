@@ -13,7 +13,6 @@
 Confest for profiler tests
 """
 
-from unittest.mock import patch
 from uuid import UUID
 
 from pytest import fixture

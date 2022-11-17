@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Space, Statistic } from 'antd';
+import { Card, Col, Row, Space, Statistic } from 'antd';
 import React from 'react';
 import {
   Legend,
-  LegendValueFormatter,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -23,17 +22,33 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   chartCollection,
   tickFormatter,
+  name,
 }) => {
   const { data, information } = chartCollection;
 
-  const renderColorfulLegendText: LegendValueFormatter = (value, entry) => {
-    return <span style={{ color: entry?.color }}>{value}</span>;
+  const renderColorfulLegendText = (
+    value: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    entry: any
+  ) => <span style={{ color: entry?.color }}>{value}</span>;
+
+  const tooltipFormatter = (value: string | number | (string | number)[]) => {
+    const numValue = value as number;
+
+    return (
+      <>
+        {tickFormatter
+          ? `${numValue.toFixed(2)}${tickFormatter}`
+          : formatNumberWithComma(numValue)}
+      </>
+    );
   };
 
   return (
@@ -48,7 +63,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 value={
                   tickFormatter
                     ? `${info.latestValue}${tickFormatter}`
-                    : info.latestValue
+                    : formatNumberWithComma(info.latestValue as number)
                 }
                 valueStyle={{ color: info.color }}
               />
@@ -57,18 +72,26 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         </Col>
         <Col span={20}>
           {data.length > 0 ? (
-            <ResponsiveContainer minHeight={300}>
-              <LineChart className="tw-w-full" data={data}>
-                <XAxis dataKey="name" padding={{ left: 16, right: 16 }} />
+            <ResponsiveContainer id={`${name}_graph`} minHeight={300}>
+              <LineChart
+                className="tw-w-full"
+                data={data}
+                margin={{ left: 16 }}>
+                <XAxis
+                  dataKey="name"
+                  padding={{ left: 16, right: 16 }}
+                  tick={{ fontSize: 12 }}
+                />
 
                 <YAxis
                   allowDataOverflow
                   padding={{ top: 16, bottom: 16 }}
+                  tick={{ fontSize: 12 }}
                   tickFormatter={(props) =>
                     tickFormatter ? `${props}${tickFormatter}` : props
                   }
                 />
-                <Tooltip />
+                <Tooltip formatter={tooltipFormatter} />
                 {information.map((info) => (
                   <Line
                     dataKey={info.dataKey}
@@ -87,15 +110,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               className="tw-h-full tw-w-full"
               justify="center">
               <Col>
-                <Empty
-                  description="No Data Available"
-                  image={
-                    <SVGIcons
-                      alt="no-data-placeholder"
-                      icon={Icons.NO_DATA_PLACEHOLDER}
-                    />
-                  }
-                />
+                <ErrorPlaceHolder>
+                  <p>No Data Available</p>
+                </ErrorPlaceHolder>
               </Col>
             </Row>
           )}

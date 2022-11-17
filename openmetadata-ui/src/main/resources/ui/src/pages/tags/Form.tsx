@@ -24,7 +24,6 @@ import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
 import { errorMsg } from '../../utils/CommonUtils';
 
 type CustomTagCategory = {
-  categoryType: string;
   description: CreateTagCategory['description'];
   name: CreateTagCategory['name'];
 };
@@ -42,7 +41,6 @@ const Form: React.FC<FormProp> = forwardRef(
     const [data, setData] = useState<CustomTagCategory>({
       name: initialData.name,
       description: initialData.description,
-      categoryType: initialData.categoryType,
     });
 
     const isMounting = useRef<boolean>(true);
@@ -83,25 +81,6 @@ const Form: React.FC<FormProp> = forwardRef(
       <div className="tw-w-full tw-flex ">
         <div className="tw-flex tw-w-full">
           <div className="tw-w-full">
-            {initialData.categoryType && (
-              <div className="tw-mb-4">
-                <label className="tw-form-label required-field">
-                  Select Category Type
-                </label>
-                <select
-                  required
-                  className="tw-text-sm tw-appearance-none tw-border tw-border-main
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
-                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
-                  data-testid="category-type"
-                  name="categoryType"
-                  value={data.categoryType}
-                  onChange={onChangeHadler}>
-                  <option value="Descriptive">Descriptive </option>
-                  <option value="Classification">Classification</option>
-                </select>
-              </div>
-            )}
             <div className="tw-mb-4">
               <label className="tw-form-label required-field">Name</label>
               <input

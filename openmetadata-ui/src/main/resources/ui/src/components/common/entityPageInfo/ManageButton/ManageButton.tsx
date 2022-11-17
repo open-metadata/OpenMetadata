@@ -16,6 +16,7 @@ import { Button, Dropdown, Menu, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, { FC, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -33,9 +34,13 @@ interface Props {
   entityFQN?: string;
   isRecursiveDelete?: boolean;
   deleteMessage?: string;
+  softDeleteMessagePostFix?: string;
+  hardDeleteMessagePostFix?: string;
   canDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
+  onRestoreEntity?: () => void;
+  deleted?: boolean;
 }
 
 const ManageButton: FC<Props> = ({
@@ -43,6 +48,8 @@ const ManageButton: FC<Props> = ({
   afterDeleteAction,
   buttonClassName,
   deleteMessage,
+  softDeleteMessagePostFix,
+  hardDeleteMessagePostFix,
   entityName,
   entityType,
   canDelete,
@@ -50,7 +57,10 @@ const ManageButton: FC<Props> = ({
   isRecursiveDelete,
   extraDropdownContent,
   onAnnouncementClick,
+  onRestoreEntity,
+  deleted,
 }) => {
+  const { t } = useTranslation();
   const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -66,20 +76,23 @@ const ManageButton: FC<Props> = ({
                 })}
                 size={8}
                 onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDelete(true);
-                  setShowActions(false);
+                  if (canDelete) {
+                    e.stopPropagation();
+                    setIsDelete(true);
+                    setShowActions(false);
+                  }
                 }}>
                 <SVGIcons alt="Delete" icon={Icons.DELETE} />
                 <div className="tw-text-left" data-testid="delete-button">
                   <p
                     className="tw-font-medium"
                     data-testid="delete-button-title">
-                    Delete
+                    {t('label.delete')}
                   </p>
                   <p className="tw-text-grey-muted tw-text-xs">
-                    Deleting this {entityType} will permanently remove its
-                    metadata from OpenMetadata.
+                    {t('message.delete-action-description', {
+                      entityType,
+                    })}
                   </p>
                 </div>
               </Space>
@@ -87,6 +100,46 @@ const ManageButton: FC<Props> = ({
           ),
           key: 'delete-button',
         },
+        ...(deleted
+          ? [
+              {
+                label: (
+                  <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
+                    <Space
+                      className={classNames('tw-cursor-pointer manage-button', {
+                        'tw-cursor-not-allowed tw-opacity-50': !canDelete,
+                      })}
+                      size={8}
+                      onClick={(e) => {
+                        if (canDelete) {
+                          e.stopPropagation();
+                          setShowActions(false);
+                          onRestoreEntity && onRestoreEntity();
+                        }
+                      }}>
+                      <SVGIcons alt="Restore" icon={Icons.RESTORE} />
+                      <div
+                        className="tw-text-left"
+                        data-testid="restore-button">
+                        <p
+                          className="tw-font-medium"
+                          data-testid="delete-button-title">
+                          {t('label.restore')}
+                        </p>
+                        <p className="tw-text-grey-muted tw-text-xs">
+                          {t('message.restore-action-description', {
+                            entityType,
+                          })}
+                        </p>
+                      </div>
+                    </Space>
+                  </Tooltip>
+                ),
+                key: 'restore-button',
+              },
+            ]
+          : []),
+
         ...(ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
           ? [
               {
@@ -106,10 +159,11 @@ const ManageButton: FC<Props> = ({
                     <div
                       className="tw-text-left"
                       data-testid="announcement-button">
-                      <p className="tw-font-medium">Announcements</p>
+                      <p className="tw-font-medium">
+                        {t('label.announcements')}
+                      </p>
                       <p className="tw-text-grey-muted tw-text-xs">
-                        Set up banners to inform your team of upcoming
-                        maintenance, updates, &amp; deletions.
+                        {t('message.announcement-action-description')}
                       </p>
                     </div>
                   </Space>
@@ -157,7 +211,9 @@ const ManageButton: FC<Props> = ({
           entityId={entityId || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}
+          hardDeleteMessagePostFix={hardDeleteMessagePostFix}
           isRecursiveDelete={isRecursiveDelete}
+          softDeleteMessagePostFix={softDeleteMessagePostFix}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
         />

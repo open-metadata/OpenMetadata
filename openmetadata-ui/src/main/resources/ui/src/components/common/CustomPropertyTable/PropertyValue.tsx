@@ -64,6 +64,7 @@ export const PropertyValue: FC<Props> = ({
           : updatedValue,
     };
     await onExtensionUpdate(updatedExtension);
+    setShowInput(false);
   };
 
   const getPropertyInput = () => {

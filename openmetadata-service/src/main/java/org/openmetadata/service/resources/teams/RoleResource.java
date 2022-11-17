@@ -48,7 +48,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
@@ -57,15 +58,14 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.RoleCache;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -90,34 +90,22 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     super(Role.class, new RoleRepository(collectionDAO), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    List<String> jsonFiles = EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", Entity.ROLE));
-    jsonFiles.forEach(
-        jsonFile -> {
-          try {
-            String roleJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonFile);
-            Role role = JsonUtils.readValue(roleJson, entityClass);
-            List<EntityReference> policies = role.getPolicies();
-            for (EntityReference policy : policies) {
-              EntityReference ref =
-                  Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
-              policy.setId(ref.getId());
-            }
-            dao.initSeedData(role);
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the {} from file {}", Entity.ROLE, jsonFile, e);
-          }
-        });
+    List<Role> roles = dao.getEntitiesFromSeedData();
+    for (Role role : roles) {
+      List<EntityReference> policies = role.getPolicies();
+      for (EntityReference policy : policies) {
+        EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
+        policy.setId(ref.getId());
+      }
+      dao.initializeEntity(role);
+    }
   }
 
   public static class RoleList extends ResultList<Role> {
     @SuppressWarnings("unused") /* Required for tests */
     RoleList() {}
-
-    public RoleList(List<Role> roles, String beforeCursor, String afterCursor, int total) {
-      super(roles, beforeCursor, afterCursor, total);
-    }
   }
 
   public static final String FIELDS = "policies,teams,users";
@@ -196,9 +184,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "role Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "role Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -295,7 +283,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -315,7 +303,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, role, true);
+    return create(uriInfo, securityContext, role);
   }
 
   @PUT
@@ -335,7 +323,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, role, true);
+    Response response = createOrUpdate(uriInfo, securityContext, role);
     RoleCache.getInstance().invalidateRole(role.getId());
     return response;
   }
@@ -391,9 +379,28 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    Response response = delete(uriInfo, securityContext, id, true, hardDelete, true);
+    Response response = delete(uriInfo, securityContext, id, true, hardDelete);
     RoleCache.getInstance().invalidateRole(id);
     return response;
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted role.",
+      tags = "roles",
+      description = "Restore a soft deleted role.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Role. ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
+      })
+  public Response restoreRole(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Role getRole(CreateRole create, String user) throws IOException {
@@ -401,5 +408,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
     return copy(new Role(), create, user).withPolicies(create.getPolicies());
+  }
+
+  public static EntityReference getRole(String roleName) {
+    EntityRepository<EntityInterface> dao = Entity.getEntityRepository(Entity.ROLE);
+    return dao.dao.findEntityReferenceByName(roleName);
   }
 }

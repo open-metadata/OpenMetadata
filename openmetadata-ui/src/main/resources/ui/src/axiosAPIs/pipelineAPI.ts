@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreEntitiesRequestType } from 'Models';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -21,6 +21,7 @@ import { Paging } from '../generated/type/paging';
 import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+import { ListTestCaseResultsParams } from './testAPI';
 
 export const getPipelineVersions = async (id: string) => {
   const url = `/pipelines/${id}/versions`;
@@ -123,12 +124,27 @@ export const patchPipelineDetails = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getPipelineStatus = async (fqn: string) => {
+export const getPipelineStatus = async (
+  fqn: string,
+  params?: ListTestCaseResultsParams
+) => {
   const url = `/pipelines/${fqn}/status`;
 
   const response = await APIClient.get<PagingResponse<Array<PipelineStatus>>>(
-    url
+    url,
+    { params }
   );
+
+  return response.data;
+};
+
+export const restorePipeline = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreEntitiesRequestType,
+    AxiosResponse<Pipeline>
+  >('/pipelines/restore', {
+    id,
+  });
 
   return response.data;
 };

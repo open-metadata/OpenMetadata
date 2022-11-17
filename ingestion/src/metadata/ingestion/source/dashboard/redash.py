@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Redash source module
+"""
 
 from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
@@ -16,8 +19,9 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as Lineage_Dashboard,
+    Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
@@ -27,12 +31,12 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.lineage.sql_lineage import clean_raw_query
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
+from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -40,7 +44,7 @@ from metadata.utils.logger import ingestion_logger
 # Disable the DictConfigurator.configure method while importing LineageRunner
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner
+from sqllineage.runner import LineageRunner  # pylint: disable=C0413
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
@@ -50,12 +54,9 @@ logger = ingestion_logger()
 
 
 class RedashSource(DashboardServiceSource):
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
+    """
+    Redash Source Class
+    """
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -78,7 +79,7 @@ class RedashSource(DashboardServiceSource):
         """
         Get Dashboard Name
         """
-        return dashboard_details["id"]
+        return dashboard_details["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         """
@@ -119,46 +120,42 @@ class RedashSource(DashboardServiceSource):
         In redash we do not get table, database_schema or database name but we do get query
         the lineage is being generated based on the query
         """
+
+        to_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageDashboard,
+            service_name=self.config.serviceName,
+            dashboard_name=str(dashboard_details.get("id")),
+        )
+        to_entity = self.metadata.get_by_name(
+            entity=LineageDashboard,
+            fqn=to_fqn,
+        )
         for widgets in dashboard_details.get("widgets", []):
             visualization = widgets.get("visualization")
-            if not visualization.get("query"):
+            if not visualization:
                 continue
             if visualization.get("query", {}).get("query"):
-                parser = LineageRunner(visualization["query"]["query"])
+                parser = LineageRunner(clean_raw_query(visualization["query"]["query"]))
             for table in parser.source_tables:
                 table_name = str(table)
-                database_schema = None
-                if "." in table:
-                    database_schema, table = fqn.split(table_name)[-2:]
-                table_entities = search_table_entities(
-                    metadata=self.metadata,
-                    database=None,
+                database_schema_table = fqn.split_table_name(table_name)
+                from_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
                     service_name=db_service_name,
-                    database_schema=database_schema,
-                    table=table_name,
+                    schema_name=database_schema_table.get("database_schema"),
+                    table_name=database_schema_table.get("table"),
+                    database_name=database_schema_table.get("database"),
                 )
-                for from_entity in table_entities:
-                    to_entity = self.metadata.get_by_name(
-                        entity=Lineage_Dashboard,
-                        fqn=fqn.build(
-                            self.metadata,
-                            Lineage_Dashboard,
-                            service_name=self.config.serviceName,
-                            dashboard_name=str(dashboard_details.get("id")),
-                        ),
+                from_entity = self.metadata.get_by_name(
+                    entity=Table,
+                    fqn=from_fqn,
+                )
+                if from_entity and to_entity:
+                    yield self._get_add_lineage_request(
+                        to_entity=to_entity, from_entity=from_entity
                     )
-                    if from_entity and to_entity:
-                        lineage = AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=from_entity.id.__root__, type="table"
-                                ),
-                                toEntity=EntityReference(
-                                    id=to_entity.id.__root__, type="dashboard"
-                                ),
-                            )
-                        )
-                        yield lineage
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
@@ -168,9 +165,17 @@ class RedashSource(DashboardServiceSource):
         """
         for widgets in dashboard_details.get("widgets", []):
             visualization = widgets.get("visualization")
+            chart_display_name = str(
+                visualization["query"]["name"] if visualization else widgets["id"]
+            )
+            if filter_by_chart(
+                self.source_config.chartFilterPattern, chart_display_name
+            ):
+                self.status.filter(chart_display_name, "Chart Pattern not allowed")
+                continue
             yield CreateChartRequest(
                 name=widgets["id"],
-                displayName=visualization["query"]["name"]
+                displayName=chart_display_name
                 if visualization and visualization["query"]
                 else "",
                 chartType=get_standard_chart_type(

@@ -13,25 +13,42 @@
 
 /// <reference types="cypress" />
 
-import { descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, searchEntity, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode } from '../../common/common';
-import { DELETE_TERM, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import {
+    deleteCreatedService,
+    descriptionBox,
+    goToAddNewServicePage,
+    handleIngestionRetry,
+    interceptURL,
+    login,
+    mySqlConnectionInput,
+    scheduleIngestion,
+    testServiceCreationAndIngestion,
+    toastNotification,
+    uuid,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
+} from '../../common/common';
+import {
+    API_SERVICE, DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM,
+    LOGIN,
+    MYDATA_SUMMARY_OPTIONS,
+    NEW_COLUMN_TEST_CASE,
+    NEW_TABLE_TEST_CASE,
+    NEW_TEST_SUITE,
+    SERVICE_TYPE,
+    TEAM_ENTITY
+} from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const columnTestName = `${NEW_COLUMN_TEST_CASE.column}_${NEW_COLUMN_TEST_CASE.type}`;
 
 const goToProfilerTab = () => {
-  // click on the 1st result and go to entity details page and follow the entity
-  interceptURL(
-    'GET',
-    '/api/v1/tables/name/*?fields=columns,usageSummary,followers,joins,tags,owner,dataModel,profile,tests,tableConstraints,extension&include=all',
-    'getEntityDetails'
+  visitEntityDetailsPage(
+    TEAM_ENTITY,
+    serviceName,
+    MYDATA_SUMMARY_OPTIONS.tables
   );
-  cy.get('[data-testid="table-link"]')
-    .first()
-    .contains(TEAM_ENTITY, { matchCase: false })
-    .click();
-  verifyResponseStatusCode('@getEntityDetails', 200);
 
   cy.get('[data-testid="Profiler & Data Quality"]')
     .should('be.visible')
@@ -40,32 +57,28 @@ const goToProfilerTab = () => {
 
 describe('Data Quality and Profiler should work properly', () => {
   it('Add and ingest mysql data', () => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
     goToAddNewServicePage(SERVICE_TYPE.Database);
-    const connectionInput = () => {
-      cy.get('#root_username').type('openmetadata_user');
-      cy.get('#root_password').type('openmetadata_password');
-      cy.get('#root_hostPort').type('mysql:3306');
-      cy.get('#root_databaseSchema').type('openmetadata_db');
-    };
 
     const addIngestionInput = () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
-        .type('openmetadata_db');
+        .type(Cypress.env('mysqlDatabaseSchema'));
     };
 
     testServiceCreationAndIngestion(
       serviceType,
-      connectionInput,
+      mySqlConnectionInput,
       addIngestionInput,
       serviceName
     );
   });
-
+  
   it('Add Profiler ingestion', () => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    searchEntity(TEAM_ENTITY);
     goToProfilerTab();
 
     cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
@@ -93,6 +106,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();
+    cy.get('[data-testid="profileSample"]').should('be.visible').type(10);
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
@@ -110,17 +124,18 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     handleIngestionRetry('database', true, 0, 'profiler');
-
-    // check if profiler is ingested properly
-    searchEntity(TEAM_ENTITY, false);
+  });
+  
+  it('Check if profiler is ingested properly or not', () => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
     goToProfilerTab();
     cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
   });
 
   it('Add table test case with new test suite', () => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-
-    searchEntity(TEAM_ENTITY);
     goToProfilerTab();
 
     cy.get('[data-testid="profiler-add-table-test-btn"]')
@@ -166,14 +181,12 @@ describe('Data Quality and Profiler should work properly', () => {
     // wait for ingestion to run
     cy.clock();
     cy.wait(10000);
-    interceptURL(
-      'GET',
-      '/api/v1/testCase?fields=testCaseResult,testDefinition,testSuite&testSuiteId=*&limit=10',
-      'testCase'
-    );
+    interceptURL('GET', '/api/v1/testCase?fields=*', 'testCase');
     cy.get('[data-testid="view-service-button"]')
       .should('be.visible')
       .click({ force: true });
+
+    verifyResponseStatusCode('@getEntityDetails', 200);
 
     verifyResponseStatusCode('@testCase', 200);
     cy.contains(`${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`).should(
@@ -183,9 +196,8 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Edit Test Case should work properly', () => {
     const testName = `${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`;
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-
-    searchEntity(TEAM_ENTITY);
     goToProfilerTab();
 
     cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
@@ -213,9 +225,9 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Delete Test Case should work properly', () => {
     const testName = `${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`;
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
 
-    searchEntity(TEAM_ENTITY);
     goToProfilerTab();
 
     cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
@@ -241,16 +253,13 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
-    cy.get('.Toastify__toast-body')
-      .contains('Test Case deleted successfully!')
-      .should('be.visible')
-      .wait(200);
+    toastNotification('Test Case deleted successfully!')
     cy.get('table').contains('No Data').should('be.visible');
   });
 
   it('Add Column test case should work properly', () => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    searchEntity(TEAM_ENTITY);
     goToProfilerTab();
     cy.get('[data-testid="add-test-id"]')
       .scrollIntoView()
@@ -301,8 +310,8 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Edit column test case should work properly', () => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    searchEntity(TEAM_ENTITY);
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
@@ -328,8 +337,8 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Delete Column Test Case should work properly', () => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    searchEntity(TEAM_ENTITY);
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
@@ -363,13 +372,9 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Delete Test suite should work properly', () => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    cy.get('[data-testid="global-setting-left-panel"]')
-      .contains('Test Suite')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="appbar-item-data-quality"]').should('be.visible').click();
     cy.get(`[data-row-key="${NEW_TEST_SUITE.name}"] > :nth-child(1) > a`)
       .contains(NEW_TEST_SUITE.name)
       .should('be.visible')
@@ -393,5 +398,50 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains('Test Suite deleted successfully!')
       .should('be.visible')
       .wait(200);
+  });
+
+  it('delete created service', () => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
+  });
+
+  it('Profiler matrix and test case graph should visible', () => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
+    const { term, entity, serviceName, testCaseName } =
+      DATA_QUALITY_SAMPLE_DATA_TABLE;
+    visitEntityDetailsPage(term, serviceName, entity);
+    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
+    cy.get('[data-testid="Profiler & Data Quality"]')
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="Profiler & Data Quality"]').should(
+      'have.class',
+      'active'
+    );
+    interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
+
+    cy.get('[data-row-key="shop_id"] > :nth-child(1) > a')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    verifyResponseStatusCode('@getProfilerInfo', 200);
+
+    cy.get('#count_graph').scrollIntoView().should('be.visible');
+    cy.get('#proportion_graph').scrollIntoView().should('be.visible');
+    cy.get('#math_graph').scrollIntoView().should('be.visible');
+    cy.get('#sum_graph').scrollIntoView().should('be.visible');
+
+    interceptURL('GET', '/api/v1/testCase?*', 'getTestCaseInfo');
+    interceptURL('GET', '/api/v1/testCase/*/testCaseResult?*', 'getTestResult');
+    cy.get('[data-testid="profiler-switch"]')
+      .contains('Data Quality')
+      .scrollIntoView()
+      .click();
+    verifyResponseStatusCode('@getTestCaseInfo', 200);
+    cy.get(`[data-testid="${testCaseName}"]`).should('be.visible').click();
+    verifyResponseStatusCode('@getTestResult', 200);
+    cy.get(`[id="${testCaseName}_graph"]`).should('be.visible');
   });
 });

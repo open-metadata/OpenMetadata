@@ -58,6 +58,10 @@ import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
+/**
+ * Resource for managing OpenMetadata settings that an admin can change. Example - using APIs here, the conversation
+ * thread notification can be changed to include only events that an organization uses.
+ */
 @Path("/v1/settings")
 @Api(value = "Settings Collection", tags = "Settings collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -114,10 +118,6 @@ public class SettingsResource {
     public SettingsList() {
       /* Required for serde */
     }
-
-    public SettingsList(List<Settings> data) {
-      super(data);
-    }
   }
 
   public SettingsResource(CollectionDAO dao, Authorizer authorizer) {
@@ -139,8 +139,8 @@ public class SettingsResource {
             description = "List of Settings",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
-  public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public ResultList<Settings> list(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     return settingsRepository.listAllConfigs();
   }
 
@@ -157,8 +157,8 @@ public class SettingsResource {
             description = "List of Settings",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
-  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
+  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     return bootStrappedFilters;
   }
 
@@ -175,7 +175,8 @@ public class SettingsResource {
             description = "List of Filters",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
       })
-  public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+  public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     Settings settings =
         new Settings().withConfigType(ACTIVITY_FEED_FILTER_SETTING).withConfigValue(bootStrappedFilters);
     return settingsRepository.createNewSetting(settings);
@@ -198,6 +199,7 @@ public class SettingsResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("settingName") String settingName) {
+    authorizer.authorizeAdmin(securityContext);
     return settingsRepository.getConfigWithKey(settingName);
   }
 
@@ -215,6 +217,7 @@ public class SettingsResource {
       })
   public Response createOrUpdateSetting(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Settings settingName) {
+    authorizer.authorizeAdmin(securityContext);
     return settingsRepository.createOrUpdate(settingName);
   }
 
@@ -263,8 +266,8 @@ public class SettingsResource {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
     return settingsRepository.patchSetting(settingName, patch);
   }
 }

@@ -24,8 +24,11 @@ import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 public class BotRepository extends EntityRepository<Bot> {
+
+  static final String BOT_UPDATE_FIELDS = "botUser";
+
   public BotRepository(CollectionDAO dao) {
-    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", "");
+    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
   }
 
   @Override
@@ -35,7 +38,6 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void prepare(Bot entity) throws IOException {
-    setFullyQualifiedName(entity);
     User user = daoCollection.userDAO().findEntityById(entity.getBotUser().getId(), Include.ALL);
     entity.getBotUser().withName(user.getName()).withDisplayName(user.getDisplayName());
   }
@@ -44,7 +46,7 @@ public class BotRepository extends EntityRepository<Bot> {
   public void storeEntity(Bot entity, boolean update) throws IOException {
     EntityReference botUser = entity.getBotUser();
     entity.withBotUser(null);
-    store(entity.getId(), entity, update);
+    store(entity, update);
     entity.withBotUser(botUser);
   }
 
@@ -71,6 +73,21 @@ public class BotRepository extends EntityRepository<Bot> {
   public class BotUpdater extends EntityUpdater {
     public BotUpdater(Bot original, Bot updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateUser(original, updated);
+    }
+
+    private void updateUser(Bot original, Bot updated) throws IOException {
+      deleteTo(original.getBotUser().getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+      addRelationship(updated.getId(), updated.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
+      if (original.getBotUser() == null
+          || updated.getBotUser() == null
+          || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {
+        recordChange(BOT_UPDATE_FIELDS, original.getBotUser(), updated.getBotUser());
+      }
     }
   }
 }

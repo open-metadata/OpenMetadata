@@ -16,9 +16,9 @@ Test SQA Interface
 import os
 from datetime import datetime, timezone
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
-from pytest import raises
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
@@ -38,7 +38,8 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     MetricTypes,
@@ -74,23 +75,22 @@ class SQAInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        self.sqa_profiler_interface = SQAInterface(
-            sqlite_conn, table=User, table_entity=table_entity
-        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            self.sqa_profiler_interface = SQAProfilerInterface(
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=sqlite_conn,
+                    table_entity=table_entity,
+                    ometa_client=None,
+                )
+            )
         self.table = User
 
     def test_init_interface(self):
         """Test we can instantiate our interface object correctly"""
 
-        assert self.sqa_profiler_interface._sampler != None
-        assert self.sqa_profiler_interface._runner != None
         assert isinstance(self.sqa_profiler_interface.session, Session)
-
-    def test_private_attributes(self):
-        with raises(AttributeError):
-            self.sqa_profiler_interface.runner = None
-            self.sqa_profiler_interface.sampler = None
-            self.sqa_profiler_interface.sample = None
 
     def tearDown(self) -> None:
         self.sqa_profiler_interface._sampler = None
@@ -113,9 +113,16 @@ class SQAInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sqa_profiler_interface = SQAInterface(
-        sqlite_conn, table=User, table_entity=table_entity
-    )
+    with patch.object(
+        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+    ):
+        sqa_profiler_interface = SQAProfilerInterface(
+            profiler_interface_args=ProfilerInterfaceArgs(
+                service_connection_config=sqlite_conn,
+                table_entity=table_entity,
+                ometa_client=None,
+            )
+        )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -152,8 +159,6 @@ class SQAInterfaceTestMultiThread(TestCase):
     def test_init_interface(self):
         """Test we can instantiate our interface object correctly"""
 
-        assert self.sqa_profiler_interface._sampler != None
-        assert self.sqa_profiler_interface._runner != None
         assert isinstance(self.sqa_profiler_interface.session, Session)
 
     def test_get_all_metrics(self):

@@ -21,7 +21,6 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -47,7 +46,9 @@ class LineageSource(QueryParserSource, ABC):
         This is a simplified version of the UsageSource query parsing.
         """
         if self.config.sourceConfig.config.queryLogFilePath:
-            with open(self.config.sourceConfig.config.queryLogFilePath, "r") as file:
+            with open(
+                self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
+            ) as file:
                 for row in csv.DictReader(file):
                     query_dict = dict(row)
                     yield TableQuery(
@@ -72,14 +73,6 @@ class LineageSource(QueryParserSource, ABC):
                     for row in rows:
                         query_dict = dict(row)
                         try:
-                            if filter_by_database(
-                                self.source_config.databaseFilterPattern,
-                                self.get_database_name(query_dict),
-                            ) or filter_by_schema(
-                                self.source_config.schemaFilterPattern,
-                                schema_name=self.get_schema_name(query_dict),
-                            ):
-                                continue
                             yield TableQuery(
                                 query=query_dict["query_text"],
                                 databaseName=self.get_database_name(query_dict),

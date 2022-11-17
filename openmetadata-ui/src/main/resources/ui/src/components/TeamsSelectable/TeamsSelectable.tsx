@@ -13,10 +13,11 @@
 
 import { TreeSelect } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { getTeamsByQuery } from '../../axiosAPIs/miscAPI';
-import { Team, TeamType } from '../../generated/entity/teams/team';
-import { EntityReference } from '../../generated/type/entityReference';
+import { getTeamsHierarchy } from '../../axiosAPIs/teamsAPI';
+import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
+import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 interface Props {
   showTeamsAlert?: boolean;
@@ -25,13 +26,7 @@ interface Props {
   placeholder?: string;
 }
 
-interface Node {
-  team: Team;
-  children: Array<Node>;
-}
-
 const { TreeNode } = TreeSelect;
-const TEAM_OPTION_PAGE_LIMIT = 100;
 
 const TeamsSelectable = ({
   showTeamsAlert,
@@ -41,145 +36,38 @@ const TeamsSelectable = ({
 }: Props) => {
   const [value, setValue] = useState<Array<string>>();
   const [noTeam, setNoTeam] = useState<boolean>(false);
-  const [nodes, setNodes] = useState<Array<Node>>([]);
-  const teamCacheMap: Map<string, Team[]> = new Map();
+  const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
 
   const onChange = (newValue: string[]) => {
     onSelectionChange(newValue);
     setValue(newValue);
   };
 
-  const deepCopy = (n: Node) => {
-    const children: Array<Node> = [];
-    if (n.children.length) {
-      n.children.forEach((child) => children.push(deepCopy(child)));
-    }
-
-    return { team: n.team, children };
-  };
-
-  const mergeTrees = (node1: Node, node2: Node) => {
-    const toMerge: Node[] = node1.children.filter((value) =>
-      node2.children.some((n) => n.team.id === value.team.id)
-    );
-    const toAdd: Node[] = node2.children.filter(
-      (value) => !node1.children.some((n) => n.team.id === value.team.id)
-    );
-    toMerge.forEach((n) => {
-      mergeTrees(
-        n,
-        node2.children[node2.children.findIndex((x) => x.team.id === n.team.id)]
-      );
-    });
-
-    toAdd.forEach((n) => {
-      node1.children = node1.children.concat(deepCopy(n));
-    });
-
-    return node1;
-  };
-
-  const fetchTeam = (id: string) => {
-    return new Promise<Team[]>((resolve, reject) => {
-      if (teamCacheMap.has(id)) {
-        const team = teamCacheMap.get(id);
-        if (team != null) {
-          resolve(team);
-        }
-      } else {
-        getTeamsByQuery({
-          q: `id:${id}`,
-          from: 0,
-          size: 1,
-        })
-          // TODO: Improve type below
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .then((res: any) => {
-            const teams: Team[] =
-              res.hits.hits.map((t: { _source: Team }) => t._source) || [];
-            teamCacheMap.set(id, teams);
-            resolve(teams);
-          })
-          .catch((error) => {
-            reject(error);
-          });
-      }
-    });
-  };
-
-  const processTeams = async (teams: Team[]) => {
-    const nodes = new Map<string, Node>();
-
-    return new Promise<Map<string, Node>>((resolve) => {
-      Promise.all(
-        teams.map(async (team) => {
-          let node: Node = { children: [], team };
-          if (
-            team.parents?.length &&
-            team.parents[0].name !== TeamType.Organization
-          ) {
-            let count = 0;
-            while (
-              count < 10 &&
-              team.parents &&
-              team.parents[0].name !== TeamType.Organization
-            ) {
-              const parent: EntityReference = team.parents[0];
-              if (nodes.has(parent.id)) {
-                // merge trees
-                const parentNode = nodes.get(parent.id);
-                if (parentNode != null) {
-                  node = mergeTrees(parentNode, { team, children: [node] });
-                  team = parentNode.team;
-                }
-              } else {
-                const result = await fetchTeam(parent.id);
-                if (result.length) {
-                  const parentTeam: Team = result[0];
-                  node = { team: parentTeam, children: [node] };
-                  team = parentTeam;
-                }
-              }
-              count++;
-            }
-          }
-          nodes.set(team.id, node);
-        })
-      ).then(() => resolve(nodes));
-    });
-  };
-
   const loadOptions = () => {
-    getTeamsByQuery({
-      q: '*' + (filterJoinable ? ` AND isJoinable:true` : ''),
-      from: 0,
-      size: TEAM_OPTION_PAGE_LIMIT,
-      // TODO: Improve type below
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }).then((res: any) => {
-      const teams: Team[] =
-        res.hits.hits.map((t: { _source: Team }) => t._source) || [];
-      // Build hierarchical tree structure for Tree Select
-      processTeams(teams).then((nodes: Map<string, Node>) => {
-        const nodeValues: Array<Node> = Array.from(nodes.values());
-        setNodes(nodeValues);
+    getTeamsHierarchy(filterJoinable)
+      .then((res) => {
+        const teams: TeamHierarchy[] = res.data;
+        setTeams(teams);
         showTeamsAlert && setNoTeam(teams.length === 0);
+      })
+      .catch((error) => {
+        showErrorToast(error);
       });
-    });
   };
 
   useEffect(() => {
     loadOptions();
   }, []);
 
-  const getTreeNodes = (node: Node) => {
-    const teamName = node.team.displayName || node.team.name;
-    const value = node.team.id;
-    const disabled = filterJoinable ? !node.team.isJoinable : false;
+  const getTreeNodes = (team: TeamHierarchy) => {
+    const teamName = getEntityName(team);
+    const value = team.id;
+    const disabled = filterJoinable ? !team.isJoinable : false;
 
     return (
       <TreeNode disabled={disabled} key={value} title={teamName} value={value}>
-        {node.children.map((n) => getTreeNodes(n))}
+        {team.children &&
+          team.children.map((n: TeamHierarchy) => getTreeNodes(n))}
       </TreeNode>
     );
   };
@@ -200,8 +88,8 @@ const TeamsSelectable = ({
         treeNodeFilterProp="title"
         value={value}
         onChange={onChange}>
-        {nodes.map((node) => {
-          return getTreeNodes(node);
+        {teams.map((team) => {
+          return getTreeNodes(team);
         })}
       </TreeSelect>
       {noTeam && (

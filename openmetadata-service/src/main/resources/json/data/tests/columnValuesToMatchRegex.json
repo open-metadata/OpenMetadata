@@ -4,6 +4,7 @@
   "description": "This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ",
   "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata"],
+  "supportedDataTypes": ["BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR"],
   "parameterDefinition": [
     {
       "name": "regex",

@@ -9,7 +9,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class DashboardIndex implements ElasticSearchIndex {
-  Dashboard dashboard;
+  final Dashboard dashboard;
   final List<String> excludeFields = List.of("changeDescription");
 
   public DashboardIndex(Dashboard dashboard) {
@@ -32,6 +32,7 @@ public class DashboardIndex implements ElasticSearchIndex {
       }
     }
     doc.put("name", dashboard.getDisplayName());
+    doc.put("displayName", dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
     doc.put("tags", parseTags.tags);
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(dashboard.getFollowers()));
     doc.put("tier", parseTags.tierTag);

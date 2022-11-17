@@ -72,13 +72,23 @@ from openmetadata_managed_apis.operations.state import disable_dag, enable_dag
 from openmetadata_managed_apis.operations.status import status
 from openmetadata_managed_apis.operations.trigger import trigger
 
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
+
 
 class TestAirflowOps(TestCase):
 
     dagbag: DagBag
     dag: DAG
 
-    conn = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+    conn = OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        authProvider="openmetadata",
+        securityConfig=OpenMetadataJWTClientConfig(
+            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        ),
+    )
     metadata = OpenMetadata(conn)
 
     @classmethod
@@ -149,7 +159,7 @@ class TestAirflowOps(TestCase):
         res = status(dag_id="dag_status")
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json[0].get("state"), "running")
+        self.assertEqual(res.json[0].get("pipelineState"), "running")
 
         self.dag.create_dagrun(
             run_type=DagRunType.MANUAL,
@@ -172,7 +182,7 @@ class TestAirflowOps(TestCase):
 
         self.assertEqual(res.status_code, 200)
 
-        res_status = {elem.get("state") for elem in res.json}
+        res_status = {elem.get("pipelineState") for elem in res.json}
         self.assertEqual(res_status, {"failed", "success"})
 
     def test_dag_state(self):
@@ -217,6 +227,7 @@ class TestAirflowOps(TestCase):
             id=uuid.uuid4(),
             pipelineType=PipelineType.metadata,
             name="my_new_dag",
+            fullyQualifiedName="test-service-ops.my_new_dag",
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,
             airflowConfig=AirflowConfig(),

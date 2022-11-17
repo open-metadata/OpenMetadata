@@ -24,7 +24,7 @@ from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str, ometa_logger
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 logger = ometa_logger()
 
 

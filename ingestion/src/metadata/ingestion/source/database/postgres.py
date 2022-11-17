@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Postgres source module
+"""
 import traceback
 from collections import namedtuple
 from typing import Iterable, Tuple
@@ -19,6 +22,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.sqltypes import String
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -31,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -69,7 +74,9 @@ class POLYGON(String):
 
 
 @reflection.cache
-def get_table_names(self, connection, schema=None, **kw):
+def get_table_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     """
     Overwriting get_table_names method of dialect to filter partitioned tables
     """
@@ -87,6 +94,11 @@ PGDialect.ischema_names = ischema_names
 
 
 class PostgresSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Postgres Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -109,11 +121,20 @@ class PostgresSource(CommonDbSourceService):
             for res in results:
                 row = list(res)
                 new_database = row[0]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
 
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_name=new_database
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else new_database,
                 ):
-                    self.status.filter(new_database, "Database pattern not allowed")
+                    self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
                 try:
@@ -153,6 +174,6 @@ class PostgresSource(CommonDbSourceService):
             (schema_table[0], schema_table[1], column_name),
         )
         pgtype = cur.fetchone()[1]
-        if pgtype == "geometry" or pgtype == "geography":
+        if pgtype in ("geometry", "geography"):
             return "GEOGRAPHY"
         return sa_type

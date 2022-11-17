@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -62,11 +63,9 @@ import org.openmetadata.schema.services.connections.database.ConnectionArguments
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -139,15 +138,13 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
   @Override
   public void validateCreatedEntity(
-      IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getAirflowConfig().getConcurrency(), ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSourceConfig(), ingestion);
   }
 
   @Override
-  public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders) {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSourceConfig(), updated.getSourceConfig());
@@ -181,6 +178,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
     create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(create);
   }
 
   @Test
@@ -486,8 +484,10 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
 
     // Update and connector orgs and options to database connection
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     DatabaseService databaseService =
-        Entity.getEntity(ingestionPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
+        databaseServiceResourceTest.getEntity(ingestionPipeline.getService().getId(), "connection", ADMIN_AUTH_HEADERS);
+
     DatabaseConnection databaseConnection = databaseService.getConnection();
     Map<String, String> advConfig = new HashMap<>();
     advConfig.put("hive.execution.engine", "tez");
@@ -593,6 +593,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     fieldAdded(change, FIELD_OWNER, USER1_REF);
     updateAndCheckEntity(
         request.withDescription("newDescription").withOwner(USER1_REF), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertNotNull(change);
   }
 
   private IngestionPipeline updateIngestionPipeline(

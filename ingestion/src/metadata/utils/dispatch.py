@@ -25,7 +25,7 @@ def enum_register():
     """
     Helps us register custom function for enum values
     """
-    registry = dict()
+    registry = {}
 
     def add(name: str):
         def inner(fn):
@@ -42,7 +42,7 @@ def class_register():
     """
     Helps us register custom functions for classes based on their name
     """
-    registry = dict()
+    registry = {}
 
     def add(entity_type: Type[T]):
         def inner(fn):

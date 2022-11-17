@@ -12,7 +12,6 @@
  */
 
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { isUndefined } from 'lodash';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -20,7 +19,6 @@ import { AirflowConfiguration } from '../generated/configuration/airflowConfigur
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
@@ -222,25 +220,16 @@ export const deleteEntity = async (
   entityType: string,
   entityId: string,
   isRecursive: boolean,
-  isSoftDelete = false
+  isHardDelete = true
 ) => {
-  let path = '';
+  const params = {
+    hardDelete: isHardDelete,
+    recursive: isRecursive,
+  };
 
-  if (isSoftDelete) {
-    path = getURLWithQueryFields(`/${entityType}/${entityId}`);
-  } else {
-    const searchParams = new URLSearchParams({ hardDelete: `true` });
-    if (!isUndefined(isRecursive)) {
-      searchParams.set('recursive', `${isRecursive}`);
-    }
-    path = getURLWithQueryFields(
-      `/${entityType}/${entityId}`,
-      '',
-      `${searchParams.toString()}`
-    );
-  }
-
-  return APIClient.delete(path);
+  return APIClient.delete(`/${entityType}/${entityId}`, {
+    params,
+  });
 };
 
 export const getAdvancedFieldOptions = (

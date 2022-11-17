@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -46,6 +45,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateMlModel;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -87,13 +87,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     MlModelList() {
       // Empty constructor needed for deserialization
     }
-
-    public MlModelList(List<MlModel> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
-  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary";
+  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension";
 
   @GET
   @Valid
@@ -230,7 +226,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException {
     MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, mlModel, true);
+    return create(uriInfo, securityContext, mlModel);
   }
 
   @PATCH
@@ -276,7 +272,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException {
     MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, mlModel, true);
+    return createOrUpdate(uriInfo, securityContext, mlModel);
   }
 
   @PUT
@@ -344,9 +340,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -375,7 +371,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @DELETE
@@ -398,7 +394,26 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           boolean hardDelete,
       @Parameter(description = "ML Model Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted MlModel.",
+      tags = "mlModels",
+      description = "Restore a soft deleted MlModel.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the MlModel ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class)))
+      })
+  public Response restoreMlModel(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private MlModel getMlModel(CreateMlModel create, String user) throws IOException {

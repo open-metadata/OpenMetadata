@@ -9,14 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Amundsen source to extract metadata
+"""
+
 import traceback
 from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
-from tomlkit import table
 
-from metadata.clients.neo4j_client import Neo4JConfig, Neo4jHelper
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -25,6 +27,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
@@ -55,13 +60,15 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
+from metadata.utils.amundsen_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.connections import get_connection
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -101,36 +108,35 @@ SUPERSET_DEFAULT_CONFIG = {
 
 
 class AmundsenStatus(SourceStatus):
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
-    filtered: List[str] = list()
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
+    filtered: List[str] = []
 
-    def scanned(self, entity_name: str) -> None:
-        self.success.append(entity_name)
-        logger.info("Entity Scanned: {}".format(entity_name))
+    def scanned(self, record: str) -> None:
+        self.success.append(record)
+        logger.info(f"Entity Scanned: {record}")
 
     def failure(self, key: str, reason: str) -> None:
         self.failures.append({key: reason})
 
 
 class AmundsenSource(Source[Entity]):
+    """
+    Amundsen source class
+    """
+
     dashboard_service: DashboardService
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
+        self.database_schema_object = None
+        self.database_object = None
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        neo4j_config = Neo4JConfig(
-            username=self.service_connection.username,
-            password=self.service_connection.password.get_secret_value(),
-            neo4j_url=self.service_connection.hostPort,
-            max_connection_life_time=self.service_connection.maxConnectionLifeTime,
-            neo4j_encrypted=self.service_connection.encrypted,
-            neo4j_validate_ssl=self.service_connection.validateSSL,
-        )
-        self.neo4j_helper = Neo4jHelper(neo4j_config)
+        self.connection = get_connection(self.service_connection)
+        self.client = self.connection.client
         self.status = AmundsenStatus()
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
@@ -151,18 +157,16 @@ class AmundsenSource(Source[Entity]):
         pass
 
     def next_record(self) -> Iterable[Entity]:
-        table_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
+        table_entities = self.client.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
         for table in table_entities:
             yield from self.create_table_entity(table)
 
-        user_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
+        user_entities = self.client.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
         for user in user_entities:
             yield from self.create_user_entity(user)
             yield from self.add_owner_to_entity(user)
 
-        dashboard_entities = self.neo4j_helper.execute_query(
-            NEO4J_AMUNDSEN_DASHBOARD_QUERY
-        )
+        dashboard_entities = self.client.execute_query(NEO4J_AMUNDSEN_DASHBOARD_QUERY)
         for dashboard in dashboard_entities:
             yield from self.create_dashboard_service(dashboard)
             yield from self.create_chart_entity(dashboard)
@@ -208,13 +212,14 @@ class AmundsenSource(Source[Entity]):
                     entity=DatabaseService, fqn=service_url.get_backend_name()
                 )
                 if service_entity:
-                    table_fqn = "{service}.{database_schema}.{table}".format(
-                        service=service_url.get_backend_name(),
-                        database_schema=service_url.host
+                    service = service_url.get_backend_name()
+                    database_schema = (
+                        service_url.host
                         if hasattr(service_entity.connection.config, "supportsDatabase")
-                        else f"default.{service_url.host.split('.')[-1]}",
-                        table=service_url.database,
+                        else f"default.{service_url.host.split('.')[-1]}"
                     )
+                    table = service_url.database
+                    table_fqn = f"{service}.{database_schema}.{table}"
                     table_entity: Table = self.metadata.get_by_name(
                         entity=Table, fqn=table_fqn
                     )
@@ -237,7 +242,6 @@ class AmundsenSource(Source[Entity]):
                 category_name=CreateTagCategoryRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(
                     name=tag, description="Amundsen Table Tag"
@@ -246,50 +250,66 @@ class AmundsenSource(Source[Entity]):
             yield tag_category
             logger.info(f"Tag Category {tag_category}, Primary Tag {tag} Ingested")
 
-    def create_table_entity(self, table):
+    def _yield_create_database(self, table):
         try:
-            service_name = table["database"]
-            # TODO: use metadata.get_service_or_create
-            service_entity = self.get_database_service(service_name)
+            service_entity = self.get_database_service(table["database"])
+            table_name = ""
+            if hasattr(service_entity.connection.config, "supportsDatabase"):
+                table_name = table["cluster"]
+            else:
+                table_name = "default"
 
             database_request = CreateDatabaseRequest(
-                name=table["cluster"]
+                name=table_name
                 if hasattr(service_entity.connection.config, "supportsDatabase")
                 else "default",
                 service=EntityReference(id=service_entity.id, type="databaseService"),
             )
-
             yield database_request
-
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
-                service_name=service_name,
-                database_name=database_request.name.__root__,
+                service_name=table["database"],
+                database_name=table_name,
             )
 
-            database_object = self.metadata.get_by_name(
+            self.database_object = self.metadata.get_by_name(
                 entity=Database, fqn=database_fqn
             )
+        except Exception as err:
+            logger.error(f"Failed to Ingest database due to - {err}")
+            logger.debug(traceback.format_exc())
+
+    def _yield_create_database_schema(self, table):
+        try:
 
             database_schema_request = CreateDatabaseSchemaRequest(
                 name=table["schema"],
-                database=EntityReference(id=database_object.id, type="database"),
+                database=EntityReference(id=self.database_object.id, type="database"),
             )
             yield database_schema_request
-
             database_schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=service_name,
-                database_name=database_request.name.__root__,
+                service_name=table["database"],
+                database_name=self.database_object.name.__root__,
                 schema_name=database_schema_request.name.__root__,
             )
 
-            database_schema_object = self.metadata.get_by_name(
+            self.database_schema_object = self.metadata.get_by_name(
                 entity=DatabaseSchema, fqn=database_schema_fqn
             )
+        except Exception as err:
+            logger.error(f"Failed to Ingest database due to - {err}")
+            logger.debug(traceback.format_exc())
 
+    def create_table_entity(self, table):
+        """
+        Process table details and return CreateTableRequest
+        """
+        try:
+            yield from self._yield_create_database(table)
+            yield from self._yield_create_database_schema(table)
             columns: List[Column] = []
             if len(table["column_names"]) == len(table["column_descriptions"]):
                 # zipping on column_descriptions can cause incorrect or no ingestion
@@ -309,7 +329,9 @@ class AmundsenSource(Source[Entity]):
                 # Amundsen merges the length into type itself. Instead of making changes to our generic type builder
                 # we will do a type match and see if it matches any primitive types and return a type
                 data_type = self.get_type_primitive_type(data_type)
-                parsed_string = ColumnTypeParser._parse_datatype_string(data_type)
+                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                    data_type
+                )
                 parsed_string["name"] = name
                 parsed_string["dataLength"] = 1
                 parsed_string["description"] = description
@@ -319,7 +341,6 @@ class AmundsenSource(Source[Entity]):
                 category_name=CreateTagCategoryRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(
                     name=AMUNDSEN_TABLE_TAG, description="Amundsen Table Tag"
@@ -330,7 +351,6 @@ class AmundsenSource(Source[Entity]):
                 category_name=CreateTagCategoryRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(
                     name=table["cluster"], description="Amundsen Cluster Tag"
@@ -384,7 +404,7 @@ class AmundsenSource(Source[Entity]):
                 tableType="Regular",
                 description=table["description"],
                 databaseSchema=EntityReference(
-                    id=database_schema_object.id, type="databaseSchema"
+                    id=self.database_schema_object.id, type="databaseSchema"
                 ),
                 tags=tags,
                 columns=columns,
@@ -397,7 +417,6 @@ class AmundsenSource(Source[Entity]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to create table entity [{table}]: {exc}")
             self.status.failure(table["name"], str(exc))
-            return None
 
     def create_dashboard_service(self, dashboard: dict):
         service_name = dashboard["cluster"]
@@ -413,6 +432,9 @@ class AmundsenSource(Source[Entity]):
         )
 
     def create_dashboard_entity(self, dashboard):
+        """
+        Method to process dashboard and return CreateDashboardRequest
+        """
         try:
             self.status.scanned(dashboard["name"])
             yield CreateDashboardRequest(
@@ -433,7 +455,6 @@ class AmundsenSource(Source[Entity]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to create dashboard entity [{dashboard}]: {exc}")
             self.status.failure(dashboard["name"], str(exc))
-            return None
 
     def create_chart_entity(self, dashboard):
         for (name, chart_id, chart_type, url) in zip(
@@ -456,8 +477,8 @@ class AmundsenSource(Source[Entity]):
             yield chart
 
     def close(self):
-        if self.neo4j_helper is not None:
-            self.neo4j_helper.close()
+        if self.client is not None:
+            self.client.close()
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -469,11 +490,26 @@ class AmundsenSource(Source[Entity]):
         return data_type
 
     def get_database_service(self, service_name: str) -> DatabaseService:
-        service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+        """
+        Method to get and create Database Service
+        """
+        service = self.metadata.create_or_update(
+            CreateDatabaseServiceRequest(
+                name=service_name,
+                displayName=service_name,
+                connection=SERVICE_TYPE_MAPPER.get(
+                    service_name, SERVICE_TYPE_MAPPER["mysql"]["connection"]
+                )["connection"],
+                serviceType=SERVICE_TYPE_MAPPER.get(
+                    service_name, SERVICE_TYPE_MAPPER["mysql"]["service_name"]
+                )["service_name"],
+            ),
+        )
+
         if service is not None:
             return service
-        else:
-            logger.error(f"Please create a service with name {service_name}")
+        logger.error(f"Please create a service with name {service_name}")
+        return None
 
     def test_connection(self) -> None:
         pass

@@ -33,13 +33,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster import DagsterSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
 )
-with open(mock_file_path) as file:
+with open(mock_file_path, encoding="UTF-8") as file:
     mock_data: dict = json.load(file)
 
 mock_dagster_config = {
@@ -49,12 +50,8 @@ mock_dagster_config = {
         "serviceConnection": {
             "config": {
                 "type": "Dagster",
-                "hostPort": "http://localhost:3000",
-                "dbConnection": {
-                    "username": "dagster_user",
-                    "password": "dagter_pass",
-                    "databaseSchema": "dagster_db",
-                    "hostPort": "localhost:3306",
+                "configSource": {
+                    "hostPort": "http://lolhost:3000",
                 },
             }
         },
@@ -64,19 +61,130 @@ mock_dagster_config = {
     "workflowConfig": {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
-            "authProvider": "no-auth",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "jnsdjonfonsodifnoisdnfoinsdonfonsd"},
         }
     },
 }
 
 
-EXPECTED_DAGSTER_DETAILS = mock_data[6]["pipeline_code_origin"]
+EXPECTED_DAGSTER_DETAILS = mock_data["data"]["graphOrError"]
 
-MOCK_CONNECTION_URI_PATH = "/workspace/__repository__do_it_all_with_default_config@cereal.py/jobs/do_it_all_with_default_config/"
+EXPECTED_CREATED_PIPELINES = [
+    CreatePipelineRequest(
+        name="graph:5164c131c3524a271e7ecce49766d50a479b5ff4",
+        displayName="story_recommender_job",
+        description=None,
+        pipelineUrl=None,
+        concurrency=None,
+        pipelineLocation=None,
+        startDate=None,
+        tasks=[
+            Task(
+                name="s3__recommender__recommender_model",
+                displayName="s3__recommender__recommender_model",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=["s3__recommender__user_story_matrix"],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+            Task(
+                name="s3__recommender__user_story_matrix",
+                displayName="s3__recommender__user_story_matrix",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=["snowflake__recommender__comment_stories"],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+            Task(
+                name="snowflake__recommender__comment_stories",
+                displayName="snowflake__recommender__comment_stories",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=[],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+            Task(
+                name="snowflake__recommender__component_top_stories",
+                displayName="snowflake__recommender__component_top_stories",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=[
+                    "s3__recommender__recommender_model",
+                    "s3__recommender__user_story_matrix",
+                ],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+            Task(
+                name="snowflake__recommender__user_top_recommended_stories",
+                displayName="snowflake__recommender__user_top_recommended_stories",
+                fullyQualifiedName=None,
+                description=None,
+                taskUrl=None,
+                downstreamTasks=[
+                    "s3__recommender__recommender_model",
+                    "s3__recommender__user_story_matrix",
+                ],
+                taskType=None,
+                taskSQL=None,
+                startDate=None,
+                endDate=None,
+                tags=None,
+            ),
+        ],
+        tags=[
+            TagLabel(
+                tagFQN="DagsterTags.hacker_new_repository",
+                description=None,
+                source="Tag",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            )
+        ],
+        owner=None,
+        service=EntityReference(
+            id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
+            type="pipelineService",
+            name=None,
+            fullyQualifiedName=None,
+            description=None,
+            displayName=None,
+            deleted=None,
+            href=None,
+        ),
+        extension=None,
+    ),
+]
+MOCK_CONNECTION_URI_PATH = (
+    "/workspace/__repository__do_it_all_with_default_config"
+    "@cereal.py/jobs/do_it_all_with_default_config/"
+)
 MOCK_LOG_URL = (
     "http://localhost:8080/instance/runs/a6ebb16c-505f-446d-8642-171c3320ccef"
 )
 
+EXPTECTED_PIPELINE_NAME = ["story_recommender_job"]
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
@@ -113,25 +221,6 @@ EXPECTED_PIPELINE_STATUS = [
     ),
 ]
 
-
-EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
-    name="a6ebb16c-505f-446d-8642-171c3320ccef",
-    displayName="do_it_all_with_default_configs",
-    description="do_it_all_with_default_config",
-    pipelineUrl=MOCK_CONNECTION_URI_PATH,
-    tasks=[
-        Task(
-            name="do_it_all_with_default_config",
-            displayName="",
-            description="",
-            taskUrl="",
-        )
-    ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
-)
-
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
     name="dagster_source_test",
@@ -162,25 +251,43 @@ MOCK_PIPELINE = Pipeline(
 
 
 class DagsterUnitTest(TestCase):
+    """
+    Implements the necessary methods to extract
+    Dagster Pipeline Unit Test
+    """
+
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    @patch("sqlalchemy.engine.base.Engine.connect")
-    def __init__(self, methodName, mock_connect, test_connection) -> None:
+    @patch("dagster_graphql.DagsterGraphQLClient")
+    # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
+    def __init__(self, methodName, graphql_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-
+        graphql_client.return_value = False
         config = OpenMetadataWorkflowConfig.parse_obj(mock_dagster_config)
-
         self.dagster = DagsterSource.create(
             mock_dagster_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.engine = mock_connect.return_value
         self.dagster.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.dagster.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.dagster.context.__dict__["repository_name"] = "hacker_new_repository"
+        self.dagster.context.__dict__["repository_location"] = "project_fully_featured"
 
     def test_pipeline_name(self):
-
         assert (
             self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
-            == mock_data[6]["pipeline_code_origin"]["pipeline_name"]
+            in EXPTECTED_PIPELINE_NAME
         )
+
+    @patch("metadata.ingestion.source.pipeline.dagster.DagsterSource.get_jobs")
+    def test_yield_pipeline(self, get_jobs):
+        results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
+        get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
+        pipelines_list = []
+        for result in results:
+            pipelines_list.append(result)
+
+        for _, (expected, original) in enumerate(
+            zip(EXPECTED_CREATED_PIPELINES, pipelines_list)
+        ):
+            self.assertEqual(expected, original)

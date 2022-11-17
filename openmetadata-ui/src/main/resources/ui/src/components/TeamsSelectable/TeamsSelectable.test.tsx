@@ -31,21 +31,9 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('../../axiosAPIs/teamsAPI', () => ({
-  getTeams: jest.fn().mockImplementation(() =>
+  getTeamsHierarchy: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      data: {
-        data: [],
-      },
-    })
-  ),
-}));
-
-jest.mock('../../axiosAPIs/miscAPI', () => ({
-  getTeamsByQuery: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      hits: {
-        hits: [],
-      },
+      data: [],
     })
   ),
 }));

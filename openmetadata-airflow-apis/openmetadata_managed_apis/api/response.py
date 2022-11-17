@@ -8,9 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import base64
-import gzip
 import json
 from typing import Optional, Union
 
@@ -77,16 +74,9 @@ class ResponseFormat:
         Build the pipeline status
         """
         return PipelineStatus(
-            state=dag_run.get_state(),
+            pipelineState=dag_run.get_state(),
             runId=dag_run.run_id,
             startDate=datetime_to_ts(dag_run.start_date),
             endDate=datetime_to_ts(dag_run.end_date),
             timestamp=datetime_to_ts(dag_run.execution_date),
         )
-
-    @staticmethod
-    def b64_gzip_compression(string: str) -> str:
-        """
-        Return a compressed base64 gzip string
-        """
-        return str(base64.b64encode(gzip.compress(bytes(string, "utf-8"))))[2:-1]

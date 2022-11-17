@@ -16,10 +16,14 @@ package org.openmetadata.service.util;
 import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.networknt.schema.JsonSchema;
@@ -36,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Set;
+import java.util.TreeMap;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -45,9 +49,6 @@ import javax.json.JsonPatch;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
@@ -64,7 +65,6 @@ public final class JsonUtils {
   private static final ObjectMapper OBJECT_MAPPER;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
-  private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
 
   static {
@@ -105,7 +105,9 @@ public final class JsonUtils {
   }
 
   public static Map<String, Object> getMap(Object o) {
-    return OBJECT_MAPPER.convertValue(o, Map.class);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> map = OBJECT_MAPPER.convertValue(o, Map.class);
+    return map;
   }
 
   public static <T> T readValue(String json, Class<T> clz) throws IOException {
@@ -113,22 +115,6 @@ public final class JsonUtils {
       return null;
     }
     return OBJECT_MAPPER.readValue(json, clz);
-  }
-
-  public static <T> T readValueWithValidation(String json, Class<T> clz) throws IOException {
-    T pojo = readValue(json, clz);
-    if (pojo == null) {
-      return null;
-    }
-    Set<ConstraintViolation<T>> violations = VALIDATOR.validate(pojo);
-    if (violations.size() > 0) {
-      List<String> errors = new ArrayList<>();
-      for (ConstraintViolation<T> violation : violations) {
-        errors.add(violation.getPropertyPath().toString() + " " + violation.getMessage());
-      }
-      throw new IllegalArgumentException(errors.toString());
-    }
-    return pojo;
   }
 
   public static <T> T readValue(String json, TypeReference<T> valueTypeRef) throws IOException {
@@ -290,6 +276,12 @@ public final class JsonUtils {
     return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
   }
 
+  public static JsonPatch getJsonPatch(Object v1, Object v2) throws JsonProcessingException {
+    JsonValue source = readJson(JsonUtils.pojoToJson(v1));
+    JsonValue dest = readJson(JsonUtils.pojoToJson(v2));
+    return Json.createDiff(source.asJsonObject(), dest.asJsonObject());
+  }
+
   public static JsonValue readJson(String s) {
     try (JsonReader reader = Json.createReader(new StringReader(s))) {
       return reader.readValue();
@@ -411,22 +403,42 @@ public final class JsonUtils {
     return Paths.get(path).getParent().getFileName().toString();
   }
 
-  /**
-   * Serialize object removing all the fields annotated with @{@link MaskedField}
-   *
-   * @return Serialized JSON string
-   */
+  /** Serialize object removing all the fields annotated with @{@link MaskedField} */
   public static String pojoToMaskedJson(Object entity) throws JsonProcessingException {
     return MASKER_OBJECT_MAPPER.writeValueAsString(entity);
   }
 
-  /**
-   * Serialize object removing all the fields annotated with @{@link ExposedField}
-   *
-   * @return Object if the serialization of `entity` does not result in an empty JSON string.
-   */
+  /** Serialize object removing all the fields annotated with @{@link ExposedField} */
   public static <T> T toExposedEntity(Object entity, Class<T> clazz) throws IOException {
     String jsonString = EXPOSED_OBJECT_MAPPER.writeValueAsString(entity);
     return EXPOSED_OBJECT_MAPPER.readValue(jsonString, clazz);
+  }
+
+  public static ObjectNode getObjectNode(String key, JsonNode value) {
+    ObjectNode objectNode = getObjectNode();
+    return objectNode.set(key, value);
+  }
+
+  public static ObjectNode getObjectNode() {
+    return OBJECT_MAPPER.createObjectNode();
+  }
+
+  public static JsonNode readTree(String extensionJson) throws JsonProcessingException {
+    return OBJECT_MAPPER.readTree(extensionJson);
+  }
+
+  /** Compared the canonicalized JSON representation of two object to check if they are equals or not */
+  public static boolean areEquals(Object obj1, Object obj2) throws JsonProcessingException {
+    ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
+    JsonNode obj1sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj1));
+    JsonNode obj2sorted = mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj2));
+    return OBJECT_MAPPER.writeValueAsString(obj1sorted).equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
+  }
+
+  static class SortedNodeFactory extends JsonNodeFactory {
+    @Override
+    public ObjectNode objectNode() {
+      return new ObjectNode(this, new TreeMap<>());
+    }
   }
 }

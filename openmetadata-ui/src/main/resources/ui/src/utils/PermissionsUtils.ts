@@ -87,16 +87,7 @@ export const getOperationPermissions = (
     (acc: OperationPermission, curr: Permission) => {
       return {
         ...acc,
-        [curr.operation as Operation]:
-          /**
-           * Check ConditionalAllow or Allow for Create Operation
-           * TODO: Remove this check once backend has fix for this
-           * https://github.com/open-metadata/OpenMetadata/issues/7004
-           */
-          curr.operation === Operation.Create
-            ? curr.access === Access.ConditionalAllow ||
-              curr.access === Access.Allow
-            : curr.access === Access.Allow,
+        [curr.operation as Operation]: curr.access === Access.Allow,
       };
     },
     {} as OperationPermission
@@ -119,6 +110,16 @@ export const getUIPermission = (
   }, {} as UIPermission);
 };
 
+export const userPermissions = {
+  /* A util function's that checks if the user has permission to view the resource. */
+  hasViewPermissions: (
+    resourceEntityType: ResourceEntity,
+    permissions: UIPermission
+  ) =>
+    checkPermission(Operation.ViewBasic, resourceEntityType, permissions) ||
+    checkPermission(Operation.ViewAll, resourceEntityType, permissions),
+};
+
 export const DEFAULT_ENTITY_PERMISSION = {
   Create: false,
   Delete: false,
@@ -135,6 +136,7 @@ export const DEFAULT_ENTITY_PERMISSION = {
   EditTests: false,
   EditTier: false,
   ViewAll: false,
+  ViewBasic: false,
   ViewDataProfile: false,
   ViewQueries: false,
   ViewSampleData: false,

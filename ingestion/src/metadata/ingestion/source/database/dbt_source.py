@@ -13,7 +13,7 @@ DBT source methods.
 """
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.basic import (
@@ -43,9 +44,17 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
+from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -53,10 +62,45 @@ logger = ingestion_logger()
 
 class DBTMixin:
 
+    """
+    Class defines method to extract metadata from DBT
+    """
+
     metadata: OpenMetadata
 
     def get_data_model(self, table_fqn: str) -> Optional[DataModel]:
-        return self.data_models.get(table_fqn)
+        return self.data_models.get(table_fqn.lower())
+
+    def get_dbt_owner(self, mnode: dict, cnode: dict) -> Optional[str]:
+        """
+        Returns dbt owner
+        """
+        owner = None
+        if mnode and cnode:
+            dbt_owner = mnode["meta"].get("owner") or cnode["metadata"].get("owner")
+            if dbt_owner:
+                owner_name = f"*{dbt_owner}*"
+                user_owner_fqn = fqn.build(
+                    self.metadata, entity_type=User, user_name=owner_name
+                )
+                if user_owner_fqn:
+                    owner = self.metadata.get_entity_reference(
+                        entity=User, fqn=user_owner_fqn
+                    )
+                else:
+                    team_owner_fqn = fqn.build(
+                        self.metadata, entity_type=Team, team_name=owner_name
+                    )
+                    if team_owner_fqn:
+                        owner = self.metadata.get_entity_reference(
+                            entity=Team, fqn=team_owner_fqn
+                        )
+                    else:
+                        logger.warning(
+                            "Unable to ingest owner from DBT since no user or"
+                            f" team was found with name {dbt_owner}"
+                        )
+        return owner
 
     def _parse_data_model(self):
         """
@@ -78,10 +122,12 @@ class DBTMixin:
             }
             for key, mnode in self.manifest_entities.items():
                 try:
-                    name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    model_name = (
+                        mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                    )
                     cnode = self.catalog_entities.get(key)
                     columns = (
-                        self._parse_data_model_columns(name, mnode, cnode)
+                        self._parse_data_model_columns(model_name, mnode, cnode)
                         if cnode
                         else []
                     )
@@ -89,47 +135,43 @@ class DBTMixin:
                     if mnode["resource_type"] == "test":
                         self.dbt_tests[key] = mnode
                         continue
+                    if mnode["resource_type"] == "analysis":
+                        continue
                     upstream_nodes = self._parse_data_model_upstream(mnode)
-                    model_name = (
-                        mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-                    )
                     database = mnode["database"] if mnode["database"] else "default"
                     schema = mnode["schema"] if mnode["schema"] else "default"
-                    raw_sql = mnode.get("raw_sql", "")
-                    description = mnode.get("description")
-                    dbt_owner = cnode["metadata"].get("owner")
-                    owner = None
-                    if dbt_owner:
-                        owner_name = f"*{dbt_owner}*"
-                        user_owner_fqn = fqn.build(
-                            self.metadata, entity_type=User, user_name=owner_name
-                        )
-                        if user_owner_fqn:
-                            owner = self.metadata.get_entity_reference(
-                                entity=User, fqn=user_owner_fqn
+                    dbt_table_tags_list = None
+                    if mnode.get("tags"):
+                        dbt_table_tags_list = [
+                            TagLabel(
+                                tagFQN=fqn.build(
+                                    self.metadata,
+                                    entity_type=Tag,
+                                    tag_category_name="DBTTags",
+                                    tag_name=tag,
+                                ),
+                                labelType=LabelType.Automated,
+                                state=State.Confirmed,
+                                source=TagSource.Tag,
                             )
-                        else:
-                            team_owner_fqn = fqn.build(
-                                self.metadata, entity_type=Team, team_name=owner_name
-                            )
-                            if team_owner_fqn:
-                                owner = self.metadata.get_entity_reference(
-                                    entity=Team, fqn=team_owner_fqn
-                                )
-                            else:
-                                logger.warning(
-                                    f"Unable to ingest owner from DBT since no user or team was found with name {dbt_owner}"
-                                )
+                            for tag in mnode.get("tags")
+                        ] or None
+
+                    dbt_compiled_query = self.get_dbt_compiled_query(mnode)
+                    dbt_raw_query = self.get_dbt_raw_query(mnode)
 
                     model = DataModel(
                         modelType=ModelType.DBT,
-                        description=description if description else None,
+                        description=mnode.get("description")
+                        if mnode.get("description")
+                        else None,
                         path=f"{mnode['root_path']}/{mnode['original_file_path']}",
-                        rawSql=raw_sql,
-                        sql=mnode.get("compiled_sql", raw_sql),
+                        rawSql=dbt_raw_query if dbt_raw_query else "",
+                        sql=dbt_compiled_query if dbt_compiled_query else "",
                         columns=columns,
                         upstream=upstream_nodes,
-                        owner=owner,
+                        owner=self.get_dbt_owner(mnode=mnode, cnode=cnode),
+                        tags=dbt_table_tags_list,
                     )
                     model_fqn = fqn.build(
                         self.metadata,
@@ -138,7 +180,7 @@ class DBTMixin:
                         database_name=database,
                         schema_name=schema,
                         model_name=model_name,
-                    )
+                    ).lower()
                     self.data_models[model_fqn] = model
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -173,47 +215,103 @@ class DBTMixin:
         return upstream_nodes
 
     def _parse_data_model_columns(
-        self, model_name: str, mnode: Dict, cnode: Dict
+        self, _: str, mnode: Dict, cnode: Dict
     ) -> List[Column]:
         columns = []
-        ccolumns = cnode.get("columns")
+        catalogue_columns = cnode.get("columns", {})
         manifest_columns = mnode.get("columns", {})
-        for key in ccolumns:
-            ccolumn = ccolumns[key]
-            col_name = ccolumn["name"].lower()
+        for key in catalogue_columns:
+            ccolumn = catalogue_columns[key]
             try:
                 ctype = ccolumn["type"]
-                col_type = ColumnTypeParser.get_column_type(ctype)
                 description = manifest_columns.get(key.lower(), {}).get("description")
                 if description is None:
                     description = ccolumn.get("comment")
+                dbt_column_tags = manifest_columns.get(key.lower(), {}).get("tags")
+                dbt_column_tags_list = None
+                if dbt_column_tags:
+                    dbt_column_tags_list = [
+                        TagLabel(
+                            tagFQN=fqn.build(
+                                self.metadata,
+                                entity_type=Tag,
+                                tag_category_name="DBTTags",
+                                tag_name=tag,
+                            ),
+                            labelType=LabelType.Automated,
+                            state=State.Confirmed,
+                            source=TagSource.Tag,
+                        )
+                        for tag in dbt_column_tags
+                    ] or None
+
                 col = Column(
-                    name=col_name,
+                    name=ccolumn["name"].lower(),
                     description=description if description else None,
-                    dataType=col_type,
+                    dataType=ColumnTypeParser.get_column_type(ctype),
                     dataLength=1,
                     ordinalPosition=ccolumn["index"],
+                    tags=dbt_column_tags_list,
                 )
                 columns.append(col)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to parse column {col_name}: {exc}")
+                logger.warning(f"Failed to parse column {ccolumn['name']}: {exc}")
 
         return columns
 
-    def create_dbt_lineage(self) -> Iterable[AddLineageRequest]:
+    def process_dbt_lineage_and_descriptions(
+        self,
+    ) -> Iterable[AddLineageRequest]:
         """
         After everything has been processed, add the lineage info
         """
-        logger.info("Processing DBT lineage")
+        logger.info("Processing DBT lineage and Descriptions")
         for data_model_name, data_model in self.data_models.items():
+            to_es_result = self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=data_model_name,
+            )
+            to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+                entity_list=to_es_result, fetch_multiple_entities=False
+            )
+            if to_entity:
+                try:
+                    # Patch table descriptions from DBT
+                    if data_model.description:
+                        self.metadata.patch_description(
+                            entity=Table,
+                            entity_id=to_entity.id,
+                            description=data_model.description.__root__,
+                            force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                        )
+
+                    # Patch column descriptions from DBT
+                    for column in data_model.columns:
+                        if column.description:
+                            self.metadata.patch_column_description(
+                                entity_id=to_entity.id,
+                                column_name=column.name.__root__,
+                                description=column.description.__root__,
+                                force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                            )
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to parse the node {upstream_node} to update dbt desctiption: {exc}"
+                    )
+
+            # Create Lineage from DBT Files
             for upstream_node in data_model.upstream:
                 try:
-                    from_entity: Table = self.metadata.get_by_name(
-                        entity=Table, fqn=upstream_node
+                    from_es_result = self.metadata.es_search_from_fqn(
+                        entity_type=Table,
+                        fqn_search_string=upstream_node,
                     )
-                    to_entity: Table = self.metadata.get_by_name(
-                        entity=Table, fqn=data_model_name
+                    from_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=from_es_result, fetch_multiple_entities=False
                     )
                     if from_entity and to_entity:
                         yield AddLineageRequest(
@@ -235,6 +333,26 @@ class DBTMixin:
                         f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                     )
 
+            # Create Lineage from DBT Queries
+            try:
+                service_database_schema_table = fqn.split(data_model_name)
+                target_table_fqn = ".".join(service_database_schema_table[1:])
+                query = f"create table {target_table_fqn} as {data_model.sql.__root__}"
+                lineages = get_lineage_by_query(
+                    self.metadata,
+                    query=query,
+                    service_name=service_database_schema_table[0],
+                    database_name=service_database_schema_table[1],
+                    schema_name=service_database_schema_table[2],
+                )
+                for lineage_request in lineages or []:
+                    yield lineage_request
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to parse the query {data_model.sql.__root__} to capture lineage: {exc}"
+                )
+
     def create_dbt_tests_suite_definition(self):
         """
         After everything has been processed, add the tests suite and test definitions
@@ -244,9 +362,10 @@ class DBTMixin:
                 self.source_config.dbtConfigSource
                 and self.dbt_manifest
                 and self.dbt_catalog
+                and self.dbt_run_results
             ):
                 logger.info("Processing DBT Tests Suites and Test Definitions")
-                for key, dbt_test in self.dbt_tests.items():
+                for _, dbt_test in self.dbt_tests.items():
                     test_suite_name = dbt_test["meta"].get(
                         "test_suite_name", "DBT_TEST_SUITE"
                     )
@@ -293,6 +412,7 @@ class DBTMixin:
             self.source_config.dbtConfigSource
             and self.dbt_manifest
             and self.dbt_catalog
+            and self.dbt_run_results
         ):
             logger.info("Processing DBT Tests Cases")
             for key, dbt_test in self.dbt_tests.items():
@@ -340,11 +460,11 @@ class DBTMixin:
                 try:
                     # Process the Test Status
                     test_case_status = TestCaseStatus.Aborted
-                    test_result_value = -1
-                    if dbt_test_result.get("status") == "success":
+                    test_result_value = 0
+                    if dbt_test_result.get("status") in {"success", "pass"}:
                         test_case_status = TestCaseStatus.Success
                         test_result_value = 1
-                    elif dbt_test_result.get("status") == "failure":
+                    elif dbt_test_result.get("status") in {"failure", "fail"}:
                         test_case_status = TestCaseStatus.Failed
                         test_result_value = 0
 
@@ -358,8 +478,8 @@ class DBTMixin:
                     if dbt_test_completed_at:
                         dbt_timestamp = datetime.strptime(
                             dbt_test_completed_at, "%Y-%m-%dT%H:%M:%S.%fZ"
-                        )
-                        dbt_timestamp = self.unix_time_millis(dbt_timestamp)
+                        ).replace(microsecond=0)
+                        dbt_timestamp = dbt_timestamp.timestamp()
 
                     test_case_result = TestCaseResult(
                         timestamp=dbt_timestamp,
@@ -381,8 +501,12 @@ class DBTMixin:
                                 self.metadata,
                                 entity_type=TestCase,
                                 service_name=self.config.serviceName,
-                                database_name=model.get("database"),
-                                schema_name=model.get("schema"),
+                                database_name=model["database"]
+                                if model["database"]
+                                else "default",
+                                schema_name=model["schema"]
+                                if model["schema"]
+                                else "default",
                                 table_name=model.get("name"),
                                 column_name=dbt_test_node.get("column_name"),
                                 test_case_name=self.dbt_tests.get(
@@ -417,6 +541,9 @@ class DBTMixin:
         return test_case_param_values
 
     def generate_entity_link(self, dbt_test):
+        """
+        Method returns entity link
+        """
         nodes = dbt_test["depends_on"]["nodes"]
         entity_link_list = []
         for node in nodes:
@@ -425,8 +552,8 @@ class DBTMixin:
                 self.metadata,
                 entity_type=Table,
                 service_name=self.config.serviceName,
-                database_name=model.get("database"),
-                schema_name=model.get("schema"),
+                database_name=model["database"] if model["database"] else "default",
+                schema_name=model["schema"] if model["schema"] else "default",
                 table_name=model.get("name"),
             )
             column_name = dbt_test.get("column_name")
@@ -439,10 +566,24 @@ class DBTMixin:
             entity_link_list.append(entity_link)
         return entity_link_list
 
-    def unix_time(self, dt):
-        epoch = datetime.utcfromtimestamp(0)
-        delta = dt - epoch
-        return delta.total_seconds()
+    def get_dbt_compiled_query(self, mnode) -> Optional[str]:
+        dbt_query_key_names = ["compiled_sql", "compiled_code"]
+        for key_name in dbt_query_key_names:
+            query = mnode.get(key_name)
+            if query:
+                return query
+        logger.debug(
+            f"Unable to get DBT compiled query for node - {mnode.get('name','unknown')}"
+        )
+        return None
 
-    def unix_time_millis(self, dt):
-        return int(self.unix_time(dt) * 1000)
+    def get_dbt_raw_query(self, mnode) -> Optional[str]:
+        dbt_query_key_names = ["raw_sql", "raw_code"]
+        for key_name in dbt_query_key_names:
+            query = mnode.get(key_name)
+            if query:
+                return query
+        logger.debug(
+            f"Unable to get DBT raw query for node - {mnode.get('name','unknown')}"
+        )
+        return None

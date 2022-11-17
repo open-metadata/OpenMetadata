@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -49,9 +48,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -90,7 +91,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     super(Team.class, new TeamRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     dao.initOrganization();
   }
@@ -98,14 +99,48 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
     TeamList() {}
+  }
 
-    public TeamList(List<Team> teams, String beforeCursor, String afterCursor, int total) {
-      super(teams, beforeCursor, afterCursor, total);
-    }
+  public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
+    @SuppressWarnings("unused") /* Required for tests */
+    TeamHierarchyList() {}
   }
 
   static final String FIELDS =
       "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount";
+
+  @GET
+  @Path("/hierarchy")
+  @Valid
+  @Operation(
+      operationId = "listTeamsHierarchy",
+      summary = "List teams with hierarchy",
+      tags = "teams",
+      description = "Get a list of teams with hierarchy.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of teams with hierarchy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TeamList.class)))
+      })
+  public ResultList<TeamHierarchy> listHierarchy(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Limit the number of teams returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10000")
+          @Min(1000)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Filter the results by whether the team can be joined by any user or not",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("isJoinable")
+          Boolean isJoinable)
+      throws IOException {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    return new ResultList<>(dao.listHierarchy(filter, limitParam, isJoinable));
+  }
 
   @GET
   @Valid
@@ -181,9 +216,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -280,7 +315,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -299,7 +334,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, team, true);
+    return create(uriInfo, securityContext, team);
   }
 
   @PUT
@@ -318,7 +353,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
     Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, team, true);
+    return createOrUpdate(uriInfo, securityContext, team);
   }
 
   @PATCH
@@ -361,13 +396,36 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this team and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Team Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted Team.",
+      tags = "teams",
+      description = "Restore a soft deleted Team.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Team ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class)))
+      })
+  public Response restoreTeam(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Team getTeam(CreateTeam ct, String user) throws IOException {

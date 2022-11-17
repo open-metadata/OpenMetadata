@@ -11,6 +11,7 @@
 """
 Credentials helper module
 """
+import base64
 import json
 import os
 import tempfile
@@ -52,7 +53,7 @@ def validate_private_key(private_key: str) -> None:
         serialization.load_pem_private_key(private_key.encode(), password=None)
     except ValueError as err:
         msg = f"Cannot serialise key: {err}"
-        raise InvalidPrivateKeyException(msg)
+        raise InvalidPrivateKeyException(msg) from err
 
 
 def create_credential_tmp_file(credentials: dict) -> str:
@@ -61,11 +62,11 @@ def create_credential_tmp_file(credentials: dict) -> str:
     :param credentials: dictionary to store
     :return: path to find the file
     """
-    with tempfile.NamedTemporaryFile(delete=False) as fp:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        fp.write(cred_json.encode())
+        temp_file.write(cred_json.encode())
 
-        return fp.name
+        return temp_file.name
 
 
 def build_google_credentials_dict(gcs_values: GCSValues) -> Dict[str, str]:
@@ -75,13 +76,12 @@ def build_google_credentials_dict(gcs_values: GCSValues) -> Dict[str, str]:
     :param gcs_values: GCS credentials
     :return: Dictionary with credentials
     """
-
     private_key_str = gcs_values.privateKey.get_secret_value()
     validate_private_key(private_key_str)
 
     return {
         "type": gcs_values.type,
-        "project_id": gcs_values.projectId,
+        "project_id": gcs_values.projectId.__root__,
         "private_key_id": gcs_values.privateKeyId,
         "private_key": private_key_str,
         "client_email": gcs_values.clientEmail,
@@ -121,7 +121,6 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
             )
             return
         credentials_dict = build_google_credentials_dict(gcs_credentials.gcsConfig)
-
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
@@ -130,3 +129,12 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
         f"Error trying to set GCS credentials with {gcs_credentials}."
         " Check https://docs.open-metadata.org/openmetadata/connectors/database/bigquery "
     )
+
+
+def generate_http_basic_token(username, password):
+    """
+    Generates a HTTP basic token from username and password
+    Returns a token string (not a byte)
+    """
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
+    return token

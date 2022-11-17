@@ -12,7 +12,7 @@
 Client to interact with Nifi apis
 """
 import traceback
-from typing import Any, Iterable, List
+from typing import Any, Iterable, List, Optional
 
 import requests
 from requests import HTTPError
@@ -24,6 +24,7 @@ logger = ingestion_logger()
 IDENTIFIER = "identifier"
 PROCESS_GROUPS_STARTER = "/process-groups/"
 RESOURCES = "resources"
+REQUESTS_TIMEOUT = 60 * 5
 
 
 class NifiClient:
@@ -58,6 +59,7 @@ class NifiClient:
                     verify=self.verify,
                     headers=self.content_headers,
                     data=f"username={self.username}&password={self.password}",
+                    timeout=REQUESTS_TIMEOUT,
                 )
                 self._token = res.text
 
@@ -84,7 +86,7 @@ class NifiClient:
         # Get the first `resources` key from the dict
         return self._resources.get(RESOURCES)  # Dict key
 
-    def get(self, path: str) -> Any:
+    def get(self, path: str) -> Optional[Any]:
         """
         GET call wrapper
         """
@@ -93,6 +95,7 @@ class NifiClient:
                 f"{self.api_endpoint}/{path}",
                 verify=self.verify,
                 headers=self.headers,
+                timeout=REQUESTS_TIMEOUT,
             )
 
             return res.json()
@@ -108,6 +111,8 @@ class NifiClient:
         except Exception as err:
             logger.warning(f"Unknown error calling Nifi API - {err}")
             logger.debug(traceback.format_exc())
+
+        return None
 
     def _get_process_group_ids(self) -> List[str]:
         return [

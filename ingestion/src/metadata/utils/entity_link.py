@@ -19,6 +19,7 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
+from requests.compat import unquote_plus
 
 from metadata.antlr.split_listener import EntityLinkSplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
@@ -31,13 +32,27 @@ class EntityLinkBuildingException(Exception):
     """
 
 
-def split(s: str) -> List[str]:
+def split(s: str) -> List[str]:  # pylint: disable=invalid-name
+    """
+    Method to handle the splitting logic
+    """
+
     lexer = EntityLinkLexer(InputStream(s))
     stream = CommonTokenStream(lexer)
     parser = EntityLinkParser(stream)
-    parser._errHandler = BailErrorStrategy()
+    parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
     tree = parser.entitylink()
     walker = ParseTreeWalker()
     splitter = EntityLinkSplitListener()
     walker.walk(splitter, tree)
     return splitter.split()
+
+
+def get_decoded_column(entity_link: str) -> str:
+    """From an URL encoded entity link get the decoded column name
+
+    Args:
+        entity_link: entity link
+    """
+
+    return unquote_plus(entity_link.split("::")[-1].replace(">", ""))

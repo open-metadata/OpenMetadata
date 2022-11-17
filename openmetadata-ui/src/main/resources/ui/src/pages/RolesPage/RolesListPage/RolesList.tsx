@@ -29,7 +29,11 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { checkPermission, LIST_CAP } from '../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  LIST_CAP,
+  userPermissions,
+} from '../../../utils/PermissionsUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -49,7 +53,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
   const viewPolicyPermission = useMemo(() => {
     return (
       !isEmpty(permissions) &&
-      checkPermission(Operation.ViewAll, ResourceEntity.POLICY, permissions)
+      userPermissions.hasViewPermissions(ResourceEntity.POLICY, permissions)
     );
   }, [permissions]);
 
@@ -103,7 +107,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
                     {getEntityName(policy)}
                   </Link>
                 ) : (
-                  <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
                     {getEntityName(policy)}
                   </Tooltip>
                 )
@@ -123,7 +127,9 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
                             {getEntityName(policy)}
                           </Link>
                         ) : (
-                          <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                          <Tooltip
+                            key={uniqueId()}
+                            title={NO_PERMISSION_TO_VIEW}>
                             {getEntityName(policy)}
                           </Tooltip>
                         )
@@ -174,11 +180,13 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
   return (
     <>
       <Table
+        bordered
         className="roles-list-table"
         columns={columns}
         data-testid="roles-list-table"
         dataSource={roles}
         pagination={false}
+        rowKey="name"
         size="small"
       />
       {selectedRole && (

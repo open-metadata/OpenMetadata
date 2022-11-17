@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -46,6 +45,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -84,13 +84,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     DashboardList() {
       // Empty constructor needed for deserialization
     }
-
-    public DashboardList(List<Dashboard> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
-  static final String FIELDS = "owner,charts,followers,tags,usageSummary";
+  static final String FIELDS = "owner,charts,followers,tags,usageSummary,extension";
 
   @GET
   @Valid
@@ -160,9 +156,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Dashboard Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -257,7 +253,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -277,7 +273,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dashboard, true);
+    return create(uriInfo, securityContext, dashboard);
   }
 
   @PATCH
@@ -323,7 +319,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
     Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dashboard, true);
+    return createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
   @PUT
@@ -384,7 +380,26 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           boolean hardDelete,
       @Parameter(description = "Dashboard Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted dashboard.",
+      tags = "dashboards",
+      description = "Restore a soft deleted dashboard.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Dashboard.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class)))
+      })
+  public Response restoreDashboard(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Dashboard getDashboard(CreateDashboard create, String user) throws IOException {

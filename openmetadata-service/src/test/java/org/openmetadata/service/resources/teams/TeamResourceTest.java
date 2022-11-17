@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,9 +28,11 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
+import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -57,10 +60,12 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -71,10 +76,12 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.service.Entity;
@@ -82,6 +89,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
+import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
 import org.openmetadata.service.resources.teams.TeamResource.TeamList;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -95,7 +103,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
+    super(TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
     this.supportsAuthorizedMetadataOperations = false;
   }
 
@@ -219,6 +227,55 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
+  void delete_recursive_validTeam_200_OK() throws IOException {
+    //
+    // Create hierarchy of business unit, division, and department under organization:
+    // Organization -- has children --> [bu1], bu1 has children --> [div2], div2 has children [dep3]
+    Team bu1 = createWithParents("bu1", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team div2 = createWithParents("div2", DIVISION, bu1.getEntityReference());
+    Team dep3 = createWithParents("dep3", DEPARTMENT, div2.getEntityReference());
+
+    // Ensure parent has all the newly created children
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,parents", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(new ArrayList<>(List.of(bu1.getEntityReference())), ORG_TEAM.getChildren());
+
+    // Ensure parent has all the newly created children
+    bu1 = getEntity(bu1.getId(), "children", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(new ArrayList<>(List.of(div2.getEntityReference())), bu1.getChildren());
+
+    div2 = getEntity(div2.getId(), "children", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(new ArrayList<>(List.of(dep3.getEntityReference())), div2.getChildren());
+
+    // Recursive delete parent Team bu1
+    deleteAndCheckEntity(bu1, true, false, ADMIN_AUTH_HEADERS);
+
+    Double expectedVersion = EntityUtil.nextVersion(div2.getVersion());
+
+    // Validate that the entity version is updated after soft delete
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.DELETED.value());
+
+    div2 = getEntity(div2.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(div2.getDeleted());
+    assertEquals(expectedVersion, div2.getVersion());
+
+    expectedVersion = EntityUtil.nextVersion(dep3.getVersion());
+    dep3 = getEntity(dep3.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(dep3.getDeleted());
+    assertEquals(expectedVersion, dep3.getVersion());
+
+    // hard delete all the teams
+    UUID div2Id = div2.getId();
+    UUID dep3Id = dep3.getId();
+    bu1 = getEntity(bu1.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(bu1, true, true, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getEntity(div2Id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(TEAM, div2Id));
+    assertResponse(
+        () -> getEntity(dep3Id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(TEAM, dep3Id));
+  }
+
+  @Test
   void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create team without any attributes
     Team team = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -303,13 +360,42 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // bu1 -- has children --> [ bu11, div12, dep13]
     Team bu11 = createWithParents("bu11", BUSINESS_UNIT, bu1.getEntityReference());
     Team div12 = createWithParents("div12", DIVISION, bu1.getEntityReference());
-    Team dep13 = createWithParents("dep13", DEPARTMENT, bu1.getEntityReference());
+    Team dep13 = createWithParents("dep13", DEPARTMENT, false, bu1.getEntityReference());
 
     // Ensure parent has all the newly created children
     bu1 = getEntity(bu1.getId(), "children,parents", ADMIN_AUTH_HEADERS);
     assertEntityReferences(
         new ArrayList<>(List.of(bu11.getEntityReference(), div12.getEntityReference(), dep13.getEntityReference())),
         bu1.getChildren());
+
+    // Ensure team hierarchy lists all the child teams
+    List<TeamHierarchy> hierarchyList = getTeamsHierarchy(false, ADMIN_AUTH_HEADERS);
+    // search for bu1 in the list
+    UUID bu1Id = bu1.getId();
+    UUID bu11Id = bu11.getId();
+    UUID div12Id = div12.getId();
+    UUID dep13Id = dep13.getId();
+    TeamHierarchy bu1Hierarchy = hierarchyList.stream().filter(t -> t.getId().equals(bu1Id)).findAny().orElse(null);
+    assertNotNull(bu1Hierarchy);
+    assertEquals(3, bu1Hierarchy.getChildren().size());
+    List<TeamHierarchy> children = bu1Hierarchy.getChildren();
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(dep13Id)));
+
+    Team div121 = createWithParents("div121", DIVISION, div12.getEntityReference());
+    // Ensure team hierarchy lists only the joinable child teams
+    hierarchyList = getTeamsHierarchy(true, ADMIN_AUTH_HEADERS);
+    bu1Hierarchy = hierarchyList.stream().filter(t -> t.getId().equals(bu1Id)).findAny().orElse(null);
+    assertNotNull(bu1Hierarchy);
+    assertEquals(2, bu1Hierarchy.getChildren().size());
+    children = bu1Hierarchy.getChildren();
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
+    assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
+    TeamHierarchy div12Hierarchy = children.stream().filter(t -> t.getId().equals(div12Id)).findAny().orElse(null);
+    assertNotNull(div12Hierarchy);
+    assertEquals(1, div12Hierarchy.getChildren().size());
+    assertEquals(div121.getId(), div12Hierarchy.getChildren().get(0).getId());
 
     //
     // Create hierarchy of division, and department under division
@@ -371,17 +457,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Delete bu1 and ensure Organization does not have it a child and bu11, div12, dep13 don't change Org to parent
     deleteEntity(bu1.getId(), true, true, ADMIN_AUTH_HEADERS);
     ORG_TEAM = getEntity(ORG_TEAM.getId(), "children", ADMIN_AUTH_HEADERS);
-    bu11 = getEntity(bu11.getId(), "parents", ADMIN_AUTH_HEADERS);
-    div12 = getEntity(div12.getId(), "parents", ADMIN_AUTH_HEADERS);
-    dep13 = getEntity(dep13.getId(), "parents", ADMIN_AUTH_HEADERS);
-
     assertEntityReferencesDoesNotContain(ORG_TEAM.getChildren(), bu1.getEntityReference());
-    assertEntityReferencesDoesNotContain(bu11.getParents(), bu1.getEntityReference());
-    assertEntityReferencesDoesNotContain(div12.getParents(), bu1.getEntityReference());
-    assertEntityReferencesDoesNotContain(dep13.getParents(), bu1.getEntityReference());
-    assertEntityReferencesContain(bu11.getParents(), ORG_TEAM.getEntityReference());
-    assertEntityReferencesContain(div12.getParents(), ORG_TEAM.getEntityReference());
-    assertEntityReferencesContain(dep13.getParents(), ORG_TEAM.getEntityReference());
   }
 
   @Test
@@ -472,9 +548,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   void patch_isJoinable_200(TestInfo test) throws IOException {
     CreateTeam create =
         createRequest(getEntityName(test), "description", "displayName", null)
+            .withTeamType(DEPARTMENT)
             .withProfile(PROFILE)
             .withIsJoinable(false);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Team child = createWithParents("child", GROUP, team.getEntityReference());
+    // Delete child and then patch the parent
+    deleteAndCheckEntity(child, ADMIN_AUTH_HEADERS);
 
     // patch the team with isJoinable set to true
     String json = JsonUtils.pojoToJson(team);
@@ -519,7 +599,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     EntityReference deletedUser = team.getUsers().get(removeUserIndex);
     team.getUsers().remove(removeUserIndex);
     ChangeDescription change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "users", Arrays.asList(deletedUser));
+    fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Remove a default role from the team using patch request
@@ -528,7 +608,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
     team.getDefaultRoles().remove(removeDefaultRoleIndex);
     change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "defaultRoles", Arrays.asList(deletedRole));
+    fieldDeleted(change, "defaultRoles", CommonUtil.listOf(deletedRole));
     patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
@@ -710,9 +790,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   private Team createWithParents(String teamName, TeamType teamType, EntityReference... parents)
       throws HttpResponseException {
+    return createWithParents(teamName, teamType, true, parents);
+  }
+
+  private Team createWithParents(String teamName, TeamType teamType, Boolean isJoinable, EntityReference... parents)
+      throws HttpResponseException {
     List<EntityReference> parentList = List.of(parents);
     List<UUID> parentIds = EntityUtil.toIds(parentList);
-    Team team = createEntity(createRequest(teamName).withParents(parentIds).withTeamType(teamType), ADMIN_AUTH_HEADERS);
+    Team team =
+        createEntity(
+            createRequest(teamName).withParents(parentIds).withTeamType(teamType).withIsJoinable(isJoinable),
+            ADMIN_AUTH_HEADERS);
     assertParents(team, parentList);
     return team;
   }
@@ -754,7 +842,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         new Rule()
             .withName("TeamManagerPolicy-UpdateTeam")
             .withEffect(Effect.ALLOW)
-            .withResources(List.of(Entity.TEAM))
+            .withResources(List.of(TEAM))
             .withOperations(List.of(MetadataOperation.EDIT_USERS));
 
     // Create a policy with the rule
@@ -789,5 +877,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       teams.add(createEntity(createRequest(getEntityName(test, i++)).withTeamType(type), ADMIN_AUTH_HEADERS));
     }
     return teams;
+  }
+
+  public List<TeamHierarchy> getTeamsHierarchy(Boolean isJoinable, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("teams/hierarchy");
+    target = target.queryParam("isJoinable", isJoinable);
+    ResultList<TeamHierarchy> result = TestUtils.get(target, TeamHierarchyList.class, authHeaders);
+    return result.getData();
   }
 }

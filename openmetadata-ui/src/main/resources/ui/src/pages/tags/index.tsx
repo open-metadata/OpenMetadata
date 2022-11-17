@@ -12,7 +12,8 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Tooltip } from 'antd';
+import { Button, Table, Tooltip, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
@@ -28,7 +29,6 @@ import {
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import Description from '../../components/common/description/Description';
-import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -43,12 +43,10 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { TIER_CATEGORY } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
-import {
-  CreateTagCategory,
-  TagCategoryType,
-} from '../../generated/api/tags/createTagCategory';
+import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -57,7 +55,6 @@ import {
   getActiveCatClass,
   getCountBadge,
   getEntityName,
-  isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import {
@@ -70,7 +67,7 @@ import {
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTagCategories } from '../../utils/TagsUtils';
+import { getTagCategories, isSystemTierTags } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
@@ -221,8 +218,7 @@ const TagsPage = () => {
       createTagCategory(data)
         .then((res) => {
           if (res) {
-            setCurrentCategory(res);
-            fetchCategories();
+            history.push(getTagPath(res.name));
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -267,9 +263,12 @@ const TagsPage = () => {
           const updatedCategory = categories.filter(
             (data) => data.id !== categoryId
           );
-          setCurrentCategory(updatedCategory[0]);
-          setCategoreis(updatedCategory);
-          setIsLoading(false);
+          const currentCategory = updatedCategory[0];
+          history.push(
+            getTagPath(
+              currentCategory?.fullyQualifiedName || currentCategory?.name
+            )
+          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['delete-tag-category-error']
@@ -282,7 +281,10 @@ const TagsPage = () => {
           jsonData['api-error-messages']['delete-tag-category-error']
         );
       })
-      .finally(() => setDeleteTags({ data: undefined, state: false }));
+      .finally(() => {
+        setDeleteTags({ data: undefined, state: false });
+        setIsLoading(false);
+      });
   };
 
   /**
@@ -329,7 +331,6 @@ const TagsPage = () => {
       const response = await updateTagCategory(currentCategory?.name ?? '', {
         name: currentCategory?.name ?? '',
         description: updatedHTML,
-        categoryType: currentCategory?.categoryType,
       });
       if (response) {
         await fetchCurrentCategory(currentCategory?.name as string, true);
@@ -419,16 +420,27 @@ const TagsPage = () => {
   };
 
   const getUsageCountLink = (tagFQN: string) => {
-    if (tagFQN.startsWith('Tier')) {
-      return getExplorePathWithInitFilters('', undefined, `tier=${tagFQN}`);
-    } else {
-      return getExplorePathWithInitFilters('', undefined, `tags=${tagFQN}`);
-    }
+    const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
+
+    return getExplorePathWithInitFilters(
+      '',
+      undefined,
+      `postFilter[${type}.tagFQN][0]=${tagFQN}`
+    );
   };
 
-  useEffect(() => {
-    fetchCategories(true);
-  }, []);
+  const handleActionDeleteTag = (record: TagClass) => {
+    setDeleteTags({
+      data: {
+        id: record.id as string,
+        name: record.name,
+        categoryName: currentCategory?.name,
+        isCategory: false,
+        status: 'waiting',
+      },
+      state: true,
+    });
+  };
 
   useEffect(() => {
     if (currentCategory) {
@@ -437,11 +449,17 @@ const TagsPage = () => {
   }, [currentCategory]);
 
   useEffect(() => {
+    /**
+     * If tagCategoryName is present then fetch that category
+     */
     if (tagCategoryName) {
-      fetchCurrentCategory(tagCategoryName);
-    } else {
-      setCurrentCategory(categories[0]);
+      const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
+      fetchCurrentCategory(isTier ? TIER_CATEGORY : tagCategoryName);
     }
+    /**
+     * Fetch all categories and set current category only if there is no categoryName
+     */
+    fetchCategories(!tagCategoryName);
   }, [tagCategoryName]);
 
   const fetchLeftPanel = () => {
@@ -486,14 +504,12 @@ const TagsPage = () => {
                 onClick={() => {
                   history.push(getTagPath(category.name));
                 }}>
-                <Ellipses
-                  tooltip
-                  className="tag-category label-category tw-self-center tw-w-32"
+                <Typography.Paragraph
+                  className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
                   data-testid="tag-name"
-                  rows={1}>
+                  ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category as unknown as EntityReference)}
-                </Ellipses>
-
+                </Typography.Paragraph>
                 {getCountBadge(
                   currentCategory?.name === category.name
                     ? currentCategory.children?.length
@@ -507,6 +523,100 @@ const TagsPage = () => {
       </LeftPanelCard>
     );
   };
+
+  const tableColumn: ColumnsType<TagClass> = useMemo(
+    () => [
+      {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+      },
+      {
+        title: 'Description',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string, record: TagClass) => (
+          <div className="tw-group tableBody-cell">
+            <div className="cursor-pointer flex">
+              <div>
+                {text ? (
+                  <RichTextEditorPreviewer markdown={text} />
+                ) : (
+                  <span className="tw-no-description">No description</span>
+                )}
+              </div>
+
+              {(categoryPermissions.EditDescription ||
+                categoryPermissions.EditAll) && (
+                <button
+                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                  onClick={() => {
+                    setIsEditTag(true);
+                    setEditTag(record);
+                  }}>
+                  <SVGIcons
+                    alt="edit"
+                    data-testid="editTagDescription"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+            <div className="tw-mt-1" data-testid="usage">
+              <span className="tw-text-grey-muted tw-mr-1">Usage:</span>
+              {record.usageCount ? (
+                <Link
+                  className="link-text tw-align-middle"
+                  data-testid="usage-count"
+                  to={getUsageCountLink(record.fullyQualifiedName || '')}>
+                  {record.usageCount}
+                </Link>
+              ) : (
+                <span className="tw-no-description" data-testid="usage-count">
+                  Not used
+                </span>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Actions',
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 120,
+        align: 'center',
+        render: (_, record: TagClass) => (
+          <button
+            className="link-text"
+            data-testid="delete-tag"
+            disabled={
+              isSystemTierTags(record.fullyQualifiedName || '') ||
+              !categoryPermissions.EditAll
+            }
+            onClick={() => handleActionDeleteTag(record)}>
+            {deleteTags.data?.id === record.id ? (
+              deleteTags.data?.status === 'success' ? (
+                <FontAwesomeIcon icon="check" />
+              ) : (
+                <Loader size="small" type="default" />
+              )
+            ) : (
+              <SVGIcons
+                alt="delete"
+                icon="icon-delete"
+                title="Delete"
+                width="16px"
+              />
+            )}
+          </button>
+        ),
+      },
+    ],
+    [categoryPermissions, deleteTags]
+  );
 
   return (
     <PageContainerV1>
@@ -554,9 +664,11 @@ const TagsPage = () => {
                   <Button
                     className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
-                    disabled={!categoryPermissions.Delete}
+                    disabled={
+                      isSystemTierTags(currentCategory.name || '') ||
+                      !categoryPermissions.Delete
+                    }
                     size="small"
-                    type="primary"
                     onClick={() => {
                       deleteTagHandler();
                     }}>
@@ -583,141 +695,15 @@ const TagsPage = () => {
                 onDescriptionUpdate={UpdateCategory}
               />
             </div>
-            <div className="tw-table-container">
-              <table className="tw-w-full" data-testid="table">
-                <thead>
-                  <tr className="tableHead-row">
-                    <th className="tableHead-cell" data-testid="heading-name">
-                      Name
-                    </th>
-                    <th
-                      className="tableHead-cell"
-                      data-testid="heading-description">
-                      Description
-                    </th>
-                    <th
-                      className="tableHead-cell tw-w-10"
-                      data-testid="heading-actions">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="tw-text-sm" data-testid="table-body">
-                  {currentCategory?.children?.length ? (
-                    (currentCategory.children as TagClass[])?.map(
-                      (tag: TagClass, index: number) => {
-                        return (
-                          <tr
-                            className={`tableBody-row ${
-                              !isEven(index + 1) && 'odd-row'
-                            }`}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <p>{tag.name}</p>
-                            </td>
-                            <td className="tw-group tableBody-cell">
-                              <div className="tw-cursor-pointer tw-flex">
-                                <div>
-                                  {tag.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={tag.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
-                                    </span>
-                                  )}
-                                </div>
-
-                                {(categoryPermissions.EditDescription ||
-                                  categoryPermissions.EditAll) && (
-                                  <button
-                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                    onClick={() => {
-                                      setIsEditTag(true);
-                                      setEditTag(tag);
-                                    }}>
-                                    <SVGIcons
-                                      alt="edit"
-                                      data-testid="editTagDescription"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="16px"
-                                    />
-                                  </button>
-                                )}
-                              </div>
-                              <div className="tw-mt-1" data-testid="usage">
-                                <span className="tw-text-grey-muted tw-mr-1">
-                                  Usage:
-                                </span>
-                                {tag.usageCount ? (
-                                  <Link
-                                    className="link-text tw-align-middle"
-                                    data-testid="usage-count"
-                                    to={getUsageCountLink(
-                                      tag.fullyQualifiedName || ''
-                                    )}>
-                                    {tag.usageCount}
-                                  </Link>
-                                ) : (
-                                  <span
-                                    className="tw-no-description"
-                                    data-testid="usage-count">
-                                    Not used
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="tableBody-cell">
-                              <div className="tw-text-center">
-                                <button
-                                  className="link-text"
-                                  data-testid="delete-tag"
-                                  disabled={!categoryPermissions.EditAll}
-                                  onClick={() =>
-                                    setDeleteTags({
-                                      data: {
-                                        id: tag.id as string,
-                                        name: tag.name,
-                                        categoryName: currentCategory.name,
-                                        isCategory: false,
-                                        status: 'waiting',
-                                      },
-                                      state: true,
-                                    })
-                                  }>
-                                  {deleteTags.data?.id === tag.id ? (
-                                    deleteTags.data?.status === 'success' ? (
-                                      <FontAwesomeIcon icon="check" />
-                                    ) : (
-                                      <Loader size="small" type="default" />
-                                    )
-                                  ) : (
-                                    <SVGIcons
-                                      alt="delete"
-                                      icon="icon-delete"
-                                      title="Delete"
-                                      width="16px"
-                                    />
-                                  )}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )
-                  ) : (
-                    <tr className="tableBody-row">
-                      <td className="tableBody-cell tw-text-center" colSpan={4}>
-                        No tags available.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table
+              bordered
+              columns={tableColumn}
+              data-testid="table"
+              dataSource={currentCategory?.children as TagClass[]}
+              pagination={false}
+              rowKey="id"
+              size="small"
+            />
             {isEditTag && (
               <ModalWithMarkdownEditor
                 header={`Edit description for ${editTag?.name}`}
@@ -738,7 +724,6 @@ const TagsPage = () => {
                 initialData={{
                   name: '',
                   description: '',
-                  categoryType: TagCategoryType.Descriptive,
                 }}
                 isSaveButtonDisabled={!isEmpty(errorDataCategory)}
                 onCancel={() => setIsAddingCategory(false)}
@@ -759,7 +744,6 @@ const TagsPage = () => {
                 initialData={{
                   name: '',
                   description: '',
-                  categoryType: '',
                 }}
                 isSaveButtonDisabled={!isEmpty(errorDataTag)}
                 onCancel={() => setIsAddingTag(false)}

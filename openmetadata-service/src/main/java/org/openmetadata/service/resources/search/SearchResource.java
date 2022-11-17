@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.search;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -42,12 +43,25 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.Operator;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
+import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
+import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
+import org.elasticsearch.search.SearchModule;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
@@ -55,15 +69,17 @@ import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 
 @Slf4j
 @Path("/v1/search")
 @Api(value = "Search collection", tags = "Search collection")
 @Produces(MediaType.APPLICATION_JSON)
+@Collection(name = "search")
 public class SearchResource {
-  private final RestHighLevelClient client;
+  private RestHighLevelClient client;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
@@ -71,8 +87,20 @@ public class SearchResource {
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
-  public SearchResource(ElasticSearchConfiguration esConfig) {
-    this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
+  private static final NamedXContentRegistry xContentRegistry;
+
+  static {
+    SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
+
+    xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
+  }
+
+  public SearchResource() {}
+
+  public void initialize(OpenMetadataApplicationConfig config) {
+    if (config.getElasticSearchConfiguration() != null) {
+      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+    }
   }
 
   @GET
@@ -108,7 +136,8 @@ public class SearchResource {
                       + "AND tags:user.address <br/>"
                       + " logic operators such as AND and OR must be in uppercase ",
               required = true)
-          @javax.ws.rs.QueryParam("q")
+          @DefaultValue("*")
+          @QueryParam("q")
           String query,
       @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
           @DefaultValue("table_search_index")
@@ -117,6 +146,7 @@ public class SearchResource {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @DefaultValue("false")
           @QueryParam("deleted")
+          @Deprecated(forRemoval = true)
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
@@ -131,24 +161,36 @@ public class SearchResource {
                   "Sort the search results by field, available fields to "
                       + "sort weekly_stats"
                       + " , daily_stats, monthly_stats, last_updated_timestamp")
+          @DefaultValue("_score")
           @QueryParam("sort_field")
           String sortFieldParam,
       @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
-          String sortOrderParam,
+          SortOrder sortOrder,
       @Parameter(description = "Track Total Hits") @DefaultValue("false") @QueryParam("track_total_hits")
-          boolean trackTotalHits)
+          boolean trackTotalHits,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter") @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Get document body for each hit") @DefaultValue("true") @QueryParam("fetch_source")
+          boolean fetchSource,
+      @Parameter(
+              description =
+                  "Get only selected fields of the document body for each hit. Empty value will return all fields")
+          @QueryParam("include_source_fields")
+          List<String> includeSourceFields)
       throws IOException {
 
-    SearchRequest searchRequest = new SearchRequest(index);
-    SortOrder sortOrder = SortOrder.DESC;
-    SearchSourceBuilder searchSourceBuilder;
-    if (sortOrderParam.equals("asc")) {
-      sortOrder = SortOrder.ASC;
+    if (nullOrEmpty(query)) {
+      query = "*";
     }
-    // add deleted flag
-    query += " AND deleted:" + deleted;
+
+    SearchSourceBuilder searchSourceBuilder;
 
     switch (index) {
       case "topic_search_index":
@@ -159,6 +201,9 @@ public class SearchResource {
         break;
       case "pipeline_search_index":
         searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
+        break;
+      case "mlmodel_search_index":
+        searchSourceBuilder = buildMlModelSearchBuilder(query, from, size);
         break;
       case "table_search_index":
         searchSourceBuilder = buildTableSearchBuilder(query, from, size);
@@ -180,24 +225,60 @@ public class SearchResource {
         break;
     }
 
+    if (!nullOrEmpty(queryFilter)) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    if (!nullOrEmpty(postFilter)) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, postFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        searchSourceBuilder.postFilter(filter);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
+    if (!deleted) {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).must(QueryBuilders.termQuery("deleted", false)));
+    }
+
     if (!nullOrEmpty(sortFieldParam)) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
-    LOG.debug(searchSourceBuilder.toString());
+
     /* for performance reasons ElasticSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
     however in most cases for search results an approximate value is good enough.
     we are displaying total entity counts in landing page and explore page where we need the total count
     https://github.com/elastic/elasticsearch/issues/33028 */
+    searchSourceBuilder.fetchSource(
+        new FetchSourceContext(fetchSource, includeSourceFields.toArray(String[]::new), new String[] {}));
+
     if (trackTotalHits) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
+
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    searchRequest.source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return Response.status(OK).entity(searchResponse.toString()).build();
+    String response =
+        client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
+
+    return Response.status(OK).entity(response).build();
   }
 
   @GET
@@ -224,15 +305,37 @@ public class SearchResource {
                       + " 2. Do not add any wild-cards such as * like in search api <br/>"
                       + " 3. suggest api is a prefix suggestion <br/>",
               required = true)
-          @javax.ws.rs.QueryParam("q")
+          @QueryParam("q")
           String query,
-      @DefaultValue("table_search_index") @javax.ws.rs.QueryParam("index") String index,
-      @DefaultValue("suggest") @javax.ws.rs.QueryParam("field") String fieldName,
-      @DefaultValue("false") @javax.ws.rs.QueryParam("deleted") String deleted)
+      @DefaultValue("table_search_index") @QueryParam("index") String index,
+      @Parameter(
+              description =
+                  "Field in object containing valid suggestions. Defaults to 'suggest`. "
+                      + "All indices has a `suggest` field, only some indices have other `suggest_*` fields.")
+          @DefaultValue("suggest")
+          @QueryParam("field")
+          String fieldName,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("10")
+          @QueryParam("size")
+          int size,
+      @Parameter(description = "Get document body for each hit") @DefaultValue("true") @QueryParam("fetch_source")
+          boolean fetchSource,
+      @Parameter(
+              description =
+                  "Get only selected fields of the document body for each hit. Empty value will return all fields")
+          @QueryParam("include_source_fields")
+          List<String> includeSourceFields,
+      @DefaultValue("false") @QueryParam("deleted") String deleted)
       throws IOException {
-    SearchRequest searchRequest = new SearchRequest(index);
+
+    if (nullOrEmpty(query)) {
+      query = "*";
+    }
+
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion(fieldName).prefix(query);
+    CompletionSuggestionBuilder suggestionBuilder =
+        SuggestBuilders.completionSuggestion(fieldName).prefix(query, Fuzziness.AUTO).size(size).skipDuplicates(true);
     if (fieldName.equalsIgnoreCase("suggest")) {
       suggestionBuilder.contexts(
           Collections.singletonMap(
@@ -240,11 +343,15 @@ public class SearchResource {
     }
     SuggestBuilder suggestBuilder = new SuggestBuilder();
     suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
-    searchSourceBuilder.suggest(suggestBuilder);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    searchRequest.source(searchSourceBuilder);
+    searchSourceBuilder
+        .suggest(suggestBuilder)
+        .timeout(new TimeValue(30, TimeUnit.SECONDS))
+        .fetchSource(new FetchSourceContext(fetchSource, includeSourceFields.toArray(String[]::new), new String[] {}));
+    SearchRequest searchRequest = new SearchRequest(index).source(searchSourceBuilder);
+
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();
+
     return Response.status(OK).entity(suggest.toString()).build();
   }
 
@@ -255,16 +362,22 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
+    FieldValueFactorFunctionBuilder boostScoreBuilder =
+        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count").missing(1).factor(2);
+    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder[1];
+    functions[0] = new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder);
     QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(FIELD_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 1.0f)
-            .field("columns.name", 5.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DESCRIPTION, 2.0f)
+            .field("columns.name", 2.0f)
             .field("columns.description", 1.0f)
-            .field("columns.children.name", 5.0f)
-            .lenient(true)
+            .field("columns.children.name", 2.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
-    HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(NAME);
+    FunctionScoreQueryBuilder queryBuilder = QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
+    HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -280,17 +393,25 @@ public class SearchResource {
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryStringBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database.name.keyword"));
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("DatabaseSchema").field("databaseSchema.name.keyword"));
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
 
     return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(FIELD_NAME, 10.0f).field(FIELD_DESCRIPTION, 2.0f).lenient(true);
-    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_NAME);
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DESCRIPTION, 2.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -304,12 +425,13 @@ public class SearchResource {
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_DESCRIPTION, 2.0f)
-            .field("chars.name")
+            .field("chars.name", 2.0f)
             .field("charts.description")
-            .lenient(true);
-    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(NAME);
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -331,12 +453,13 @@ public class SearchResource {
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(NAME, 5.0f)
-            .field(DESCRIPTION)
-            .field("tasks.name")
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(DESCRIPTION, 2.0f)
+            .field("tasks.name", 2.0f)
             .field("tasks.description")
-            .lenient(true);
-    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(NAME);
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -353,8 +476,33 @@ public class SearchResource {
     return addAggregation(searchSourceBuilder);
   }
 
-  private SearchSourceBuilder searchBuilder(
-      QueryStringQueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
+  private SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(DESCRIPTION, 2.0f)
+            .field("mlFeatures.name", 2.0f)
+            .field("mlFeatures.description")
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightPipelineName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
+    highlightTasks.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("mlFeatures.description");
+    highlightTaskDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightPipelineName);
+    hb.field(highlightTasks);
+    hb.field(highlightTaskDescriptions);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
     SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
     if (hb != null) {
       hb.preTags("<span class=\"text-highlighter\">");
@@ -366,12 +514,13 @@ public class SearchResource {
 
   private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
-        .aggregation(AggregationBuilders.terms("Service").field("serviceType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceName").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service.type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("EntityType").field("entityType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier.tagFQN"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
+        .aggregation(AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("service.type").field("service.type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
+        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
 
     return builder;
   }
@@ -390,7 +539,11 @@ public class SearchResource {
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -407,7 +560,11 @@ public class SearchResource {
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query)
+            .field(NAME, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
     highlightTagName.highlighterType(UNIFIED);

@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Snowflake source module
+"""
 import json
 import traceback
 from typing import Iterable, List, Optional, Tuple
@@ -23,6 +26,7 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -56,23 +60,25 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 logger = ingestion_logger()
 
 
-SnowflakeDialect._json_deserializer = json.loads
+SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
 
 
-def get_table_names(self, connection, schema, **kw):
+def get_table_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
     cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 
 
-def get_view_names(self, connection, schema, **kw):
+def get_view_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
     cursor = connection.execute(SNOWFLAKE_GET_VIEW_NAMES.format(schema))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 
 
 @reflection.cache
-def get_view_definition(self, connection, view_name, schema=None, **kw):
+def get_view_definition(  # pylint: disable=unused-argument
+    self, connection, view_name, schema=None, **kw
+):
     """
     Gets the view definition
     """
@@ -80,14 +86,13 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     if schema:
         cursor = connection.execute(
             "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
-            "LIKE '{0}' IN {1}".format(view_name, schema)
+            f"LIKE '{view_name}' IN {schema}"
         )
     else:
         cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
-            "LIKE '{0}'".format(view_name)
+            "SHOW /* sqlalchemy:get_view_definition */ VIEWS " f"LIKE '{view_name}'"
         )
-    n2i = self.__class__._map_name_to_idx(cursor)
+    n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
     try:
         ret = cursor.fetchone()
         if ret:
@@ -98,7 +103,9 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
 
 
 @reflection.cache
-def get_table_comment(self, connection, table_name, schema_name, **kw):
+def get_table_comment(  # pylint: disable=unused-argument
+    self, connection, table_name, schema_name, **kw
+):
     """
     Returns comment of table.
     """
@@ -111,11 +118,13 @@ def get_table_comment(self, connection, table_name, schema_name, **kw):
 
 
 @reflection.cache
-def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+def get_unique_constraints(  # pylint: disable=unused-argument
+    self, connection, table_name, schema=None, **kw
+):
     return []
 
 
-def normalize_names(self, name):
+def normalize_names(self, name):  # pylint: disable=unused-argument
     return name
 
 
@@ -128,8 +137,13 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 
 
 class SnowflakeSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Snowflake Source
+    """
+
     def __init__(self, config, metadata_config):
-        self.partiotion_details = {}
+        self.partition_details = {}
         super().__init__(config, metadata_config)
 
     @classmethod
@@ -153,12 +167,12 @@ class SnowflakeSource(CommonDbSourceService):
                 )
             )
 
-    def set_partiotion_details(self) -> None:
-        self.partiotion_details.clear()
+    def set_partition_details(self) -> None:
+        self.partition_details.clear()
         results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
         for row in results:
             if row.CLUSTERING_KEY:
-                self.partiotion_details[
+                self.partition_details[
                     f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
                 ] = row.CLUSTERING_KEY
 
@@ -167,24 +181,33 @@ class SnowflakeSource(CommonDbSourceService):
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()
-            self.set_partiotion_details()
+            self.set_partition_details()
             yield configured_db
         else:
             results = self.connection.execute("SHOW DATABASES")
             for res in results:
                 row = list(res)
                 new_database = row[1]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
 
                 if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_name=new_database
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else new_database,
                 ):
-                    self.status.filter(new_database, "Database pattern not allowed")
+                    self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
                 try:
                     self.set_inspector(database_name=new_database)
                     self.set_session_query_tag()
-                    self.set_partiotion_details()
+                    self.set_partition_details()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -218,6 +241,7 @@ class SnowflakeSource(CommonDbSourceService):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to parse cluster key - {err}")
+        return None
 
     def __fix_partition_column_case(
         self,
@@ -242,7 +266,7 @@ class SnowflakeSource(CommonDbSourceService):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, TablePartition]:
-        cluster_key = self.partiotion_details.get(f"{schema_name}.{table_name}")
+        cluster_key = self.partition_details.get(f"{schema_name}.{table_name}")
         if cluster_key:
             partition_columns = self.parse_column_name_from_expr(cluster_key)
             partition_details = TablePartition(
@@ -278,13 +302,12 @@ class SnowflakeSource(CommonDbSourceService):
             row = list(res)
             fqn_elements = [name for name in row[2:] if name]
             yield OMetaTagAndCategory(
-                fqn=fqn._build(
+                fqn=fqn._build(  # pylint: disable=protected-access
                     self.context.database_service.name.__root__, *fqn_elements
                 ),
                 category_name=CreateTagCategoryRequest(
                     name=row[0],
                     description="SNOWFLAKE TAG NAME",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(
                     name=row[1], description="SNOWFLAKE TAG VALUE"

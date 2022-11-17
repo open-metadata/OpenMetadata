@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Empty, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -31,6 +31,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
@@ -366,8 +367,10 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       );
     } else {
       return (
-        <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-          <Empty description={<p>No features data available</p>} />
+        <div className="tw-flex tw-justify-center tw-items-center">
+          <ErrorPlaceHolder>
+            <p>No features data available</p>
+          </ErrorPlaceHolder>
         </div>
       );
     }

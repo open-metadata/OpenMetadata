@@ -84,5 +84,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "catalog"]
+  "required": ["hostPort", "username"]
 }

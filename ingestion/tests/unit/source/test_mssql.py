@@ -16,17 +16,7 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from sqlalchemy.types import (
-    CHAR,
-    DATE,
-    FLOAT,
-    INTEGER,
-    JSON,
-    SMALLINT,
-    TEXT,
-    TIMESTAMP,
-    VARCHAR,
-)
+from sqlalchemy.types import INTEGER, VARCHAR
 
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.ingestion.api.workflow import Workflow

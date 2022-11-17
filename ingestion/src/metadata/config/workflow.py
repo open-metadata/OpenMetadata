@@ -8,37 +8,22 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
 Workflow related configurations and utilities
 """
 import importlib
 import logging
-from typing import Type, TypeVar
+from typing import Optional, Type, TypeVar
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.entity.services.messagingService import (
-    MessagingConnection,
-)
-from metadata.generated.schema.entity.services.metadataService import MetadataConnection
-from metadata.generated.schema.entity.services.mlmodelService import MlModelConnection
-from metadata.generated.schema.entity.services.pipelineService import PipelineConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     Processor as WorkflowProcessor,
 )
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
 
 logger = logging.getLogger("Config")
 
@@ -52,11 +37,10 @@ def fetch_type_class(_type: str, is_file: bool):
     """
     if is_file:
         return _type.replace("-", "_")
-    else:
-        return "".join([i.title() for i in _type.replace("-", "_").split("_")])
+    return "".join([i.title() for i in _type.replace("-", "_").split("_")])
 
 
-def get_class(key: str) -> Type[T]:
+def get_class(key: str) -> Optional[Type[T]]:
     """
     Given an import key, import the class and return it
     """
@@ -66,6 +50,8 @@ def get_class(key: str) -> Type[T]:
         module_name, class_name = key.rsplit(".", 1)
         my_class = getattr(importlib.import_module(module_name), class_name)
         return my_class
+
+    return None
 
 
 def get_sink(
@@ -85,11 +71,8 @@ def get_sink(
     :param _from: From where do we load the sink class. Ingestion by default.
     """
     sink_class = get_class(
-        "metadata.{}.sink.{}.{}Sink".format(
-            _from,
-            fetch_type_class(sink_type, is_file=True),
-            fetch_type_class(sink_type, is_file=False),
-        )
+        f"metadata.{_from}.sink.{fetch_type_class(sink_type, is_file=True)}."
+        f"{fetch_type_class(sink_type, is_file=False)}Sink"
     )
 
     sink: Sink = sink_class.create(
@@ -123,11 +106,8 @@ def get_processor(
     :param _from: From where do we load the sink class. Ingestion by default.
     """
     processor_class = get_class(
-        "metadata.{}.processor.{}.{}Processor".format(
-            _from,
-            fetch_type_class(processor_type, is_file=True),
-            fetch_type_class(processor_type, is_file=False),
-        )
+        f"metadata.{_from}.processor.{fetch_type_class(processor_type, is_file=True)}."
+        f"{fetch_type_class(processor_type, is_file=False)}Processor"
     )
 
     processor: Processor = processor_class.create(

@@ -31,6 +31,9 @@
       "description": "Bot user created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
       "$ref" : "../type/entityReference.json"
     },
+    "provider" : {
+      "$ref": "../type/basic.json#/definitions/providerType"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"

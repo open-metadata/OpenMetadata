@@ -18,9 +18,11 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -29,6 +31,7 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
@@ -36,7 +39,6 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
@@ -44,8 +46,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -72,6 +76,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -84,6 +89,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.TableRepository.TableUpdater;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -140,10 +146,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsFollower;
 
   /** Fields that can be updated during PATCH operation */
-  private final Fields patchFields;
+  @Getter private final Fields patchFields;
 
   /** Fields that can be updated during PUT operation */
-  protected final Fields putFields;
+  @Getter protected final Fields putFields;
 
   EntityRepository(
       String collectionPath,
@@ -242,22 +248,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * org.openmetadata.service.resources.teams.RoleResource#initialize(OpenMetadataApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
-    List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", entityType));
+    List<T> entities = getEntitiesFromSeedData();
+    for (T entity : entities) {
+      initializeEntity(entity);
+    }
+  }
+
+  public List<T> getEntitiesFromSeedData() throws IOException {
+    return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
+  }
+
+  public List<T> getEntitiesFromSeedData(String path) throws IOException {
+    return getEntitiesFromSeedData(entityType, path, entityClass);
+  }
+
+  public static <U> List<U> getEntitiesFromSeedData(String entityType, String path, Class<U> clazz) throws IOException {
+    List<U> entities = new ArrayList<>();
+    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
-            String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
-            initSeedData(JsonUtils.readValue(json, entityClass));
+            String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFile);
+            json = json.replace("<separator>", Entity.SEPARATOR);
+            entities.add(JsonUtils.readValue(json, clazz));
           } catch (Exception e) {
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
           }
         });
+    return entities;
   }
 
   /** Initialize a given entity if it does not exist. */
   @Transaction
-  public void initSeedData(T entity) throws IOException {
+  public void initializeEntity(T entity) throws IOException {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
       LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
@@ -265,7 +288,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     LOG.info("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
-    entity.setUpdatedBy("admin");
+    entity.setUpdatedBy(ADMIN_USER_NAME);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setId(UUID.randomUUID());
     create(null, entity);
@@ -283,7 +306,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityById(id, include), fields));
+    return withHref(uriInfo, setFieldsInternal(dao.findEntityById(id, include), fields));
+  }
+
+  @Transaction
+  public final T findOrNull(UUID id, String fields, Include include) throws IOException {
+    String json = dao.findJsonById(id, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
   }
 
   @Transaction
@@ -293,7 +322,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityByName(fqn, include), fields));
+    return withHref(uriInfo, setFieldsInternal(dao.findEntityByName(fqn, include), fields));
+  }
+
+  @Transaction
+  public final T findByNameOrNull(String fqn, String fields, Include include) throws IOException {
+    String json = dao.findJsonByFqn(fqn, include);
+    return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
   }
 
   @Transaction
@@ -306,7 +341,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
 
       for (String json : jsons) {
-        T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+        T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
         entities.add(entity);
       }
 
@@ -332,7 +367,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
-      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+      T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
     int total = dao.listCount(filter);
@@ -358,7 +393,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFields(dao.findEntityById(id, ALL), putFields);
+    T entity = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
       return entity;
     }
@@ -367,10 +402,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public EntityHistory listVersions(String id) throws IOException {
-    T latest = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
+  public EntityHistory listVersions(UUID id) throws IOException {
+    T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
-    List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
+    List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id.toString(), extensionPrefix);
     List<EntityVersionPair> oldVersions = new ArrayList<>();
     records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
     oldVersions.sort(EntityUtil.compareVersion.reversed());
@@ -389,15 +424,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T createInternal(T entity) throws IOException {
-    prepare(entity);
-    validateExtension(entity);
+    prepareInternal(entity);
     return createNewEntity(entity);
+  }
+
+  public void prepareInternal(T entity) throws IOException {
+    if (supportsTags) {
+      entity.setTags(addDerivedTags(entity.getTags()));
+      checkMutuallyExclusive(entity.getTags());
+    }
+    prepare(entity);
+    setFullyQualifiedName(entity);
+    validateExtension(entity);
+  }
+
+  T setFieldsInternal(T entity, Fields fields) throws IOException {
+    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
+    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
+    entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
+    setFields(entity, fields);
+    return entity;
   }
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T original, T updated) throws IOException {
-    prepare(updated);
-    validateExtension(updated);
+    prepareInternal(updated);
     // Check if there is any original, deleted or not
     original = JsonUtils.readValue(dao.findJsonByFqn(original.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) {
@@ -418,7 +469,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) throws IOException {
-    validateExtension(updated);
     // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) {
@@ -427,11 +477,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated);
   }
 
+  @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     // Override to perform any operation required after creation.
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
+  @SuppressWarnings("unused")
   protected void postUpdate(T entity) {
     // Override to perform any operation required after an entity update.
     // For example ingestion pipeline creates a pipeline in AirFlow.
@@ -440,7 +492,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) throws IOException {
     // Get all the fields in the original entity that can be updated during PUT operation
-    setFields(original, putFields);
+    setFieldsInternal(original, putFields);
 
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
@@ -457,16 +509,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFields(dao.findEntityById(id), patchFields);
+    T original = setFieldsInternal(dao.findEntityById(id), patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    prepare(updated);
+    prepareInternal(updated);
     populateOwner(updated.getOwner());
-    validateExtension(updated);
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -536,14 +587,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private DeleteResponse<T> delete(String updatedBy, String json, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     T original = JsonUtils.readValue(json, entityClass);
+    checkSystemEntityDeletion(original);
     preDelete(original);
-    setFields(original, putFields);
+    setFieldsInternal(original, putFields);
 
     deleteChildren(id, recursive, hardDelete, updatedBy);
 
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
-    setFields(updated, putFields); // we need service, database, databaseSchema to delete properly from ES.
+    setFieldsInternal(updated, putFields); // we need service, database, databaseSchema to delete properly from ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -585,7 +637,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                id.toString(), entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (records.isEmpty()) {
       return;
@@ -595,9 +650,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityRelationshipRecord record : records) {
-      LOG.info("Recursively {} deleting {} {}", hardDelete ? "hard" : "soft", record.getType(), record.getId());
-      Entity.deleteEntity(updatedBy, record.getType(), record.getId(), true, hardDelete);
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      LOG.info(
+          "Recursively {} deleting {} {}",
+          hardDelete ? "hard" : "soft",
+          entityRelationshipRecord.getType(),
+          entityRelationshipRecord.getId());
+      Entity.deleteEntity(
+          updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), true, hardDelete);
     }
   }
 
@@ -666,9 +726,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
-  protected void store(UUID id, T entity, boolean update) throws JsonProcessingException {
+  protected void store(T entity, boolean update) throws JsonProcessingException {
     if (update) {
-      dao.update(id, JsonUtils.pojoToJson(entity));
+      dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
     } else {
       dao.insert(entity);
     }
@@ -739,11 +799,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (records.isEmpty()) {
       return null;
     }
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode objectNode = mapper.createObjectNode();
-    for (ExtensionRecord record : records) {
-      String fieldName = TypeRegistry.getPropertyName(record.getExtensionName());
-      objectNode.set(fieldName, mapper.readTree(record.getExtensionJson()));
+    ObjectNode objectNode = JsonUtils.getObjectNode();
+    for (ExtensionRecord extensionRecord : records) {
+      String fieldName = TypeRegistry.getPropertyName(extensionRecord.getExtensionName());
+      objectNode.set(fieldName, JsonUtils.readTree(extensionRecord.getExtensionJson()));
     }
     return objectNode;
   }
@@ -805,6 +864,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  void checkMutuallyExclusive(List<TagLabel> tagLabels) {
+    Map<String, TagLabel> map = new HashMap<>();
+    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
+      // When two tags have the same parent that is mutuallyExclusive, then throw an error
+      String parentFqn = FullyQualifiedName.getParent(tagLabel.getTagFQN());
+      TagLabel stored = map.put(parentFqn, tagLabel);
+      if (stored != null && TagLabelCache.getInstance().mutuallyExclusive(tagLabel)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
+      }
+    }
+  }
+
   protected List<TagLabel> getTags(String fqn) {
     return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
   }
@@ -815,8 +886,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
-    for (EntityRelationshipRecord record : records) {
-      followers.add(daoCollection.userDAO().findEntityReferenceById(record.getId(), ALL));
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      followers.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return followers;
   }
@@ -832,16 +903,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
+  public T restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
 
     if (!records.isEmpty()) {
       // Restore all the contained entities
-      for (EntityRelationshipRecord record : records) {
-        LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      for (EntityRelationshipRecord entityRelationshipRecord : records) {
+        LOG.info("Recursively restoring {} {}", entityRelationshipRecord.getType(), entityRelationshipRecord.getId());
+        Entity.restoreEntity(updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId());
       }
     }
 
@@ -850,6 +921,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T entity = dao.findEntityById(id, DELETED);
     entity.setDeleted(false);
     dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+    return entity;
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
@@ -1002,19 +1074,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
   }
 
-  public EntityReference getOriginalOwner(T entity) throws IOException {
-    if (!supportsOwner) {
-      return null;
-    }
-    // Try to find the owner if entity exists
-    String json = dao.findJsonByFqn(entity.getFullyQualifiedName(), NON_DELETED);
-    if (json == null) {
-      return null; // Entity does not exist
-    }
-    entity = JsonUtils.readValue(json, entityClass);
-    return getOwner(entity);
-  }
-
   public void populateOwner(EntityReference owner) throws IOException {
     if (owner == null) {
       return;
@@ -1033,7 +1092,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Remove owner relationship for a given entity */
   private void removeOwner(T entity, EntityReference owner) {
-    if (owner != null && owner.getId() != null) {
+    if (EntityUtil.getId(owner) != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), entity.getId());
       deleteRelationship(owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
     }
@@ -1046,11 +1105,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final Fields getFields(String fields) {
+    if (fields != null && fields.equals("*")) {
+      return new Fields(allowedFields, String.join(",", allowedFields));
+    }
     return new Fields(allowedFields, fields);
   }
 
   public final List<String> getAllowedFields() {
     return allowedFields;
+  }
+
+  public final List<String> getAllowedFieldsCopy() {
+    return new ArrayList<>(allowedFields);
   }
 
   protected String getCustomPropertyFQNPrefix(String entityType) {
@@ -1061,25 +1127,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return FullyQualifiedName.build(entityType, "customProperties", propertyName);
   }
 
-  public static List<UUID> toIds(List<String> ids) {
-    if (ids == null) {
-      return Collections.emptyList();
-    }
-    List<UUID> uuids = new ArrayList<>();
-    for (String id : ids) {
-      uuids.add(UUID.fromString(id));
-    }
-    return uuids;
-  }
-
   protected List<EntityReference> getIngestionPipelines(T service) throws IOException {
     List<EntityRelationshipRecord> records =
         findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
     List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (EntityRelationshipRecord record : records) {
-      ingestionPipelines.add(daoCollection.ingestionPipelineDAO().findEntityReferenceById(record.getId(), ALL));
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      ingestionPipelines.add(
+          daoCollection.ingestionPipelineDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
     }
     return ingestionPipelines;
+  }
+
+  protected void checkSystemEntityDeletion(T entity) {
+    if (ProviderType.SYSTEM.equals(entity.getProvider())) { // System provided entity can't be deleted
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), entityType));
+    }
   }
 
   public EntityReference validateOwner(EntityReference owner) throws IOException {
@@ -1139,8 +1202,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updated = updated;
       this.operation = operation;
       this.updatingUser =
-          updated.getUpdatedBy().equalsIgnoreCase("admin")
-              ? new User().withName("admin").withIsAdmin(true)
+          updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
+              ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
               : SubjectCache.getInstance().getSubjectContext(updated.getUpdatedBy()).getUser();
     }
 
@@ -1205,11 +1268,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
-      if (operation.isPatch() || updatedOwner != null) {
+      if ((operation.isPatch() || updatedOwner != null)
+          && recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
-        if (recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
-          EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
-        }
+        EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
       }
     }
 
@@ -1239,12 +1301,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateExtension() throws JsonProcessingException {
-      if (updatedByBot()) {
-        // Revert changes to extension field, if being updated by a bot
+      if (original.getExtension() == updated.getExtension()) {
+        return;
+      }
+
+      if (updatedByBot() && operation == Operation.PUT) {
+        // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting custom extension
         updated.setExtension(original.getExtension());
         return;
       }
 
+      List<JsonNode> added = new ArrayList<>();
+      List<JsonNode> deleted = new ArrayList<>();
+      JsonNode origFields = JsonUtils.valueToTree(original.getExtension());
+      JsonNode updatedFields = JsonUtils.valueToTree(updated.getExtension());
+
+      // Check for updated and deleted fields
+      for (Iterator<Entry<String, JsonNode>> it = origFields.fields(); it.hasNext(); ) {
+        Entry<String, JsonNode> orig = it.next();
+        JsonNode updated = updatedFields.get(orig.getKey());
+        if (updated == null) {
+          deleted.add(JsonUtils.getObjectNode(orig.getKey(), orig.getValue()));
+        } else {
+          // TODO converting to a string is a hack for now because JsonNode equals issues
+          recordChange(getExtensionField(orig.getKey()), orig.getValue().toString(), updated.toString());
+        }
+      }
+
+      // Check for added fields
+      for (Iterator<Entry<String, JsonNode>> it = updatedFields.fields(); it.hasNext(); ) {
+        Entry<String, JsonNode> updated = it.next();
+        JsonNode orig = origFields.get(updated.getKey());
+        if (orig == null) {
+          added.add(JsonUtils.getObjectNode(updated.getKey(), updated.getValue()));
+        }
+      }
+      if (!added.isEmpty()) {
+        fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(added));
+      }
+      if (!deleted.isEmpty()) {
+        fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deleted));
+      }
       removeExtension(original);
       storeExtension(updated);
     }

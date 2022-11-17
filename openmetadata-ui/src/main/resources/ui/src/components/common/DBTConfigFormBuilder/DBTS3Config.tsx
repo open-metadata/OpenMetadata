@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   DBTBucketDetails,
-  DbtConfigSource,
+  DbtConfig,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
@@ -33,21 +34,25 @@ import {
   DBTFormCommonProps,
   ErrorDbtS3,
 } from './DBTConfigForm.interface';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
+  handleUpdateDescriptions: (value: boolean) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
   dbtSecurityConfig,
   dbtPrefixConfig,
+  dbtUpdateDescriptions = false,
   okText,
   cancelText,
   onCancel,
   onSubmit,
   handleSecurityConfigChange,
   handlePrefixConfigChange,
+  handleUpdateDescriptions,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
     const updatedCreds: SCredentials = {
@@ -67,7 +72,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   };
 
   const [errors, setErrors] = useState<ErrorDbtS3>();
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtS3Config(
       data.dbtSecurityConfig || {}
     );
@@ -80,7 +85,11 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtSecurityConfig, dbtPrefixConfig };
+    const submitData = {
+      dbtSecurityConfig,
+      dbtPrefixConfig,
+      dbtUpdateDescriptions,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -97,12 +106,11 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Access Key ID.
         </p>
-        <input
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-access-key-id"
           id="aws-access-key-id"
           name="aws-access-key-id"
-          type="text"
           value={dbtSecurityConfig?.awsAccessKeyId}
           onChange={(e) => updateS3Creds('awsAccessKeyId', e.target.value)}
         />
@@ -116,12 +124,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Secret Access Key.
         </p>
-        <input
+
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-secret-access-key-id"
           id="aws-secret-access-key-id"
           name="aws-secret-access-key-id"
-          type="password"
           value={dbtSecurityConfig?.awsSecretAccessKey}
           onChange={(e) => updateS3Creds('awsSecretAccessKey', e.target.value)}
         />
@@ -153,7 +161,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Session Token.
         </p>
-        <input
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-session-token"
           id="aws-session-token"
@@ -221,6 +229,14 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
         />
       </Field>
+      {getSeparator('')}
+
+      <SwitchField
+        dbtUpdateDescriptions={dbtUpdateDescriptions}
+        handleUpdateDescriptions={handleUpdateDescriptions}
+        id="s3-update-description"
+      />
+
       {getSeparator('')}
 
       <Field className="tw-flex tw-justify-end">

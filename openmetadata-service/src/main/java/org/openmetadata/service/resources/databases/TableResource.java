@@ -23,12 +23,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -47,6 +49,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -70,7 +73,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
@@ -92,6 +94,27 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
+  @Override
+  protected MetadataOperation[] getViewOperations(Fields fields) {
+    List<MetadataOperation> operations = new ArrayList<>(List.of(MetadataOperation.VIEW_BASIC));
+    if (fields.contains("tests")) {
+      operations.add(MetadataOperation.VIEW_TESTS);
+    }
+    if (fields.contains("tableQueries")) {
+      operations.add(MetadataOperation.VIEW_QUERIES);
+    }
+    if (fields.contains("profile")) {
+      operations.add(MetadataOperation.VIEW_DATA_PROFILE);
+    }
+    if (fields.contains("sampleData")) {
+      operations.add(MetadataOperation.VIEW_SAMPLE_DATA);
+    }
+    if (operations.size() == 5) {
+      return EntityResource.VIEW_ALL_OPERATIONS; // All view operations are requested
+    }
+    return operations.toArray(new MetadataOperation[0]);
+  }
+
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
     allowedFields.add("tests");
@@ -103,10 +126,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     public TableList() {
       /* Required for serde */
     }
-
-    public TableList(List<Table> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class TableProfileList extends ResultList<TableProfile> {
@@ -114,20 +133,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     public TableProfileList() {
       /* Required for serde */
     }
-
-    public TableProfileList(List<TableProfile> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class ColumnProfileList extends ResultList<ColumnProfile> {
     @SuppressWarnings("unused")
     public ColumnProfileList() {
       /* Required for serde */
-    }
-
-    public ColumnProfileList(List<ColumnProfile> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -270,9 +281,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -301,7 +312,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -320,7 +331,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, table, true);
+    return create(uriInfo, securityContext, table);
   }
 
   @PUT
@@ -340,7 +351,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
     Table table = getTable(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, table, true);
+    return createOrUpdate(uriInfo, securityContext, table);
   }
 
   @PATCH
@@ -389,7 +400,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -412,7 +423,26 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete, true);
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted table.",
+      tags = "tables",
+      description = "Restore a soft deleted table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Response restoreTable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT
@@ -463,7 +493,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     // TODO add EDIT_JOINS operation
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addJoins(id, joins);
     return addHref(uriInfo, table);
   }
@@ -488,7 +518,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Valid TableData tableData)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addSampleData(id, tableData);
     return addHref(uriInfo, table);
   }
@@ -513,7 +543,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Valid TableProfilerConfig tableProfilerConfig)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addTableProfilerConfig(id, tableProfilerConfig);
     return addHref(uriInfo, table);
   }
@@ -537,7 +567,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     return addHref(uriInfo, table.withTableProfilerConfig(dao.getTableProfilerConfig(table)));
   }
@@ -561,7 +591,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.deleteTableProfilerConfig(id);
     return addHref(uriInfo, table);
   }
@@ -596,35 +626,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               description = "Filter table/column profiles before the given end timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(
-              description = "Returns list of table/column profiles before this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(
-              description = "Returns list of table/column profiles after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
 
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.tableProfile");
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getTableProfiles(filter, before, after, limitParam);
+    return dao.getTableProfiles(fqn, startTs, endTs);
   }
 
   @GET
@@ -650,41 +655,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(
               description = "Filter table/column profiles after the given start timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter table/column profiles before the given end timestamp",
               schema = @Schema(type = "number"))
+          @NotNull
           @QueryParam("endTs")
-          Long endTs,
-      @Parameter(description = "Limit the number table profiles returned. (1 to 1000000, default = " + "10) ")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(
-              description = "Returns list of table/column profiles before this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(
-              description = "Returns list of table/column profiles after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+          Long endTs)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("entityFQN", fqn).addQueryParam("extension", "table.columnProfile");
-    if (startTs != null) {
-      filter.addQueryParam("startTs", String.valueOf(startTs));
-    }
-    if (endTs != null) {
-      filter.addQueryParam("endTs", String.valueOf(endTs));
-    }
-    return dao.getColumnProfiles(filter, before, after, limitParam);
+    return dao.getColumnProfiles(fqn, startTs, endTs);
   }
 
   @PUT
@@ -707,7 +688,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Valid CreateTableProfile createTableProfile)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addTableProfileData(id, createTableProfile);
     return addHref(uriInfo, table);
   }
@@ -738,7 +719,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           Long timestamp)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     dao.deleteTableProfile(fqn, entityType, timestamp);
     return Response.ok().build();
   }
@@ -787,7 +768,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid SQLQuery sqlQuery)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addQuery(id, sqlQuery);
     return addHref(uriInfo, table);
   }
@@ -811,7 +793,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Valid DataModel dataModel)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addDataModel(id, dataModel);
     return addHref(uriInfo, table);
   }
@@ -836,7 +819,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Valid CreateCustomMetric createCustomMetric)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
     Table table = dao.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
@@ -865,7 +848,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String customMetricName)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id), true);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.deleteCustomMetric(id, columnName, customMetricName);
     return addHref(uriInfo, table);
   }

@@ -18,11 +18,12 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.AIRFLOW_CONNECTION;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.MYSQL_DATABASE_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -85,7 +86,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     createPipeline =
         pipelineServiceResourceTest
             .createRequest(test, 2)
-            .withServiceType(PipelineServiceType.Glue)
+            .withServiceType(PipelineServiceType.GluePipeline)
             .withConnection(TestUtils.GLUE_CONNECTION);
 
     pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
@@ -148,16 +149,15 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  void post_put_invalidConnection_as_admin_4xx(TestInfo test) throws IOException {
+  void post_put_invalidConnection_as_admin_4xx(TestInfo test) {
     RedshiftConnection redshiftConnection = new RedshiftConnection();
-    DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
     PipelineConnection pipelineConnection = new PipelineConnection().withConfig(redshiftConnection);
     assertResponseContains(
         () ->
             createEntity(
                 createRequest(test).withDescription(null).withConnection(pipelineConnection), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Airflow] due to [Failed to construct connection instance of Airflow]");
+        "InvalidServiceConnectionException for service [Airflow] due to [Failed to encrypt connection instance of Airflow]");
   }
 
   @Test
@@ -254,11 +254,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     if (fieldName.equals("connection")) {
-      PipelineConnection expectedConnection = (PipelineConnection) expected;
-      PipelineConnection actualConnection = JsonUtils.readValue((String) actual, PipelineConnection.class);
-      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), AirflowConnection.class));
-      // TODO remove this hardcoding
-      validatePipelineConnection(expectedConnection, actualConnection, PipelineServiceType.Airflow, null);
+      assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -275,7 +271,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
     // Use the database service tests utilities for the comparison
     // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || BOT_AUTH_HEADERS.equals(authHeaders)) {
+    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
       DatabaseConnection actualDatabaseConnection =
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
       MysqlConnection actualMysqlConnection =

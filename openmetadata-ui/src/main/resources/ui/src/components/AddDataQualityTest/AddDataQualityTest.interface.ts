@@ -31,6 +31,7 @@ export interface TestCaseFormProps {
   initialValue?: TestCase;
   onSubmit: (data: TestCase) => void;
   onCancel: (data: TestCase) => void;
+  table: Table;
 }
 
 export interface TestSuiteIngestionProps {

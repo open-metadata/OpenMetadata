@@ -13,8 +13,8 @@
 
 /// <reference types="cypress" />
 
-import { interceptURL, searchEntity, verifyResponseStatusCode, visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import { interceptURL, login, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage, visitEntityTab } from '../../common/common';
+import { FOLLOWING_TITLE, LOGIN, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tables = Object.values(SEARCH_ENTITY_TABLE);
 const topics = Object.values(SEARCH_ENTITY_TOPIC);
@@ -23,17 +23,20 @@ const pipelines = Object.values(SEARCH_ENTITY_PIPELINE);
 
 describe('MyData page should work', () => {
   beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
+    interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+    interceptURL('GET', '/api/v1/search/*', 'explorePageSearch');
   });
 
   const checkRecentlyViewElement = () => {
-    cy.get('[data-testid="table-data-card"]')
+    verifyResponseStatusCode('@explorePageSearch', 200);
+    cy.get('[data-testid="table-data-card"] a')
       .first()
       .should('be.visible')
-      .scrollIntoView();
-    cy.wait(500);
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-
+      .scrollIntoView()
+      .click();
+    verifyResponseStatusCode('@getEntityDetails', 200);
     cy.get('[data-testid="inactive-link"]')
       .invoke('text')
       .then((text) => {
@@ -52,7 +55,7 @@ describe('MyData page should work', () => {
   };
 
   const checkRecentlySearchElement = (term) => {
-    searchEntity(term);
+    searchEntity(term, false);
     cy.clickOnLogo();
     cy.get(`[data-testid="search-term-${term}"]`)
       .scrollIntoView()
@@ -75,33 +78,22 @@ describe('MyData page should work', () => {
 
   const followAndOwnTheEntity = (termObj) => {
     // search for the term and redirect to the respective entity tab
-    searchEntity(termObj.term);
 
-    cy.get(`[data-testid="${termObj.entity}-tab"]`)
-      .should('be.visible')
-      .click();
-
-    cy.get(`[data-testid="${termObj.entity}-tab"]`)
-      .should('be.visible')
-      .should('have.class', 'active');
-
-    // click on the 1st result and go to entity details page and follow the entity
-    interceptURL('GET', '/api/v1/feed*', 'getEntityDetails');
-    cy.get('[data-testid="table-link"]')
-      .first()
-      .contains(termObj.term, { matchCase: false })
-      .click();
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
 
     interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitAfterFollow', 200);
     // go to manage tab and search for logged in user and set the owner
-    interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'getUsers');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      'getTeams'
+    );
     cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@getUsers', 200);
+    verifyResponseStatusCode('@getTeams', 200);
     //Clicking on users tab
     cy.get('[data-testid="dropdown-tab"]')
       .contains('Users')
@@ -111,6 +103,7 @@ describe('MyData page should work', () => {
 
     //Selecting the user
     cy.get('[data-testid="list-item"]')
+      .first()
       .should('exist')
       .should('be.visible')
       .click();
@@ -119,7 +112,7 @@ describe('MyData page should work', () => {
       .scrollIntoView()
       .invoke('text')
       .then((text) => {
-        expect(text).equal('Aaron Johnson');
+        expect(text).equal('admin');
       });
 
     cy.clickOnLogo();
@@ -127,7 +120,7 @@ describe('MyData page should work', () => {
     // checks newly generated feed for follow and setting owner
     cy.get('[data-testid="message-container"]')
       .first()
-      .contains('Added owner: Aaron Johnson')
+      .contains('Added owner: admin')
       .should('be.visible');
 
     cy.get('[data-testid="message-container"]')
@@ -183,27 +176,19 @@ describe('MyData page should work', () => {
   });
 
   it('My data, following & feed section should work properly for table entity', () => {
-    tables.forEach((table) => {
-      followAndOwnTheEntity(table);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_TABLE.table_1);
   });
 
   it('My data, following & feed section should work properly for topic entity', () => {
-    topics.forEach((topic) => {
-      followAndOwnTheEntity(topic);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_TOPIC.topic_1);
   });
 
-  it('My data, following & feed section should work properly for dashboard entity', () => {
-    dashboards.forEach((dashboard) => {
-      followAndOwnTheEntity(dashboard);
-    });
+  it.skip('My data, following & feed section should work properly for dashboard entity', () => {
+    followAndOwnTheEntity(SEARCH_ENTITY_DASHBOARD.dashboard_1);
   });
 
   it('My data, following & feed section should work properly for pipeline entity', () => {
-    pipelines.forEach((pipeline) => {
-      followAndOwnTheEntity(pipeline);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_PIPELINE.pipeline_1);
   });
 
   it.skip('My data and following section, CTA should work properly', () => {

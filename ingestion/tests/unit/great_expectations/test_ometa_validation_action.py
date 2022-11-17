@@ -15,7 +15,6 @@ Test suite for the action module implementation
 import os
 from unittest import mock
 
-import pytest
 from jinja2 import Environment
 from pytest import mark
 

@@ -53,7 +53,6 @@ jest.mock('react-router-dom', () => ({
 
 const mockTagsCategory = [
   {
-    categoryType: 'Classification',
     id: 'test',
     children: [
       {
@@ -78,7 +77,6 @@ const mockTagsCategory = [
     usageCount: 3,
   },
   {
-    categoryType: 'Classification',
     id: 'test2',
     children: [],
     description: 'description',
@@ -96,7 +94,6 @@ const mockCategory = [
     version: 0.1,
     updatedAt: 1649665563400,
     updatedBy: 'admin',
-    categoryType: 'Classification',
     href: 'http://localhost:8585/api/v1/tags/PersonalData',
     usageCount: 0,
     children: [
@@ -139,7 +136,6 @@ const mockCategory = [
     version: 0.1,
     updatedAt: 1649665563410,
     updatedBy: 'admin',
-    categoryType: 'Classification',
     href: 'http://localhost:8585/api/v1/tags/PII',
     usageCount: 0,
     children: [
@@ -258,6 +254,7 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockTagsCategory })),
   getTaglist: jest.fn().mockReturnValue(['tag 1', 'tag 2']),
   getTagOptionsFromFQN: jest.fn().mockReturnValue([]),
+  isSystemTierTags: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock(
@@ -459,16 +456,14 @@ describe('Test TagsPage page', () => {
   it('Table with respective header should be render', async () => {
     const { container } = render(<TagsPage />);
     const table = await findByTestId(container, 'table');
-    const name = await findByTestId(container, 'heading-name');
-    const description = await findByTestId(container, 'heading-description');
-    const actions = await findByTestId(container, 'heading-actions');
-    const tableBody = await findByTestId(container, 'table-body');
+    const name = await findByText(container, 'Name');
+    const description = await findByText(container, 'Description');
+    const actions = await findByText(container, 'Actions');
 
     expect(table).toBeInTheDocument();
     expect(actions).toBeInTheDocument();
     expect(name).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(tableBody).toBeInTheDocument();
   });
 
   it('Should render error placeholder if categories api fails', async () => {

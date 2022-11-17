@@ -29,6 +29,10 @@ export type TableTestsType = {
   };
 };
 
+export type ModifiedColumn = Column & {
+  testCount?: number;
+};
+
 export type columnTestResultType = {
   [key: string]: { results: TableTestsType['results']; count: number };
 };

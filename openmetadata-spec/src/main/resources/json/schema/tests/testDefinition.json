@@ -109,6 +109,12 @@
         "$ref": "#/definitions/testPlatform"
       }
     },
+    "supportedDataTypes": {
+      "type": "array",
+      "items": {
+        "$ref": "../entity/data/table.json#/definitions/dataType"
+      }
+    },
     "parameterDefinition": {
       "type": "array",
       "items": {

@@ -12,7 +12,7 @@
  */
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DbtConfig } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   errorMsg,
   getSeparator,
@@ -26,17 +26,20 @@ import {
   DBTFormCommonProps,
   ErrorDbtHttp,
 } from './DBTConfigForm.interface';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleCatalogHttpPathChange: (value: string) => void;
   handleManifestHttpPathChange: (value: string) => void;
   handleRunResultsHttpPathChange: (value: string) => void;
+  handleUpdateDescriptions: (value: boolean) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
   dbtCatalogHttpPath = '',
   dbtManifestHttpPath = '',
   dbtRunResultsHttpPath = '',
+  dbtUpdateDescriptions = false,
   okText,
   cancelText,
   onCancel,
@@ -44,10 +47,11 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   handleCatalogHttpPathChange,
   handleManifestHttpPathChange,
   handleRunResultsHttpPathChange,
+  handleUpdateDescriptions,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
 
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtHttpConfig(data);
     setErrors(reqErrors);
 
@@ -59,6 +63,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       dbtCatalogHttpPath,
       dbtManifestHttpPath,
       dbtRunResultsHttpPath,
+      dbtUpdateDescriptions,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -126,6 +131,14 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         {errors?.dbtRunResultsHttpPath &&
           errorMsg(errors.dbtRunResultsHttpPath)}
       </Field>
+      {getSeparator('')}
+
+      <SwitchField
+        dbtUpdateDescriptions={dbtUpdateDescriptions}
+        handleUpdateDescriptions={handleUpdateDescriptions}
+        id="http-update-description"
+      />
+
       {getSeparator('')}
 
       <Field className="tw-flex tw-justify-end">

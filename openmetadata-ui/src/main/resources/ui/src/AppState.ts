@@ -19,7 +19,6 @@ import { EntityData } from './components/common/PopOverCard/EntityPopOverCard';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { CurrentTourPageType } from './enums/tour.enum';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
-import { Role } from './generated/entity/teams/role';
 import {
   EntityReference as UserTeams,
   User,
@@ -42,7 +41,6 @@ class AppState {
   userDataProfiles: Record<string, User> = {};
   entityData: Record<string, EntityData> = {};
   userTeams: Array<UserTeams> = [];
-  userRoles: Array<Role> = [];
   userPermissions: ResourcePermission[] = [];
   userProfilePics: Array<{
     id: string;
@@ -68,14 +66,12 @@ class AppState {
       updateNewUser: action,
       updateAuthProvide: action,
       updateAuthState: action,
-      updateUserRole: action,
       updateUsers: action,
       updateUserPermissions: action,
       updateExplorePageTab: action,
       getCurrentUserDetails: action,
       getAllUsers: action,
       getAllTeams: action,
-      getAllRoles: action,
       getAllPermissions: action,
       getUserProfilePic: action,
       updateUserProfilePic: action,
@@ -106,9 +102,6 @@ class AppState {
   }
   updateUserTeam(data: Array<UserTeams>) {
     this.userTeams = data;
-  }
-  updateUserRole(data: Array<Role>) {
-    this.userRoles = data;
   }
   updateUserDetails(data: User) {
     this.userDetails = data;
@@ -275,10 +268,6 @@ class AppState {
 
   getAllTeams() {
     return this.userTeams;
-  }
-
-  getAllRoles() {
-    return this.userRoles;
   }
 
   getAllPermissions() {

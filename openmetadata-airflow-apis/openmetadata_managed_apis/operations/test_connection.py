@@ -29,7 +29,7 @@ from metadata.utils.connections import (
     get_connection,
     test_connection,
 )
-from metadata.utils.secrets.secrets_manager_factory import get_secrets_manager
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = operations_logger()
 
@@ -42,18 +42,12 @@ def test_source_connection(
     :param test_service_connection: Service connection to test
     :return: None or exception
     """
-    secrets_manager = get_secrets_manager(
+    # we need to instantiate the secret manager in case secrets are passed
+    SecretsManagerFactory(
         test_service_connection.secretsManagerProvider,
-        test_service_connection.clusterName,
         build_secrets_manager_credentials(
             test_service_connection.secretsManagerProvider
         ),
-    )
-    test_service_connection.connection = (
-        secrets_manager.retrieve_temp_service_test_connection(
-            test_service_connection.connection,
-            test_service_connection.connectionType.value,
-        )
     )
     connection = get_connection(test_service_connection.connection.config)
 

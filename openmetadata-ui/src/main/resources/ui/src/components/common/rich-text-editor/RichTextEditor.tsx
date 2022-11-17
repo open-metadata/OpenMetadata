@@ -37,6 +37,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       useCommandShortcut = true,
       extendedAutolinks = true,
       hideModeSwitch = true,
+      autofocus = false,
       initialValue = '',
       readonly,
       height,
@@ -62,6 +63,9 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       getEditorContent() {
         return editorValue;
       },
+      clearEditorContent() {
+        richTextEditorRef.current?.getInstance().setMarkdown('');
+      },
     }));
 
     useEffect(() => {
@@ -69,7 +73,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     }, [initialValue]);
 
     return (
-      <div className={classNames(className, 'tw-my-4')} style={style}>
+      <div className={classNames(className)} style={style}>
         {readonly ? (
           <div
             className="tw-border tw-border-main tw-p-2 tw-rounded"
@@ -84,6 +88,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
         ) : (
           <div data-testid="editor">
             <Editor
+              autofocus={autofocus}
               extendedAutolinks={extendedAutolinks}
               height={height ?? '320px'}
               hideModeSwitch={hideModeSwitch}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import SampleDataTopic from './SampleDataTopic';
@@ -21,7 +21,7 @@ const mockSampleData = {
 };
 
 jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
+  Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 describe('Test SampleData Component', () => {
@@ -39,12 +39,17 @@ describe('Test SampleData Component', () => {
   });
 
   it('Should render no data placeholder if no data available', () => {
-    const { getByTestId } = render(<SampleDataTopic />, {
-      wrapper: MemoryRouter,
+    act(() => {
+      const { getByTestId } = render(
+        <SampleDataTopic sampleData={undefined} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+
+      const noDataPlaceHolder = getByTestId('no-data');
+
+      expect(noDataPlaceHolder).toBeInTheDocument();
     });
-
-    const noDataPlaceHolder = getByTestId('no-data');
-
-    expect(noDataPlaceHolder).toBeInTheDocument();
   });
 });

@@ -45,6 +45,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateWebhook;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +63,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 @Path("/v1/webhook")
 @Api(value = "Webhook resource", tags = "webhook")
 @Produces(MediaType.APPLICATION_JSON)
@@ -80,10 +82,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
     @SuppressWarnings("unused") /* Required for tests */
     public WebhookList() {}
-
-    public WebhookList(List<Webhook> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
@@ -91,14 +89,15 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     webhookDAO = dao.webhookDAO();
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) {
     try {
       List<String> listAllWebhooks = webhookDAO.listAllWebhooks(webhookDAO.getTableName());
       List<Webhook> webhookList = JsonUtils.readObjects(listAllWebhooks, Webhook.class);
       webhookList.forEach(dao::addWebhookPublisher);
     } catch (Exception ex) {
       // Starting application should not fail
+      LOG.warn("Exception during initialization", ex);
     }
   }
 
@@ -222,9 +221,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -253,7 +252,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -273,7 +272,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
     Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, webhook, false);
+    Response response = create(uriInfo, securityContext, webhook);
     dao.addWebhookPublisher(webhook);
     return response;
   }
@@ -295,7 +294,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
     Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, webhook, true);
+    Response response = createOrUpdate(uriInfo, securityContext, webhook);
     dao.updateWebhookPublisher((Webhook) response.getEntity());
     return response;
   }
@@ -348,7 +347,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
-    Response response = delete(uriInfo, securityContext, id, false, true, false);
+    Response response = delete(uriInfo, securityContext, id, false, true);
     dao.deleteWebhookPublisher(id);
     return response;
   }

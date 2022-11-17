@@ -19,7 +19,8 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
+import localState from '../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 
@@ -66,7 +67,7 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       async renewIdToken() {
         await oktaAuth.token.renewTokens();
         const idToken = oktaAuth.getIdToken() || '';
-        localStorage.setItem(oidcTokenKey, idToken);
+        localState.setOidcToken(idToken);
 
         return Promise.resolve(idToken);
       },

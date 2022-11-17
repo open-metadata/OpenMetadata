@@ -7,8 +7,8 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
-public class MlModelIndex {
-  MlModel mlModel;
+public class MlModelIndex implements ElasticSearchIndex {
+  final MlModel mlModel;
 
   public MlModelIndex(MlModel mlModel) {
     this.mlModel = mlModel;
@@ -21,6 +21,7 @@ public class MlModelIndex {
     suggest.add(ElasticSearchSuggest.builder().input(mlModel.getName()).weight(10).build());
 
     ParseTags parseTags = new ParseTags(ElasticSearchIndexUtils.parseTags(mlModel.getTags()));
+    doc.put("displayName", mlModel.getDisplayName() != null ? mlModel.getDisplayName() : mlModel.getName());
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(mlModel.getFollowers()));

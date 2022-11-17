@@ -13,8 +13,8 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
 import React, { VFC } from 'react';
-import { oidcTokenKey } from '../../../constants/constants';
 import jsonData from '../../../jsons/en';
+import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { OidcUser } from '../../auth-provider/AuthProvider.interface';
 
@@ -24,7 +24,7 @@ const Auth0Callback: VFC = () => {
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {
-        localStorage.setItem(oidcTokenKey, token?.__raw || '');
+        localState.setOidcToken(token?.__raw || '');
         setIsAuthenticated(true);
         const oidcUser: OidcUser = {
           // eslint-disable-next-line @typescript-eslint/camelcase

@@ -35,7 +35,7 @@ class Sampler:
 
     def __init__(
         self,
-        session: Session,
+        session: Optional[Session],
         table: DeclarativeMeta,
         profile_sample: Optional[float] = None,
         partition_details: Optional[Dict] = None,
@@ -46,8 +46,8 @@ class Sampler:
         self.table = table
         self._partition_details = partition_details
         self._profile_sample_query = profile_sample_query
-
         self.sample_limit = 100
+        self._sample_rows = None
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
@@ -56,7 +56,8 @@ class Sampler:
                 self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
             )
             .suffix_with(
-                f"SAMPLE SYSTEM ({self.profile_sample})", dialect=Dialects.Snowflake
+                f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
+                dialect=Dialects.Snowflake,
             )
             .cte(f"{self.table.__tablename__}_rnd")
         )
@@ -88,9 +89,9 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sqa_sample_data(self) -> TableData:
         """
-        Use the sampler to retrieve 100 sample data rows
+        Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
         """
         if self._profile_sample_query:

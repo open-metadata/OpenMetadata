@@ -89,16 +89,19 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: ${LOG_LEVEL:-DEBUG}
+  level: ${LOG_LEVEL:-INFO}
   loggers:
-    org.openmetadata.service.events: DEBUG
     io.swagger: ERROR
   appenders:
+    - type: console
+      threshold: TRACE
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      timeZone: UTC
     - type: file
       filterFactories:
         - type: audit-exclude-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/openmetadata.log
       archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
@@ -108,7 +111,7 @@ logging:
       filterFactories:
         - type: audit-only-filter-factory
       threshold: TRACE
-      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
       currentLogFilename: ./logs/audit.log
       archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 25
@@ -130,28 +133,28 @@ migrationConfiguration:
 
 # Authorizer Configuration
 authorizerConfiguration:
-  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.NoopAuthorizer}
-  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.NoopFilter}
+  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
+  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
-  botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
 
 authenticationConfiguration:
-  provider: ${AUTHENTICATION_PROVIDER:-no-auth}
+  provider: ${AUTHENTICATION_PROVIDER:-basic}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/config/jwks]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
 
 jwtTokenConfiguration:
-  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
-  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-""}
+  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
+  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-"./conf/private_key.der"}
   jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
@@ -239,6 +242,7 @@ email:
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
   enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
   openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
+  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
   serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
   serverPort: ${SMTP_SERVER_PORT:-""}
   username: ${SMTP_SERVER_USERNAME:-""}
@@ -248,3 +252,7 @@ email:
 sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
 slackChat:
   slackUrl: ${SLACK_CHAT_SLACK_URL:-""}
+
+login:
+  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}

@@ -54,17 +54,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  public void setFullyQualifiedName(TestCase test) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+    test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
+    test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
+  }
+
+  @Override
   public void prepare(TestCase test) throws IOException {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
+
     // validate test definition and test suite
     Entity.getEntityReferenceById(Entity.TEST_DEFINITION, test.getTestDefinition().getId(), Include.NON_DELETED);
     Entity.getEntityReferenceById(Entity.TEST_SUITE, test.getTestSuite().getId(), Include.NON_DELETED);
     TestDefinition testDefinition =
         Entity.getEntity(test.getTestDefinition(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED);
     validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
-    test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
-    test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
@@ -85,7 +91,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
     }
     for (TestCaseParameter parameter : parameterDefinition) {
-      if (parameter.getRequired()
+      if (Boolean.TRUE.equals(parameter.getRequired())
           && (!values.containsKey(parameter.getName()) || values.get(parameter.getName()) == null)) {
         throw new IllegalArgumentException(
             "Required parameter " + parameter.getName() + " is not passed in parameterValues");
@@ -101,7 +107,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     test.withOwner(null).withHref(null).withTestSuite(null).withTestDefinition(null);
-    store(test.getId(), test, update);
+    store(test, update);
 
     // Restore the relationships
     test.withOwner(owner).withTestSuite(testSuite).withTestDefinition(testDefinition);
@@ -151,9 +157,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               TESTCASE_RESULT_EXTENSION,
               "testCaseResult",
               JsonUtils.pojoToJson(testCaseResult));
-      setFields(testCase, EntityUtil.Fields.EMPTY_FIELDS);
     }
-    setFields(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
+    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
@@ -220,43 +225,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TestCaseResult.class);
   }
 
-  public ResultList<TestCaseResult> getTestCaseResults(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) throws IOException {
     List<TestCaseResult> testCaseResults;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
+    testCaseResults =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, TESTCASE_RESULT_EXTENSION, startTs, endTs),
+            TestCaseResult.class);
 
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      testCaseResults =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), TestCaseResult.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      testCaseResults =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), TestCaseResult.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (testCaseResults.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        testCaseResults.remove(0);
-        beforeCursor = testCaseResults.get(0).getTimestamp().toString();
-      }
-      afterCursor = testCaseResults.get(testCaseResults.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : testCaseResults.get(0).getTimestamp().toString();
-      if (testCaseResults.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        testCaseResults.remove(limit);
-        afterCursor = testCaseResults.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(testCaseResults, beforeCursor, afterCursor, total);
+    return new ResultList<>(testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
   }
 
   @Override

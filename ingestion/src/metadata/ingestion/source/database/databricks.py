@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Clickhouse source module"""
 
 import re
 
@@ -58,7 +59,9 @@ _type_map.update({"struct": STRUCT, "array": ARRAY, "map": MAP})
 
 def _get_column_rows(self, connection, table_name, schema):
     # get columns and strip whitespace
-    table_columns = self._get_table_columns(connection, table_name, schema)
+    table_columns = self._get_table_columns(  # pylint: disable=protected-access
+        connection, table_name, schema
+    )
     column_rows = [
         [col.strip() if col else None for col in row] for row in table_columns
     ]
@@ -68,12 +71,14 @@ def _get_column_rows(self, connection, table_name, schema):
 
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
-    # This function overrides the sqlalchemy_databricks._dialect.DatabricksDialect.get_columns
-    # to add support for struct, array & map datatype
+    """
+    This function overrides the sqlalchemy_databricks._dialect.DatabricksDialect.get_columns
+    to add support for struct, array & map datatype
 
-    # Extract the Database Name from the keyword arguments parameter if it is present. This
-    # value should match what is provided in the 'source.config.database' field in the
-    # Databricks ingest config file.
+    Extract the Database Name from the keyword arguments parameter if it is present. This
+    value should match what is provided in the 'source.config.database' field in the
+    Databricks ingest config file.
+    """
     db_name = kw["db_name"] if "db_name" in kw else None
 
     rows = _get_column_rows(self, connection, table_name, schema)
@@ -89,9 +94,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         try:
             coltype = _type_map[col_type]
         except KeyError:
-            util.warn(
-                "Did not recognize type '%s' of column '%s'" % (col_type, col_name)
-            )
+            util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
             coltype = types.NullType
 
         col_info = {
@@ -122,6 +125,11 @@ DatabricksDialect.get_columns = get_columns
 
 
 class DatabricksSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Databricks Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

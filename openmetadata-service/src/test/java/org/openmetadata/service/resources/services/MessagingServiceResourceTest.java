@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -47,7 +48,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @Slf4j
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
 
-  public static String KAFKA_BROKERS = "192.168.1.1:0";
+  public static final String KAFKA_BROKERS = "192.168.1.1:0";
   public static URI SCHEMA_REGISTRY_URL;
 
   static {
@@ -219,10 +220,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
     if ("connection".equals(fieldName)) {
-      MessagingConnection expectedConnection = (MessagingConnection) expected;
-      MessagingConnection actualConnection = JsonUtils.readValue((String) actual, MessagingConnection.class);
-      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class));
-      assertEquals(expectedConnection, actualConnection);
+      assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }

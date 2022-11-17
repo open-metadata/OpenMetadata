@@ -17,6 +17,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -39,6 +40,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,7 +67,6 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SQLQuery;
@@ -120,11 +121,9 @@ public class TableRepository extends EntityRepository<Table> {
   public Table setFields(Table table, Fields fields) throws IOException {
     setDefaultFields(table);
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setOwner(fields.contains(FIELD_OWNER) ? getOwner(table) : null);
     table.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(table) : null);
     table.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
-    table.setTags(fields.contains(FIELD_TAGS) ? getTags(table.getFullyQualifiedName()) : null);
     getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
@@ -135,13 +134,12 @@ public class TableRepository extends EntityRepository<Table> {
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
-    table.setExtension(fields.contains("extension") ? getExtension(table) : null);
     return table;
   }
 
   private void setDefaultFields(Table table) throws IOException {
     EntityReference schemaRef = getContainer(table.getId());
-    DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, Include.ALL);
+    DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
 
@@ -160,6 +158,7 @@ public class TableRepository extends EntityRepository<Table> {
   public void setFullyQualifiedName(Table table) {
     table.setFullyQualifiedName(
         FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
+    setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
   @Transaction
@@ -215,7 +214,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
   }
 
@@ -251,7 +250,7 @@ public class TableRepository extends EntityRepository<Table> {
             TABLE_PROFILER_CONFIG_EXTENSION,
             "tableProfilerConfig",
             JsonUtils.pojoToJson(tableProfilerConfig));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
@@ -261,7 +260,7 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityById(tableId);
 
     daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_PROFILER_CONFIG_EXTENSION);
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
 
@@ -329,7 +328,7 @@ public class TableRepository extends EntityRepository<Table> {
                 JsonUtils.pojoToJson(columnProfile));
       }
     }
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withProfile(createTableProfile.getTableProfile());
   }
 
@@ -338,9 +337,9 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     String extension;
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      extension = "table.tableProfile";
+      extension = TABLE_PROFILE_EXTENSION;
     } else if (entityType.equalsIgnoreCase("column")) {
-      extension = "table.columnProfile";
+      extension = TABLE_COLUMN_PROFILE_EXTENSION;
     } else {
       throw new IllegalArgumentException("entityType must be table or column");
     }
@@ -362,7 +361,7 @@ public class TableRepository extends EntityRepository<Table> {
     // A table has only one location.
     deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
     addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
   }
 
@@ -383,12 +382,20 @@ public class TableRepository extends EntityRepository<Table> {
         storedMapQueries.put(q.getChecksum(), q);
       }
     }
+    SQLQuery oldQuery = storedMapQueries.get(query.getChecksum());
+    if (oldQuery != null && query.getUsers() != null) {
+      // Merge old and new users
+      List<EntityReference> userList = query.getUsers();
+      userList.addAll(oldQuery.getUsers());
+      HashSet<EntityReference> userSet = new HashSet<>(userList);
+      query.setUsers(new ArrayList<>(userSet));
+    }
     storedMapQueries.put(query.getChecksum(), query);
     List<SQLQuery> updatedQueries = new ArrayList<>(storedMapQueries.values());
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableQueries", "sqlQuery", JsonUtils.pojoToJson(updatedQueries));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
   }
 
@@ -420,7 +427,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
-    setFields(table, Fields.EMPTY_FIELDS);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
     // return the newly created/updated custom metric only
     for (Column column : table.getColumns()) {
       if (column.getName().equals(columnName)) {
@@ -470,15 +477,13 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityById(tableId);
     table.withDataModel(dataModel);
 
-    // Carry forward the table description from the model to table entity, if empty
-    if (nullOrEmpty(table.getDescription())) {
-      table.setDescription(dataModel.getDescription());
-    }
-
     // Carry forward the table owner from the model to table entity, if empty
     if (table.getOwner() == null) {
       storeOwner(table, dataModel.getOwner());
     }
+
+    table.setTags(dataModel.getTags());
+    applyTags(table);
 
     // Carry forward the column description from the model to table columns, if empty
     for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
@@ -490,13 +495,13 @@ public class TableRepository extends EntityRepository<Table> {
       if (stored == null) {
         continue;
       }
-      if (nullOrEmpty(stored.getDescription())) {
-        stored.setDescription(modelColumn.getDescription());
-      }
+      stored.setTags(modelColumn.getTags());
     }
+    applyTags(table.getColumns());
     dao.update(table.getId(), JsonUtils.pojoToJson(table));
 
-    setFields(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(List.of(FIELD_TAGS), FIELD_TAGS));
 
     return table;
   }
@@ -532,20 +537,19 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), Fields.EMPTY_FIELDS, Include.ALL);
-    table.setDatabaseSchema(schema.getEntityReference());
-    table.setDatabase(schema.getDatabase());
-    table.setService(schema.getService());
-    table.setServiceType(schema.getServiceType());
-    setFullyQualifiedName(table);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
+    table
+        .withDatabaseSchema(schema.getEntityReference())
+        .withDatabase(schema.getDatabase())
+        .withService(schema.getService())
+        .withServiceType(schema.getServiceType());
 
-    setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
-
-    // Validate table tags and add derived tags to the list
-    table.setTags(addDerivedTags(table.getTags()));
+    // Carry forward ownership from database schema
+    table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
+    table.getColumns().forEach(column -> checkMutuallyExclusive(column.getTags()));
   }
 
   private EntityReference getLocation(Table table) throws IOException {
@@ -567,7 +571,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setColumns(cloneWithoutTags(columnWithTags));
     table.getColumns().forEach(column -> column.setTags(null));
 
-    store(table.getId(), table, update);
+    store(table, update);
 
     // Restore the relationships
     table.withOwner(owner).withTags(tags).withColumns(columnWithTags).withService(service);
@@ -754,82 +758,26 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public ResultList<TableProfile> getTableProfiles(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) throws IOException {
     List<TableProfile> tableProfiles;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
-
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      tableProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), TableProfile.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      tableProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), TableProfile.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (tableProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        tableProfiles.remove(0);
-        beforeCursor = tableProfiles.get(0).getTimestamp().toString();
-      }
-      afterCursor = tableProfiles.get(tableProfiles.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : tableProfiles.get(0).getTimestamp().toString();
-      if (tableProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        tableProfiles.remove(limit);
-        afterCursor = tableProfiles.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(tableProfiles, beforeCursor, afterCursor, total);
+    tableProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs),
+            TableProfile.class);
+    return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
-  public ResultList<ColumnProfile> getColumnProfiles(ListFilter filter, String before, String after, int limit)
-      throws IOException {
+  public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) throws IOException {
     List<ColumnProfile> columnProfiles;
-    int total;
-    // Here timestamp is used for page marker since table profiles are sorted by timestamp
-    long time = Long.MAX_VALUE;
-
-    if (before != null) { // Reverse paging
-      time = Long.parseLong(RestUtil.decodeCursor(before));
-      columnProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listBefore(filter, limit + 1, time), ColumnProfile.class);
-    } else { // Forward paging or first page
-      if (after != null) {
-        time = Long.parseLong(RestUtil.decodeCursor(after));
-      }
-      columnProfiles =
-          JsonUtils.readObjects(
-              daoCollection.entityExtensionTimeSeriesDao().listAfter(filter, limit + 1, time), ColumnProfile.class);
-    }
-    total = daoCollection.entityExtensionTimeSeriesDao().listCount(filter);
-    String beforeCursor = null;
-    String afterCursor = null;
-    if (before != null) {
-      if (columnProfiles.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-        columnProfiles.remove(0);
-        beforeCursor = columnProfiles.get(0).getTimestamp().toString();
-      }
-      afterCursor = columnProfiles.get(columnProfiles.size() - 1).getTimestamp().toString();
-    } else {
-      beforeCursor = after == null ? null : columnProfiles.get(0).getTimestamp().toString();
-      if (columnProfiles.size() > limit) { // If extra result exists, then next page exists - return after cursor
-        columnProfiles.remove(limit);
-        afterCursor = columnProfiles.get(limit - 1).getTimestamp().toString();
-      }
-    }
-    return new ResultList<>(columnProfiles, beforeCursor, afterCursor, total);
+    columnProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
+            ColumnProfile.class);
+    return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
   /**
@@ -840,7 +788,7 @@ public class TableRepository extends EntityRepository<Table> {
    */
   private List<DailyCount> aggregateAndFilterDailyCounts(
       List<DailyCount> currentDailyCounts, DailyCount newDailyCount) {
-    var joinCountByDay =
+    Map<String, List<DailyCount>> joinCountByDay =
         Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount)).collect(groupingBy(DailyCount::getDate));
 
     return joinCountByDay.entrySet().stream()
@@ -1027,12 +975,10 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if ((addedColumn.getDescription() == null || addedColumn.getDescription().isEmpty())
-              && (deleted.getDescription() == null || !deleted.getDescription().isEmpty())) {
+          if (nullOrEmpty(addedColumn.getDescription()) && nullOrEmpty(deleted.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if ((addedColumn.getTags() == null || addedColumn.getTags().isEmpty())
-              && (deleted.getTags() == null || !deleted.getTags().isEmpty())) {
+          if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
             addedColumn.setTags(deleted.getTags());
           }
         }
@@ -1114,22 +1060,22 @@ public class TableRepository extends EntityRepository<Table> {
     private void updateColumnPrecision(Column origColumn, Column updatedColumn) throws JsonProcessingException {
       String columnField = getColumnField(original, origColumn, "precision");
       boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
-      if (origColumn.getPrecision() != null) { // Previously precision was set
-        if (updated && updatedColumn.getPrecision() < origColumn.getPrecision()) {
-          // The precision was reduced. Treat it as backward-incompatible change
-          majorVersionChange = true;
-        }
+      if (origColumn.getPrecision() != null
+          && updated
+          && updatedColumn.getPrecision() < origColumn.getPrecision()) { // Previously precision was set
+        // The precision was reduced. Treat it as backward-incompatible change
+        majorVersionChange = true;
       }
     }
 
     private void updateColumnScale(Column origColumn, Column updatedColumn) throws JsonProcessingException {
       String columnField = getColumnField(original, origColumn, "scale");
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
-      if (origColumn.getScale() != null) { // Previously scale was set
-        if (updated && updatedColumn.getScale() < origColumn.getScale()) {
-          // The scale was reduced. Treat it as backward-incompatible change
-          majorVersionChange = true;
-        }
+      if (origColumn.getScale() != null
+          && updated
+          && updatedColumn.getScale() < origColumn.getScale()) { // Previously scale was set
+        // The scale was reduced. Treat it as backward-incompatible change
+        majorVersionChange = true;
       }
     }
   }

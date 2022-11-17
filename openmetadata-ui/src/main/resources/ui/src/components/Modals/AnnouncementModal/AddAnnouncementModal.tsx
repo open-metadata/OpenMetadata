@@ -93,9 +93,11 @@ const AddAnnouncementModal: FC<Props> = ({
     <Modal
       centered
       className="announcement-modal"
+      closable={false}
       confirmLoading={isLoading}
       data-testid="add-announcement"
       okButtonProps={{
+        id: 'announcement-submit',
         form: 'announcement-form',
         type: 'primary',
         htmlType: 'submit',
@@ -113,6 +115,7 @@ const AddAnnouncementModal: FC<Props> = ({
         onFinish={handleCreateAnnouncement}>
         <Form.Item
           label="Title:"
+          messageVariables={{ fieldName: 'title' }}
           name="title"
           rules={[
             {
@@ -131,6 +134,7 @@ const AddAnnouncementModal: FC<Props> = ({
         <Space className="announcement-date-space" size={16}>
           <Form.Item
             label={`Start Date: (${getTimeZone()})`}
+            messageVariables={{ fieldName: 'startDate' }}
             name="startDate"
             rules={[
               {
@@ -145,6 +149,7 @@ const AddAnnouncementModal: FC<Props> = ({
           </Form.Item>
           <Form.Item
             label={`End Date: (${getTimeZone()})`}
+            messageVariables={{ fieldName: 'endtDate' }}
             name="endtDate"
             rules={[
               {

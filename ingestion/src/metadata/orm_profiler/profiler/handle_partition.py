@@ -14,12 +14,7 @@ Helper submodule for partitioned tables
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import text
-from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.session import Session
 
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
@@ -28,60 +23,6 @@ from metadata.utils.logger import profiler_logger
 RANDOM_LABEL = "random"
 
 logger = profiler_logger()
-
-
-def get_partition_cols(session: Session, table: DeclarativeMeta) -> list:
-    """Get partiton columns
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    """
-    return get_partition_details(session, table).get("column_names")[0]
-
-
-def get_partition_details(session: Session, table: DeclarativeMeta) -> Optional[dict]:
-    """get partition details
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    """
-    partition_details = [
-        el for el in get_table_indexes(session, table) if el.get("name") == "partition"
-    ]
-    if partition_details:
-        return partition_details[0]
-    return None
-
-
-def get_table_indexes(session: Session, table: DeclarativeMeta) -> list[dict]:
-    """get indexes for a specific table
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    Returns:
-        list[dict]
-    """
-    return inspect(session.get_bind()).get_indexes(
-        table.__tablename__,
-        table.__table_args__.get("schema"),
-    )
-
-
-def is_partitioned(session: Session, table: DeclarativeMeta) -> bool:
-    """Check weather a table is partitioned
-
-    Args:
-        session: sqlalchemy session
-        table: orm table object
-    Returns:
-        bool
-    """
-    if not get_partition_details(session, table):
-        return False
-    return True
 
 
 def format_partition_values(partition_values: list, col_type) -> str:
@@ -132,7 +73,8 @@ def build_partition_predicate(partition_details: dict, col):
             f"{partition_details['partition_field']} in "
             f"({format_partition_values(partition_details['partition_values'], col_type)})"
         )
-
+    if partition_details["partition_field"] == "_PARTITIONDATE":
+        col_type = "DATE"
     return text(
         f"{partition_details['partition_field']} BETWEEN "
         f"'{format_partition_datetime(partition_details['partition_start'], col_type)}' "
@@ -178,16 +120,13 @@ class partition_filter_handler:
                         .filter(partition_filter)
                         .cte(f"{_self.table.__tablename__}_rnd")
                     )
-
-                query_results = (
-                    _self._build_query(*args, **kwargs)
-                    .select_from(_self._sample if self.sampled else _self.table)
-                    .filter(partition_filter)
+                query_results = _self._build_query(*args, **kwargs).select_from(
+                    _self._sample if self.sampled else _self.table
                 )
-                if self.first:
-                    return query_results.first()
-                return query_results.all()
-
+                # we don't have to add a filter if it has partition field as the query already has a filter
+                if not partition_field:
+                    query_results = query_results.filter(partition_filter)
+                return query_results.first() if self.first else query_results.all()
             return func(_self, *args, **kwargs)
 
         return handle_and_execute

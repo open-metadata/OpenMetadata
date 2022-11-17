@@ -8,10 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import csv
+"""
+Sample Data source ingestion
+"""
 import json
-import os
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -34,6 +34,9 @@ from metadata.generated.schema.api.data.createTableProfile import (
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceRequest,
+)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -42,7 +45,7 @@ from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteR
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location, LocationType
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     MlFeature,
@@ -67,7 +70,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.teams.team import TeamType
+from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -76,11 +80,10 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValu
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
@@ -89,14 +92,11 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestSuiteSample,
 )
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
 from metadata.utils import fqn
-from metadata.utils.helpers import (
-    get_chart_entities_from_id,
-    get_standard_chart_type,
-    get_storage_service_or_create,
-)
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -108,6 +108,25 @@ COL_DESCRIPTION = "Description"
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
+def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
+    """
+    Get an existing storage service or create a new one based on the config provided
+
+    To be refactored after cleaning Storage Services
+    """
+
+    metadata = OpenMetadata(metadata_config)
+    service: StorageService = metadata.get_by_name(
+        entity=StorageService, fqn=service_json["name"]
+    )
+    if service is not None:
+        return service
+    created_service = metadata.create_or_update(
+        CreateStorageServiceRequest(**service_json)
+    )
+    return created_service
+
+
 class InvalidSampleDataException(Exception):
     """
     Sample data is not valid to be ingested
@@ -116,22 +135,20 @@ class InvalidSampleDataException(Exception):
 
 def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
     metadata = OpenMetadata(metadata_config)
-    fqn = edge["fqn"]
+    edge_fqn = edge["fqn"]
     if edge["type"] == "table":
-        table = metadata.get_by_name(entity=Table, fqn=fqn)
-        if not table:
-            return
-        return EntityReference(id=table.id, type="table")
-    elif edge["type"] == "pipeline":
-        pipeline = metadata.get_by_name(entity=Pipeline, fqn=fqn)
-        if not pipeline:
-            return
-        return EntityReference(id=pipeline.id, type="pipeline")
-    elif edge["type"] == "dashboard":
-        dashboard = metadata.get_by_name(entity=Dashboard, fqn=fqn)
-        if not dashboard:
-            return
-        return EntityReference(id=dashboard.id, type="dashboard")
+        table = metadata.get_by_name(entity=Table, fqn=edge_fqn)
+        if table:
+            return EntityReference(id=table.id, type="table")
+    if edge["type"] == "pipeline":
+        pipeline = metadata.get_by_name(entity=Pipeline, fqn=edge_fqn)
+        if pipeline:
+            return EntityReference(id=pipeline.id, type="pipeline")
+    if edge["type"] == "dashboard":
+        dashboard = metadata.get_by_name(entity=Dashboard, fqn=edge_fqn)
+        if dashboard:
+            return EntityReference(id=dashboard.id, type="dashboard")
+    return None
 
 
 def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
@@ -144,65 +161,24 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
 
 
 class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = list()
-    failures: List[str] = list()
-    warnings: List[str] = list()
+    success: List[str] = []
+    failures: List[str] = []
+    warnings: List[str] = []
 
-    def scanned(self, entity_type: str, entity_name: str) -> None:
+    def scanned(  # pylint: disable=arguments-differ
+        self, entity_type: str, entity_name: str
+    ) -> None:
         self.success.append(entity_name)
-        logger.info("{} Scanned: {}".format(entity_type, entity_name))
+        logger.info(f"{entity_type} Scanned: {entity_name}")
 
     def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
         self.warnings.append(entity_name)
-        logger.warning("Dropped {} {} due to {}".format(entity_type, entity_name, err))
+        logger.warning(f"Dropped {entity_type} {entity_type} due to {err}")
 
 
-class TableSchema:
-    def __init__(self, filename):
-        # error if the file is not csv file
-        if not filename.endswith(".csv"):
-            raise Exception("Input file should be a csv file")
-
-        # file name is assumed to be the table name
-        basename = os.path.basename(filename)
-        self.table_name = os.path.splitext(basename)[0]
-
-        with open(filename, "r") as fin:
-            self.columns = [dict(i) for i in csv.DictReader(fin)]
-
-    def primary_keys(self):
-        return [c[COLUMN_NAME] for c in self.columns if c[KEY_TYPE] == "PK"]
-
-    def foreign_keys(self):
-        return [c[COLUMN_NAME] for c in self.columns if c[KEY_TYPE] == "FK"]
-
-    def get_name(self):
-        return self.table_name
-
-    def get_schema(self):
-        return self.columns
-
-    def get_column_names(self):
-        return [c[COLUMN_NAME] for c in self.columns]
-
-
-class SampleTableMetadataGenerator:
-    def __init__(self, table_to_df_dict, table_to_schema_map):
-        self.table_to_df_dict = table_to_df_dict
-        self.table_to_schema_map = table_to_schema_map
-        self.sample_user = None
-        self.sample_table = None
-        self.sample_table_owner = None
-        self.sample_table_last_updated = None
-
-    def get_empty_dict_with_cols(self, columns):
-        data = {}
-        for c in columns:
-            data[c] = []
-        return data
-
-
-class SampleDataSource(Source[Entity]):
+class SampleDataSource(
+    Source[Entity]
+):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
@@ -218,15 +194,17 @@ class SampleDataSource(Source[Entity]):
         self.list_policies = []
 
         self.storage_service_json = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/locations/service.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.locations = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/locations/locations.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.storage_service = get_storage_service_or_create(
@@ -234,29 +212,40 @@ class SampleDataSource(Source[Entity]):
             metadata_config=metadata_config,
         )
         self.glue_storage_service_json = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/glue/storage_service.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.glue_database_service_json = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder
                 + "/glue/database_service.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.glue_database = json.load(
-            open(self.service_connection.sampleDataFolder + "/glue/database.json", "r")
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/glue/database.json",
+                "r",
+                encoding="utf-8",
+            )
         )
         self.glue_database_schema = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/glue/database_schema.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.glue_tables = json.load(
-            open(self.service_connection.sampleDataFolder + "/glue/tables.json", "r")
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/glue/tables.json",
+                "r",
+                encoding="utf-8",
+            )
         )
         self.glue_database_service = self.metadata.get_service_or_create(
             entity=DatabaseService,
@@ -267,31 +256,39 @@ class SampleDataSource(Source[Entity]):
             metadata_config,
         )
         self.database_service_json = json.load(
-            open(
-                self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/datasets/service.json",
+                "r",
+                encoding="utf-8",
             )
         )
         self.database = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/datasets/database.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.database_schema = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder
                 + "/datasets/database_schema.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.tables = json.load(
-            open(
-                self.service_connection.sampleDataFolder + "/datasets/tables.json", "r"
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/datasets/tables.json",
+                "r",
+                encoding="utf-8",
             )
         )
         self.database_service_json = json.load(
-            open(
-                self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/datasets/service.json",
+                "r",
+                encoding="utf-8",
             )
         )
         self.database_service = self.metadata.get_service_or_create(
@@ -299,10 +296,18 @@ class SampleDataSource(Source[Entity]):
         )
 
         self.kafka_service_json = json.load(
-            open(self.service_connection.sampleDataFolder + "/topics/service.json", "r")
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/topics/service.json",
+                "r",
+                encoding="utf-8",
+            )
         )
         self.topics = json.load(
-            open(self.service_connection.sampleDataFolder + "/topics/topics.json", "r")
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/topics/topics.json",
+                "r",
+                encoding="utf-8",
+            )
         )
 
         self.kafka_service = self.metadata.get_service_or_create(
@@ -310,22 +315,25 @@ class SampleDataSource(Source[Entity]):
         )
 
         self.dashboard_service_json = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/dashboards/service.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.charts = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/dashboards/charts.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.dashboards = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder
                 + "/dashboards/dashboards.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.dashboard_service = self.metadata.get_service_or_create(
@@ -334,32 +342,48 @@ class SampleDataSource(Source[Entity]):
         )
 
         self.pipeline_service_json = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/pipelines/service.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.pipelines = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/pipelines/pipelines.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.pipeline_service = self.metadata.get_service_or_create(
             entity=PipelineService, config=WorkflowSource(**self.pipeline_service_json)
         )
         self.lineage = json.load(
-            open(
-                self.service_connection.sampleDataFolder + "/lineage/lineage.json", "r"
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/lineage/lineage.json",
+                "r",
+                encoding="utf-8",
+            )
+        )
+        self.teams = json.load(
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/teams/teams.json",
+                "r",
+                encoding="utf-8",
             )
         )
         self.users = json.load(
-            open(self.service_connection.sampleDataFolder + "/users/users.json", "r")
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/users/users.json",
+                "r",
+                encoding="utf-8",
+            )
         )
         self.model_service_json = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/models/service.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.model_service = self.metadata.get_service_or_create(
@@ -367,40 +391,49 @@ class SampleDataSource(Source[Entity]):
             config=WorkflowSource(**self.model_service_json),
         )
         self.models = json.load(
-            open(self.service_connection.sampleDataFolder + "/models/models.json", "r")
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/models/models.json",
+                "r",
+                encoding="utf-8",
+            )
         )
         self.user_entity = {}
         self.table_tests = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/datasets/tableTests.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.pipeline_status = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder
                 + "/pipelines/pipelineStatus.json",
                 "r",
+                encoding="utf-8",
             )
         )
         self.profiles = json.load(
-            open(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder
                 + "/profiler/tableProfile.json",
                 "r",
+                encoding="utf-8",
             )
         )
-        self.testsSuites = json.load(
-            open(
+        self.tests_suites = json.load(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder + "/tests/testSuites.json",
                 "r",
+                encoding="utf-8",
             )
         )
-        self.testsCaseResults = json.load(
-            open(
+        self.tests_case_results = json.load(
+            open(  # pylint: disable=consider-using-with
                 self.service_connection.sampleDataFolder
                 + "/tests/testCaseResults.json",
                 "r",
+                encoding="utf-8",
             )
         )
 
@@ -419,6 +452,7 @@ class SampleDataSource(Source[Entity]):
         pass
 
     def next_record(self) -> Iterable[Entity]:
+        yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_locations()
         yield from self.ingest_glue()
@@ -435,6 +469,35 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
 
+    def ingest_teams(self):
+        """
+        Ingest sample teams
+        """
+        for team in self.teams["teams"]:
+
+            team_to_ingest = CreateTeamRequest(
+                name=team["name"], teamType=team["teamType"]
+            )
+            if team["parent"] is not None:
+                parent_list_id = []
+                for parent in team["parent"]:
+                    tries = 3
+                    parent_object = self.metadata.get_by_name(entity=Team, fqn=parent)
+                    while not parent_object and tries > 0:
+                        logger.info(f"Trying to GET {parent} Parent Team")
+                        parent_object = self.metadata.get_by_name(
+                            entity=Team,
+                            fqn=parent,
+                        )
+                        tries -= 1
+
+                    if parent_object:
+                        parent_list_id.append(parent_object.id)
+
+                team_to_ingest.parents = parent_list_id
+
+            yield team_to_ingest
+
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
             location_ev = CreateLocationRequest(
@@ -450,6 +513,9 @@ class SampleDataSource(Source[Entity]):
             yield location_ev
 
     def ingest_glue(self):
+        """
+        Ingest Sample Data for glue database source
+        """
         db = CreateDatabaseRequest(
             name=self.database["name"],
             description=self.database["description"],
@@ -532,6 +598,9 @@ class SampleDataSource(Source[Entity]):
                 yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
 
     def ingest_tables(self):
+        """
+        Ingest Sample Tables
+        """
 
         db = CreateDatabaseRequest(
             name=self.database["name"],
@@ -656,8 +725,18 @@ class SampleDataSource(Source[Entity]):
         for edge in self.lineage:
             from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
             to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
+            edge_entity_ref = get_lineage_entity_ref(
+                edge["edge_meta"], self.metadata_config
+            )
+            lineage_details = LineageDetails(
+                pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query")
+            )
             lineage = AddLineageRequest(
-                edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
+                edge=EntitiesEdge(
+                    fromEntity=from_entity_ref,
+                    toEntity=to_entity_ref,
+                    lineageDetails=lineage_details,
+                )
             )
             yield lineage
 
@@ -708,7 +787,6 @@ class SampleDataSource(Source[Entity]):
         Convert sample model data into a Model Entity
         to feed the metastore
         """
-        from metadata.generated.schema.entity.data.dashboard import Dashboard
 
         for model in self.models:
             try:
@@ -753,6 +831,9 @@ class SampleDataSource(Source[Entity]):
                 logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
+        """
+        Ingest Sample User data
+        """
         try:
             for user in self.users["users"]:
                 teams = [
@@ -760,7 +841,7 @@ class SampleDataSource(Source[Entity]):
                         name=user["teams"],
                         displayName=user["teams"],
                         description=f"This is {user['teams']} description.",
-                        teamType=TeamType.Department,
+                        teamType=user["teamType"],
                     )
                 ]
                 if not self.list_policies:
@@ -796,7 +877,7 @@ class SampleDataSource(Source[Entity]):
                 entity=Table,
                 fqn=table_profile["fqn"],
             )
-            for i, profile in enumerate(table_profile["profile"]):
+            for days, profile in enumerate(table_profile["profile"]):
 
                 yield OMetaTableProfileSampleData(
                     table=table,
@@ -805,13 +886,13 @@ class SampleDataSource(Source[Entity]):
                             columnCount=profile["columnCount"],
                             rowCount=profile["rowCount"],
                             timestamp=(
-                                datetime.now(tz=timezone.utc) - timedelta(days=i)
+                                datetime.now(tz=timezone.utc) - timedelta(days=days)
                             ).timestamp(),
                         ),
                         columnProfile=[
                             ColumnProfile(
                                 timestamp=(
-                                    datetime.now(tz=timezone.utc) - timedelta(days=i)
+                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
                                 ).timestamp(),
                                 **col_profile,
                             )
@@ -822,7 +903,7 @@ class SampleDataSource(Source[Entity]):
 
     def ingest_test_suite(self) -> Iterable[OMetaTestSuiteSample]:
         """Iterate over all the testSuite and testCase and ingest them"""
-        for test_suite in self.testsSuites["tests"]:
+        for test_suite in self.tests_suites["tests"]:
             yield OMetaTestSuiteSample(
                 test_suite=CreateTestSuiteRequest(
                     name=test_suite["testSuiteName"],
@@ -831,7 +912,7 @@ class SampleDataSource(Source[Entity]):
             )
 
     def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:
-        for test_suite in self.testsSuites["tests"]:
+        for test_suite in self.tests_suites["tests"]:
             suite = self.metadata.get_by_name(
                 fqn=test_suite["testSuiteName"], entity=TestSuite
             )
@@ -861,16 +942,16 @@ class SampleDataSource(Source[Entity]):
 
     def ingest_test_case_results(self) -> Iterable[OMetaTestCaseResultsSample]:
         """Iterate over all the testSuite and testCase and ingest them"""
-        for test_case_results in self.testsCaseResults["testCaseResults"]:
+        for test_case_results in self.tests_case_results["testCaseResults"]:
             case = self.metadata.get_by_name(
                 TestCase,
                 f"sample_data.ecommerce_db.shopify.dim_address.{test_case_results['name']}",
                 fields=["testSuite", "testDefinition"],
             )
-            for i, result in enumerate(test_case_results["results"]):
+            for days, result in enumerate(test_case_results["results"]):
                 yield OMetaTestCaseResultsSample(
                     test_case_results=TestCaseResult(
-                        timestamp=(datetime.now() - timedelta(days=i)).timestamp(),
+                        timestamp=(datetime.now() - timedelta(days=days)).timestamp(),
                         testCaseStatus=result["testCaseStatus"],
                         result=result["result"],
                         testResultValue=[

@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate
+#  Copyright 2021 Collate #pylint: disable=too-many-lines
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -16,7 +16,7 @@ import json
 import logging
 import os
 import traceback
-from functools import singledispatch
+from functools import singledispatch, wraps
 from typing import Union
 
 import pkg_resources
@@ -31,20 +31,26 @@ from sqlalchemy.pool import QueuePool
 
 from metadata.clients.connection_clients import (
     AirByteClient,
+    AmundsenClient,
+    DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
+    DomoClient,
     DynamoClient,
     FivetranClient,
     GlueDBClient,
     GluePipelineClient,
     KafkaClient,
+    KinesisClient,
     LookerClient,
     MetabaseClient,
     MlflowClientWrapper,
     ModeClient,
     NifiClientWrapper,
     PowerBiClient,
+    QuickSightClient,
     RedashClient,
+    SageMakerClient,
     SalesforceClient,
     SupersetClient,
     TableauClient,
@@ -52,6 +58,9 @@ from metadata.clients.connection_clients import (
 from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
+    DomoDashboardConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -64,6 +73,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.modeConnect
 )
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
+    QuickSightConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
@@ -88,6 +100,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+    DomoDatabaseConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -103,11 +118,20 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
+    KinesisConnection,
+)
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.amundsenConnection import (
+    AmundsenConnection,
+)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
+    SageMakerConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
@@ -119,25 +143,38 @@ from metadata.generated.schema.entity.services.connections.pipeline.backendConne
     BackendConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
+    CloudDagster,
     DagsterConnection,
+    LocalDagtser,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.domopipelineConnection import (
+    DomoPipelineConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
-    GlueConnection as GluePipelineConnection,
+from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
+    GluePipelineConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.credentials import set_google_credentials
-from metadata.utils.source_connections import get_connection_args, get_connection_url
+from metadata.utils.source_connections import (
+    get_connection_args,
+    get_connection_url,
+    singledispatch_with_options_secrets,
+    update_connection_opts_args,
+)
+from metadata.utils.sql_queries import NEO4J_AMUNDSEN_USER_QUERY
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")
 
 
+# All imports are happening scoped in their own functions. This is fine here to not force any unused requirement
+# pylint: disable=import-outside-toplevel
 class SourceConnectionException(Exception):
     """
     Raised when we cannot connect to the source
@@ -145,11 +182,21 @@ class SourceConnectionException(Exception):
 
 
 def render_query_header(ometa_version: str) -> str:
+    """
+    Render the query header for OpenMetadata Queries
+    """
+
     header_obj = {"app": "OpenMetadata", "version": ometa_version}
     return f"/* {json.dumps(header_obj)} */"
 
 
-def inject_query_header(conn, cursor, statement, parameters, context, executemany):
+def inject_query_header(
+    conn, cursor, statement, parameters, context, executemany
+):  # pylint: disable=unused-argument
+    """
+    Inject the query header for OpenMetadata Queries
+    """
+
     version = pkg_resources.require("openmetadata-ingestion")[0].version
     statement_with_header = render_query_header(version) + "\n" + statement
     return statement_with_header, parameters
@@ -162,7 +209,6 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     :param verbose: debugger or not
     :return: SQAlchemy Engine
     """
-
     engine = create_engine(
         get_connection_url(connection),
         connect_args=get_connection_args(connection),
@@ -178,7 +224,21 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     return engine
 
 
-@singledispatch
+def singledispatch_with_options_secrets_verbose(fn):
+    """Decorator used for get any secret from the Secrets Manager that has been passed inside connection options
+    or arguments.
+    """
+
+    @wraps(fn)
+    @singledispatch
+    def inner(connection, verbose: bool = False, **kwargs):
+        update_connection_opts_args(connection)
+        return fn(connection, verbose, **kwargs)
+
+    return inner
+
+
+@singledispatch_with_options_secrets_verbose
 def get_connection(
     connection, verbose: bool = False
 ) -> Union[
@@ -233,7 +293,7 @@ def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
         )
 
         if connection.privateKey:
-            connection.connectionArguments = dict()
+            connection.connectionArguments = {}
             connection.connectionArguments["private_key"] = pkb
 
     return create_generic_connection(connection, verbose)
@@ -252,15 +312,21 @@ def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
 
 
 @get_connection.register
-def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
+def _(
+    connection: DynamoDBConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> DynamoClient:
     from metadata.clients.aws_client import AWSClient
 
-    dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
-    return dynomo_connection
+    dynamo_connection = AWSClient(connection.awsConfig).get_dynamo_client()
+    return dynamo_connection
 
 
 @get_connection.register
-def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
+def _(
+    connection: GlueDBConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> GlueDBClient:
     from metadata.clients.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_db_client()
@@ -269,7 +335,8 @@ def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
 
 @get_connection.register
 def _(
-    connection: GluePipelineConnection, verbose: bool = False
+    connection: GluePipelineConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
 ) -> GluePipelineConnection:
     from metadata.clients.aws_client import AWSClient
 
@@ -278,7 +345,10 @@ def _(
 
 
 @get_connection.register
-def _(connection: SalesforceConnection, verbose: bool = False) -> SalesforceClient:
+def _(
+    connection: SalesforceConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> SalesforceClient:
     from simple_salesforce import Salesforce
 
     salesforce_connection = SalesforceClient(
@@ -292,7 +362,10 @@ def _(connection: SalesforceConnection, verbose: bool = False) -> SalesforceClie
 
 
 @get_connection.register
-def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient:
+def _(
+    connection: DeltaLakeConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> DeltaLakeClient:
     import pyspark
     from delta import configure_spark_with_delta_pip
 
@@ -352,7 +425,9 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
 
 @get_connection.register(KafkaConnection)
 @get_connection.register(RedpandaConnection)
-def _(connection, verbose: bool = False) -> KafkaClient:
+def _(
+    connection, verbose: bool = False  # pylint: disable=unused-argument
+) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
@@ -413,7 +488,7 @@ def create_and_bind_thread_safe_session(engine: Engine) -> Session:
 
 
 @timeout(seconds=120)
-@singledispatch
+@singledispatch_with_options_secrets
 def test_connection(connection) -> None:
     """
     Default implementation is the engine to test.
@@ -427,10 +502,10 @@ def test_connection(connection) -> None:
             conn.execute(ConnTestFn())
     except OperationalError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -446,29 +521,31 @@ def _(connection: DynamoClient) -> None:
         connection.client.tables.all()
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
 def _(connection: GlueDBClient) -> None:
     """
     Test that we can connect to the source using the given aws resource
-    :param engine: boto cliet to test
+    :param engine: boto client to test
     :return: None or raise an exception if we cannot connect
     """
     from botocore.client import ClientError
 
     try:
-        connection.client.list_workflows()
+        pagitator = connection.client.get_paginator("get_databases")
+        pagitator.paginate()
+
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -481,13 +558,13 @@ def _(connection: GluePipelineClient) -> None:
     from botocore.client import ClientError
 
     try:
-        connection.client.get_paginator("get_databases")
+        connection.client.list_workflows()
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -498,10 +575,10 @@ def _(connection: SalesforceClient) -> None:
         connection.client.describe()
     except SalesforceAuthenticationFailed as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from err
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -517,7 +594,7 @@ def _(connection: KafkaClient) -> None:
             _ = connection.schema_registry_client.get_subjects()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -526,22 +603,54 @@ def _(connection: DeltaLakeClient) -> None:
         connection.client.catalog.listDatabases()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: MetabaseConnection, verbose: bool = False):
+def _(
+    connection: KinesisConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> KinesisClient:
+    from metadata.clients.aws_client import AWSClient
+
+    kinesis_connection = AWSClient(connection.awsConfig).get_kinesis_client()
+    return kinesis_connection
+
+
+@test_connection.register
+def _(connection: KinesisClient) -> None:
+    """
+    Test that we can connect to the Kinesis source using the given aws credentials
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
     try:
-        params = dict()
+        connection.client.list_streams()
+    except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(
+    connection: MetabaseConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
+    try:
+        params = {}
         params["username"] = connection.username
         params["password"] = connection.password.get_secret_value()
 
-        HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
+        headers = {"Content-Type": "application/json", "Accept": "*/*"}
 
-        resp = requests.post(
+        resp = requests.post(  # pylint: disable=missing-timeout
             connection.hostPort + "/api/session/",
             data=json.dumps(params),
-            headers=HEADERS,
+            headers=headers,
         )
 
         session_id = resp.json()["id"]
@@ -551,19 +660,19 @@ def _(connection: MetabaseConnection, verbose: bool = False):
 
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
 def _(connection: MetabaseClient) -> None:
     try:
-        requests.get(
+        requests.get(  # pylint: disable=missing-timeout
             connection.client["connection"].hostPort + "/api/dashboard",
             headers=connection.client["metabase_session"],
         )
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -572,7 +681,7 @@ def _(connection: AirflowConnection) -> None:
         test_connection(connection.connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
@@ -581,11 +690,13 @@ def _(connection: AirflowConnection) -> None:
         return get_connection(connection.connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: AirbyteConnection, verbose: bool = False):
+def _(
+    connection: AirbyteConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
     from metadata.clients.airbyte_client import AirbyteClient
 
     return AirByteClient(AirbyteClient(connection))
@@ -597,11 +708,13 @@ def _(connection: AirByteClient) -> None:
         connection.client.list_workspaces()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: FivetranConnection, verbose: bool = False):
+def _(
+    connection: FivetranConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
     from metadata.clients.fivetran_client import FivetranClient as FivetranRestClient
 
     return FivetranClient(FivetranRestClient(connection))
@@ -613,11 +726,13 @@ def _(connection: FivetranClient) -> None:
         connection.client.list_groups()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: RedashConnection, verbose: bool = False):
+def _(
+    connection: RedashConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
 
     from redash_toolbelt import Redash
 
@@ -628,7 +743,7 @@ def _(connection: RedashConnection, verbose: bool = False):
 
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -637,11 +752,14 @@ def _(connection: RedashClient) -> None:
         connection.client.dashboards()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: SupersetConnection, verbose: bool = False):
+def _(
+    connection: SupersetConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
 
     superset_connection = SupersetAPIClient(connection)
@@ -655,11 +773,14 @@ def _(connection: SupersetClient) -> None:
         connection.client.fetch_menu()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: TableauConnection, verbose: bool = False):
+def _(  # pylint: disable=inconsistent-return-statements
+    connection: TableauConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
 
     from tableau_api_lib import TableauServerConnection
 
@@ -705,11 +826,14 @@ def _(connection: TableauClient) -> None:
 
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: PowerBIConnection, verbose: bool = False):
+def _(
+    connection: PowerBIConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     from metadata.clients.powerbi_client import PowerBiApiClient
 
     return PowerBiClient(PowerBiApiClient(connection))
@@ -721,11 +845,14 @@ def _(connection: PowerBiClient) -> None:
         connection.client.fetch_dashboards()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: LookerConnection, verbose: bool = False):
+def _(
+    connection: LookerConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     import looker_sdk
 
     if not os.environ.get("LOOKERSDK_CLIENT_ID"):
@@ -746,7 +873,37 @@ def _(connection: LookerClient) -> None:
         connection.client.me()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(
+    connection: QuickSightConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> QuickSightClient:
+    from metadata.clients.aws_client import AWSClient
+
+    quicksight_connection = AWSClient(connection.awsConfig).get_quicksight_client()
+    return quicksight_connection
+
+
+@test_connection.register
+def _(connection: QuickSightClient) -> None:
+    """
+    Test that we can connect to the QuickSight source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_dashboards(AwsAccountId=connection.awsAccountId)
+    except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
 
 
 @test_connection.register
@@ -774,18 +931,24 @@ def _(connection: DatalakeClient) -> None:
 
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from err
 
 
 @singledispatch
 def get_datalake_client(config):
+    """
+    Method to retrieve datalake client from the config
+    """
     if config:
         msg = f"Config not implemented for type {type(config)}: {config}"
         raise NotImplementedError(msg)
 
 
 @get_connection.register
-def _(connection: DatalakeConnection, verbose: bool = False) -> DatalakeClient:
+def _(
+    connection: DatalakeConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> DatalakeClient:
     datalake_connection = get_datalake_client(connection.configSource)
     return DatalakeClient(client=datalake_connection, config=connection)
 
@@ -808,7 +971,9 @@ def _(config: GCSConfig):
 
 
 @get_connection.register
-def _(connection: ModeConnection, verbose: bool = False):
+def _(
+    connection: ModeConnection, verbose: bool = False  # pylint: disable=unused-argument
+):
     from metadata.clients.mode_client import ModeApiClient
 
     return ModeClient(ModeApiClient(connection))
@@ -820,11 +985,14 @@ def _(connection: ModeClient) -> None:
         connection.client.get_user_account()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: MlflowConnection, verbose: bool = False):
+def _(
+    connection: MlflowConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+):
     from mlflow.tracking import MlflowClient
 
     return MlflowClientWrapper(
@@ -841,11 +1009,43 @@ def _(connection: MlflowClientWrapper) -> None:
         connection.client.list_registered_models()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
+        raise SourceConnectionException(msg) from exc
 
 
 @get_connection.register
-def _(connection: NifiConnection, verbose: bool = False):
+def _(
+    connection: SageMakerConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> SageMakerClient:
+    from metadata.clients.aws_client import AWSClient
+
+    sagemaker_connection = AWSClient(connection.awsConfig).get_sagemaker_client()
+    return sagemaker_connection
+
+
+@test_connection.register
+def _(connection: SageMakerClient) -> None:
+    """
+    Test that we can connect to the SageMaker source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_models()
+    except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@get_connection.register
+def _(
+    connection: NifiConnection, verbose: bool = False
+):  # pylint: disable=unused-argument
 
     return NifiClientWrapper(
         NifiClient(
@@ -864,11 +1064,11 @@ def _(connection: NifiClientWrapper) -> None:
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
-        )
+        ) from err
 
 
 @get_connection.register
-def _(_: BackendConnection, verbose: bool = False):
+def _(_: BackendConnection, verbose: bool = False):  # pylint: disable=unused-argument
     """
     Let's use Airflow's internal connection for this
     """
@@ -879,18 +1079,194 @@ def _(_: BackendConnection, verbose: bool = False):
 
 
 @test_connection.register
-def _(connection: DagsterConnection) -> None:
+def _(connection: DagsterClient) -> None:
+    from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
+
     try:
-        test_connection(connection.dbConnection)
+        config = connection.config.configSource
+        if isinstance(config, LocalDagtser):
+            from urllib.parse import urlparse
+
+            from dagster_graphql import DagsterGraphQLClient
+
+            hostPort = config.hostPort  # pylint: disable=invalid-name
+            hostPort = urlparse(hostPort)  # pylint: disable=invalid-name
+            local_dagster = DagsterGraphQLClient(
+                hostname=hostPort.hostname, port_number=hostPort.port
+            )
+
+            local_dagster._execute(  # pylint: disable=protected-access
+                TEST_QUERY_GRAPHQL
+            )
+        if isinstance(config, CloudDagster):
+            from dagster_graphql import DagsterGraphQLClient
+            from gql.transport.requests import RequestsHTTPTransport
+
+            url = config.host
+            cloud_dagster = DagsterGraphQLClient(
+                url,
+                transport=RequestsHTTPTransport(
+                    url=url + "/graphql",
+                    headers={
+                        "Dagster-Cloud-Api-Token": config.token.get_secret_value()
+                    },
+                ),
+            )
+
+            cloud_dagster._execute(  # pylint: disable=protected-access
+                TEST_QUERY_GRAPHQL
+            )
+
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@singledispatch
+def get_dagster_client(config):
+    """
+    Method to retrieve dagster client from the config
+    """
+    if config:
+        msg = f"Config not implemented for type {type(config)}: {config}"
+        raise NotImplementedError(msg)
+
+
+@get_connection.register
+def _(connection: DagsterConnection) -> DagsterClient:
+    dagster_connection = get_dagster_client(connection.configSource)
+    return DagsterClient(client=dagster_connection, config=connection)
+
+
+@get_dagster_client.register
+def _(config: LocalDagtser):
+    from urllib.parse import urlparse
+
+    from dagster_graphql import DagsterGraphQLClient
+
+    host_port = config.hostPort
+    host_port = urlparse(host_port)
+    local_dagster = DagsterGraphQLClient(
+        hostname=host_port.hostname, port_number=host_port.port
+    )
+    return local_dagster
+
+
+@get_dagster_client.register
+def _(config: CloudDagster):
+    from dagster_graphql import DagsterGraphQLClient
+    from gql.transport.requests import RequestsHTTPTransport
+
+    url = config.host
+    cloud_dagster = DagsterGraphQLClient(
+        url,
+        transport=RequestsHTTPTransport(
+            url=f"{url}/graphql",
+            headers={"Dagster-Cloud-Api-Token": config.token.get_secret_value()},
+        ),
+    )
+    return cloud_dagster
+
+
+@get_connection.register
+def _(connection: DomoDashboardConnection) -> None:
+    from pydomo import Domo
+
+    try:
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoClient) -> None:
+    try:
+        connection.client.page_list()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)
 
 
 @get_connection.register
-def _(connection: DagsterConnection) -> None:
+def _(connection: DomoPipelineConnection) -> None:
+    from pydomo import Domo
+
     try:
-        return get_connection(connection.dbConnection)
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoClient) -> None:
+    try:
+        connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: DomoDatabaseConnection) -> None:
+    from pydomo import Domo
+
+    try:
+        domo = Domo(
+            connection.clientId,
+            connection.secretToken.get_secret_value(),
+            api_host=connection.apiHost,
+        )
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+    return DomoClient(domo)
+
+
+@test_connection.register
+def _(connection: DomoClient) -> None:
+    try:
+        connection.client.page_list()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: AmundsenConnection) -> AmundsenClient:
+
+    from metadata.clients.neo4j_client import Neo4JConfig, Neo4jHelper
+
+    try:
+        neo4j_config = Neo4JConfig(
+            username=connection.username,
+            password=connection.password.get_secret_value(),
+            neo4j_url=connection.hostPort,
+            max_connection_life_time=connection.maxConnectionLifeTime,
+            neo4j_encrypted=connection.encrypted,
+            neo4j_validate_ssl=connection.validateSSL,
+        )
+        return AmundsenClient(Neo4jHelper(neo4j_config))
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@test_connection.register
+def _(connection: AmundsenClient) -> None:
+    try:
+        connection.client.execute_query(query=NEO4J_AMUNDSEN_USER_QUERY)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)

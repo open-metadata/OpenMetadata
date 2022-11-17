@@ -8,7 +8,7 @@
   "properties": {
     "email": {
       "description": "Login Email",
-      "$ref": "../type/basic.json#/definitions/email"
+      "type": "string"
     },
     "password": {
       "description": "Login Password",

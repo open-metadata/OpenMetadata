@@ -8,11 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Hive source methods.
+"""
 
 import re
+from typing import Tuple
 
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
+from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -25,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils.sql_queries import HIVE_GET_COMMENTS
 
 complex_data_types = ["struct", "map", "array", "union"]
 
@@ -37,8 +43,15 @@ _type_map.update(
 )
 
 
-def get_columns(self, connection, table_name, schema=None, **kw):
-    rows = self._get_table_columns(connection, table_name, schema)
+def get_columns(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument,too-many-locals
+    """
+    Method to handle table columns
+    """
+    rows = self._get_table_columns(  # pylint: disable=protected-access
+        connection, table_name, schema
+    )
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
@@ -54,9 +67,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             coltype = _type_map[col_type]
 
         except KeyError:
-            util.warn(
-                "Did not recognize type '%s' of column '%s'" % (col_type, col_name)
-            )
+            util.warn(f"Did not recognize type '{col_type}' of column '{col_name}'")
             coltype = types.NullType
         charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
         if charlen:
@@ -83,7 +94,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return result
 
 
-def get_table_names(self, connection, schema=None, **kw):
+def get_table_names_older_versions(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -97,11 +110,34 @@ def get_table_names(self, connection, schema=None, **kw):
             tables.append(row[1])
         else:
             tables.append(row[0])
-    views = get_view_names(self, connection, schema)
+    return tables
+
+
+def get_table_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
+    query = "SHOW TABLES"
+    if schema:
+        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+    tables_in_schema = connection.execute(query)
+    tables = []
+    for row in tables_in_schema:
+        # check number of columns in result
+        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
+        # else it is hive with 1 column in the result
+        if len(row) > 1:
+            tables.append(row[1])
+        else:
+            tables.append(row[0])
+    # "SHOW TABLES" command in hive also fetches view names
+    # Below code filters out view names from table names
+    views = self.get_view_names(connection, schema)
     return [table for table in tables if table not in views]
 
 
-def get_view_names(self, connection, schema=None, **kw):
+def get_view_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -118,12 +154,47 @@ def get_view_names(self, connection, schema=None, **kw):
     return views
 
 
+def get_view_names_older_versions(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
+    # Hive does not provide functionality to query tableType for older version
+    # This allows reflection to not crash at the cost of being inaccurate
+    return []
+
+
+@reflection.cache
+def get_table_comment(  # pylint: disable=unused-argument
+    self, connection, table_name, schema_name, **kw
+):
+    """
+    Returns comment of table.
+    """
+    cursor = connection.execute(
+        HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)
+    )
+    try:
+        for result in list(cursor):
+            data = result.values()
+            if data[1] and data[1].strip() == "comment":
+                return {"text": data[2] if data and data[2] else None}
+    except Exception:
+        return {"text": None}
+    return {"text": None}
+
+
 HiveDialect.get_columns = get_columns
-HiveDialect.get_table_names = get_table_names
-HiveDialect.get_view_names = get_view_names
+HiveDialect.get_table_comment = get_table_comment
+
+
+HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
 
 
 class HiveSource(CommonDbSourceService):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Hive Source
+    """
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
@@ -133,3 +204,25 @@ class HiveSource(CommonDbSourceService):
                 f"Expected HiveConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def _parse_version(self, version: str) -> Tuple:
+        if "-" in version:
+            version = version.replace("-", ".")
+        return tuple(map(int, (version.split(".")[:3])))
+
+    def prepare(self):
+        """
+        Based on the version of hive update the get_table_names method
+        Fetching views in hive server with query "SHOW VIEWS" was possible
+        only after hive 2.2.0 version
+        """
+        result = dict(self.engine.execute("SELECT VERSION()").fetchone())
+        version = result.get("_c0", "").split()
+        if version and self._parse_version(version[0]) >= self._parse_version(
+            HIVE_VERSION_WITH_VIEW_SUPPORT
+        ):
+            HiveDialect.get_table_names = get_table_names
+            HiveDialect.get_view_names = get_view_names
+        else:
+            HiveDialect.get_table_names = get_table_names_older_versions
+            HiveDialect.get_view_names = get_view_names_older_versions

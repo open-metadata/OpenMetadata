@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, uuid } from '../../common/common';
-import { SERVICE_TYPE } from '../../constants/constants';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Kafka';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const topicName = '__transaction_state';
+const description = `This is ${serviceName} description`;
 
 describe('Kafka Ingestion', () => {
+  beforeEach(() => {
+    login(LOGIN.username, LOGIN.password);
+    cy.goToHomePage();
+  });
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Messaging);
 
@@ -34,8 +40,12 @@ describe('Kafka Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-        cy.get('[data-testid="topic-filter-pattern-checkbox"]').should("be.visible").check()
-        cy.get('[data-testid="filter-pattern-includes-topic"]').should("be.visible").type("__consumer_offsets")
+      cy.get('[data-testid="topic-filter-pattern-checkbox"]')
+        .should('be.visible')
+        .check();
+      cy.get('[data-testid="filter-pattern-includes-topic"]')
+        .should('be.visible')
+        .type(topicName);
     };
 
     testServiceCreationAndIngestion(
@@ -47,11 +57,25 @@ describe('Kafka Ingestion', () => {
     );
   });
 
+  it('Update table description and verify description after re-run', () => {
+    updateDescriptionForIngestedTables(
+      serviceName,
+      topicName,
+      description,
+      SERVICE_TYPE.Messaging,
+      'topics'
+    );
+  });
+
   it('Edit and validate owner', () => {
-    editOwnerforCreatedService(SERVICE_TYPE.Messaging, serviceName);
+    editOwnerforCreatedService(
+      SERVICE_TYPE.Messaging,
+      serviceName,
+      API_SERVICE.messagingServices
+    );
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Messaging, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Messaging, serviceName, API_SERVICE.messagingServices);
   });
 });

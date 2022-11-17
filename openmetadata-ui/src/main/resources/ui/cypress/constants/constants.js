@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { uuid } from '../common/common';
-
+export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
+
+export const BASE_URL = location.origin;
+
+export const LOGIN_ERROR_MESSAGE = 'You have entered an invalid username or password.';
 
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
@@ -23,14 +26,39 @@ export const MYDATA_SUMMARY_OPTIONS = {
   service: 'service',
   user: 'user',
   terms: 'terms',
+  mlmodels: 'mlmodels',
+};
+
+export const SEARCH_INDEX = {
+  tables: 'table_search_index',
+  topics: 'topic_search_index',
+  dashboards: 'dashboard_search_index',
+  pipelines: 'pipeline_search_index',
+  mlmodels: 'mlmodel_search_index',
+};
+
+export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
+  term: 'dim_address',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  serviceName: 'sample_data',
+  testCaseName: 'column_value_max_to_be_between',
 };
 
 export const SEARCH_ENTITY_TABLE = {
-  table_1: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
-  table_2: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  table_1: {
+    term: 'raw_customer',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+  },
+  table_2: {
+    term: 'fact_session',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+  },
   table_3: {
     term: 'raw_product_catalog',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
   },
 };
 
@@ -38,33 +66,50 @@ export const SEARCH_ENTITY_TOPIC = {
   topic_1: {
     term: 'shop_products',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
   },
-  topic_2: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
+  topic_2: {
+    term: 'orders',
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
+  },
 };
 
 export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
     term: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    serviceName: 'sample_superset',
   },
   dashboard_2: {
     term: 'Unicode Test',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    serviceName: 'sample_superset',
   },
 };
 
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
-    term: 'Snowflake',
+    term: 'dim_product_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: 'sample_airflow',
   },
   pipeline_2: {
-    term: 'Hive',
+    term: 'dim_location_etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: 'sample_airflow',
   },
-  pipeline_3: {
-    term: 'Trino',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+};
+export const SEARCH_ENTITY_MLMODEL = {
+  mlmodel_1: {
+    term: 'forecast_sales',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
+  },
+  mlmodel_2: {
+    term: 'eta_predictions',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
   },
 };
 
@@ -72,10 +117,12 @@ export const DELETE_ENTITY = {
   table: {
     term: 'fact_sale',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
   },
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: 'sample_kafka',
   },
 };
 
@@ -151,6 +198,8 @@ export const NEW_TAG = {
 export const NEW_GLOSSARY = {
   name: 'Business Glossary',
   description: 'This is the Business glossary',
+  reviewer: 'Aaron Johnson',
+  tag: 'PII.None'
 };
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
@@ -187,6 +236,7 @@ export const ENTITIES = {
     integerValue: '45',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_TABLE.table_1,
   },
   entity_topic: {
     name: 'topic',
@@ -194,19 +244,56 @@ export const ENTITIES = {
     integerValue: '23',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_TOPIC.topic_1,
   },
-  entity_dashboard: {
-    name: 'dashboard',
-    description: 'This is Dashboard custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-  },
+// commenting the dashboard test for not, need to make changes in dynamic data-test side
+//   entity_dashboard: {
+//     name: 'dashboard',
+//     description: 'This is Dashboard custom property',
+//     integerValue: '14',
+//     stringValue: 'This is string propery',
+//     markdownValue: 'This is markdown value',
+//     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
+//   },
   entity_pipeline: {
     name: 'pipeline',
     description: 'This is Pipeline custom property',
     integerValue: '78',
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
+    entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
   },
 };
+
+export const LOGIN = {
+  username: 'admin@openmetadata.org',
+  password: 'admin',
+};
+
+// For now skipping the dashboard entity "SEARCH_ENTITY_DASHBOARD.dashboard_1"
+export const ANNOUNCEMENT_ENTITIES = [SEARCH_ENTITY_TABLE.table_1, SEARCH_ENTITY_TOPIC.topic_1, SEARCH_ENTITY_PIPELINE.pipeline_1]
+
+export const HTTP_CONFIG_SOURCE = {
+  DBT_CATALOG_HTTP_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/catalog.json',
+  DBT_MANIFEST_HTTP_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/manifest.json',
+  DBT_RUN_RESTLTS_FILE_PATH:
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/run_results.json',
+};
+
+export const DBT = {
+  tagCategory: 'DBTTags',
+  tagName: 'model_tag_one',
+  dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
+  dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
+  dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
+  dataQualityTest2: 'not_null_customers_customer_id',
+};
+
+export const API_SERVICE = {
+  databaseServices: 'databaseServices',
+  messagingServices: 'messagingServices',
+  pipelineServices: 'pipelineServices',
+  dashboardServices: 'dashboardServices',
+}

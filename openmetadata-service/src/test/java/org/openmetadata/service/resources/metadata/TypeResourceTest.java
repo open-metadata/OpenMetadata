@@ -220,15 +220,13 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   @Override
-  public void validateCreatedEntity(Type createdEntity, CreateType createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Type createdEntity, CreateType createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getSchema(), createdEntity.getSchema());
     // TODO
   }
 
   @Override
-  public void compareEntities(Type expected, Type patched, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(Type expected, Type patched, Map<String, String> authHeaders) {
     assertEquals(expected.getSchema(), patched.getSchema());
     // TODO more checks
   }

@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Sample Usage source ingestion
+"""
 import csv
 import json
 from datetime import datetime
@@ -36,10 +38,16 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 
 
 class SampleUsageSource(UsageSource):
+    """
+    Loads JSON data and prepares the required
+    python objects to be sent to the Sink.
+    """
 
     service_type = DatabaseServiceType.BigQuery.value
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(
+        self, config: WorkflowSource, metadata_config: OpenMetadataConnection
+    ):  # pylint: disable=super-init-not-called
         self.status = SampleDataSourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -50,14 +58,16 @@ class SampleUsageSource(UsageSource):
         self.analysis_date = datetime.utcnow()
 
         self.service_json = json.load(
-            open(
-                self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
+            open(  # pylint: disable=consider-using-with
+                self.service_connection.sampleDataFolder + "/datasets/service.json",
+                "r",
+                encoding="utf-8",
             )
         )
         self.query_log_csv = (
             self.service_connection.sampleDataFolder + "/datasets/query_log"
         )
-        with open(self.query_log_csv, "r") as fin:
+        with open(self.query_log_csv, "r", encoding="utf-8") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
         self.service = self.metadata.get_service_or_create(
             entity=DatabaseService, config=config

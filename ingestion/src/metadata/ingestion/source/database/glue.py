@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Glue source methods.
+"""
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
@@ -19,6 +21,8 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
@@ -52,6 +56,11 @@ logger = ingestion_logger()
 
 
 class GlueSource(DatabaseServiceSource):
+    """
+    Implements the necessary methods to extract
+    Database metadata from Glue Source
+    """
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
@@ -65,11 +74,6 @@ class GlueSource(DatabaseServiceSource):
         self.glue = self.connection.client
         self.data_models = {}
         self.dbt_tests = {}
-
-        self.database_name = None
-        self.next_db_token = None
-        self.table_constraints = None
-        self.database_source_state = set()
         super().__init__()
 
     @classmethod
@@ -110,13 +114,21 @@ class GlueSource(DatabaseServiceSource):
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page["DatabaseList"]:
                 try:
-                    if filter_by_database(
-                        database_filter_pattern=self.config.sourceConfig.config.databaseFilterPattern,
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.database_service.name.__root__,
                         database_name=schema["CatalogId"],
+                    )
+                    if filter_by_database(
+                        self.config.sourceConfig.config.databaseFilterPattern,
+                        database_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema["CatalogId"],
                     ):
                         self.status.filter(
-                            schema["CatalogId"],
-                            "Database (Catalog ID) pattern not allowed",
+                            database_fqn,
+                            "Database (Catalog ID) Filtered Out",
                         )
                         continue
                     if schema["CatalogId"] in database_names:
@@ -128,7 +140,7 @@ class GlueSource(DatabaseServiceSource):
                         f"Unexpected exception to get database name [{schema}]: {exc}"
                     )
                     self.status.failures.append(
-                        "{}.{}".format(self.config.serviceName, schema["CatalogId"])
+                        f"{self.config.serviceName}.{schema['CatalogId']}"
                     )
         yield from database_names
 
@@ -152,11 +164,20 @@ class GlueSource(DatabaseServiceSource):
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page["DatabaseList"]:
                 try:
-                    if filter_by_schema(
-                        schema_filter_pattern=self.config.sourceConfig.config.schemaFilterPattern,
+                    schema_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
                         schema_name=schema["Name"],
+                    )
+                    if filter_by_schema(
+                        self.config.sourceConfig.config.schemaFilterPattern,
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema["Name"],
                     ):
-                        self.status.filter(schema["Name"], "Schema pattern not allowed")
+                        self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
                     yield schema["Name"]
                 except Exception as exc:
@@ -165,7 +186,7 @@ class GlueSource(DatabaseServiceSource):
                         f"Unexpected exception to get database schema [{schema}]: {exc}"
                     )
                     self.status.failures.append(
-                        "{}.{}".format(self.config.serviceName, schema["Name"])
+                        f"{self.config.serviceName}.{schema['Name']}"
                     )
 
     def yield_database_schema(
@@ -197,13 +218,24 @@ class GlueSource(DatabaseServiceSource):
         for table in all_tables:
             try:
                 table_name = table.get("Name")
+                table_name = self.standardize_table_name(schema_name, table_name)
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table_name,
+                )
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
-                    table_name,
+                    table_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else table_name,
                 ):
                     self.status.filter(
-                        "{}".format(table["Name"]),
-                        "Table pattern not allowed",
+                        table_fqn,
+                        "Table Filtered Out",
                     )
                     continue
 
@@ -225,14 +257,13 @@ class GlueSource(DatabaseServiceSource):
                 elif table["TableType"] == "VIRTUAL_VIEW":
                     table_type = TableType.View
 
-                table_name = self.standardize_table_name(schema_name, table_name)
                 self.context.table_data = table
                 yield table_name, table_type
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception to get table [{table}]: {exc}")
                 self.status.failures.append(
-                    "{}.{}".format(self.config.serviceName, table.get("Name"))
+                    f"{self.config.serviceName}.{table.get('Name')}"
                 )
 
     def yield_table(
@@ -264,9 +295,7 @@ class GlueSource(DatabaseServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def yield_location(
         self, table_name_and_type: Tuple[str, str]
@@ -296,9 +325,7 @@ class GlueSource(DatabaseServiceSource):
             logger.warning(
                 f"Unexpected exception to yield location for table [{table_name}]: {exc}"
             )
-            self.status.failures.append(
-                "{}.{}".format(self.config.serviceName, table_name)
-            )
+            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
     def prepare(self):
         pass
@@ -307,7 +334,7 @@ class GlueSource(DatabaseServiceSource):
         for column in column_data["Columns"]:
             if column["Type"].lower().startswith("union"):
                 column["Type"] = column["Type"].replace(" ", "")
-            parsed_string = ColumnTypeParser._parse_datatype_string(
+            parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                 column["Type"].lower()
             )
             if isinstance(parsed_string, list):
@@ -346,7 +373,7 @@ class GlueSource(DatabaseServiceSource):
         if table_fqn and location_fqn:
             yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
 
-    def standardize_table_name(self, schema: str, table: str) -> str:
+    def standardize_table_name(self, _: str, table: str) -> str:
         return table[:128]
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:

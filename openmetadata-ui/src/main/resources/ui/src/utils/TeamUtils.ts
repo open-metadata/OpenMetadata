@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
-import { EntityReference } from '../generated/entity/teams/team';
+import { cloneDeep, isEmpty, isNil, isUndefined, omit } from 'lodash';
+import { CreateTeam } from '../generated/api/teams/createTeam';
+import {
+  EntityReference,
+  Team,
+  TeamType,
+} from '../generated/entity/teams/team';
+import { getEntityIdArray } from './CommonUtils';
 
 /**
  * To get filtered list of non-deleted(active) users
@@ -21,4 +27,58 @@ import { EntityReference } from '../generated/entity/teams/team';
  */
 export const getActiveUsers = (users?: Array<EntityReference>) => {
   return !isNil(users) ? users.filter((item) => !item.deleted) : [];
+};
+
+export const filterChildTeams = (
+  teamsList: Team[],
+  showDeletedTeams: boolean
+) => teamsList.filter((d) => d.deleted === showDeletedTeams);
+
+export const getDeleteMessagePostFix = (
+  teamName: string,
+  deleteType: string
+) => {
+  return `Any teams under "${teamName}" will be ${deleteType} deleted as well.`;
+};
+
+const getEntityValue = (value: EntityReference[] | undefined) => {
+  if (!isUndefined(value)) {
+    return getEntityIdArray(value);
+  }
+
+  return undefined;
+};
+
+export const getRestoreTeamData = (
+  team: Team,
+  childTeams: Team[]
+): CreateTeam => {
+  const userDetails = omit(cloneDeep(team), [
+    'id',
+    'fullyQualifiedName',
+    'href',
+    'version',
+    'updatedAt',
+    'updatedBy',
+    'userCount',
+    'childrenCount',
+    'owns',
+    'changeDescription',
+    'deleted',
+    'inheritedRoles',
+  ]) as Team;
+
+  const { parents, policies, users, defaultRoles } = userDetails;
+
+  return {
+    ...userDetails,
+    teamType: userDetails.teamType as TeamType,
+    defaultRoles: getEntityValue(defaultRoles),
+    children: isEmpty(childTeams)
+      ? undefined
+      : getEntityIdArray(childTeams as EntityReference[]),
+    parents: getEntityValue(parents),
+    policies: getEntityValue(policies),
+    users: getEntityValue(users),
+  };
 };

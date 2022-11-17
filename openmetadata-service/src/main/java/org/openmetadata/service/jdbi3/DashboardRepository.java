@@ -14,10 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -61,15 +58,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
     dashboard.setService(getContainer(dashboard.getId()));
-    dashboard.setOwner(fields.contains(FIELD_OWNER) ? getOwner(dashboard) : null);
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
-    dashboard.setTags(fields.contains(FIELD_TAGS) ? getTags(dashboard.getFullyQualifiedName()) : null);
     dashboard.setUsageSummary(
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
             : null);
-    dashboard.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(dashboard) : null);
     return dashboard;
   }
 
@@ -108,8 +102,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
-    setFullyQualifiedName(dashboard);
-    dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
 
@@ -123,7 +115,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     dashboard.withOwner(null).withHref(null).withTags(null).withService(null);
 
-    store(dashboard.getId(), dashboard, update);
+    store(dashboard, update);
 
     // Restore the relationships
     dashboard.withOwner(owner).withTags(tags).withService(service);

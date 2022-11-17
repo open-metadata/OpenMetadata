@@ -138,7 +138,7 @@ kick off the ingestion jobs directly from the OpenMetadata UI.
 
 ![gif](/images/overview/features/ingestion-pipelines.gif)
 
-See the [Connectors](/openmetadata/connectors) documentation for information on available connectors and how to
+See the [Connectors](/connectors) documentation for information on available connectors and how to
 integrate your services with OpenMetadata.
 
 ## Metadata Versioning & Events API

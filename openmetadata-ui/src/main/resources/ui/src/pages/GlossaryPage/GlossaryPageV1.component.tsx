@@ -15,9 +15,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, extend, isEmpty } from 'lodash';
 import {
+  AssetsDataType,
   FormattedGlossarySuggestion,
   GlossarySuggestionHit,
-  GlossaryTermAssets,
   LoadingState,
   SearchResponse,
 } from 'Models';
@@ -80,7 +80,7 @@ const GlossaryPageV1 = () => {
   const [deleteStatus, setDeleteStatus] = useState<LoadingState>('initial');
   const [isSearchResultEmpty, setIsSearchResultEmpty] =
     useState<boolean>(false);
-  const [assetData, setAssetData] = useState<GlossaryTermAssets>({
+  const [assetData, setAssetData] = useState<AssetsDataType>({
     data: [],
     total: 0,
     currPage: 1,
@@ -252,7 +252,7 @@ const GlossaryPageV1 = () => {
             });
           } else {
             setAssetData((pre) => {
-              const data = [] as GlossaryTermAssets['data'];
+              const data = [] as AssetsDataType['data'];
               const total = 0;
 
               return forceReset
@@ -288,8 +288,8 @@ const GlossaryPageV1 = () => {
     handleChildLoading(true);
     const hierarchy = getTermPosFromGlossaries(arrGlossary, dataFQN);
     if (hierarchy.length < 2) {
-      setSelectedData(arrGlossary[hierarchy[0]]);
-      handleSelectedKey(dataFQN);
+      setSelectedData(dataFQN ? arrGlossary[hierarchy[0]] : arrGlossary[0]);
+      handleSelectedKey(dataFQN ? dataFQN : arrGlossary[0]?.name);
       if (!expandedKey.length) {
         handleExpandedKey([dataFQN], true);
       }

@@ -30,7 +30,6 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
           LIMIT {result_limit}
-          
   ),
   full_queries AS (
     SELECT
@@ -196,7 +195,7 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
 
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
-        SELECT 
+        SELECT
           query_type,
           query_text,
           user_name,
@@ -318,7 +317,8 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
         SELECT column_name, data_type, column_default, is_nullable, comment
-        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id and com.object_type='COLUMN' and col.column_name=com.child_object  
+        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id
+        and com.object_type='COLUMN' and col.column_name=com.child_object
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
         UNION ALL
@@ -420,7 +420,7 @@ select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and T
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
     """
     select COMMENT
-    from information_schema.TABLES 
+    from information_schema.TABLES
     WHERE TABLE_SCHEMA = '{schema_name}'
       AND TABLE_NAME = '{table_name}'
 """
@@ -448,42 +448,20 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
 """
 )
 
-
-TRINO_GET_COLUMNS = textwrap.dedent(
-    """
-    SELECT
-        "column_name",
-        "data_type",
-        "column_default",
-        UPPER("is_nullable") AS "is_nullable"
-    FROM "information_schema"."columns"
-    WHERE "table_schema" = :schema
-        AND "table_name" = :table
-    ORDER BY "ordinal_position" ASC
-"""
-)
-
-
 POSTGRES_SQL_STATEMENT = textwrap.dedent(
     """
       SELECT
         u.usename,
-        d.datname,
+        d.datname database_name,
         s.query query_text,
-        a.query_start start_time,
-        s.total_exec_time,
-        s.mean_exec_time,
-        s.calls
+        s.total_exec_time
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
         JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
-        JOIN pg_catalog.pg_stat_activity a ON d.datname = a.datname
       WHERE
-        a.query_start >= '{start_time}' AND
-        a.state_change <  current_timestamp
-        AND s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        AND s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        s.query NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%' AND
+        s.query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
         {filters}
       LIMIT {result_limit}
     """
@@ -497,29 +475,29 @@ POSTGRES_GET_TABLE_NAMES = """
 
 POSTGRES_PARTITION_DETAILS = textwrap.dedent(
     """
-select 
-    par.relnamespace::regnamespace::text as schema, 
-    par.relname as table_name, 
+select
+    par.relnamespace::regnamespace::text as schema,
+    par.relname as table_name,
     partition_strategy,
     col.column_name
-from   
+from
     (select
          partrelid,
          partnatts,
-         case partstrat 
+         case partstrat
               when 'l' then 'list'
               when 'h' then 'hash'
               when 'r' then 'range' end as partition_strategy,
          unnest(partattrs) column_index
      from
-         pg_partitioned_table) pt 
-join   
-    pg_class par 
-on     
+         pg_partitioned_table) pt
+join
+    pg_class par
+on
     par.oid = pt.partrelid
 left join
     information_schema.columns col
-on  
+on
     col.table_schema = par.relnamespace::regnamespace::text
     and col.table_name = par.relname
     and ordinal_position = pt.column_index
@@ -542,3 +520,10 @@ REDSHIFT_PARTITION_DETAILS = """
   from SVV_TABLE_INFO
   where diststyle not like 'AUTO%%'
 """
+
+
+HIVE_GET_COMMENTS = textwrap.dedent(
+    """
+    describe formatted {schema_name}.{table_name}
+"""
+)

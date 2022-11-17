@@ -11,6 +11,40 @@
       "type": "string",
       "enum": ["Dagster"],
       "default": "Dagster"
+    },
+    "LocalDagtser": {
+      "title": "Local Dagster Config Source",
+      "description": "Config to connect to local Dagster",
+      "type": "object",
+      "properties": {
+        "hostPort": {
+          "title": "Host and Port",
+          "description": "Pipeline Service Management/UI URI.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["hostPort"]
+    },
+    "CloudDagster": {
+      "title": "Cloud Dagster Config Source",
+      "description": "Config to connect to Cloud Dagster",
+      "type": "object",
+      "properties": {
+        "host": {
+          "title": "Host",
+          "description": "Pipeline Service Management/UI URI.",
+          "type": "string",
+          "format": "uri"
+        },
+        "token": {
+          "title": "Token",
+          "description": "To Connect to Dagster Cloud",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["host", "token"]
     }
   },
   "properties": {
@@ -20,29 +54,15 @@
       "$ref": "#/definitions/DagsterType",
       "default": "Dagster"
     },
-    "hostPort": {
-      "title": "Host And Port",
-      "description": "Pipeline Service Management/UI URI.",
-      "type": "string",
-      "format": "uri"
-    },
-    "numberOfStatus": {
-      "description": "Pipeline Service Number Of Status",
-      "type": "integer",
-      "default": "10"
-    },
-    "dbConnection": {
-      "title": "Metadata Database Connection",
-      "description": "Underlying database connection. See https://docs.dagster.io/getting-started for supported backends.",
+    "configSource": {
+      "title": "Dagster Configuration Source",
+      "description": "Available sources to fetch files.",
       "oneOf": [
         {
-          "$ref": "../database/mysqlConnection.json"
+          "$ref": "#/definitions/LocalDagtser"
         },
         {
-          "$ref": "../database/postgresConnection.json"
-        },
-        {
-          "$ref": "../database/sqliteConnection.json"
+          "$ref": "#/definitions/CloudDagster"
         }
       ]
     },
@@ -52,5 +72,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "dbConnection"]
+  "required": ["configSource"]
 }

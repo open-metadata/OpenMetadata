@@ -171,10 +171,7 @@ public class LineageResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
       throws IOException {
     authorizer.authorize(
-        securityContext,
-        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext(),
-        true);
+        securityContext, new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE), new LineageResourceContext());
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -211,10 +208,7 @@ public class LineageResource {
           String toId)
       throws IOException {
     authorizer.authorize(
-        securityContext,
-        new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext(),
-        true);
+        securityContext, new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE), new LineageResourceContext());
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
@@ -231,7 +225,7 @@ public class LineageResource {
     return lineage;
   }
 
-  class LineageResourceContext implements ResourceContextInterface {
+  static class LineageResourceContext implements ResourceContextInterface {
 
     @Override
     public String getResource() {
@@ -239,17 +233,17 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getOwner() throws IOException {
+    public EntityReference getOwner() {
       return null;
     }
 
     @Override
-    public List<TagLabel> getTags() throws IOException {
+    public List<TagLabel> getTags() {
       return null;
     }
 
     @Override
-    public EntityInterface getEntity() throws IOException {
+    public EntityInterface getEntity() {
       return null;
     }
   }

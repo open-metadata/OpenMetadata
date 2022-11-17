@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.BINARY;
@@ -48,7 +49,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
@@ -92,9 +93,11 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
@@ -121,6 +124,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
@@ -128,6 +132,7 @@ import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -238,11 +243,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create table with different optional fields
     // Optional field description
     CreateTable create = createRequest(test).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
+    Table createdTable = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     // Optional fields tableType
     create.withName(getEntityName(test, 1)).withTableType(TableType.View);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Table createdTableWithOptionalFields = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(createdTable);
+    assertNotNull(createdTableWithOptionalFields);
   }
 
   @Test
@@ -309,7 +315,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // The updates are ignored for a BOT user and the table version does not change
     //
     create.getColumns().set(0, getColumn("column1", INT, null, "x", "y"));
-    Table table = updateAndCheckEntity(create, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
+    Table table = updateAndCheckEntity(create, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
     create.getColumns().set(0, column1); // Revert to previous value
 
     //
@@ -1051,13 +1057,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void putProfileConfig(Table table, Map<String, String> authHeaders) throws IOException {
     List<ColumnProfilerConfig> columnProfilerConfigs = new ArrayList<>();
     columnProfilerConfigs.add(
-        new ColumnProfilerConfig()
-            .withColumnName("c1")
-            .withMetrics(List.of("valuesCount", "valuePercentage", "validCount", "duplicateCount")));
-    columnProfilerConfigs.add(
-        new ColumnProfilerConfig()
-            .withColumnName("\"c.3\"")
-            .withMetrics(List.of("duplicateCount", "nullCount", "missingCount")));
+        getColumnProfilerConfig("c1", "valuesCount", "valuePercentage", "validCount", "duplicateCount"));
+    columnProfilerConfigs.add(getColumnProfilerConfig("\"c.3\"", "duplicateCount", "nullCount", "missingCount"));
     TableProfilerConfig tableProfilerConfig =
         new TableProfilerConfig()
             .withProfileQuery("SELECT * FROM dual")
@@ -1070,9 +1071,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     columnProfilerConfigs.remove(0);
     columnProfilerConfigs.add(
-        new ColumnProfilerConfig()
-            .withColumnName("c2")
-            .withMetrics(List.of("valuesCount", "valuePercentage", "validCount", "duplicateCount")));
+        getColumnProfilerConfig("c2", "valuesCount", "valuePercentage", "validCount", "duplicateCount"));
     tableProfilerConfig =
         new TableProfilerConfig()
             .withProfileQuery("SELECT * FROM dual1")
@@ -1115,17 +1114,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   void putTableProfile(Table table, Table table1, Map<String, String> authHeaders) throws IOException, ParseException {
     Long timestamp = TestUtils.dateToTimestamp("2021-09-09");
-    ColumnProfile c1Profile =
-        new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0).withTimestamp(timestamp);
-    ColumnProfile c2Profile =
-        new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
-    ColumnProfile c3Profile =
-        new ColumnProfile()
-            .withName("\"c.3\"")
-            .withMax(75.0)
-            .withMin(25.0)
-            .withUniqueCount(77.0)
-            .withTimestamp(timestamp);
+    ColumnProfile c1Profile = getColumnProfile("c1", 100.0, 10.0, 100.0, timestamp);
+    ColumnProfile c2Profile = getColumnProfile("c2", 99.0, 20.0, 89.0, timestamp);
+    ColumnProfile c3Profile = getColumnProfile("\"c.3\"", 75.0, 25.0, 77.0, timestamp);
     // Add column profiles
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     List<ColumnProfile> columnProfileResults = new ArrayList<>();
@@ -1137,38 +1128,45 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
     verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
 
-    ResultList<TableProfile> tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, authHeaders);
+    ResultList<TableProfile> tableProfiles =
+        getTableProfiles(table.getFullyQualifiedName(), timestamp, timestamp, authHeaders);
     verifyTableProfiles(tableProfiles, List.of(tableProfile), 1);
 
     ResultList<ColumnProfile> tableColumnProfiles =
-        getColumnProfiles(table.getFullyQualifiedName() + ".c1", null, authHeaders);
+        getColumnProfiles(
+            table.getFullyQualifiedName() + ".c1",
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyColumnProfiles(tableColumnProfiles, List.of(c1Profile), 1);
 
     timestamp = TestUtils.dateToTimestamp("2021-09-10");
 
     // Add new date for TableProfile
     TableProfile newTableProfile = new TableProfile().withRowCount(7.0).withColumnCount(3.0).withTimestamp(timestamp);
-    c1Profile =
-        new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0).withTimestamp(timestamp);
-    c2Profile =
-        new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
-    c3Profile =
-        new ColumnProfile()
-            .withName("\"c.3\"")
-            .withMax(75.0)
-            .withMin(25.0)
-            .withUniqueCount(77.0)
-            .withTimestamp(timestamp);
+    c1Profile = getColumnProfile("c1", 100.0, 10.0, 100.0, timestamp);
+    c2Profile = getColumnProfile("c2", 99.0, 20.0, 89.0, timestamp);
+    c3Profile = getColumnProfile("\"c.3\"", 75.0, 25.0, 77.0, timestamp);
     columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     columnProfileResults.add(c1Profile);
     createTableProfile = new CreateTableProfile().withTableProfile(newTableProfile).withColumnProfile(columnProfiles);
     putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
     verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
 
-    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile, tableProfile), 2);
 
-    tableColumnProfiles = getColumnProfiles(table.getFullyQualifiedName() + ".c1", null, authHeaders);
+    tableColumnProfiles =
+        getColumnProfiles(
+            table.getFullyQualifiedName() + ".c1",
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyColumnProfiles(tableColumnProfiles, columnProfileResults, 2);
 
     // Replace table profile for a date
@@ -1180,7 +1178,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table = getEntity(table.getId(), "profile", authHeaders);
     // first result should be the latest date
-    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-10"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, List.of(newTableProfile1, tableProfile), 2);
 
     String dateStr = "2021-09-";
@@ -1191,69 +1194,60 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       timestamp = TestUtils.dateToTimestamp(dateStr + i);
       tableProfile = new TableProfile().withRowCount(21.0).withColumnCount(3.0).withTimestamp(timestamp);
       createTableProfile.setTableProfile(tableProfile);
-      c1Profile =
-          new ColumnProfile()
-              .withName("c1")
-              .withMax(100.0)
-              .withMin(10.0)
-              .withUniqueCount(100.0)
-              .withTimestamp(timestamp);
-      c2Profile =
-          new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
-      c3Profile =
-          new ColumnProfile()
-              .withName("\"c.3\"")
-              .withMax(75.0)
-              .withMin(25.0)
-              .withUniqueCount(77.0)
-              .withTimestamp(timestamp);
+      c1Profile = getColumnProfile("c1", 100.0, 10.0, 100.0, timestamp);
+      c2Profile = getColumnProfile("c2", 99.0, 20.0, 89.0, timestamp);
+      c3Profile = getColumnProfile("\"c.3\"", 75.0, 25.0, 77.0, timestamp);
       columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
       columnProfileResults.add(c1Profile);
       createTableProfile = new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
       putTableProfileData(table.getId(), createTableProfile, authHeaders);
       tableProfileList.add(tableProfile);
     }
-    tableProfiles = getTableProfiles(table.getFullyQualifiedName(), tableProfileList.size(), authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-20"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, tableProfileList, 12);
 
     tableColumnProfiles =
-        getColumnProfiles(table.getFullyQualifiedName() + ".c1", columnProfileResults.size(), authHeaders);
+        getColumnProfiles(
+            table.getFullyQualifiedName() + ".c1",
+            TestUtils.dateToTimestamp("2021-09-09"),
+            TestUtils.dateToTimestamp("2021-09-20"),
+            authHeaders);
     verifyColumnProfiles(tableColumnProfiles, columnProfileResults, 12);
 
     // Add profiles for table1
     List<TableProfile> table1ProfileList = new ArrayList<>();
-    List<List<ColumnProfile>> table1ColumnProfileList = new ArrayList<>();
     dateStr = "2021-10-";
     for (int i = 11; i <= 15; i++) {
       timestamp = TestUtils.dateToTimestamp(dateStr + i);
       tableProfile = new TableProfile().withRowCount(21.0).withColumnCount(3.0).withTimestamp(timestamp);
-      c1Profile =
-          new ColumnProfile()
-              .withName("c1")
-              .withMax(100.0)
-              .withMin(10.0)
-              .withUniqueCount(100.0)
-              .withTimestamp(timestamp);
-      c2Profile =
-          new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0).withTimestamp(timestamp);
-      c3Profile =
-          new ColumnProfile()
-              .withName("\"c.3\"")
-              .withMax(75.0)
-              .withMin(25.0)
-              .withUniqueCount(77.0)
-              .withTimestamp(timestamp);
+      c1Profile = getColumnProfile("c1", 100.0, 10.0, 100.0, timestamp);
+      c2Profile = getColumnProfile("c2", 88.0, 20.0, 89.0, timestamp);
+      c3Profile = getColumnProfile("\"c.3\"", 75.0, 25.0, 77.0, timestamp);
       columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
-      table1ColumnProfileList.add(columnProfiles);
       createTableProfile = new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
       putTableProfileData(table1.getId(), createTableProfile, authHeaders);
       table1ProfileList.add(tableProfile);
     }
-    tableProfiles = getTableProfiles(table1.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, table1ProfileList, 5);
     deleteTableProfile(table1.getFullyQualifiedName(), TABLE, TestUtils.dateToTimestamp("2021-10-11"), authHeaders);
     table1ProfileList.remove(0);
-    tableProfiles = getTableProfiles(table1.getFullyQualifiedName(), null, authHeaders);
+    tableProfiles =
+        getTableProfiles(
+            table1.getFullyQualifiedName(),
+            TestUtils.dateToTimestamp("2021-10-11"),
+            TestUtils.dateToTimestamp("2021-10-15"),
+            authHeaders);
     verifyTableProfiles(tableProfiles, table1ProfileList, 4);
 
     table1 = getEntity(table1.getId(), "*", authHeaders);
@@ -1264,17 +1258,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException, ParseException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     Long timestamp = TestUtils.dateToTimestamp("2021-09-10");
-    ColumnProfile c1Profile =
-        new ColumnProfile().withName("c1").withTimestamp(timestamp).withMax(100.0).withMin(10.0).withUniqueCount(100.0);
-    ColumnProfile c2Profile =
-        new ColumnProfile().withName("c2").withTimestamp(timestamp).withMax(99.0).withMin(20.0).withUniqueCount(89.0);
-    ColumnProfile c3Profile =
-        new ColumnProfile()
-            .withName("invalidColumn")
-            .withTimestamp(timestamp)
-            .withMax(75.0)
-            .withMin(25.0)
-            .withUniqueCount(77.0);
+    ColumnProfile c1Profile = getColumnProfile("c1", 100.0, 10.0, 100.0, timestamp);
+    ColumnProfile c2Profile = getColumnProfile("c2", 99.0, 20.0, 89.0, timestamp);
+    ColumnProfile c3Profile = getColumnProfile("invalidColumn", 75.0, 25.0, 77.0, timestamp);
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     TableProfile tableProfile = new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp);
     CreateTableProfile createTableProfile =
@@ -1337,6 +1323,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10).withDescription(null));
     Table table =
         createAndCheckEntity(createRequest(test).withColumns(columns).withDescription(null), ADMIN_AUTH_HEADERS);
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user =
+        userResourceTest.createAndCheckEntity(
+            userResourceTest.createRequest(test).withName("test1").withEmail("test1@gmail.com").withIsBot(false),
+            ADMIN_AUTH_HEADERS);
 
     //
     // Update the data model and validate the response.
@@ -1346,22 +1337,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.get(0).setDescription("updatedDescription");
     columns.get(1).setDescription("updatedDescription");
     String query = "select * from test;";
+    EntityReference reference = new EntityReference().withId(user.getId()).withType("user");
     DataModel dataModel =
         new DataModel()
-            .withDescription("updatedTableDescription")
             .withModelType(ModelType.DBT)
             .withSql(query)
             .withGeneratedAt(new Date())
-            .withColumns(columns);
+            .withColumns(columns)
+            .withOwner(reference);
     Table putResponse = putTableDataModel(table.getId(), dataModel, ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, putResponse.getDataModel());
-    assertEquals("updatedTableDescription", putResponse.getDescription()); // Table description updated
 
     // Get the table and validate the data model
     Table getResponse = getEntity(table.getId(), "dataModel,tags", ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, getResponse.getDataModel());
-    assertEquals("updatedTableDescription", getResponse.getDescription()); // Table description updated
-    assertColumns(columns, getResponse.getColumns()); // Column description updated
 
     //
     // Update again
@@ -1470,10 +1459,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(3, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
+    assertEquals(1, getGlossaryUsageCount("g1"));
 
     // Total 1 glossary2 tags  - 1 table
-    assertEquals(1, getGlossaryUsageCount("g2", ADMIN_AUTH_HEADERS));
+    assertEquals(1, getGlossaryUsageCount("g2"));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
     assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
@@ -1711,7 +1700,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
     // Delete location and make sure it is deleted
-    deleteAndCheckLocation(table, TEST_AUTH_HEADERS);
+    deleteAndCheckLocation(table);
   }
 
   @Test
@@ -1732,10 +1721,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
   }
 
-  private void deleteAndCheckLocation(Table table, Map<String, String> authHeaders) throws HttpResponseException {
+  @Test
+  void test_mutuallyExclusiveTags(TestInfo testInfo) {
+    // Apply mutually exclusive tags to a table
+    CreateTable create = createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a table column
+    CreateTable create1 = createRequest(testInfo, 1).withTableConstraints(null);
+    Column column = getColumn("test", INT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    create1.setColumns(listOf(column));
+    assertResponse(
+        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+  }
+
+  @Test
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
+    // When a databaseSchema has no owner set, it inherits the ownership from database
+    // When a table has no owner set, it inherits the ownership from databaseSchema
+    DatabaseResourceTest dbTest = new DatabaseResourceTest();
+    Database db = dbTest.createEntity(dbTest.createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getEntityReference()).withOwner(null);
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    assertEquals(USER1_REF, schema.getOwner()); // Ensure databaseSchema owner is inherited from database
+
+    Table table =
+        createEntity(
+            createRequest(test).withOwner(null).withDatabaseSchema(schema.getEntityReference()), ADMIN_AUTH_HEADERS);
+    assertEquals(USER1_REF, table.getOwner()); // Ensure table owner is inherited from databaseSchema
+  }
+
+  private void deleteAndCheckLocation(Table table) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
-    TestUtils.delete(target, authHeaders);
-    checkLocationDeleted(table.getId(), authHeaders);
+    TestUtils.delete(target, TestUtils.TEST_AUTH_HEADERS);
+    checkLocationDeleted(table.getId(), TestUtils.TEST_AUTH_HEADERS);
   }
 
   public void checkLocationDeleted(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
@@ -1929,17 +1956,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.delete(target, authHeaders);
   }
 
-  public static ResultList<TableProfile> getTableProfiles(String fqn, Integer limit, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public static ResultList<TableProfile> getTableProfiles(
+      String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/tableProfile");
-    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.TableProfileList.class, authHeaders);
   }
 
-  public static ResultList<ColumnProfile> getColumnProfiles(String fqn, Integer limit, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public static ResultList<ColumnProfile> getColumnProfiles(
+      String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/columnProfile");
-    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
@@ -1978,8 +2005,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TagResourceTest.getCategory(name, "usageCount", authHeaders).getUsageCount();
   }
 
-  private static int getGlossaryUsageCount(String name, Map<String, String> authHeaders) throws HttpResponseException {
-    return new GlossaryResourceTest().getEntityByName(name, null, "usageCount", authHeaders).getUsageCount();
+  private static int getGlossaryUsageCount(String name) throws HttpResponseException {
+    return new GlossaryResourceTest()
+        .getEntityByName(name, null, "usageCount", TestUtils.ADMIN_AUTH_HEADERS)
+        .getUsageCount();
   }
 
   private static int getGlossaryTermUsageCount(String name, Map<String, String> authHeaders)
@@ -2099,10 +2128,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private void validateTableConstraints(List<TableConstraint> expected, List<TableConstraint> actual) {
-    if (expected == null || actual == null) {
-      assertEquals(expected, actual);
-      return;
-    }
     assertEquals(expected, actual);
   }
 
@@ -2178,5 +2203,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  public ColumnProfilerConfig getColumnProfilerConfig(String name, String... metrics) {
+    return new ColumnProfilerConfig().withColumnName(name).withMetrics(List.of(metrics));
+  }
+
+  public ColumnProfile getColumnProfile(String name, Object max, Object min, Double uniqueCount, Long timestamp) {
+    return new ColumnProfile()
+        .withName(name)
+        .withMax(max)
+        .withMin(min)
+        .withUniqueCount(uniqueCount)
+        .withTimestamp(timestamp);
   }
 }

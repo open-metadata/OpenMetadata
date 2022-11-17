@@ -46,7 +46,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         Given a WorkflowSource Schema, create the engine
         and test the connection
         """
-        json_request = request.get_json()
+        json_request = request.get_json(cache=False)
 
         try:
             test_service_connection = parse_test_connection_request_gracefully(

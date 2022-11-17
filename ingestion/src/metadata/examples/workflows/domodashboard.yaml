@@ -1,0 +1,23 @@
+source:
+  type: domodashboard
+  serviceName: test
+  serviceConnection:
+    config:
+      type: DomoDashboard
+      clientId: client-id
+      secretToken: secret-token
+      accessToken: access-token
+      apiHost: api.domo.com
+      sandboxDomain: https://<api_domo>.domo.com
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

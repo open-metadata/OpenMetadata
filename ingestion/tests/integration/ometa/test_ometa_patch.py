@@ -14,7 +14,6 @@ OpenMetadata high-level API Table test
 """
 from unittest import TestCase
 
-from ingestion.src.metadata.utils.helpers import find_column_in_table
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -35,8 +34,12 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import find_column_in_table
 
 
 class OMetaTableTest(TestCase):
@@ -48,7 +51,13 @@ class OMetaTableTest(TestCase):
     service_entity_id = None
     entity_id = None
 
-    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        authProvider="openmetadata",
+        securityConfig=OpenMetadataJWTClientConfig(
+            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        ),
+    )
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -182,3 +191,46 @@ class OMetaTableTest(TestCase):
 
         updated_col = find_column_in_table(column_name="another", table=force_updated)
         assert updated_col.description.__root__ == "Forced new"
+
+    def test_patch_tag(self):
+        """
+        Update table tags
+        """
+
+        updated: Table = self.metadata.patch_tag(
+            entity=Table,
+            entity_id=self.entity_id,
+            tag_fqn="PII.Sensitive",  # Shipped by default
+        )
+        assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
+
+        updated: Table = self.metadata.patch_tag(
+            entity=Table,
+            entity_id=self.entity_id,
+            tag_fqn="Tier.Tier2",  # Shipped by default
+        )
+        assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
+        assert updated.tags[1].tagFQN.__root__ == "Tier.Tier2"
+
+    def test_patch_column_tags(self):
+        """
+        Update column tags
+        """
+        updated: Table = self.metadata.patch_column_tag(
+            entity_id=self.entity_id,
+            tag_fqn="PII.Sensitive",  # Shipped by default
+            column_name="id",
+        )
+        updated_col = find_column_in_table(column_name="id", table=updated)
+
+        assert updated_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
+
+        updated_again: Table = self.metadata.patch_column_tag(
+            entity_id=self.entity_id,
+            tag_fqn="Tier.Tier2",  # Shipped by default
+            column_name="id",
+        )
+        updated_again_col = find_column_in_table(column_name="id", table=updated_again)
+
+        assert updated_again_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
+        assert updated_again_col.tags[1].tagFQN.__root__ == "Tier.Tier2"

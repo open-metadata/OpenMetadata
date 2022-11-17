@@ -9,6 +9,21 @@
             "lowercase"
           ]
         }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
       }
     }
   },
@@ -32,15 +47,11 @@
       },
       "displayName": {
         "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "om_analyzer"
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -61,13 +72,16 @@
       "tasks": {
         "properties": {
           "name": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "displayName": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "taskUrl": {
             "type": "text"
@@ -158,7 +172,23 @@
         "type": "keyword"
       },
       "tier": {
-        "type": "keyword"
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
       },
       "tags": {
         "properties": {

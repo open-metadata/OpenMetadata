@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -46,6 +45,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -84,10 +84,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     @SuppressWarnings("unused")
     ChartList() {
       // Empty constructor needed for deserialization
-    }
-
-    public ChartList(List<Chart> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -158,9 +154,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -255,7 +251,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -274,7 +270,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, chart, true);
+    return create(uriInfo, securityContext, chart);
   }
 
   @PATCH
@@ -319,7 +315,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, chart, true);
+    return createOrUpdate(uriInfo, securityContext, chart);
   }
 
   @PUT
@@ -382,7 +378,26 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           boolean hardDelete,
       @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted chart.",
+      tags = "charts",
+      description = "Restore a soft deleted chart.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Chart ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class)))
+      })
+  public Response restoreChart(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Chart getChart(CreateChart create, String user) throws IOException {

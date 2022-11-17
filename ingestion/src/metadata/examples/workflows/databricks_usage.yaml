@@ -1,0 +1,27 @@
+source:
+  type: databricks-usage
+  serviceName: local_databricks
+  serviceConnection:
+    config:
+      token: <databricks token>
+      hostPort: localhost:443
+      connectionArguments:
+        http_path: <http path of databricks cluster>
+  sourceConfig:
+    config:
+      queryLogDuration: 1
+processor:
+  type: query-parser
+  config: {}
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/databricks_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/databricks_usage
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

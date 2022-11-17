@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Input } from 'antd';
 import { isEmpty, isObject, isString } from 'lodash';
 import React, {
   Fragment,
@@ -21,7 +22,7 @@ import React, {
 } from 'react';
 import {
   DBTBucketDetails,
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -44,17 +45,20 @@ import {
 } from './DBTConfigForm.interface';
 import { GCSCreds } from './DBTFormConstants';
 import { GCS_CONFIG } from './DBTFormEnum';
+import SwitchField from './SwitchField.component';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;
   handleSecurityConfigChange: (value?: SCredentials) => void;
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
+  handleUpdateDescriptions: (value: boolean) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtSecurityConfig,
   dbtPrefixConfig,
+  dbtUpdateDescriptions = false,
   gcsType = GCS_CONFIG.GCSValues,
   okText,
   cancelText,
@@ -63,6 +67,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleGcsTypeChange,
   handleSecurityConfigChange,
   handlePrefixConfigChange,
+  handleUpdateDescriptions,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
@@ -97,7 +102,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   const [errors, setErrors] = useState<ErrorDbtGCS>();
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     let valid = true;
     const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
     if (gcsType === GCS_CONFIG.GCSValues) {
@@ -128,7 +133,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtSecurityConfig, dbtPrefixConfig };
+    const submitData = {
+      dbtSecurityConfig,
+      dbtPrefixConfig,
+      dbtUpdateDescriptions,
+    };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -186,12 +195,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud Private key id.
           </p>
-          <input
+          <Input.Password
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key-id"
             id="private-key-id"
             name="private-key-id"
-            type="text"
             value={gcsConfig?.privateKeyId}
             onChange={(e) =>
               updateGCSCredsConfig('privateKeyId', e.target.value)
@@ -208,7 +216,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud private key.
           </p>
-          <input
+          <Input.Password
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key"
             id="private-key"
@@ -447,6 +455,15 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
         />
       </Field>
+
+      {getSeparator('')}
+
+      <SwitchField
+        dbtUpdateDescriptions={dbtUpdateDescriptions}
+        handleUpdateDescriptions={handleUpdateDescriptions}
+        id="gcs-update-description"
+      />
+
       {getSeparator('')}
 
       <Field className="tw-flex tw-justify-end">

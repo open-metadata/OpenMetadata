@@ -32,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -41,7 +42,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_dashboard
+from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -71,6 +72,13 @@ class PipelineServiceTopology(ServiceTopology):
     pipeline = TopologyNode(
         producer="get_pipeline",
         stages=[
+            NodeStage(
+                type_=OMetaTagAndCategory,
+                context="tags",
+                processor="yield_tag",
+                ack_sink=False,
+                nullable=True,
+            ),
             NodeStage(
                 type_=Pipeline,
                 context="pipeline",
@@ -102,8 +110,8 @@ class PipelineSourceStatus(SourceStatus):
     Reports the source status after ingestion
     """
 
-    pipelines_scanned: List[str] = list()
-    filtered: List[str] = list()
+    pipelines_scanned: List[str] = []
+    filtered: List[str] = []
 
     def pipeline_scanned(self, topic: str) -> None:
         self.pipelines_scanned.append(topic)
@@ -161,6 +169,14 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         if self.source_config.includeLineage:
             yield from self.yield_pipeline_lineage_details(pipeline_details) or []
 
+    def yield_tag(
+        self, *args, **kwargs  # pylint: disable=W0613
+    ) -> Optional[Iterable[OMetaTagAndCategory]]:
+        """
+        Method to fetch pipeline tags
+        """
+        return  # Pipeline does not support fetching tags except Dagster
+
     status: PipelineSourceStatus
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
@@ -206,13 +222,14 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_pipeline(self) -> Any:
         for pipeline_detail in self.get_pipelines_list():
-            if filter_by_dashboard(
+            pipeline_name = self.get_pipeline_name(pipeline_detail)
+            if filter_by_pipeline(
                 self.source_config.pipelineFilterPattern,
-                self.get_pipeline_name(pipeline_detail),
+                pipeline_name,
             ):
                 self.status.filter(
-                    self.get_pipeline_name(pipeline_detail),
-                    "Pipeline Pattern not Allowed",
+                    pipeline_name,
+                    "Pipeline Filtered Out",
                 )
                 continue
             yield pipeline_detail

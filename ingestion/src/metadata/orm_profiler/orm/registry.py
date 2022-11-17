@@ -17,7 +17,9 @@ import sqlalchemy
 from sqlalchemy import Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
+from metadata.orm_profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
 from metadata.orm_profiler.orm.types.uuid import UUIDString
 from metadata.orm_profiler.registry import TypeRegistry
@@ -26,6 +28,7 @@ from metadata.orm_profiler.registry import TypeRegistry
 class CustomTypes(TypeRegistry):
     BYTES = HexByteString
     UUID = UUIDString
+    BYTEA = ByteaToHex
 
 
 class Dialects(Enum):
@@ -74,6 +77,20 @@ NOT_COMPUTE = {
     sqa_types.SQASGeography,
 }
 
+NOT_COMPUTE_OM = {
+    DataType.ARRAY,
+    DataType.JSON,
+}
+
+QUANTIFIABLE_DICT = {
+    DataType.INT,
+    DataType.BIGINT,
+    DataType.SMALLINT,
+    DataType.NUMERIC,
+    DataType.NUMBER,
+}
+
+CONCATENABLE_DICT = {DataType.STRING, DataType.TEXT}
 
 # Now, let's define some helper methods to identify
 # the nature of an SQLAlchemy type
@@ -106,7 +123,11 @@ def is_quantifiable(_type) -> bool:
     """
     Check if sqlalchemy _type is either integer or numeric
     """
-    return is_numeric(_type) or is_integer(_type)
+    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
+        is_numeric_dtype,
+    )
+
+    return is_numeric(_type) or is_integer(_type) or is_numeric_dtype(_type)
 
 
 def is_concatenable(_type) -> bool:
@@ -114,4 +135,8 @@ def is_concatenable(_type) -> bool:
     Check if sqlalchemy _type is derived from Concatenable
     e.g., strings or text
     """
-    return issubclass(_type.__class__, Concatenable)
+    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
+        is_string_dtype,
+    )
+
+    return issubclass(_type.__class__, Concatenable) or is_string_dtype(_type)

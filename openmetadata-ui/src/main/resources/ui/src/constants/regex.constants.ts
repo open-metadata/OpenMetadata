@@ -22,3 +22,6 @@ export const FQN_REGEX = new RegExp(
 
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
+
+export const passwordRegex =
+  /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,16}$/g;

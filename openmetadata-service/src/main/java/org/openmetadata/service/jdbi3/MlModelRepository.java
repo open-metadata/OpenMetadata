@@ -15,10 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -66,18 +63,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void setFullyQualifiedName(MlModel mlModel) {
     mlModel.setFullyQualifiedName(FullyQualifiedName.add(mlModel.getService().getName(), mlModel.getName()));
+    if (!nullOrEmpty(mlModel.getMlFeatures())) {
+      setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
+    }
   }
 
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
-    mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
-    mlModel.setTags(fields.contains(FIELD_TAGS) ? getTags(mlModel.getFullyQualifiedName()) : null);
     mlModel.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
-    mlModel.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(mlModel) : null);
     return mlModel;
   }
 
@@ -137,15 +134,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     setFullyQualifiedName(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
-      setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
 
     // Check that the dashboard exists
     if (mlModel.getDashboard() != null) {
       daoCollection.dashboardDAO().findEntityReferenceById(mlModel.getDashboard().getId());
     }
-
-    mlModel.setTags(addDerivedTags(mlModel.getTags()));
   }
 
   @Override
@@ -159,7 +153,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
     mlModel.withService(null).withOwner(null).withDashboard(null).withHref(null).withTags(null);
 
-    store(mlModel.getId(), mlModel, update);
+    store(mlModel, update);
 
     // Restore the relationships
     mlModel.withService(service).withOwner(owner).withDashboard(dashboard).withTags(tags);

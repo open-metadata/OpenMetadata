@@ -78,7 +78,6 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      ex.printStackTrace();
       throw new EntityNotFoundException(ex.getMessage());
     }
   }
@@ -87,7 +86,7 @@ public class SubjectCache {
     try {
       return TEAM_CACHE.get(teamId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
+      return null;
     }
   }
 
@@ -114,16 +113,14 @@ public class SubjectCache {
     }
   }
 
-  public List<EntityReference> getInheritedRolesForUser(String userName) {
-    return getRolesForTeams(getSubjectContext(userName).getTeams());
-  }
-
   public List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
       Team team = getTeam(teamRef.getId());
-      roles.addAll(team.getDefaultRoles());
-      roles.addAll(getRolesForTeams(team.getParents()));
+      if (team != null) {
+        roles.addAll(team.getDefaultRoles());
+        roles.addAll(getRolesForTeams(team.getParents()));
+      }
     }
     return roles.stream().distinct().collect(Collectors.toList());
   }

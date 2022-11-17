@@ -12,9 +12,10 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
-import { EditorContentRef, FormattedUsersData } from 'Models';
+import { EditorContentRef, EntityTags, FormattedUsersData } from 'Models';
 import React, { useRef, useState } from 'react';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -24,6 +25,7 @@ import {
   getCurrentUserId,
   requiredField,
 } from '../../utils/CommonUtils';
+import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
@@ -56,6 +58,7 @@ const AddGlossary = ({
   const [name, setName] = useState('');
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
+  const [tags, setTags] = useState<EntityTags[]>([]);
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
 
   const getDescription = () => {
@@ -124,6 +127,7 @@ const AddGlossary = ({
           id: getCurrentUserId(),
           type: 'user',
         },
+        tags: tags,
       };
 
       onSave(data);
@@ -229,6 +233,16 @@ const AddGlossary = ({
               ref={markdownRef}
             />
             {showErrorMsg.description && errorMsg('Description is required.')}
+          </Field>
+
+          <Field>
+            <Space className="w-full" direction="vertical">
+              <label htmlFor="tags">Tags:</label>
+              <AddTags
+                data-testid="tags"
+                setTags={(tag: EntityTags[]) => setTags(tag)}
+              />
+            </Space>
           </Field>
 
           <div>

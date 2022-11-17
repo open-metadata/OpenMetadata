@@ -19,17 +19,26 @@ const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
 const mockAccountIdChange = jest.fn();
 const mockAuthTokenChange = jest.fn();
+const mockUpdateDescriptions = jest.fn();
+const mockDbtCloudProjectId = jest.fn();
 
 const mockProps = {
   dbtCloudAccountId: '',
   dbtCloudAuthToken: '',
+  dbtUpdateDescriptions: false,
   okText: 'Next',
   cancelText: 'Back',
   onCancel: mockCancel,
   onSubmit: mockSubmit,
   handleCloudAccountIdChange: mockAccountIdChange,
   handleCloudAuthTokenChange: mockAuthTokenChange,
+  handleUpdateDescriptions: mockUpdateDescriptions,
+  handleDbtCloudProjectId: mockDbtCloudProjectId,
 };
+
+jest.mock('./SwitchField.component', () =>
+  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+);
 
 describe('Test DBT Cloud Config Form', () => {
   it('Fields should render', async () => {

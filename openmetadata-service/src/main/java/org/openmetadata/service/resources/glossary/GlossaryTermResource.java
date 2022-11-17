@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -47,6 +46,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityHistory;
@@ -92,10 +92,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     @SuppressWarnings("unused")
     GlossaryTermList() {
       // Empty constructor needed for deserialization
-    }
-
-    public GlossaryTermList(List<GlossaryTerm> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -273,9 +269,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -304,7 +300,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -324,7 +320,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, term, true);
+    return create(uriInfo, securityContext, term);
   }
 
   @PATCH
@@ -370,7 +366,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, term, true);
+    return createOrUpdate(uriInfo, securityContext, term);
   }
 
   @DELETE
@@ -396,7 +392,26 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           boolean hardDelete,
       @Parameter(description = "Glossary Term Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted GlossaryTerm.",
+      tags = "glossaryTerm",
+      description = "Restore a soft deleted GlossaryTerm.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Chart ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTerm.class)))
+      })
+  public Response restoreTable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {
@@ -407,6 +422,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .withRelatedTerms(create.getRelatedTerms())
         .withReferences(create.getReferences())
         .withReviewers(create.getReviewers())
-        .withTags(create.getTags());
+        .withTags(create.getTags())
+        .withProvider(create.getProvider())
+        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

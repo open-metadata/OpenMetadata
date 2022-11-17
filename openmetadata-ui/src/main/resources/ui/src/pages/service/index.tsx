@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
@@ -31,9 +37,13 @@ import {
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getMlmodels } from '../../axiosAPIs/mlModelAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
-import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
+import {
+  getServiceByFQN,
+  TestConnection,
+  updateService,
+} from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
-import { Button } from '../../components/buttons/Button/Button';
+import { Button as LegacyButton } from '../../components/buttons/Button/Button';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import Description from '../../components/common/description/Description';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
@@ -44,6 +54,7 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -74,6 +85,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -86,19 +98,23 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
+  getCountLabel,
   getCurrentServiceTab,
   getDeleteEntityMessage,
   getResourceEntityFromServiceCategory,
   getServiceCategoryFromType,
+  getServicePageTabs,
   getServiceRouteFromServiceType,
+  getTestConnectionType,
   servicePageTabs,
   serviceTypeLogo,
   setServiceSchemaCount,
   setServiceTableCount,
+  shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 export type ServicePageData = Database | Topic | Dashboard;
 
@@ -120,7 +136,9 @@ const ServicePage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState(getCurrentServiceTab(tab));
+  const [activeTab, setActiveTab] = useState(
+    getCurrentServiceTab(tab, serviceName)
+  );
   const [isError, setIsError] = useState(false);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
@@ -139,6 +157,13 @@ const ServicePage: FunctionComponent = () => {
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
+  const [isTestingConnection, setIsTestingConnection] =
+    useState<boolean>(false);
+
+  const allowTestConn = useMemo(() => {
+    return shouldTestConnection(serviceType);
+  }, [serviceType]);
+
   const fetchServicePermission = async () => {
     setIsLoading(true);
     try {
@@ -154,44 +179,16 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getCountLabel = () => {
-    switch (serviceName) {
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return 'Dashboards';
-      case ServiceCategory.MESSAGING_SERVICES:
-        return 'Topics';
-      case ServiceCategory.PIPELINE_SERVICES:
-        return 'Pipelines';
-      case ServiceCategory.ML_MODEL_SERVICES:
-        return 'Models';
-      case ServiceCategory.DATABASE_SERVICES:
-      default:
-        return 'Databases';
-    }
-  };
-
-  const tabs = [
-    {
-      name: getCountLabel(),
-      isProtected: false,
-
-      position: 1,
-      count: instanceCount,
-    },
-    {
-      name: 'Ingestions',
-      isProtected: false,
-
-      position: 2,
-      count: ingestions.length,
-    },
-    {
-      name: 'Connection',
-      isProtected: !servicePermission.EditAll,
-      isHidden: !servicePermission.EditAll,
-      position: 3,
-    },
-  ];
+  const tabs = useMemo(
+    () =>
+      getServicePageTabs(
+        serviceName,
+        instanceCount,
+        ingestions,
+        servicePermission
+      ),
+    [serviceName, instanceCount, ingestions, servicePermission]
+  );
 
   const extraInfo: Array<ExtraInfo> = [
     {
@@ -200,7 +197,8 @@ const ServicePage: FunctionComponent = () => {
         serviceDetails?.owner?.type === 'team'
           ? getTeamAndUserDetailsPath(serviceDetails?.owner?.name || '')
           : serviceDetails?.owner?.name || '',
-      placeholderText: serviceDetails?.owner?.displayName || '',
+      placeholderText:
+        serviceDetails?.owner?.displayName || serviceDetails?.owner?.name || '',
       isLink: serviceDetails?.owner?.type === 'team',
       openInNewTab: false,
       profileName:
@@ -213,17 +211,20 @@ const ServicePage: FunctionComponent = () => {
   const activeTabHandler = (tabValue: number) => {
     setActiveTab(tabValue);
     const currentTabIndex = tabValue - 1;
-    if (servicePageTabs(getCountLabel())[currentTabIndex].path !== tab) {
+    if (
+      servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path !== tab
+    ) {
       setActiveTab(
         getCurrentServiceTab(
-          servicePageTabs(getCountLabel())[currentTabIndex].path
+          servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path,
+          serviceName
         )
       );
       history.push({
         pathname: getServiceDetailsPath(
           serviceFQN,
           serviceCategory,
-          servicePageTabs(getCountLabel())[currentTabIndex].path
+          servicePageTabs(getCountLabel(serviceName))[currentTabIndex].path
         ),
       });
     }
@@ -682,6 +683,34 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const checkTestConnect = async () => {
+    if (connectionDetails) {
+      setIsTestingConnection(true);
+      try {
+        const response = await TestConnection(
+          connectionDetails,
+          getTestConnectionType(serviceCategory as ServiceCategory)
+        );
+        // This api only responds with status 200 on success
+        // No data sent on api success
+        if (response.status === 200) {
+          showSuccessToast(
+            jsonData['api-success-messages']['test-connection-success']
+          );
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          jsonData['api-error-messages']['test-connection-error']
+        );
+      } finally {
+        setIsTestingConnection(false);
+      }
+    }
+  };
+
   useEffect(() => {
     setServiceName(
       (serviceCategory as ServiceTypes) ||
@@ -690,7 +719,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll) {
+    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       setIsLoading(true);
       getServiceByFQN(serviceName, serviceFQN, 'owner')
         .then((resService) => {
@@ -738,11 +767,11 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceFQN, serviceName, servicePermission, serviceType]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll) {
-      const currentTab = getCurrentServiceTab(tab);
+    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
+      const currentTab = getCurrentServiceTab(tab, serviceName);
       const currentTabIndex = currentTab - 1;
 
-      if (tabs[currentTabIndex].isProtected) {
+      if (tabs[currentTabIndex]?.isProtected) {
         activeTabHandler(1);
       }
 
@@ -828,6 +857,38 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
+  const handleRemoveOwner = () => {
+    const updatedData = {
+      ...serviceDetails,
+      owner: undefined,
+    } as unknown as ServiceOption;
+
+    return new Promise<void>((resolve, reject) => {
+      updateService(serviceName, serviceDetails?.id ?? '', updatedData)
+        .then((res) => {
+          if (res) {
+            setServiceDetails(res);
+
+            resolve();
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['update-owner-error']
+            );
+          }
+
+          reject();
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-owner-error']
+          );
+
+          reject();
+        });
+    });
+  };
+
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -884,8 +945,10 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    if (servicePageTabs(getCountLabel())[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentServiceTab(tab));
+    if (
+      servicePageTabs(getCountLabel(serviceName))[activeTab - 1].path !== tab
+    ) {
+      setActiveTab(getCurrentServiceTab(tab, serviceName));
     }
   }, [tab]);
 
@@ -906,7 +969,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceFQN, serviceCategory]);
 
   return (
-    <Row className="page-container" gutter={[16, 16]}>
+    <PageContainerV1 className="m-t-md">
       {isLoading ? (
         <Loader />
       ) : isError ? (
@@ -915,7 +978,7 @@ const ServicePage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {servicePermission.ViewAll ? (
+          {servicePermission.ViewAll || servicePermission.ViewBasic ? (
             <Col span={24}>
               <div
                 className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
@@ -925,28 +988,31 @@ const ServicePage: FunctionComponent = () => {
                   className="tw-justify-between"
                   style={{ width: '100%' }}>
                   <TitleBreadcrumb titleLinks={slashedTableName} />
-                  <Tooltip
-                    title={
-                      servicePermission.Delete
-                        ? 'Delete'
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      data-testid="service-delete"
-                      disabled={!servicePermission.Delete}
-                      size="small"
-                      theme="primary"
-                      variant="outlined"
-                      onClick={handleDelete}>
-                      <IcDeleteColored
-                        className="tw-mr-1.5"
-                        height={14}
-                        viewBox="0 0 24 24"
-                        width={14}
-                      />
-                      Delete
-                    </Button>
-                  </Tooltip>
+                  {serviceDetails?.serviceType !==
+                    MetadataServiceType.OpenMetadata && (
+                    <Tooltip
+                      title={
+                        servicePermission.Delete
+                          ? 'Delete'
+                          : NO_PERMISSION_FOR_ACTION
+                      }>
+                      <LegacyButton
+                        data-testid="service-delete"
+                        disabled={!servicePermission.Delete}
+                        size="small"
+                        theme="primary"
+                        variant="outlined"
+                        onClick={handleDelete}>
+                        <IcDeleteColored
+                          className="tw-mr-1.5"
+                          height={14}
+                          viewBox="0 0 24 24"
+                          width={14}
+                        />
+                        Delete
+                      </LegacyButton>
+                    </Tooltip>
+                  )}
                   <DeleteWidgetModal
                     isRecursiveDelete
                     allowSoftDelete={false}
@@ -968,7 +1034,14 @@ const ServicePage: FunctionComponent = () => {
                   {extraInfo.map((info, index) => (
                     <span className="tw-flex" key={index}>
                       <EntitySummaryDetails
+                        currentOwner={serviceDetails?.owner}
                         data={info}
+                        removeOwner={
+                          servicePermission.EditAll ||
+                          servicePermission.EditOwner
+                            ? handleRemoveOwner
+                            : undefined
+                        }
                         updateOwner={
                           servicePermission.EditAll ||
                           servicePermission.EditOwner
@@ -1090,7 +1163,7 @@ const ServicePage: FunctionComponent = () => {
 
                     {activeTab === 3 && (
                       <>
-                        <div className="tw-my-4 tw-flex tw-justify-end">
+                        <Space className="w-full my-4 justify-end">
                           <Tooltip
                             title={
                               servicePermission.EditAll
@@ -1098,19 +1171,35 @@ const ServicePage: FunctionComponent = () => {
                                 : NO_PERMISSION_FOR_ACTION
                             }>
                             <Button
-                              className={classNames(
-                                'tw-h-8 tw-rounded tw-px-4 tw-py-1'
-                              )}
-                              data-testid="add-new-service-button"
+                              ghost
+                              data-testid="edit-connection-button"
                               disabled={!servicePermission.EditAll}
-                              size="small"
-                              theme="primary"
-                              variant="outlined"
+                              type="primary"
                               onClick={handleEditConnection}>
                               Edit Connection
                             </Button>
                           </Tooltip>
-                        </div>
+                          {allowTestConn && isAirflowRunning && (
+                            <Tooltip
+                              title={
+                                servicePermission.EditAll
+                                  ? 'Test Connection'
+                                  : NO_PERMISSION_FOR_ACTION
+                              }>
+                              <Button
+                                data-testid="test-connection-button"
+                                disabled={
+                                  !servicePermission.EditAll ||
+                                  isTestingConnection
+                                }
+                                loading={isTestingConnection}
+                                type="primary"
+                                onClick={checkTestConnect}>
+                                Test Connection
+                              </Button>
+                            </Tooltip>
+                          )}
+                        </Space>
                         <ServiceConnectionDetails
                           connectionDetails={connectionDetails || {}}
                           serviceCategory={serviceCategory}
@@ -1127,7 +1216,7 @@ const ServicePage: FunctionComponent = () => {
           )}
         </>
       )}
-    </Row>
+    </PageContainerV1>
   );
 };
 

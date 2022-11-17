@@ -797,7 +797,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    if (tablePermissions.ViewAll) {
+    if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
       fetchTableDetail();
       setActiveTab(getCurrentDatasetTab(tab));
       getEntityFeedCount();
@@ -829,7 +829,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {tablePermissions.ViewAll ? (
+          {tablePermissions.ViewAll || tablePermissions.ViewBasic ? (
             <DatasetDetails
               activeTab={activeTab}
               addLineageHandler={addLineageHandler}
@@ -852,7 +852,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTableHandler={followTable}
               followers={followers}
-              handleExtentionUpdate={handleExtentionUpdate}
+              handleExtensionUpdate={handleExtentionUpdate}
               isLineageLoading={isLineageLoading}
               isNodeLoading={isNodeLoading}
               isQueriesLoading={isTableQueriesLoading}

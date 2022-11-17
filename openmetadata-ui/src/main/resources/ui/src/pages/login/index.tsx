@@ -11,20 +11,30 @@
  *  limitations under the License.
  */
 
+import { Button, Divider, Form, Input, Typography } from 'antd';
+import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import Loader from '../../components/Loader/Loader';
 import LoginButton from '../../components/LoginButton/LoginButton';
-import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
+import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import localState from '../../utils/LocalStorageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
+  const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
+
   const history = useHistory();
   const {
     isAuthDisabled,
@@ -33,12 +43,31 @@ const SigninPage = () => {
     onLogoutHandler,
     isAuthenticated,
   } = useAuthContext();
+
+  const { t } = useTranslation();
+
+  const { isAuthProviderBasic } = useMemo(() => {
+    return {
+      isAuthProviderBasic:
+        authConfig?.provider === AuthTypes.BASIC ||
+        authConfig?.provider === AuthTypes.LDAP,
+    };
+  }, [authConfig]);
+
+  const { isAuthProviderLDAP } = useMemo(() => {
+    return {
+      isAuthProviderLDAP: authConfig?.provider === AuthTypes.LDAP,
+    };
+  }, [authConfig]);
+
+  const { handleLogin, loginError } = useBasicAuth();
+
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
   }, [isAuthDisabled, isAuthenticated]);
 
   const isTokenExpired = () => {
-    const token = localStorage.getItem(oidcTokenKey);
+    const token = localState.getOidcToken();
     if (token) {
       try {
         const { exp } = jwtDecode<JwtPayload>(token);
@@ -136,19 +165,132 @@ const SigninPage = () => {
     return <Loader />;
   }
 
+  const handleSubmit = async ({
+    email,
+    password,
+  }: {
+    email: string;
+    password: string;
+  }) => {
+    setLoading(true);
+    await Promise.resolve(handleLogin(email, password));
+    setLoading(false);
+  };
+
+  const onClickSignUp = () => history.push(ROUTES.REGISTER);
+
+  const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
+
   return (
     <div className="tw-flex tw-flex-col tw-h-full">
       <div
         className="tw-flex tw-bg-body-main tw-flex-grow"
         data-testid="signin-page">
         <div className="tw-w-5/12">
-          <div className="tw-mt-52 tw-text-center">
+          <div
+            className={classNames('mt-24 tw-text-center flex-center flex-col', {
+              'sso-container': !isAuthProviderBasic,
+            })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <p className="tw-mt-24 tw-mx-auto tw-text-xl tw-text-grey-muted tw-font-medium tw-w-10/12">
-              Centralized Metadata Store, Discover, Collaborate and get your
-              Data Right
-            </p>
-            <div className="tw-mt-24">{getSignInButton()}</div>
+            <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
+              {t('label.om-description')}{' '}
+            </Typography.Text>
+
+            {isAuthProviderBasic ? (
+              <div className="login-form ">
+                <Form
+                  className="w-full"
+                  form={form}
+                  layout="vertical"
+                  validateMessages={VALIDATION_MESSAGES}
+                  onFinish={handleSubmit}>
+                  <Form.Item
+                    data-testid="email"
+                    label={
+                      isAuthProviderLDAP
+                        ? t('label.email')
+                        : t('label.username-or-email')
+                    }
+                    name="email"
+                    requiredMark={false}
+                    rules={[{ required: true }]}>
+                    <Input
+                      placeholder={
+                        isAuthProviderLDAP
+                          ? t('label.email')
+                          : t('label.username-or-email')
+                      }
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    data-testid="password"
+                    label={t('label.password')}
+                    name="password"
+                    requiredMark={false}
+                    rules={[{ required: true }]}>
+                    <Input.Password placeholder={t('label.password')} />
+                  </Form.Item>
+
+                  <Button
+                    className="w-full"
+                    data-testid="login"
+                    disabled={loading}
+                    htmlType="submit"
+                    loading={loading}
+                    type="primary">
+                    {t('label.login')}
+                  </Button>
+                </Form>
+                {loginError && (
+                  <div
+                    className="tw-flex tw-flex-col m-y-md"
+                    data-testid="login-error-container">
+                    <div className="tw-flex tw-border tw-border-main tw-rounded tw-p-3 error-alert ">
+                      <div className="tw-mr-2">
+                        <SVGIcons
+                          alt="failed"
+                          className="tw-w-5"
+                          data-testid="failed-icon"
+                          icon={Icons.FAIL_BADGE}
+                        />
+                      </div>
+                      <p data-testid="success-line">
+                        <span>{loginError}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="mt-8" onClick={onClickForgotPassword}>
+                  <Typography.Link underline data-testid="forgot-password">
+                    {t('label.forgot-password')}
+                  </Typography.Link>
+                </div>
+
+                {(authConfig?.enableSelfSignUp || isAuthProviderLDAP) && (
+                  <>
+                    <Divider className="w-min-0 mt-8 mb-12 justify-center">
+                      <Typography.Text className="text-sm" type="secondary">
+                        {t('label.or-lowercase')}
+                      </Typography.Text>
+                    </Divider>
+
+                    <div className="mt-4 flex flex-center">
+                      <Typography.Text className="mr-4">
+                        {t('label.new-to-the-platform')}
+                      </Typography.Text>
+                      <Button
+                        data-testid="signup"
+                        type="link"
+                        onClick={onClickSignUp}>
+                        {t('label.create-account')}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="">{getSignInButton()}</div>
+            )}
           </div>
         </div>
         <div className="tw-w-7/12 tw-relative">

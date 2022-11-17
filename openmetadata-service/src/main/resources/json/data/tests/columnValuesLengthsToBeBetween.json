@@ -4,6 +4,7 @@
   "description": "This schema defines the test ColumnValueLengthsToBeBetween. Test the value lengths in a column to be between minimum and maximum value. ",
   "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata"],
+  "supportedDataTypes": ["BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "ARRAY"],
   "parameterDefinition": [
     {
       "name": "minLength",

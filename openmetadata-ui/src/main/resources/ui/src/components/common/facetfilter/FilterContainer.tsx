@@ -17,7 +17,8 @@ import React, { FunctionComponent } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import PopOver from '../popover/PopOver';
-import { FilterContainerProp } from './FacetTypes';
+import { FilterContainerProp } from './facetFilter.interface';
+
 const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   name,
   count,
@@ -25,7 +26,8 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   isSelected,
   type = '',
   isDisabled = false,
-}: FilterContainerProp) => {
+  label,
+}) => {
   const getFilterName = (name = '') => {
     const formattedName = name.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
       ? name.split(FQN_SEPARATOR_CHAR)[1]
@@ -33,7 +35,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
 
     return (
       <PopOver position="top" title={formattedName} trigger="mouseenter">
-        <>{formattedName}</>
+        <>{label || formattedName}</>
       </PopOver>
     );
   };

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CookieStorage } from 'cookie-storage';
 import { observer } from 'mobx-react';
 import React, {
   createContext,
@@ -21,6 +22,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getEntityPermissionByFqn,
@@ -28,6 +30,11 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../axiosAPIs/permissionAPI';
+import { REDIRECT_PATHNAME } from '../../constants/constants';
+import {
+  getUrlPathnameExpiryAfterRoute,
+  isProtectedRoute,
+} from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -38,6 +45,7 @@ import {
   ResourceEntity,
   UIPermission,
 } from './PermissionProvider.interface';
+
 /**
  * Permission Context
  * Returns ResourcePermission List for loggedIn User
@@ -61,6 +69,8 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
+  const cookieStorage = new CookieStorage();
+  const history = useHistory();
 
   const [entitiesPermission, setEntitiesPermission] =
     useState<EntityPermissionMap>({} as EntityPermissionMap);
@@ -74,6 +84,17 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     return AppState.getCurrentUserDetails();
   }, [AppState.userDetails, AppState.nonSecureUserDetails]);
 
+  const redirectToStoredPath = () => {
+    const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
+    if (urlPathname) {
+      cookieStorage.setItem(REDIRECT_PATHNAME, urlPathname, {
+        expires: getUrlPathnameExpiryAfterRoute(),
+        path: '/',
+      });
+      history.push(urlPathname);
+    }
+  };
+
   /**
    * Fetch permission for logged in user
    */
@@ -81,6 +102,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     try {
       const response = await getLoggedInUserPermissions();
       setPermissions(getUIPermission(response.data || []));
+      redirectToStoredPath();
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -145,7 +167,9 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    fetchLoggedInUserPermissions();
+    if (isProtectedRoute(location.pathname)) {
+      fetchLoggedInUserPermissions();
+    }
   }, [currentUser]);
 
   return (

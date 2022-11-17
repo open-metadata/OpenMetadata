@@ -4,16 +4,16 @@ slug: /openmetadata/integrations/great-expectations
 ---
 
 # Great Expectations
-Configure Great Expectations to integrate with OpenMetadata and ingest your tests results to your table service page.
+For Data Quality tests the open source python package Great Expectations stands out from the crowd. For those of you who don't know, [Great Expectations](https://greatexpectations.io/) is a shared, open standard for data quality. It helps data teams eliminate pipeline debt, through data testing, documentation, and profiling. Learn more about the product in [their documentation](https://docs.greatexpectations.io/docs/).  With this tutorial, we show you how to configure Great Expectations to integrate with OpenMetadata and ingest your test results to your table service page.
 
 ## Requirements
 
 ### OpenMetadata Requirements
 You will to have OpenMetadata version 0.10 or later.
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](quick-start/local-deployment) or follow the [Prefect Integration](/openmetadata/integrations/prefect) guide.
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](/quick-start/local-deployment) or follow the [Prefect Integration](/openmetadata/integrations/prefect) guide.
 
-Before ingesting your tests results from Great Expectations you will need to have your table metadata ingested into OpenMetadata. Follow the instruction in the [Connectors](/openmetadata/connectors) section to learn more.
+Before ingesting your tests results from Great Expectations you will need to have your table metadata ingested into OpenMetadata. Follow the instruction in the [Connectors](/connectors) section to learn more.
 
 ### Python Requirements
 You will need to install our Great Expectations submodule
@@ -108,6 +108,6 @@ alt="Run Great Expectations checkpoint"
 />
 
 ### List of Great Expectations Supported Test
-We currently only support a certain number of Great Expectations tests. The full list can be found in the [Tests](/openmetadata/data-quality/tests) section.
+We currently only support a certain number of Great Expectations tests. The full list can be found in the [Tests](/connectors/ingestion/workflows/data-quality/tests) section.
 
 If a test is not supported, there is no need to worry about the execution of your Great Expectations test. We will simply skip the tests that are not supported and continue the execution of your test suite.

@@ -18,11 +18,12 @@ export const EntityRegEx = new RegExp(EntityRegExPattern);
 export const mentionRegEx = /\[@(.+?)?\]\((.+?)?\)/g;
 export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
 export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
+export const teamsLinkRegEx = /\((.+?\/\/.+?)\/(.+?\/.+?\/.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
 export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
 export const entityUrlMap = {
-  team: 'teams-and-users',
+  team: 'settings/members/teams',
   user: 'users',
 };
 

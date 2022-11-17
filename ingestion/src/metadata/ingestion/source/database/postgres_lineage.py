@@ -23,13 +23,17 @@ from metadata.utils.sql_queries import POSTGRES_SQL_STATEMENT
 
 
 class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
+    """
+    Implements the necessary methods to extract
+    Database lineage from Postgres Source
+    """
 
     sql_stmt = POSTGRES_SQL_STATEMENT
 
     filters = """
                 AND (
-                    s.query ILIKE 'create table %% as select %%'
-                    OR s.query ILIKE 'insert %%'
+                    s.query ILIKE '%%create table %% as select %%'
+                    OR s.query ILIKE '%%insert %%'
                 )
             """
 

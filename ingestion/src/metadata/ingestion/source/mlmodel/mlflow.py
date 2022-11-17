@@ -62,17 +62,18 @@ class MlflowSource(MlModelServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_mlmodels(self) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:
+    def get_mlmodels(  # pylint: disable=arguments-differ
+        self,
+    ) -> Iterable[Tuple[RegisteredModel, ModelVersion]]:
         """
         List and filters models from the registry
         """
         for model in cast(RegisteredModel, self.client.list_registered_models()):
-
             if filter_by_mlmodel(
                 self.source_config.mlModelFilterPattern, mlmodel_name=model.name
             ):
                 self.status.filter(
-                    f"{self.config.serviceName}.{model.name}",
+                    model.name,
                     "MlModel name pattern not allowed",
                 )
                 continue
@@ -92,11 +93,11 @@ class MlflowSource(MlModelServiceSource):
 
             yield model, latest_version
 
-    def _get_algorithm(self) -> str:
+    def _get_algorithm(self) -> str:  # pylint: disable=arguments-differ
         logger.info("Setting algorithm with default value `mlmodel` for Mlflow")
         return "mlmodel"
 
-    def yield_mlmodel(
+    def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model_and_version: Tuple[RegisteredModel, ModelVersion]
     ) -> Iterable[CreateMlModelRequest]:
         """
@@ -121,8 +122,10 @@ class MlflowSource(MlModelServiceSource):
             ),
         )
 
-    @staticmethod
-    def _get_hyper_params(data: RunData) -> Optional[List[MlHyperParameter]]:
+    def _get_hyper_params(  # pylint: disable=arguments-differ
+        self,
+        data: RunData,
+    ) -> Optional[List[MlHyperParameter]]:
         """
         Get the hyper parameters from the parameters
         logged in the run data object.
@@ -146,8 +149,10 @@ class MlflowSource(MlModelServiceSource):
 
         return None
 
-    @staticmethod
-    def _get_ml_store(version: ModelVersion) -> Optional[MlStore]:
+    def _get_ml_store(  # pylint: disable=arguments-differ
+        self,
+        version: ModelVersion,
+    ) -> Optional[MlStore]:
         """
         Get the Ml Store from the model version object
         """
@@ -166,7 +171,7 @@ class MlflowSource(MlModelServiceSource):
             )
         return None
 
-    def _get_ml_features(
+    def _get_ml_features(  # pylint: disable=arguments-differ
         self, data: RunData, run_id: str, model_name: str
     ) -> Optional[List[MlFeature]]:
         """

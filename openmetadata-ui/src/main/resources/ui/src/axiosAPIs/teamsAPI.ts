@@ -16,6 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { isString } from 'lodash';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
+import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -42,6 +43,19 @@ export const getTeams = async (
   const response = await APIClient.get<{ data: Team[]; paging: Paging }>(url, {
     params: updatedParams,
   });
+
+  return response.data;
+};
+
+export const getTeamsHierarchy = async (isJoinable = false) => {
+  const response = await APIClient.get<{ data: TeamHierarchy[] }>(
+    '/teams/hierarchy',
+    {
+      params: {
+        isJoinable,
+      },
+    }
+  );
 
   return response.data;
 };
@@ -84,6 +98,15 @@ export const patchTeamDetail = async (id: string, data: Operation[]) => {
 
 export const deleteTeam = async (id: string) => {
   const response = await APIClient.delete<Team>(`/teams/${id}`);
+
+  return response.data;
+};
+
+export const reactivateTeam = async (data: CreateTeam) => {
+  const response = await APIClient.put<CreateTeam, AxiosResponse<Team>>(
+    '/teams',
+    data
+  );
 
   return response.data;
 };

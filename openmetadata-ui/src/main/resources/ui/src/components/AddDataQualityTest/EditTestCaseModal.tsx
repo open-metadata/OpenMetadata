@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, FormProps, Input, Row, Typography } from 'antd';
+import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -23,6 +23,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getTestDefinitionById,
   updateTestCaseById,
@@ -49,6 +50,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   onCancel,
   onUpdate,
 }) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [selectedDefinition, setSelectedDefinition] =
     useState<TestDefinition>();
@@ -59,6 +61,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
+
   const markdownRef = useRef<EditorContentRef>();
 
   const isColumn = useMemo(
@@ -71,21 +75,22 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       const name = selectedDefinition.parameterDefinition[0].name;
       if (name === 'sqlExpression') {
         return (
-          <Row>
-            <Col data-testid="sql-editor-container" span={24}>
-              <Typography.Paragraph className="tw-mb-1.5">
-                Profile Sample Query
-              </Typography.Paragraph>
-              <SchemaEditor
-                mode={{ name: CSMode.SQL }}
-                options={{
-                  readOnly: false,
-                }}
-                value={sqlQuery.value || ''}
-                onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
-              />
-            </Col>
-          </Row>
+          <Form.Item
+            data-testid="sql-editor-container"
+            key={name}
+            label={t('label.sql-query')}
+            name={name}
+            tooltip={t('label.sql-query-tooltip')}>
+            <SchemaEditor
+              className="profiler-setting-sql-editor"
+              mode={{ name: CSMode.SQL }}
+              options={{
+                readOnly: false,
+              }}
+              value={sqlQuery.value || ''}
+              onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
+            />
+          </Form.Item>
         );
       }
 
@@ -143,16 +148,18 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
     if (jsonPatch.length) {
       try {
+        setIsLoadingOnSave(true);
         await updateTestCaseById(testCase.id || '', jsonPatch);
         onUpdate && onUpdate();
         showSuccessToast(
           jsonData['api-success-messages']['update-test-case-success']
         );
         onCancel();
+        form.resetFields();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        form.resetFields();
+        setIsLoadingOnSave(false);
       }
     }
   };
@@ -202,9 +209,12 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         form.resetFields();
         onCancel();
       }}
-      okText="Submit"
-      title={`Edit ${testCase?.name}`}
+      closable={false}
+      confirmLoading={isLoadingOnSave}
+      okText={t('label.submit')}
+      title={`${t('label.edit')} ${testCase?.name}`}
       visible={visible}
+      width={600}
       onCancel={onCancel}
       onOk={() => form.submit()}>
       {isLoading ? (
@@ -216,24 +226,27 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
-          <Form.Item required label="Table:" name="table">
+          <Form.Item required label={`${t('label.table')}:`} name="table">
             <Input disabled />
           </Form.Item>
           {isColumn && (
-            <Form.Item required label="Column:" name="column">
+            <Form.Item required label={`${t('label.column')}:`} name="column">
               <Input disabled />
             </Form.Item>
           )}
-          <Form.Item required label="Name:" name="name">
-            <Input disabled placeholder="Enter test case name" />
+          <Form.Item required label={`${t('label.name')}:`} name="name">
+            <Input disabled placeholder={t('label.enter-test-case-name')} />
           </Form.Item>
-          <Form.Item required label="Test Type:" name="testDefinition">
-            <Input disabled placeholder="Enter test case name" />
+          <Form.Item
+            required
+            label={`${t('label.test-type')}:`}
+            name="testDefinition">
+            <Input disabled placeholder={t('label.enter-test-case-name')} />
           </Form.Item>
 
           {GenerateParamsField()}
 
-          <Form.Item label="Description:" name="description">
+          <Form.Item label={`${t('label.description')}:`} name="description">
             <RichTextEditor
               height="200px"
               initialValue={testCase?.description || ''}

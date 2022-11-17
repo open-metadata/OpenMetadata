@@ -11,25 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { findByTestId, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { act } from 'react-test-renderer';
 import { EntityType } from '../../enums/entity.enum';
 import EntityLineage from './EntityLineage.component';
-
-/**
- * mock implementation of ResizeObserver
- */
-window.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
@@ -163,6 +150,7 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
       <p>Lineage data is not available for deleted entities.</p>
     ),
   getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
+  getLoadingStatusValue: jest.fn().mockReturnValue(<p>Confirm</p>),
   getLayoutedElements: jest.fn().mockImplementation(() => mockFlowData),
   getLineageData: jest.fn().mockImplementation(() => mockFlowData),
   getModalBodyText: jest.fn(),
@@ -193,6 +181,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   hasPermission: jest.fn().mockReturnValue(false),
 }));
 
+jest.mock('../EntityInfoDrawer/EntityInfoDrawer.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityInfoDrawerComponent</p>);
+});
+
 describe('Test EntityLineage Component', () => {
   it('Check if EntityLineage is rendering all the nodes', async () => {
     const { container } = render(<EntityLineage {...mockEntityLineageProp} />, {
@@ -200,10 +192,7 @@ describe('Test EntityLineage Component', () => {
     });
 
     const lineageContainer = await findByTestId(container, 'lineage-container');
-    const reactFlowElement = await findByTestId(
-      container,
-      'react-flow-component'
-    );
+    const reactFlowElement = await findByTestId(container, 'rf__wrapper');
 
     expect(reactFlowElement).toBeInTheDocument();
 
@@ -211,17 +200,15 @@ describe('Test EntityLineage Component', () => {
   });
 
   it('Check if EntityLineage has deleted as true', async () => {
-    const { container } = render(
-      <EntityLineage {...mockEntityLineageProp} deleted />,
-      {
+    act(() => {
+      render(<EntityLineage {...mockEntityLineageProp} deleted />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const lineageContainer = queryByTestId(container, 'lineage-container');
-    const reactFlowElement = queryByTestId(container, 'react-flow-component');
-    const deletedMessage = await findByText(
-      container,
+    const lineageContainer = screen.queryByTestId('lineage-container');
+    const reactFlowElement = screen.queryByTestId('rf__wrapper');
+    const deletedMessage = await screen.findByText(
       /Lineage data is not available for deleted entities/i
     );
 

@@ -27,20 +27,22 @@ import {
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
-import { Column, ColumnProfile } from '../../../generated/entity/data/table';
+import { ColumnProfile } from '../../../generated/entity/data/table';
+import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import {
   getAddDataQualityTableTestPath,
   getProfilerDashboardWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Ellipses from '../../common/Ellipses/Ellipses';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import {
   ColumnProfileTableProps,
   columnTestResultType,
+  ModifiedColumn,
 } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
@@ -50,11 +52,11 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columns = [],
 }) => {
   const [searchText, setSearchText] = useState<string>('');
-  const [data, setData] = useState<Column[]>(columns);
+  const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =
     useState<columnTestResultType>();
 
-  const tableColumn: ColumnsType<Column> = useMemo(() => {
+  const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
       {
         title: 'Name',
@@ -71,6 +73,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             </Link>
           );
         },
+        sorter: (col1, col2) => col1.name.localeCompare(col2.name),
       },
       {
         title: 'Data Type',
@@ -78,11 +81,14 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         key: 'dataType',
         render: (dataTypeDisplay: string) => {
           return (
-            <Ellipses tooltip className="tw-w-24">
+            <Typography.Text
+              className="ant-typography-ellipsis-custom w-24"
+              ellipsis={{ tooltip: true }}>
               {dataTypeDisplay || 'N/A'}
-            </Ellipses>
+            </Typography.Text>
           );
         },
+        sorter: (col1, col2) => col1.dataType.localeCompare(col2.dataType),
       },
       {
         title: 'Null %',
@@ -97,6 +103,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             />
           );
         },
+        sorter: (col1, col2) =>
+          (col1.profile?.nullProportion || 0) -
+          (col2.profile?.nullProportion || 0),
       },
       {
         title: 'Unique %',
@@ -109,6 +118,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             value={profile?.uniqueProportion || 0}
           />
         ),
+        sorter: (col1, col2) =>
+          (col1.profile?.uniqueProportion || 0) -
+          (col2.profile?.uniqueProportion || 0),
       },
       {
         title: 'Distinct %',
@@ -121,16 +133,22 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             value={profile?.distinctProportion || 0}
           />
         ),
+        sorter: (col1, col2) =>
+          (col1.profile?.distinctProportion || 0) -
+          (col2.profile?.distinctProportion || 0),
       },
       {
         title: 'Value Count',
         dataIndex: 'profile',
         key: 'valuesCount',
-        render: (profile: ColumnProfile) => profile?.valuesCount || 0,
+        render: (profile: ColumnProfile) =>
+          formatNumberWithComma(profile?.valuesCount || 0),
+        sorter: (col1, col2) =>
+          (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
       },
       {
         title: 'Tests',
-        dataIndex: 'Tests',
+        dataIndex: 'testCount',
         key: 'Tests',
         render: (_, record) => (
           <Link
@@ -140,9 +158,10 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
               record.fullyQualifiedName || '',
               ProfilerDashboardTab.DATA_QUALITY
             )}>
-            {columnTestSummary?.[record.fullyQualifiedName || '']?.count || 0}
+            {record.testCount || 0}
           </Link>
         ),
+        sorter: (col1, col2) => (col1.testCount || 0) - (col2.testCount || 0),
       },
       {
         title: 'Status',
@@ -150,7 +169,9 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         key: 'dataQualityTest',
         render: (_, record) => {
           const summary =
-            columnTestSummary?.[record.fullyQualifiedName || '']?.results;
+            columnTestSummary?.[
+              getEncodedFqn(record.fullyQualifiedName || '', true)
+            ]?.results;
           const currentResult = summary
             ? Object.entries(summary).map(([key, value]) => ({
                 value,
@@ -214,10 +235,6 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   };
 
   useEffect(() => {
-    setData(columns);
-  }, [columns]);
-
-  useEffect(() => {
     if (columnTests.length) {
       const colResult = columnTests.reduce((acc, curr) => {
         const fqn = curr.entityFQN || '';
@@ -232,9 +249,19 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
 
         return acc;
       }, {} as columnTestResultType);
+      setData(
+        columns.map((col) => ({
+          ...col,
+          testCount:
+            colResult?.[getEncodedFqn(col.fullyQualifiedName || '', true)]
+              ?.count,
+        }))
+      );
       setColumnTestSummary(colResult);
+    } else {
+      setData(columns);
     }
-  }, [columnTests]);
+  }, [columnTests, columns]);
 
   return (
     <div data-testid="column-profile-table-container">
@@ -247,6 +274,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         />
       </div>
       <Table
+        bordered
         columns={tableColumn}
         dataSource={data}
         pagination={false}

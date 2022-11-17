@@ -28,6 +28,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -49,7 +50,7 @@ def column_values_missing_count_to_be_equal(
     :return: TestCaseResult with status and results
     """
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
+        column_name = get_decoded_column(test_case.entityLink.__root__)
         col = next(
             (col for col in inspect(runner.table).c if col.name == column_name),
             None,
@@ -59,10 +60,9 @@ def column_values_missing_count_to_be_equal(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        null_count_value_dict = dict(
+        null_count_value_res = dict(
             runner.dispatch_query_select_first(Metrics.NULL_COUNT.value(col).fn())
-        )
-        null_count_value_res = null_count_value_dict.get(Metrics.NULL_COUNT.name)
+        ).get(Metrics.NULL_COUNT.name)
 
     except Exception as exc:
         msg = (
@@ -98,7 +98,9 @@ def column_values_missing_count_to_be_equal(
 
         try:
             set_count_dict = dict(
-                runner.dispatch_query_select_first(set_count(col).fn())
+                runner.dispatch_query_select_first(
+                    set_count(col).fn()  # pylint: disable=abstract-class-instantiated
+                )
             )
             set_count_res = set_count_dict.get(Metrics.COUNT_IN_SET.name)
 

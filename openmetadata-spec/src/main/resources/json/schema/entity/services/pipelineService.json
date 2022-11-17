@@ -16,11 +16,12 @@
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
         "Airflow",
-        "Glue",
+        "GluePipeline",
         "Airbyte",
         "Fivetran",
         "Dagster",
         "Nifi",
+        "DomoPipeline",
         "CustomPipeline"
       ],
       "javaEnums": [
@@ -28,7 +29,7 @@
           "name": "Airflow"
         },
         {
-          "name": "Glue"
+          "name": "GluePipeline"
         },
         {
           "name": "Airbyte"
@@ -41,6 +42,9 @@
         },
         {
           "name": "Nifi"
+        },
+        {
+          "name": "DomoPipeline"
         },
         {
           "name": "CustomPipeline"
@@ -62,7 +66,7 @@
               "$ref": "./connections/pipeline/airflowConnection.json"
             },
             {
-              "$ref": "./connections/pipeline/glueConnection.json"
+              "$ref": "./connections/pipeline/gluePipelineConnection.json"
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
@@ -75,6 +79,9 @@
             },
             {
               "$ref": "./connections/pipeline/nifiConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/domopipelineConnection.json"
             },
             {
               "$ref": "./connections/pipeline/customPipelineConnection.json"

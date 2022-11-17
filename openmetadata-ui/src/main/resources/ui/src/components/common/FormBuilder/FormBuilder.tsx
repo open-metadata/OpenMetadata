@@ -12,12 +12,13 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import Form, { AjvError, FormProps } from '@rjsf/core';
+import Form from '@rjsf/antd';
+import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getPipelineServiceHostIp } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
@@ -52,7 +53,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   isAirflowAvailable,
   ...props
 }: Props) => {
-  let oForm: Form<ConfigData> | null;
+  const formRef = useRef<CoreForm<ConfigData>>();
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
     formatFormDataForRender(formData)
   );
@@ -86,8 +87,8 @@ const FormBuilder: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    if (oForm?.submit) {
-      oForm.submit();
+    if (formRef.current) {
+      formRef.current.submit();
     }
   };
 
@@ -152,14 +153,12 @@ const FormBuilder: FunctionComponent<Props> = ({
         'no-header': !showFormHeader,
       })}
       formData={localFormData}
-      ref={(form) => {
-        oForm = form as Form<ConfigData>;
-      }}
+      ref={formRef}
       schema={schema}
       showErrorList={false}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      onChange={(e) => {
+      onChange={(e: IChangeEvent) => {
         handleChange(e.formData);
         props.onChange && props.onChange(e);
       }}

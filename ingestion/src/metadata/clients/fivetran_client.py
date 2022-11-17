@@ -17,10 +17,14 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.client import REST, ClientConfig
 
 
 class FivetranClient:
+    """
+    Client to interact with fivetran apis
+    """
+
     def __init__(self, config: FivetranConnection):
         self.config = config
         api_token = str(

@@ -79,6 +79,16 @@ jest.mock('./FeedPanelOverlay', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelOverlay</p>);
 });
 
+jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+  getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
 describe('Test FeedPanel Component', () => {
   it('Check if Feedpanel has all child elements', async () => {
     const { container } = render(<ActivityFeedPanel {...mockFeedPanelProp} />, {

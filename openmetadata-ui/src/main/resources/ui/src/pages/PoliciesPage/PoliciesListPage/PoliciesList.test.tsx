@@ -71,6 +71,9 @@ jest.mock('../../../utils/CommonUtils', () => ({
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
   LIST_CAP: 1,
+  userPermissions: {
+    hasViewPermissions: jest.fn(),
+  },
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({

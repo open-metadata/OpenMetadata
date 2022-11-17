@@ -27,7 +27,9 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
 
@@ -46,7 +48,7 @@ def column_value_length_to_be_between(
     """
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
+        column_name = get_decoded_column(test_case.entityLink.__root__)
         col = next(
             (col for col in inspect(runner.table).c if col.name == column_name),
             None,
@@ -68,6 +70,10 @@ def column_value_length_to_be_between(
         min_value_length_value_res = min_value_length_value_dict.get(
             Metrics.MIN_LENGTH.name
         )
+        if min_value_length_value_res is None or max_value_length_value_res is None:
+            raise ValueError(
+                f"Query on column {column_name} for test case {test_case.name} returned None"
+            )
 
     except Exception as exc:
         msg = (
@@ -86,7 +92,10 @@ def column_value_length_to_be_between(
         )
 
     if not max_value_length_value_res or not min_value_length_value_res:
-        msg = f"Error computing {test_case.name} for {runner.table.__tablename__}: missing max value length or min value length"
+        msg = (
+            f"Error computing {test_case.name} for {runner.table.__tablename__}: "
+            "missing max value length or min value length"
+        )
         return TestCaseResult(
             timestamp=execution_date,
             testCaseStatus=TestCaseStatus.Aborted,
@@ -97,19 +106,18 @@ def column_value_length_to_be_between(
             ],
         )
 
-    min_bound = next(
-        (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "minLength"
-        )
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minLength",
+        float,
+        default=float("-inf"),
     )
-    max_bound = next(
-        (
-            float(param.value)
-            for param in test_case.parameterValues
-            if param.name == "maxLength"
-        )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxLength",
+        float,
+        default=float("inf"),
     )
 
     status = (

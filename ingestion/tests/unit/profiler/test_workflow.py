@@ -18,6 +18,7 @@ from unittest.mock import patch
 
 import sqlalchemy as sqa
 from pytest import raises
+from sqlalchemy import MetaData
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import (
@@ -33,7 +34,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqa_interface import SQAInterface
+from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.profiler.default import DefaultProfiler
@@ -67,7 +68,10 @@ config = {
     "workflowConfig": {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
-            "authProvider": "no-auth",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
         }
     },
 }
@@ -85,7 +89,7 @@ class User(Base):
 
 
 @patch.object(
-    SQAInterface,
+    SQAProfilerInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -187,7 +191,7 @@ def test_filter_entities(mocked_method):
 
 
 @patch.object(
-    SQAInterface,
+    SQAProfilerInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -211,8 +215,9 @@ def test_profile_def(mocked_method, mocked_orm):
     profile_workflow = ProfilerWorkflow.create(profile_config)
     mocked_method.assert_called()
     profiler_interface = profile_workflow.create_profiler_interface(
-        profile_workflow.config.source.serviceConnection.__root__.config,
-        TABLE,
+        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
+        table_entity=TABLE,
+        sqa_metadata_obj=MetaData(),
     )
     profile_workflow.create_profiler_obj(TABLE, profiler_interface)
     profiler_obj_metrics = [
@@ -224,7 +229,7 @@ def test_profile_def(mocked_method, mocked_orm):
 
 
 @patch.object(
-    SQAInterface,
+    SQAProfilerInterface,
     "_convert_table_to_orm_object",
     return_value=User,
 )
@@ -243,8 +248,9 @@ def test_default_profile_def(mocked_method, mocked_orm):
     mocked_method.assert_called()
 
     profiler_interface = profile_workflow.create_profiler_interface(
-        profile_workflow.config.source.serviceConnection.__root__.config,
-        TABLE,
+        service_connection_config=profile_workflow.config.source.serviceConnection.__root__.config,
+        table_entity=TABLE,
+        sqa_metadata_obj=MetaData(),
     )
     profile_workflow.create_profiler_obj(TABLE, profiler_interface)
 

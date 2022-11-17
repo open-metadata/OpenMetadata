@@ -14,7 +14,7 @@ SUM Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import column, func
+from sqlalchemy import column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.sum import SumFn
@@ -39,4 +39,14 @@ class Sum(StaticMetric):
         if is_quantifiable(self.col.type):
             return SumFn(column(self.col.name))
 
+        return None
+
+    @_label
+    def dl_fn(self, data_frame):
+        if is_quantifiable(self.col.datatype):
+            return (
+                data_frame[self.col.name].sum()
+                if not isinstance(data_frame[self.col.name].sum(), list)
+                else data_frame[self.col.name].sum().tolist()
+            )
         return None

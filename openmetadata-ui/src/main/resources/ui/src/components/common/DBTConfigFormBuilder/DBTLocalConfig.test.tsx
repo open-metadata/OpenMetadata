@@ -20,11 +20,13 @@ const mockSubmit = jest.fn();
 const mockCatalogChange = jest.fn();
 const mockManifestChange = jest.fn();
 const mockRunResultsFilePathChange = jest.fn();
+const mockUpdateDescriptions = jest.fn();
 
 const mockProps = {
   dbtCatalogFilePath: '',
   dbtManifestFilePath: '',
   dbtRunResultsFilePath: '',
+  dbtUpdateDescriptions: false,
   okText: 'Next',
   cancelText: 'Back',
   onCancel: mockCancel,
@@ -32,7 +34,12 @@ const mockProps = {
   handleCatalogFilePathChange: mockCatalogChange,
   handleManifestFilePathChange: mockManifestChange,
   handleRunResultsFilePathChange: mockRunResultsFilePathChange,
+  handleUpdateDescriptions: mockUpdateDescriptions,
 };
+
+jest.mock('./SwitchField.component', () =>
+  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+);
 
 describe('Test DBT Local Config Form', () => {
   it('Fields should render', async () => {

@@ -141,11 +141,11 @@ public class SubjectContext {
     private int policyIndex = 0;
     private final List<EntityReference> policies;
 
-    PolicyIterator(String entityType, String entityName, String roleName, List<EntityReference> policy) {
+    PolicyIterator(String entityType, String entityName, String roleName, List<EntityReference> policies) {
       this.entityType = entityType;
       this.entityName = entityName;
       this.roleName = roleName;
-      this.policies = listOrEmpty(policy);
+      this.policies = listOrEmpty(policies);
     }
 
     @Override
@@ -224,9 +224,12 @@ public class SubjectContext {
         iterators.add(new RolePolicyIterator(Entity.USER, user.getName(), user.getRoles()));
       }
 
-      // Finally, iterate over policies of teams to which the user belongs to
-      for (EntityReference team : user.getTeams()) {
-        iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited));
+      if (!Boolean.TRUE.equals(user.getIsBot())) {
+        // Finally, iterate over policies of teams to which the user belongs to
+        // Note that ** Bots don't inherit policies or default roles from teams **
+        for (EntityReference team : user.getTeams()) {
+          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited));
+        }
       }
     }
 

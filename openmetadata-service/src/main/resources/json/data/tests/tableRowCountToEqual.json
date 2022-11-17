@@ -3,7 +3,7 @@
   "displayName": "Table Row Count To Equal",
   "description": "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
   "entityType": "TABLE",
-  "testPlatforms": ["OpenMetadata", "GreatExpectations"],
+  "testPlatforms": ["OpenMetadata"],
   "parameterDefinition": [
     {
       "name": "value",

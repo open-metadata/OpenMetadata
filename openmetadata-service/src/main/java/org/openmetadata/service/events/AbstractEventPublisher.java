@@ -50,10 +50,8 @@ public abstract class AbstractEventPublisher implements EventPublisher {
       throws Exception {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.get();
-    if (!filter.isEmpty()) {
-      if (!FilterUtil.shouldProcessRequest(changeEvent, filter)) {
-        return;
-      }
+    if (!filter.isEmpty() && !FilterUtil.shouldProcessRequest(changeEvent, filter)) {
+      return;
     }
 
     // Batch until either the batch has ended or batch size has reached the max size

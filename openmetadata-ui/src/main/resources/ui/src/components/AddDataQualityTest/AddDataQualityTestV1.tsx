@@ -41,6 +41,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
@@ -103,7 +104,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     if (isColumnFqn) {
       const colVal = [
         {
-          name: getPartialNameFromTableFQN(entityTypeFQN, [
+          name: getPartialNameFromTableFQN(getDecodedFqn(entityTypeFQN), [
             FqnPart.NestedColumn,
           ]),
           url: getTableTabPath(entityTypeFQN, 'profiler'),
@@ -128,7 +129,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
 
   const handleViewTestSuiteClick = () => {
     history.push(
-      getTestSuitePath(selectedTestSuite?.data?.fullyQualifiedName || '')
+      getTestSuitePath(
+        selectedTestSuite?.data?.fullyQualifiedName ||
+          testSuiteData?.fullyQualifiedName ||
+          ''
+      )
     );
   };
 
@@ -214,6 +219,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       return (
         <TestCaseForm
           initialValue={testCaseData}
+          table={table}
           onCancel={handleTestCaseBack}
           onSubmit={handleFormSubmit}
         />

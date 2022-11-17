@@ -33,6 +33,7 @@ import Appbar from './components/app-bar/Appbar';
 import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from './components/PermissionProvider/PermissionProvider';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
+import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { toastOptions } from './constants/toast.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
 import AppRouter from './router/AppRouter';
@@ -57,14 +58,16 @@ const App: FunctionComponent = () => {
         <Router>
           <ErrorBoundry>
             <AuthProvider childComponentType={AppRouter}>
-              <PermissionProvider>
-                <WebSocketProvider>
-                  <GlobalSearchProvider>
-                    <Appbar />
-                    <AppRouter />
-                  </GlobalSearchProvider>
-                </WebSocketProvider>
-              </PermissionProvider>
+              <WebAnalyticsProvider>
+                <PermissionProvider>
+                  <WebSocketProvider>
+                    <GlobalSearchProvider>
+                      <Appbar />
+                      <AppRouter />
+                    </GlobalSearchProvider>
+                  </WebSocketProvider>
+                </PermissionProvider>
+              </WebAnalyticsProvider>
             </AuthProvider>
           </ErrorBoundry>
         </Router>

@@ -21,6 +21,202 @@ import {
 import { MOCK_GLOSSARY } from './glossary.mock';
 import GlossaryPageV1 from './GlossaryPageV1.component';
 
+/* eslint-disable @typescript-eslint/camelcase */
+const mockSearchData = {
+  data: {
+    took: 28,
+    timed_out: false,
+    _shards: { total: 5, successful: 5, skipped: 0, failed: 0 },
+    hits: {
+      total: { value: 1, relation: 'eq' },
+      max_score: 2.1288848,
+      hits: [
+        {
+          _index: 'table_search_index',
+          _type: '_doc',
+          _id: 'c514ca18-2ea4-44b1-aa06-0c66bc0cd355',
+          _score: 2.1288848,
+          _source: {
+            id: 'c514ca18-2ea4-44b1-aa06-0c66bc0cd355',
+            name: 'raw_order',
+            fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+            description:
+              'This is a raw orders table as represented in our online DB.',
+            version: 0.8,
+            updatedAt: 1664445302349,
+            updatedBy: 'bharatdussa',
+            href: 'http://localhost:8585/api/v1/tables/c514ca18-2ea4-44b1-aa06-0c66bc0cd355',
+            tableType: 'Regular',
+            columns: [
+              {
+                dataLength: 1,
+                dataType: 'STRING',
+                name: 'comments',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_order.comments',
+                ordinalPosition: 1,
+                dataTypeDisplay: 'string',
+                tags: [
+                  {
+                    tagFQN: 'PersonalData.Personal',
+                    labelType: 'Manual',
+                    description:
+                      'Data that can be used to directly or indirectly identify a person.',
+                    source: 'Tag',
+                    state: 'Confirmed',
+                  },
+                  {
+                    tagFQN: 'PersonalData.SpecialCategory',
+                    labelType: 'Manual',
+                    description:
+                      'GDPR special category data is personal information of data subjects that is especially sensitive.',
+                    source: 'Tag',
+                    state: 'Confirmed',
+                  },
+                ],
+                customMetrics: [],
+              },
+              {
+                dataLength: 1,
+                dataType: 'STRING',
+                name: 'creditcard',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_order.creditcard',
+                ordinalPosition: 2,
+                dataTypeDisplay: 'string',
+                tags: [],
+                customMetrics: [],
+              },
+              {
+                dataLength: 1,
+                dataType: 'STRING',
+                name: 'membership',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_order.membership',
+                ordinalPosition: 4,
+                dataTypeDisplay: 'string',
+                tags: [],
+                customMetrics: [],
+              },
+              {
+                dataLength: 1,
+                dataType: 'ARRAY',
+                name: 'orders',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_order.orders',
+                ordinalPosition: 5,
+                dataTypeDisplay:
+                  'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>',
+                arrayDataType: 'STRUCT',
+                tags: [],
+                customMetrics: [],
+              },
+            ],
+            databaseSchema: {
+              deleted: false,
+              name: 'shopify',
+              description:
+                'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+              id: '85217879-eff9-4990-9f76-806a563c500b',
+              href: 'http://localhost:8585/api/v1/databaseSchemas/85217879-eff9-4990-9f76-806a563c500b',
+              type: 'databaseSchema',
+              fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+            },
+            database: {
+              deleted: false,
+              name: 'ecommerce_db',
+              description:
+                'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+              id: '0b37dd2c-b235-4243-8ea8-7485f9b7c4a3',
+              href: 'http://localhost:8585/api/v1/databases/0b37dd2c-b235-4243-8ea8-7485f9b7c4a3',
+              type: 'database',
+              fullyQualifiedName: 'sample_data.ecommerce_db',
+            },
+            service: {
+              deleted: false,
+              name: 'sample_data',
+              id: '3768e7fe-ce05-480d-9021-38baf0d0f637',
+              href: 'http://localhost:8585/api/v1/services/databaseServices/3768e7fe-ce05-480d-9021-38baf0d0f637',
+              type: 'databaseService',
+              fullyQualifiedName: 'sample_data',
+            },
+            serviceType: 'BigQuery',
+            tags: [
+              {
+                tagFQN: 'PersonalData.Personal',
+                labelType: 'Manual',
+                description:
+                  'Data that can be used to directly or indirectly identify a person.',
+                source: 'Tag',
+                state: 'Confirmed',
+              },
+            ],
+            usageSummary: {
+              dailyStats: { count: 0, percentileRank: 0.0 },
+              weeklyStats: { count: 0, percentileRank: 0.0 },
+              monthlyStats: { count: 0, percentileRank: 0.0 },
+              date: '2022-09-29',
+            },
+            followers: [],
+            tableQueries: [],
+            deleted: false,
+            tier: null,
+            suggest: [
+              {
+                input: 'sample_data.ecommerce_db.shopify.raw_order',
+                weight: 5,
+              },
+              { input: 'raw_order', weight: 10 },
+            ],
+            service_suggest: [{ input: 'sample_data', weight: 5 }],
+            column_suggest: [
+              { input: 'comments', weight: 5 },
+              { input: 'creditcard', weight: 5 },
+              { input: 'membership', weight: 5 },
+              { input: 'orders', weight: 5 },
+            ],
+            schema_suggest: [{ input: 'shopify', weight: 5 }],
+            database_suggest: [{ input: 'ecommerce_db', weight: 5 }],
+            entityType: 'table',
+            owner: {
+              deleted: false,
+              displayName: 'Bharat Dussa',
+              name: 'bharatdussa',
+              id: 'f187364d-114c-4426-b941-baf6a15f70e4',
+              href: 'http://localhost:8585/api/v1/users/f187364d-114c-4426-b941-baf6a15f70e4',
+              type: 'user',
+              fullyQualifiedName: 'bharatdussa',
+            },
+          },
+        },
+      ],
+    },
+    aggregations: {
+      'sterms#EntityType': {
+        doc_count_error_upper_bound: 0,
+        sum_other_doc_count: 0,
+        buckets: [{ key: 'table', doc_count: 1 }],
+      },
+      'sterms#Tags': {
+        doc_count_error_upper_bound: 0,
+        sum_other_doc_count: 0,
+        buckets: [
+          { key: 'PII.NonSensitive', doc_count: 1 },
+          { key: 'PII.None', doc_count: 1 },
+          { key: 'PII.Sensitive', doc_count: 1 },
+          { key: 'PersonalData.Personal', doc_count: 1 },
+          { key: 'PersonalData.SpecialCategory', doc_count: 1 },
+          { key: 'test-category.test-glossary-term-tag', doc_count: 1 },
+          { key: 'test-glossary.test-glossary-term', doc_count: 1 },
+        ],
+      },
+    },
+  },
+};
 jest.useRealTimers();
 
 jest.mock('react-router-dom', () => ({
@@ -34,6 +230,12 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
+}));
+
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  searchData: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockSearchData)),
 }));
 
 jest.mock('antd', () => ({

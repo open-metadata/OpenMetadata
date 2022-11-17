@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -34,7 +35,6 @@ import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
@@ -130,7 +130,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static Thread THREAD;
   public static Map<String, String> AUTH_HEADERS;
   public static TableResourceTest TABLE_RESOURCE_TEST;
-  public static Comparator<Reaction> REACTION_COMPARATOR =
+  public static final Comparator<Reaction> REACTION_COMPARATOR =
       (o1, o2) ->
           o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
               ? 0

@@ -14,7 +14,7 @@ ILIKE Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import case, column, func
+from sqlalchemy import case, column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.sum import SumFn

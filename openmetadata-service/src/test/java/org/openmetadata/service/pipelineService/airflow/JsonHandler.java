@@ -21,7 +21,7 @@ import org.apache.commons.io.IOUtils;
 
 class JsonHandler implements HttpHandler {
 
-  Map<String, MockResponse> pathResponses;
+  final Map<String, MockResponse> pathResponses;
 
   public JsonHandler(Map<String, MockResponse> pathResponses) {
     this.pathResponses = pathResponses;

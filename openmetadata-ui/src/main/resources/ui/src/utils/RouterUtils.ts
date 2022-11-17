@@ -11,14 +11,22 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
+import { ServiceTypes } from 'Models';
 import { ProfilerDashboardTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getServiceDetailsPath,
+  INGESTION_NAME,
   IN_PAGE_SEARCH_ROUTES,
+  LOG_ENTITY_NAME,
+  LOG_ENTITY_TYPE,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
+  PLACEHOLDER_ROUTE_ENTITY_FQN,
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -32,12 +40,16 @@ import {
   PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
-import { initialFilterQS } from '../constants/explore.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
+import { arrServiceTypes } from '../constants/services.const';
+import { EntityType } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -142,9 +154,7 @@ export const getExplorePathWithInitFilters = (
     .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
-  return filter
-    ? `${path}?${initialFilterQS}=${encodeURIComponent(filter)}`
-    : path;
+  return filter ? `${path}?${filter}` : path;
 };
 
 export const getGlossaryPath = (fqn?: string) => {
@@ -304,7 +314,7 @@ export const getProfilerDashboardWithFqnPath = (
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(entityTypeFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -349,13 +359,13 @@ export const getAddDataQualityTableTestPath = (
 
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, fqn);
+    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(fqn));
 
   return path;
 };
 
 export const getTestSuitePath = (testSuiteName: string) => {
-  let path = ROUTES.TEST_SUITES;
+  let path = ROUTES.TEST_SUITES_WITH_FQN;
   path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
 
   return path;
@@ -373,6 +383,73 @@ export const getTestSuiteIngestionPath = (
   if (ingestionFQN) {
     path = path.replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN);
   }
+
+  return path;
+};
+
+/**
+ * It takes in a log entity type, log entity name, and ingestion name, and returns a path to the logs
+ * viewer
+ * @param {string} logEntityType - The type of entity that the logs are associated with.
+ * @param {string} logEntityName - The name of the log entity.
+ * @param {string} ingestionName - The name of the ingestion.
+ * @returns A string
+ */
+export const getLogsViewerPath = (
+  logEntityType: string,
+  logEntityName: string,
+  ingestionName: string
+) => {
+  let path = ROUTES.LOGS;
+
+  path = path.replace(LOG_ENTITY_TYPE, logEntityType);
+  path = path.replace(LOG_ENTITY_NAME, logEntityName);
+  path = path.replace(INGESTION_NAME, ingestionName);
+
+  return path;
+};
+
+/**
+ * It returns a path
+ * @param {string} path - The path of the current page.
+ * @param {string | undefined} logEntityType - The type of the log entity.
+ * @returns a string.
+ */
+export const getLogEntityPath = (
+  path: string,
+  logEntityType: string | undefined
+): string => {
+  if (isUndefined(logEntityType)) return '';
+
+  const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
+
+  if (path === testSuitePath) {
+    return ROUTES.TEST_SUITES;
+  }
+
+  if (logEntityType === testSuitePath) {
+    return getTestSuitePath(path);
+  }
+
+  if (
+    !arrServiceTypes.includes(path as ServiceTypes) &&
+    path !== PipelineType.TestSuite
+  ) {
+    return getServiceDetailsPath(path, logEntityType, 'ingestions');
+  }
+
+  return getSettingPath(
+    GlobalSettingsMenuCategory.SERVICES,
+    getServiceRouteFromServiceType(logEntityType as ServiceTypes)
+  );
+};
+
+export const getLineageViewPath = (entity: EntityType, fqn: string) => {
+  let path = ROUTES.LINEAGE_FULL_SCREEN_VIEW;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
 
   return path;
 };

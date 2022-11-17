@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.types;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -63,6 +65,7 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -88,14 +91,14 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     super(Type.class, new TypeRepository(dao), authorizer);
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
     List<Type> types = JsonUtils.getTypes();
     types.forEach(
         type -> {
-          type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
+          type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
           LOG.info("Loading type {}", type.getName());
           try {
             Fields fields = getFields("customProperties");
@@ -121,10 +124,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     @SuppressWarnings("unused")
     TypeList() {
       // Empty constructor needed for deserialization
-    }
-
-    public TypeList(List<Type> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -253,9 +252,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "type Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return dao.listVersions(id);
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -284,7 +283,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -303,7 +302,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create)
       throws IOException {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, type, true);
+    return create(uriInfo, securityContext, type);
   }
 
   @PATCH
@@ -347,7 +346,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) throws IOException {
     Type type = getType(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, type, true);
+    return createOrUpdate(uriInfo, securityContext, type);
   }
 
   @DELETE
@@ -366,7 +365,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, true, true);
+    return delete(uriInfo, securityContext, id, false, true);
   }
 
   @PUT
@@ -385,10 +384,12 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public Response addOrUpdateProperty(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Valid CustomProperty property)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, false);
+    // TODO fix this is the typeID correct? Why are we not doing this by name?
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<Type> response =
         dao.addCustomProperty(uriInfo, securityContext.getUserPrincipal().getName(), id, property);
     addHref(uriInfo, response.getEntity());

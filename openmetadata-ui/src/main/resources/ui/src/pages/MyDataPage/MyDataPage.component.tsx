@@ -32,25 +32,20 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Operation as RuleOperation } from '../../generated/entity/policies/accessControl/rule';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
-import { checkPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
-  const { permissions } = usePermissionProvider();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [entityCounts, setEntityCounts] = useState<EntitiesCount>(
@@ -76,13 +71,6 @@ const MyDataPage = () => {
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
-
-  const viewUserPermission = useMemo(() => {
-    return (
-      !isEmpty(permissions) &&
-      checkPermission(RuleOperation.ViewAll, ResourceEntity.USER, permissions)
-    );
-  }, [permissions]);
 
   const fetchEntityCount = () => {
     getAllEntityCount()
@@ -270,7 +258,7 @@ const MyDataPage = () => {
         !isEmpty(AppState.userDetails)) &&
       (isNil(ownedData) || isNil(followedData))
     ) {
-      viewUserPermission && fetchMyData();
+      fetchMyData();
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 

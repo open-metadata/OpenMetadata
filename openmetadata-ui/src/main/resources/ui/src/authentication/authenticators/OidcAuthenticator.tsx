@@ -25,9 +25,10 @@ import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Loader from '../../components/Loader/Loader';
-import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import SigninPage from '../../pages/login';
 import PageNotFound from '../../pages/page-not-found';
+import localState from '../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
@@ -135,7 +136,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     onLoginFailure();
                   }}
                   onSuccess={(user) => {
-                    localStorage.setItem(oidcTokenKey, user.id_token);
+                    localState.setOidcToken(user.id_token);
                     setIsAuthenticated(true);
                     onLoginSuccess(user as OidcUser);
                   }}
@@ -156,7 +157,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     history.push(ROUTES.SIGNIN);
                   }}
                   onSuccess={(user) => {
-                    localStorage.setItem(oidcTokenKey, user.id_token);
+                    localState.setOidcToken(user.id_token);
                   }}
                 />
               </>

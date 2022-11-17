@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Looker source module"""
 
 import traceback
 from datetime import datetime
@@ -25,9 +26,8 @@ from looker_sdk.sdk.api40.models import (
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as LineageDashboard,
+    Dashboard as MetadataDashboard,
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
@@ -39,7 +39,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import InvalidSourceException
@@ -56,6 +55,10 @@ logger = ingestion_logger()
 
 
 class LookerSource(DashboardServiceSource):
+    """
+    Looker Source Class
+    """
+
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
 
@@ -197,12 +200,12 @@ class LookerSource(DashboardServiceSource):
 
         to_fqn = fqn.build(
             self.metadata,
-            entity_type=LineageDashboard,
+            entity_type=MetadataDashboard,
             service_name=self.config.serviceName,
             dashboard_name=dashboard_details.id.replace("::", "_"),
         )
         to_entity = self.metadata.get_by_name(
-            entity=LineageDashboard,
+            entity=MetadataDashboard,
             fqn=to_fqn,
         )
 
@@ -222,19 +225,9 @@ class LookerSource(DashboardServiceSource):
                     entity=Table,
                     fqn=from_fqn,
                 )
-
-                if from_entity and to_entity:
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__, type="dashboard"
-                            ),
-                        )
-                    )
-                    yield lineage
+                yield self._get_add_lineage_request(
+                    to_entity=to_entity, from_entity=from_entity
+                )
 
             except (Exception, IndexError) as err:
                 logger.debug(traceback.format_exc())
@@ -280,7 +273,7 @@ class LookerSource(DashboardServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
 
-    def yield_dashboard_usage(
+    def yield_dashboard_usage(  # pylint: disable=W0221
         self, dashboard_details: LookerDashboard
     ) -> Optional[DashboardUsage]:
         """
@@ -314,7 +307,7 @@ class LookerSource(DashboardServiceSource):
         :return: UsageRequest, if not computed
         """
 
-        dashboard: Dashboard = self.context.dashboard
+        dashboard: MetadataDashboard = self.context.dashboard
 
         try:
             current_views = dashboard_details.view_count

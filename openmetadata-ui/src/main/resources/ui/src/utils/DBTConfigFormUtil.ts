@@ -14,6 +14,7 @@
 import { isEmpty, isNil, isString } from 'lodash';
 import {
   DbtConfigCloud,
+  DbtConfigCloudReq,
   DbtConfigHttp,
   DbtConfigLocal,
   DbtGCSCreds,
@@ -40,7 +41,7 @@ import {
 } from '../components/common/DBTConfigFormBuilder/DBTFormEnum';
 import { FormValidationRulesType } from '../enums/form.enum';
 import {
-  DbtConfigSource,
+  DbtConfig,
   GCSCredentialsValues,
   SCredentials,
 } from '../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -49,13 +50,13 @@ import jsonData from '../jsons/en';
 import { isValidEmail, isValidUrl } from './CommonUtils';
 
 export const validateDbtCloudConfig = (
-  data: DbtConfigSource,
+  data: DbtConfig,
   requiredFields = reqDBTCloudFields
 ) => {
   let isValid = true;
   const errors = {} as ErrorDbtCloud;
   for (const field of Object.keys(requiredFields) as Array<
-    keyof DbtConfigCloud
+    keyof DbtConfigCloudReq
   >) {
     if (isEmpty(data[field])) {
       isValid = false;
@@ -69,7 +70,7 @@ export const validateDbtCloudConfig = (
 };
 
 export const validateDbtLocalConfig = (
-  data: DbtConfigSource,
+  data: DbtConfig,
   requiredFields = reqDBTLocalFields
 ) => {
   let isValid = true;
@@ -89,7 +90,7 @@ export const validateDbtLocalConfig = (
 };
 
 export const validateDbtHttpConfig = (
-  data: DbtConfigSource,
+  data: DbtConfig,
   requiredFields = reqDBTHttpFields
 ) => {
   let isValid = true;
@@ -248,7 +249,7 @@ export const checkDbtGCSCredsConfigRules = (
 };
 
 export const getSourceTypeFromConfig = (
-  data?: DbtConfigSource,
+  data?: DbtConfig,
   defaultSource = '' as DBT_SOURCES
 ): DbtSourceTypes => {
   let sourceType = defaultSource;

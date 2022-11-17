@@ -27,6 +27,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -54,7 +55,7 @@ def column_values_to_match_regex(
     like_count = add_props(expression=regex)(Metrics.LIKE_COUNT.value)
 
     try:
-        column_name = test_case.entityLink.__root__.split("::")[-1].replace(">", "")
+        column_name = get_decoded_column(test_case.entityLink.__root__)
         col = next(
             (col for col in inspect(runner.table).c if col.name == column_name),
             None,
@@ -69,7 +70,9 @@ def column_values_to_match_regex(
         )
         value_count_value_res = value_count_value_dict.get(Metrics.COUNT.name)
         like_count_value_dict = dict(
-            runner.dispatch_query_select_first(like_count(col).fn())
+            runner.dispatch_query_select_first(
+                like_count(col).fn()  # pylint: disable=abstract-class-instantiated
+            )
         )
         like_count_value_res = like_count_value_dict.get(Metrics.LIKE_COUNT.name)
 
@@ -91,7 +94,10 @@ def column_values_to_match_regex(
         if value_count_value_res == like_count_value_res
         else TestCaseStatus.Failed
     )
-    result = f"Found {like_count_value_res} value(s) matching regex pattern vs {value_count_value_res} value(s) in the column."
+    result = (
+        f"Found {like_count_value_res} value(s) matching regex pattern vs "
+        f"{value_count_value_res} value(s) in the column."
+    )
 
     return TestCaseResult(
         timestamp=execution_date,

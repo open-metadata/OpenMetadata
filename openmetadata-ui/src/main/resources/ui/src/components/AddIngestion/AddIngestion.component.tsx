@@ -21,6 +21,7 @@ import {
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import {
   CreateIngestionPipeline,
   LogLevels,
@@ -34,7 +35,7 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   DatabaseServiceMetadataPipelineClass,
-  DbtConfigSource,
+  DbtConfig,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   getCurrentUserId,
@@ -53,6 +54,7 @@ import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import { AddIngestionProps } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
+import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
@@ -82,6 +84,9 @@ const AddIngestion = ({
   const isDatabaseService = useMemo(() => {
     return serviceCategory === ServiceCategory.DATABASE_SERVICES;
   }, [serviceCategory]);
+  const isServiceTypeOpenMetadata = useMemo(() => {
+    return serviceData.serviceType === MetadataServiceType.OpenMetadata;
+  }, [serviceCategory]);
   const showDBTConfig = useMemo(() => {
     return isDatabaseService && pipelineType === PipelineType.Metadata;
   }, [isDatabaseService, pipelineType]);
@@ -93,6 +98,9 @@ const AddIngestion = ({
   );
   const [ingestSampleData, setIngestSampleData] = useState(
     (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
+  );
+  const [useFqnFilter, setUseFqnFilter] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.useFqnForFiltering ?? false
   );
   const [databaseServiceNames, setDatabaseServiceNames] = useState(
     (data?.sourceConfig.config as ConfigClass)?.dbServiceNames ?? []
@@ -141,12 +149,12 @@ const AddIngestion = ({
         ?.dbtConfigSource,
     [data]
   );
-  const [dbtConfigSource, setDbtConfigSource] = useState<
-    DbtConfigSource | undefined
-  >(showDBTConfig ? (configData as DbtConfigSource) : undefined);
+  const [dbtConfigSource, setDbtConfigSource] = useState<DbtConfig | undefined>(
+    showDBTConfig ? (configData as DbtConfig) : undefined
+  );
 
   const sourceTypeData = useMemo(
-    () => getSourceTypeFromConfig(configData as DbtConfigSource | undefined),
+    () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
     [configData]
   );
   const [dbtConfigSourceType, setDbtConfigSourceType] = useState<
@@ -237,6 +245,8 @@ const AddIngestion = ({
   const [resultLimit, setResultLimit] = useState<number>(
     (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 1000
   );
+  const [metadataToESConfig, SetMetadataToESConfig] = useState<ConfigClass>();
+
   const usageIngestionType = useMemo(() => {
     return (
       (data?.sourceConfig.config as ConfigClass)?.type ??
@@ -254,6 +264,10 @@ const AddIngestion = ({
       (data?.sourceConfig.config as ConfigClass)?.type ?? ConfigType.Profiler
     );
   }, [data]);
+
+  const handleMetadataToESConfig = (data: ConfigClass) => {
+    SetMetadataToESConfig(data);
+  };
 
   const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
@@ -374,6 +388,11 @@ const AddIngestion = ({
   const handleNext = () => {
     let nextStep;
     if (!showDBTConfig && activeIngestionStep === 1) {
+      nextStep = activeIngestionStep + 3;
+      if (isServiceTypeOpenMetadata) {
+        nextStep = activeIngestionStep + 2;
+      }
+    } else if (showDBTConfig && activeIngestionStep === 2) {
       nextStep = activeIngestionStep + 2;
     } else {
       nextStep = activeIngestionStep + 1;
@@ -383,7 +402,18 @@ const AddIngestion = ({
 
   const handlePrev = () => {
     let prevStep;
-    if (!showDBTConfig && activeIngestionStep === 3) {
+    if (!showDBTConfig && activeIngestionStep === 4) {
+      prevStep = activeIngestionStep - 3;
+      if (isServiceTypeOpenMetadata) {
+        prevStep = activeIngestionStep - 1;
+      }
+    } else if (
+      !showDBTConfig &&
+      isServiceTypeOpenMetadata &&
+      activeIngestionStep === 3
+    ) {
+      prevStep = activeIngestionStep - 2;
+    } else if (showDBTConfig && activeIngestionStep === 4) {
       prevStep = activeIngestionStep - 2;
     } else {
       prevStep = activeIngestionStep - 1;
@@ -420,6 +450,7 @@ const AddIngestion = ({
         };
 
         return {
+          useFqnForFiltering: useFqnFilter,
           includeViews: includeView,
           includeTags: includeTag,
           databaseFilterPattern: getFilterPatternData(
@@ -526,6 +557,15 @@ const AddIngestion = ({
           profileSample: profileSample,
           threadCount: threadCount,
         };
+      }
+      case PipelineType.ElasticSearchReindex:
+      case PipelineType.DataInsight: {
+        return metadataToESConfig
+          ? {
+              ...metadataToESConfig,
+              type: ConfigType.MetadataToElasticSearch,
+            }
+          : {};
       }
       case PipelineType.Metadata:
       default: {
@@ -652,6 +692,17 @@ const AddIngestion = ({
       </span>
     );
   };
+  const getExcludedSteps = () => {
+    const excludedSteps = [];
+    if (!showDBTConfig) {
+      excludedSteps.push(2);
+    }
+    if (!isServiceTypeOpenMetadata) {
+      excludedSteps.push(3);
+    }
+
+    return excludedSteps;
+  };
 
   return (
     <div data-testid="add-ingestion-container">
@@ -659,7 +710,7 @@ const AddIngestion = ({
 
       <IngestionStepper
         activeStep={activeIngestionStep}
-        excludeSteps={!showDBTConfig ? [2] : undefined}
+        excludeSteps={getExcludedSteps()}
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
@@ -719,8 +770,10 @@ const AddIngestion = ({
             tableFilterPattern={tableFilterPattern}
             threadCount={threadCount}
             topicFilterPattern={topicFilterPattern}
+            useFqnFilter={useFqnFilter}
             onCancel={handleCancelClick}
             onNext={handleNext}
+            onUseFqnFilterClick={() => setUseFqnFilter((pre) => !pre)}
           />
         )}
 
@@ -741,10 +794,21 @@ const AddIngestion = ({
           />
         )}
 
-        {activeIngestionStep === 3 && (
+        {activeIngestionStep === 3 && isServiceTypeOpenMetadata && (
+          <MetadataToESConfigForm
+            handleMetadataToESConfig={handleMetadataToESConfig}
+            handleNext={handleNext}
+            handlePrev={handlePrev}
+          />
+        )}
+
+        {activeIngestionStep === 4 && (
           <ScheduleInterval
             handleRepeatFrequencyChange={(value: string) =>
               setRepeatFrequency(value)
+            }
+            includePeriodOptions={
+              pipelineType === PipelineType.DataInsight ? ['day'] : undefined
             }
             repeatFrequency={repeatFrequency}
             status={saveState}
@@ -754,7 +818,7 @@ const AddIngestion = ({
           />
         )}
 
-        {activeIngestionStep > 3 && handleViewServiceClick && (
+        {activeIngestionStep > 4 && handleViewServiceClick && (
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}

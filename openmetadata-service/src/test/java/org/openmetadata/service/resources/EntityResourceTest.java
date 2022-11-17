@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -35,7 +36,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
@@ -45,8 +45,8 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -70,8 +70,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -86,18 +86,24 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -133,11 +139,13 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.resources.events.WebhookResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
@@ -162,11 +170,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
+  private final String systemEntityName; // System entity provided by the system that can't be deleted
   protected boolean supportsFollowers;
   protected boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
-  protected boolean supportsSoftDelete;
+  protected final boolean supportsSoftDelete;
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
@@ -220,6 +229,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
 
+  public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
+  public static EntityReference ATLAS_SERVICE_REFERENCE;
+
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
   public static TagLabel PII_SENSITIVE_TAG_LABEL;
@@ -265,7 +277,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static TestDefinition TEST_DEFINITION3;
   public static EntityReference TEST_DEFINITION3_REFERENCE;
+  public static DataInsightChart DI_CHART1;
+  public static EntityReference DI_CHART1_REFERENCE;
 
+  public static KpiTarget KPI_TARGET;
   public static List<Column> COLUMNS;
 
   public static Type INT_TYPE;
@@ -282,6 +297,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
       String fields) {
+    this(entityType, entityClass, entityListClass, collectionName, fields, null);
+  }
+
+  public EntityResourceTest(
+      String entityType,
+      Class<T> entityClass,
+      Class<? extends ResultList<T>> entityListClass,
+      String collectionName,
+      String fields,
+      String systemEntityName) {
     this.entityType = entityType;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
@@ -294,6 +319,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
+    this.systemEntityName = systemEntityName;
   }
 
   @BeforeAll
@@ -312,11 +338,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
+    new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions(test);
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
+    new KpiResourceTest().setupKpi(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
@@ -346,6 +374,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return createRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
   }
 
+  public final K createPutRequest(TestInfo test) {
+    return createPutRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
+  }
+
   public final K createRequest(TestInfo test, int index) {
     return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null).withOwner(null);
   }
@@ -360,7 +392,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .withOwner(reduceEntityReference(owner));
   }
 
+  public final K createPutRequest(String name, String description, String displayName, EntityReference owner) {
+    if (!supportsEmptyDescription && description == null) {
+      throw new IllegalArgumentException("Entity " + entityType + " does not support empty description");
+    }
+    return createPutRequest(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withOwner(reduceEntityReference(owner));
+  }
+
   public abstract K createRequest(String name);
+
+  public K createPutRequest(String name) {
+    return createRequest(name);
+  }
 
   // Add all possible relationships to check if the entity is missing any of them after deletion
   public T beforeDeletion(TestInfo test, T entity) throws HttpResponseException {
@@ -434,7 +480,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
 
-    String allFields = String.join(",", Entity.getAllowedFields(entityClass));
+    String allFields = getAllowedFields();
 
     // GET an entity by ID with all the field names of an entity should be successful
     getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
@@ -764,7 +810,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void post_entityWithOwner_200(TestInfo test) throws IOException {
+  void post_delete_entity_as_admin_200(TestInfo test) throws IOException {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void post_delete_entityWithOwner_200(TestInfo test) throws IOException {
     if (!supportsOwner) {
       return;
     }
@@ -773,23 +826,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     CreateTeam createTeam = teamResourceTest.createRequest(test);
     Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
 
-    // Entity with user as owner is created successfully
-    createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+    // Entity with user as owner is created successfully. Owner should be able to delete the dentity
+    T entity1 = createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+    deleteEntity(entity1.getId(), true, true, authHeaders(USER1.getName()));
+    assertEntityDeleted(entity1.getId(), true);
 
     // Entity with team as owner is created successfully
-    T entity =
+    T entity2 =
         createAndCheckEntity(
             createRequest(getEntityName(test, 2), "", "", team.getEntityReference()), ADMIN_AUTH_HEADERS);
 
-    // Delete team and ensure the entity still exists but with owner as deleted
+    // As ADMIN delete the team and ensure the entity still exists but with owner as deleted
     teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
-    entity = getEntity(entity.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
-    assertTrue(entity.getOwner().getDeleted());
+    entity2 = getEntity(entity2.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    assertTrue(entity2.getOwner().getDeleted());
+  }
+
+  @Test
+  protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
+    // Ingestion bot can create and delete all the entities except websocket and bot
+    if (List.of(Entity.WEBHOOK, Entity.BOT).contains(entityType)) {
+      return;
+    }
+    T entity = createEntity(createRequest(test), INGESTION_BOT_AUTH_HEADERS);
+    assertNotNull(entity);
+    deleteAndCheckEntity(entity, INGESTION_BOT_AUTH_HEADERS);
   }
 
   @Test
   protected void post_entity_as_non_admin_401(TestInfo test) {
-    assertResponse(() -> createEntity(createRequest(test), TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+    assertResponse(
+        () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
   }
 
   @Test
@@ -858,7 +927,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update the entity as USER_OWNER1
-    request = createRequest(getEntityName(test), "newDescription", null, USER1_REF);
+    request = createPutRequest(getEntityName(test), "newDescription", null, USER1_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "newDescription");
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
@@ -874,14 +943,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    request = createRequest(getEntityName(test), "description", "displayName", TEAM11_REF);
+    request = createPutRequest(getEntityName(test), "description", "displayName", TEAM11_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
-    request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    request = createPutRequest(getEntityName(test), "description", "displayName", USER1_REF);
     change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -889,14 +958,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
 
     // Set the owner to the existing owner. No ownership change must be recorded.
-    request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    request = createPutRequest(getEntityName(test), "description", "displayName", USER1_REF);
     change = getChangeDescription(entity.getVersion());
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
-    request = createRequest(getEntityName(test), "description", "displayName", null);
+    request = createPutRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
   }
@@ -934,7 +1003,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    // Set TEAM_OWNER1 as owner using PATCH request
+    // Set TEAM_OWNER1 as owner from no owner using PATCH request
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwner(TEAM11_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
@@ -982,7 +1051,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_ALL)));
   }
 
   @Test
@@ -995,7 +1064,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update null description with a new description
-    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, "description", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1008,7 +1077,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update empty description with a new description
-    request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1022,23 +1091,23 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // BOT user can update empty description and empty displayName
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    request = createRequest(getEntityName(test), "description", "displayName", null);
+    request = createPutRequest(getEntityName(test), "description", "displayName", null);
     if (supportsEmptyDescription) {
       fieldAdded(change, "description", "description");
     }
     fieldAdded(change, "displayName", "displayName");
-    entity = updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, MINOR_UPDATE, change);
+    entity = updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is allowed for users other than bots
-    request = createRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
+    request = createPutRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
     change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "description", "updatedDescription");
     fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is ignored for bot users
-    request = createRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
-    updateAndCheckEntity(request, OK, BOT_AUTH_HEADERS, NO_CHANGE, null);
+    request = createPutRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
+    updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -1124,7 +1193,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
 
     // Admins, Owner or a User with policy can update the entity
-    entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
@@ -1143,7 +1212,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             entity, originalJson, authHeaders(USER1.getName() + "@open-metadata.org"), MINOR_UPDATE, change);
 
     // Admin, owner (USER1) and user with DataSteward role can update description on entity owned by USER1.
-    entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
     patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
@@ -1277,7 +1346,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     String json = JsonUtils.pojoToJson(entityType);
     ChangeDescription change = getChangeDescription(entityType.getVersion());
-    fieldAdded(change, "customProperties", Arrays.asList(fieldB));
+    fieldAdded(change, "customProperties", CommonUtil.listOf(fieldB));
     entityType.getCustomProperties().add(fieldB);
     entityType = typeResourceTest.patchEntityAndCheck(entityType, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1308,42 +1377,47 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     ObjectNode jsonNode = mapper.createObjectNode();
     jsonNode.set("intA", mapper.convertValue(1, JsonNode.class));
     K create = createRequest(test).withExtension(jsonNode);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // PUT and update the entity with extension field intA to a new value
-    // TODO to do change description for stored customProperties
-    jsonNode.set("intA", mapper.convertValue(2, JsonNode.class));
+    JsonNode intAValue = mapper.convertValue(2, JsonNode.class);
+    jsonNode.set("intA", intAValue);
     create = createRequest(test).withExtension(jsonNode);
-    T entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
-    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    change = getChangeDescription(entity.getVersion());
+    fieldUpdated(change, EntityUtil.getExtensionField("intA"), mapper.convertValue(1, JsonNode.class), intAValue);
+    entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // PATCH and update the entity with extension field stringB
-    // TODO to do change description for stored customProperties
     json = JsonUtils.pojoToJson(entity);
-    jsonNode.set("stringB", mapper.convertValue("stringB", JsonNode.class));
+    JsonNode stringBValue = mapper.convertValue("stringB", JsonNode.class);
+    jsonNode.set("stringB", stringBValue);
     entity.setExtension(jsonNode);
-    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    change = getChangeDescription(entity.getVersion());
+    fieldAdded(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
 
-    // PUT and remove field intA from the entity extension - for BOT this should be ignored
+    // PUT and remove field intA from the entity extension - *** for BOT this should be ignored ***
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
     jsonNode.remove("intA");
     create = createRequest(test).withExtension(jsonNode);
-    entity = updateEntity(create, Status.OK, BOT_AUTH_HEADERS);
+    entity = updateEntity(create, Status.OK, INGESTION_BOT_AUTH_HEADERS);
     assertNotEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
 
-    // PUT and remove field intA from the the entity extension
-    // TODO to do change description for stored customProperties
-    entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    // PUT and remove field intA from the entity extension (for non-bot this should succeed)
+    change = getChangeDescription(entity.getVersion());
+    fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("intA", intAValue)));
+    entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
-    // PATCH and remove field stringB from the the entity extension
-    // TODO to do change description for stored customProperties
+    // PATCH and remove field stringB from the entity extension
     json = JsonUtils.pojoToJson(entity);
     jsonNode.remove("stringB");
     entity.setExtension(jsonNode);
-    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    change = getChangeDescription(entity.getVersion());
+    fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
 
     // Now set the entity custom property to an invalid value
@@ -1374,26 +1448,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void delete_entity_as_admin_200(TestInfo test) throws IOException {
-    K request = createRequest(getEntityName(test), "", "", null);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  protected void delete_entity_as_owner_401(TestInfo test) throws IOException {
-    if (!supportsOwner) {
-      return;
-    }
-    K request = createRequest(getEntityName(test), "", "", USER1_REF);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-
-    // Deleting as the owner user should succeed
-    deleteEntity(entity.getId(), true, true, authHeaders(USER1.getName()));
-    assertEntityDeleted(entity, true);
-  }
-
-  @Test
   protected void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
     // Deleting as non-owner and non-admin should fail
     K request = createRequest(getEntityName(test), "", "", null);
@@ -1404,9 +1458,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
-  /** Soft delete an entity and then use PUT request to restore it back */
+  /** Soft delete an entity and then use restore request to restore it back */
   @Test
-  void delete_put_entity_200(TestInfo test) throws IOException {
+  void delete_restore_entity_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
@@ -1419,7 +1473,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // Send PUT request (with no changes) to restore the entity from soft deleted state
       ChangeDescription change = getChangeDescription(version);
       fieldUpdated(change, FIELD_DELETED, true, false);
-      updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      restoreAndCheckEntity(entity, Response.Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     } else {
       assertEntityDeleted(entity, true);
     }
@@ -1498,6 +1552,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             TEAM_ONLY_POLICY_RULES.get(0).getName()));
   }
 
+  @Test
+  void delete_systemEntity() throws IOException {
+    if (systemEntityName == null) {
+      return;
+    }
+    T systemEntity = getEntityByName(systemEntityName, "", ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> deleteEntity(systemEntity.getId(), true, true, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(systemEntity.getName(), entityType));
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1511,6 +1577,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected final WebTarget getResourceByName(String name) {
     return getCollection().path("/name/" + name);
+  }
+
+  protected final WebTarget getRestoreResource(UUID id) {
+    return getCollection().path("/restore");
   }
 
   protected final WebTarget getFollowersCollection(UUID id) {
@@ -1622,6 +1692,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
+  public final T restoreEntity(RestoreEntity restore, Status status, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getRestoreResource(restore.getId());
+    return TestUtils.put(target, restore, entityClass, status, authHeaders);
+  }
+
   /** Helper function to create an entity, submit POST API request and validate response. */
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
@@ -1667,6 +1743,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateUpdatedEntity(getEntity, request, authHeaders, updateType);
     validateChangeDescription(getEntity, updateType, changeDescription);
 
+    // Check if the entity change events are record
+    if (updateType != NO_CHANGE) {
+      EventType expectedEventType =
+          updateType == UpdateType.CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      validateChangeEvents(updated, updated.getUpdatedAt(), expectedEventType, changeDescription, authHeaders);
+    }
+    return updated;
+  }
+
+  protected final T restoreAndCheckEntity(
+      T entity,
+      Status status,
+      Map<String, String> authHeaders,
+      UpdateType updateType,
+      ChangeDescription changeDescription)
+      throws IOException {
+    T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), status, authHeaders);
+    validateLatestVersion(updated, updateType, changeDescription, authHeaders);
+    // GET the newly updated entity and validate
+    T getEntity = getEntity(updated.getId(), authHeaders);
+    validateChangeDescription(getEntity, updateType, changeDescription);
     // Check if the entity change events are record
     if (updateType != NO_CHANGE) {
       EventType expectedEventType =
@@ -1824,6 +1921,30 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateChangeEvents(entityInterface, timestamp, expectedEventType, expectedChangeDescription, authHeaders, false);
   }
 
+  public static class EventHolder {
+    @Getter ChangeEvent expectedEvent;
+
+    public boolean hasExpectedEvent(ResultList<ChangeEvent> changeEvents, long timestamp) {
+      for (ChangeEvent event : listOrEmpty(changeEvents.getData())) {
+        if (event.getTimestamp() == timestamp) {
+          expectedEvent = event;
+          break;
+        }
+      }
+      return expectedEvent != null;
+    }
+
+    public boolean hasDeletedEvent(ResultList<ChangeEvent> changeEvents, UUID id) {
+      for (ChangeEvent event : changeEvents.getData()) {
+        if (event.getEntityId().equals(id)) {
+          expectedEvent = event;
+          break;
+        }
+      }
+      return expectedEvent != null;
+    }
+  }
+
   private void validateChangeEvents(
       T entity,
       long timestamp,
@@ -1832,39 +1953,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       Map<String, String> authHeaders,
       boolean withEventFilter)
       throws IOException {
-    ResultList<ChangeEvent> changeEvents;
-    ChangeEvent changeEvent = null;
+    // Get change event with an event filter for specific entity type if withEventFilter is True. Else get all entities.
+    String createdFilter = withEventFilter ? entityType : "*";
+    String updatedFilter = withEventFilter ? entityType : "*";
+    EventHolder eventHolder = new EventHolder();
 
-    int iteration = 0;
-    while (changeEvent == null && iteration < 25) {
-      iteration++;
-      // Sometimes change event is not returned on quickly querying with a millisecond
-      // Try multiple times before giving up
-      if (withEventFilter) {
-        // Get change event with an event filter for specific entity type
-        changeEvents = getChangeEvents(entityType, entityType, null, timestamp, authHeaders);
-      } else {
-        // Get change event with no event filter for entity types
-        changeEvents = getChangeEvents("*", "*", null, timestamp, authHeaders);
-      }
-
-      if (changeEvents == null || changeEvents.getData().size() == 0) {
-        try {
-          Thread.sleep(iteration * 10L); // Sleep with backoff
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        continue;
-      }
-
-      for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getTimestamp() == timestamp) {
-          changeEvent = event;
-          break;
-        }
-      }
-    }
-
+    Awaitility.await("Wait for expected change event at timestamp " + timestamp)
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .until(
+            () ->
+                eventHolder.hasExpectedEvent(
+                    getChangeEvents(createdFilter, updatedFilter, null, timestamp, authHeaders), timestamp));
+    ChangeEvent changeEvent = eventHolder.getExpectedEvent();
     assertNotNull(
         changeEvent,
         "Expected change event "
@@ -1898,32 +1999,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   private void validateDeletedEvent(
-      UUID id, long timestamp, EventType expectedEventType, Double expectedVersion, Map<String, String> authHeaders)
-      throws IOException {
+      UUID id, long timestamp, EventType expectedEventType, Double expectedVersion, Map<String, String> authHeaders) {
     String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
-    ResultList<ChangeEvent> changeEvents;
-    ChangeEvent changeEvent = null;
+    EventHolder eventHolder = new EventHolder();
 
-    int iteration = 0;
-    while (changeEvent == null && iteration < 25) {
-      iteration++;
-      changeEvents = getChangeEvents(null, null, entityType, timestamp, authHeaders);
-
-      if (changeEvents == null || changeEvents.getData().size() == 0) {
-        try {
-          Thread.sleep(iteration * 10L); // Sleep with backoff
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        continue;
-      }
-      for (ChangeEvent event : changeEvents.getData()) {
-        if (event.getEntityId().equals(id)) {
-          changeEvent = event;
-          break;
-        }
-      }
-    }
+    Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
+        .pollInterval(Duration.ofMillis(100L))
+        .atMost(Duration.ofMillis(10 * 100L)) // 10 iterations
+        .until(() -> eventHolder.hasDeletedEvent(getChangeEvents(null, null, entityType, timestamp, authHeaders), id));
+    ChangeEvent changeEvent = eventHolder.getExpectedEvent();
 
     assertNotNull(changeEvent, "Deleted event after " + timestamp + " was not found for entity " + id);
     assertEquals(expectedEventType, changeEvent.getEventType());
@@ -1982,6 +2066,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<TagLabel> expectedTags = (List<TagLabel>) expected;
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
       assertTrue(actualTags.containsAll(expectedTags));
+      actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
+    } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
+      assertEquals(expected.toString(), actual.toString());
     } else {
       // All the other fields
       assertEquals(expected, actual, "Field name " + fieldName);
@@ -2209,5 +2296,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference reduceEntityReference(EntityReference ref) {
     // In requests send minimum entity reference information to ensure the server fills rest of the details
     return ref != null ? new EntityReference().withType(ref.getType()).withId(ref.getId()) : null;
+  }
+
+  protected String getAllowedFields() {
+    return String.join(",", Entity.getAllowedFields(entityClass));
   }
 }

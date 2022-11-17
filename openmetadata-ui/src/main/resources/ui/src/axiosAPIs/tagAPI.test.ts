@@ -31,7 +31,7 @@ jest.mock('../utils/APIUtils', () => ({
     ),
 }));
 
-jest.mock('./index.js', () => ({
+jest.mock('./index', () => ({
   get: jest.fn().mockImplementation((url) => `get_request${url}`),
   delete: jest.fn().mockImplementation((url) => `delete_request${url}`),
   post: jest

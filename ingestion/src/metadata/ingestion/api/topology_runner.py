@@ -102,9 +102,27 @@ class TopologyRunnerMixin(Generic[C]):
             if node.post_process:
                 logger.debug(f"Post processing node {node}")
                 for process in node.post_process:
-                    node_post_process = getattr(self, process)
-                    for entity_request in node_post_process():
-                        yield entity_request
+                    try:
+                        yield from self.check_context_and_handle(process)
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Could not run Post Process `{process}` from Topology Runner -- {exc}"
+                        )
+
+    def check_context_and_handle(self, post_process: str):
+        """Based on the post_process step, check context and
+        evaluate if we can run it based on available class attributes
+
+        Args:
+            post_process: the name of the post_process step
+        """
+        if post_process == "mark_tables_as_deleted" and not self.context.database:
+            raise ValueError("No Database found in  `self.context`")
+
+        node_post_process = getattr(self, post_process)
+        for entity_request in node_post_process():
+            yield entity_request
 
     def next_record(self) -> Iterable[Entity]:
         """
@@ -149,7 +167,9 @@ class TopologyRunnerMixin(Generic[C]):
             self.context.__dict__[dependency].name.__root__
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
-        return fqn._build(*context_names, entity_request.name.__root__)
+        return fqn._build(  # pylint: disable=protected-access
+            *context_names, entity_request.name.__root__
+        )
 
     def sink_request(self, stage: NodeStage, entity_request: C) -> Iterable[Entity]:
         """
@@ -178,7 +198,7 @@ class TopologyRunnerMixin(Generic[C]):
                 )
 
                 # we get entity from OM if we do not want to overwrite existing data in OM
-                if not stage.overwrite:
+                if not stage.overwrite and not self._is_force_overwrite_enabled():
                     entity = self.metadata.get_by_name(
                         entity=stage.type_,
                         fqn=entity_fqn,
@@ -214,3 +234,6 @@ class TopologyRunnerMixin(Generic[C]):
             if stage.context and stage.cache_all:
                 self.append_context(key=stage.context, value=entity)
             logger.debug(self.context)
+
+    def _is_force_overwrite_enabled(self) -> bool:
+        return self.metadata.config and self.metadata.config.forceEntityOverwriting

@@ -101,6 +101,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleDatasetServiceName: jest.fn(),
   threadCount: 5,
   handleThreadCount: jest.fn(),
+  useFqnFilter: false,
+  onUseFqnFilterClick: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {
@@ -129,6 +131,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(3);
-    expect(toggleSwitchs.length).toBe(4);
+    expect(toggleSwitchs.length).toBe(5);
   });
 });

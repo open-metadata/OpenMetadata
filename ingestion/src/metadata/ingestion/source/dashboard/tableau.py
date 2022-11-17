@@ -11,15 +11,12 @@
 """
 Tableau source module
 """
+import json
 import traceback
 from typing import Iterable, List, Optional
 
 from requests.utils import urlparse
-from tableau_api_lib.utils.querying import (
-    get_views_dataframe,
-    get_workbook_connections_dataframe,
-    get_workbooks_dataframe,
-)
+from tableau_api_lib.utils.querying import get_views_dataframe, get_workbooks_dataframe
 from tableau_api_lib.utils.querying.users import get_all_user_fields
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -29,7 +26,6 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -44,7 +40,6 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
@@ -58,8 +53,32 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 TABLEAU_TAG_CATEGORY = "TableauTags"
 
+TABLEAU_LINEAGE_GRAPHQL_QUERY = """
+{
+  workbooks {
+    id
+    luid
+    name
+    upstreamTables{
+      name
+      schema
+      upstreamDatabases{
+        name
+      }
+      referencedByQueries{
+        name
+        query
+      }
+    }
+  }
+}
+"""
+
 
 class TableauSource(DashboardServiceSource):
+    """
+    Tableau Source Class
+    """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
@@ -75,26 +94,27 @@ class TableauSource(DashboardServiceSource):
         self.workbooks = {}
         self.tags = []
         self.owner = {}
+        self.workboook_datasources = {}
 
     def prepare(self):
         # Restructuring the api response for workbooks
         workbook_details = get_workbooks_dataframe(self.client).to_dict()
-        for i in range(len(workbook_details.get("id"))):
+        for index in range(len(workbook_details.get("id"))):
             workbook = {
-                key: workbook_details[key][i] for key in workbook_details.keys()
+                key: workbook_details[key][index] for key in workbook_details.keys()
             }
             workbook["charts"] = []
-            self.workbooks[workbook_details["id"][i]] = workbook
+            self.workbooks[workbook_details["id"][index]] = workbook
 
         # Restructuring the api response for views and attaching views to their respective workbooks
         all_views_details = get_views_dataframe(self.client).to_dict()
-        for i in range(len(all_views_details.get("id"))):
+        for index in range(len(all_views_details.get("id"))):
             chart = {
-                key: all_views_details[key][i]
+                key: all_views_details[key][index]
                 for key in all_views_details.keys()
                 if key != "workbook"
             }
-            self.workbooks[all_views_details["workbook"][i]["id"]]["charts"].append(
+            self.workbooks[all_views_details["workbook"][index]["id"]]["charts"].append(
                 chart
             )
 
@@ -108,6 +128,14 @@ class TableauSource(DashboardServiceSource):
         # Fetch User/Owner Details
         owner = get_all_user_fields(self.client)
         self.owner = {user["id"]: user for user in owner}
+
+        # Fetch Datasource information for lineage
+        graphql_query_result = self.client.metadata_graphql_query(
+            query=TABLEAU_LINEAGE_GRAPHQL_QUERY
+        )
+        self.workboook_datasources = json.loads(graphql_query_result.text)["data"].get(
+            "workbooks"
+        )
 
         return super().prepare()
 
@@ -139,9 +167,7 @@ class TableauSource(DashboardServiceSource):
         """
         return dashboard
 
-    def yield_owner(
-        self, dashboard_details: dict
-    ) -> Optional[Iterable[CreateUserRequest]]:
+    def get_owner_details(self, dashboard_details: dict) -> EntityReference:
         """Get dashboard owner
 
         Args:
@@ -150,13 +176,12 @@ class TableauSource(DashboardServiceSource):
             Optional[EntityReference]
         """
         owner = self.owner[dashboard_details["owner"]["id"]]
-        name = owner.get("name")
-        displayName = owner.get("fullName")
-        email = owner.get("email")
-        if name and email:
-            yield CreateUserRequest(name=name, displayName=displayName, email=email)
+        user = self.metadata.get_user_by_email(owner.get("email"))
+        if user:
+            return EntityReference(id=user.id.__root__, type="user")
+        return None
 
-    def yield_tag(self, _) -> OMetaTagAndCategory:
+    def yield_tag(self, _) -> OMetaTagAndCategory:  # pylint: disable=arguments-differ
         """
         Fetch Dashboard Tags
         """
@@ -165,7 +190,6 @@ class TableauSource(DashboardServiceSource):
                 category_name=CreateTagCategoryRequest(
                     name=TABLEAU_TAG_CATEGORY,
                     description="Tags associates with tableau entities",
-                    categoryType="Descriptive",
                 ),
                 category_details=CreateTagRequest(name=tag, description="Tableau Tag"),
             )
@@ -198,20 +222,18 @@ class TableauSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        dashboard_tag = dashboard_details.get("tags")
         workbook_url = urlparse(dashboard_details.get("webpageUrl")).fragment
-        dashboard_url = f"#{workbook_url}"
         yield CreateDashboardRequest(
             name=dashboard_details.get("id"),
             displayName=dashboard_details.get("name"),
             description="",
-            owner=self.context.owner,
+            owner=self.get_owner_details(dashboard_details),
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts
             ],
-            tags=self.get_tag_lables(dashboard_tag),
-            dashboardUrl=dashboard_url,
+            tags=self.get_tag_lables(dashboard_details.get("tags")),
+            dashboardUrl=f"#{workbook_url}",
             service=EntityReference(
                 id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
@@ -223,60 +245,53 @@ class TableauSource(DashboardServiceSource):
         """
         Get lineage between dashboard and data sources
         """
-        datasource_list = (
-            get_workbook_connections_dataframe(self.client, dashboard_details.get("id"))
-            .get("datasource_name")
-            .tolist()
-        )
-        dashboard_name = dashboard_details.get("name")
 
+        dashboard_id = dashboard_details.get("id")
+        data_source = next(
+            (
+                data_source
+                for data_source in self.workboook_datasources
+                if data_source.get("luid") == dashboard_id
+            ),
+            None,
+        )
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
             service_name=self.config.serviceName,
-            dashboard_name=dashboard_name,
+            dashboard_name=dashboard_id,
         )
         to_entity = self.metadata.get_by_name(
             entity=LineageDashboard,
             fqn=to_fqn,
         )
 
-        for datasource in datasource_list:
-            try:
-                schema_and_table_name = (
-                    datasource.split("(")[1].split(")")[0].split(".")
-                )
-                schema_name = schema_and_table_name[0]
-                table_name = schema_and_table_name[1]
+        try:
+            upstream_tables = data_source.get("upstreamTables")
+            for upstream_table in upstream_tables:
+                database_schema_table = fqn.split_table_name(upstream_table.get("name"))
                 from_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
                     service_name=db_service_name,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    database_name=None,
+                    schema_name=database_schema_table.get(
+                        "database_schema", upstream_table.get("schema")
+                    ),
+                    table_name=database_schema_table.get("table"),
+                    database_name=database_schema_table.get("database"),
                 )
                 from_entity = self.metadata.get_by_name(
                     entity=Table,
                     fqn=from_fqn,
                 )
-                if from_entity and to_entity:
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__, type="dashboard"
-                            ),
-                        )
-                    )
-                    yield lineage
-            except (Exception, IndexError) as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
+                yield self._get_add_lineage_request(
+                    to_entity=to_entity, from_entity=from_entity
                 )
+        except (Exception, IndexError) as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
+            )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict

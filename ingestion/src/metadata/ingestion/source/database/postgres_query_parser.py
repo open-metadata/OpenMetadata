@@ -14,7 +14,7 @@ Postgres Query parser module
 import csv
 import traceback
 from abc import ABC
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Iterable, Optional
 
 from sqlalchemy.engine.base import Engine
@@ -32,7 +32,6 @@ from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -64,13 +63,12 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata_config)
 
-    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+    def get_sql_statement(self, *_) -> str:
         """
-        returns sql statement to fetch query logs
+        returns sql statement to fetch query logs.
+        We don't use any start or end times as they are not available
         """
         return self.sql_stmt.format(
-            start_time=start_time,
-            end_time=end_time,
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.filters,
         )
@@ -81,11 +79,13 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             if self.config.sourceConfig.config.queryLogFilePath:
                 table_query_list = []
                 with open(
-                    self.config.sourceConfig.config.queryLogFilePath, "r"
+                    self.config.sourceConfig.config.queryLogFilePath,
+                    "r",
+                    encoding="utf-8",
                 ) as query_log_file:
 
-                    for i in csv.DictReader(query_log_file):
-                        query_dict = dict(i)
+                    for record in csv.DictReader(query_log_file):
+                        query_dict = dict(record)
 
                         analysis_date = (
                             datetime.utcnow()
@@ -135,65 +135,38 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             logger.debug(traceback.format_exc())
 
     def process_table_query(self) -> Optional[Iterable[TableQuery]]:
-        daydiff = self.end - self.start
-        for i in range(daydiff.days):
-            logger.info(
-                f"Scanning query logs for {(self.start + timedelta(days=i)).date()} - "
-                f"{(self.start + timedelta(days=i+1)).date()}"
-            )
-            try:
-                with get_connection(self.connection).connect() as conn:
-                    rows = conn.execute(
-                        self.get_sql_statement(
-                            start_time=self.start + timedelta(days=i),
-                            end_time=self.start + timedelta(days=i + 2),
+        """
+        Process Query
+        """
+        try:
+            with get_connection(self.connection).connect() as conn:
+                rows = conn.execute(self.get_sql_statement())
+                queries = []
+                for row in rows:
+                    row = dict(row)
+                    try:
+                        queries.append(
+                            TableQuery(
+                                query=row["query_text"],
+                                userName=row["usename"],
+                                analysisDate=datetime.now(),
+                                aborted=self.get_aborted_status(row),
+                                databaseName=self.get_database_name(row),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(row),
+                            )
                         )
-                    )
-                    queries = []
-                    for row in rows:
-                        row = dict(row)
-                        try:
-                            if filter_by_database(
-                                self.source_config.databaseFilterPattern,
-                                self.get_database_name(row),
-                            ) or filter_by_schema(
-                                self.source_config.schemaFilterPattern,
-                                schema_name=row.get("schema_name"),
-                            ):
-                                continue
+                    except Exception as err:
+                        logger.debug(traceback.format_exc())
+                        logger.error(str(err))
+            yield TableQueries(queries=queries)
+        except Exception as err:
+            logger.error(f"Source usage processing error - {err}")
+            logger.debug(traceback.format_exc())
 
-                            end_time = row["start_time"] + timedelta(
-                                milliseconds=row["total_exec_time"]
-                            )
-                            date_time = end_time.strftime("%m/%d/%Y, %H:%M:%S")
-                            queries.append(
-                                TableQuery(
-                                    query=row["query_text"],
-                                    userName=row["usename"],
-                                    startTime=str(row["start_time"]),
-                                    endTime=date_time,
-                                    analysisDate=row["start_time"],
-                                    aborted=self.get_aborted_status(row),
-                                    databaseName=self.get_database_name(row),
-                                    serviceName=self.config.serviceName,
-                                    databaseSchema=self.get_schema_name(row),
-                                )
-                            )
-                        except Exception as err:
-                            logger.debug(traceback.format_exc())
-                            logger.error(str(err))
-                yield TableQueries(queries=queries)
-            except Exception as err:
-                logger.error(f"Source usage processing error - {err}")
-                logger.debug(traceback.format_exc())
-
-    def get_database_name(self, data: dict) -> str:
+    @staticmethod
+    def get_database_name(data: dict) -> str:
         """
         Method to get database name
         """
-        key = "datname"
-        if self.config.sourceConfig.config.queryLogFilePath:
-            key = "database_name"
-        if not data[key] and self.connection.database:
-            return self.connection.database
-        return data[key]
+        return data.get("database_name")

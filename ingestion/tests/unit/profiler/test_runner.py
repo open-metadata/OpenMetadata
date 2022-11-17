@@ -18,7 +18,7 @@ from unittest import TestCase
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import DeclarativeMeta, declarative_base
+from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler

@@ -21,6 +21,7 @@ export const useAuth = (pathname = '') => {
   const isAuthenticatedRoute =
     pathname !== ROUTES.SIGNUP &&
     pathname !== ROUTES.SIGNIN &&
+    pathname !== ROUTES.FORGOT_PASSWORD &&
     pathname !== ROUTES.CALLBACK &&
     pathname !== ROUTES.SILENT_CALLBACK;
   const isTourRoute = pathname === ROUTES.TOUR;

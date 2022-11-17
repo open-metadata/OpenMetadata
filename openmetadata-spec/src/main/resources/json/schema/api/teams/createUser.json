@@ -6,7 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.teams.CreateUser",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
-
   "properties": {
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"
@@ -30,6 +29,10 @@
     "isBot": {
       "description": "When true indicates user is a bot with appropriate privileges",
       "type": "boolean"
+    },
+    "botName": {
+      "description": "User bot name if we want to associate this bot with an specific bot",
+      "type": "string"
     },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges",
@@ -55,6 +58,25 @@
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
+    },
+    "authenticationMechanism": {
+      "description": "Authentication mechanism specified ",
+      "$ref": "../../entity/teams/user.json#/definitions/authenticationMechanism",
+      "default": null
+    },
+    "createPasswordType": {
+      "description": "User Password Method",
+      "type": "string",
+      "enum": ["ADMIN_CREATE", "USER_CREATE"],
+      "default": "USER_CREATE"
+    },
+    "password": {
+      "description": "Password for User",
+      "type": "string"
+    },
+    "confirmPassword": {
+      "description": "Confirm Password for User",
+      "type": "string"
     }
   },
   "required": ["name", "email"],

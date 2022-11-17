@@ -28,7 +28,7 @@ module.exports = {
   mode: 'production',
 
   // Input configuration
-  entry: ['@babel/polyfill', path.join(__dirname, 'src/index.js')],
+  entry: ['@babel/polyfill', path.join(__dirname, 'src/index.tsx')],
 
   // Output configuration
   output: {
@@ -89,11 +89,13 @@ module.exports = {
         include: [
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/tailwindcss'),
+          path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/react-tippy'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/rc-tree'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
+          path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
@@ -171,6 +173,7 @@ module.exports = {
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
+      url: require.resolve('url/'),
     },
   },
 

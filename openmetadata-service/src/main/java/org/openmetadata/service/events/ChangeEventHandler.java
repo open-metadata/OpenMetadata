@@ -17,12 +17,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.Entity.USER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,27 +32,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.Post;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.filter.FilterRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.NotificationHandler;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -64,11 +54,13 @@ public class ChangeEventHandler implements EventHandler {
   private CollectionDAO dao;
   private FeedRepository feedDao;
   private ObjectMapper mapper;
+  private NotificationHandler notificationHandler;
 
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
     this.mapper = new ObjectMapper();
+    this.notificationHandler = new NotificationHandler(jdbi.onDemand(CollectionDAO.class));
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -76,7 +68,7 @@ public class ChangeEventHandler implements EventHandler {
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
-      handleWebSocket(responseContext);
+      notificationHandler.processNotifications(responseContext);
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent == null) {
         return null;
@@ -102,9 +94,9 @@ public class ChangeEventHandler implements EventHandler {
         boolean filterEnabled;
         filterEnabled = FilterUtil.shouldProcessRequest(changeEvent, FilterRegistry.getAllFilters());
         if (filterEnabled) {
-          for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
+          for (Thread thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message
-            if (!thread.getMessage().isEmpty()) {
+            if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
               EntityInterface entity;
               // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
               if (responseContext.getEntity() instanceof ChangeEvent) {
@@ -134,75 +126,6 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private void handleWebSocket(ContainerResponseContext responseContext) {
-    int responseCode = responseContext.getStatus();
-    if (responseCode == Status.CREATED.getStatusCode()
-        && responseContext.getEntity() != null
-        && responseContext.getEntity().getClass().equals(Thread.class)) {
-      Thread thread = (Thread) responseContext.getEntity();
-      try {
-        String jsonThread = mapper.writeValueAsString(thread);
-        switch (thread.getType()) {
-          case Task:
-            if (thread.getPostsCount() == 0) {
-              List<EntityReference> assignees = thread.getTask().getAssignees();
-              assignees.forEach(
-                  e -> {
-                    if (Entity.USER.equals(e.getType())) {
-                      WebSocketManager.getInstance()
-                          .sendToOne(e.getId(), WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
-                    } else if (Entity.TEAM.equals(e.getType())) {
-                      // fetch all that are there in the team
-                      List<EntityRelationshipRecord> records =
-                          dao.relationshipDAO()
-                              .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-                      WebSocketManager.getInstance()
-                          .sendToManyWithString(records, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
-                    }
-                  });
-            }
-            break;
-          case Conversation:
-            WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
-            List<EntityLink> mentions;
-            if (thread.getPostsCount() == 0) {
-              mentions = MessageParser.getEntityLinks(thread.getMessage());
-            } else {
-              Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-              mentions = MessageParser.getEntityLinks(latestPost.getMessage());
-            }
-            mentions.forEach(
-                entityLink -> {
-                  String fqn = entityLink.getEntityFQN();
-                  if (USER.equals(entityLink.getEntityType())) {
-                    User user = dao.userDAO().findEntityByName(fqn);
-                    WebSocketManager.getInstance()
-                        .sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
-                  } else if (TEAM.equals(entityLink.getEntityType())) {
-                    Team team = dao.teamDAO().findEntityByName(fqn);
-                    // fetch all that are there in the team
-                    List<EntityRelationshipRecord> records =
-                        dao.relationshipDAO().findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);
-                    WebSocketManager.getInstance()
-                        .sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
-                  }
-                });
-            break;
-          case Announcement:
-            AnnouncementDetails announcementDetails = thread.getAnnouncement();
-            Long currentTimestamp = Instant.now().getEpochSecond();
-            if (announcementDetails.getStartTime() <= currentTimestamp
-                && currentTimestamp <= announcementDetails.getEndTime()) {
-              WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonThread);
-            }
-            break;
-        }
-      } catch (JsonProcessingException e) {
-        throw new RuntimeException(e);
-      }
-    }
-  }
-
   public ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
     // GET operations don't produce change events
     if (method.equals("GET")) {
@@ -220,7 +143,7 @@ public class ChangeEventHandler implements EventHandler {
     if (responseCode == Status.CREATED.getStatusCode()
         && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
         && !responseContext.getEntity().getClass().equals(Thread.class)) {
-      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -237,7 +160,7 @@ public class ChangeEventHandler implements EventHandler {
     // Entity was updated by either PUT .../entities or PATCH .../entities
     // Entity was soft deleted by DELETE .../entities/{id} that updated the attribute `deleted` to true
     if (changeType.equals(RestUtil.ENTITY_UPDATED) || changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
-      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -261,7 +184,7 @@ public class ChangeEventHandler implements EventHandler {
 
     // Entity was hard deleted by DELETE .../entities/{id}
     if (changeType.equals(RestUtil.ENTITY_DELETED)) {
-      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
@@ -314,7 +237,7 @@ public class ChangeEventHandler implements EventHandler {
       return Collections.emptyList(); // Cannot create a thread without entity
     }
 
-    var entityInterface = (EntityInterface) entity;
+    EntityInterface entityInterface = (EntityInterface) entity;
     if (RestUtil.ENTITY_DELETED.equals(changeType)) {
       String entityType = Entity.getEntityTypeFromClass(entity.getClass());
       // In this case, the entity itself got deleted
@@ -348,7 +271,7 @@ public class ChangeEventHandler implements EventHandler {
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, entity);
 
     // Create an automated thread
-    for (var link : messages.keySet()) {
+    for (EntityLink link : messages.keySet()) {
       threads.add(getThread(link.getLinkString(), messages.get(link), loggedInUserName));
     }
 

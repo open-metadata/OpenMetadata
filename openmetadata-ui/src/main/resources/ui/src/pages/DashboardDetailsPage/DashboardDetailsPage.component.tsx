@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import {
   EntityFieldThreadCount,
   EntityTags,
@@ -223,7 +223,10 @@ const DashboardDetailsPage = () => {
   };
 
   const saveUpdatedDashboardData = (updatedData: Dashboard) => {
-    const jsonPatch = compare(dashboardDetails, updatedData);
+    const jsonPatch = compare(
+      omitBy(dashboardDetails, isUndefined),
+      updatedData
+    );
 
     return patchDashboardDetails(dashboardId, jsonPatch);
   };
@@ -552,7 +555,7 @@ const DashboardDetailsPage = () => {
       saveUpdatedDashboardData(updatedDashboard)
         .then((res) => {
           if (res) {
-            setDashboardDetails(res);
+            setDashboardDetails({ ...res, tags: res.tags ?? [] });
             setCurrentVersion(res.version + '');
             setOwner(res.owner);
             setTier(getTierTags(res.tags ?? []));
@@ -753,7 +756,7 @@ const DashboardDetailsPage = () => {
   }, [activeTab]);
 
   useEffect(() => {
-    if (dashboardPermissions.ViewAll) {
+    if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
       setEntityLineage({} as EntityLineage);
       getEntityFeedCount();
@@ -781,7 +784,7 @@ const DashboardDetailsPage = () => {
         </ErrorPlaceHolder>
       ) : (
         <>
-          {dashboardPermissions.ViewAll ? (
+          {dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic ? (
             <DashboardDetails
               activeTab={activeTab}
               addLineageHandler={addLineageHandler}

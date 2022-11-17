@@ -20,7 +20,7 @@ import {
   validateMessages,
 } from '../../../utils/AnnouncementsUtils';
 import {
-  getLocaleDate,
+  getLocaleDateFromTimeStamp,
   getTimeZone,
   getUTCDateTime,
 } from '../../../utils/TimeUtils';
@@ -45,10 +45,10 @@ const EditAnnouncementModal: FC<Props> = ({
 }) => {
   const [title, setTitle] = useState<string>(announcementTitle);
   const [startDate, setStartDate] = useState<string>(
-    getLocaleDate(announcement.startTime * 1000)
+    getLocaleDateFromTimeStamp(announcement.startTime * 1000)
   );
   const [endDate, setEndDate] = useState<string>(
-    getLocaleDate(announcement.endTime * 1000)
+    getLocaleDateFromTimeStamp(announcement.endTime * 1000)
   );
   const [description, setDescription] = useState<string>(
     announcement.description || ''
@@ -75,6 +75,7 @@ const EditAnnouncementModal: FC<Props> = ({
     <Modal
       centered
       className="announcement-modal"
+      closable={false}
       data-testid="edit-announcement"
       okButtonProps={{
         form: 'announcement-form',
@@ -95,6 +96,7 @@ const EditAnnouncementModal: FC<Props> = ({
         onFinish={handleConfirm}>
         <Form.Item
           label="Title:"
+          messageVariables={{ fieldName: 'title' }}
           name="title"
           rules={[
             {
@@ -113,6 +115,7 @@ const EditAnnouncementModal: FC<Props> = ({
         <Space className="announcement-date-space" size={16}>
           <Form.Item
             label={`Start Date: (${getTimeZone()})`}
+            messageVariables={{ fieldName: 'startDate' }}
             name="startDate"
             rules={[
               {
@@ -127,6 +130,7 @@ const EditAnnouncementModal: FC<Props> = ({
           </Form.Item>
           <Form.Item
             label={`End Date: (${getTimeZone()})`}
+            messageVariables={{ fieldName: 'endDate' }}
             name="endDate"
             rules={[
               {

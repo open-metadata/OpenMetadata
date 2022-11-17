@@ -176,10 +176,12 @@ const WebhookTable: FC<Props> = ({ onEdit, webhookList, onDelete }) => {
 
   return (
     <Table
+      bordered
       columns={columns}
       data-testid="webhook-list-table"
       dataSource={webhookList}
       pagination={false}
+      rowKey="id"
       size="middle"
     />
   );

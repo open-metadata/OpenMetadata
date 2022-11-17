@@ -18,7 +18,6 @@ import static org.openmetadata.service.Entity.TEAM;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +30,6 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.teams.authn.JWTAuthMechanism;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -39,6 +37,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -47,7 +47,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
   static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams,isEmailVerified";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
   private final EntityReference organization;
 
   public UserRepository(CollectionDAO dao) {
@@ -62,16 +62,18 @@ public class UserRepository extends EntityRepository<User> {
     organization = dao.teamDAO().findEntityReferenceByName(Entity.ORGANIZATION_NAME, Include.ALL);
   }
 
-  @Override
-  public EntityReference getOriginalOwner(User entity) {
-    // For User entity, the entity and the owner are the same
-    return entity.getEntityReference();
+  public final Fields getFieldsWithUserAuth(String fields) {
+    List<String> tempFields = getAllowedFieldsCopy();
+    if (fields != null && fields.equals("*")) {
+      tempFields.add("authenticationMechanism");
+      return new Fields(tempFields, String.join(",", tempFields));
+    }
+    return new Fields(tempFields, fields);
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user) throws IOException {
-    setFullyQualifiedName(user);
     validateTeams(user);
     validateRoles(user.getRoles());
   }
@@ -88,7 +90,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getInheritedRoles(User user) throws IOException {
     getTeams(user);
-    return SubjectCache.getInstance().getRolesForTeams(getTeams(user));
+    return SubjectCache.getInstance() != null ? SubjectCache.getInstance().getRolesForTeams(getTeams(user)) : null;
   }
 
   @Override
@@ -96,12 +98,18 @@ public class UserRepository extends EntityRepository<User> {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> roles = user.getRoles();
     List<EntityReference> teams = user.getTeams();
-    List<EntityReference> inheritedRoles = user.getInheritedRoles();
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
 
-    store(user.getId(), user, update);
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
+      user.withAuthenticationMechanism(
+          secretsManager.encryptOrDecryptAuthenticationMechanism(
+              user.getName(), user.getAuthenticationMechanism(), true));
+    }
+
+    store(user, update);
 
     // Restore the relationships
     user.withRoles(roles).withTeams(teams);
@@ -190,21 +198,10 @@ public class UserRepository extends EntityRepository<User> {
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal()));
   }
 
-  public List<EntityReference> validateRolesByIds(List<UUID> roleIds) throws IOException {
-    if (roleIds == null) {
-      return Collections.emptyList(); // Return an empty roles list
-    }
-    List<EntityReference> validatedRoles = new ArrayList<>();
-    for (UUID roleId : roleIds) {
-      validatedRoles.add(daoCollection.roleDAO().findEntityReferenceById(roleId));
-    }
-    return validatedRoles;
-  }
-
   private List<EntityReference> getTeamChildren(UUID teamId) throws IOException {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
-      return EntityUtil.populateEntityReferencesById(children, Entity.TEAM);
+      return EntityUtil.populateEntityReferencesById(EntityUtil.toIDs(children), Entity.TEAM);
     }
     List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
     return EntityUtil.populateEntityReferences(children, TEAM);
@@ -263,6 +260,11 @@ public class UserRepository extends EntityRepository<User> {
       }
       addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
     }
+    if (teams.size() > 1) {
+      // Remove organization team from the response
+      teams = teams.stream().filter(t -> !t.getId().equals(organization.getId())).collect(Collectors.toList());
+      user.setTeams(teams);
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -320,20 +322,11 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
-        recordChange(
-            "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
+        recordChange("authenticationMechanism", original.getAuthenticationMechanism(), "new-encrypted-value");
       } else if (origAuthMechanism != null
           && updatedAuthMechanism != null
-          && origAuthMechanism.getConfig() != null
-          && updatedAuthMechanism.getConfig() != null) {
-        JWTAuthMechanism origJwtAuthMechanism =
-            JsonUtils.convertValue(origAuthMechanism.getConfig(), JWTAuthMechanism.class);
-        JWTAuthMechanism updatedJwtAuthMechanism =
-            JsonUtils.convertValue(updatedAuthMechanism.getConfig(), JWTAuthMechanism.class);
-        if (!origJwtAuthMechanism.getJWTToken().equals(updatedJwtAuthMechanism.getJWTToken())) {
-          recordChange(
-              "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
-        }
+          && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
+        recordChange("authenticationMechanism", "old-encrypted-value", "new-encrypted-value");
       }
     }
   }

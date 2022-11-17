@@ -55,6 +55,19 @@ public class FullyQualifiedName {
     walker.walk(listener, fqn);
   }
 
+  public static String getParent(String fqn) {
+    // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
+    String[] split = split(fqn);
+    if (split.length <= 1) {
+      return null;
+    }
+    String parent = build(split[0]);
+    for (int i = 1; i < split.length - 1; i++) {
+      parent = add(parent, split[i]);
+    }
+    return parent;
+  }
+
   private static class SplitListener extends FqnBaseListener {
     final List<String> list = new ArrayList<>();
 

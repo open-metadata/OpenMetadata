@@ -13,7 +13,8 @@
 name: Sync publish docs
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - openmetadata-docs/**
   workflow_dispatch:

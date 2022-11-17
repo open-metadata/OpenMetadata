@@ -15,7 +15,7 @@ import { FormValidationRulesType } from '../../../enums/form.enum';
 import { FormValidationRules } from '../../../interface/genericForm.interface';
 import { DropDownListItem } from '../../dropdown/types';
 import {
-  DbtConfigCloud,
+  DbtConfigCloudReq,
   DbtGCSCreds,
   DbtS3Creds,
   DbtS3CredsReq,
@@ -60,7 +60,7 @@ export const GCSCreds: Array<DropDownListItem> = [
   },
 ];
 
-export const reqDBTCloudFields: Record<keyof DbtConfigCloud, string> = {
+export const reqDBTCloudFields: Record<keyof DbtConfigCloudReq, string> = {
   dbtCloudAccountId: 'DBT Cloud Account Id',
   dbtCloudAuthToken: 'DBT Cloud Authentication Token',
 };

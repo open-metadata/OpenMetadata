@@ -30,11 +30,12 @@ from metadata.ingestion.lineage.parser import (
     get_parser_table_aliases,
     get_table_joins,
 )
+from metadata.ingestion.lineage.sql_lineage import clean_raw_query
 from metadata.utils.logger import ingestion_logger
 
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner
+from sqllineage.runner import LineageRunner  # pylint: disable=wrong-import-position
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
@@ -57,7 +58,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
             str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
         ).date()
 
-    parser = LineageRunner(record.query)
+    parser = LineageRunner(clean_raw_query(record.query))
 
     tables = get_involved_tables_from_parser(parser)
 
@@ -73,6 +74,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
         databaseName=record.databaseName,
         databaseSchema=record.databaseSchema,
         sql=record.query,
+        userName=record.userName,
         date=start_date.__root__.strftime("%Y-%m-%d"),
         serviceName=record.serviceName,
     )
@@ -112,7 +114,9 @@ class QueryParserProcessor(Processor):
         config = ConfigModel.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def process(self, queries: TableQueries) -> Optional[QueryParserData]:
+    def process(  # pylint: disable=arguments-differ
+        self, queries: TableQueries
+    ) -> Optional[QueryParserData]:
         if queries and queries.queries:
             data = []
             for record in queries.queries:
@@ -124,6 +128,8 @@ class QueryParserProcessor(Processor):
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error processing query [{record.query}]: {exc}")
             return QueryParserData(parsedData=data)
+
+        return None
 
     def close(self):
         pass

@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Ingest utility for the metadata CLI
+Profiler utility for the metadata CLI
 """
 import pathlib
 import sys
@@ -27,7 +27,7 @@ logger = cli_logger()
 def run_ingest(config_path: str) -> None:
     """
     Run the ingestion workflow from a config path
-    to a JSON file
+    to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
@@ -39,7 +39,7 @@ def run_ingest(config_path: str) -> None:
         logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, config_dict, WorkflowType.ingest)
+        print_init_error(exc, config_dict, WorkflowType.INGEST)
         sys.exit(1)
 
     workflow.execute()

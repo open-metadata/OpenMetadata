@@ -19,10 +19,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(value = ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.CONSTRUCTOR})
 public @interface Collection {
   String name();
 
-  /** Only order from 0 to 9 (inclusive) are allowed */
+  /** Order of initialization of resource starting from 0. Only order from 0 to 9 (inclusive) are allowed */
   int order() default 9;
 }

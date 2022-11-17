@@ -16,10 +16,9 @@ import { observer } from 'mobx-react';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
 import AppState from '../../../AppState';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference, User } from '../../../generated/entity/teams/user';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { checkPermission } from '../../../utils/PermissionsUtils';
+import { userPermissions } from '../../../utils/PermissionsUtils';
 import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import Loader from '../../Loader/Loader';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
@@ -51,7 +50,7 @@ const ProfilePicture = ({
   const { permissions } = usePermissionProvider();
 
   const viewUserPermission = useMemo(() => {
-    return checkPermission(Operation.ViewAll, ResourceEntity.USER, permissions);
+    return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
   }, [permissions]);
 
   const profilePic = useMemo(() => {

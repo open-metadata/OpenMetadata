@@ -8,14 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-from dataclasses import dataclass
-
 """
-Creating client for non-sqlalchemy package is neccessary, 
+Creating client for non-sqlalchemy package is necessary,
 Importing a Class directly in connection.py will break the ingestion,
 if non-sqlalchemy package is not installed
 """
+
+from dataclasses import dataclass
 
 
 @dataclass
@@ -57,6 +56,12 @@ class KafkaClient:
 
 
 @dataclass
+class KinesisClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class MetabaseClient:
     def __init__(self, client) -> None:
         self.client = client
@@ -93,6 +98,12 @@ class LookerClient:
 
 
 @dataclass
+class QuickSightClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class DatalakeClient:
     def __init__(self, client, config) -> None:
         self.client = client
@@ -118,6 +129,12 @@ class MlflowClientWrapper:
 
 
 @dataclass
+class SageMakerClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class FivetranClient:
     def __init__(self, client) -> None:
         self.client = client
@@ -125,11 +142,24 @@ class FivetranClient:
 
 @dataclass
 class DagsterClient:
+    def __init__(self, client, config) -> None:
+        self.client = client
+        self.config = config
+
+
+@dataclass
+class DomoClient:
     def __init__(self, client) -> None:
         self.client = client
 
 
 @dataclass
 class NifiClientWrapper:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class AmundsenClient:
     def __init__(self, client) -> None:
         self.client = client

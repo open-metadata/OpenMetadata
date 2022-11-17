@@ -53,8 +53,7 @@
     "apiEndpoint",
     "username",
     "password",
-    "metadataApiEndpoint",
-    "authProvider"
+    "metadataApiEndpoint"
   ],
   "additionalProperties": false
 }
