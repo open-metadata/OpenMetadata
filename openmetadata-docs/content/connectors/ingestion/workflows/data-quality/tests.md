@@ -225,9 +225,8 @@ parameterValues:
 ```
 
 ### Table Custom SQL Test
-Write you own SQL test. The test will pass if either of the following condition is met:
+Write you own SQL test. The test will pass if the following condition is met:
 - The query result return 0 row
-- The query expression `COUNT(<col>)` returns 0
 
 **Properties**
 
@@ -236,15 +235,16 @@ Write you own SQL test. The test will pass if either of the following condition 
 **Example**
 ```sql
 SELECT 
-COUNT(customer_tier)
+customer_id
 FROM DUAL 
-WHERE customer_tier = 'GOLD' and lifetime_value < 10000;
+WHERE lifetime_value < 0;
 ```
 
 ```sql
 SELECT 
 customer_id
-FROM DUAL 
+FROM DUAL d
+INNER JOIN OTHER o ON d.id = o.id
 WHERE lifetime_value < 0;
 ```
 
@@ -256,7 +256,7 @@ parameterValues:
     - name: sqlExpression
       value: >
         SELECT 
-        COUNT(customer_tier)
+        customer_tier
         FROM DUAL 
         WHERE customer_tier = 'GOLD' and lifetime_value < 10000;
 ```
@@ -269,7 +269,7 @@ parameterValues:
     "parameterValues": [
         {
             "name": "sqlExpression",
-            "value": "SELECT  COUNT(customer_tier) FROM DUAL  WHERE customer_tier = 'GOLD' and lifetime_value < 10000;\n"
+            "value": "SELECT  customer_tier FROM DUAL  WHERE customer_tier = 'GOLD' and lifetime_value < 10000;"
         }
     ]
 }

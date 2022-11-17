@@ -16,22 +16,13 @@ import {
     deleteCreatedProperty,
     editCreatedProperty,
     interceptURL,
-    login,
     verifyResponseStatusCode
 } from '../../common/common';
-import { ENTITIES, LOGIN, uuid } from '../../constants/constants';
+import { ENTITIES, uuid } from '../../constants/constants';
 
 describe('Custom Properties should work properly', () => {
-  before(() => {
-    cy.clearLocalStorageSnapshot('localStorage');
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
-    cy.saveLocalStorage('localstorage');
-  });
   beforeEach(() => {
-    cy.log('Restoring local storage snapshot');
-    cy.restoreLocalStorage('localstorage');
-    cy.clickOnLogo();
+    cy.login();
     interceptURL('GET', '/api/v1/users*', 'settingsPage');
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     verifyResponseStatusCode('@settingsPage', 200);
@@ -259,9 +250,4 @@ describe('Custom Properties should work properly', () => {
       });
     });
   });
-
-  afterEach(() => {
-    cy.log('Saving Local storage snapshot')
-    cy.saveLocalStorage('localstorage');
-  })
 });

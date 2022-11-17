@@ -36,7 +36,6 @@ import {
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
-import Teams from '../../components/TeamDetails/Teams';
 import {
   INITIAL_PAGING_VALUE,
   LIST_SIZE,
@@ -216,8 +215,9 @@ const TeamsPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    } finally {
+      setIsPageLoading(false);
     }
-    setIsPageLoading(false);
   };
 
   /**
@@ -545,69 +545,59 @@ const TeamsPage = () => {
     return <Loader />;
   }
 
-  return (
+  return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
     <>
-      {entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
-        <>
-          {isUndefined(fqn) ? (
-            <Teams
-              data={allTeam}
-              showDeletedTeam={showDeletedTeam}
-              onAddTeamClick={handleAddTeam}
-              onShowDeletedTeamChange={handleShowDeletedTeam}
-              onTeamExpand={fetchAllTeams}
-            />
-          ) : (
-            <TeamDetailsV1
-              afterDeleteAction={afterDeleteAction}
-              assets={assets}
-              childTeams={allTeam}
-              currentTeam={selectedTeam}
-              currentTeamUserPage={currentUserPage}
-              currentTeamUsers={users}
-              descriptionHandler={descriptionHandler}
-              handleAddTeam={handleAddTeam}
-              handleAddUser={handleAddUsers}
-              handleCurrentUserPage={handleCurrentUserPage}
-              handleJoinTeamClick={handleJoinTeamClick}
-              handleLeaveTeamClick={handleLeaveTeamClick}
-              handleTeamUsersSearchAction={handleUsersSearchAction}
-              hasAccess={isAuthDisabled || isAdminUser}
-              isDescriptionEditable={isDescriptionEditable}
-              isTeamMemberLoading={isDataLoading}
-              removeUserFromTeam={removeUserFromTeam}
-              showDeletedTeam={showDeletedTeam}
-              teamUserPagin={userPaging}
-              teamUserPaginHandler={userPagingHandler}
-              teamUsersSearchText={userSearchValue}
-              updateTeamHandler={updateTeamHandler}
-              onAssetsPaginate={handleAssetsPaginate}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onShowDeletedTeamChange={handleShowDeletedTeam}
-              onTeamExpand={fetchAllTeams}
-            />
-          )}
-
-          {isAddingUsers && (
-            <AddUsersModalV1
-              header={`Adding new users to ${getEntityName(selectedTeam)}`}
-              isVisible={isAddingUsers}
-              list={selectedTeam.users || []}
-              onCancel={() => setIsAddingUsers(false)}
-              onSave={(data) => addUsersToTeam(data)}
-            />
-          )}
-          <AddTeamForm
-            isLoading={isLoading}
-            visible={isAddingTeam}
-            onCancel={() => setIsAddingTeam(false)}
-            onSave={(data) => createNewTeam(data as Team)}
-          />
-        </>
+      {isEmpty(selectedTeam) ? (
+        <ErrorPlaceHolder>{t('label.no-team-found')}</ErrorPlaceHolder>
       ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+        <TeamDetailsV1
+          afterDeleteAction={afterDeleteAction}
+          assets={assets}
+          childTeams={allTeam}
+          currentTeam={selectedTeam}
+          currentTeamUserPage={currentUserPage}
+          currentTeamUsers={users}
+          descriptionHandler={descriptionHandler}
+          handleAddTeam={handleAddTeam}
+          handleAddUser={handleAddUsers}
+          handleCurrentUserPage={handleCurrentUserPage}
+          handleJoinTeamClick={handleJoinTeamClick}
+          handleLeaveTeamClick={handleLeaveTeamClick}
+          handleTeamUsersSearchAction={handleUsersSearchAction}
+          hasAccess={isAuthDisabled || isAdminUser}
+          isDescriptionEditable={isDescriptionEditable}
+          isTeamMemberLoading={isDataLoading}
+          removeUserFromTeam={removeUserFromTeam}
+          showDeletedTeam={showDeletedTeam}
+          teamUserPagin={userPaging}
+          teamUserPaginHandler={userPagingHandler}
+          teamUsersSearchText={userSearchValue}
+          updateTeamHandler={updateTeamHandler}
+          onAssetsPaginate={handleAssetsPaginate}
+          onDescriptionUpdate={onDescriptionUpdate}
+          onShowDeletedTeamChange={handleShowDeletedTeam}
+          onTeamExpand={fetchAllTeams}
+        />
       )}
+
+      {isAddingUsers && (
+        <AddUsersModalV1
+          header={`Adding new users to ${getEntityName(selectedTeam)}`}
+          isVisible={isAddingUsers}
+          list={selectedTeam.users || []}
+          onCancel={() => setIsAddingUsers(false)}
+          onSave={(data) => addUsersToTeam(data)}
+        />
+      )}
+      <AddTeamForm
+        isLoading={isLoading}
+        visible={isAddingTeam}
+        onCancel={() => setIsAddingTeam(false)}
+        onSave={(data) => createNewTeam(data as Team)}
+      />
     </>
+  ) : (
+    <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
   );
 };
 

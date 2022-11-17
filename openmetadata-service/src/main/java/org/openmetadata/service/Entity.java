@@ -37,6 +37,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public final class Entity {
@@ -216,8 +217,21 @@ public final class Entity {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
+  public static <T> Fields getFields(String entityType, String fields) throws IOException {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getFields(fields);
+  }
+
+  public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
+    return getEntity(ref.getType(), ref.getId(), fields, include);
+  }
+
   public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include) throws IOException {
     return getEntity(ref.getType(), ref.getId(), fields, include);
+  }
+
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) throws IOException {
+    return getEntity(entityType, id, getFields(entityType, fields), include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */

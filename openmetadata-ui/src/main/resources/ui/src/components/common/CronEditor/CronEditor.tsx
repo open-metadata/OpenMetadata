@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, toNumber } from 'lodash';
-import React, { FC, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import { pluralize } from '../../../utils/CommonUtils';
 import { getCron } from '../../../utils/CronUtils';
 import {
@@ -126,6 +126,17 @@ const CronEditor: FC<CronEditorProp> = (props) => {
   const [dayOptions] = useState(getDayOptions());
   const [monthDaysOptions] = useState(getMonthDaysOptions());
   const [monthOptions] = useState(getMonthOptions());
+
+  const filteredPeriodOptions = useMemo(() => {
+    const { includePeriodOptions } = props;
+    if (includePeriodOptions) {
+      return periodOptions.filter((option) =>
+        includePeriodOptions.includes(option.label)
+      );
+    } else {
+      return periodOptions;
+    }
+  }, [props, periodOptions]);
 
   const { className, disabled } = props;
   const { selectedPeriod } = state;
@@ -608,7 +619,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
                 e.persist();
                 onPeriodSelect(e);
               }}>
-              {periodOptions.map((t, index) => {
+              {filteredPeriodOptions.map((t, index) => {
                 return (
                   <option key={`period_option_${index}`} value={t.value}>
                     {t.label}

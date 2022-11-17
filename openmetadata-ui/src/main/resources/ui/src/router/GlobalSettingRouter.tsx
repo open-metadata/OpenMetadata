@@ -96,18 +96,17 @@ const GlobalSettingRouter = () => {
         component={TeamsPage}
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.TEAMS
-        )}
-      />
-      <Route
-        exact
-        component={TeamsPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
           true
         )}
       />
+      <Route
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS
+        )}>
+        <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
+      </Route>
       {/* Roles route start
        * Do not change the order of these route
        */}

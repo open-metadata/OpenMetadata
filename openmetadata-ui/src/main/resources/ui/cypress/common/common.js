@@ -74,28 +74,33 @@ export const handleIngestionRetry = (
         }
     };
     const checkSuccessState = () => {
-        testIngestionsTab();
-        retryCount++;
-        // the latest run should be success
-        cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
-            ($ingestionStatus) => {
-                if (
-                    ($ingestionStatus.text() === 'Running' ||
-                        $ingestionStatus.text() === 'Queued' || $ingestionStatus.text() === '--') &&
-                    retryCount <= RETRY_TIMES
-                ) {
-                    // retry after waiting for 20 seconds
-                    cy.wait(20000);
-                    cy.reload();
-                    checkSuccessState();
-                } else {
-                    cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
-                        'have.text',
-                        'Success'
-                    );
-                }
-            }
-        );
+      testIngestionsTab();
+      retryCount++;
+      cy.get('body').then(($body) => {
+        if ($body.find('.ant-skeleton-input').length) {
+          cy.wait(1000);
+        }
+      });
+
+      // the latest run should be success
+      cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+        ($ingestionStatus) => {
+          
+          if (
+            $ingestionStatus.text() !== 'Success' &&
+            retryCount <= RETRY_TIMES
+          ) {
+            // retry after waiting for 20 seconds
+            cy.wait(20000);
+            cy.reload();
+            checkSuccessState();
+          } else {
+            cy.get(
+              `.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`
+            ).should('have.text', 'Success');
+          }
+        }
+      );
     };
 
     checkSuccessState();
@@ -217,8 +222,9 @@ export const testServiceCreationAndIngestion = (
 
 export const deleteCreatedService = (typeOfService, service_Name, apiService) => {
     //Click on settings page
+    interceptURL('GET', 'api/v1/teams/name/Organization?fields=*', 'getSettingsPage');
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click({ force: true });
-
+    verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     interceptURL('GET', '/api/v1/services/*', 'getServices');
 
@@ -298,9 +304,11 @@ export const editOwnerforCreatedService = (
     service_Name,
     api_services
 ) => {
+    interceptURL('GET', 'api/v1/teams/name/Organization?fields=*', 'getSettingsPage');
     //Click on settings page
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-
+    verifyResponseStatusCode('@getSettingsPage', 200);
+    
     // Services page
     cy.get('.ant-menu-title-content')
         .contains(service_type)
@@ -365,10 +373,11 @@ export const editOwnerforCreatedService = (
 };
 
 export const goToAddNewServicePage = (service_type) => {
+    interceptURL('GET', 'api/v1/teams/name/Organization?fields=*', 'getSettingsPage')
     cy.get('[data-testid="tables"]').should('be.visible');
     //Click on settings page
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-
+    verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
     cy.get('.ant-menu-title-content')
         .contains(service_type)
@@ -885,7 +894,6 @@ export const addTeam = (TEAM_DETAILS) => {
 
 export const retryIngestionRun = () => {
     let retryCount = 0;
-
     const testIngestionsTab = () => {
         cy.get('[data-testid="Ingestions"]').should('be.visible');
         cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
@@ -899,28 +907,31 @@ export const retryIngestionRun = () => {
     };
 
     const checkSuccessState = () => {
-        testIngestionsTab();
-        retryCount++;
-        // the latest run should be success
-        cy.get('[data-testid="pipeline-status"]').then(
-            ($ingestionStatus) => {
-                if (
-                    ($ingestionStatus.text() === 'Running' ||
-                        $ingestionStatus.text() === 'Queued' || $ingestionStatus.text() === '--') &&
-                    retryCount <= RETRY_TIMES
-                ) {
-                    // retry after waiting for 20 seconds
-                    cy.wait(20000);
-                    cy.reload();
-                    checkSuccessState();
-                } else {
-                    cy.get('[data-testid="pipeline-status"]').should(
-                        'have.text',
-                        'Success'
-                    );
-                }
-            }
-        );
+      testIngestionsTab();
+      retryCount++;
+      cy.get('body').then(($body) => {
+        if ($body.find('.ant-skeleton-input').length) {
+          cy.wait(1000);
+        }
+      });
+      
+      // the latest run should be success
+      cy.get('[data-testid="pipeline-status"]').then(($ingestionStatus) => {
+        if (
+          $ingestionStatus.text() !== 'Success' &&
+          retryCount <= RETRY_TIMES
+        ) {
+          // retry after waiting for 20 seconds
+          cy.wait(20000);
+          cy.reload();
+          checkSuccessState();
+        } else {
+          cy.get('[data-testid="pipeline-status"]').should(
+            'have.text',
+            'Success'
+          );
+        }
+      });
     };
 
     checkSuccessState();
