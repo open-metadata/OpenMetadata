@@ -16,7 +16,9 @@ import { Col, Divider, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { SearchIndex } from '../../../enums/search.enum';
 import { TableType } from '../../../generated/entity/data/table';
+import TableDataCardTitle from '../../common/table-data-card-v2/TableDataCardTitle.component';
 import ColumnSummary from '../ColumnSummary/ColumnSummary.component';
 import {
   BasicTableInfo,
@@ -48,7 +50,10 @@ export default function EntitySummaryPanel({
       )}>
       <Row className={classNames('m-md')}>
         <Col span={24}>
-          <Typography.Title level={5}>{entityDetails.name}</Typography.Title>
+          <TableDataCardTitle
+            searchIndex={SearchIndex.TABLE}
+            source={entityDetails}
+          />
         </Col>
         <Col span={24}>
           <Row>
@@ -85,13 +90,14 @@ export default function EntitySummaryPanel({
                     </Typography.Text>
                   </Col>
                   <Col span={24}>
-                    <Typography.Text
+                    <Typography.Title
                       className={classNames(
-                        'tw-text-2xl tw-font-semibold',
+                        'summary-panel-statistics-count',
                         field.className
-                      )}>
+                      )}
+                      level={3}>
                       {field.value}
-                    </Typography.Text>
+                    </Typography.Title>
                   </Col>
                 </Row>
               </Col>

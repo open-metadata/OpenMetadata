@@ -16,7 +16,6 @@ AVG Metric definition
 
 import traceback
 
-import pandas as pd
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
@@ -81,6 +80,8 @@ class Mean(StaticMetric):
         """
         Data lake function to calculate mean
         """
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
         try:
             if is_quantifiable(self.col.datatype):
                 return data_frame[self.col.name].mean()

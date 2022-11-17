@@ -203,10 +203,7 @@ const LineagePage = () => {
             const pipelineRes = await getPipelineByFqn(entityFQN, '');
             updateBreadcrumb(
               pipelineRes,
-              getPipelineDetailsPath(
-                entityFQN,
-                PIPELINE_DETAILS_TABS.EntityLineage
-              )
+              getPipelineDetailsPath(entityFQN, PIPELINE_DETAILS_TABS.Lineage)
             );
           }
 

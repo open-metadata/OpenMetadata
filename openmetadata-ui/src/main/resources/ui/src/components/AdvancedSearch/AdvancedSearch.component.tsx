@@ -18,7 +18,6 @@ import {
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
-import 'react-awesome-query-builder/css/antd.less';
 import { elasticSearchFormat } from '../../utils/QueryBuilderElasticsearchFormatUtils';
 import { emptyJsonTree, getQbConfigs } from './AdvancedSearch.constants';
 import { AdvancedSearchProps } from './AdvancedSearch.interface';

@@ -232,12 +232,12 @@
     "tasks": "Tasks",
     "activity-feed-and-task-plural": "Activity Feeds & tasks",
     "executions": "Executions",
-    "entity-lineage": "Entity Lineage",
+    "lineage": "Lineage",
     "custom-properties": "Custom Properties",
     "dag-view": "DAG view",
     "read-more": "read more",
     "read-less": "read less",
-    "no-owner": "No Owner",
+    "no-entity": "No {{entity}}",
     "page-views-by-entities": "Page views by data assets",
     "daily-active-user": "Daily active users on the platform",
     "collapse-all": "Collapse All",
@@ -280,7 +280,8 @@
     "no-team-found": "No team found.",
     "quality": "Quality",
     "insight": "Insight",
-    "govern": "Govern"
+    "govern": "Govern",
+    "usage": "Usage"
   },
   "message": {
     "service-email-required": "Service account Email is required",
