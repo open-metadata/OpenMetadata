@@ -83,7 +83,7 @@ source:
       credentials:
         gcsConfig:
           type: My Type
-          projectId: project ID
+          projectId: project ID # ["project-id-1", "project-id-2"]
           privateKeyId: us-east-2
           privateKey: |
             -----BEGIN PRIVATE KEY-----
@@ -412,7 +412,7 @@ source:
       credentials:
         gcsConfig:
           type: My Type
-          projectId: project ID
+          projectId: project ID # ["project-id-1", "project-id-2"]
           privateKeyId: us-east-2
           privateKey: |
             -----BEGIN PRIVATE KEY-----
@@ -507,7 +507,7 @@ source:
       credentials:
         gcsConfig:
           type: My Type
-          projectId: project ID
+          projectId: project ID # ["project-id-1", "project-id-2"]
           privateKeyId: us-east-2
           privateKey: |
             -----BEGIN PRIVATE KEY-----

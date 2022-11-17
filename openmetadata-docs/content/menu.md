@@ -192,6 +192,8 @@ site_menu:
     url: /connectors/database/bigquery/airflow
   - category: Connectors / Database / BigQuery / CLI
     url: /connectors/database/bigquery/cli
+  - category: Connectors / Database / BigQuery / Troubleshoot
+    url: /connectors/database/bigquery/troubleshoot
   - category: Connectors / Database / Snowflake
     url: /connectors/database/snowflake
   - category: Connectors / Database / Snowflake / Airflow
@@ -340,6 +342,8 @@ site_menu:
     url: /connectors/database/domo-database/airflow
   - category: Connectors / Database / Domo Database / CLI
     url: /connectors/database/domo-database/cli
+  - category: Connectors / Database / Domo Database / Troubleshoot
+    url: /connectors/database/domo-database/troubleshoot
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard

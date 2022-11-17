@@ -156,7 +156,7 @@ the changes.
 
 - **Host and Port**: This is the BigQuery APIs URL.
 - **Username (Optional)**: Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
-- **Project ID (Optional)**: The BigQuery Project ID is required only if the credentials path is being used instead of values.
+- **Project ID(Optional)**: The BigQuery Project ID is required only if the credentials path is being used instead of values. Now, you can pass multiple Project ID, click [here](/connectors/database/bigquery/troubleshoot) for more details.
 - **GCS Credentials**: We support two ways of authenticating to BigQuery:
     1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
        - Credentials type, e.g., `service_account`

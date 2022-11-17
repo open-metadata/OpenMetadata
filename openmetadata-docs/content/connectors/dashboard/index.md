@@ -12,4 +12,4 @@ slug: /connectors/dashboard
 - [Redash](/connectors/dashboard/redash)
 - [Superset](/connectors/dashboard/superset)
 - [Tableau](/connectors/dashboard/tableau)
-- [DomoDashboard](/connectors/dashboard/domo-dashboard)
+- [Domo Dashboard](/connectors/dashboard/domo-dashboard)
