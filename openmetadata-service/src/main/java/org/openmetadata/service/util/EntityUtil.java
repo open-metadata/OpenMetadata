@@ -92,7 +92,6 @@ public final class EntityUtil {
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
   public static final Comparator<Filters> compareFilters = Comparator.comparing(Filters::getEventType);
   public static final Comparator<EventFilter> compareEventFilters = Comparator.comparing(EventFilter::getEntityType);
-  public static final Comparator<MetadataOperation> compareOperation = Comparator.comparing(MetadataOperation::value);
 
   //
   // Matchers used for matching two items in a list
@@ -425,14 +424,30 @@ public final class EntityUtil {
         .withDeleted(from.getDeleted());
   }
 
-  public static TagLabel getTagLabel(GlossaryTerm term) {
+  public static List<TagLabel> toTagLabels(GlossaryTerm... terms) {
+    List<TagLabel> list = new ArrayList<>();
+    for (GlossaryTerm term : terms) {
+      list.add(toTagLabel(term));
+    }
+    return list;
+  }
+
+  public static List<TagLabel> toTagLabels(Tag... tags) {
+    List<TagLabel> list = new ArrayList<>();
+    for (Tag tag : tags) {
+      list.add(toTagLabel(tag));
+    }
+    return list;
+  }
+
+  public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
   }
 
-  public static TagLabel getTagLabel(Tag tag) {
+  public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())

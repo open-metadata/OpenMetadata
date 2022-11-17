@@ -88,4 +88,5 @@ export interface CronEditorProp {
   value?: string;
   className?: string;
   disabled?: boolean;
+  includePeriodOptions?: string[];
 }
