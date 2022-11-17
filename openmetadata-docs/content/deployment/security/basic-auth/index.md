@@ -89,15 +89,15 @@ keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 <Note>
 
-By Default the jwtTokenConfiguration is shipped with OM. 
+By default, the `jwtTokenConfiguration` is shipped with OM.
 
 ### For Local/Testing Deployment
 
-- You can work with existing configuration as well or if you want you can generate your own private/public key.
+- You can work with the existing configuration or generate private/public keys.
 
 ### For Production Deployment
 
-- It is a MUST! to update the JWT configuration. The following steps can be used.
+- It is a **MUST** to update the JWT configuration. The following steps can be used.
 
 - Generating Private/Public Keys
 
@@ -114,13 +114,13 @@ rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
 rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-"./conf/private_key.der"}
 ```
 
-Jwt Issuer can be your {principalDomain}
+Jwt Issuer can be your `principalDomain`
 
 ```yaml
 jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
 ```
 
-KeyID is random generated UUID string, use any UUID generator to get a new KeyID.
+The `KeyID` is a randomly generated UUID string. Use any UUID generator to get a new `KeyID`.
 
 ```yaml
 keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}

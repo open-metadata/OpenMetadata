@@ -15,6 +15,6 @@ export enum PIPELINE_DETAILS_TABS {
   Tasks = 'tasks',
   ActivityFeedsAndTasks = 'activity-feeds-tasks',
   Executions = 'executions',
-  EntityLineage = 'entity-lineage',
+  Lineage = 'lineage',
   CustomProperties = 'custom-properties',
 }

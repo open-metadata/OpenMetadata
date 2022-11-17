@@ -57,6 +57,8 @@ site_menu:
     url: /deployment/security
   - category: Deployment / Enable Security / Basic Authentication
     url: /deployment/security/basic-auth
+  - category: Deployment / Enable Security / Ldap Authentication
+    url: /deployment/security/ldap
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -131,6 +133,17 @@ site_menu:
     url: /deployment/security/enable-ssl/openmetadata-server
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
+
+  - category: Deployment / Enable Secrets Manager
+    url: /deployment/secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations
+    url: /deployment/secrets-manager/supported-implementations
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS Secrets Manager
+    url: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS SSM Parameter Store
+    url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+  - category: Deployment / Enable Secrets Manager / How to add a new implementation
+    url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade

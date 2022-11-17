@@ -14,8 +14,6 @@ for the profiler
 """
 from typing import Any, Dict, Optional
 
-from pandas import DataFrame, notnull
-
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.source.database.datalake import DatalakeSource
 
@@ -45,6 +43,8 @@ class DatalakeSampler:
         self._sample_rows = None
 
     def get_col_row(self, data_frame):
+        from pandas import DataFrame, notnull  # pylint: disable=import-outside-toplevel
+
         cols = []
         chunk = None
         if isinstance(data_frame, DataFrame):
@@ -63,6 +63,8 @@ class DatalakeSampler:
         return cols, rows, chunk
 
     def fetch_dl_sample_data(self) -> TableData:
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
         cols, rows = self.get_col_row(
             data_frame=self.table[0]
             if not isinstance(self.table, DataFrame)

@@ -58,3 +58,5 @@ export enum KpiDate {
 export type KpiDates = {
   [x in KpiDate]: string;
 };
+
+export type ChartValue = string | number | undefined;

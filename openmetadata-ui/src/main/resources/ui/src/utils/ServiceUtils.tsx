@@ -38,7 +38,9 @@ import {
 import {
   AIRBYTE,
   AIRFLOW,
+  AMUNDSEN,
   ATHENA,
+  ATLAS,
   AZURESQL,
   BIGQUERY,
   CLICKHOUSE,
@@ -49,6 +51,7 @@ import {
   DATALAKE,
   DEFAULT_SERVICE,
   DELTALAKE,
+  DOMO,
   DRUID,
   DYNAMODB,
   FIVETRAN,
@@ -56,6 +59,7 @@ import {
   HIVE,
   IBMDB2,
   KAFKA,
+  KINESIS,
   LOOKER,
   MARIADB,
   METABASE,
@@ -63,6 +67,7 @@ import {
   MODE,
   MSSQL,
   MYSQL,
+  NIFI,
   ORACLE,
   PINOT,
   PIPELINE_DEFAULT,
@@ -70,9 +75,11 @@ import {
   POWERBI,
   PRESTO,
   PULSAR,
+  QUICKSIGHT,
   REDASH,
   REDPANDA,
   REDSHIFT,
+  SAGEMAKER,
   SALESFORCE,
   SCIKIT,
   serviceTypes,
@@ -102,6 +109,7 @@ import {
   MessagingService,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
+import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import {
   PipelineService,
@@ -150,6 +158,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Glue:
       return GLUE;
+
+    case DatabaseServiceType.DomoDatabase:
+      return DOMO;
 
     case DatabaseServiceType.MariaDB:
       return MARIADB;
@@ -202,6 +213,9 @@ export const serviceTypeLogo = (type: string) => {
     case MessagingServiceType.Redpanda:
       return REDPANDA;
 
+    case MessagingServiceType.Kinesis:
+      return KINESIS;
+
     case DashboardServiceType.Superset:
       return SUPERSET;
 
@@ -220,6 +234,11 @@ export const serviceTypeLogo = (type: string) => {
     case DashboardServiceType.PowerBI:
       return POWERBI;
 
+    case DashboardServiceType.QuickSight:
+      return QUICKSIGHT;
+
+    case DashboardServiceType.DomoDashboard:
+      return DOMO;
     case DashboardServiceType.Mode:
       return MODE;
 
@@ -235,11 +254,29 @@ export const serviceTypeLogo = (type: string) => {
     case PipelineServiceType.Fivetran:
       return FIVETRAN;
 
+    case PipelineServiceType.GluePipeline:
+      return GLUE;
+
+    case PipelineServiceType.Nifi:
+      return NIFI;
+
+    case PipelineServiceType.DomoPipeline:
+      return DOMO;
+
     case MlModelServiceType.Mlflow:
       return MLFLOW;
 
     case MlModelServiceType.Sklearn:
       return SCIKIT;
+    case MlModelServiceType.SageMaker:
+      return SAGEMAKER;
+
+    case MetadataServiceType.Amundsen:
+      return AMUNDSEN;
+
+    case MetadataServiceType.Atlas:
+      return ATLAS;
+
     default: {
       let logo;
       if (serviceTypes.messagingServices.includes(type)) {

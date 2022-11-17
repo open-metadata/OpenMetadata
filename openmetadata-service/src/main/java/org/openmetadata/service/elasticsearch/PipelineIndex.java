@@ -32,6 +32,7 @@ public class PipelineIndex implements ElasticSearchIndex {
       }
     }
     doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
+    doc.put("displayName", pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(pipeline.getFollowers()));
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);

@@ -72,36 +72,6 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
 
-  const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
-    nSearchIndex
-  ) =>
-    history.push({
-      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
-    });
-
-  const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
-    (queryFilter) =>
-      history.push({
-        search: Qs.stringify({
-          ...parsedSearch,
-          queryFilter: JSON.stringify(queryFilter),
-        }),
-      });
-
-  const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
-    postFilter
-  ) =>
-    history.push({
-      search: Qs.stringify({ ...parsedSearch, postFilter }),
-    });
-
-  const handlePageChange: ExploreProps['onChangePage'] = (page) =>
-    history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
-
-  const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
-    showDeleted
-  ) => history.push({ search: Qs.stringify({ ...parsedSearch, showDeleted }) });
-
   const postFilter = useMemo(
     () =>
       isFilterObject(parsedSearch.postFilter)
@@ -114,6 +84,49 @@ const ExplorePage: FunctionComponent = () => {
     () => filterObjectToElasticsearchQuery(postFilter),
     [postFilter]
   );
+
+  const handlePageChange: ExploreProps['onChangePage'] = (page) => {
+    history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
+  };
+
+  const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
+    nSearchIndex
+  ) => {
+    history.push({
+      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
+      search: Qs.stringify({ page: 1 }),
+    });
+  };
+
+  const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
+    (queryFilter) => {
+      history.push({
+        pathname: history.location.pathname,
+        search: Qs.stringify({
+          ...parsedSearch,
+          queryFilter: JSON.stringify(queryFilter),
+          page: 1,
+        }),
+      });
+    };
+
+  const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
+    postFilter
+  ) => {
+    history.push({
+      pathname: history.location.pathname,
+      search: Qs.stringify({ ...parsedSearch, postFilter, page: 1 }),
+    });
+  };
+
+  const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
+    showDeleted
+  ) => {
+    history.push({
+      pathname: history.location.pathname,
+      search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
+    });
+  };
 
   const queryFilter = useMemo(() => {
     if (!isString(parsedSearch.queryFilter)) {
@@ -150,7 +163,7 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     handleSearchIndexChange(searchIndex);
-  }, [searchIndex]);
+  }, [searchIndex, searchQueryParam]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
@@ -238,19 +251,12 @@ const ExplorePage: FunctionComponent = () => {
     page,
   ]);
 
-  // Return to first page on filter change
-  useDeepCompareEffect(
-    () => handlePageChange(1),
-    [
-      searchIndex,
-      searchQueryParam,
-      sortValue,
-      sortOrder,
-      showDeleted,
-      advancesSearchQueryFilter,
-      elasticsearchPostFilterQuery,
-    ]
-  );
+  const handleAdvanceSearchQueryFilterChange = (
+    filter?: Record<string, unknown>
+  ) => {
+    handlePageChange(1);
+    setAdvancedSearchQueryFilter(filter);
+  };
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -270,13 +276,19 @@ const ExplorePage: FunctionComponent = () => {
         sortValue={sortValue}
         tabCounts={searchHitCounts}
         onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
-        onChangeAdvancedSearchQueryFilter={setAdvancedSearchQueryFilter}
+        onChangeAdvancedSearchQueryFilter={handleAdvanceSearchQueryFilterChange}
         onChangePage={handlePageChange}
         onChangePostFilter={handlePostFilterChange}
         onChangeSearchIndex={handleSearchIndexChange}
         onChangeShowDeleted={handleShowDeletedChange}
-        onChangeSortOder={setSortOrder}
-        onChangeSortValue={setSortValue}
+        onChangeSortOder={(sort) => {
+          handlePageChange(1);
+          setSortOrder(sort);
+        }}
+        onChangeSortValue={(sort) => {
+          handlePageChange(1);
+          setSortValue(sort);
+        }}
       />
     </PageContainerV1>
   );
