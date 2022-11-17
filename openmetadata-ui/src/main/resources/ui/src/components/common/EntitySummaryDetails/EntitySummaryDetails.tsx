@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GROUP_TEAM_TYPE_CHANGE_MSG } from '../../../constants/HelperTextUtil';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
@@ -82,6 +83,7 @@ const EntitySummaryDetails = ({
   deleted = false,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
+  const { t } = useTranslation();
   const displayVal = data.placeholderText || data.value;
   const [show, setShow] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -137,7 +139,7 @@ const EntitySummaryDetails = ({
             )
           ) : (
             <>
-              No Owner
+              {t('label.no-entity', { entity: 'Owner' })}
               <span
                 data-testid={`edit-${data.key}-icon`}
                 onClick={() => setShow(!show)}>
@@ -154,7 +156,7 @@ const EntitySummaryDetails = ({
         retVal =
           !displayVal || displayVal === '--' ? (
             <>
-              No Tier
+              {t('label.no-entity', { entity: 'Tier' })}
               <Dropdown
                 overlay={
                   <TierCard
@@ -178,7 +180,14 @@ const EntitySummaryDetails = ({
 
     case 'TeamType':
       {
-        retVal = displayVal ? <>Type - </> : <></>;
+        retVal = displayVal ? <>{t('label.type')} - </> : <></>;
+      }
+
+      break;
+
+    case 'Usage':
+      {
+        retVal = <>{t('label.usage')} - </>;
       }
 
       break;
@@ -192,7 +201,7 @@ const EntitySummaryDetails = ({
                 ? data.showLabel
                   ? `${data.key}: `
                   : null
-                : `No ${data.key}`
+                : `${t('label.no-entity', { entity: data.key })}`
               : null}
           </>
         );

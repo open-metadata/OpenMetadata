@@ -116,6 +116,7 @@ export type ScheduleIntervalProps = {
   status: LoadingState;
   repeatFrequency: string;
   handleRepeatFrequencyChange: (value: string) => void;
+  includePeriodOptions?: string[];
   submitButtonLabel: string;
   onBack: () => void;
   onDeploy: () => void;

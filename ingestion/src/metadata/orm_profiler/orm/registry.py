@@ -14,7 +14,6 @@ Custom types' registry for easy access
 without having an import mess
 """
 import sqlalchemy
-from pandas.core.dtypes.common import is_numeric_dtype, is_string_dtype
 from sqlalchemy import Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
@@ -124,6 +123,9 @@ def is_quantifiable(_type) -> bool:
     """
     Check if sqlalchemy _type is either integer or numeric
     """
+    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
+        is_numeric_dtype,
+    )
 
     return is_numeric(_type) or is_integer(_type) or is_numeric_dtype(_type)
 
@@ -133,4 +135,8 @@ def is_concatenable(_type) -> bool:
     Check if sqlalchemy _type is derived from Concatenable
     e.g., strings or text
     """
+    from pandas.core.dtypes.common import (  # pylint: disable=import-outside-toplevel
+        is_string_dtype,
+    )
+
     return issubclass(_type.__class__, Concatenable) or is_string_dtype(_type)

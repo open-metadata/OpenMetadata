@@ -149,6 +149,14 @@ class SupersetSource(DashboardServiceSource):
         """
         return dashboard
 
+    def get_owner_details(self, dashboard_details: dict) -> EntityReference:
+        if dashboard_details.get("owners"):
+            owner = dashboard_details["owners"][0]
+            user = self.metadata.get_user_by_email(owner.get("email"))
+            if user:
+                return EntityReference(id=user.id.__root__, type="user")
+        return None
+
     def yield_dashboard(
         self, dashboard_details: dict
     ) -> Iterable[CreateDashboardRequest]:
@@ -160,6 +168,7 @@ class SupersetSource(DashboardServiceSource):
             displayName=dashboard_details["dashboard_title"],
             description="",
             dashboardUrl=dashboard_details["url"],
+            owner=self.get_owner_details(dashboard_details),
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts

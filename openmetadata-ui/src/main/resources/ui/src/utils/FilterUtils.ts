@@ -35,7 +35,7 @@ export const filterObjectToElasticsearchQuery: (
   f: FilterObject | undefined
 ) => Record<string, unknown> | undefined = (f) => {
   if (isNil(f)) {
-    return { query: { bool: {} } };
+    return {};
   }
   if (!Object.entries(f).length) {
     return undefined;

@@ -209,7 +209,6 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     :param verbose: debugger or not
     :return: SQAlchemy Engine
     """
-
     engine = create_engine(
         get_connection_url(connection),
         connect_args=get_connection_args(connection),

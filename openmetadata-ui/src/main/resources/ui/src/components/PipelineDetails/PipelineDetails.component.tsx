@@ -679,7 +679,7 @@ const PipelineDetails = ({
 
   useEffect(() => {
     switch (tab) {
-      case PIPELINE_DETAILS_TABS.EntityLineage:
+      case PIPELINE_DETAILS_TABS.Lineage:
         !deleted && isEmpty(entityLineage) && getLineageData();
 
         break;
@@ -955,10 +955,8 @@ const PipelineDetails = ({
           </Tabs.TabPane>
 
           <Tabs.TabPane
-            key={PIPELINE_DETAILS_TABS.EntityLineage}
-            tab={
-              <span data-testid="Lineage">{t('label.entity-lineage')}</span>
-            }>
+            key={PIPELINE_DETAILS_TABS.Lineage}
+            tab={<span data-testid="Lineage">{t('label.lineage')}</span>}>
             <div className="h-full bg-white">
               <EntityLineageComponent
                 addLineageHandler={addLineageHandler}

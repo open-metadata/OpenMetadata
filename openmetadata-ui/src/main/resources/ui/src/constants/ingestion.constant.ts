@@ -17,7 +17,7 @@ import { FilterPattern } from '../generated/entity/services/ingestionPipelines/i
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   { name: 'Configure Ingestion', step: 1 },
   { name: 'Configure DBT', step: 2 },
-  { name: 'Configure Metadata to ES Config', step: 3 },
+  { name: 'Configure Metadata to ES Config (Optional)', step: 3 },
   { name: 'Schedule Interval', step: 4 },
 ];
 

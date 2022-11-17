@@ -180,7 +180,6 @@ class ElasticsearchSink(Sink[Entity]):
         config: ElasticSearchConfig,
         metadata_config: OpenMetadataConnection,
     ) -> None:
-
         self.config = config
         self.metadata_config = metadata_config
 
