@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button, Typography } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
@@ -48,7 +48,7 @@ const TableDataCardTitle = ({
       id={`${id}Title`}
       type="link"
       onClick={handleLinkClick}>
-      {stringToHTML(source.name)}
+      <Typography.Title level={5}>{stringToHTML(source.name)}</Typography.Title>
     </Button>
   );
 

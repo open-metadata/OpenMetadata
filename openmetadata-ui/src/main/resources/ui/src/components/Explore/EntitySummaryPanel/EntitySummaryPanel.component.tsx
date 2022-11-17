@@ -50,12 +50,10 @@ export default function EntitySummaryPanel({
       )}>
       <Row className={classNames('m-md')}>
         <Col span={24}>
-          <Typography.Title level={5}>
-            <TableDataCardTitle
-              searchIndex={SearchIndex.TABLE}
-              source={entityDetails}
-            />
-          </Typography.Title>
+          <TableDataCardTitle
+            searchIndex={SearchIndex.TABLE}
+            source={entityDetails}
+          />
         </Col>
         <Col span={24}>
           <Row>
@@ -94,7 +92,7 @@ export default function EntitySummaryPanel({
                   <Col span={24}>
                     <Typography.Text
                       className={classNames(
-                        'statistics-count',
+                        'summary-panel-statistics-count',
                         field.className
                       )}>
                       {field.value}
