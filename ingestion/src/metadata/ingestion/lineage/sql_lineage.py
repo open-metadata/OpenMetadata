@@ -157,9 +157,8 @@ def get_table_entities_from_query(
     :return: List of tables matching the criteria
     """
 
-    # First try to find the data from the given db and schema
-    # Otherwise, pick it up from the table_name str
-    # Finally, try with upper case
+    # First try to find the data from the given db and schema (with table name as given or uppercase)
+    # Otherwise, pick it up from the table_name str (with table name as given or uppercase)
 
     split_table = table_name.split(".")
     empty_list: List[Any] = [None]  # Otherwise, there's a typing error in the concat
@@ -174,6 +173,15 @@ def get_table_entities_from_query(
         database=database_name,
         database_schema=database_schema,
         table=table,
+    ) or (
+        table
+        and search_table_entities(
+            metadata=metadata,
+            service_name=service_name,
+            database=database_name,
+            database_schema=database_schema,
+            table=table.upper(),
+        )
     )
 
     if table_entities:
@@ -185,6 +193,15 @@ def get_table_entities_from_query(
         database=database_query,
         database_schema=schema_query,
         table=table,
+    ) or (
+        table
+        and search_table_entities(
+            metadata=metadata,
+            service_name=service_name,
+            database=database_query,
+            database_schema=schema_query,
+            table=table.upper(),
+        )
     )
 
     if table_entities:
