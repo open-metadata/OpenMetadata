@@ -23,8 +23,6 @@ having the verbosely pass .value all the time...
 import traceback
 from typing import Dict, List, Optional, Union
 
-import pandas as pd
-
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.utils.dispatch import enum_register
@@ -47,6 +45,8 @@ def get_table_metrics(
     Returns:
         dictionnary of results
     """
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     try:
         row = []
         for metric in metrics:
@@ -88,6 +88,8 @@ def get_static_metrics(
     Returns:
         dictionnary of results
     """
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     try:
         row = []
         for metric in metrics:
