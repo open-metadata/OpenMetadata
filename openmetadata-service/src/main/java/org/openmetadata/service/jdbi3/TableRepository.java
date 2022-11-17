@@ -17,6 +17,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -66,7 +67,6 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SQLQuery;
@@ -139,7 +139,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   private void setDefaultFields(Table table) throws IOException {
     EntityReference schemaRef = getContainer(table.getId());
-    DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, Include.ALL);
+    DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
 
@@ -537,11 +537,15 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), Fields.EMPTY_FIELDS, Include.ALL);
-    table.setDatabaseSchema(schema.getEntityReference());
-    table.setDatabase(schema.getDatabase());
-    table.setService(schema.getService());
-    table.setServiceType(schema.getServiceType());
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
+    table
+        .withDatabaseSchema(schema.getEntityReference())
+        .withDatabase(schema.getDatabase())
+        .withService(schema.getService())
+        .withServiceType(schema.getServiceType());
+
+    // Carry forward ownership from database schema
+    table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());

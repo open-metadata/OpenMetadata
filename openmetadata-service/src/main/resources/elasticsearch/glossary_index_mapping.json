@@ -9,6 +9,21 @@
             "lowercase"
           ]
         }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
       }
     }
   },
