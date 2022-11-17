@@ -77,3 +77,5 @@ export const RECREATE_INDEX_OPTIONS = [
     value: false,
   },
 ];
+
+export const ELASTIC_SEARCH_REINDEX = 'elasticSearchReindex';

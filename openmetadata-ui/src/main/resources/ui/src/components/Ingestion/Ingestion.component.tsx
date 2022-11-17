@@ -24,6 +24,7 @@ import React, { Fragment, useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
+import { ELASTIC_SEARCH_REINDEX } from '../../constants/elasticsearch.constant';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { Connection } from '../../generated/entity/services/databaseService';
@@ -262,7 +263,9 @@ const Ingestion: React.FC<IngestionProps> = ({
           <DropDownList
             horzPosRight
             dropDownList={types.map((type) => ({
-              name: `Add ${startCase(type)} Ingestion`,
+              name: `Add ${startCase(type)} ${
+                type === ELASTIC_SEARCH_REINDEX ? '' : 'Ingestion'
+              } `,
               value: type,
             }))}
             onSelect={(_e, value) =>
