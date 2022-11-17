@@ -34,6 +34,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 import static org.openmetadata.service.util.EntityUtil.getId;
+import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
@@ -181,6 +182,33 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  void test_commonPrefixTagLabelCount(TestInfo test) throws IOException {
+    //
+    // Create glossary terms that start with common prefix and make sure usage count is correct
+    //
+    GlossaryResourceTest glossaryTest = new GlossaryResourceTest();
+    CreateGlossary create =
+        glossaryTest.createRequest(getEntityName(test)).withReviewers(List.of(USER1_REF)).withDescription("d");
+    Glossary glossary = glossaryTest.createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Create nested terms a -> aa -> aaa;
+    GlossaryTerm a = createTerm(glossary, null, "a", null);
+    GlossaryTerm aa = createTerm(glossary, null, "aa", null);
+    GlossaryTerm aaa = createTerm(glossary, null, "aaa", null);
+
+    // Apply each of the tag to a table
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable = tableResourceTest.createRequest(getEntityName(test)).withTags(toTagLabels(a, aa, aaa));
+    tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Ensure prefix based tagLabel doesn't double count due too common prefix
+    for (GlossaryTerm term : List.of(a, aa, aaa)) {
+      term = getEntity(term.getId(), "usageCount", ADMIN_AUTH_HEADERS);
+      assertEquals(1, term.getUsageCount());
+    }
+  }
+
+  @Test
   void patch_addDeleteReviewers(TestInfo test) throws IOException {
     CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
@@ -267,18 +295,18 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1Ref);
     GlossaryTerm t1 = createEntity(create, ADMIN_AUTH_HEADERS);
     EntityReference tRef1 = t1.getEntityReference();
-    TagLabel t1Label = EntityUtil.getTagLabel(t1);
+    TagLabel t1Label = EntityUtil.toTagLabel(t1);
 
     // Create glossary term t11 under t1
     create = createRequest("t11with'quote", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef1);
     GlossaryTerm t11 = createEntity(create, ADMIN_AUTH_HEADERS);
     EntityReference tRef11 = t11.getEntityReference();
-    TagLabel t11Label = EntityUtil.getTagLabel(t11);
+    TagLabel t11Label = EntityUtil.toTagLabel(t11);
 
     // Create glossary term t111 under t11
     create = createRequest("t111", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef11);
     GlossaryTerm t111 = createEntity(create, ADMIN_AUTH_HEADERS);
-    TagLabel t111Label = EntityUtil.getTagLabel(t111);
+    TagLabel t111Label = EntityUtil.toTagLabel(t111);
 
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2

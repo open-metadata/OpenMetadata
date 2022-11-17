@@ -49,6 +49,7 @@ public class TableIndex implements ElasticSearchIndex {
     schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
 
     ParseTags parseTags = new ParseTags(tags);
+    doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(table.getFollowers()));
