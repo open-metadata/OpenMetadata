@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
@@ -963,78 +963,80 @@ const ServicePage: FunctionComponent = () => {
       ) : (
         <>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Card
-              bordered={false}
-              className="entity-details-page-container"
-              data-testid="service-page">
-              <Space
-                align="center"
-                className="tw-justify-between"
-                style={{ width: '100%' }}>
-                <TitleBreadcrumb titleLinks={slashedTableName} />
-                {serviceDetails?.serviceType !==
-                  MetadataServiceType.OpenMetadata && (
-                  <Tooltip
-                    title={
-                      servicePermission.Delete
-                        ? 'Delete'
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <LegacyButton
-                      data-testid="service-delete"
-                      disabled={!servicePermission.Delete}
-                      size="small"
-                      theme="primary"
-                      variant="outlined"
-                      onClick={handleDelete}>
-                      <IcDeleteColored
-                        className="tw-mr-1.5"
-                        height={14}
-                        viewBox="0 0 24 24"
-                        width={14}
-                      />
-                      Delete
-                    </LegacyButton>
-                  </Tooltip>
-                )}
-                <DeleteWidgetModal
-                  isRecursiveDelete
-                  allowSoftDelete={false}
-                  deleteMessage={getDeleteEntityMessage(
-                    serviceName || '',
-                    instanceCount,
-                    schemaCount,
-                    tableCount
+            <Row
+              className="p-x-md p-t-lg"
+              data-testid="service-page"
+              gutter={[0, 12]}>
+              <Col span={24}>
+                <Space align="center" className="justify-between w-full">
+                  <TitleBreadcrumb titleLinks={slashedTableName} />
+                  {serviceDetails?.serviceType !==
+                    MetadataServiceType.OpenMetadata && (
+                    <Tooltip
+                      title={
+                        servicePermission.Delete
+                          ? 'Delete'
+                          : NO_PERMISSION_FOR_ACTION
+                      }>
+                      <LegacyButton
+                        data-testid="service-delete"
+                        disabled={!servicePermission.Delete}
+                        size="small"
+                        theme="primary"
+                        variant="outlined"
+                        onClick={handleDelete}>
+                        <IcDeleteColored
+                          className="tw-mr-1.5"
+                          height={14}
+                          viewBox="0 0 24 24"
+                          width={14}
+                        />
+                        Delete
+                      </LegacyButton>
+                    </Tooltip>
                   )}
-                  entityId={serviceDetails?.id}
-                  entityName={serviceDetails?.name || ''}
-                  entityType={serviceName?.slice(0, -1)}
-                  visible={deleteWidgetVisible}
-                  onCancel={() => setDeleteWidgetVisible(false)}
-                />
-              </Space>
-
-              <Space>
-                {extraInfo.map((info, index) => (
-                  <Space key={index}>
-                    <EntitySummaryDetails
-                      currentOwner={serviceDetails?.owner}
-                      data={info}
-                      removeOwner={
-                        servicePermission.EditAll || servicePermission.EditOwner
-                          ? handleRemoveOwner
-                          : undefined
-                      }
-                      updateOwner={
-                        servicePermission.EditAll || servicePermission.EditOwner
-                          ? handleUpdateOwner
-                          : undefined
-                      }
-                    />
-                  </Space>
-                ))}
-              </Space>
-              <div data-testid="description-container">
+                  <DeleteWidgetModal
+                    isRecursiveDelete
+                    allowSoftDelete={false}
+                    deleteMessage={getDeleteEntityMessage(
+                      serviceName || '',
+                      instanceCount,
+                      schemaCount,
+                      tableCount
+                    )}
+                    entityId={serviceDetails?.id}
+                    entityName={serviceDetails?.name || ''}
+                    entityType={serviceName?.slice(0, -1)}
+                    visible={deleteWidgetVisible}
+                    onCancel={() => setDeleteWidgetVisible(false)}
+                  />
+                </Space>
+              </Col>
+              <Col span={24}>
+                <Space>
+                  {extraInfo.map((info, index) => (
+                    <Space key={index}>
+                      <EntitySummaryDetails
+                        currentOwner={serviceDetails?.owner}
+                        data={info}
+                        removeOwner={
+                          servicePermission.EditAll ||
+                          servicePermission.EditOwner
+                            ? handleRemoveOwner
+                            : undefined
+                        }
+                        updateOwner={
+                          servicePermission.EditAll ||
+                          servicePermission.EditOwner
+                            ? handleUpdateOwner
+                            : undefined
+                        }
+                      />
+                    </Space>
+                  ))}
+                </Space>
+              </Col>
+              <Col data-testid="description-container" span={24}>
                 <Description
                   description={description || ''}
                   entityFqn={serviceFQN}
@@ -1049,104 +1051,107 @@ const ServicePage: FunctionComponent = () => {
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
                 />
-              </div>
-              <div data-testid="tabs-container">
+              </Col>
+              <Col span={24}>
                 <TabsPane
                   activeTab={activeTab}
                   className="tw-flex-initial"
                   setActiveTab={activeTabHandler}
                   tabs={tabs}
                 />
-                {activeTab === 1 &&
-                  (isEmpty(data) ? (
-                    <ErrorPlaceHolder
-                      doc={CONNECTORS_DOCS}
-                      heading={servicesDisplayName[serviceName]}
-                    />
-                  ) : (
-                    <div data-testid="table-container">
-                      <Table
-                        bordered
-                        className="mt-4 table-shadow"
-                        columns={tableColumn}
-                        components={{
-                          body: {
-                            row: ({
-                              children,
-                            }: {
-                              children: React.ReactNode;
-                            }) => <tr data-testid="column">{children}</tr>,
-                          },
-                        }}
-                        data-testid="database-table"
-                        dataSource={data}
-                        pagination={false}
-                        rowKey="id"
-                        size="small"
+                <Col span={24}>
+                  {activeTab === 1 &&
+                    (isEmpty(data) ? (
+                      <ErrorPlaceHolder
+                        doc={CONNECTORS_DOCS}
+                        heading={servicesDisplayName[serviceName]}
                       />
-                      {Boolean(
-                        !isNil(paging.after) || !isNil(paging.before)
-                      ) && (
-                        <NextPrevious
-                          currentPage={currentPage}
-                          pageSize={PAGE_SIZE}
-                          paging={paging}
-                          pagingHandler={pagingHandler}
-                          totalCount={paging.total}
+                    ) : (
+                      <div data-testid="table-container">
+                        <Table
+                          bordered
+                          className="mt-4 table-shadow"
+                          columns={tableColumn}
+                          components={{
+                            body: {
+                              row: ({
+                                children,
+                              }: {
+                                children: React.ReactNode;
+                              }) => <tr data-testid="column">{children}</tr>,
+                            },
+                          }}
+                          data-testid="database-table"
+                          dataSource={data}
+                          pagination={false}
+                          rowKey="id"
+                          size="small"
                         />
-                      )}
-                    </div>
-                  ))}
+                        {Boolean(
+                          !isNil(paging.after) || !isNil(paging.before)
+                        ) && (
+                          <NextPrevious
+                            currentPage={currentPage}
+                            pageSize={PAGE_SIZE}
+                            paging={paging}
+                            pagingHandler={pagingHandler}
+                            totalCount={paging.total}
+                          />
+                        )}
+                      </div>
+                    ))}
 
-                {activeTab === 2 && getIngestionTab()}
+                  {activeTab === 2 && getIngestionTab()}
 
-                {activeTab === 3 && (
-                  <>
-                    <Space className="w-full my-4 justify-end">
-                      <Tooltip
-                        title={
-                          servicePermission.EditAll
-                            ? 'Edit Connection'
-                            : NO_PERMISSION_FOR_ACTION
-                        }>
-                        <Button
-                          ghost
-                          data-testid="edit-connection-button"
-                          disabled={!servicePermission.EditAll}
-                          type="primary"
-                          onClick={handleEditConnection}>
-                          Edit Connection
-                        </Button>
-                      </Tooltip>
-                      {allowTestConn && isAirflowRunning && (
+                  {activeTab === 3 && (
+                    <>
+                      <Space className="w-full my-4 justify-end">
                         <Tooltip
                           title={
                             servicePermission.EditAll
-                              ? 'Test Connection'
+                              ? 'Edit Connection'
                               : NO_PERMISSION_FOR_ACTION
                           }>
                           <Button
-                            data-testid="test-connection-button"
-                            disabled={
-                              !servicePermission.EditAll || isTestingConnection
-                            }
-                            loading={isTestingConnection}
+                            ghost
+                            data-testid="edit-connection-button"
+                            disabled={!servicePermission.EditAll}
                             type="primary"
-                            onClick={checkTestConnect}>
-                            Test Connection
+                            onClick={handleEditConnection}>
+                            Edit Connection
                           </Button>
                         </Tooltip>
-                      )}
-                    </Space>
-                    <ServiceConnectionDetails
-                      connectionDetails={connectionDetails || {}}
-                      serviceCategory={serviceCategory}
-                      serviceFQN={serviceDetails?.serviceType || ''}
-                    />
-                  </>
-                )}
-              </div>
-            </Card>
+                        {allowTestConn && isAirflowRunning && (
+                          <Tooltip
+                            title={
+                              servicePermission.EditAll
+                                ? 'Test Connection'
+                                : NO_PERMISSION_FOR_ACTION
+                            }>
+                            <Button
+                              data-testid="test-connection-button"
+                              disabled={
+                                !servicePermission.EditAll ||
+                                isTestingConnection
+                              }
+                              loading={isTestingConnection}
+                              type="primary"
+                              onClick={checkTestConnect}>
+                              Test Connection
+                            </Button>
+                          </Tooltip>
+                        )}
+                      </Space>
+                      <ServiceConnectionDetails
+                        connectionDetails={connectionDetails || {}}
+                        serviceCategory={serviceCategory}
+                        serviceFQN={serviceDetails?.serviceType || ''}
+                      />
+                    </>
+                  )}
+                </Col>
+              </Col>
+            </Row>
           ) : (
             <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
           )}

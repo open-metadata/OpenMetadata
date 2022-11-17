@@ -518,9 +518,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   return (
     <PageContainerV1>
-      <div
-        className="entity-details-page-container"
-        data-testid="mlmodel-details">
+      <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
           currentOwner={mlModelDetail.owner}

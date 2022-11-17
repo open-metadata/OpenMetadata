@@ -466,7 +466,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   return (
     <PageContainerV1>
-      <div className="entity-details-page-container">
+      <div className="entity-details-containers">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
           currentOwner={topicDetails.owner}

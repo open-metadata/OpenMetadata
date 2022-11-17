@@ -783,7 +783,7 @@ const PipelineDetails = ({
 
   return (
     <PageContainerV1>
-      <div className="entity-details-page-container">
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
           currentOwner={pipelineDetails.owner}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Table } from 'antd';
+import { Col, Row, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -676,43 +676,42 @@ const DatabaseDetails: FunctionComponent = () => {
         <>
           {databasePermission.ViewAll || databasePermission.ViewBasic ? (
             <PageContainerV1>
-              <Card
-                bordered={false}
-                className="entity-details-page-container"
-                data-testid="page-container">
-                <Space
-                  align="center"
-                  className="tw-justify-between"
-                  style={{ width: '100%' }}>
-                  <TitleBreadcrumb titleLinks={slashedDatabaseName} />
-                  <ManageButton
-                    isRecursiveDelete
-                    allowSoftDelete={false}
-                    canDelete={databasePermission.Delete}
-                    entityFQN={databaseFQN}
-                    entityId={databaseId}
-                    entityName={databaseName}
-                    entityType={EntityType.DATABASE}
-                  />
-                </Space>
-
-                {extraInfo.map((info, index) => (
-                  <Space key={index}>
-                    <EntitySummaryDetails
-                      currentOwner={database?.owner}
-                      data={info}
-                      removeOwner={handleRemoveOwner}
-                      updateOwner={
-                        databasePermission.EditOwner ||
-                        databasePermission.EditAll
-                          ? handleUpdateOwner
-                          : undefined
-                      }
+              <Row
+                className=" p-x-md p-t-lg"
+                data-testid="page-container"
+                gutter={[0, 12]}>
+                <Col span={24}>
+                  <Space align="center" className="justify-between w-full">
+                    <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+                    <ManageButton
+                      isRecursiveDelete
+                      allowSoftDelete={false}
+                      canDelete={databasePermission.Delete}
+                      entityFQN={databaseFQN}
+                      entityId={databaseId}
+                      entityName={databaseName}
+                      entityType={EntityType.DATABASE}
                     />
                   </Space>
-                ))}
-
-                <div data-testid="description-container">
+                </Col>
+                <Col span={24}>
+                  {extraInfo.map((info, index) => (
+                    <Space key={index}>
+                      <EntitySummaryDetails
+                        currentOwner={database?.owner}
+                        data={info}
+                        removeOwner={handleRemoveOwner}
+                        updateOwner={
+                          databasePermission.EditOwner ||
+                          databasePermission.EditAll
+                            ? handleUpdateOwner
+                            : undefined
+                        }
+                      />
+                    </Space>
+                  ))}
+                </Col>
+                <Col data-testid="description-container" span={24}>
                   <Description
                     description={description}
                     entityFieldThreads={getEntityFieldThreadCounts(
@@ -733,102 +732,105 @@ const DatabaseDetails: FunctionComponent = () => {
                     onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
-                </div>
-
-                <Row className="tw-mt-4">
-                  <Col span={24}>
-                    <TabsPane
-                      activeTab={activeTab}
-                      className="tw-flex-initial"
-                      setActiveTab={activeTabHandler}
-                      tabs={tabs}
-                    />
-                  </Col>
-                  <Col className="p-y-md" span={24}>
-                    {activeTab === 1 && (
-                      <Fragment>
-                        <Table
-                          bordered
-                          className="table-shadow"
-                          columns={tableColumn}
-                          data-testid="database-databaseSchemas"
-                          dataSource={schemaData}
-                          pagination={false}
-                          rowKey="id"
-                          size="small"
-                        />
-                        {Boolean(
-                          !isNil(databaseSchemaPaging.after) ||
-                            !isNil(databaseSchemaPaging.before)
-                        ) && (
-                          <NextPrevious
-                            currentPage={currentPage}
-                            pageSize={PAGE_SIZE}
-                            paging={databaseSchemaPaging}
-                            pagingHandler={databaseSchemaPagingHandler}
-                            totalCount={databaseSchemaPaging.total}
-                          />
-                        )}
-                      </Fragment>
-                    )}
-                    {activeTab === 2 && (
-                      <Row
-                        className=" tw-pt-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
-                        id="activityfeed">
-                        <Col offset={4} span={16}>
-                          <ActivityFeedList
-                            hideFeedFilter
-                            hideThreadFilter
-                            isEntityFeed
-                            withSidePanel
-                            className=""
-                            deletePostHandler={deletePostHandler}
-                            entityName={databaseName}
-                            feedList={entityThread}
-                            postFeedHandler={postFeedHandler}
-                            updateThreadHandler={updateThreadHandler}
-                          />
-                        </Col>
-                      </Row>
-                    )}
-                    <Col
-                      data-testid="observer-element"
-                      id="observer-element"
-                      ref={elementRef as RefObject<HTMLDivElement>}
-                      span={24}>
-                      {getLoader()}
+                </Col>
+                <Col span={24}>
+                  <Row className="tw-mt-4">
+                    <Col span={24}>
+                      <TabsPane
+                        activeTab={activeTab}
+                        className="tw-flex-initial"
+                        setActiveTab={activeTabHandler}
+                        tabs={tabs}
+                      />
                     </Col>
-                  </Col>
-                </Row>
-
-                {threadLink ? (
-                  <ActivityThreadPanel
-                    createThread={createThread}
-                    deletePostHandler={deletePostHandler}
-                    open={Boolean(threadLink)}
-                    postFeedHandler={postFeedHandler}
-                    threadLink={threadLink}
-                    updateThreadHandler={updateThreadHandler}
-                    onCancel={onThreadPanelClose}
-                  />
-                ) : null}
-
-                {selectedField ? (
-                  <RequestDescriptionModal
-                    createThread={createThread}
-                    defaultValue={getDefaultValue(
-                      database?.owner as EntityReference
-                    )}
-                    header="Request description"
-                    threadLink={getEntityFeedLink(
-                      EntityType.DATABASE,
-                      databaseFQN,
-                      selectedField
-                    )}
-                    onCancel={closeRequestModal}
-                  />
-                ) : null}
-              </Card>
+                    <Col className="p-y-md" span={24}>
+                      {activeTab === 1 && (
+                        <Fragment>
+                          <Table
+                            bordered
+                            className="table-shadow"
+                            columns={tableColumn}
+                            data-testid="database-databaseSchemas"
+                            dataSource={schemaData}
+                            pagination={false}
+                            rowKey="id"
+                            size="small"
+                          />
+                          {Boolean(
+                            !isNil(databaseSchemaPaging.after) ||
+                              !isNil(databaseSchemaPaging.before)
+                          ) && (
+                            <NextPrevious
+                              currentPage={currentPage}
+                              pageSize={PAGE_SIZE}
+                              paging={databaseSchemaPaging}
+                              pagingHandler={databaseSchemaPagingHandler}
+                              totalCount={databaseSchemaPaging.total}
+                            />
+                          )}
+                        </Fragment>
+                      )}
+                      {activeTab === 2 && (
+                        <Row
+                          className=" tw-pt-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
+                          id="activityfeed">
+                          <Col offset={4} span={16}>
+                            <ActivityFeedList
+                              hideFeedFilter
+                              hideThreadFilter
+                              isEntityFeed
+                              withSidePanel
+                              className=""
+                              deletePostHandler={deletePostHandler}
+                              entityName={databaseName}
+                              feedList={entityThread}
+                              postFeedHandler={postFeedHandler}
+                              updateThreadHandler={updateThreadHandler}
+                            />
+                          </Col>
+                        </Row>
+                      )}
+                      <Col
+                        data-testid="observer-element"
+                        id="observer-element"
+                        ref={elementRef as RefObject<HTMLDivElement>}
+                        span={24}>
+                        {getLoader()}
+                      </Col>
+                    </Col>
+                  </Row>
+                </Col>
+                <Col span={24}>
+                  {threadLink ? (
+                    <ActivityThreadPanel
+                      createThread={createThread}
+                      deletePostHandler={deletePostHandler}
+                      open={Boolean(threadLink)}
+                      postFeedHandler={postFeedHandler}
+                      threadLink={threadLink}
+                      updateThreadHandler={updateThreadHandler}
+                      onCancel={onThreadPanelClose}
+                    />
+                  ) : null}
+                </Col>
+                <Col span={24}>
+                  {selectedField ? (
+                    <RequestDescriptionModal
+                      createThread={createThread}
+                      defaultValue={getDefaultValue(
+                        database?.owner as EntityReference
+                      )}
+                      header="Request description"
+                      threadLink={getEntityFeedLink(
+                        EntityType.DATABASE,
+                        databaseFQN,
+                        selectedField
+                      )}
+                      onCancel={closeRequestModal}
+                    />
+                  ) : null}
+                </Col>
+              </Row>
             </PageContainerV1>
           ) : (
             <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>

@@ -630,7 +630,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   return (
     <PageContainerV1>
-      <div className="entity-details-page-container">
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
           currentOwner={tableDetails.owner}
