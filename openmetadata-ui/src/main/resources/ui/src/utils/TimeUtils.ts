@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isNil, toNumber } from 'lodash';
+import { isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 
 const msPerSecond = 1000;
@@ -406,3 +406,13 @@ export const formatDateTimeFromSeconds = (date: number) => {
 
 export const getTimeStampByDateTime = (dateTime: string) =>
   DateTime.fromSQL(dateTime).toMillis();
+
+/**
+ *
+ * @param timeStamp timestamp in milliSeconds
+ * @returns days count
+ */
+export const getNumberOfDaysForTimestamp = (timeStamp: number) =>
+  toInteger(
+    -DateTime.now().diff(DateTime.fromMillis(timeStamp), ['days']).days
+  );

@@ -46,7 +46,23 @@ custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Datalake ingestion, you will need to install:
+If running OpenMetadata version greater than 0.13, you will need to install the Datalake ingestion for GCS or S3:
+
+#### S3 installation
+
+```bash
+pip3 install "openmetadata-ingestion[datalake-s3]"
+```
+
+#### GCS installation
+
+```bash
+pip3 install "openmetadata-ingestion[datalake-gcs]"
+```
+
+#### If version <0.13
+
+You will be installing the requirements together for S3 and GCS
 
 ```bash
 pip3 install "openmetadata-ingestion[datalake]"

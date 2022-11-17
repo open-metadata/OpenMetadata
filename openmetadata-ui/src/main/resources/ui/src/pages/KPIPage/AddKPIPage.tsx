@@ -60,7 +60,10 @@ import {
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
-import { getDisabledDates } from '../../utils/DataInsightUtils';
+import {
+  getDisabledDates,
+  getKpiTargetValueByMetricType,
+} from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 const { Option } = Select;
@@ -142,6 +145,9 @@ const AddKPIPage = () => {
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     const startDate = getTimeStampByDateTime(kpiDates.startDate);
     const endDate = getTimeStampByDateTime(kpiDates.endDate);
+    const metricType = selectedMetric?.dataType as unknown as KpiTargetType;
+
+    const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
 
     const formData: CreateKpiRequest = {
       dataInsightChart: {
@@ -153,11 +159,11 @@ const AddKPIPage = () => {
       displayName: values.displayName,
       startDate,
       endDate,
-      metricType: selectedMetric?.dataType as unknown as KpiTargetType,
+      metricType,
       targetDefinition: [
         {
           name: selectedMetric?.name as string,
-          value: metricValue + '',
+          value: targetValue + '',
         },
       ],
     };

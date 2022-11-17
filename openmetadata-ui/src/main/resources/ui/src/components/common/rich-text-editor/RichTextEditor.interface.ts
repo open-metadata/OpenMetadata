@@ -42,6 +42,7 @@ export type PreviewStyle = 'tab' | 'vertical';
 export type EditorType = 'markdown' | 'wysiwyg';
 
 export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
+  autofocus?: boolean;
   initialValue: string;
   placeHolder?: string;
   previewStyle?: PreviewStyle;

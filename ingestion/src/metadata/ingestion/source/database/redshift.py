@@ -146,12 +146,15 @@ def _get_column_info(self, *args, **kwargs):
     column_info = super(  # pylint: disable=protected-access
         RedshiftDialectMixin, self
     )._get_column_info(*args, **kwdrs)
-    column_info["raw_data_type"] = kwdrs["format_type"]
+
+    # raw_data_type is not included in column_info as
+    # redhift doesn't suport compex data types directly
+    # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 
     if isinstance(column_info["type"], VARCHAR):
         if column_info["type"].length is None:
             column_info["type"] = NullType()
-    if re.match("char", column_info["raw_data_type"]):
+    if re.match("char", kwdrs["format_type"]):
         column_info["type"] = CHAR
 
     if "info" not in column_info:

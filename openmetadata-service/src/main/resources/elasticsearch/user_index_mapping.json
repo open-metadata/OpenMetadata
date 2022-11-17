@@ -162,7 +162,14 @@
         "type": "keyword"
       },
       "suggest": {
-        "type": "completion"
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       }
     }
   }

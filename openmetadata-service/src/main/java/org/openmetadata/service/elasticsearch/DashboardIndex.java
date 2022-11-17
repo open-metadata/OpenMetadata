@@ -32,6 +32,7 @@ public class DashboardIndex implements ElasticSearchIndex {
       }
     }
     doc.put("name", dashboard.getDisplayName());
+    doc.put("displayName", dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
     doc.put("tags", parseTags.tags);
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(dashboard.getFollowers()));
     doc.put("tier", parseTags.tierTag);
