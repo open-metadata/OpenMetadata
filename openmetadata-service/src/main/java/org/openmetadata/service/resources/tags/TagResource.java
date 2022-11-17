@@ -114,10 +114,10 @@ public class TagResource {
                       t.getChildren().forEach(c -> c.withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now));
                     });
             daoCategory.initCategory(tagCategory);
+            TagLabelCache.initialize();
           } catch (Exception e) {
             LOG.warn("Failed to initialize the tag files {}", tagFile, e);
           }
-          TagLabelCache.initialize();
         });
   }
 
