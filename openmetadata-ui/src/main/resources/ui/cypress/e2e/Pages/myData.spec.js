@@ -13,8 +13,8 @@
 
 /// <reference types="cypress" />
 
-import { interceptURL, login, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage, visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, LOGIN, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import { interceptURL, login, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import { ENTITIES, FOLLOWING_TITLE, LOGIN, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tables = Object.values(SEARCH_ENTITY_TABLE);
 const topics = Object.values(SEARCH_ENTITY_TOPIC);
@@ -146,24 +146,26 @@ describe('MyData page should work', () => {
     });
   });
 
-  it('Recent view section and redirection should work for table entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.tables);
-    checkRecentlyViewElement();
-  });
-
-  it('Recent view section and redirection should work for topic entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.topics);
-    checkRecentlyViewElement();
-  });
-
-  it('Recent view section and redirection should work for dashboard entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.dashboards);
-    checkRecentlyViewElement();
-  });
-
-  it('Recent view section and redirection should work for pipeline entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.pipelines);
-    checkRecentlyViewElement();
+  Object.values(ENTITIES).map((entity) => {
+    const text = entity.entityObj.displayName ?? entity.entityObj.term
+    it(`Recent view section and redirection should work for ${entity.name} entity`, () => {
+      visitEntityDetailsPage(
+        entity.entityObj.term,
+        entity.entityObj.serviceName,
+        entity.entityObj.entity
+      );
+      cy.clickOnLogo();
+      cy.get(`[data-testid="Recently Viewed-${text}"]`)
+        .contains(text)
+        .should('be.visible')
+        .click();
+      cy.get('[data-testid="inactive-link"]')
+        .invoke('text')
+        .then((newText) => {
+          expect(newText).equal(text);
+        });
+      cy.clickOnLogo();
+    });
   });
 
   it('Listing Recent search terms with redirection should work properly', () => {
