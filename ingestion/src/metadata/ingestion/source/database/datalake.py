@@ -15,8 +15,6 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import traceback
 from typing import Iterable, Optional, Tuple
 
-from pandas import DataFrame
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -282,6 +280,8 @@ class DatalakeSource(DatabaseServiceSource):
         From topology.
         Prepare a table request and pass it to the sink
         """
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
         try:
