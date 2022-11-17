@@ -964,12 +964,6 @@ const ServicePage: FunctionComponent = () => {
         <>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
             <Card
-              bodyStyle={{
-                padding: '0px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-              }}
               bordered={false}
               className="entity-details-page-container"
               data-testid="service-page">

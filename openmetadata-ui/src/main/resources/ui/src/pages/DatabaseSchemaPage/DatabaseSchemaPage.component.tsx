@@ -644,12 +644,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           databaseSchemaPermission.ViewBasic ? (
             <PageContainerV1>
               <Card
-                bodyStyle={{
-                  padding: '0px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '14px',
-                }}
                 bordered={false}
                 className="entity-details-page-container"
                 data-testid="page-container">
