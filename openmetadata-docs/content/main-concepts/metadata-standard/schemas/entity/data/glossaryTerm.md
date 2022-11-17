@@ -33,6 +33,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossaryterm
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`status`**: Status of the glossary term. Refer to *#/definitions/status*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`disabled`** *(boolean)*: System glossary can't be deleted. Use this flag to disable them.
+- **`mutuallyExclusive`** *(boolean)*: Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity. Default: `false`.
 ## Definitions
 
 - **`name`**: Name that identifies a glossary term. Refer to *../../type/basic.json#/definitions/entityName*.
@@ -42,4 +45,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossaryterm
 - **`status`** *(string)*: Must be one of: `['Draft', 'Approved', 'Deprecated']`. Default: `Draft`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

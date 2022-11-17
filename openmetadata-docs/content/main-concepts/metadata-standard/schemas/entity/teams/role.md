@@ -25,9 +25,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/role
 - **`policies`**: Policies that is attached to this role. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`users`**: Users that have this role assigned to them. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`teams`**: Teams that have this role assigned to them. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`disabled`** *(boolean)*: System policy can't be deleted. Use this flag to disable them.
 ## Definitions
 
 - **`roleName`**: A unique name for the role. Refer to *../../type/basic.json#/definitions/entityName*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

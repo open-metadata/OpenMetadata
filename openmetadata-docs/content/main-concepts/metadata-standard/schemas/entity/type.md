@@ -35,4 +35,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/type
   - **`propertyType`**: Reference to a property type. Only property types are allowed and entity types are not allowed as custom properties to extend an existing entity. Refer to *../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

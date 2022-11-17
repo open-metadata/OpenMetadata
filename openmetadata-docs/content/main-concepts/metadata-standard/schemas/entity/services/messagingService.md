@@ -26,11 +26,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/messagingservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`messagingServiceType`** *(string)*: Type of messaging service - Kafka or Pulsar. Must be one of: `['Kafka', 'Pulsar', 'Redpanda', 'CustomMessaging']`.
+- **`messagingServiceType`** *(string)*: Type of messaging service - Kafka or Pulsar. Must be one of: `['Kafka', 'Pulsar', 'Redpanda', 'Kinesis', 'CustomMessaging']`.
 - **`brokers`** *(array)*: Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar. Default: `None`.
   - **Items** *(string)*
 - **`messagingConnection`** *(object)*: Dashboard Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

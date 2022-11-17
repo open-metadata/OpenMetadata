@@ -23,4 +23,4 @@ slug: /main-concepts/metadata-standard/schemas/type/entityrelationship
 - **`relationshipType`** *(string)*: This enum captures all the relationships between Catalog entities. Note that the relationship from is a Strong entity and to is Weak entity when possible. Must be one of: `['contains', 'createdBy', 'repliedTo', 'isAbout', 'addressedTo', 'mentionedIn', 'testedBy', 'uses', 'owns', 'parentOf', 'has', 'follows', 'joinedWith', 'upstream', 'appliedTo', 'relatedTo', 'reviews', 'reactedTo']`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

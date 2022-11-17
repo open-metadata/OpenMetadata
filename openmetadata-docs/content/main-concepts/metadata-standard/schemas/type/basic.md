@@ -31,6 +31,7 @@ slug: /main-concepts/metadata-standard/schemas/type/basic
 - **`expression`** *(string)*: Expression in SpEL.
 - **`jsonSchema`** *(string)*: JSON schema encoded as string. This will be used to validate the JSON fields using this schema.
 - **`entityExtension`**: Entity extension data with custom attributes added to the entity.
+- **`providerType`** *(string)*: Type of provider of an entity. Some entities are provided by the `system`. Some are are entities created and provided by the `user`. Typically `system` provide entities can't be deleted and can only be disabled. Must be one of: `['system', 'user']`. Default: `user`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

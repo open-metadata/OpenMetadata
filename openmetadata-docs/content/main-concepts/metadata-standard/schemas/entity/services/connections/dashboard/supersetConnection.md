@@ -21,4 +21,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 - **`supersetType`** *(string)*: Superset service type. Must be one of: `['Superset']`. Default: `Superset`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

@@ -48,7 +48,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 ## Definitions
 
 - **`tableType`** *(string)*: This schema defines the type used for describing different types of tables. Must be one of: `['Regular', 'External', 'View', 'SecureView', 'MaterializedView', 'Iceberg', 'Local', 'Partitioned']`.
-- **`dataType`** *(string)*: This enum defines the type of data stored in a column. Must be one of: `['NUMBER', 'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'BYTEINT', 'BYTES', 'FLOAT', 'DOUBLE', 'DECIMAL', 'NUMERIC', 'TIMESTAMP', 'TIMESTAMPZ', 'TIME', 'DATE', 'DATETIME', 'INTERVAL', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR', 'BOOLEAN', 'BINARY', 'VARBINARY', 'ARRAY', 'BLOB', 'LONGBLOB', 'MEDIUMBLOB', 'MAP', 'STRUCT', 'UNION', 'SET', 'GEOGRAPHY', 'ENUM', 'JSON', 'UUID', 'VARIANT', 'GEOMETRY', 'POINT', 'POLYGON']`.
+- **`dataType`** *(string)*: This enum defines the type of data stored in a column. Must be one of: `['NUMBER', 'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'BYTEINT', 'BYTES', 'FLOAT', 'DOUBLE', 'DECIMAL', 'NUMERIC', 'TIMESTAMP', 'TIMESTAMPZ', 'TIME', 'DATE', 'DATETIME', 'INTERVAL', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'LONG', 'VARCHAR', 'BOOLEAN', 'BINARY', 'VARBINARY', 'ARRAY', 'BLOB', 'LONGBLOB', 'MEDIUMBLOB', 'MAP', 'STRUCT', 'UNION', 'SET', 'GEOGRAPHY', 'ENUM', 'JSON', 'UUID', 'VARIANT', 'GEOMETRY', 'POINT', 'POLYGON', 'BYTEA']`.
 - **`constraint`** *(string)*: This enum defines the type for column constraint. Must be one of: `['NULL', 'NOT_NULL', 'UNIQUE', 'PRIMARY_KEY']`. Cannot contain additional properties. Default: `None`.
 - **`tableConstraint`** *(object)*: This enum defines the type for table constraint. Cannot contain additional properties.
   - **`constraintType`** *(string)*: Must be one of: `['UNIQUE', 'PRIMARY_KEY', 'FOREIGN_KEY']`.
@@ -136,6 +136,13 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`columnName`** *(string)*: Column Name of the table to be included.
   - **`metrics`** *(array)*: Include only following metrics. Default: `None`.
     - **Items** *(string)*
+- **`partitionProfilerConfig`** *(object)*: This schema defines the partition configuration used by profiler.
+  - **`enablePartitioning`** *(boolean)*: whether to use partition. Default: `False`.
+  - **`partitionColumnName`** *(string)*: name of the column to use for the partition.
+  - **`partitionIntervalType`** *(string)*: type of partition interval. Must be one of: `['TIME-UNIT', 'INGESTION-TIME']`.
+  - **`partitionInterval`** *(integer)*: The interval to use for the partitioning.
+  - **`partitionIntervalUnit`** *(string)*: unit used for the partition interval. Must be one of: `['YEAR', 'MONTH', 'DAY', 'HOUR']`.
+  - **`partitionValues`** *(array)*: unit used for the partition interval.
 - **`tableProfilerConfig`** *(object)*: This schema defines the type for Table profile config.
   - **`profileSample`** *(number)*: Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100). Maximum: `100`. Default: `None`.
   - **`profileQuery`** *(string)*: Users' raw SQL query to fetch sample data and profile the table. Default: `None`.
@@ -143,6 +150,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
     - **Items** *(string)*
   - **`includeColumns`** *(array)*: Only run profiler on included columns with specific metrics. Default: `None`.
     - **Items**: Refer to *#/definitions/columnProfilerConfig*.
+  - **`partitioning`**: Partitioning configuration. Refer to *#/definitions/partitionProfilerConfig*.
 - **`tableProfile`** *(object)*: This schema defines the type to capture the table's data profile. Cannot contain additional properties.
   - **`timestamp`**: Timestamp on which profile is taken. Refer to *../../type/basic.json#/definitions/timestamp*.
   - **`profileSample`** *(number)*: Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100). Maximum: `100`. Default: `None`.
@@ -151,7 +159,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`sqlQuery`** *(object)*: This schema defines the type to capture the table's sql queries. Cannot contain additional properties.
   - **`query`** *(string)*: SQL Query text that matches the table name.
   - **`duration`** *(number)*: How long did the query took to run in seconds.
-  - **`user`**: User who ran this query. Refer to *../../type/entityReference.json*. Default: `None`.
+  - **`users`** *(array)*: List of users who ran this query. Default: `None`.
+    - **Items**: Refer to *../../type/entityReference.json*.
   - **`vote`** *(number)*: Users can vote up to rank the popular queries. Default: `1`.
   - **`checksum`** *(string)*: Checksum to avoid registering duplicate queries.
   - **`queryDate`**: Date on which the query ran. Refer to *../../type/basic.json#/definitions/date*.
@@ -165,9 +174,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`upstream`** *(array)*: Fully qualified name of Models/tables used for in `sql` for creating this table.
     - **Items** *(string)*
   - **`owner`**: Owner of this Model. Refer to *../../type/entityReference.json*. Default: `None`.
+  - **`tags`** *(array)*: Tags for this data model. Default: `None`.
+    - **Items**: Refer to *../../type/tagLabel.json*.
   - **`columns`** *(array)*: Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`. Default: `None`.
     - **Items**: Refer to *#/definitions/column*.
   - **`generatedAt`**: Refer to *../../type/basic.json#/definitions/dateTime*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/configuration/authenticationconfi
 
 ## Properties
 
-- **`provider`** *(string)*: SSO provider , no-auth, okta, google , azure etc.
+- **`provider`** *(string)*: SSO provider , no-auth, okta, google , azure, basic, ldap etc.
 - **`providerName`** *(string)*: Custom OIDC Authentication Provider Name.
 - **`publicKeyUrls`** *(array)*: List of Public Key URLs.
   - **Items** *(string)*
@@ -18,6 +18,8 @@ slug: /main-concepts/metadata-standard/schemas/configuration/authenticationconfi
 - **`callbackUrl`** *(string)*: Callback URL.
 - **`jwtPrincipalClaims`** *(array)*: Jwt Principal Claim.
   - **Items** *(string)*
+- **`enableSelfSignup`** *(boolean)*: Enable Self Sign Up. Default: `False`.
+- **`ldapConfiguration`**: LDAP Configuration in case the Provider is LDAP. Refer to *../auth/ldapConfiguration.json*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

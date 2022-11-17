@@ -15,6 +15,7 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 - **`includeTables`** *(boolean)*: Optional configuration to turn off fetching metadata for tables. Default: `True`.
 - **`includeViews`** *(boolean)*: Optional configuration to turn off fetching metadata for views. Default: `True`.
 - **`includeTags`** *(boolean)*: Optional configuration to turn off fetching metadata for tags. Default: `True`.
+- **`useFqnForFiltering`** *(boolean)*: Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name). Default: `False`.
 - **`schemaFilterPattern`**: Regex to only fetch tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`tableFilterPattern`**: Regex exclude tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`databaseFilterPattern`**: Regex to only fetch databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
@@ -22,26 +23,6 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 ## Definitions
 
 - **`databaseMetadataConfigType`** *(string)*: Database Source Config Metadata Pipeline type. Must be one of: `['DatabaseMetadata']`. Default: `DatabaseMetadata`.
-- **`dbtBucketDetails`** *(object)*: Details of the bucket where the dbt files are stored. Cannot contain additional properties.
-  - **`dbtBucketName`** *(string)*: Name of the bucket where the dbt files are stored.
-  - **`dbtObjectPrefix`** *(string)*: Path of the folder where the dbt files are stored.
-- **`dbtCloudConfig`** *(object)*: DBT Cloud configuration. Cannot contain additional properties.
-  - **`dbtCloudAuthToken`** *(string)*: DBT cloud account authentication token.
-  - **`dbtCloudAccountId`** *(string)*: DBT cloud account Id.
-- **`dbtLocalConfig`** *(object)*: DBT Catalog, Manifest and Run Results file path config. Cannot contain additional properties.
-  - **`dbtCatalogFilePath`** *(string)*: DBT catalog file path to extract dbt models with their column schemas.
-  - **`dbtManifestFilePath`** *(string)*: DBT manifest file path to extract dbt models and associate with tables.
-  - **`dbtRunResultsFilePath`** *(string)*: DBT run results file path to extract the test results information.
-- **`dbtHttpConfig`** *(object)*: DBT Catalog, Manifest and Run Results HTTP path configuration. Cannot contain additional properties.
-  - **`dbtCatalogHttpPath`** *(string)*: DBT catalog http file path to extract dbt models with their column schemas.
-  - **`dbtManifestHttpPath`** *(string)*: DBT manifest http file path to extract dbt models and associate with tables.
-  - **`dbtRunResultsHttpPath`** *(string)*: DBT run results http file path to extract the test results information.
-- **`dbtS3Config`**: DBT Catalog, Manifest and Run Results files in S3 bucket. We will search for catalog.json, manifest.json and run_results.json.
-  - **`dbtSecurityConfig`**: Refer to *../security/credentials/awsCredentials.json*.
-  - **`dbtPrefixConfig`**: Refer to *#/definitions/dbtBucketDetails*.
-- **`dbtGCSConfig`**: DBT Catalog, Manifest and Run Results files in GCS storage. We will search for catalog.json, manifest.json and run_results.json.
-  - **`dbtSecurityConfig`**: Refer to *../security/credentials/gcsCredentials.json*.
-  - **`dbtPrefixConfig`**: Refer to *#/definitions/dbtBucketDetails*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/type/schedule
 - **`repeatFrequency`**: Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'. Refer to *basic.json#/definitions/duration*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

@@ -17,6 +17,8 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createglossary
 - **`owner`**: Owner of this glossary. Refer to *../../type/entityReference.json*.
 - **`tags`** *(array)*: Tags for this glossary. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`mutuallyExclusive`** *(boolean)*: Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity. Default: `false`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

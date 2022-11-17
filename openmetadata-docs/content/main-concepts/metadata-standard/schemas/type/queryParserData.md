@@ -21,8 +21,9 @@ slug: /main-concepts/metadata-standard/schemas/type/queryparserdata
     - **Additional Properties**
   - **`sql`** *(string)*: SQL query.
   - **`serviceName`** *(string)*: Name that identifies this database service.
+  - **`userName`** *(string)*: Name of the user that executed the SQL query.
   - **`date`** *(string)*: Date of execution of SQL query.
   - **`databaseSchema`** *(string)*: Database schema of the associated with query.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

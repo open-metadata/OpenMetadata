@@ -10,9 +10,8 @@ slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/t
 ## Properties
 
 - **`connection`**: Connection object.
-- **`connectionType`** *(string)*: Type of service such as Database, Dashboard, Messaging, etc. Must be one of: `['Database', 'Dashboard', 'Messaging', 'Pipeline', 'MlModel']`.
+- **`connectionType`** *(string)*: Type of service such as Database, Dashboard, Messaging, etc. Must be one of: `['Database', 'Dashboard', 'Messaging', 'Pipeline', 'MlModel', 'Metadata']`.
 - **`secretsManagerProvider`**: Refer to *../../../entity/services/connections/metadata/secretsManagerProvider.json*.
-- **`clusterName`** *(string)*: Cluster name to differentiate OpenMetadata Server instance. Default: `openmetadata`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

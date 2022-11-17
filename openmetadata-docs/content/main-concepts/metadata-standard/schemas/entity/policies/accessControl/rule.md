@@ -20,4 +20,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/rul
 - **`condition`**: Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes. Refer to *../../../type/basic.json#/definitions/expression*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

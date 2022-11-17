@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossary
 ## Properties
 
 - **`id`**: Unique identifier of a glossary instance. Refer to *../../type/basic.json#/definitions/uuid*.
-- **`name`** *(string)*: Preferred name for the glossary term. Refer to *#/definitions/name*.
+- **`name`** *(string)*: Name of the glossary. Refer to *#/definitions/name*.
 - **`fullyQualifiedName`**: FullyQualifiedName same as name. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`displayName`** *(string)*: Display Name that identifies this glossary.
 - **`description`**: Description of the glossary. Refer to *../../type/basic.json#/definitions/markdown*.
@@ -26,9 +26,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossary
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`disabled`** *(boolean)*: System glossary can't be deleted. Use this flag to disable them.
+- **`mutuallyExclusive`** *(boolean)*: Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity. Default: `false`.
 ## Definitions
 
 - **`name`**: Name that identifies a glossary term. Refer to *../../type/basic.json#/definitions/entityName*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

@@ -24,6 +24,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
 - **`href`**: Link to the resource corresponding to this database service. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`allowServiceCreation`** *(boolean)*: When `true` indicates the metadata service can be created. Default: `True`.
 ## Definitions
 
 - **`metadataServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['Amundsen', 'MetadataES', 'OpenMetadata', 'Atlas']`.
@@ -31,4 +32,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
   - **`config`**
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

@@ -10,13 +10,16 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 ## Properties
 
 - **`type`**: Service Type. Refer to *#/definitions/DagsterType*. Default: `Dagster`.
-- **`hostPort`** *(string)*: Pipeline Service Management/UI URI.
-- **`numberOfStatus`** *(integer)*: Pipeline Service Number Of Status. Default: `10`.
-- **`dbConnection`**: Underlying database connection. See https://docs.dagster.io/getting-started for supported backends.
+- **`configSource`**: Available sources to fetch files.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 
 - **`DagsterType`** *(string)*: Service type. Must be one of: `['Dagster']`. Default: `Dagster`.
+- **`LocalDagtser`** *(object)*: Config to connect to local Dagster.
+  - **`hostPort`** *(string)*: Pipeline Service Management/UI URI.
+- **`CloudDagster`** *(object)*: Config to connect to Cloud Dagster.
+  - **`host`** *(string)*: Pipeline Service Management/UI URI.
+  - **`token`** *(string)*: To Connect to Dagster Cloud.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

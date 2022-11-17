@@ -28,10 +28,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/policy
 - **`allowDelete`** *(boolean)*: Some system policies can't be deleted.
 - **`allowEdit`** *(boolean)*: Some system roles can't be edited.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`disabled`** *(boolean)*: System policy can't be deleted. Use this flag to disable them.
 ## Definitions
 
 - **`rules`** *(array)*: A set of rules associated with the Policy.
   - **Items**: Refer to *accessControl/rule.json*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

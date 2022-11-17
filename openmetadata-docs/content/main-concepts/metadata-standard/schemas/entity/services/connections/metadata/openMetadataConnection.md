@@ -34,10 +34,17 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`includeDatabaseServices`** *(boolean)*: Include Database Services for Indexing. Default: `True`.
 - **`includePipelineServices`** *(boolean)*: Include Pipeline Services for Indexing. Default: `True`.
 - **`limitRecords`** *(integer)*: Limit the number of records for Indexing. Default: `1000`.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`forceEntityOverwriting`** *(boolean)*: Force the overwriting of any entity during the ingestion. Default: `False`.
+- **`elasticsSearch`** *(object)*: Configuration for Sink Component in the OpenMetadata Ingestion Framework. Cannot contain additional properties.
+  - **`type`** *(string)*: Type of sink component ex: metadata.
+  - **`config`**: Refer to *#/definitions/componentConfig*.
+- **`supportsDataInsightExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDataInsightExtraction*.
+- **`supportsElasticSearchReindexingExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsElasticSearchReindexingExtraction*.
 ## Definitions
 
 - **`openmetadataType`** *(string)*: OpenMetadata service type. Must be one of: `['OpenMetadata']`. Default: `OpenMetadata`.
+- **`componentConfig`** *(object)*: key/value pairs to pass to sink component. Can contain additional properties.
+  - **Additional Properties** *(string)*
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

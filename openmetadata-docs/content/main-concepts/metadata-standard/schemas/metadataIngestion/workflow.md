@@ -18,6 +18,8 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/workflow
   - **`stage`**: Refer to *#/definitions/stage*.
   - **`bulkSink`**: Refer to *#/definitions/bulkSink*.
   - **`workflowConfig`**: Refer to *#/definitions/workflowConfig*.
+  - **`ingestionPipelineFQN`** *(string)*: Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline.
+  - **`pipelineRunId`**: Unique identifier of pipeline run, used to identify the current pipleine run. Refer to *../type/basic.json#/definitions/uuid*.
 ## Definitions
 
 - **`sourceConfig`** *(object)*: Additional connection configuration. Cannot contain additional properties.
@@ -48,4 +50,4 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/workflow
   - **`config`**: Refer to *#/definitions/componentConfig*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

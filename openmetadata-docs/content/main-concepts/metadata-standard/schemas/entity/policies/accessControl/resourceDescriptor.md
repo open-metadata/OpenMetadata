@@ -14,7 +14,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/res
   - **Items**: Refer to *#/definitions/operation*.
 ## Definitions
 
-- **`operation`** *(string)*: This schema defines all possible operations on metadata of entities in OpenMetadata. Must be one of: `['All', 'Create', 'Delete', 'ViewAll', 'ViewUsage', 'ViewTests', 'ViewQueries', 'ViewDataProfile', 'ViewSampleData', 'EditAll', 'EditDescription', 'EditDisplayName', 'EditTags', 'EditOwner', 'EditTier', 'EditCustomFields', 'EditLineage', 'EditReviewers', 'EditTests', 'EditQueries', 'EditDataProfile', 'EditSampleData', 'EditUsers']`.
+- **`operation`** *(string)*: This schema defines all possible operations on metadata of entities in OpenMetadata. Must be one of: `['All', 'Create', 'Delete', 'ViewAll', 'ViewBasic', 'ViewUsage', 'ViewTests', 'ViewQueries', 'ViewDataProfile', 'ViewSampleData', 'EditAll', 'EditDescription', 'EditDisplayName', 'EditTags', 'EditOwner', 'EditTier', 'EditCustomFields', 'EditLineage', 'EditStatus', 'EditReviewers', 'EditTests', 'EditQueries', 'EditDataProfile', 'EditSampleData', 'EditUsers']`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

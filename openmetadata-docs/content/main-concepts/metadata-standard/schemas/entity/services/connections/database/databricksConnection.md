@@ -16,6 +16,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`httpPath`** *(string)*: Databricks compute resources URL.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
+- **`supportsUsageExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsUsageExtraction*.
+- **`supportsLineageExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsLineageExtraction*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 - **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
@@ -25,4 +27,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`databricksScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['databricks+connector']`. Default: `databricks+connector`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

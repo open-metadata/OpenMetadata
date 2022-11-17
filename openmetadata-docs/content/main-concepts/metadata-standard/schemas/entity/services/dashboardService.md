@@ -26,9 +26,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/dashboardservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`dashboardServiceType`** *(string)*: Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode. Must be one of: `['Superset', 'Looker', 'Tableau', 'Redash', 'Metabase', 'PowerBI', 'Mode', 'CustomDashboard']`.
+- **`dashboardServiceType`** *(string)*: Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode. Must be one of: `['Superset', 'Looker', 'Tableau', 'Redash', 'Metabase', 'PowerBI', 'Mode', 'CustomDashboard', 'DomoDashboard', 'QuickSight']`.
 - **`dashboardConnection`** *(object)*: Dashboard Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

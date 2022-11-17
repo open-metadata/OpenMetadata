@@ -16,6 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 ## Definitions
 
 - **`datalakeType`** *(string)*: Service type. Must be one of: `['Datalake']`. Default: `Datalake`.
@@ -25,4 +26,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
   - **`securityConfig`**: Refer to *../../../../security/credentials/awsCredentials.json*.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

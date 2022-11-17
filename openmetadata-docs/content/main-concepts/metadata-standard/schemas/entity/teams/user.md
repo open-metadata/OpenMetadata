@@ -31,11 +31,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/user
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`roles`**: Roles that the user has been assigned. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`inheritedRoles`**: Roles that a user is inheriting through membership in teams that have set team default roles. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`isEmailVerified`** *(boolean)*: If the User has verified the mail.
 ## Definitions
 
 - **`authenticationMechanism`** *(object)*: User/Bot Authentication Mechanism. Cannot contain additional properties.
   - **`config`**
-  - **`authType`**: Must be one of: `['JWT', 'SSO']`.
+  - **`authType`**: Must be one of: `['JWT', 'SSO', 'BASIC']`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.

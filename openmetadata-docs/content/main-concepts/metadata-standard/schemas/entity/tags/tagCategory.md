@@ -23,6 +23,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
   - **Items**: Refer to *#/definitions/tag*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`disabled`** *(boolean)*: System tag categories can't be deleted. Use this flag to disable them.
+- **`mutuallyExclusive`** *(boolean)*: Tags under this category are mutually exclusive. When mutually exclusive is `true` the tags from this category are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this category are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously. Default: `false`.
 ## Definitions
 
 - **`tagName`** *(string)*: Name of the tag.
@@ -42,6 +45,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
   - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
   - **`children`** *(array)*: Tags under this tag group or empty for tags at the leaf level.
     - **Items**: Refer to *#/definitions/tag*.
+  - **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+  - **`disabled`** *(boolean)*: System tags can't be deleted. Use this flag to disable them.
+  - **`mutuallyExclusive`** *(boolean)*: Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously. Default: `false`.
 
 
-Documentation file automatically generated at 2022-09-18 19:21:45.413954.
+Documentation file automatically generated at 2022-11-17 03:44:30.373132.
