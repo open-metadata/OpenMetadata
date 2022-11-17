@@ -148,7 +148,7 @@ describe('MyData page should work', () => {
 
   Object.values(ENTITIES).map((entity) => {
     const text = entity.entityObj.displayName ?? entity.entityObj.term
-    it.only(`Recent view section and redirection should work for ${entity.name} entity`, () => {
+    it(`Recent view section and redirection should work for ${entity.name} entity`, () => {
       visitEntityDetailsPage(
         entity.entityObj.term,
         entity.entityObj.serviceName,
