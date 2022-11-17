@@ -105,8 +105,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     validateHierarchy(entity);
 
     // Validate glossary
-    Fields glossaryFields = Entity.getFields(GLOSSARY, "reviewers");
-    Glossary glossary = Entity.getEntity(entity.getGlossary(), glossaryFields, Include.NON_DELETED);
+    Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
 
     // If reviewers is not set in the glossary term, then carry it from the glossary

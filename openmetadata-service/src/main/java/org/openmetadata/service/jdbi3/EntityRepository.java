@@ -477,11 +477,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated);
   }
 
+  @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     // Override to perform any operation required after creation.
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
+  @SuppressWarnings("unused")
   protected void postUpdate(T entity) {
     // Override to perform any operation required after an entity update.
     // For example ingestion pipeline creates a pipeline in AirFlow.
