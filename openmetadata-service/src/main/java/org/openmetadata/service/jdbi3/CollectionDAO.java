@@ -1916,14 +1916,11 @@ public interface CollectionDAO {
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
-        String description1 = r.getString("description1");
-        String description2 = r.getString("description2");
         return new TagLabel()
             .withSource(TagLabel.TagSource.values()[r.getInt("source")])
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
-            .withTagFQN(r.getString("tagFQN"))
-            .withDescription(description1 == null ? description2 : description1);
+            .withTagFQN(r.getString("tagFQN"));
       }
     }
   }
