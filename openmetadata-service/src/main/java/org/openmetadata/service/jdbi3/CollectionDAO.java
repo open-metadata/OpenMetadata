@@ -97,6 +97,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -1888,27 +1889,14 @@ public interface CollectionDAO {
     @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
     List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
-                + "t.json ->> '$.description' AS description1, "
-                + "g.json ->> '$.description' AS description2 "
-                + "FROM tag_usage tu "
-                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
-                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
-                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
-                + "t.json ->> 'description' AS description1, "
-                + "g.json ->> 'description' AS description2 "
-                + "FROM tag_usage tu "
-                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
-                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
-                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
-        connectionType = POSTGRES)
-    List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
+    default List<TagLabel> getTags(String targetFQN) {
+      List<TagLabel> tags = getTagsInternal(targetFQN);
+      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getInstance().getDescription(tagLabel)));
+      return tags;
+    }
+
+    @SqlQuery("SELECT source, tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
+    List<TagLabel> getTagsInternal(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
     int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
