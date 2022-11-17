@@ -1,0 +1,28 @@
+---
+title: GKE Setup Troubleshooting
+slug: /deployment/kubernetes/gke-troubleshooting
+---
+
+# GKE Setup Troubleshooting
+
+If you came across `invalid access type while creating the pvc. and the permission pod is stuck at "pending" state`  
+The above error might have occurred due to the pvc volumes not setup or pvc volumes are not mount properly
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/deployment/troubleshoot/dag-log.png"
+  alt="dag-log"
+/>
+</div>
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/deployment/troubleshoot/permission-pod-events.png"
+  alt="permission-pod-events"
+  caption="Permission pod events"
+/>
+</div>
+
+Please validate all the prerequisites mentioned in this [section](https://docs.open-metadata.org/deployment/kubernetes/gke).
+
+Please validate the configuration of `dags_pv_pvc.yml` file. 
+Please validate `storageClassName` filed in YAML file.
