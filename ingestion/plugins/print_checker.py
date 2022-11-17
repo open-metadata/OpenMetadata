@@ -14,9 +14,9 @@ Custom pylint plugin to catch `print` calls
 """
 from typing import TYPE_CHECKING
 
-import astroid
 from astroid import nodes
 from pylint.checkers import BaseChecker
+from pylint.checkers.utils import only_required_for_messages
 from pylint.interfaces import IAstroidChecker
 
 if TYPE_CHECKING:
@@ -28,29 +28,21 @@ class PrintChecker(BaseChecker):
     Check for any print statement in the code
     """
 
-    __implements__ = IAstroidChecker
+    __implements__ = (IAstroidChecker,)
+    name = "no_print_allowed"
     _symbol = "print-call"
-
-    name = "print_checker"
     msgs = {
-        "WDE01": (
-            "Use logging instead of print statements",
+        "W5001": (
+            "Used builtin function %s",
             _symbol,
             "Print can make us lose traceability, use logging instead",
         )
     }
 
+    @only_required_for_messages("print-call")
     def visit_call(self, node: nodes.Call) -> None:
-        """
-        Process a module and check for prints
-        """
-
-        # print is a named func
-        if isinstance(node.func, astroid.Name) and node.func.name == "print":
-            self.add_message(
-                self._symbol,
-                node=node,
-            )
+        if isinstance(node.func, nodes.Name) and node.func.name == "print":
+            self.add_message(self._symbol, node=node)
 
 
 def register(linter: "PyLinter") -> None:

@@ -31,6 +31,6 @@ class ANSI(Enum):
 def print_ansi_encoded_string(
     color: Optional[ANSI] = None, bold: bool = False, message: str = ""
 ):
-    print(
+    print(  # pylint: disable=W5001
         f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
     )
