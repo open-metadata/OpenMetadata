@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DbtConfig } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   errorMsg,
   getSeparator,
@@ -51,7 +52,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtCloudConfig(data);
     setErrors(reqErrors);
 
@@ -101,12 +102,11 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT cloud account authentication token.
         </p>
-        <input
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="cloud-auth-token"
           id="cloud-auth-token"
           name="cloud-auth-token"
-          type="text"
           value={dbtCloudAuthToken}
           onChange={(e) => handleCloudAuthTokenChange(e.target.value)}
         />

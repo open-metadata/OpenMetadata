@@ -276,17 +276,8 @@ const NavBar = ({
                 to={{
                   pathname: '/explore/tables',
                 }}>
-                {t('label.discover')}
+                {t('label.explore')}
               </NavLink>
-              <Dropdown
-                className="cursor-pointer"
-                overlay={governanceMenu}
-                trigger={['click']}>
-                <Space data-testid="governance" size={2}>
-                  {t('label.governance')}
-                  <DropDownIcon style={{ marginLeft: 0 }} />
-                </Space>
-              </Dropdown>
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item-data-quality"
@@ -294,7 +285,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.TEST_SUITES,
                 }}>
-                {t('label.data-quality')}
+                {t('label.quality')}
               </NavLink>
               <NavLink
                 className="focus:tw-no-underline"
@@ -303,8 +294,17 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.DATA_INSIGHT,
                 }}>
-                {t('label.data-insight')}
+                {t('label.insight')}
               </NavLink>
+              <Dropdown
+                className="cursor-pointer"
+                overlay={governanceMenu}
+                trigger={['click']}>
+                <Space data-testid="governance" size={2}>
+                  {t('label.govern')}
+                  <DropDownIcon style={{ marginLeft: 0, marginTop: '8px' }} />
+                </Space>
+              </Dropdown>
             </Space>
           </div>
           <div

@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@border-color: #dce3ec;
+@background-color: #ffffff;
+@highlidghted-border-color: #1890ff;
 
-package org.openmetadata.service.exception;
+.table-data-card-container {
+  border: 1px solid @border-color;
+  border-radius: 6px;
+  background-color: @background-color;
+  padding: 12px;
+}
 
-public class SecretsManagerMigrationException extends RuntimeException {
-
-  public SecretsManagerMigrationException(String message, Throwable throwable) {
-    super(message, throwable);
-  }
-
-  public SecretsManagerMigrationException(String message) {
-    super(message);
-  }
+.table-data-card-container:hover {
+  border: 1px solid @highlidghted-border-color;
 }

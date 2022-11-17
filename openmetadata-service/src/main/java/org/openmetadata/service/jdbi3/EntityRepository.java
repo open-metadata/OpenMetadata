@@ -477,11 +477,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated);
   }
 
+  @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     // Override to perform any operation required after creation.
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
+  @SuppressWarnings("unused")
   protected void postUpdate(T entity) {
     // Override to perform any operation required after an entity update.
     // For example ingestion pipeline creates a pipeline in AirFlow.
@@ -1090,7 +1092,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Remove owner relationship for a given entity */
   private void removeOwner(T entity, EntityReference owner) {
-    if (owner != null && owner.getId() != null) {
+    if (EntityUtil.getId(owner) != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), entity.getId());
       deleteRelationship(owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
     }
@@ -1103,6 +1105,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final Fields getFields(String fields) {
+    if (fields != null && fields.equals("*")) {
+      return new Fields(allowedFields, String.join(",", allowedFields));
+    }
     return new Fields(allowedFields, fields);
   }
 

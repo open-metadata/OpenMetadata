@@ -106,6 +106,7 @@ export const PLACEHOLDER_TEST_SUITE_FQN = ':testSuiteFQN';
 export const LOG_ENTITY_TYPE = ':logEntityType';
 export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
+export const KPI_NAME = ':kpiName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -265,6 +266,9 @@ export const ROUTES = {
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
 
   DATA_INSIGHT: `/data-insights`,
+  KPI_LIST: `/data-insights/kpi-list`,
+  ADD_KPI: `/data-insights/kpi-list/add-kpi`,
+  EDIT_KPI: `/data-insights/kpi-list/edit-kpi/${KPI_NAME}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -474,6 +478,14 @@ export const getUsersPagePath = () => {
 
 export const getBotsPagePath = () => {
   return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.INTEGRATIONS}/bots`;
+};
+
+export const getKpiPath = (kpiName: string) => {
+  let path = ROUTES.EDIT_KPI;
+
+  path = path.replace(KPI_NAME, kpiName);
+
+  return path;
 };
 
 export const TIMEOUT = {

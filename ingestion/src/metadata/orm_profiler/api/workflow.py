@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     Table,
 )
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -55,7 +58,13 @@ from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.interfaces.profiler_protocol import ProfilerProtocol
+from metadata.interfaces.datalake.datalake_profiler_interface import (
+    DataLakeProfilerInterface,
+)
+from metadata.interfaces.profiler_protocol import (
+    ProfilerInterfaceArgs,
+    ProfilerProtocol,
+)
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.api.models import (
     ProfilerProcessorConfig,
@@ -103,20 +112,16 @@ class ProfilerWorkflow:
         self.profiler_config = ProfilerProcessorConfig.parse_obj(
             self.config.processor.dict().get("config")
         )
-
         self.metadata = OpenMetadata(self.metadata_config)
-
         self._retrieve_service_connection_if_needed()
-
         self.set_ingestion_pipeline_status(state=PipelineState.running)
-
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
         self.source_status = SQLSourceStatus()
         self.status = ProcessorStatus()
-
+        self._profiler_interface_args = None
         if self.config.sink:
             self.sink = get_sink(
                 sink_type=self.config.sink.type,
@@ -131,6 +136,7 @@ class ProfilerWorkflow:
                 "Make sure you have run the ingestion for the service specified in the profiler workflow. "
                 "If so, make sure the profiler service name matches the service name specified during ingestion."
             )
+        self._table_entity = None
 
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
@@ -238,26 +244,31 @@ class ProfilerWorkflow:
         self,
         service_connection_config,
         table_entity: Table,
-        sqa_metadata_obj: Optional[MetaData] = None,
+        sqa_metadata_obj,
     ):
         """Creates a profiler interface object"""
         try:
-            return SQAProfilerInterface(
-                service_connection_config,
+
+            self._table_entity = table_entity
+            self._profiler_interface_args = ProfilerInterfaceArgs(
+                service_connection_config=service_connection_config,
                 sqa_metadata_obj=sqa_metadata_obj,
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,
-                table_entity=table_entity,
-                table_sample_precentage=self.get_profile_sample(table_entity)
-                if not self.get_profile_query(table_entity)
+                table_entity=self._table_entity,
+                table_sample_precentage=self.get_profile_sample(self._table_entity)
+                if not self.get_profile_query(self._table_entity)
                 else None,
-                table_sample_query=self.get_profile_query(table_entity)
-                if not self.get_profile_sample(table_entity)
+                table_sample_query=self.get_profile_query(self._table_entity)
+                if not self.get_profile_sample(self._table_entity)
                 else None,
-                table_partition_config=self.get_partition_details(table_entity)
-                if not self.get_profile_query(table_entity)
+                table_partition_config=self.get_partition_details(self._table_entity)
+                if not self.get_profile_query(self._table_entity)
                 else None,
             )
+            if isinstance(service_connection_config, DatalakeConnection):
+                return DataLakeProfilerInterface(self._profiler_interface_args)
+            return SQAProfilerInterface(self._profiler_interface_args)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error("We could not create a profiler interface")
@@ -418,12 +429,14 @@ class ProfilerWorkflow:
 
         for database in databases:
             copied_service_config = self.copy_service_config(database)
-            sqa_metadata_obj = MetaData()
             try:
+                sqa_metadata_obj = MetaData()
                 for entity in self.get_table_entities(database=database):
                     try:
                         profiler_interface = self.create_profiler_interface(
-                            copied_service_config, entity, sqa_metadata_obj
+                            sqa_metadata_obj=sqa_metadata_obj,
+                            service_connection_config=copied_service_config,
+                            table_entity=entity,
                         )
                         self.create_profiler_obj(entity, profiler_interface)
                         profile: ProfilerResponse = self.profiler_obj.process(

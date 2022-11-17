@@ -24,7 +24,9 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
+import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -44,6 +46,7 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -57,7 +60,7 @@ import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -123,6 +126,7 @@ const DashboardDetails = ({
   entityFieldTaskCount,
   onExtensionUpdate,
 }: DashboardDetailsProps) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -334,6 +338,27 @@ const DashboardDetails = ({
       tagUpdateHandler(updatedDashboard);
     }
   };
+
+  const handleRestoreDashboard = async () => {
+    try {
+      await restoreDashboard(dashboardDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.dashboard'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.dashboard'),
+        })
+      );
+    }
+  };
+
   const followDashboard = () => {
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
@@ -682,6 +707,7 @@ const DashboardDetails = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreDashboard}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

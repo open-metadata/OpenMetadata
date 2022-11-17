@@ -18,7 +18,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
 import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
@@ -26,15 +29,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -94,9 +102,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity) throws IOException {
+    validateHierarchy(entity);
+
     // Validate glossary
-    EntityReference glossary = Entity.getEntityReference(entity.getGlossary());
-    entity.setGlossary(glossary);
+    Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
+    entity.setGlossary(glossary.getEntityReference());
+
+    // If reviewers is not set in the glossary term, then carry it from the glossary
+    entity.setReviewers(entity.getReviewers() == null ? glossary.getReviewers() : entity.getReviewers());
 
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent());
@@ -141,11 +154,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void storeRelationships(GlossaryTerm entity) {
-    addRelationship(
-        entity.getGlossary().getId(), entity.getId(), Entity.GLOSSARY, GLOSSARY_TERM, Relationship.CONTAINS);
-    if (entity.getParent() != null) {
-      addRelationship(entity.getParent().getId(), entity.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.CONTAINS);
-    }
+    addGlossaryRelationship(entity);
+    addParentRelationship(entity);
     for (EntityReference relTerm : listOrEmpty(entity.getRelatedTerms())) {
       // Make this bidirectional relationship
       addRelationship(entity.getId(), relTerm.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, true);
@@ -159,8 +169,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {
-    // Patch can't update Children, Glossary, or Parent
-    updated.withChildren(original.getChildren()).withGlossary(original.getGlossary()).withParent(original.getParent());
+    // Patch can't update Children
+    updated.withChildren(original.getChildren());
   }
 
   @Override
@@ -175,7 +185,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
-    return getFromEntityRef(term.getId(), Relationship.CONTAINS, Entity.GLOSSARY, true);
+    return getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
   }
 
   public EntityReference getGlossary(String id) throws IOException {
@@ -193,6 +203,49 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
+  private void addGlossaryRelationship(GlossaryTerm term) {
+    addRelationship(term.getGlossary().getId(), term.getId(), GLOSSARY, GLOSSARY_TERM, Relationship.CONTAINS);
+  }
+
+  private void deleteGlossaryRelationship(GlossaryTerm term) {
+    deleteRelationship(term.getGlossary().getId(), GLOSSARY, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
+  }
+
+  private void updateGlossaryRelationship(GlossaryTerm orig, GlossaryTerm updated) {
+    deleteGlossaryRelationship(orig);
+    addGlossaryRelationship(updated);
+  }
+
+  private void addParentRelationship(GlossaryTerm term) {
+    if (term.getParent() != null) {
+      addRelationship(term.getParent().getId(), term.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.CONTAINS);
+    }
+  }
+
+  private void deleteParentRelationship(GlossaryTerm term) {
+    if (term.getParent() != null) {
+      deleteRelationship(term.getParent().getId(), GLOSSARY_TERM, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
+    }
+  }
+
+  private void updateParentRelationship(GlossaryTerm orig, GlossaryTerm updated) {
+    deleteParentRelationship(orig);
+    addParentRelationship(updated);
+  }
+
+  private void validateHierarchy(GlossaryTerm term) {
+    // The glossary and the parent term must belong to the same hierachy
+    if (term.getParent() == null) {
+      return; // Parent is the root of the glossary
+    }
+    if (!term.getParent().getFullyQualifiedName().startsWith(term.getGlossary().getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid hierarchy - parent [%s] does not belong to glossary[%s]",
+              term.getParent().getFullyQualifiedName(), term.getGlossary().getFullyQualifiedName()));
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -206,6 +259,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
       updateReviewers(original, updated);
+      updateName(original, updated);
+      updateParent(original, updated);
     }
 
     @Override
@@ -266,6 +321,42 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           Relationship.REVIEWS,
           GLOSSARY_TERM,
           origTerm.getId());
+    }
+
+    public void updateName(GlossaryTerm original, GlossaryTerm updated) throws IOException {
+      if (!original.getName().equals(updated.getName())) {
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
+        // Category name changed - update tag names starting from category and all the children tags
+        LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
+        daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        recordChange("name", original.getName(), updated.getName());
+      }
+    }
+
+    private void updateParent(GlossaryTerm original, GlossaryTerm updated) throws JsonProcessingException {
+      // Can't change parent and glossary both at the same time
+      UUID oldParentId = getId(original.getParent());
+      UUID newParentId = getId(updated.getParent());
+      boolean parentChanged = !Objects.equals(oldParentId, newParentId);
+
+      UUID oldGlossaryId = getId(original.getGlossary());
+      UUID newGlossaryId = getId(updated.getGlossary());
+      boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+
+      daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      if (glossaryChanged) {
+        updateGlossaryRelationship(original, updated);
+        recordChange("glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);
+      }
+      if (parentChanged) {
+        updateParentRelationship(original, updated);
+        recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+      }
     }
   }
 }

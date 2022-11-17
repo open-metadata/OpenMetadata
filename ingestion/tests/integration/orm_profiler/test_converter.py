@@ -44,7 +44,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.orm.converter import ometa_to_orm
+from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
 
 
 class ProfilerWorkflowTest(TestCase):
@@ -114,7 +114,7 @@ class ProfilerWorkflowTest(TestCase):
             )
         )
 
-        orm_table = ometa_to_orm(table=table, metadata=self.metadata)
+        orm_table = ometa_to_sqa_orm(table=table, metadata=self.metadata)
 
         assert orm_table.__tablename__ == "table1"
         assert orm_table.__table_args__.get("schema") == "one-schema"
@@ -182,7 +182,7 @@ class ProfilerWorkflowTest(TestCase):
             )
         )
 
-        orm_table = ometa_to_orm(table=table, metadata=self.metadata)
+        orm_table = ometa_to_sqa_orm(table=table, metadata=self.metadata)
 
         assert orm_table.__tablename__ == "table1-snflk"
         assert (

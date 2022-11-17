@@ -58,3 +58,7 @@ class ColumnNames(StaticMetric):
 
         col_names = ",".join(inspect(self.table).c.keys())
         return literal(col_names, type_=sqlalchemy.types.String)
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        return data_frame.columns.values.tolist()

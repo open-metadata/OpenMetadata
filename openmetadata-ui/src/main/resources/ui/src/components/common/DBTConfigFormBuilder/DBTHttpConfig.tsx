@@ -12,7 +12,7 @@
  */
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DbtConfig } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   errorMsg,
   getSeparator,
@@ -51,7 +51,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
 
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtHttpConfig(data);
     setErrors(reqErrors);
 

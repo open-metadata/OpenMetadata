@@ -18,11 +18,19 @@ from typing import Optional, Tuple
 
 import requests
 
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
-    DbtGCSConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+    DbtGcsConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtHttpConfig import (
     DbtHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
     DbtLocalConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
 from metadata.ingestion.ometa.utils import ometa_logger
@@ -213,7 +221,7 @@ def _(config: DbtS3Config):
 
 
 @get_dbt_details.register
-def _(config: DbtGCSConfig):
+def _(config: DbtGcsConfig):
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None

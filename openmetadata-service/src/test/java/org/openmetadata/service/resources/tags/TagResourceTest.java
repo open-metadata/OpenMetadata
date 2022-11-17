@@ -15,13 +15,18 @@ package org.openmetadata.service.resources.tags;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.resources.EntityResourceTest.*;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.TIER1_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER2_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -95,7 +100,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
-    return EntityUtil.getTagLabel(TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS));
+    return EntityUtil.toTagLabel(TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS));
   }
 
   @Test
@@ -349,21 +354,54 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void put_primaryTag_200() throws HttpResponseException {
-    // Update the tag name from User.Address to User.AddressUpdated
-    CreateTag create = new CreateTag().withName("Address").withDescription("updateDescription");
-    updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS);
+  void put_renameSystemTag_400() {
+    // Renaming of system tag category and tags are not allowed
+    CreateTagCategory create = new CreateTagCategory().withName("Tier").withDescription("description");
+    assertResponse(
+        () -> renameTagCategory("Tier", "newTier"),
+        Status.BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityRenameNotAllowed("Tier", Entity.TAG_CATEGORY));
+
+    assertResponse(
+        () -> renamePrimaryTag("Tier", "Tier1", "newTier1"),
+        Status.BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityRenameNotAllowed("Tier1", Entity.TAG));
   }
 
   @Test
-  void put_secondaryTag_200() throws HttpResponseException {
-    // Update the secondary tag name from User.PrimaryTag.SecondaryTag to User.PrimaryTag.SecondaryTag1
-    CreateTag create = new CreateTag().withName("SecondaryTag1").withDescription("description");
-    updateSecondaryTag(USER_TAG_CATEGORY.getName(), "PrimaryTag", "SecondaryTag", create, ADMIN_AUTH_HEADERS);
+  void put_tagNameChange(TestInfo test) throws HttpResponseException {
+    //
+    // Create tagCategory with tags t1, t2
+    // Create under tag1 secondary tags t11 t12
+    // Create under tag2 secondary tags t21 t22
+    //
+    String categoryName = test.getDisplayName().substring(0, 10);
+    CreateTagCategory createCategory = new CreateTagCategory().withName(categoryName).withDescription("description");
+    updateCategory(categoryName, createCategory, ADMIN_AUTH_HEADERS);
 
-    // Revert the secondary tag name from User.PrimaryTag.SecondaryTag1 back to User.PrimaryTag.SecondaryTag
-    create.withName("tag11");
-    updateSecondaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), "SecondaryTag1", create, ADMIN_AUTH_HEADERS);
+    updatePrimaryTag(categoryName, "t1", CREATED);
+    updateSecondaryTag(categoryName, "t1", "t11");
+    updateSecondaryTag(categoryName, "t1", "t12");
+    updatePrimaryTag(categoryName, "t2", CREATED);
+    updateSecondaryTag(categoryName, "t2", "t21");
+    updateSecondaryTag(categoryName, "t2", "t22");
+
+    // Change the tag t2 name and ensure all the children's FQN are updated
+    Tag tag = renamePrimaryTag(categoryName, "t2", "newt2");
+    assertEquals("newt2", tag.getName());
+    getTag(categoryName + ".newt2.t21", ADMIN_AUTH_HEADERS);
+    getTag(categoryName + ".newt2.t21", ADMIN_AUTH_HEADERS);
+
+    // Change tag category name and ensure all the tags have the new names
+    String newCategoryName = "new" + categoryName;
+    TagCategory category = renameTagCategory(categoryName, newCategoryName);
+    assertEquals(newCategoryName, category.getName());
+    getTag(newCategoryName + ".t1", ADMIN_AUTH_HEADERS);
+    getTag(newCategoryName + ".t1.t11", ADMIN_AUTH_HEADERS);
+    getTag(newCategoryName + ".t1.t12", ADMIN_AUTH_HEADERS);
+    getTag(newCategoryName + ".newt2", ADMIN_AUTH_HEADERS);
+    getTag(newCategoryName + ".newt2.t21", ADMIN_AUTH_HEADERS);
+    getTag(newCategoryName + ".newt2.t22", ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -371,7 +409,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     // Primary tag with missing description
     CreateTag create = new CreateTag().withName("AddressUpdated").withDescription(null);
     assertResponseContains(
-        () -> updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS),
+        () -> updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, CREATED, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "description must not be null");
 
@@ -386,7 +424,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     // Long primary tag name
     create.withDescription("description").withName(TestUtils.LONG_ENTITY_NAME);
     assertResponseContains(
-        () -> updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS),
+        () -> updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, CREATED, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "name size must be between 2 and 64");
 
@@ -453,7 +491,7 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
   }
 
   @SneakyThrows
-  private void updateCategory(String category, CreateTagCategory update, Map<String, String> authHeaders) {
+  private TagCategory updateCategory(String category, CreateTagCategory update, Map<String, String> authHeaders) {
     String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags/" + category);
 
@@ -464,16 +502,23 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     // Ensure GET returns the updated tag category
     TagCategory getCategory = getCategory(update.getName(), authHeaders);
     validate(getCategory, update.getName(), update.getDescription(), updatedBy);
+    return tagCategory;
   }
 
-  private void updatePrimaryTag(String category, String primaryTag, CreateTag update, Map<String, String> authHeaders)
+  private Tag updatePrimaryTag(String categoryName, String primaryTag, Status status) throws HttpResponseException {
+    CreateTag createTag = new CreateTag().withName(primaryTag).withDescription("description");
+    return updatePrimaryTag(categoryName, primaryTag, createTag, status, ADMIN_AUTH_HEADERS);
+  }
+
+  private Tag updatePrimaryTag(
+      String categoryName, String primaryTag, CreateTag update, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     String updatedBy = getPrincipalName(authHeaders);
-    String parentHref = getResource("tags/" + category).getUri().toString();
-    WebTarget target = getResource("tags/" + category + "/" + primaryTag);
+    String parentHref = getResource("tags/" + categoryName).getUri().toString();
+    WebTarget target = getResource("tags/" + categoryName + "/" + primaryTag);
 
     // Ensure PUT returns the updated primary tag
-    Tag returnedTag = TestUtils.put(target, update, Tag.class, Status.OK, authHeaders);
+    Tag returnedTag = TestUtils.put(target, update, Tag.class, status, authHeaders);
     validate(parentHref, returnedTag, update.getName(), update.getDescription(), updatedBy);
 
     // Ensure GET returns the updated primary tag
@@ -483,6 +528,13 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
         update.getName(),
         update.getDescription(),
         updatedBy);
+    return returnedTag;
+  }
+
+  private void updateSecondaryTag(String category, String primaryTag, String secondaryTag)
+      throws HttpResponseException {
+    CreateTag createTag = new CreateTag().withName(secondaryTag).withDescription("description");
+    updateSecondaryTag(category, primaryTag, secondaryTag, createTag, ADMIN_AUTH_HEADERS);
   }
 
   private void updateSecondaryTag(
@@ -576,5 +628,15 @@ public class TagResourceTest extends OpenMetadataApplicationTest {
     for (Tag child : listOrEmpty(actual.getChildren())) {
       validateHRef(actual.getHref().toString(), child);
     }
+  }
+
+  public Tag renamePrimaryTag(String categoryName, String oldName, String newName) throws HttpResponseException {
+    CreateTag create = new CreateTag().withName(newName).withDescription("updateDescription");
+    return updatePrimaryTag(categoryName, oldName, create, OK, ADMIN_AUTH_HEADERS);
+  }
+
+  public TagCategory renameTagCategory(String oldName, String newName) {
+    CreateTagCategory create = new CreateTagCategory().withName(newName).withDescription("description");
+    return updateCategory(oldName, create, ADMIN_AUTH_HEADERS);
   }
 }

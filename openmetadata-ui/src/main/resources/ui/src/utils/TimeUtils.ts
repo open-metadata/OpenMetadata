@@ -403,3 +403,6 @@ export const formatDateTimeFromSeconds = (date: number) => {
 
   return dateTime.toLocaleString(DateTime.DATETIME_MED);
 };
+
+export const getTimeStampByDateTime = (dateTime: string) =>
+  DateTime.fromSQL(dateTime).toMillis();

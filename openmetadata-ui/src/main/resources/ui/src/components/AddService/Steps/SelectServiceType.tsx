@@ -13,12 +13,14 @@
 
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   excludedService,
   serviceTypes,
 } from '../../../constants/services.const';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
+import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -61,6 +63,17 @@ const SelectServiceType = ({
     );
   }, [serviceCategory]);
 
+  const filteredConnectors = useMemo(
+    () =>
+      selectedConnectors.filter(
+        (connectorType) =>
+          !excludedService.includes(
+            connectorType as MlModelServiceType | MetadataServiceType
+          )
+      ),
+    [selectedConnectors]
+  );
+
   return (
     <div>
       <Field>
@@ -96,7 +109,7 @@ const SelectServiceType = ({
           <div
             className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
             data-testid="select-service">
-            {selectedConnectors.map((type) => (
+            {filteredConnectors.map((type) => (
               <div
                 className={classNames(
                   'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',

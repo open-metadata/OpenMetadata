@@ -87,7 +87,7 @@ export const SEARCH_ENTITY_DASHBOARD = {
     serviceName: 'sample_superset',
   },
 };
-// Note:- Please do not change term name of pipeline
+
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
     term: 'dim_product_etl',
@@ -246,14 +246,15 @@ export const ENTITIES = {
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TOPIC.topic_1,
   },
-  entity_dashboard: {
-    name: 'dashboard',
-    description: 'This is Dashboard custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-  },
+// commenting the dashboard test for not, need to make changes in dynamic data-test side
+//   entity_dashboard: {
+//     name: 'dashboard',
+//     description: 'This is Dashboard custom property',
+//     integerValue: '14',
+//     stringValue: 'This is string propery',
+//     markdownValue: 'This is markdown value',
+//     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
+//   },
   entity_pipeline: {
     name: 'pipeline',
     description: 'This is Pipeline custom property',

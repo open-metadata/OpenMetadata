@@ -12,18 +12,30 @@
  */
 
 import { Card, Typography } from 'antd';
-import { isInteger, isUndefined, last, toNumber } from 'lodash';
+import { RangePickerProps } from 'antd/lib/date-picker';
+import {
+  isEmpty,
+  isInteger,
+  isString,
+  isUndefined,
+  last,
+  toNumber,
+} from 'lodash';
+import moment from 'moment';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import {
   ENTITIES_SUMMARY_LIST,
+  KPI_DATE_PICKER_FORMAT,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
+import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
+import { KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
 import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
 import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
@@ -64,9 +76,41 @@ export const renderLegend = (legendData: LegendProps, latest: string) => {
  */
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], label, isPercentage } = props;
+  const { active, payload = [], label, isPercentage, kpiTooltipRecord } = props;
 
-  const suffix = isPercentage ? '%' : '';
+  let suffix = '';
+  if (isPercentage) {
+    suffix = '%';
+  }
+
+  const getEntryFormattedValue = (
+    value: number | string | undefined,
+    dataKey: number | string | undefined
+  ) => {
+    // handle kpi metric type check for entry value suffix
+    if (
+      !isUndefined(kpiTooltipRecord) &&
+      !isEmpty(kpiTooltipRecord) &&
+      !isUndefined(dataKey)
+    ) {
+      const metricType = kpiTooltipRecord[dataKey];
+      suffix = metricType === KpiTargetType.Percentage ? '%' : suffix;
+    }
+
+    if (!isUndefined(value)) {
+      if (isString(value)) {
+        return `${value}${suffix}`;
+      } else if (isInteger(value)) {
+        return `${value}${suffix}`;
+      } else {
+        `${value.toFixed(2)}${suffix}`;
+      }
+    } else {
+      return '';
+    }
+
+    return '';
+  };
 
   if (active && payload && payload.length) {
     return (
@@ -80,9 +124,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
             </Surface>
             <span>
               {entry.dataKey} -{' '}
-              {isInteger(entry.value)
-                ? `${entry.value}${suffix}`
-                : `${entry.value?.toFixed(2)}${suffix}`}
+              {getEntryFormattedValue(entry.value, entry.dataKey)}
             </span>
           </li>
         ))}
@@ -305,3 +347,36 @@ export const getWebChartSummary = (
 
   return updatedSummary;
 };
+
+export const getKpiGraphData = (kpiResults: KpiResult[]) => {
+  const kpis: string[] = [];
+  const timeStamps: string[] = [];
+
+  const formattedData = kpiResults.map((kpiResult) => {
+    const timestamp = getFormattedDateFromMilliSeconds(kpiResult.timestamp);
+    const kpiFqn = kpiResult.kpiFqn ?? '';
+    const kpiTarget = kpiResult.targetResult[0];
+    if (!timeStamps.includes(timestamp)) {
+      timeStamps.push(timestamp);
+    }
+    if (!kpis.includes(kpiFqn)) {
+      kpis.push(kpiFqn);
+    }
+
+    return {
+      timestamp,
+      [kpiFqn]: kpiTarget.value,
+    };
+  });
+
+  return { graphData: prepareGraphData(timeStamps, formattedData), kpis };
+};
+
+export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
+  // Can not select days before today
+
+  return current && current.isBefore(moment().subtract(1, 'day'));
+};
+
+export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
+  moment(timestamp).format(KPI_DATE_PICKER_FORMAT);

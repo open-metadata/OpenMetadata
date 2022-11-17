@@ -1,7 +1,7 @@
 {
   "source": {
     "type": "metadata_elasticsearch",
-    "serviceName": "openMetadata",
+    "serviceName": "Openmetadata",
     "serviceConnection": {
       "config":{
         "type":"MetadataES"

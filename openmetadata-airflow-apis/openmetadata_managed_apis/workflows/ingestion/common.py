@@ -25,6 +25,7 @@ from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -119,13 +120,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             sourceConfig=ingestion_pipeline.sourceConfig,
         )
 
-    if service_type == "dataInsight":
-        return WorkflowSource(
-            type=service_type,
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
-        )
-
     entity_class = None
     try:
         if service_type == "databaseService":
@@ -151,6 +145,11 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         elif service_type == "mlmodelService":
             entity_class = MlModelService
             service: MlModelService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "metadataService":
+            entity_class = MetadataService
+            service: MetadataService = metadata.get_by_name(
                 entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         else:
