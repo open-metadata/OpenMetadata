@@ -19,7 +19,6 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
