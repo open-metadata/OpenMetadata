@@ -1,5 +1,6 @@
 on:
   pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
 
 permissions:
   contents: read
