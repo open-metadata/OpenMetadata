@@ -1194,7 +1194,9 @@ const ServicePage: FunctionComponent = () => {
                                 disabled={
                                   !servicePermission.EditAll ||
                                   isTestingConnection ||
-                                  serviceFQN === OPENMETADATA
+                                  (serviceCategory ===
+                                    ServiceCategory.METADATA_SERVICES &&
+                                    serviceFQN === OPENMETADATA)
                                 }
                                 loading={isTestingConnection}
                                 type="primary"
