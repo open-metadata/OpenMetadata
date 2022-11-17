@@ -434,7 +434,9 @@ const EntityTable = ({
               destroyTooltipOnHide
               content={toLower(dataTypeDisplay)}
               overlayInnerStyle={{
-                maxWidth: '560px',
+                maxWidth: '420px',
+                overflowWrap: 'break-word',
+                textAlign: 'center',
               }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
