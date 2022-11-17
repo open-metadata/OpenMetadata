@@ -433,7 +433,9 @@ const EntityTable = ({
             <Popover
               destroyTooltipOnHide
               content={toLower(dataTypeDisplay)}
-              overlayInnerStyle={{ maxWidth: '480px', wordBreak: 'break-word' }}
+              overlayInnerStyle={{
+                maxWidth: '560px',
+              }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay}
