@@ -91,11 +91,13 @@ export const SEARCH_ENTITY_DASHBOARD = {
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
     term: 'dim_product_etl',
+    displayName: 'dim_product etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
   },
   pipeline_2: {
     term: 'dim_location_etl',
+    displayName: 'dim_location etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
   },
