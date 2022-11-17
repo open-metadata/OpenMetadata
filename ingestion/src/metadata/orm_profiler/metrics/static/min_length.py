@@ -14,7 +14,6 @@ MIN_LENGTH Metric definition
 """
 # pylint: disable=duplicate-code
 
-import pandas as pd
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -55,6 +54,8 @@ class MinLength(StaticMetric):
 
     @_label
     def dl_fn(self, data_frame=None):
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
         if is_concatenable(self.col.datatype):
             return (
                 pd.DataFrame(

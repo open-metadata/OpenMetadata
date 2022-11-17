@@ -53,6 +53,11 @@ base_requirements = {
 }
 
 
+datalake_common = {
+    "pandas==1.3.5",
+    "pyarrow==6.0.1",
+}
+
 plugins: Dict[str, Set[str]] = {
     "airflow": {
         "apache-airflow==2.3.3"
@@ -71,13 +76,15 @@ plugins: Dict[str, Set[str]] = {
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12", "azure-identity", "azure-storage-blob"},
     "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2", "dagster_graphql"},
-    "datalake": {
-        "google-cloud-storage==1.43.0",
-        "pandas==1.3.5",
-        "gcsfs==2022.5.0",
+    "datalake-s3": {
         "s3fs==0.4.2",
-        "pyarrow==6.0.1",
         "boto3~=1.19.12",
+        *datalake_common,
+    },
+    "datalake-gcs": {
+        "google-cloud-storage==1.43.0",
+        "gcsfs==2022.5.0",
+        *datalake_common,
     },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},

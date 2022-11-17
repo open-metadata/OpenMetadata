@@ -20,7 +20,6 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
@@ -106,12 +105,6 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 cache_all=True,
                 clear_cache=True,
-            ),
-            NodeStage(
-                type_=CreateUserRequest,
-                context="owner",
-                processor="yield_owner",
-                nullable=True,
             ),
             NodeStage(
                 type_=Dashboard,
@@ -219,14 +212,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to fetch dashboard tags
         """
         return  # Dashboard does not support fetching tags except Tableau
-
-    def yield_owner(
-        self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[CreateUserRequest]]:
-        """
-        Method to fetch dashboard owner
-        """
-        return  # Dashboard does not support fetching owner details except Tableau
 
     def yield_dashboard_usage(
         self, *args, **kwargs  # pylint: disable=W0613

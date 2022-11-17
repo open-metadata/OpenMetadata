@@ -85,6 +85,7 @@ from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
+from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
@@ -155,6 +156,7 @@ class OpenMetadata(
     OMetaTestsMixin,
     DataInisghtMixin,
     OMetaIngestionPipelineMixin,
+    OMetaUserMixin,
     Generic[T, C],
 ):
     """

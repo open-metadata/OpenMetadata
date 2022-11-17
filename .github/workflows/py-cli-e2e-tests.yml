@@ -63,6 +63,7 @@ jobs:
 
     - name: Run Python Tests
       id: e2e-test
+      continue-on-error: true
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
       run: |
@@ -80,3 +81,8 @@ jobs:
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+    - name: Force failure
+      if: steps.e2e-test.outcome != 'success'
+      run: |
+        exit 1

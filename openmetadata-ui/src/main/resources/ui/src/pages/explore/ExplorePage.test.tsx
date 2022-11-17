@@ -283,6 +283,9 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ searchQuery: '' })),
   useHistory: () => ({
     push: jest.fn(),
+    location: {
+      pathname: '',
+    },
   }),
   useLocation: jest
     .fn()
