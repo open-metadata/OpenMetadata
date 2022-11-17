@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   Col,
+  DatePicker,
   Form,
   FormProps,
   Input,
@@ -39,6 +40,8 @@ import { t } from 'i18next';
 import { postKPI } from '../../axiosAPIs/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
+  KPI_DATES,
+  KPI_DATE_PICKER_FORMAT,
   SUPPORTED_CHARTS_FOR_KPI,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
@@ -55,8 +58,13 @@ import {
   DataType,
 } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
-import { getUTCDateTime } from '../../utils/TimeUtils';
+import {
+  getDisabledDates,
+  getKpiTargetValueByMetricType,
+} from '../../utils/DataInsightUtils';
+import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 const { Option } = Select;
 
@@ -87,6 +95,7 @@ const AddKPIPage = () => {
   const [selectedMetric, setSelectedMetric] = useState<ChartParameterValues>();
   const [metricValue, setMetricValue] = useState<number>(0);
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
+  const [kpiDates, setKpiDates] = useState<KpiDates>(KPI_DATES);
 
   const metricTypes = useMemo(
     () =>
@@ -129,9 +138,17 @@ const AddKPIPage = () => {
 
   const handleCancel = () => history.goBack();
 
+  const handleDateChange = (dateString: string, key: KpiDate) => {
+    setKpiDates((previous) => ({ ...previous, [key]: dateString }));
+  };
+
   const handleSubmit: FormProps['onFinish'] = async (values) => {
-    const startDate = getUTCDateTime(values.startDate);
-    const endDate = getUTCDateTime(values.endDate);
+    const startDate = getTimeStampByDateTime(kpiDates.startDate);
+    const endDate = getTimeStampByDateTime(kpiDates.endDate);
+    const metricType = selectedMetric?.dataType as unknown as KpiTargetType;
+
+    const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
+
     const formData: CreateKpiRequest = {
       dataInsightChart: {
         id: values.dataInsightChart,
@@ -142,11 +159,11 @@ const AddKPIPage = () => {
       displayName: values.displayName,
       startDate,
       endDate,
-      metricType: selectedMetric?.dataType as unknown as KpiTargetType,
+      metricType,
       targetDefinition: [
         {
           name: selectedMetric?.name as string,
-          value: metricValue + '',
+          value: targetValue + '',
         },
       ],
     };
@@ -339,7 +356,15 @@ const AddKPIPage = () => {
                       required: true,
                     },
                   ]}>
-                  <Input type="datetime-local" />
+                  <DatePicker
+                    showTime
+                    className="w-full"
+                    disabledDate={getDisabledDates}
+                    format={KPI_DATE_PICKER_FORMAT}
+                    onChange={(_, dateString) =>
+                      handleDateChange(dateString, KpiDate.START_DATE)
+                    }
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -352,7 +377,15 @@ const AddKPIPage = () => {
                       required: true,
                     },
                   ]}>
-                  <Input type="datetime-local" />
+                  <DatePicker
+                    showTime
+                    className="w-full"
+                    disabledDate={getDisabledDates}
+                    format={KPI_DATE_PICKER_FORMAT}
+                    onChange={(_, dateString) =>
+                      handleDateChange(dateString, KpiDate.END_DATE)
+                    }
+                  />
                 </Form.Item>
               </Col>
             </Row>

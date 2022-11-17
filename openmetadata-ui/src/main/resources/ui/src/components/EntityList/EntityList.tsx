@@ -18,6 +18,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import './entity.less';
 interface Prop {
   entityList: Array<EntityReference>;
   headerText: string | JSX.Element;
@@ -43,28 +44,28 @@ const EntityList: FunctionComponent<Prop> = ({
 }: Prop) => {
   return (
     <Fragment>
-      <Text className="tw-font-semibold" type="secondary">
+      <Text className="text-600" type="secondary">
         {headerText}
       </Text>
       {entityList.length
         ? entityList.map((item, index) => {
             return (
               <div
-                className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+                className="flex items-center justify-between m-b-xs"
                 data-testid={`${testIDText}-${getEntityName(
                   item as unknown as EntityReference
                 )}`}
                 key={index}>
-                <div className="tw-flex">
+                <div className="flex">
                   {getEntityIcon(item.type || '')}
                   <Link
-                    className="tw-font-medium"
+                    className="font-medium"
                     to={getEntityLink(
                       item.type || '',
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      className="entity-button"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       {getEntityName(item as unknown as EntityReference)}
@@ -95,25 +96,25 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
         ? entityList.map((item, index) => {
             return (
               <div
-                className="tw-flex tw-items-center tw-justify-between"
+                className="flex items-center justify-between"
                 data-testid={`${testIDText}-${getEntityName(
                   item as unknown as EntityReference
                 )}`}
                 key={index}>
-                <div className="tw-flex">
+                <div className="flex items-center">
                   {getEntityIcon(item.type || '')}
                   <Link
-                    className="tw-font-medium"
+                    className="font-medium"
                     to={getEntityLink(
                       item.type || '',
                       item.fullyQualifiedName as string
                     )}>
                     <Button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      className="entity-button"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
                       <Typography.Text
-                        className="ant-typography-ellipsis-custom w-48 text-left"
+                        className="w-48 text-left"
                         ellipsis={{ tooltip: true }}>
                         {getEntityName(item as unknown as EntityReference)}
                       </Typography.Text>

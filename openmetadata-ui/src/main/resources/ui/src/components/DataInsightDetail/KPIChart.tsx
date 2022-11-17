@@ -164,8 +164,8 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
       return { ...previous, [curr.name]: curr.metricType };
     }, {});
 
-    return { ...getKpiGraphData(kpiResults), kpiTooltipRecord };
-  }, [kpiResults]);
+    return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
+  }, [kpiResults, kpiList]);
 
   useEffect(() => {
     fetchKpiList();

@@ -73,7 +73,10 @@ import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
 } from '../../constants/HelperTextUtil';
-import { servicesDisplayName } from '../../constants/services.const';
+import {
+  OPENMETADATA,
+  servicesDisplayName,
+} from '../../constants/services.const';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -1190,7 +1193,10 @@ const ServicePage: FunctionComponent = () => {
                                 data-testid="test-connection-button"
                                 disabled={
                                   !servicePermission.EditAll ||
-                                  isTestingConnection
+                                  isTestingConnection ||
+                                  (serviceCategory ===
+                                    ServiceCategory.METADATA_SERVICES &&
+                                    serviceFQN === OPENMETADATA)
                                 }
                                 loading={isTestingConnection}
                                 type="primary"
