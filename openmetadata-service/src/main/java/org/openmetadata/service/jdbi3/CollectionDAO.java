@@ -1884,8 +1884,11 @@ public interface CollectionDAO {
     @SqlQuery("SELECT source, tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@Bind("targetFQN") String targetFQN);
 
-    @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
-    int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
+    @SqlQuery(
+        "SELECT COUNT(*) FROM tag_usage "
+            + "WHERE (tagFQN LIKE CONCAT(:tagFqn, '.%') OR tagFQN = :tagFqn) "
+            + "AND source = :source")
+    int getTagCount(@Bind("source") int source, @Bind("tagFqn") String tagFqn);
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN")
     void deleteTagsByTarget(@Bind("targetFQN") String targetFQN);

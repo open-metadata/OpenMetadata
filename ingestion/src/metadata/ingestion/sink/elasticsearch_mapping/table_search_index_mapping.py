@@ -26,6 +26,21 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "lowercase"
           ]
         }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
       }
     }
   },
@@ -49,17 +64,13 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "displayName": {
         "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "om_analyzer"
       },
       "description": {
         "type": "text",
         "index_options": "docs",
-        "norms": false
+        "norms": false,
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -77,7 +88,8 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "columns": {
         "properties": {
           "name": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "dataType": {
             "type": "text"
@@ -88,7 +100,8 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           "description": {
             "type": "text",
             "index_options": "docs",
-            "norms": false
+            "norms": false,
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
             "type": "text"

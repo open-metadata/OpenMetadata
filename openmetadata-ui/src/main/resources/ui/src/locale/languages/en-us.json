@@ -275,6 +275,8 @@
     "data-insight-chart": "Data insight chart",
     "data-assets": "Data Assets",
     "app-analytics": "App Analytics",
+    "back": "Back",
+    "next": "Next",
     "no-team-found": "No team found.",
     "quality": "Quality",
     "insight": "Insight",
@@ -323,7 +325,13 @@
     "interval-required": "Interval is required",
     "enter-interval": "Enter interval",
     "interval-unit-required": "Interval unit is required",
-    "select-interval-unit": "Select interval unit"
+    "select-interval-unit": "Select interval unit",
+    "field-use-ssl-description": "Indicates whether to use SSL when connecting to ElasticSearch. By default, we will ignore SSL settings.",
+    "field-verify-certs-description": "Indicates whether to verify certificates when using SSL connection to ElasticSearch. Ignored by default. Is set to true, make sure to send the certificates in the property `CA Certificates`.",
+    "field-timeout-description": "Connection Timeout",
+    "field-ca-certs-description": "Certificate path to be added in configuration. The path should be local in the Ingestion Container.",
+    "field-use-aws-credentials-description": "Indicates whether to use aws credentials when connecting to OpenSearch in AWS.",
+    "field-region-name-description": "Region name. Required when using AWS Credentials."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

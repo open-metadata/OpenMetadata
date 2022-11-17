@@ -54,7 +54,7 @@ import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import { AddIngestionProps } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
-import MetadataToESConfigForm from './Steps/MetadataToESConfigForm';
+import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
@@ -799,7 +799,6 @@ const AddIngestion = ({
             handleMetadataToESConfig={handleMetadataToESConfig}
             handleNext={handleNext}
             handlePrev={handlePrev}
-            metadataToESConfig={metadataToESConfig}
           />
         )}
 
@@ -807,6 +806,9 @@ const AddIngestion = ({
           <ScheduleInterval
             handleRepeatFrequencyChange={(value: string) =>
               setRepeatFrequency(value)
+            }
+            includePeriodOptions={
+              pipelineType === PipelineType.DataInsight ? ['day'] : undefined
             }
             repeatFrequency={repeatFrequency}
             status={saveState}
