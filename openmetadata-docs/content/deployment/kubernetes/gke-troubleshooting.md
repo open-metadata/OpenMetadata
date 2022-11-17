@@ -22,7 +22,7 @@ The above error might have occurred due to the pvc volumes not setup or pvc volu
 />
 </div>
 
-Please validate all the prerequisites mentioned in this [section](https://docs.open-metadata.org/deployment/kubernetes/gke).
+Please validate all the prerequisites mentioned in this [section](/deployment/kubernetes/gke).
 
-Please validate the configuration of `dags_pv_pvc.yml` file. 
+Please validate the configuration of `dags_pv_pvc.yml` file.
 Please validate `storageClassName` filed in YAML file.
