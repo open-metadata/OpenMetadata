@@ -33,12 +33,14 @@ public class SecretsManagerFactory {
             : SecretsManagerConfiguration.DEFAULT_SECRET_MANAGER;
     switch (secretsManagerProvider) {
       case NOOP:
-        secretsManager = NoopSecretsManager.getInstance(clusterName);
-        break;
+      case AWS_SSM:
       case AWS:
+        secretsManager = NoopSecretsManager.getInstance(clusterName, secretsManagerProvider);
+        break;
+      case MANAGED_AWS:
         secretsManager = AWSSecretsManager.getInstance(config, clusterName);
         break;
-      case AWS_SSM:
+      case MANAGED_AWS_SSM:
         secretsManager = AWSSSMSecretsManager.getInstance(config, clusterName);
         break;
       case IN_MEMORY:

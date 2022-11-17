@@ -37,6 +37,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public final class Entity {
@@ -56,11 +57,10 @@ public final class Entity {
   public static final String FIELD_OWNER = "owner";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
-  public static final String FIELD_SERVICE = "service";
   public static final String FIELD_FOLLOWERS = "followers";
   public static final String FIELD_TAGS = "tags";
   public static final String FIELD_DELETED = "deleted";
-  public static final String FIELD_PIPELINE_STATUSES = "pipelineStatuses";
+  public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
   public static final String FIELD_DISPLAY_NAME = "displayName";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
@@ -74,6 +74,7 @@ public final class Entity {
   public static final String PIPELINE_SERVICE = "pipelineService";
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
+  public static final String METADATA_SERVICE = "metadataService";
 
   //
   // Data asset entities
@@ -98,18 +99,16 @@ public final class Entity {
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_SUITE = "testSuite";
+  public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
+  public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
+  public static final String DATA_INSIGHT_CHART = "dataInsightChart";
 
   //
   // Policy entity
   //
   public static final String POLICY = "policy";
   public static final String POLICIES = "policies";
-
-  //
-  // Service
-  //
-  public static final String SERVICE = "service";
 
   //
   // Role, team and user entities
@@ -129,7 +128,13 @@ public final class Entity {
   //
   public static final String ADMIN_USER_NAME = "admin";
   public static final String ORGANIZATION_NAME = "Organization";
-  public static final String DATACONSUMER_ROLE = "DataConsumer";
+  public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
+  public static final String INGESTION_BOT_NAME = "ingestion-bot";
+  public static final String INGESTION_BOT_ROLE = "IngestionBotRole";
+  public static final String PROFILER_BOT_NAME = "profiler-bot";
+  public static final String PROFILER_BOT_ROLE = "ProfilerBotRole";
+  public static final String QUALITY_BOT_NAME = "quality-bot";
+  public static final String QUALITY_BOT_ROLE = "QualityBotRole";
 
   //
   // List of entities whose changes should not be published to the Activity Feed
@@ -207,18 +212,26 @@ public final class Entity {
     ref.withHref(href);
   }
 
-  public static boolean shouldHaveOwner(@NonNull String entityType) {
-    // Team does not have an owner. (yet?)
-    return !entityType.equals(TEAM);
-  }
-
   /** Returns true if the change events of the given entity type should be published to the activity feed. */
   public static boolean shouldDisplayEntityChangeOnFeed(@NonNull String entityType) {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
+  public static <T> Fields getFields(String entityType, String fields) throws IOException {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getFields(fields);
+  }
+
+  public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
+    return getEntity(ref.getType(), ref.getId(), fields, include);
+  }
+
   public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include) throws IOException {
     return getEntity(ref.getType(), ref.getId(), fields, include);
+  }
+
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) throws IOException {
+    return getEntity(entityType, id, getFields(entityType, fields), include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */

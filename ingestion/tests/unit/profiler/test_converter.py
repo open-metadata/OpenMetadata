@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.orm_profiler.orm.converter import ometa_to_orm
+from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
 
 
 @patch("metadata.orm_profiler.orm.converter.get_orm_schema", return_value="schema")
@@ -73,7 +73,7 @@ def test_snowflake_case_sensitive_orm(
         serviceType=DatabaseServiceType.Snowflake,
     )
 
-    orm_table = ometa_to_orm(table, None)
+    orm_table = ometa_to_sqa_orm(table, None)
 
     assert orm_table.__table_args__.get("quote")
     assert [
@@ -115,7 +115,7 @@ def test_metadata_column(mock_schema, mock_database):
         serviceType=DatabaseServiceType.BigQuery,
     )
 
-    orm_table = ometa_to_orm(table, None)
+    orm_table = ometa_to_sqa_orm(table, None)
 
     assert not orm_table.__table_args__.get("quote")
     assert [

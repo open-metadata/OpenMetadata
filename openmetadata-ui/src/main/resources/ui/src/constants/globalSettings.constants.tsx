@@ -13,14 +13,6 @@
 
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 
-export const customAttributesPath = {
-  tables: 'table',
-  topics: 'topic',
-  dashboards: 'dashboard',
-  pipelines: 'pipeline',
-  mlModels: 'mlmodel',
-};
-
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   COLLABORATION = 'collaboration',
@@ -40,6 +32,7 @@ export enum GlobalSettingOptions {
   POLICIES = 'policies',
   DATABASES = 'databases',
   MESSAGING = 'messaging',
+  METADATA = 'metadata',
   DASHBOARDS = 'dashboards',
   PIPELINES = 'pipelines',
   MLMODELS = 'mlModels',
@@ -48,7 +41,6 @@ export enum GlobalSettingOptions {
   BOTS = 'bots',
   TABLES = 'tables',
   MSTEAMS = 'msteams',
-  TEST_SUITE = 'testSuite',
   ACTIVITY_FEED = 'activityFeed',
   ELASTIC_SEARCH = 'elasticSearch',
 }

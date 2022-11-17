@@ -14,7 +14,7 @@
 import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import {
   Legend,
   Line,
@@ -104,7 +104,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     });
   };
 
-  const updatedDot: LineProps['dot'] = (props) => {
+  const updatedDot: LineProps['dot'] = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    props: any
+  ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
     const fill =
       payload.status === TestCaseStatus.Success

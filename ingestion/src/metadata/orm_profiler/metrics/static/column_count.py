@@ -55,3 +55,7 @@ class ColumnCount(StaticMetric):
                 "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
             )
         return literal(len(inspect(self.table).c))
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        return len(data_frame.columns)

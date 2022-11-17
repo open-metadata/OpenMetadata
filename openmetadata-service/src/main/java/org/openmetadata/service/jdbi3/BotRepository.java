@@ -15,15 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
 import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 public class BotRepository extends EntityRepository<Bot> {
@@ -41,7 +38,6 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void prepare(Bot entity) throws IOException {
-    setFullyQualifiedName(entity);
     User user = daoCollection.userDAO().findEntityById(entity.getBotUser().getId(), Include.ALL);
     entity.getBotUser().withName(user.getName()).withDisplayName(user.getDisplayName());
   }
@@ -50,11 +46,7 @@ public class BotRepository extends EntityRepository<Bot> {
   public void storeEntity(Bot entity, boolean update) throws IOException {
     EntityReference botUser = entity.getBotUser();
     entity.withBotUser(null);
-    store(entity.getId(), entity, update);
-    if (!BotType.BOT.equals(entity.getBotType())) {
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      secretsManager.encryptOrDecryptBotCredentials(entity.getBotType().value(), botUser.getName(), true);
-    }
+    store(entity, update);
     entity.withBotUser(botUser);
   }
 
@@ -86,9 +78,6 @@ public class BotRepository extends EntityRepository<Bot> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateUser(original, updated);
-      if (original.getBotType() != null) {
-        updated.setBotType(original.getBotType());
-      }
     }
 
     private void updateUser(Bot original, Bot updated) throws IOException {
@@ -97,7 +86,7 @@ public class BotRepository extends EntityRepository<Bot> {
       if (original.getBotUser() == null
           || updated.getBotUser() == null
           || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {
-        recordChange("botUser", original.getBotUser(), updated.getBotUser());
+        recordChange(BOT_UPDATE_FIELDS, original.getBotUser(), updated.getBotUser());
       }
     }
   }

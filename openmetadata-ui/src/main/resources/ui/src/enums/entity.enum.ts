@@ -23,6 +23,7 @@ export enum EntityType {
   GLOSSARY_TERM = 'glossaryTerm',
   DATABASE_SERVICE = 'databaseService',
   MESSAGING_SERVICE = 'messagingService',
+  METADATA_SERVICE = 'metadataService',
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',
@@ -35,6 +36,8 @@ export enum EntityType {
   ROLE = 'role',
   POLICY = 'policy',
   TEST_SUITE = 'testSuite',
+  DATA_INSIGHT_CHART = 'dataInsightChart',
+  KPI = 'kpi',
 }
 
 export enum AssetsType {
@@ -83,6 +86,7 @@ export enum TabSpecificField {
   DASHBOARD = 'dashboard',
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
+  EXECUTIONS = 'executions',
 }
 
 export enum FqnPart {

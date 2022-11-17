@@ -13,10 +13,13 @@
 DomoClient source to extract data from DOMO
 """
 
-from typing import List, Union
+from typing import Union
 
 from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
     DomoDashboardConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+    DomoDatabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.domopipelineConnection import (
     DomoPipelineConnection,
@@ -38,7 +41,12 @@ class DomoClient:
     DOMO metadata from Domo's metadata db
     """
 
-    def __init__(self, config: Union[DomoDashboardConnection, DomoPipelineConnection]):
+    def __init__(
+        self,
+        config: Union[
+            DomoDashboardConnection, DomoPipelineConnection, DomoDatabaseConnection
+        ],
+    ):
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
@@ -49,7 +57,7 @@ class DomoClient:
         )
         self.client = REST(client_config)
 
-    def get_chart_details(self, page_id) -> List[dict]:
+    def get_chart_details(self, page_id) -> dict:
         url = (
             f"content/v3/stacks/{page_id}/"
             f"{CARDS_URL}"

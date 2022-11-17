@@ -29,8 +29,11 @@
       "format": "password"
     },
     "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
       "description": "Host and port of the Amundsen Neo4j Connection.",
-      "type": "string"
+      "type": "string",
+      "format": "uri"
     },
     "maxConnectionLifeTime": {
       "description": "Maximum connection lifetime for the Amundsen Neo4j Connection.",

@@ -20,6 +20,7 @@ import {
   basicAuthSignIn,
   checkEmailInUse,
   generatePasswordResetLink,
+  logoutUser,
   resetPassword,
 } from '../../axiosAPIs/auth-API';
 import {
@@ -36,6 +37,7 @@ import {
   showInfoToast,
   showSuccessToast,
 } from '../../utils/ToastUtils';
+import { resetWebAnalyticSession } from '../../utils/WebAnalyticsUtils';
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -105,6 +107,9 @@ const BasicAuthProvider = ({
             scope: '',
           });
         }
+
+        // reset web analytic session
+        resetWebAnalyticSession();
       } catch (error) {
         const err = error as AxiosError<{ code: number; message: string }>;
 
@@ -192,8 +197,16 @@ const BasicAuthProvider = ({
   };
 
   const handleLogout = async () => {
-    localState.removeOidcToken();
-    history.push(ROUTES.SIGNIN);
+    const token = localState.getOidcToken();
+    if (token) {
+      try {
+        await logoutUser(token);
+        localState.removeOidcToken();
+        history.push(ROUTES.SIGNIN);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
   };
 
   const contextValue = {

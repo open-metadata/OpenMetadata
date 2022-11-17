@@ -44,6 +44,7 @@ export interface GetInfoElementsProps {
   updateTeamType?: (type: TeamType) => void;
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
+  deleted?: boolean;
 }
 
 const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
@@ -78,6 +79,7 @@ const EntitySummaryDetails = ({
   updateTeamType,
   removeTier,
   currentOwner,
+  deleted = false,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const displayVal = data.placeholderText || data.value;
@@ -139,7 +141,7 @@ const EntitySummaryDetails = ({
               <span
                 data-testid={`edit-${data.key}-icon`}
                 onClick={() => setShow(!show)}>
-                {updateOwner ? <EditIcon /> : null}
+                {updateOwner && !deleted ? <EditIcon /> : null}
               </span>
             </>
           );
@@ -163,7 +165,7 @@ const EntitySummaryDetails = ({
                 }
                 trigger={['click']}>
                 <span data-testid={`edit-${data.key}-icon`}>
-                  {updateTier ? <EditIcon /> : null}
+                  {updateTier && !deleted ? <EditIcon /> : null}
                 </span>
               </Dropdown>
             </>
@@ -219,7 +221,10 @@ const EntitySummaryDetails = ({
                 data-testid="owner-link"
                 href={data.value as string}
                 rel="noopener noreferrer"
-                target={data.openInNewTab ? '_blank' : '_self'}>
+                target={data.openInNewTab ? '_blank' : '_self'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}>
                 {displayVal}
                 {data.openInNewTab && (
                   <>

@@ -24,9 +24,11 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SettingsRepository;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SettingsCache {
@@ -57,6 +59,15 @@ public class SettingsCache {
       return SETTINGS_CACHE.get(ACTIVITY_FEED_FILTER_SETTING.toString());
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
+    }
+  }
+
+  public <T> T getSetting(SettingsType settingName, Class<T> clazz) throws RuntimeException {
+    try {
+      String json = JsonUtils.pojoToJson(SETTINGS_CACHE.get(settingName.toString()).getConfigValue());
+      return JsonUtils.readValue(json, clazz);
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
     }
   }
 

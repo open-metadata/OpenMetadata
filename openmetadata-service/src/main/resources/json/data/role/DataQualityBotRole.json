@@ -1,0 +1,17 @@
+{
+  "name": "DataQualityBotRole",
+  "displayName": "Data quality Bot role",
+  "description": "Role corresponding to a Data quality bot.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "QualityBotPolicy"
+    }
+  ]
+}

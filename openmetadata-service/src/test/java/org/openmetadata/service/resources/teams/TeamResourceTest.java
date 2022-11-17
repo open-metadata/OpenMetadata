@@ -65,6 +65,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -226,7 +227,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void delete_recursive_validTeam_200_OK(TestInfo test) throws IOException {
+  void delete_recursive_validTeam_200_OK() throws IOException {
     //
     // Create hierarchy of business unit, division, and department under organization:
     // Organization -- has children --> [bu1], bu1 has children --> [div2], div2 has children [dep3]
@@ -391,7 +392,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     children = bu1Hierarchy.getChildren();
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(bu11Id)));
     assertTrue(children.stream().anyMatch(t -> t.getId().equals(div12Id)));
-    TeamHierarchy div12Hierarchy = children.stream().filter(t -> t.getId().equals(div12Id)).findAny().get();
+    TeamHierarchy div12Hierarchy = children.stream().filter(t -> t.getId().equals(div12Id)).findAny().orElse(null);
     assertNotNull(div12Hierarchy);
     assertEquals(1, div12Hierarchy.getChildren().size());
     assertEquals(div121.getId(), div12Hierarchy.getChildren().get(0).getId());
@@ -598,7 +599,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     EntityReference deletedUser = team.getUsers().get(removeUserIndex);
     team.getUsers().remove(removeUserIndex);
     ChangeDescription change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "users", Arrays.asList(deletedUser));
+    fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Remove a default role from the team using patch request
@@ -607,7 +608,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
     team.getDefaultRoles().remove(removeDefaultRoleIndex);
     change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "defaultRoles", Arrays.asList(deletedRole));
+    fieldDeleted(change, "defaultRoles", CommonUtil.listOf(deletedRole));
     patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 

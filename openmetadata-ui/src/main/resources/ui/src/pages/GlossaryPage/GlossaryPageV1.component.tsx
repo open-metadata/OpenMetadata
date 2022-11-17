@@ -15,9 +15,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, extend, isEmpty } from 'lodash';
 import {
+  AssetsDataType,
   FormattedGlossarySuggestion,
   GlossarySuggestionHit,
-  GlossaryTermAssets,
   LoadingState,
   SearchResponse,
 } from 'Models';
@@ -80,7 +80,7 @@ const GlossaryPageV1 = () => {
   const [deleteStatus, setDeleteStatus] = useState<LoadingState>('initial');
   const [isSearchResultEmpty, setIsSearchResultEmpty] =
     useState<boolean>(false);
-  const [assetData, setAssetData] = useState<GlossaryTermAssets>({
+  const [assetData, setAssetData] = useState<AssetsDataType>({
     data: [],
     total: 0,
     currPage: 1,
@@ -252,7 +252,7 @@ const GlossaryPageV1 = () => {
             });
           } else {
             setAssetData((pre) => {
-              const data = [] as GlossaryTermAssets['data'];
+              const data = [] as AssetsDataType['data'];
               const total = 0;
 
               return forceReset

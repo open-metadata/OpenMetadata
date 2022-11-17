@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Space } from 'antd';
+import { Badge, Dropdown, Image, Input, Menu, Space } from 'antd';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, useHistory } from 'react-router-dom';
+import { NavLink, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import {
@@ -37,6 +37,7 @@ import {
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
@@ -44,12 +45,11 @@ import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import PopOver from '../common/popover/PopOver';
-import DropDown from '../dropdown/DropDown';
+import LegacyDropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import { NavBarProps } from './NavBar.interface';
-
 const NavBar = ({
   supportDropdown,
   profileDropdown,
@@ -178,6 +178,41 @@ const NavBar = ({
     };
   };
 
+  const governanceMenu = (
+    <Menu
+      items={[
+        {
+          key: 'glossary',
+          label: (
+            <NavLink
+              className="focus:no-underline"
+              data-testid="appbar-item-glossary"
+              style={navStyle(pathname.startsWith('/glossary'))}
+              to={{
+                pathname: ROUTES.GLOSSARY,
+              }}>
+              {t('label.glossary')}
+            </NavLink>
+          ),
+        },
+        {
+          key: 'tags',
+          label: (
+            <NavLink
+              className="focus:no-underline"
+              data-testid="appbar-item-tags"
+              style={navStyle(pathname.startsWith('/tags'))}
+              to={{
+                pathname: ROUTES.TAGS,
+              }}>
+              {t('label.tags')}
+            </NavLink>
+          ),
+        },
+      ]}
+    />
+  );
+
   useEffect(() => {
     if (shouldRequestPermission()) {
       Notification.requestPermission();
@@ -231,9 +266,9 @@ const NavBar = ({
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="90" />
+              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO_SMALL} />
             </NavLink>
-            <Space className="tw-ml-5" size={16}>
+            <Space className="tw-ml-5 flex-none" size={16}>
               <NavLink
                 className="focus:tw-no-underline"
                 data-testid="appbar-item-explore"
@@ -243,36 +278,33 @@ const NavBar = ({
                 }}>
                 {t('label.explore')}
               </NavLink>
-
               <NavLink
                 className="focus:tw-no-underline"
-                data-testid="appbar-item-glossary"
-                style={navStyle(pathname.startsWith('/glossary'))}
+                data-testid="appbar-item-data-quality"
+                style={navStyle(pathname.includes(ROUTES.TEST_SUITES))}
                 to={{
-                  pathname: ROUTES.GLOSSARY,
+                  pathname: ROUTES.TEST_SUITES,
                 }}>
-                {t('label.glossary')}
+                {t('label.quality')}
               </NavLink>
-
               <NavLink
                 className="focus:tw-no-underline"
-                data-testid="appbar-item-tags"
-                style={navStyle(pathname.startsWith('/tags'))}
+                data-testid="appbar-item-data-insight"
+                style={navStyle(pathname.includes(ROUTES.DATA_INSIGHT))}
                 to={{
-                  pathname: ROUTES.TAGS,
+                  pathname: ROUTES.DATA_INSIGHT,
                 }}>
-                {t('label.tags')}
+                {t('label.insight')}
               </NavLink>
-
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-settings"
-                style={navStyle(pathname.startsWith('/settings'))}
-                to={{
-                  pathname: ROUTES.SETTINGS,
-                }}>
-                {t('label.settings')}
-              </NavLink>
+              <Dropdown
+                className="cursor-pointer"
+                overlay={governanceMenu}
+                trigger={['click']}>
+                <Space data-testid="governance" size={2}>
+                  {t('label.govern')}
+                  <DropDownIcon style={{ marginLeft: 0, marginTop: '8px' }} />
+                </Space>
+              </Dropdown>
             </Space>
           </div>
           <div
@@ -334,8 +366,17 @@ const NavBar = ({
                 />
               ))}
           </div>
-          <div className="tw-flex tw-ml-auto tw-pl-36">
+          <Space className="tw-ml-auto">
             <Space size={24}>
+              <NavLink
+                className="focus:tw-no-underline"
+                data-testid="appbar-item-settings"
+                style={navStyle(pathname.startsWith('/settings'))}
+                to={{
+                  pathname: ROUTES.SETTINGS,
+                }}>
+                {t('label.settings')}
+              </NavLink>
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown
                   destroyPopupOnHide
@@ -362,33 +403,20 @@ const NavBar = ({
                     <SVGIcons
                       alt="Alert bell icon"
                       icon={Icons.ALERT_BELL}
-                      width="20"
+                      width="18"
                     />
                   </Badge>
                 </Dropdown>
               </button>
-              <button
-                className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
-                data-testid="whatsnew-modal"
-                onClick={() => handleFeatureModal(true)}>
-                <SVGIcons alt="Doc icon" icon={Icons.WHATS_NEW} width="20" />
-              </button>
-              <button
-                className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
-                data-testid="tour">
-                <Link to={ROUTES.TOUR}>
-                  <SVGIcons alt="tour icon" icon={Icons.TOUR} width="20" />
-                </Link>
-              </button>
               <div className="tw-flex tw-flex-shrink-0 tw--ml-2 tw-items-center ">
-                <DropDown
+                <LegacyDropDown
                   dropDownList={supportDropdown}
                   icon={
                     <SVGIcons
                       alt="Doc icon"
                       className="tw-align-middle tw-mt-0.5 tw-mr-1"
                       icon={Icons.HELP_CIRCLE}
-                      width="20"
+                      width="18"
                     />
                   }
                   isDropDownIconVisible={false}
@@ -399,7 +427,7 @@ const NavBar = ({
               </div>
             </Space>
             <div data-testid="dropdown-profile">
-              <DropDown
+              <LegacyDropDown
                 dropDownList={profileDropdown}
                 icon={
                   <PopOver
@@ -427,7 +455,7 @@ const NavBar = ({
                 type="link"
               />
             </div>
-          </div>
+          </Space>
         </div>
         {isFeatureModalOpen && (
           <WhatsNewModal

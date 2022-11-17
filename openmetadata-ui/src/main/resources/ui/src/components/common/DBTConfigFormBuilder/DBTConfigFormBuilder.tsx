@@ -14,7 +14,7 @@
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import {
   DBTBucketDetails,
-  DbtConfigSource,
+  DbtConfig,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
@@ -40,10 +40,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   onCancel,
   onSubmit,
 }: DBTConfigFormProps) => {
-  const [dbtConfig, setDbtConfig] = useState<DbtConfigSource>(data);
+  const [dbtConfig, setDbtConfig] = useState<DbtConfig>(data);
 
   const updateDbtConfig = (
-    key: keyof DbtConfigSource,
+    key: keyof DbtConfig,
     val?: string | boolean | SCredentials | DBTBucketDetails
   ) => {
     setDbtConfig((pre) => {
@@ -57,12 +57,16 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtCloudAccountId={dbtConfig.dbtCloudAccountId}
         dbtCloudAuthToken={dbtConfig.dbtCloudAuthToken}
+        dbtCloudProjectId={dbtConfig.dbtCloudProjectId}
         dbtUpdateDescriptions={dbtConfig.dbtUpdateDescriptions}
         handleCloudAccountIdChange={(val) => {
           updateDbtConfig('dbtCloudAccountId', val);
         }}
         handleCloudAuthTokenChange={(val) => {
           updateDbtConfig('dbtCloudAuthToken', val);
+        }}
+        handleDbtCloudProjectId={(val) => {
+          updateDbtConfig('dbtCloudProjectId', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);

@@ -18,7 +18,8 @@ import {
   DASHBOARD_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
-} from '../constants/advanceSearch.constants';
+} from '../constants/advanced-search.constants';
+
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 

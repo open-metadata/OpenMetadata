@@ -25,14 +25,13 @@ def get_long_description():
 base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
-    "click>=7.1.1",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic[email]==1.9.0",
+    "pydantic~=1.9.0",
+    "email-validator>=1.0.3",
     "google>=3.0.0",
     "google-auth>=1.33.0",
     "python-dateutil>=2.8.1",
-    "email-validator>=1.0.3",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
     "sqlalchemy>=1.4.0",
@@ -41,14 +40,16 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.6",
+    "sqllineage==1.3.7",
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
-    "importlib-metadata~=4.11.3",
+    "importlib-metadata~=4.12.0",  # From airflow constraints
     "croniter~=1.3.0",
+    "requests-aws4auth==1.1.2",
+    "pymysql>=1.0.2",
 }
 
 
@@ -68,7 +69,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
-    "backup": {"boto3~=1.19.12"},
+    "backup": {"boto3~=1.19.12", "azure-identity", "azure-storage-blob"},
     "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2", "dagster_graphql"},
     "datalake": {
         "google-cloud-storage==1.43.0",
@@ -83,6 +84,7 @@ plugins: Dict[str, Set[str]] = {
     "elasticsearch": {"elasticsearch==7.13.1", "requests-aws4auth==1.1.2"},
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
+    "sagemaker": {"boto3~=1.19.12"},
     "hive": {
         "pyhive~=0.6.5",
         "thrift~=0.13.0",
@@ -90,12 +92,27 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl==0.4.3",
         "presto-types-parser==0.0.2",
     },
-    "kafka": {"confluent_kafka==1.8.2", "fastavro>=1.2.0", "avro-python3"},
-    "redpanda": {"confluent_kafka==1.8.2", "fastavro>=1.2.0", "avro-python3"},
+    "kafka": {
+        "confluent_kafka==1.8.2",
+        "fastavro>=1.2.0",
+        "avro-python3",
+        "avro",
+        "grpcio-tools",
+        "protobuf",
+    },
+    "kinesis": {"boto3~=1.19.12"},
+    "redpanda": {
+        "confluent_kafka==1.8.2",
+        "fastavro>=1.2.0",
+        "avro-python3",
+        "avro",
+        "grpcio-tools",
+        "protobuf",
+    },
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.4.0"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
-    "pymssql": {"pymssql~=2.2.5"},
+    "pymssql": {"pymssql==2.2.5"},
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle", "oracledb==1.0.3"},
@@ -110,8 +127,8 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         "GeoAlchemy2",
     },
-    "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
-    "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
+    "snowflake": {"snowflake-sqlalchemy~=1.4.3"},
+    "snowflake-usage": {"snowflake-sqlalchemy~=1.4.3"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.29"},
@@ -133,13 +150,12 @@ plugins: Dict[str, Set[str]] = {
     "domo": {"pydomo~=0.3.0.5"},
 }
 dev = {
-    "datamodel-code-generator==0.13.0",
+    "datamodel-code-generator==0.13.4",
     "black==22.3.0",
     "pycln==1.3.2",
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
-    "pydantic[email]==1.9.0",
 }
 test = {
     "isort==5.10.1",
@@ -157,6 +173,12 @@ test = {
     "great-expectations~=0.15.0",
     # Airflow tests
     "apache-airflow==2.3.3",
+    # Domo test
+    "pydomo~=0.3.0.5",
+    # mock boto3 functions
+    "moto==4.0.8",
+    # amundsen
+    "neo4j~=4.4.0",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
@@ -192,6 +214,7 @@ setup(
         "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(

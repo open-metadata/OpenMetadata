@@ -11,6 +11,8 @@
 
 from unittest import TestCase
 
+from pydantic import AnyUrl
+
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
     AthenaScheme,
@@ -197,13 +199,32 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_without_auth(self):
-        expected_result = "hive://localhost:10000"
+        expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             username="username",
             password="password",
             hostPort="localhost:10000",
             connectionArguments={"customKey": "value"},
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_hive_url_without_connection_arguments(self):
+        expected_result = "hive://username:password@localhost:10000"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username",
+            password="password",
+            hostPort="localhost:10000",
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_hive_url_without_connection_arguments_pass(self):
+        expected_result = "hive://username@localhost:10000"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username",
+            hostPort="localhost:10000",
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
@@ -747,20 +768,20 @@ class SouceConnectionTest(TestCase):
             awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
         )
 
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fs3athena-postgres&work_group=primary"
         athena_conn_obj = AthenaConnection(
             awsConfig=awsCreds,
-            s3StagingDir="s3athena-postgres",
+            s3StagingDir=AnyUrl("s3athena-postgres", scheme="s3"),
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
         )
         assert expected_url == get_connection_url(athena_conn_obj)
 
-        # connection arguments witho db
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
+        # connection arguments with db
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fs3athena-postgres&work_group=primary"
         athena_conn_obj = AthenaConnection(
             awsConfig=awsCreds,
-            s3StagingDir="s3athena-postgres",
+            s3StagingDir=AnyUrl("s3athena-postgres", scheme="s3"),
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
         )

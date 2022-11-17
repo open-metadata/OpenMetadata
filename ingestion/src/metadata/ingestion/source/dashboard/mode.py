@@ -33,7 +33,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.lineage.sql_lineage import (
+    clean_raw_query,
+    search_table_entities,
+)
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -137,7 +140,7 @@ class ModeSource(DashboardServiceSource):
                 data_source = self.data_sources.get(query.get("data_source_id"))
                 if not data_source:
                     continue
-                table_list = LineageRunner(query.get("raw_query"))
+                table_list = LineageRunner(clean_raw_query(query.get("raw_query")))
                 for table in table_list.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
                     database_schema_name = (

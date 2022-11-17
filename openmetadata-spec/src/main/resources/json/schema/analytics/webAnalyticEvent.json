@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/analytics/webAnalyticEvent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WebAnalyticEvent",
+  "description": "Web Analytic Event",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.analytics.WebAnalyticEvent",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the report.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this event.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this web analytics event.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the event.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "eventType": {
+      "description": "event type",
+      "$ref": "./basic.json#/definitions/webAnalyticEventType"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "owner": {
+      "description": "Owner of this report.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who performed the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "enabled": {
+      "description": "Weather the event is enable (i.e. data is being collected)",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["eventType", "name"],
+  "additionalProperties": false
+}

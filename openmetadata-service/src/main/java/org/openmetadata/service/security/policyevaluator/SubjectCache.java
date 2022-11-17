@@ -78,7 +78,6 @@ public class SubjectCache {
     try {
       return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
-      ex.printStackTrace();
       throw new EntityNotFoundException(ex.getMessage());
     }
   }
@@ -112,10 +111,6 @@ public class SubjectCache {
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for team {}", teamId, ex);
     }
-  }
-
-  public List<EntityReference> getInheritedRolesForUser(String userName) {
-    return getRolesForTeams(getSubjectContext(userName).getTeams());
   }
 
   public List<EntityReference> getRolesForTeams(List<EntityReference> teams) {

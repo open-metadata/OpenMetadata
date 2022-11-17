@@ -1,25 +1,63 @@
-[{
-    "from": { "fqn":"sample_data.ecommerce_db.shopify.raw_customer", "type": "table"},
-    "to": { "fqn":"sample_airflow.dim_address_etl", "type": "pipeline"}
+[
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_address",
+      "type": "table"
+    },
+    "sql_query": "select * from ecommerce_db.shopify.raw_customer",
+    "edge_meta": { "fqn": "sample_airflow.dim_address_etl", "type": "pipeline" }
   },
   {
-      "from": {"fqn":"sample_airflow.dim_address_etl", "type": "pipeline"},
-      "to": {"fqn":"sample_data.ecommerce_db.shopify.dim_address", "type": "table"}
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_order",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.\"dim.product\"",
+      "type": "table"
+    },
+    "sql_query": "select * from sample_data.ecommerce_db.shopify.raw_order",
+    "edge_meta": { "fqn": "sample_airflow.dim_product_etl", "type": "pipeline" }
   },
   {
-    "from": {"fqn":"sample_data.ecommerce_db.shopify.raw_order", "type": "table"},
-    "to": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_order",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.\"dim.product.variant\"",
+      "type": "table"
+    },
+    "edge_meta": { "fqn": "sample_airflow.dim_product_etl", "type": "pipeline" },
+    "sql_query": "select * from sample_data.ecommerce_db.shopify.raw_order"
   },
   {
-      "from": {"fqn":"sample_data.ecommerce_db.shopify.raw_customer", "type": "table"},
-      "to": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.\"dim.product\"",
+      "type": "table"
+    },
+    "edge_meta": { "fqn": "sample_airflow.dim_product_etl", "type": "pipeline" },
+    "sql_query": "insert into sample_data.ecommerce_db.shopify.\"dim.product\" as select * from sample_data.ecommerce_db.shopify.raw_customer"
   },
   {
-      "from": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"},
-      "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product\"", "type": "table"}
-  },
-  {
-      "from": {"fqn": "sample_airflow.dim_product_etl", "type": "pipeline"},
-      "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product.variant\"", "type": "table"}
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.\"dim.product.variant\"",
+      "type": "table"
+    },
+    "edge_meta": { "fqn": "sample_airflow.dim_product_etl", "type": "pipeline" },
+    "sql_query": "create ecommerce_db.shopify.\"dim.product.variant\" as select * from sample_data.ecommerce_db.shopify.raw_customer"
+
   }
 ]

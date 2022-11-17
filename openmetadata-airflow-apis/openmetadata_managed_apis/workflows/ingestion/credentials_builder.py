@@ -1,3 +1,5 @@
+from typing import Optional
+
 from airflow.configuration import conf
 from pydantic import SecretStr
 
@@ -8,13 +10,13 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.utils.secrets.secrets_manager import SECRET_MANAGER_AIRFLOW_CONF
 
 
-def build_aws_credentials():
+def build_aws_credentials() -> Optional[AWSCredentials]:
     if conf.has_section(SECRET_MANAGER_AIRFLOW_CONF):
         credentials = AWSCredentials(
             awsRegion=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_region", fallback="")
         )
-        credentials.awsAccessKeyId = conf.get(
-            SECRET_MANAGER_AIRFLOW_CONF, "aws_access_key_id", fallback=""
+        credentials.awsAccessKeyId = SecretStr(
+            conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_access_key_id", fallback="")
         )
         credentials.awsSecretAccessKey = SecretStr(
             conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_secret_access_key", fallback="")
@@ -23,10 +25,18 @@ def build_aws_credentials():
     return None
 
 
-def build_secrets_manager_credentials(secrets_manager: SecretsManagerProvider):
-    if secrets_manager == SecretsManagerProvider.aws:
+def build_secrets_manager_credentials(
+    secrets_manager: SecretsManagerProvider,
+) -> Optional[AWSCredentials]:
+    if secrets_manager in [
+        SecretsManagerProvider.aws,
+        SecretsManagerProvider.managed_aws,
+    ]:
         return build_aws_credentials()
-    if secrets_manager == SecretsManagerProvider.aws_ssm:
+    if secrets_manager in [
+        SecretsManagerProvider.aws_ssm,
+        SecretsManagerProvider.managed_aws_ssm,
+    ]:
         return build_aws_credentials()
     else:
         return None

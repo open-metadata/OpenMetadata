@@ -63,11 +63,11 @@ jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
 }));
 
 const mockTableDetails = {} as Table & Topic & Dashboard & Pipeline & Mlmodel;
-const handleExtentionUpdate = jest.fn();
+const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
   entityDetails: mockTableDetails,
-  handleExtentionUpdate,
+  handleExtensionUpdate,
   entityType: EntityType.TABLE,
 };
 

@@ -19,6 +19,9 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import QueryMetric
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 
 class UniqueCount(QueryMetric):
@@ -61,3 +64,16 @@ class UniqueCount(QueryMetric):
 
         only_once_cte = only_once.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
+
+    def dl_query(self, data_frame):
+        """
+        Build the Unique Count metric
+        """
+        try:
+            return data_frame[self.col.name].nunique()
+        except Exception as err:
+            logger.debug(
+                f"Don't know how to process type {self.col.datatype}"
+                f"when computing Distinct Count.\n Error: {err}"
+            )
+            return 0

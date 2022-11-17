@@ -42,6 +42,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -86,17 +87,13 @@ public class DatabaseServiceResource
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
     @SuppressWarnings("unused") /* Required for tests */
     public DatabaseServiceList() {}
-
-    public DatabaseServiceList(List<DatabaseService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
   @Operation(
       operationId = "listDatabaseServices",
       summary = "List database services",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a list of database services.",
       responses = {
         @ApiResponse(
@@ -147,7 +144,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getDatabaseServiceByID",
       summary = "Get a database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a database service by `id`.",
       responses = {
         @ApiResponse(
@@ -182,7 +179,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getDatabaseServiceByFQN",
       summary = "Get database service by name",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a database service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -217,7 +214,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "listAllDatabaseServiceVersion",
       summary = "List database service versions",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a list of all the versions of a database service identified by `id`",
       responses = {
         @ApiResponse(
@@ -253,7 +250,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "getSpecificDatabaseServiceVersion",
       summary = "Get a version of the database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Get a version of the database service by given `id`",
       responses = {
         @ApiResponse(
@@ -283,7 +280,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "createDatabaseService",
       summary = "Create database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Create a new database service.",
       responses = {
         @ApiResponse(
@@ -297,7 +294,7 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
     DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -306,7 +303,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "createOrUpdateDatabaseService",
       summary = "Update database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description = "Update an existing or create a new database service.",
       responses = {
         @ApiResponse(
@@ -320,7 +317,7 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -330,7 +327,7 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "deleteDatabaseService",
       summary = "Delete a database service",
-      tags = "databaseService",
+      tags = "databaseServices",
       description =
           "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
       responses = {
@@ -351,7 +348,27 @@ public class DatabaseServiceResource
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted DatabaseService.",
+      tags = "databaseServices",
+      description = "Restore a soft deleted DatabaseService.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the DatabaseService.",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+      })
+  public Response restoreDatabaseService(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private DatabaseService getService(CreateDatabaseService create, String user) throws IOException {

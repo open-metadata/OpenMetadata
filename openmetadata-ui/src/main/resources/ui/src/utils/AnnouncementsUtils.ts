@@ -9,9 +9,9 @@ export const ANNOUNCEMENT_ENTITIES = [
 ];
 
 export const validateMessages = {
-  required: '${name} is required!',
+  required: '${fieldName} is required!',
   string: {
-    range: '${name} must be between ${min} and ${max} character.',
+    range: '${fieldName} must be between ${min} and ${max} character.',
   },
 };
 

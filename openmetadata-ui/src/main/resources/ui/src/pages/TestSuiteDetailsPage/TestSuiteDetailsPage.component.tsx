@@ -42,11 +42,8 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
+  ROUTES,
 } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { ACTION_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -57,7 +54,6 @@ import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
@@ -163,10 +159,7 @@ const TestSuiteDetailsPage = () => {
       setSlashedBreadCrumb([
         {
           name: 'Test Suites',
-          url: getSettingPath(
-            GlobalSettingsMenuCategory.DATA_QUALITY,
-            GlobalSettingOptions.TEST_SUITE
-          ),
+          url: ROUTES.TEST_SUITES,
         },
         {
           name: startCase(

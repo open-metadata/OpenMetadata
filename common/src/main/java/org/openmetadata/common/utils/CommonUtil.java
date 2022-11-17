@@ -179,7 +179,17 @@ public final class CommonUtil {
     return list == null || list.isEmpty();
   }
 
+  public static boolean nullOrEmpty(Object object) {
+    return object == null || nullOrEmpty(object.toString());
+  }
+
   public static String getResourceAsStream(ClassLoader loader, String file) throws IOException {
     return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
+  }
+
+  /** Return list of entiries that are modifiable for performing sort and other operations */
+  @SafeVarargs
+  public static <T> List<T> listOf(T... entries) {
+    return new ArrayList<>(List.of(entries));
   }
 }

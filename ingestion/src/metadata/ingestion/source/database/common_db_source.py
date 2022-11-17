@@ -41,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.sql_lineage import (
+    clean_raw_query,
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
@@ -253,7 +254,7 @@ class CommonDbSourceService(
                         continue
                     yield view_name, TableType.View
         except Exception as err:
-            logger.error(
+            logger.warning(
                 f"Fetching tables names failed for schema {schema_name} due to - {err}"
             )
             logger.debug(traceback.format_exc())
@@ -294,7 +295,7 @@ class CommonDbSourceService(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, TablePartition]:
+    ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
         """
@@ -410,7 +411,7 @@ class CommonDbSourceService(
             DictConfigurator.configure = configure
 
             try:
-                result = LineageRunner(view_definition)
+                result = LineageRunner(clean_raw_query(view_definition))
                 if result.source_tables and result.target_tables:
                     yield from get_lineage_by_query(
                         self.metadata,

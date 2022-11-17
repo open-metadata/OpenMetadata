@@ -200,6 +200,13 @@ const OwnerWidgetWrapper = ({
     debounceOnSearch(text);
   };
 
+  const handleRemoveOwner = () => {
+    if (removeOwner) {
+      removeOwner();
+      hideWidget();
+    }
+  };
+
   useEffect(() => {
     if (statusOwner === 'waiting') {
       setStatusOwner('success');
@@ -220,7 +227,7 @@ const OwnerWidgetWrapper = ({
       groupType="tab"
       isLoading={isUserLoading}
       listGroups={getOwnerGroup()}
-      removeOwner={removeOwner}
+      removeOwner={handleRemoveOwner}
       showSearchBar={isCurrentUserAdmin()}
       value={owner?.id || ''}
       onSearchTextChange={handleSearchOwnerDropdown}

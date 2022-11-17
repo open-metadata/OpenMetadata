@@ -13,15 +13,19 @@ Metadata DAG common functions
 """
 import json
 from datetime import datetime, timedelta
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 import airflow
 from airflow import DAG
 from openmetadata_managed_apis.api.utils import clean_dag_id
+from pydantic import ValidationError
+from requests.utils import quote
 
+from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -37,12 +41,18 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from openmetadata_managed_apis.utils.logger import workflow_logger
+from openmetadata_managed_apis.utils.parser import (
+    parse_service_connection,
+    parse_validation_err,
+)
 from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
     build_secrets_manager_credentials,
 )
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
+    PipelineState,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
@@ -52,7 +62,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.ingestion.api.parser import (
+    InvalidWorkflowException,
+    ParsingConfigurationError,
+)
 from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.ometa.utils import model_str
+
+logger = workflow_logger()
 
 
 class InvalidServiceException(Exception):
@@ -88,9 +105,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         raise ClientInitializationError(f"Failed to initialize the client: {exc}")
 
     service_type = ingestion_pipeline.service.type
-    service: Optional[
-        Union[DatabaseService, MessagingService, PipelineService, DashboardService]
-    ] = None
 
     if service_type == "testSuite":
         service = metadata.get_by_name(
@@ -106,25 +120,62 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             sourceConfig=ingestion_pipeline.sourceConfig,
         )
 
-    if service_type == "databaseService":
-        service: DatabaseService = metadata.get_by_name(
-            entity=DatabaseService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "pipelineService":
-        service: PipelineService = metadata.get_by_name(
-            entity=PipelineService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "dashboardService":
-        service: DashboardService = metadata.get_by_name(
-            entity=DashboardService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "messagingService":
-        service: MessagingService = metadata.get_by_name(
-            entity=MessagingService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "mlmodelService":
-        service: MlModelService = metadata.get_by_name(
-            entity=MlModelService, fqn=ingestion_pipeline.service.name
+    entity_class = None
+    try:
+        if service_type == "databaseService":
+            entity_class = DatabaseService
+            service: DatabaseService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "pipelineService":
+            entity_class = PipelineService
+            service: PipelineService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "dashboardService":
+            entity_class = DashboardService
+            service: DashboardService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "messagingService":
+            entity_class = MessagingService
+            service: MessagingService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "mlmodelService":
+            entity_class = MlModelService
+            service: MlModelService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "metadataService":
+            entity_class = MetadataService
+            service: MetadataService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        else:
+            raise InvalidServiceException(f"Invalid Service Type: {service_type}")
+    except ValidationError as original_error:
+        try:
+            resp = metadata.client.get(
+                f"{metadata.get_suffix(entity_class)}/name/{quote(model_str(ingestion_pipeline.service.name), safe='')}"
+            )
+            parse_service_connection(resp)
+        except (ValidationError, InvalidWorkflowException) as scoped_error:
+            if isinstance(scoped_error, ValidationError):
+                # Let's catch validations of internal Workflow models, not the Workflow itself
+                object_error = (
+                    scoped_error.model.__name__
+                    if scoped_error.model is not None
+                    else "workflow"
+                )
+                raise ParsingConfigurationError(
+                    f"We encountered an error parsing the configuration of your {object_error}.\n"
+                    f"{parse_validation_err(scoped_error)}"
+                )
+            raise scoped_error
+        raise ParsingConfigurationError(
+            f"We encountered an error parsing the configuration of your workflow.\n"
+            f"{parse_validation_err(original_error)}"
         )
 
     if not service:
@@ -148,14 +199,16 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     This is the callable used to create the PythonOperator
     """
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
-
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-
     workflow = Workflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
 
 
 def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -171,12 +224,15 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-
     workflow = ProfilerWorkflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
 
 
 def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -192,12 +248,41 @@ def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-
     workflow = TestSuiteWorkflow.create(config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
+
+
+def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
+    """Task that creates and runs the data insight workflow.
+
+    The workflow_config gets created form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+
+    Args:
+        workflow_config (OpenMetadataWorkflowConfig): _description_
+    """
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    workflow = DataInsightWorkflow.create(config)
+    try:
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+    except Exception as err:
+        workflow.set_ingestion_pipeline_status(PipelineState.failed)
+        raise err
 
 
 def date_to_datetime(

@@ -23,7 +23,6 @@ const mockTierData = {
   version: 0.1,
   updatedAt: 1665646906357,
   updatedBy: 'admin',
-  categoryType: 'Descriptive',
   href: 'http://localhost:8585/api/v1/tags/Tier',
   children: [
     {

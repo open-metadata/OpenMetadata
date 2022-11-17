@@ -46,6 +46,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateLocation;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -85,10 +86,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public static class LocationList extends ResultList<Location> {
     @SuppressWarnings("unused") /* Required for tests */
     public LocationList() {}
-
-    public LocationList(List<Location> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   static final String FIELDS = "owner,followers,tags,path";
@@ -357,7 +354,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, location, true);
+    return create(uriInfo, securityContext, location);
   }
 
   @PUT
@@ -377,7 +374,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
     Location location = getLocation(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, location, true);
+    return createOrUpdate(uriInfo, securityContext, location);
   }
 
   @PATCH
@@ -426,7 +423,26 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           boolean hardDelete,
       @Parameter(description = "Location Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted location.",
+      tags = "locations",
+      description = "Restore a soft deleted location.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Location ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class)))
+      })
+  public Response restoreLocation(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @PUT

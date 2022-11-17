@@ -57,6 +57,8 @@ site_menu:
     url: /deployment/security
   - category: Deployment / Enable Security / Basic Authentication
     url: /deployment/security/basic-auth
+  - category: Deployment / Enable Security / Ldap Authentication
+    url: /deployment/security/ldap
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -134,8 +136,6 @@ site_menu:
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
-  - category: Deployment / Upgrade OpenMetadata / Backup Metadata
-    url: /deployment/upgrade/backup-metadata
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
     url: /deployment/upgrade/bare-metal
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
@@ -150,6 +150,11 @@ site_menu:
     url: /deployment/upgrade/versions/010-to-011
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
     url: /deployment/upgrade/versions/011-to-012
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
+    url: /deployment/upgrade/versions/012-to-013
+  
+  - category: Deployment / Backup & Restore Metadata
+    url: /deployment/backup-restore-metadata
 
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
@@ -232,12 +237,16 @@ site_menu:
     url: /connectors/database/azuresql/airflow
   - category: Connectors / Database / AzureSQL / CLI
     url: /connectors/database/azuresql/cli
+  - category: Connectors / Database / AzureSQL / Troubleshooting
+    url: /connectors/database/azuresql/troubleshooting
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Airflow
     url: /connectors/database/databricks/airflow
   - category: Connectors / Database / Databricks / CLI
     url: /connectors/database/databricks/cli
+  - category: Connectors / Database / Databricks / Troubleshooting
+    url: /connectors/database/databricks/troubleshooting
   - category: Connectors / Database / Datalake
     url: /connectors/database/datalake
   - category: Connectors / Database / Datalake / Airflow
@@ -314,6 +323,12 @@ site_menu:
     url: /connectors/database/mariadb/airflow
   - category: Connectors / Database / MariaDB / CLI
     url: /connectors/database/mariadb/cli
+  - category: Connectors / Database / Domo Database
+    url: /connectors/database/domo-database
+  - category: Connectors / Database / Domo Database / Airflow
+    url: /connectors/database/domo-database/airflow
+  - category: Connectors / Database / Domo Database / CLI
+    url: /connectors/database/domo-database/cli
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard
@@ -361,6 +376,13 @@ site_menu:
     url: /connectors/dashboard/mode/airflow
   - category: Connectors / Dashboard / Mode / CLI
     url: /connectors/dashboard/mode/cli
+  - category: Connectors / Dashboard
+  - category: Connectors / Dashboard / Domo Dashboard
+    url: /connectors/dashboard/domo-dashboard
+  - category: Connectors / Dashboard / Domo Dashboard / Airflow
+    url: /connectors/dashboard/domo-dashboard/airflow
+  - category: Connectors / Dashboard / Domo Dashboard / CLI
+    url: /connectors/dashboard/domo-dashboard/cli
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -411,6 +433,12 @@ site_menu:
     url: /connectors/pipeline/dagster/airflow
   - category: Connectors / Pipeline / Dagster / CLI
     url: /connectors/pipeline/dagster/cli
+  - category: Connectors / Pipeline / Domo Pipeline
+    url: /connectors/pipeline/domo-pipeline
+  - category: Connectors / Pipeline / Domo Pipeline / Airflow
+    url: /connectors/pipeline/domo-pipeline/airflow
+  - category: Connectors / Pipeline / Domo Pipeline / CLI
+    url: /connectors/pipeline/domo-pipeline/cli
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
@@ -427,6 +455,9 @@ site_menu:
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
+
+  - category: Connectors / Custom Connectors
+    url: /connectors/custom-connectors
 
   - category: Connectors / Managing Credentials
     url: /connectors/credentials
@@ -458,6 +489,8 @@ site_menu:
     url: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / Lineage
     url: /connectors/ingestion/workflows/lineage
+  - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
+    url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
@@ -482,6 +515,10 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Run Connectors in your Airflow
     url: /connectors/ingestion/run-connectors-in-airflow
+  - category: Connectors / Ingestion / Run Connectors from MWAA
+    url: /connectors/ingestion/run-connectors-from-mwaa
+  - category: Connectors / Ingestion / Best Practices
+    url: /connectors/ingestion/best-practices
 
   - category: How to guides
     url: /how-to-guides

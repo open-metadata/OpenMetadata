@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEST_CASE;
 
 import com.github.difflib.text.DiffRow;
@@ -27,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -37,7 +39,11 @@ import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.dataInsight.kpi.Kpi;
+import org.openmetadata.schema.dataInsight.type.KpiResult;
+import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -184,7 +190,7 @@ public final class ChangeEventParser {
     Map<EntityLink, String> messages =
         getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<SlackAttachment> attachmentList = new ArrayList<>();
-    for (var entry : messages.entrySet()) {
+    for (Entry<EntityLink, String> entry : messages.entrySet()) {
       SlackAttachment attachment = new SlackAttachment();
       List<String> mark = new ArrayList<>();
       mark.add("text");
@@ -208,7 +214,7 @@ public final class ChangeEventParser {
     Map<EntityLink, String> messages =
         getFormattedMessages(PUBLISH_TO.TEAMS, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<TeamsMessage.Section> attachmentList = new ArrayList<>();
-    for (var entry : messages.entrySet()) {
+    for (Entry<EntityLink, String> entry : messages.entrySet()) {
       TeamsMessage.Section section = new TeamsMessage.Section();
       section.setActivityTitle(teamsSections.getActivityTitle());
       section.setActivityText(entry.getValue());
@@ -239,7 +245,7 @@ public final class ChangeEventParser {
       PUBLISH_TO publishTo, EntityInterface entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
     Map<EntityLink, String> messages = new HashMap<>();
 
-    for (var field : fields) {
+    for (FieldChange field : fields) {
       // if field name has dots, then it is an array field
       String fieldName = field.getName();
 
@@ -248,6 +254,9 @@ public final class ChangeEventParser {
       EntityLink link = getEntityLink(fieldName, entity);
       if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
         String message = handleTestCaseResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        messages.put(link, message);
+      } else if (link.getEntityType().equals(KPI) && link.getFieldName().equals("kpiResult")) {
+        String message = handleKpiResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
         messages.put(link, message);
       } else if (!fieldName.equals("failureDetails")) {
         String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
@@ -258,7 +267,7 @@ public final class ChangeEventParser {
   }
 
   public static String getFieldValue(Object fieldValue) {
-    if (fieldValue == null || fieldValue.toString().isEmpty()) {
+    if (CommonUtil.nullOrEmpty(fieldValue)) {
       return StringUtils.EMPTY;
     }
 
@@ -268,7 +277,7 @@ public final class ChangeEventParser {
       if (json.getValueType() == ValueType.ARRAY) {
         JsonArray jsonArray = json.asJsonArray();
         List<String> labels = new ArrayList<>();
-        for (var item : jsonArray) {
+        for (JsonValue item : jsonArray) {
           if (item.getValueType() == ValueType.OBJECT) {
             Set<String> keys = item.asJsonObject().keySet();
             if (keys.contains("tagFQN")) {
@@ -322,7 +331,7 @@ public final class ChangeEventParser {
       }
       return messages;
     }
-    for (var field : deletedFields) {
+    for (FieldChange field : deletedFields) {
       Optional<FieldChange> addedField =
           addedFields.stream().filter(f -> f.getName().equals(field.getName())).findAny();
       if (addedField.isPresent()) {
@@ -432,7 +441,7 @@ public final class ChangeEventParser {
     List<String> labels = new ArrayList<>();
     Set<String> keys = newJson.keySet();
     // check if each key's value is the same
-    for (var key : keys) {
+    for (String key : keys) {
       if (!newJson.get(key).equals(oldJson.get(key))) {
         labels.add(
             String.format(
@@ -454,7 +463,7 @@ public final class ChangeEventParser {
       return StringUtils.EMPTY;
     }
 
-    if (oldValue == null || oldValue.toString().isEmpty()) {
+    if (nullOrEmpty(oldValue)) {
       String format = String.format("Updated %s to %s", getBold(publishTo), getFieldValue(newValue));
       return String.format(format, updatedField);
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
@@ -523,6 +532,24 @@ public final class ChangeEventParser {
     }
   }
 
+  public static String handleKpiResult(
+      PUBLISH_TO publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+    String kpiName = entity.getName();
+    KpiResult result = (KpiResult) newValue;
+    Kpi kpiEntity = (Kpi) entity;
+    if (result != null) {
+      String format =
+          String.format(
+              "Added Results for %s. Target Name : %s , Current Value: %s, Target Met: %s",
+              getBold(publishTo), getBold(publishTo), getBold(publishTo), getBold(publishTo));
+      KpiTarget target = result.getTargetResult().get(0);
+      return String.format(format, kpiName, target.getName(), target.getValue(), target.getTargetMet());
+    } else {
+      String format = String.format("KpiResult %s is updated.", getBold(publishTo));
+      return String.format(format, kpiName);
+    }
+  }
+
   public static String getPlaintextDiff(PUBLISH_TO publishTo, String oldValue, String newValue) {
     // create a configured DiffRowGenerator
     String addMarker = FEED_ADD_MARKER;
@@ -541,7 +568,7 @@ public final class ChangeEventParser {
 
     // merge rows by %n for new line
     String diff = null;
-    for (var row : rows) {
+    for (DiffRow row : rows) {
       if (diff == null) {
         diff = row.getOldLine();
       } else {

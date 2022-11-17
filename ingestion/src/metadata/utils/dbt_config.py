@@ -18,11 +18,19 @@ from typing import Optional, Tuple
 
 import requests
 
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
-    DbtGCSConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+    DbtGcsConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtHttpConfig import (
     DbtHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
     DbtLocalConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
 from metadata.ingestion.ometa.utils import ometa_logger
@@ -119,7 +127,7 @@ def _(config: DbtHttpConfig):
 
 
 @get_dbt_details.register
-def _(config: DbtCloudConfig):
+def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None
@@ -140,12 +148,14 @@ def _(config: DbtCloudConfig):
         )
         client = REST(client_config)
         account_id = config.dbtCloudAccountId
+        project_id = config.dbtCloudProjectId
         logger.debug(
             "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
         )
-        response = client.get(
-            f"/accounts/{account_id}/runs/?order_by=-finished_at&limit=1"
-        )
+        params_data = {"order_by": "-finished_at", "limit": "1"}
+        if project_id:
+            params_data["project_id"] = project_id
+        response = client.get(f"/accounts/{account_id}/runs", data=params_data)
         runs_data = response.get("data")
         if runs_data:
             run_id = runs_data[0]["id"]
@@ -211,7 +221,7 @@ def _(config: DbtS3Config):
 
 
 @get_dbt_details.register
-def _(config: DbtGCSConfig):
+def _(config: DbtGcsConfig):
     dbt_catalog = None
     dbt_manifest = None
     dbt_run_results = None

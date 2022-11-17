@@ -21,17 +21,21 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
+@Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "owner,tags,reviewers";
   private static final String PATCH_FIELDS = "owner,tags,reviewers";
@@ -55,9 +59,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void prepare(Glossary glossary) throws IOException {
-    setFullyQualifiedName(glossary);
     validateUsers(glossary.getReviewers());
-    glossary.setTags(addDerivedTags(glossary.getTags()));
   }
 
   @Override
@@ -70,7 +72,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     glossary.withOwner(null).withHref(null).withTags(null);
 
-    store(glossary.getId(), glossary, update);
+    store(glossary, update);
 
     // Restore the relationships
     glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);
@@ -108,6 +110,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateReviewers(original, updated);
+      updateName(original, updated);
     }
 
     private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) throws JsonProcessingException {
@@ -121,6 +124,20 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           Relationship.REVIEWS,
           Entity.GLOSSARY,
           origGlossary.getId());
+    }
+
+    public void updateName(Glossary original, Glossary updated) throws IOException {
+      if (!original.getName().equals(updated.getName())) {
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
+        // Category name changed - update tag names starting from category and all the children tags
+        LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
+        daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
+        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
+        recordChange("name", original.getName(), updated.getName());
+      }
     }
   }
 }

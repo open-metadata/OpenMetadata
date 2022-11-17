@@ -1,0 +1,18 @@
+{
+  "name": "DefaultBotPolicy",
+  "displayName": "Default Bot Policy",
+  "fullyQualifiedName": "DefaultBotPolicy",
+  "description": "Policy for all the Bots to perform operations on metadata entities",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "BotRule-Deny",
+      "description" : "A bot can't create another bot",
+      "resources" : ["bot", "webhook"],
+      "operations": ["Create", "Delete"],
+      "effect": "deny"
+    }
+  ]
+}

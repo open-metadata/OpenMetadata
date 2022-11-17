@@ -108,6 +108,7 @@ const ListEntities = ({
 
   return (
     <Table
+      bordered
       className="list-table"
       columns={columns}
       dataSource={list}

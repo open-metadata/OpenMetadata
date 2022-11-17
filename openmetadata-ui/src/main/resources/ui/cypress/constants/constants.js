@@ -14,6 +14,10 @@
 export const uuid = () => Cypress._.random(0, 1e6);
 const id = uuid();
 
+export const BASE_URL = location.origin;
+
+export const LOGIN_ERROR_MESSAGE = 'You have entered an invalid username or password.';
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -83,7 +87,7 @@ export const SEARCH_ENTITY_DASHBOARD = {
     serviceName: 'sample_superset',
   },
 };
-// Note:- Please do not change term name of pipeline
+
 export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
     term: 'dim_product_etl',
@@ -194,6 +198,8 @@ export const NEW_TAG = {
 export const NEW_GLOSSARY = {
   name: 'Business Glossary',
   description: 'This is the Business glossary',
+  reviewer: 'Aaron Johnson',
+  tag: 'PII.None'
 };
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
@@ -240,14 +246,15 @@ export const ENTITIES = {
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TOPIC.topic_1,
   },
-  entity_dashboard: {
-    name: 'dashboard',
-    description: 'This is Dashboard custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-  },
+// commenting the dashboard test for not, need to make changes in dynamic data-test side
+//   entity_dashboard: {
+//     name: 'dashboard',
+//     description: 'This is Dashboard custom property',
+//     integerValue: '14',
+//     stringValue: 'This is string propery',
+//     markdownValue: 'This is markdown value',
+//     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
+//   },
   entity_pipeline: {
     name: 'pipeline',
     description: 'This is Pipeline custom property',
@@ -263,7 +270,8 @@ export const LOGIN = {
   password: 'admin',
 };
 
-export const ANNOUNCEMENT_ENTITIES = [SEARCH_ENTITY_TABLE.table_1, SEARCH_ENTITY_TOPIC.topic_1, SEARCH_ENTITY_DASHBOARD.dashboard_1, SEARCH_ENTITY_PIPELINE.pipeline_1]
+// For now skipping the dashboard entity "SEARCH_ENTITY_DASHBOARD.dashboard_1"
+export const ANNOUNCEMENT_ENTITIES = [SEARCH_ENTITY_TABLE.table_1, SEARCH_ENTITY_TOPIC.topic_1, SEARCH_ENTITY_PIPELINE.pipeline_1]
 
 export const HTTP_CONFIG_SOURCE = {
   DBT_CATALOG_HTTP_PATH:
@@ -278,8 +286,14 @@ export const DBT = {
   tagCategory: 'DBTTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
-  dbtLineageNode1: 'dev.dbt_jaffle.stg_orders',
-  dbtLineageNode2: 'dev.dbt_jaffle.stg_payments',
+  dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
+
+export const API_SERVICE = {
+  databaseServices: 'databaseServices',
+  messagingServices: 'messagingServices',
+  pipelineServices: 'pipelineServices',
+  dashboardServices: 'dashboardServices',
+}

@@ -24,8 +24,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -35,29 +37,6 @@ import org.openmetadata.service.util.JsonUtils;
 public class TagRepository extends EntityRepository<Tag> {
   public TagRepository(CollectionDAO dao) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
-  }
-
-  /**
-   * Replace category name: prefix = cat1 and newPrefix = cat2 replaces the FQN of all the children tags of a category
-   * from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag1.secondaryTag1
-   *
-   * <p>Replace primary tag name: Prefix = cat1.primaryTag1 and newPrefix = cat1.primaryTag2 replaces the FQN of all the
-   * children tags from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag2.secondaryTag1
-   */
-  public void updateChildrenTagNames(String prefix, String newPrefix) throws IOException {
-    // Update the fully qualified names of all the primary and secondary tags
-    ListFilter listFilter = new ListFilter(Include.ALL).addQueryParam("parent", prefix);
-    List<String> groupJsons = dao.listAfter(listFilter, 10000, null);
-
-    for (String json : groupJsons) {
-      Tag tag = JsonUtils.readValue(json, Tag.class);
-      String oldFQN = tag.getFullyQualifiedName();
-      String newFQN = oldFQN.replace(prefix, newPrefix);
-      LOG.info("Replacing tag fqn from {} to {}", oldFQN, newFQN);
-      tag.setFullyQualifiedName(oldFQN.replace(prefix, newPrefix));
-      daoCollection.tagDAO().update(tag.getId(), JsonUtils.pojoToJson(tag));
-      updateChildrenTagNames(oldFQN, newFQN);
-    }
   }
 
   // Populate the children tags for a given tag
@@ -77,11 +56,11 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void prepare(Tag entity) {
     String[] split = FullyQualifiedName.split(entity.getFullyQualifiedName());
-    String category = split[0];
-    daoCollection.tagCategoryDAO().existsByName(category);
+    String categoryName = split[0];
+    daoCollection.tagCategoryDAO().findEntityByName(categoryName);
 
     if (split.length == 3) { // Secondary tag is being created. Check the primary tag
-      dao.existsByName(FullyQualifiedName.build(split[0], split[1]));
+      dao.findEntityByName(FullyQualifiedName.build(split[0], split[1]));
     }
   }
 
@@ -89,7 +68,7 @@ public class TagRepository extends EntityRepository<Tag> {
   public void storeEntity(Tag tag, boolean update) throws IOException {
     List<Tag> tags = tag.getChildren();
     tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
-    store(tag.getId(), tag, update);
+    store(tag, update);
     tag.setChildren(tags);
     LOG.info("Added tag {}", tag.getFullyQualifiedName());
 
@@ -111,6 +90,11 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public EntityRepository<Tag>.EntityUpdater getUpdater(Tag original, Tag updated, Operation operation) {
+    return new TagUpdater(original, updated, operation);
+  }
+
+  @Override
   protected void postDelete(Tag entity) {
     // Cleanup all the tag labels using this tag
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), entity.getFullyQualifiedName());
@@ -129,6 +113,7 @@ public class TagRepository extends EntityRepository<Tag> {
   @Transaction
   public Tag delete(UriInfo uriInfo, UUID id) throws IOException {
     Tag tag = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(tag);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(tag.getFullyQualifiedName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
@@ -143,14 +128,20 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       updateName(original, updated);
     }
 
     public void updateName(Tag original, Tag updated) throws IOException {
       if (!original.getName().equals(updated.getName())) {
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
         // Category name changed - update tag names starting from category and all the children tags
-        LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
-        updateChildrenTagNames(original.getName(), updated.getName());
+        LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
+        daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
       }
 

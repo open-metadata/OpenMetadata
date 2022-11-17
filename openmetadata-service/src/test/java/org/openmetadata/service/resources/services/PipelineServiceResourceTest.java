@@ -23,7 +23,7 @@ import static org.openmetadata.service.resources.services.DatabaseServiceResourc
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.AIRFLOW_CONNECTION;
-import static org.openmetadata.service.util.TestUtils.BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.MYSQL_DATABASE_CONNECTION;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -151,14 +151,13 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Test
   void post_put_invalidConnection_as_admin_4xx(TestInfo test) {
     RedshiftConnection redshiftConnection = new RedshiftConnection();
-    DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
     PipelineConnection pipelineConnection = new PipelineConnection().withConfig(redshiftConnection);
     assertResponseContains(
         () ->
             createEntity(
                 createRequest(test).withDescription(null).withConnection(pipelineConnection), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Airflow] due to [Failed to construct connection instance of Airflow]");
+        "InvalidServiceConnectionException for service [Airflow] due to [Failed to encrypt connection instance of Airflow]");
   }
 
   @Test
@@ -272,13 +271,13 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
     // Use the database service tests utilities for the comparison
     // only admin can see all connection parameters
-    if (ADMIN_AUTH_HEADERS.equals(authHeaders)) {
+    if (ADMIN_AUTH_HEADERS.equals(authHeaders) || INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
       DatabaseConnection actualDatabaseConnection =
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
       MysqlConnection actualMysqlConnection =
           JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
-    } else if (BOT_AUTH_HEADERS.equals(authHeaders)) {
+    } else {
       assertNotNull(actualAirflowConnection);
       assertNotNull(actualAirflowConnection.getHostPort());
       assertNull(actualAirflowConnection.getConnection());

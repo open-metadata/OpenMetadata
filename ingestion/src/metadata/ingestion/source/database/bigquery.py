@@ -159,7 +159,6 @@ class BigquerySource(CommonDbSourceService):
                             category_name=CreateTagCategoryRequest(
                                 name=self.service_connection.tagCategoryName,
                                 description="",
-                                categoryType="Classification",
                             ),
                             category_details=CreateTagRequest(
                                 name=tag.display_name, description="Bigquery Policy Tag"

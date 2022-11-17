@@ -39,6 +39,8 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [MySQL](/connectors/database/mysql)
 - [Oracle](/connectors/database/oracle)
 - [Postgres](/connectors/database/postgres)
+  - Postgres Metadata
+  - Postgres Usage 
 - [Presto](/connectors/database/presto)
 - [Redshift](/connectors/database/redshift)
   - Redshift Metadata
@@ -52,6 +54,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - SQL Profiles (SQL based systems)
 - [Trino](/connectors/database/trino)
 - [Vertica](/connectors/database/vertica)
+- [Domo Database](/connectors/database/domo-database)
 
 ## Dashboard Services
 
@@ -62,6 +65,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [Redash](/connectors/dashboard/redash)
 - [Superset](/connectors/dashboard/superset)
 - [Tableau](/connectors/dashboard/tableau)
+- [Domo Dashboard](/connectors/dashboard/domo-dashboard)
 
 ## Messaging Services
 
@@ -77,6 +81,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
 - [Dagster](/connectors/pipeline/dagster)
 - [Fivetran](/connectors/pipeline/fivetran)
 - [Glue](/connectors/pipeline/glue-pipeline)
+- [Domo Pipeline](/connectors/pipeline/domo-pipeline)
 - NiFi
 
 ## ML Model Services

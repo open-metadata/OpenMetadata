@@ -22,18 +22,19 @@ from logging import Logger
 from typing import List, Optional, Set, Tuple
 
 from pydantic import ValidationError
+from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.data.table import IntervalType, Table
+from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
 )
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
@@ -49,11 +50,14 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
-from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.partition import get_partition_details
+from metadata.utils.workflow_helper import (
+    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
+)
 from metadata.utils.workflow_output_handler import print_test_suite_status
 
 logger: Logger = test_suite_logger()
@@ -86,6 +90,8 @@ class TestSuiteWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
         self.metadata = OpenMetadata(self.metadata_config)
+
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.status = ProcessorStatus()
 
@@ -140,21 +146,15 @@ class TestSuiteWorkflow:
         """given an entityLink return the service connection
 
         Args:
-            entity_link: entity link for the test case
+            entity_fqn: entity link for the test case
         """
-        service = self.metadata.get_by_name(
+        service: DatabaseService = self.metadata.get_by_name(
             entity=DatabaseService,
             fqn=entity_fqn.split(".")[0],
         )
 
         if service:
-            service_connection = (
-                self.metadata.secrets_manager_client.retrieve_service_connection(
-                    service,
-                    "databaseservice",
-                )
-            )
-            service_connection_config = deepcopy(service_connection.__root__.config)
+            service_connection_config = deepcopy(service.connection.config)
             if hasattr(service_connection_config, "supportsDatabase"):
                 if (
                     hasattr(
@@ -210,33 +210,17 @@ class TestSuiteWorkflow:
 
         return None
 
-    def _get_partition_details(self, entity: Table) -> Optional[TablePartitionConfig]:
+    def _get_partition_details(
+        self, entity: Table
+    ) -> Optional[PartitionProfilerConfig]:
         """Get partition details
 
         Args:
             entity: table entity
         """
-        if (
-            not hasattr(entity, "serviceType")
-            or entity.serviceType != DatabaseServiceType.BigQuery
-        ):
-            return None
+        return get_partition_details(entity)
 
-        if hasattr(entity, "tablePartition") and entity.tablePartition:
-            if entity.tablePartition.intervalType == IntervalType.TIME_UNIT:
-                return TablePartitionConfig(
-                    partitionField=entity.tablePartition.columns[0]
-                )
-            if entity.tablePartition.intervalType == IntervalType.INGESTION_TIME:
-                if entity.tablePartition.interval == "DAY":
-                    return TablePartitionConfig(partitionField="_PARTITIONDATE")
-                return TablePartitionConfig(partitionField="_PARTITIONTIME")
-            raise TypeError(
-                f"Unsupported partition type {entity.tablePartition.intervalType}. Skipping table"
-            )
-        return None
-
-    def _create_runner_interface(self, entity_fqn: str):
+    def _create_runner_interface(self, entity_fqn: str, sqa_metadata_obj: MetaData):
         """create the interface to execute test against SQA sources"""
         table_entity = self._get_table_entity_from_test_case(entity_fqn)
         return SQATestSuiteInterface(
@@ -244,6 +228,7 @@ class TestSuiteWorkflow:
                 entity_fqn
             ),
             ometa_client=create_ometa_client(self.metadata_config),
+            sqa_metadata_obj=sqa_metadata_obj,
             table_entity=table_entity,
             table_sample_precentage=self._get_profile_sample(table_entity)
             if not self._get_profile_query(table_entity)
@@ -412,8 +397,11 @@ class TestSuiteWorkflow:
         unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
 
         for entity_fqn in unique_entity_fqns:
+            sqa_metadata_obj = MetaData()
             try:
-                runner_interface = self._create_runner_interface(entity_fqn)
+                runner_interface = self._create_runner_interface(
+                    entity_fqn, sqa_metadata_obj
+                )
                 data_test_runner = self._create_data_tests_runner(runner_interface)
 
                 for test_case in self._filter_test_cases_for_entity(
@@ -480,4 +468,17 @@ class TestSuiteWorkflow:
         """
         Close all connections
         """
+        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
+
+    def set_ingestion_pipeline_status(self, state: PipelineState):
+        """
+        Method to set the pipeline status of current ingestion pipeline
+        """
+        pipeline_run_id = set_ingestion_pipeline_status_helper(
+            state=state,
+            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
+            pipeline_run_id=self.config.pipelineRunId,
+            metadata=self.metadata,
+        )
+        self.config.pipelineRunId = pipeline_run_id

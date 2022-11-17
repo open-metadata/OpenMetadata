@@ -150,6 +150,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   return (
     <Fragment>
       <Table
+        bordered
         columns={tableColumn}
         data-testid="entity-custom-properties-table"
         dataSource={customProperties}
