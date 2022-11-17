@@ -204,19 +204,9 @@ jest.mock(
   }
 );
 
-jest.mock('antd', () => ({
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-}));
-
 jest.mock('../../utils/TableUtils', () => ({
   getEntityLink: jest.fn(),
   getUsagePercentile: jest.fn(),
-}));
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({

@@ -16,13 +16,7 @@ import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
@@ -1045,7 +1039,7 @@ const ServicePage: FunctionComponent = () => {
                   ))}
                 </Space>
               </Col>
-              <Col className="description-container" span={24}>
+              <Col data-testid="description-container" span={24}>
                 <Description
                   description={description || ''}
                   entityFqn={serviceFQN}
@@ -1076,11 +1070,20 @@ const ServicePage: FunctionComponent = () => {
                         heading={servicesDisplayName[serviceName]}
                       />
                     ) : (
-                      <Fragment>
+                      <div data-testid="table-container">
                         <Table
                           bordered
                           className="mt-4 table-shadow"
                           columns={tableColumn}
+                          components={{
+                            body: {
+                              row: ({
+                                children,
+                              }: {
+                                children: React.ReactNode;
+                              }) => <tr data-testid="column">{children}</tr>,
+                            },
+                          }}
                           data-testid="database-table"
                           dataSource={data}
                           pagination={false}
@@ -1098,7 +1101,7 @@ const ServicePage: FunctionComponent = () => {
                             totalCount={paging.total}
                           />
                         )}
-                      </Fragment>
+                      </div>
                     ))}
 
                   {activeTab === 2 && getIngestionTab()}
