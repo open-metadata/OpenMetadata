@@ -67,6 +67,11 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
   - Deploying with MySQL:  Download `docker-compose.yml` file from the above link.
   - Deploying with PostgreSQL: Download `docker-compose-postgres.yml` file from the above link.
 
+- Create the directory for host volumes 
+```commandline
+mkdir -p $PWD/docker-volume/db-data
+```
+
 - Run the below command to deploy the OpenMetadata
 
 ```commandline

@@ -27,7 +27,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, toNumber } from 'lodash';
+import { isUndefined, toInteger, toNumber } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -58,6 +58,7 @@ import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import {
   getDisabledDates,
   getKpiDateFormatByTimeStamp,
+  getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -166,6 +167,11 @@ const AddKPIPage = () => {
       const startDate = getTimeStampByDateTime(kpiDates.startDate);
       const endDate = getTimeStampByDateTime(kpiDates.endDate);
 
+      const targetValue = getKpiTargetValueByMetricType(
+        kpiData.metricType,
+        metricValue
+      );
+
       const updatedData = {
         ...kpiData,
         description,
@@ -175,7 +181,7 @@ const AddKPIPage = () => {
         targetDefinition: [
           {
             ...metricData,
-            value: metricValue + '',
+            value: targetValue + '',
           },
         ],
       };
@@ -209,11 +215,15 @@ const AddKPIPage = () => {
   }, [kpiData]);
 
   useEffect(() => {
-    const value = metricData?.value;
-    if (value) {
-      setMetricValue(toNumber(value));
-    }
-  }, [metricData]);
+    const value = toNumber(metricData?.value ?? '0');
+    const metricType = kpiData?.metricType;
+
+    // for percentage metric convert the fraction to percentage
+    const metricValue =
+      metricType === KpiTargetType.Percentage ? value * 100 : value;
+
+    setMetricValue(toInteger(metricValue));
+  }, [metricData, kpiData]);
 
   if (isLoading) {
     return <Loader />;
