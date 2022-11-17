@@ -14,6 +14,7 @@
 import { Button, Col, Row, Space, Tooltip } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
@@ -63,10 +64,6 @@ import {
 } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
-import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
-} from '../../constants/HelperTextUtil';
 import {
   OPENMETADATA,
   servicesDisplayName,
@@ -889,19 +886,19 @@ const ServicePage: FunctionComponent = () => {
   const getColumnDetails = (serviceName: ServiceTypes) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
-        return ['Database Name', 'Usage'];
+        return [t('label.database-name'), t('label.usage')];
       }
       case ServiceCategory.MESSAGING_SERVICES: {
-        return ['Topic Name', 'Tags'];
+        return [t('label.topic-name'), t('label.tags')];
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        return ['Dashboard Name', 'Tags'];
+        return [t('dashboard-name'), t('label.tags')];
       }
       case ServiceCategory.PIPELINE_SERVICES: {
-        return ['Pipeline Name', 'Tags'];
+        return [t('pipeline-name'), t('label.tags')];
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
-        return ['Model Name', 'Tags'];
+        return [t('model-name'), t('label.tags')];
       }
       default:
         return [];
@@ -927,18 +924,20 @@ const ServicePage: FunctionComponent = () => {
         },
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">No description</span>
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
           ),
       },
       {
-        title: 'Owner',
+        title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
         render: (record: ServicePageData) => (
@@ -978,8 +977,8 @@ const ServicePage: FunctionComponent = () => {
                     <Tooltip
                       title={
                         servicePermission.Delete
-                          ? 'Delete'
-                          : NO_PERMISSION_FOR_ACTION
+                          ? t('label.delete')
+                          : t('message.no-permission-for-action')
                       }>
                       <LegacyButton
                         data-testid="service-delete"
@@ -994,7 +993,7 @@ const ServicePage: FunctionComponent = () => {
                           viewBox="0 0 24 24"
                           width={14}
                         />
-                        Delete
+                        {t('label.delete')}
                       </LegacyButton>
                     </Tooltip>
                   )}
@@ -1112,8 +1111,8 @@ const ServicePage: FunctionComponent = () => {
                         <Tooltip
                           title={
                             servicePermission.EditAll
-                              ? 'Edit Connection'
-                              : NO_PERMISSION_FOR_ACTION
+                              ? t('label.edit-connection')
+                              : t('message.no-permission-for-action')
                           }>
                           <Button
                             ghost
@@ -1121,15 +1120,15 @@ const ServicePage: FunctionComponent = () => {
                             disabled={!servicePermission.EditAll}
                             type="primary"
                             onClick={handleEditConnection}>
-                            Edit Connection
+                            {t('label.edit-connection')}
                           </Button>
                         </Tooltip>
                         {allowTestConn && isAirflowRunning && (
                           <Tooltip
                             title={
                               servicePermission.EditAll
-                                ? 'Test Connection'
-                                : NO_PERMISSION_FOR_ACTION
+                                ? t('label.test-connection')
+                                : t('message.no-permission-for-action')
                             }>
                             <Button
                               data-testid="test-connection-button"
@@ -1143,7 +1142,7 @@ const ServicePage: FunctionComponent = () => {
                               loading={isTestingConnection}
                               type="primary"
                               onClick={checkTestConnect}>
-                              Test Connection
+                              {t('label.test-connection')}
                             </Button>
                           </Tooltip>
                         )}
@@ -1159,7 +1158,9 @@ const ServicePage: FunctionComponent = () => {
               </Col>
             </Row>
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              {t('message.no-permission-to-view')}
+            </ErrorPlaceHolder>
           )}
         </>
       )}

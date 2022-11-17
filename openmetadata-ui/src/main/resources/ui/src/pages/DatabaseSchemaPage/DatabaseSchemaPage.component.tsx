@@ -27,6 +27,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
@@ -66,7 +67,6 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -108,7 +108,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { databaseSchemaFQN, tab } = useParams<Record<string, string>>();
@@ -547,7 +547,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [
       {
-        title: 'Table Name',
+        title: t('label.table-name'),
         dataIndex: 'name',
         key: 'name',
         render: (text: string, record: Table) => {
@@ -563,7 +563,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         },
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text: string) =>
@@ -782,7 +782,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               </Row>
             </PageContainerV1>
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              {t('message.no-permission-to-view')}
+            </ErrorPlaceHolder>
           )}
         </>
       )}

@@ -198,7 +198,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -209,7 +209,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -221,7 +221,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       count: feedCount,
     },
     {
-      name: 'Sample Data',
+      name: t('label.sample-data'),
       icon: {
         alt: 'sample_data',
         name: 'sample-data',
@@ -232,7 +232,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 3,
     },
     {
-      name: 'Config',
+      name: t('label.config'),
       icon: {
         alt: 'config',
         name: 'icon-config',
@@ -243,7 +243,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 4,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       icon: {
         alt: 'lineage',
         name: 'icon-lineage',
@@ -254,7 +254,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-properties'),
       isProtected: false,
       position: 6,
     },
@@ -262,7 +262,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: t('label.owner'),
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -273,7 +273,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: 'Tier',
+      key: t('label.tier'),
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
     ...getConfigDetails(),
@@ -466,7 +466,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   return (
     <PageContainerV1>
-      <div className="entity-details-containers">
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
           currentOwner={topicDetails.owner}
@@ -569,7 +569,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     </Fragment>
                   ) : (
                     <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-                      No schema data available
+                      {t('message.no-schema-data-available')}
                     </div>
                   )}
                 </>

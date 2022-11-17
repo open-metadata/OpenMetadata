@@ -42,7 +42,6 @@ import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -577,7 +576,7 @@ const PipelineDetails = ({
   const taskColumns: ColumnsType<Task> = useMemo(
     () => [
       {
-        key: 'name',
+        key: t('label.name'),
         dataIndex: 'name',
         title: t('label.name'),
         render: (name, record) => (
@@ -593,13 +592,13 @@ const PipelineDetails = ({
         ),
       },
       {
-        key: 'type',
+        key: t('label.type'),
         dataIndex: 'taskType',
         width: 180,
         title: t('label.type'),
       },
       {
-        key: 'startDate',
+        key: t('label.start-date'),
         dataIndex: 'startDate',
         width: 180,
         title: t('label.start-date'),
@@ -607,7 +606,7 @@ const PipelineDetails = ({
           getDateTimeByTimeStamp(new Date(startDate).valueOf()),
       },
       {
-        key: 'description',
+        key: t('label.description'),
         dataIndex: 'description',
         width: 350,
         title: t('label.description'),
@@ -619,15 +618,17 @@ const PipelineDetails = ({
               {text ? (
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
-                <span className="tw-no-description">No description</span>
+                <span className="tw-no-description">
+                  {t('label.no-description')}
+                </span>
               )}
             </div>
             {!deleted && (
               <Tooltip
                 title={
                   pipelinePermissions.EditAll
-                    ? 'Edit Description'
-                    : NO_PERMISSION_FOR_ACTION
+                    ? t('label.edit-description')
+                    : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
@@ -646,7 +647,7 @@ const PipelineDetails = ({
         ),
       },
       {
-        key: 'tags',
+        key: t('label.tags'),
         dataIndex: 'tags',
         title: t('label.tags'),
         width: 350,

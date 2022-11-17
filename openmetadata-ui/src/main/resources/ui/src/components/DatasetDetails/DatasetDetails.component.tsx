@@ -217,7 +217,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -228,7 +228,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -240,7 +240,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       count: feedCount,
     },
     {
-      name: 'Sample Data',
+      name: t('label.sample-data'),
       icon: {
         alt: 'sample_data',
         name: 'sample-data',
@@ -256,7 +256,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 3,
     },
     {
-      name: 'Queries',
+      name: t('label.query-plural'),
       icon: {
         alt: 'table_queries',
         name: 'table_queries',
@@ -272,7 +272,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 4,
     },
     {
-      name: 'Profiler & Data Quality',
+      name: t('label.profiler-amp-data-quality'),
       icon: {
         alt: 'profiler',
         name: 'icon-profiler',
@@ -289,7 +289,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 5,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       icon: {
         alt: 'lineage',
         name: 'icon-lineage',
@@ -300,7 +300,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 7,
     },
     {
-      name: 'DBT',
+      name: t('label.dbt-uppercase'),
       icon: {
         alt: 'dbt-model',
         name: 'dbtmodel-light-grey',
@@ -312,7 +312,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-properties'),
       isProtected: false,
       position: 9,
     },
@@ -390,7 +390,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: t('label.owner'),
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -403,14 +403,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: 'Tier',
+      key: t('label.tier'),
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    { key: 'Type', value: `${tableType}`, showLabel: true },
+    { key: t('label.type'), value: `${tableType}`, showLabel: true },
     { value: usage },
     { value: `${weeklyUsageCount} Queries` },
     {
-      key: 'Columns',
+      key: t('label.column-plural'),
       value:
         tableProfile && tableProfile?.columnCount
           ? `${tableProfile.columnCount} Columns`
@@ -419,7 +419,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           : '',
     },
     {
-      key: 'Rows',
+      key: t('label.row-plural'),
       value: prepareTableRowInfo(),
     },
   ];

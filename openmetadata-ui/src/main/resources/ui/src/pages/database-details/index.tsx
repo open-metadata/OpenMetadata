@@ -27,6 +27,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
@@ -70,7 +71,6 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -110,6 +110,7 @@ import { getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
+  const { t } = useTranslation();
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -622,7 +623,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const tableColumn: ColumnsType<DatabaseSchema> = useMemo(
     () => [
       {
-        title: ' Schema Name',
+        title: t('label.schema-name'),
         dataIndex: 'name',
         key: 'name',
         render: (text: string, record: DatabaseSchema) => (
@@ -637,7 +638,7 @@ const DatabaseDetails: FunctionComponent = () => {
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text: string) =>
@@ -648,13 +649,13 @@ const DatabaseDetails: FunctionComponent = () => {
           ),
       },
       {
-        title: 'Owner',
+        title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
         render: (text: EntityReference) => getEntityName(text) || '--',
       },
       {
-        title: 'Usage',
+        title: t('label.usage'),
         dataIndex: 'usageSummary',
         key: 'usageSummary',
         render: (text: TypeUsedToReturnUsageDetailsOfAnEntity) =>
@@ -820,7 +821,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       defaultValue={getDefaultValue(
                         database?.owner as EntityReference
                       )}
-                      header="Request description"
+                      header={t('label.request-description')}
                       threadLink={getEntityFeedLink(
                         EntityType.DATABASE,
                         databaseFQN,
@@ -833,7 +834,9 @@ const DatabaseDetails: FunctionComponent = () => {
               </Row>
             </PageContainerV1>
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              {t('message.no-permission-to-view')}
+            </ErrorPlaceHolder>
           )}
         </>
       )}

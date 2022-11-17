@@ -29,7 +29,6 @@ import { Link, useHistory } from 'react-router-dom';
 import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -541,7 +540,7 @@ const DashboardDetails = ({
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
-        title: 'Chart Name',
+        title: t('label.chart-name'),
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
@@ -560,13 +559,13 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: 'Chart Type',
+        title: t('label.chart-type'),
         dataIndex: 'chartType',
         key: 'chartType',
         width: 100,
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         width: 300,
@@ -578,15 +577,17 @@ const DashboardDetails = ({
               {text ? (
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
-                <span className="tw-no-description">No description</span>
+                <span className="tw-no-description">
+                  {t('label.no-description')}
+                </span>
               )}
             </div>
             {!deleted && (
               <Tooltip
                 title={
                   dashboardPermissions.EditAll
-                    ? 'Edit Description'
-                    : NO_PERMISSION_FOR_ACTION
+                    ? t('label.edit-description')
+                    : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
@@ -605,7 +606,7 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: 'Tags',
+        title: t('label.tags'),
         dataIndex: 'tags',
         key: 'tags',
         width: 300,

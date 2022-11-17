@@ -173,7 +173,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const mlModelPageInfo: ExtraInfo[] = [
     {
-      key: 'Owner',
+      key: t('label.owner'),
       value: getOwnerValue(mlModelDetail.owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(mlModelDetail.owner),
@@ -187,23 +187,23 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           : undefined,
     },
     {
-      key: 'Tier',
+      key: t('label.tier'),
       value: mlModelTier?.tagFQN
         ? mlModelTier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : '',
     },
     {
-      key: 'Algorithm',
+      key: t('label.algorithm'),
       value: mlModelDetail.algorithm,
       showLabel: true,
     },
     {
-      key: 'Target',
+      key: t('label.target'),
       value: mlModelDetail.target,
       showLabel: true,
     },
     {
-      key: 'Server',
+      key: t('label.server'),
       value: mlModelDetail.server,
       showLabel: true,
       isLink: true,
@@ -211,7 +211,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     ...(!isUndefined(mlModelDetail.dashboard)
       ? [
           {
-            key: 'Dashboard',
+            key: t('label.dashboard'),
             value: getDashboardDetailsPath(
               mlModelDetail.dashboard?.fullyQualifiedName as string
             ),
@@ -225,7 +225,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const tabs = [
     {
-      name: 'Features',
+      name: t('label.feature-plural'),
       icon: {
         alt: 'features',
         name: 'icon-features',
@@ -236,13 +236,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       isProtected: false,
       position: 2,
       count: feedCount,
     },
     {
-      name: 'Details',
+      name: t('label.detail-plural'),
       icon: {
         alt: 'details',
         name: 'icon-details',
@@ -253,12 +253,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 3,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       isProtected: false,
       position: 4,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-properties'),
       isProtected: false,
       position: 5,
     },
