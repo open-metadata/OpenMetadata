@@ -147,6 +147,10 @@ def _get_column_info(self, *args, **kwargs):
         RedshiftDialectMixin, self
     )._get_column_info(*args, **kwdrs)
 
+    # raw_data_type is not included in column_info as
+    # redhift doesn't suport compex data types directly
+    # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
+
     if isinstance(column_info["type"], VARCHAR):
         if column_info["type"].length is None:
             column_info["type"] = NullType()
