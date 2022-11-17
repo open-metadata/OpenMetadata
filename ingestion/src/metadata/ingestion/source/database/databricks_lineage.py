@@ -24,6 +24,8 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
+QUERY_WITH_DBT = '/* {"app": "dbt"'
 
 
 class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
@@ -63,15 +65,20 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
                 )
                 for row in data:
                     try:
-                        yield TableQuery(
-                            query=row.get("query_text"),
-                            userName=row.get("user_name"),
-                            startTime=row.get("query_start_time_ms"),
-                            endTime=row.get("execution_end_time_ms"),
-                            analysisDate=datetime.now(),
-                            databaseName="default",  # In databricks databaseName is always default
-                            serviceName=self.config.serviceName,
-                        )
+                        query_text = row.get("query_text")
+                        if not (
+                            query_text.startswith(QUERY_WITH_DBT)
+                            or query_text.startswith(QUERY_WITH_OM_VERSION)
+                        ):
+                            yield TableQuery(
+                                query=query_text,
+                                userName=row.get("user_name"),
+                                startTime=row.get("query_start_time_ms"),
+                                endTime=row.get("execution_end_time_ms"),
+                                analysisDate=datetime.now(),
+                                databaseName="default",  # In databricks databaseName is always default
+                                serviceName=self.config.serviceName,
+                            )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
                         logger.warning(f"Error processing query_dict {row}: {exc}")

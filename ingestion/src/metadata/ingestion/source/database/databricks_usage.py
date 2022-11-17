@@ -24,6 +24,8 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
+QUERY_WITH_DBT = '/* {"app": "dbt"'
 
 
 class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
@@ -93,17 +95,22 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
             )
             for row in data:
                 try:
-                    queries.append(
-                        TableQuery(
-                            query=row.get("query_text"),
-                            userName=row.get("user_name"),
-                            startTime=row.get("query_start_time_ms"),
-                            endTime=row.get("execution_end_time_ms"),
-                            analysisDate=datetime.now(),
-                            serviceName=self.config.serviceName,
-                            databaseName="default",  # In databricks databaseName is always default
+                    query_text = row.get("query_text")
+                    if not (
+                        query_text.startswith(QUERY_WITH_DBT)
+                        or query_text.startswith(QUERY_WITH_OM_VERSION)
+                    ):
+                        queries.append(
+                            TableQuery(
+                                query=row.get("query_text"),
+                                userName=row.get("user_name"),
+                                startTime=row.get("query_start_time_ms"),
+                                endTime=row.get("execution_end_time_ms"),
+                                analysisDate=datetime.now(),
+                                serviceName=self.config.serviceName,
+                                databaseName="default",  # In databricks databaseName is always default
+                            )
                         )
-                    )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(str(err))
