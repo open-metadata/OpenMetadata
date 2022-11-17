@@ -26,7 +26,6 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -168,9 +167,7 @@ class TableauSource(DashboardServiceSource):
         """
         return dashboard
 
-    def yield_owner(  # pylint: disable=arguments-differ
-        self, dashboard_details: dict
-    ) -> Optional[Iterable[CreateUserRequest]]:
+    def get_owner_details(self, dashboard_details: dict) -> EntityReference:
         """Get dashboard owner
 
         Args:
@@ -179,11 +176,10 @@ class TableauSource(DashboardServiceSource):
             Optional[EntityReference]
         """
         owner = self.owner[dashboard_details["owner"]["id"]]
-        name = owner.get("name")
-        display_name = owner.get("fullName")
-        email = owner.get("email")
-        if name and email:
-            yield CreateUserRequest(name=name, displayName=display_name, email=email)
+        user = self.metadata.get_user_by_email(owner.get("email"))
+        if user:
+            return EntityReference(id=user.id.__root__, type="user")
+        return None
 
     def yield_tag(self, _) -> OMetaTagAndCategory:  # pylint: disable=arguments-differ
         """
@@ -231,7 +227,7 @@ class TableauSource(DashboardServiceSource):
             name=dashboard_details.get("id"),
             displayName=dashboard_details.get("name"),
             description="",
-            owner=self.context.owner,
+            owner=self.get_owner_details(dashboard_details),
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts
