@@ -39,7 +39,9 @@ class OMetaUserMixin:
         if email:
 
             name = email.split("@")[0]
-            user: User = self.get_by_name(entity=User, fqn=name)
-            if user and user.email.__root__ == email:
-                return user
+            users = self.es_search_from_fqn(entity_type=User, fqn_search_string=name)
+            if users:
+                for user in users:
+                    if user.email.__root__ == email:
+                        return user
         return None
