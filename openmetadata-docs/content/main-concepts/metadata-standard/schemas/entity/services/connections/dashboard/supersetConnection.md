@@ -13,7 +13,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 - **`hostPort`** *(string)*: URL for the superset instance. Default: `http://localhost:8088`.
 - **`username`** *(string)*: Username for Superset.
 - **`password`** *(string)*: Password for Superset.
-- **`provider`** *(string)*: Authentication provider for the Superset service. Default: `db`.
+- **`provider`** *(string)*: Authentication provider for the Superset service. For basic user/password authentication, the default value `db` can be used. This parameter is used internally to connect to Superset's REST API. Default: `db`.
 - **`connectionOptions`** *(object)*: Additional connection options that can be sent to service during the connection.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
@@ -21,4 +21,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 - **`supersetType`** *(string)*: Superset service type. Must be one of: `['Superset']`. Default: `Superset`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

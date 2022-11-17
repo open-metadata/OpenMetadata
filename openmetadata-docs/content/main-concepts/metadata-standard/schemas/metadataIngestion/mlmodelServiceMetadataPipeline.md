@@ -10,9 +10,10 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/mlmodelservicem
 ## Properties
 
 - **`type`**: Pipeline type. Refer to *#/definitions/mlModelMetadataConfigType*. Default: `MlModelMetadata`.
+- **`mlModelFilterPattern`**: Regex to only fetch MlModels with names matching the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 ## Definitions
 
 - **`mlModelMetadataConfigType`** *(string)*: MlModel Source Config Metadata Pipeline type. Must be one of: `['MlModelMetadata']`. Default: `MlModelMetadata`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

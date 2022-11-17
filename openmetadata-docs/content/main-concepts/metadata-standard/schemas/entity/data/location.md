@@ -13,7 +13,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/location
 - **`name`**: Name of a location. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`path`** *(string)*: Location full path.
 - **`displayName`** *(string)*: Display Name that identifies this table. It could be title or label from the source services.
-- **`fullyQualifiedName`** *(string)*: Fully qualified name of a location in the form `serviceName.locationName`.
+- **`fullyQualifiedName`**: Fully qualified name of a location in the form `serviceName.locationName`. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`description`**: Description of a location. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
@@ -33,4 +33,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/location
 - **`locationType`** *(string)*: This schema defines the type used for describing different types of Location. Must be one of: `['Bucket', 'Prefix', 'Database', 'Table', 'Iceberg']`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

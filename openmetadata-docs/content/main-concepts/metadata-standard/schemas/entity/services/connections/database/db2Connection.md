@@ -19,10 +19,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
 - **`db2Type`** *(string)*: Service type. Must be one of: `['Db2']`. Default: `Db2`.
 - **`db2Scheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['db2+ibm_db']`. Default: `db2+ibm_db`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

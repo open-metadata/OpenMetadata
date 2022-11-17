@@ -37,22 +37,18 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`followers`**: Followers of this table. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`joins`**: Details of other tables this table is frequently joined with. Refer to *#/definitions/tableJoins*. Default: `None`.
 - **`sampleData`**: Sample data for a table. Refer to *#/definitions/tableData*. Default: `None`.
-- **`profileSample`** *(number)*: Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100). Maximum: `100`. Default: `None`.
-- **`profileQuery`** *(string)*: Users' raw SQL query to fetch sample data and profile the table. Default: `None`.
-- **`tableProfile`** *(array)*: Data profile for a table. Default: `None`.
-  - **Items**: Refer to *#/definitions/tableProfile*.
+- **`tableProfilerConfig`**: Table Profiler Config to include or exclude columns from profiling. Refer to *#/definitions/tableProfilerConfig*.
+- **`profile`**: Latest Data profile for a table. Refer to *#/definitions/tableProfile*. Default: `None`.
 - **`tableQueries`** *(array)*: List of queries that ran against a table. Default: `None`.
   - **Items**: Refer to *#/definitions/sqlQuery*.
-- **`tableTests`** *(array)*: List of test cases that ran against a table. Default: `None`.
-  - **Items**: Refer to *../../tests/tableTest.json*.
 - **`dataModel`**: This captures information about how the table is modeled. Currently only DBT model is supported. Refer to *#/definitions/dataModel*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 ## Definitions
 
-- **`tableType`** *(string)*: This schema defines the type used for describing different types of tables. Must be one of: `['Regular', 'External', 'View', 'SecureView', 'MaterializedView', 'Iceberg', 'Local']`.
-- **`dataType`** *(string)*: This enum defines the type of data stored in a column. Must be one of: `['NUMBER', 'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'BYTEINT', 'BYTES', 'FLOAT', 'DOUBLE', 'DECIMAL', 'NUMERIC', 'TIMESTAMP', 'TIME', 'DATE', 'DATETIME', 'INTERVAL', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR', 'BOOLEAN', 'BINARY', 'VARBINARY', 'ARRAY', 'BLOB', 'LONGBLOB', 'MEDIUMBLOB', 'MAP', 'STRUCT', 'UNION', 'SET', 'GEOGRAPHY', 'ENUM', 'JSON', 'UUID']`.
+- **`tableType`** *(string)*: This schema defines the type used for describing different types of tables. Must be one of: `['Regular', 'External', 'View', 'SecureView', 'MaterializedView', 'Iceberg', 'Local', 'Partitioned']`.
+- **`dataType`** *(string)*: This enum defines the type of data stored in a column. Must be one of: `['NUMBER', 'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'BYTEINT', 'BYTES', 'FLOAT', 'DOUBLE', 'DECIMAL', 'NUMERIC', 'TIMESTAMP', 'TIMESTAMPZ', 'TIME', 'DATE', 'DATETIME', 'INTERVAL', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR', 'BOOLEAN', 'BINARY', 'VARBINARY', 'ARRAY', 'BLOB', 'LONGBLOB', 'MEDIUMBLOB', 'MAP', 'STRUCT', 'UNION', 'SET', 'GEOGRAPHY', 'ENUM', 'JSON', 'UUID', 'VARIANT', 'GEOMETRY', 'POINT', 'POLYGON']`.
 - **`constraint`** *(string)*: This enum defines the type for column constraint. Must be one of: `['NULL', 'NOT_NULL', 'UNIQUE', 'PRIMARY_KEY']`. Cannot contain additional properties. Default: `None`.
 - **`tableConstraint`** *(object)*: This enum defines the type for table constraint. Cannot contain additional properties.
   - **`constraintType`** *(string)*: Must be one of: `['UNIQUE', 'PRIMARY_KEY', 'FOREIGN_KEY']`.
@@ -82,10 +78,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`jsonSchema`** *(string)*: Json schema only if the dataType is JSON else null.
   - **`children`** *(array)*: Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`. Default: `None`.
     - **Items**: Refer to *#/definitions/column*.
-  - **`columnTests`** *(array)*: List of column test cases that ran against a table column. Default: `None`.
-    - **Items**: Refer to *../../tests/columnTest.json*.
   - **`customMetrics`** *(array)*: List of Custom Metrics registered for a column. Default: `None`.
     - **Items**: Refer to *../../tests/customMetric.json*.
+  - **`profile`**: Latest Data profile for a Column. Refer to *#/definitions/columnProfile*. Default: `None`.
 - **`joinedWith`** *(object)*: Fully qualified names of the fields/entities that this field/entity is joined with. Cannot contain additional properties.
   - **`fullyQualifiedName`**: Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
   - **`joinCount`** *(integer)*
@@ -110,6 +105,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`value`** *(number)*: Profiling results for the metric.
 - **`columnProfile`** *(object)*: This schema defines the type to capture the table's column profile. Cannot contain additional properties.
   - **`name`** *(string)*: Column Name.
+  - **`timestamp`**: Timestamp on which profile is taken. Refer to *../../type/basic.json#/definitions/timestamp*.
   - **`valuesCount`** *(number)*: Total count of the values in this column.
   - **`valuesPercentage`** *(number)*: Percentage of values in this column with respect to rowcount.
   - **`validCount`** *(number)*: Total count of valid values in this column.
@@ -136,15 +132,22 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
     - **`frequencies`** *(array)*: Frequencies of Histogram.
   - **`customMetricsProfile`** *(array)*: Custom Metrics profile list bound to a column. Default: `None`.
     - **Items**: Refer to *#/definitions/customMetricProfile*.
+- **`columnProfilerConfig`** *(object)*: This schema defines the type for Table profile config include Columns.
+  - **`columnName`** *(string)*: Column Name of the table to be included.
+  - **`metrics`** *(array)*: Include only following metrics. Default: `None`.
+    - **Items** *(string)*
+- **`tableProfilerConfig`** *(object)*: This schema defines the type for Table profile config.
+  - **`profileSample`** *(number)*: Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100). Maximum: `100`. Default: `None`.
+  - **`profileQuery`** *(string)*: Users' raw SQL query to fetch sample data and profile the table. Default: `None`.
+  - **`excludeColumns`** *(array)*: column names to exclude from profiling. Default: `None`.
+    - **Items** *(string)*
+  - **`includeColumns`** *(array)*: Only run profiler on included columns with specific metrics. Default: `None`.
+    - **Items**: Refer to *#/definitions/columnProfilerConfig*.
 - **`tableProfile`** *(object)*: This schema defines the type to capture the table's data profile. Cannot contain additional properties.
-  - **`profileDate`**: Data one which profile is taken. Refer to *../../type/basic.json#/definitions/date*.
-  - **`profileSample`** *(number)*: Percentage of data used to compute this profiler execution. Represented in the range (0, 100]. Maximum: `100`.
-  - **`profileQuery`** *(string)*: Users' raw SQL query to fetch sample data and profile the table.
+  - **`timestamp`**: Timestamp on which profile is taken. Refer to *../../type/basic.json#/definitions/timestamp*.
+  - **`profileSample`** *(number)*: Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100). Maximum: `100`. Default: `None`.
   - **`columnCount`** *(number)*: No.of columns in the table.
   - **`rowCount`** *(number)*: No.of rows in the table. This is always executed on the whole table.
-  - **`columnNames`** *(array)*: List of column names.
-  - **`columnProfile`** *(array)*: List of local column profiles of the table.
-    - **Items**: Refer to *#/definitions/columnProfile*.
 - **`sqlQuery`** *(object)*: This schema defines the type to capture the table's sql queries. Cannot contain additional properties.
   - **`query`** *(string)*: SQL Query text that matches the table name.
   - **`duration`** *(number)*: How long did the query took to run in seconds.
@@ -161,9 +164,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`sql`**: This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where compilation is not necessary, this corresponds to SQL that created the table. Refer to *../../type/basic.json#/definitions/sqlQuery*.
   - **`upstream`** *(array)*: Fully qualified name of Models/tables used for in `sql` for creating this table.
     - **Items** *(string)*
+  - **`owner`**: Owner of this Model. Refer to *../../type/entityReference.json*. Default: `None`.
   - **`columns`** *(array)*: Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`. Default: `None`.
     - **Items**: Refer to *#/definitions/column*.
   - **`generatedAt`**: Refer to *../../type/basic.json#/definitions/dateTime*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

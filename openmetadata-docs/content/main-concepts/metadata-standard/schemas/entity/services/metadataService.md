@@ -26,9 +26,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`metadataServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['Amundsen', 'MetadataES', 'OpenMetadata']`.
+- **`metadataServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['Amundsen', 'MetadataES', 'OpenMetadata', 'Atlas']`.
 - **`metadataConnection`** *(object)*: Metadata Service Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

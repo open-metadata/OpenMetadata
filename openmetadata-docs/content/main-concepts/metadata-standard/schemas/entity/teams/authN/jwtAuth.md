@@ -17,4 +17,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/authn/jwtauth
 - **`JWTTokenExpiry`** *(string)*: JWT Auth Token expiration in days. Must be one of: `['7', '30', '60', '90', 'Unlimited']`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

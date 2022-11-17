@@ -30,7 +30,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/user
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`roles`**: Roles that the user has been assigned. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
-- **`inheritedRoles`**: Roles that a user is inheriting either as part of system default role or through membership in teams that have set team default roles. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`inheritedRoles`**: Roles that a user is inheriting through membership in teams that have set team default roles. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 ## Definitions
 
 - **`authenticationMechanism`** *(object)*: User/Bot Authentication Mechanism. Cannot contain additional properties.
@@ -38,4 +38,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/user
   - **`authType`**: Must be one of: `['JWT', 'SSO']`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

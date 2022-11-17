@@ -18,6 +18,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtopic
 - **`partitions`** *(integer)*: Number of partitions into which the topic is divided. Minimum: `1`.
 - **`cleanupPolicies`** *(array)*: Topic clean up policy. For Kafka - `cleanup.policy` configuration.
   - **Items**: Refer to *../../entity/data/topic.json#/definitions/cleanupPolicy*.
+- **`sampleData`**: Sample data for a topic. Refer to *../../entity/data/topic.json#/definitions/topicSampleData*. Default: `None`.
 - **`replicationFactor`** *(integer)*: Replication Factor in integer (more than 1).
 - **`retentionTime`** *(number)*: Retention time in milliseconds. For Kafka - `retention.ms` configuration.
 - **`maximumMessageSize`** *(integer)*: Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
@@ -27,6 +28,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtopic
 - **`owner`**: Owner of this topic. Refer to *../../type/entityReference.json*.
 - **`tags`** *(array)*: Tags for this topic. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

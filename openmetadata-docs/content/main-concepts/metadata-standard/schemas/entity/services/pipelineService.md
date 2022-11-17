@@ -26,9 +26,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`pipelineServiceType`** *(string)*: Type of pipeline service - Airflow or Prefect. Must be one of: `['Airflow', 'Glue', 'Airbyte']`.
+- **`pipelineServiceType`** *(string)*: Type of pipeline service - Airflow or Prefect. Must be one of: `['Airflow', 'Glue', 'Airbyte', 'Fivetran', 'Dagster', 'Nifi', 'CustomPipeline']`.
 - **`pipelineConnection`** *(object)*: Pipeline Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

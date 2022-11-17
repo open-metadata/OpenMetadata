@@ -15,6 +15,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 - **`password`** *(string)*: Password for Tableau.
 - **`apiVersion`** *(string)*: Tableau API version.
 - **`siteName`** *(string)*: Tableau Site Name.
+- **`siteUrl`** *(string)*: Tableau Site Url.
 - **`personalAccessTokenName`** *(string)*: Personal Access Token Name.
 - **`personalAccessTokenSecret`** *(string)*: Personal Access Token Secret.
 - **`env`** *(string)*: Tableau Environment Name. Default: `tableau_prod`.
@@ -24,4 +25,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 - **`tableauType`** *(string)*: Tableau service type. Must be one of: `['Tableau']`. Default: `Tableau`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

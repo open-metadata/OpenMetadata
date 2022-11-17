@@ -16,4 +16,4 @@ slug: /main-concepts/metadata-standard/schemas/api/services/createstorageservice
 - **`owner`**: Owner of this storage service. Refer to *../../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

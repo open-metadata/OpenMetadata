@@ -13,12 +13,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/events/webhook
 - **`name`**: Unique name of the application receiving webhook events. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`displayName`** *(string)*: Display Name that identifies this webhook.
+- **`webhookType`**: Type of webhook slack, generic, msteams, etc. Refer to *#/definitions/webhookType*.
 - **`description`**: Description of the application. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`endpoint`** *(string)*: Endpoint to receive the webhook events over POST requests.
 - **`eventFilters`** *(array)*: Endpoint to receive the webhook events over POST requests.
   - **Items**: Refer to *../../type/changeEvent.json#/definitions/eventFilter*.
 - **`batchSize`** *(integer)*: Maximum number of events sent in a batch (Default 10). Default: `10`.
 - **`timeout`** *(integer)*: Connection timeout in seconds. (Default 10s). Default: `10`.
+- **`readTimeout`** *(integer)*: Read timeout in seconds. (Default 12s). Default: `12`.
 - **`enabled`** *(boolean)*: When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`). Default: `True`.
 - **`secretKey`** *(string)*: Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
@@ -33,6 +35,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/events/webhook
   - **`nextAttempt`**: Next retry will be done at this time in Unix epoch time milliseconds. Only valid is `status` is `awaitingRetry`. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`href`**: Link to this webhook resource. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
+## Definitions
+
+- **`webhookType`** *(string)*: Type of webhook slack, generic, msteams, etc. Must be one of: `['slack', 'generic', 'msteams']`. Default: `generic`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

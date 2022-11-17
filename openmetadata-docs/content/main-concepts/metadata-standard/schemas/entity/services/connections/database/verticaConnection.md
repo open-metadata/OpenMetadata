@@ -20,10 +20,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 - **`supportsUsageExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsUsageExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
 - **`verticaType`** *(string)*: Service type. Must be one of: `['Vertica']`. Default: `Vertica`.
 - **`verticaScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['vertica+vertica_python']`. Default: `vertica+vertica_python`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

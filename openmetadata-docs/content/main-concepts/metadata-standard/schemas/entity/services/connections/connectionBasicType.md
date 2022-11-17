@@ -15,8 +15,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/conne
   - **Additional Properties**
 - **`supportsMetadataExtraction`** *(boolean)*: Supports Metadata Extraction. Default: `True`.
 - **`supportsUsageExtraction`** *(boolean)*: Supports Usage Extraction. Default: `True`.
+- **`supportsLineageExtraction`** *(boolean)*: Supports Lineage Extraction. Default: `True`.
 - **`supportsProfiler`** *(boolean)*: Supports Profiler. Default: `True`.
 - **`supportsDatabase`** *(boolean)*: The source service supports the database concept in its hierarchy. Default: `True`.
+- **`supportsQueryComment`** *(boolean)*: For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata. Default: `True`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

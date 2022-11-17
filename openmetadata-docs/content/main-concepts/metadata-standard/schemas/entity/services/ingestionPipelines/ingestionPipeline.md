@@ -33,12 +33,13 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`pipelineType`** *(string)*: Type of Pipeline - metadata, usage. Must be one of: `['metadata', 'usage', 'profiler']`.
+- **`pipelineType`** *(string)*: Type of Pipeline - metadata, usage. Must be one of: `['metadata', 'usage', 'lineage', 'profiler', 'TestSuite']`.
 - **`pipelineStatus`** *(object)*: This defines runtime status of Pipeline. Cannot contain additional properties.
   - **`runId`** *(string)*: Pipeline unique run ID.
   - **`state`** *(string)*: Pipeline status denotes if its failed or succeeded.
-  - **`startDate`** *(string)*: startDate of the pipeline run for this particular execution.
-  - **`endDate`** *(string)*: endDate of the pipeline run for this particular execution.
+  - **`startDate`**: startDate of the pipeline run for this particular execution. Refer to *../../../type/basic.json#/definitions/timestamp*.
+  - **`timestamp`**: executionDate of the pipeline run for this particular execution. Refer to *../../../type/basic.json#/definitions/timestamp*.
+  - **`endDate`**: endDate of the pipeline run for this particular execution. Refer to *../../../type/basic.json#/definitions/timestamp*.
 - **`airflowConfig`** *(object)*: Properties to configure the Airflow pipeline that will run the workflow. Cannot contain additional properties.
   - **`pausePipeline`** *(boolean)*: pause the pipeline from running once the deploy is finished successfully. Default: `False`.
   - **`concurrency`** *(integer)*: Concurrency of the Pipeline. Default: `1`.
@@ -56,4 +57,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
   - **`email`**: Email to notify workflow status. Refer to *../../../type/basic.json#/definitions/email*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

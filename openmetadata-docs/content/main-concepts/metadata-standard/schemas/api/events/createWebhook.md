@@ -19,6 +19,7 @@ slug: /main-concepts/metadata-standard/schemas/api/events/createwebhook
 - **`timeout`** *(integer)*: Connection timeout in seconds. (Default = 10s). Default: `10`.
 - **`enabled`** *(boolean)*: When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`). Default: `True`.
 - **`secretKey`** *(string)*: Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.
+- **`webhookType`**: Type of webhook slack,generic,msteams etc. Refer to *../../entity/events/webhook.json#/definitions/webhookType*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

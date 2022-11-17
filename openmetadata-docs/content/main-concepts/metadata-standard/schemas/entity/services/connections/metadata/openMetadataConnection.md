@@ -9,11 +9,15 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 
 ## Properties
 
+- **`clusterName`** *(string)*: Cluster name to differentiate OpenMetadata Server instance. Default: `openmetadata`.
 - **`type`**: Service Type. Refer to *#/definitions/openmetadataType*. Default: `OpenMetadata`.
 - **`hostPort`** *(string)*: OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api. Default: `http://localhost:8585/api`.
 - **`authProvider`** *(string)*: OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server. Must be one of: `['no-auth', 'azure', 'google', 'okta', 'auth0', 'custom-oidc', 'openmetadata']`. Default: `no-auth`.
+- **`verifySSL`** *(string)*: OpenMetadata Client SSL verification. Make sure to configure the SSLConfig if enabled. Must be one of: `['no-ssl', 'ignore', 'validate']`. Default: `no-ssl`.
+- **`sslConfig`**: OpenMetadata Client SSL configuration.
 - **`securityConfig`**: OpenMetadata Client security configuration.
-- **`secretsManagerProvider`** *(string)*: OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager providers as the ones configured on the OpenMetadata server. Must be one of: `['local', 'aws']`. Default: `local`.
+- **`secretsManagerProvider`**: Refer to *./secretsManagerProvider.json*.
+- **`secretsManagerCredentials`**: OpenMetadata Secrets Manager Client credentials.
 - **`apiVersion`** *(string)*: OpenMetadata server API version to use. Default: `v1`.
 - **`includeTopics`** *(boolean)*: Include Topics for Indexing. Default: `True`.
 - **`includeTables`** *(boolean)*: Include Tables for Indexing. Default: `True`.
@@ -36,4 +40,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`openmetadataType`** *(string)*: OpenMetadata service type. Must be one of: `['OpenMetadata']`. Default: `OpenMetadata`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

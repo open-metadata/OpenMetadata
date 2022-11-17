@@ -26,9 +26,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/mlmodelservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`mlModelServiceType`** *(string)*: Type of MlModel service. Must be one of: `['Mlflow', 'Sklearn']`.
+- **`mlModelServiceType`** *(string)*: Type of MlModel service. Must be one of: `['Mlflow', 'Sklearn', 'CustomMlModel']`.
 - **`mlModelConnection`** *(object)*: MlModel Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

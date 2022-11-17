@@ -19,4 +19,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 - **`AirflowType`** *(string)*: Service type. Must be one of: `['Airflow']`. Default: `Airflow`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

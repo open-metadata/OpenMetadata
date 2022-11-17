@@ -13,13 +13,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`metastoreHostPort`** *(string)*: Host and port of the remote Hive Metastore.
 - **`metastoreFilePath`** *(string)*: File path of the local Hive Metastore.
 - **`appName`** *(string)*: pySpark App Name.
-- **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
-- **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
+- **`connectionArguments`**: Key-Value pairs that will be used to add configs to the SparkSession. Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
-- **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 ## Definitions
 
 - **`deltaLakeType`** *(string)*: Service type. Must be one of: `['DeltaLake']`. Default: `DeltaLake`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

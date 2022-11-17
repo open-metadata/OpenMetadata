@@ -11,7 +11,6 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 - **`type`**: Service Type. Refer to *#/definitions/dynamoDBType*. Default: `DynamoDB`.
 - **`awsConfig`**: Refer to *../../../../security/credentials/awsCredentials.json*.
-- **`database`** *(string)*: Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases. Default: `DynamoDB`.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
@@ -21,4 +20,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`dynamoDBType`** *(string)*: Service type. Must be one of: `['DynamoDB']`. Default: `DynamoDB`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

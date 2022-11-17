@@ -14,16 +14,20 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`username`** *(string)*: Username to connect to Oracle. This user should have privileges to read all the metadata in Oracle.
 - **`password`** *(string)*: Password to connect to Oracle.
 - **`hostPort`** *(string)*: Host and port of the Oracle service.
-- **`databaseSchema`** *(string)*: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
-- **`oracleServiceName`** *(string)*: Oracle Service Name to be passed. Note: either Database or Oracle service name can be sent, not both.
+- **`oracleConnectionType`** *(object)*: Connect with oracle by either passing service name or database schema name.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
 - **`oracleType`** *(string)*: Service type. Must be one of: `['Oracle']`. Default: `Oracle`.
 - **`oracleScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['oracle+cx_oracle']`. Default: `oracle+cx_oracle`.
+- **`OracleDatabaseSchema`**
+  - **`databaseSchema`** *(string)*: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
+- **`OracleServiceName`**
+  - **`oracleServiceName`** *(string)*: The Oracle Service name is the TNS alias that you give when you remotely connect to your database.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

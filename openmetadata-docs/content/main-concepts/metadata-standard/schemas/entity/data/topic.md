@@ -38,6 +38,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 ## Definitions
 
 - **`schemaType`**: Schema type used for the message. Must be one of: `['Avro', 'Protobuf', 'JSON', 'Other']`.
@@ -48,4 +49,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
     - **Items** *(string)*
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

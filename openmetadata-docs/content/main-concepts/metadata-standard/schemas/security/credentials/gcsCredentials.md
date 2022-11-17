@@ -9,10 +9,10 @@ slug: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentia
 
 ## Properties
 
-- **`gcsConfig`**: GCS configs.
+- **`gcsConfig`**: We support two ways of authenticating to GCS i.e via GCS Credentials Values or GCS Credentials Path.
 ## Definitions
 
-- **`GCSValues`** *(object)*: GCS Credentials. Cannot contain additional properties.
+- **`GCSValues`** *(object)*: Pass the raw credential values provided by GCS. Cannot contain additional properties.
   - **`type`** *(string)*: Google Cloud service account type.
   - **`projectId`** *(string)*: Google Cloud project id.
   - **`privateKeyId`** *(string)*: Google Cloud private key id.
@@ -23,7 +23,7 @@ slug: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentia
   - **`tokenUri`** *(string)*: Google Cloud token uri. Default: `https://oauth2.googleapis.com/token`.
   - **`authProviderX509CertUrl`** *(string)*: Google Cloud auth provider certificate. Default: `https://www.googleapis.com/oauth2/v1/certs`.
   - **`clientX509CertUrl`** *(string)*: Google Cloud client certificate uri.
-- **`GCSCredentialsPath`** *(string)*: GCS Credentials Path.
+- **`GCSCredentialsPath`** *(string)*: Pass the path of file containing the GCS credentials info.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

@@ -20,10 +20,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 - **`supportsDatabase`**: Refer to *../connectionBasicType.json#/definitions/supportsDatabase*.
+- **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
 - **`postgresType`** *(string)*: Service type. Must be one of: `['Postgres']`. Default: `Postgres`.
 - **`postgresScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['postgresql+psycopg2']`. Default: `postgresql+psycopg2`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

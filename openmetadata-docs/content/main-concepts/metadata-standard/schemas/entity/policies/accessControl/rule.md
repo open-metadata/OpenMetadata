@@ -3,23 +3,21 @@ title: rule
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/rule
 ---
 
-# AccessControlRule
+# Rule
 
 *Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user (subject) and entity (object) attributes are evaluated with logical AND.*
 
 ## Properties
 
-- **`name`** *(string)*: Name for this Rule.
-- **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *../../../type/basic.json#/definitions/fullyQualifiedEntityName*.
-- **`entityTypeAttr`** *(string)*: Entity type that the rule should match on. Default: `None`.
-- **`entityTagAttr`**: Entity tag that the rule should match on. Refer to *../../../type/tagLabel.json#/definitions/tagFQN*. Default: `None`.
-- **`operation`**: Operation on the entity. Refer to *#/definitions/operation*. Default: `None`.
-- **`allow`** *(boolean)*: Allow or Deny operation on the entity. Default: `False`.
-- **`priority`** *(integer)*: Priority of this rule among all rules across all policies. Default: `250000`.
-- **`deleted`** *(boolean)*: Is the rule soft-deleted. Default: `False`.
-## Definitions
-
-- **`operation`** *(string)*: This schema defines all possible operations on metadata of data entities. Must be one of: `['Create', 'Delete', 'ViewAll', 'ViewUsage', 'ViewTests', 'TableViewQueries', 'TableViewDataProfile', 'TableViewSampleData', 'EditAll', 'EditDescription', 'EditTags', 'EditOwner', 'EditTier', 'EditCustomFields', 'EditLineage', 'EditReviewers', 'EditTests', 'TableEditQueries', 'TableEditDataProfile', 'TableEditSampleData', 'TeamEditUsers']`.
+- **`name`** *(string)*: Name of this Rule.
+- **`fullyQualifiedName`**: FullyQualifiedName in the form `policyName.ruleName`. Refer to *../../../type/basic.json#/definitions/fullyQualifiedEntityName*.
+- **`description`**: Description of the rule. Refer to *../../../type/basic.json#/definitions/markdown*.
+- **`effect`** *(string)*: Must be one of: `['allow', 'deny']`.
+- **`operations`** *(array)*: List of operation names related to the `resources`. Use `*` to include all the operations. Default: `None`.
+  - **Items**: Refer to *resourceDescriptor.json#/definitions/operation*.
+- **`resources`** *(array)*: Resources/objects related to this rule. Resources are typically `entityTypes` such as `table`, `database`, etc. It also includes `non-entityType` resources such as `lineage`. Use `*` to include all the resources. Default: `None`.
+  - **Items** *(string)*
+- **`condition`**: Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes. Refer to *../../../type/basic.json#/definitions/expression*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

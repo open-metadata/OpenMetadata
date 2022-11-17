@@ -22,6 +22,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createpipeline
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`owner`**: Owner of this pipeline. Refer to *../../type/entityReference.json*.
 - **`service`**: Link to the pipeline service where this pipeline is hosted in. Refer to *../../type/entityReference.json*.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.

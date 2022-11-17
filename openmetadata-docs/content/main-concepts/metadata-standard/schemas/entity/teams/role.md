@@ -19,9 +19,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/role
 - **`updatedBy`** *(string)*: User who made the update.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
+- **`allowDelete`** *(boolean)*: Some system roles can't be deleted.
+- **`allowEdit`** *(boolean)*: Some system roles can't be edited.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`policies`**: Policies that is attached to this role. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
-- **`defaultRole`** *(boolean)*: If `true`, this role is set as default system role and will be inherited by all the users. Default: `False`.
 - **`users`**: Users that have this role assigned to them. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`teams`**: Teams that have this role assigned to them. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 ## Definitions
@@ -29,4 +30,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/role
 - **`roleName`**: A unique name for the role. Refer to *../../type/basic.json#/definitions/entityName*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2022-09-18 19:21:45.413954.
