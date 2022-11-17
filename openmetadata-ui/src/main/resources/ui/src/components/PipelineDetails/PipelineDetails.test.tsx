@@ -225,7 +225,7 @@ describe('Test PipelineDetails component', () => {
       container,
       'label.activity-feed-and-task-plural'
     );
-    const lineageTab = await findByText(container, 'label.entity-lineage');
+    const lineageTab = await findByText(container, 'label.lineage');
     const executionsTab = await findByText(container, 'label.executions');
     const customPropertiesTab = await findByText(
       container,
@@ -311,7 +311,7 @@ describe('Test PipelineDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const activityFeedTab = await findByText(container, 'label.entity-lineage');
+    const activityFeedTab = await findByText(container, 'label.lineage');
 
     await act(async () => {
       fireEvent.click(activityFeedTab);

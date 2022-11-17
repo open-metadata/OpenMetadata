@@ -232,7 +232,7 @@
     "tasks": "Tasks",
     "activity-feed-and-task-plural": "Activity Feeds & tasks",
     "executions": "Executions",
-    "entity-lineage": "Entity Lineage",
+    "lineage": "Lineage",
     "custom-properties": "Custom Properties",
     "dag-view": "DAG view",
     "read-more": "read more",
