@@ -90,13 +90,14 @@ export default function EntitySummaryPanel({
                     </Typography.Text>
                   </Col>
                   <Col span={24}>
-                    <Typography.Text
+                    <Typography.Title
                       className={classNames(
                         'summary-panel-statistics-count',
                         field.className
-                      )}>
+                      )}
+                      level={3}>
                       {field.value}
-                    </Typography.Text>
+                    </Typography.Title>
                   </Col>
                 </Row>
               </Col>
