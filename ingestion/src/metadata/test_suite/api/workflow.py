@@ -368,6 +368,9 @@ class TestSuiteWorkflow:
                     f"Couldn't create test case name {test_case_name_to_create}: {exc}"
                 )
                 logger.debug(traceback.format_exc())
+                self.status.failure(
+                    test_case_to_create.entityLink.__root__.split("::")[2]
+                )
 
         return created_test_case
 
@@ -422,6 +425,7 @@ class TestSuiteWorkflow:
                         logger.warning(
                             f"Could not run test case {test_case.name}: {exc}"
                         )
+                        self.status.failure(entity_fqn)
             except TypeError as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Could not run test case for table {entity_fqn}: {exc}")

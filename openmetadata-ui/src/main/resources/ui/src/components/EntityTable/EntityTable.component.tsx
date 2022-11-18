@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, {
   Fragment,
@@ -57,7 +57,6 @@ import {
   getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from '../../utils/TasksUtils';
-import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
@@ -429,22 +428,21 @@ const EntityTable = ({
       <>
         {dataTypeDisplay ? (
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            lowerCase(dataTypeDisplay)
+            toLower(dataTypeDisplay)
           ) : (
-            <PopOver
-              html={
-                <div className="break-word">
-                  <span>{lowerCase(dataTypeDisplay)}</span>
-                </div>
-              }
-              key="pop-over"
-              position="bottom"
-              theme="light"
-              trigger="click">
+            <Popover
+              destroyTooltipOnHide
+              content={toLower(dataTypeDisplay)}
+              overlayInnerStyle={{
+                maxWidth: '420px',
+                overflowWrap: 'break-word',
+                textAlign: 'center',
+              }}
+              trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay}
               </Typography.Text>
-            </PopOver>
+            </Popover>
           )
         ) : (
           '--'
@@ -629,7 +627,7 @@ const EntityTable = ({
         key: 'name',
         accessor: 'name',
         ellipsis: true,
-        width: 180,
+        width: 220,
         render: (name: Column['name'], record: Column) => (
           <Popover destroyTooltipOnHide content={name} trigger="hover">
             {prepareConstraintIcon(name, record.constraint)}
@@ -643,7 +641,7 @@ const EntityTable = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
-        width: 200,
+        width: 220,
         render: renderDataTypeDisplay,
       },
       {

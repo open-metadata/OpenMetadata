@@ -16,9 +16,13 @@ To be used by OpenMetadata class
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
+from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.analytics.webAnalyticEventData import (
+    WebAnalyticEventData,
+)
 from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
     CreateKpiRequest,
 )
@@ -53,6 +57,16 @@ class DataInisghtMixin:
         """
 
         resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.json())
+
+        return resp
+
+    def add_web_analytic_events(
+        self,
+        event_data: WebAnalyticEventData,
+    ) -> List[WebAnalyticEventData]:
+        """Get web analytic event"""
+
+        resp = self.client.put("/analytics/webAnalyticEvent/collect", event_data.json())
 
         return resp
 
@@ -135,3 +149,16 @@ class DataInisghtMixin:
         resp = self.client.post("/kpi", create.json())
 
         return Kpi.parse_obj(resp)
+
+    def get_web_analytic_events(
+        self, event_type: WebAnalyticEventType, start_ts: int, end_ts: int
+    ) -> List[WebAnalyticEventData]:
+        """Get web analytic event"""
+
+        event_type_value = event_type.value
+
+        params = {"eventType": event_type_value, "startTs": start_ts, "endTs": end_ts}
+
+        resp = self.client.get("/analytics/webAnalyticEvent/collect", params)
+
+        return [WebAnalyticEventData(**data) for data in resp["data"]]

@@ -12,8 +12,8 @@
 """
 test import migration cli script
 """
-
 import os
+from pathlib import Path
 from unittest import TestCase
 
 from metadata.cli.openmetadata_imports_migration import (
@@ -25,21 +25,21 @@ class TestOpenmetadataImportsMigration(TestCase):
     """Test class for the cli scrip test"""
 
     store = dict()
-    path_to_ress_dir = os.path.join(os.path.dirname(__file__), "resources")
+    resources_path = Path(__file__).parent.absolute() / "resources"
 
     @classmethod
     def setUpClass(cls) -> None:
-        for root, _, filenames in os.walk(cls.path_to_ress_dir):
+        for root, _, filenames in os.walk(cls.resources_path):
             for filename in filenames:
                 with open(os.path.join(root, filename), "r", encoding="utf-8") as fle:
                     cls.store[os.path.join(root, filename)] = fle.read()
 
     def test_run_openmetadata_imports_migration(self):
         """test the run openmetadata function"""
-        run_openmetadata_imports_migration(self.path_to_ress_dir, True)
+        run_openmetadata_imports_migration(self.resources_path, True)
         failures = []
 
-        for root, _, filenames in os.walk(self.path_to_ress_dir):
+        for root, _, filenames in os.walk(self.resources_path):
             for filename in filenames:
                 if os.path.splitext(filename)[1] == ".py":
                     with open(

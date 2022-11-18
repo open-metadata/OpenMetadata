@@ -73,7 +73,6 @@ def _setup_mock_sagemaker(create_model: bool = False):
     sagemaker = boto3.Session().client("sagemaker")
     if not create_model:
         return
-    print("Creating model!!!!!!!")
     sagemaker.create_model(
         ModelName="mock-model",
         PrimaryContainer={

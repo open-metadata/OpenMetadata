@@ -1,0 +1,28 @@
+---
+source:
+  type: bigquery
+  serviceName: bigquery_${PROJECT_ID}
+  serviceConnection:
+    config:
+      type: BigQuery
+      credentials:
+        gcsConfig: "${KEY_PATH}"
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      databaseFilterPattern:
+        includes:
+          - '${PROJECT_ID}'
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: "openmetadata"
+    securityConfig:
+      jwtToken: ${JWT_TOKEN}

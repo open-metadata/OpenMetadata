@@ -143,7 +143,8 @@ class DataLakeProfilerInterface(ProfilerProtocol):
 
         Args:
             column: the column to compute the metrics against
-            metrics: list of metrics to compute
+            metric: list of metrics to compute
+            column_results: computed values for the column
         Returns:
             dictionary of results
         """
