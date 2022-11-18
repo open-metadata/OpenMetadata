@@ -44,7 +44,7 @@ jobs:
     steps:
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.2.0
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -107,6 +107,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
+
+      - name: Clean Up
+        run: |
+          cd ./docker/local-metadata
+          docker compose down
+          rm -rf ${PWD}/docker-volume
 
       - name: Publish Test Report
         if: ${{ always() }}

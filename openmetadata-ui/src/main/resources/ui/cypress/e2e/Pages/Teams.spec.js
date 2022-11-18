@@ -77,7 +77,8 @@ describe('Teams flow should work properly', () => {
     updateOwner();
   });
 
-  it('Add user to created team', () => {
+  // Todo:- flaky test, need to fix, ref:- https://cloud.cypress.io/projects/a9yxci/runs/9138/test-results/c8083392-4aea-46d5-b937-8c7ce231f241
+  it.skip('Add user to created team', () => {
     interceptURL('GET', '/api/v1/users*', 'getUsers');
 
     //Click on created team
