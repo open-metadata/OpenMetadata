@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
+import Icon, {
+  CloseCircleOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
+import { Button } from 'antd';
+import i18next from 'i18next';
 import { isUndefined } from 'lodash';
+import React from 'react';
+import { RenderSettings } from 'react-awesome-query-builder';
 import {
   ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
@@ -76,4 +85,57 @@ export const getAdvancedField = (field: string) => {
     default:
       return;
   }
+};
+
+export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
+  props
+) => {
+  const type = props?.type;
+
+  if (type === 'delRule') {
+    return (
+      <Icon
+        className="action action--DELETE"
+        component={
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          CloseCircleOutlined as React.ForwardRefExoticComponent<any>
+        }
+        onClick={props?.onClick}
+      />
+    );
+  } else if (type === 'addRule') {
+    return (
+      <Button
+        ghost
+        className="action action--ADD-RULE"
+        icon={<PlusOutlined />}
+        type="primary"
+        onClick={props?.onClick}>
+        {i18next.t('label.add')}
+      </Button>
+    );
+  } else if (type === 'addGroup') {
+    return (
+      <Button
+        className="action action--ADD-GROUP"
+        icon={<PlusOutlined />}
+        type="primary"
+        onClick={props?.onClick}>
+        {i18next.t('label.add')}
+      </Button>
+    );
+  } else if (type === 'delGroup') {
+    return (
+      <Icon
+        className="action action--DELETE"
+        component={
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          DeleteOutlined as React.ForwardRefExoticComponent<any>
+        }
+        onClick={props?.onClick}
+      />
+    );
+  }
+
+  return <></>;
 };
