@@ -4,7 +4,7 @@ import { toNumber, uniqueId } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../interface/data-insight.interface';
-import { pluralize } from '../../utils/CommonUtils';
+import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getNumberOfDaysForTimestamp } from '../../utils/TimeUtils';
 
 interface Props {
@@ -46,6 +46,10 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
         // value for number metric
         const calculatedNumberValue = (targetValue / targetMetValue) * 100;
 
+        const daysLeft = getNumberOfDaysForTimestamp(resultData.endDate);
+
+        const isTargetMet = targetResult.targetMet;
+
         return (
           <Space className="w-full" direction="vertical" key={uniqueId()}>
             <Typography.Text className="data-insight-label-text">
@@ -63,14 +67,10 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
               percent={
                 isPercentage ? calculatedPercentage : calculatedNumberValue
               }
-              showInfo={false}
+              showInfo={isTargetMet}
             />
-            <Typography.Text>
-              {pluralize(
-                getNumberOfDaysForTimestamp(resultData.endDate),
-                'day'
-              )}{' '}
-              left
+            <Typography.Text className="data-insight-label-text">
+              {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
             </Typography.Text>
           </Space>
         );

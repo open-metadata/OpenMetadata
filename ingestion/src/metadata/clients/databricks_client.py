@@ -25,6 +25,8 @@ from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
+QUERY_WITH_DBT = '/* {"app": "dbt"'
 
 
 class DatabricksClient:
@@ -113,3 +115,10 @@ class DatabricksClient:
             logger.error(exc)
 
         return query_details
+
+    def is_query_valid(self, row) -> bool:
+        query_text = row.get("query_text")
+        return not (
+            query_text.startswith(QUERY_WITH_DBT)
+            or query_text.startswith(QUERY_WITH_OM_VERSION)
+        )

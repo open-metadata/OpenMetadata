@@ -13,6 +13,7 @@
 
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
+import { t } from 'i18next';
 import {
   groupBy,
   isEmpty,
@@ -44,6 +45,7 @@ import {
   ChartValue,
   DataInsightChartTooltipProps,
 } from '../interface/data-insight.interface';
+import { pluralize } from './CommonUtils';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
 
 const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
@@ -504,4 +506,16 @@ export const getKpiTargetValueByMetricType = (
   }
 
   return metricValue;
+};
+
+export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
+  if (day > 0 && isTargetMet) {
+    return t('label.kpi-target-achieved-before-time');
+  } else if (day <= 0 && !isTargetMet) {
+    return t('label.kpi-target-overdue');
+  } else if (isTargetMet) {
+    return t('label.kpi-target-achieved');
+  } else {
+    return t('label.day-left', { day: pluralize(day, 'day') });
+  }
 };

@@ -21,6 +21,7 @@ helpFunction()
    printf "\t-s Skip maven build: [true, false]. Default [false]\n"
    printf "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
    printf "\t-h For usage help\n"
+   printf "\t-r For Cleaning DB Volumes"
    exit 1 # Exit script after printing help
 }
 
@@ -31,6 +32,7 @@ do
       d ) database="$OPTARG" ;;
       s ) skipMaven="$OPTARG" ;;
       x ) debugOM="$OPTARG" ;;
+      r ) cleanDbVolumes="$OPTARG" ;;
       h ) helpFunction ;;
       ? ) helpFunction ;;
    esac
@@ -64,11 +66,20 @@ if [[ $debugOM == "true" ]]; then
  export OPENMETADATA_DEBUG=true
 fi
 
+if [[ $cleanDbVolumes == "true" ]]
+then
+  if [[ -d "/docker-volume" ]]
+  then
+      rm -rf $PWD/docker-volume
+    fi
+fi
 echo "Stopping any previous Local Docker Containers"
 docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
 docker compose -f docker/local-metadata/docker-compose.yml down
 
+
 echo "Starting Local Docker Containers"
+mkdir -p docker-volume && mkdir -p docker-volume/db-data
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
