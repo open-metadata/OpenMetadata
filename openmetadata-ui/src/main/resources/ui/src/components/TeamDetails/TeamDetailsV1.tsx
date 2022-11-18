@@ -179,6 +179,14 @@ const TeamDetailsV1 = ({
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
 
+  const teamCount = useMemo(
+    () =>
+      isOrganization && currentTeam && currentTeam.childrenCount
+        ? currentTeam.childrenCount + 1
+        : table.length,
+    [table, isOrganization, currentTeam.childrenCount]
+  );
+
   const tabs = useMemo(
     () =>
       getTabs(
@@ -186,9 +194,9 @@ const TeamDetailsV1 = ({
         teamUserPagin,
         isGroupType,
         isOrganization,
-        table.length
+        teamCount
       ),
-    [currentTeam, teamUserPagin, searchTerm, table]
+    [currentTeam, teamUserPagin, searchTerm, teamCount]
   );
 
   const createTeamPermission = useMemo(
