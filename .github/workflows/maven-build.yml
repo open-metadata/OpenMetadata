@@ -108,6 +108,12 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
 
+      - name: Clean Up
+        run: |
+          cd ./docker/local-metadata
+          docker compose down
+          rm -rf ${PWD}/docker-volume
+
       - name: Publish Test Report
         if: ${{ always() }}
         uses: scacap/action-surefire-report@v1
