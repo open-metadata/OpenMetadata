@@ -44,6 +44,6 @@ You can validate that in [jwt.io](https://jwt.io/). if there's something wrong o
 <Image
   src="/images/deployment/troubleshoot/jwt-validation.png"
   alt="jwt.io"
-  caption="jwt-validation"
+  caption="jwt.io tool for validating JWT claims"
 />
 </div>
