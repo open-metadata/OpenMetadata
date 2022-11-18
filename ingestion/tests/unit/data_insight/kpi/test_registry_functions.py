@@ -205,8 +205,6 @@ def test_percentage_of_entities_with_owner_kpi_result():
         kpi_target, results, "completedOwner", 1668083253659
     )
 
-    print(kpi_result)
-
     assert kpi_result.targetResult
     for result in kpi_result.targetResult:
         if result.name == "hasOwnerFraction":
