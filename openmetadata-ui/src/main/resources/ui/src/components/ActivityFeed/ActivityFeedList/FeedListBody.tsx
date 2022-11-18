@@ -12,14 +12,10 @@
  */
 
 import { Card } from 'antd';
+import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
-import {
-  ANNOUNCEMENT_BG,
-  ANNOUNCEMENT_BORDER,
-  TASK_BORDER,
-} from '../../../constants/feed.constants';
 import {
   Post,
   ThreadTaskStatus,
@@ -34,6 +30,7 @@ import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
+import './FeedListBody.less';
 
 const FeedListBody: FC<FeedListBodyProp> = ({
   updatedFeedList,
@@ -131,18 +128,18 @@ const FeedListBody: FC<FeedListBodyProp> = ({
 
           return (
             <Card
-              className="ant-card-feed tw-relative"
+              className={classNames(
+                'ant-card-feed relative m-t-md',
+                isTask || isAnnouncement ? 'p-t-xs' : '',
+                isTask
+                  ? 'task-feed-card'
+                  : isAnnouncement
+                  ? 'announcement-feed-card'
+                  : ''
+              )}
               key={`${index} - card`}
               style={{
                 ...leftPanelAntCardStyle,
-                marginTop: '20px',
-                paddingTop: isTask || isAnnouncement ? '8px' : '',
-                border: isTask
-                  ? `1px solid ${TASK_BORDER}`
-                  : isAnnouncement
-                  ? `1px solid ${ANNOUNCEMENT_BORDER}`
-                  : leftPanelAntCardStyle.border,
-                background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
               }}
               onClick={() =>
                 feed.task && handleCardClick(feed.task.id, isTask)
