@@ -514,7 +514,7 @@ const EntityPageInfo = ({
           <Space
             wrap
             align="center"
-            className="tw-mt-1 tw-ml-7"
+            className="m-t-xss"
             data-testid="extrainfo"
             size={4}>
             {extraInfo.map((info, index) => (
@@ -543,7 +543,7 @@ const EntityPageInfo = ({
           <Space
             wrap
             align="start"
-            className="tw-mt-1 tw-ml-7 tw-group"
+            className="m-t-xss"
             data-testid="entity-tags"
             size={2}>
             {(!isEditable || !isTagEditable || deleted) && (

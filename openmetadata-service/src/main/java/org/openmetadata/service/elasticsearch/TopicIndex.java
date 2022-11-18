@@ -29,6 +29,7 @@ public class TopicIndex implements ElasticSearchIndex {
       tags.addAll(topic.getTags());
     }
     ParseTags parseTags = new ParseTags(tags);
+    doc.put("displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(topic.getFollowers()));

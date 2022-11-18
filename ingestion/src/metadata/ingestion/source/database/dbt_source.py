@@ -75,30 +75,31 @@ class DBTMixin:
         """
         Returns dbt owner
         """
-        dbt_owner = mnode["meta"].get("owner") or cnode["metadata"].get("owner")
         owner = None
-        if dbt_owner:
-            owner_name = f"*{dbt_owner}*"
-            user_owner_fqn = fqn.build(
-                self.metadata, entity_type=User, user_name=owner_name
-            )
-            if user_owner_fqn:
-                owner = self.metadata.get_entity_reference(
-                    entity=User, fqn=user_owner_fqn
+        if mnode and cnode:
+            dbt_owner = mnode["meta"].get("owner") or cnode["metadata"].get("owner")
+            if dbt_owner:
+                owner_name = f"*{dbt_owner}*"
+                user_owner_fqn = fqn.build(
+                    self.metadata, entity_type=User, user_name=owner_name
                 )
-            else:
-                team_owner_fqn = fqn.build(
-                    self.metadata, entity_type=Team, team_name=owner_name
-                )
-                if team_owner_fqn:
+                if user_owner_fqn:
                     owner = self.metadata.get_entity_reference(
-                        entity=Team, fqn=team_owner_fqn
+                        entity=User, fqn=user_owner_fqn
                     )
                 else:
-                    logger.warning(
-                        "Unable to ingest owner from DBT since no user or"
-                        f" team was found with name {dbt_owner}"
+                    team_owner_fqn = fqn.build(
+                        self.metadata, entity_type=Team, team_name=owner_name
                     )
+                    if team_owner_fqn:
+                        owner = self.metadata.get_entity_reference(
+                            entity=Team, fqn=team_owner_fqn
+                        )
+                    else:
+                        logger.warning(
+                            "Unable to ingest owner from DBT since no user or"
+                            f" team was found with name {dbt_owner}"
+                        )
         return owner
 
     def _parse_data_model(self):
@@ -133,6 +134,8 @@ class DBTMixin:
 
                     if mnode["resource_type"] == "test":
                         self.dbt_tests[key] = mnode
+                        continue
+                    if mnode["resource_type"] == "analysis":
                         continue
                     upstream_nodes = self._parse_data_model_upstream(mnode)
                     database = mnode["database"] if mnode["database"] else "default"

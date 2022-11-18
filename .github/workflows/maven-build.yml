@@ -22,13 +22,7 @@ on:
       - "openmetadata-spec/src/main/resources/json/schema/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
+
 permissions:
   contents: read
   checks: write
@@ -51,7 +45,7 @@ jobs:
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.2.0
-        if: github.event_name == 'pull_request'
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -60,7 +54,7 @@ jobs:
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: github.event_name == 'pull_request'
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'safe to test'
@@ -113,6 +107,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push' }}
         run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
+
+      - name: Clean Up
+        run: |
+          cd ./docker/local-metadata
+          docker compose down
+          rm -rf ${PWD}/docker-volume
 
       - name: Publish Test Report
         if: ${{ always() }}

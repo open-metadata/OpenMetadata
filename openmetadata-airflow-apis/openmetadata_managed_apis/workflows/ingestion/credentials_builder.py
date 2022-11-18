@@ -3,10 +3,10 @@ from typing import Optional
 from airflow.configuration import conf
 from pydantic import SecretStr
 
-from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.secrets.secrets_manager import SECRET_MANAGER_AIRFLOW_CONF
 
 

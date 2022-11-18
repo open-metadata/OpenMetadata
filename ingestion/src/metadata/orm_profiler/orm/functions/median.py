@@ -58,7 +58,7 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.MSSQL)
 def _(elements, compiler, **kwargs):
     """Median computation for MSSQL"""
-    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
+    col = elements.clauses.clauses[0].name
     return "percentile_cont(0.5)  WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
 
 

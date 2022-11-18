@@ -26,6 +26,9 @@ services:
       - 5432
     ports:
       - "5432:5432"
+    volumes:
+     - ${PWD}/docker-volume/db-data-postgres:/var/lib/postgresql
+    
     networks:
       - app_net
     healthcheck:

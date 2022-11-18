@@ -1,6 +1,11 @@
 --
 -- Upgrade changes for 0.13
 --
+
+
+ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQN TYPE varchar(768);
+CREATE INDEX IF NOT EXISTS entity_extension_time_series_entity_fqn_index ON entity_extension_time_series(entityFQN);
+
 CREATE TABLE IF NOT EXISTS web_analytic_event (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,

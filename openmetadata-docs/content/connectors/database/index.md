@@ -28,3 +28,4 @@ slug: /connectors/database
 - [Snowflake](/connectors/database/snowflake)
 - [Trino](/connectors/database/trino)
 - [Vertica](/connectors/database/vertica)
+- [Domo Database](/connectors/database/domo-database)

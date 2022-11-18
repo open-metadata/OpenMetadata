@@ -164,8 +164,8 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
       return { ...previous, [curr.name]: curr.metricType };
     }, {});
 
-    return { ...getKpiGraphData(kpiResults), kpiTooltipRecord };
-  }, [kpiResults]);
+    return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
+  }, [kpiResults, kpiList]);
 
   useEffect(() => {
     fetchKpiList();
@@ -205,12 +205,12 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
       {kpiList.length ? (
         <Row>
           {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-            <Col span={6}>
+            <Col span={5}>
               <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
             </Col>
           )}
 
-          <Col span={18}>
+          <Col span={19}>
             <ResponsiveContainer debounce={1} minHeight={400}>
               <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid strokeDasharray="3 3" />

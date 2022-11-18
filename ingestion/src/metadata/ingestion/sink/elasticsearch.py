@@ -180,7 +180,6 @@ class ElasticsearchSink(Sink[Entity]):
         config: ElasticSearchConfig,
         metadata_config: OpenMetadataConnection,
     ) -> None:
-
         self.config = config
         self.metadata_config = metadata_config
 
@@ -315,10 +314,14 @@ class ElasticsearchSink(Sink[Entity]):
                     request_timeout=self.config.timeout,
                 )
         else:
-            logger.warning(
-                "Received index not found error from Elasticsearch. "
-                + "The index doesn't exist for a newly created ES. It's OK on first run."
-            )
+            # Show different logs if we are recreating indexes, or we have a possibly unexpected index miss
+            if self.config.recreate_indexes:
+                logger.info(f"Recreating Elasticsearch index {index_name}...")
+            else:
+                logger.warning(
+                    f"Received index {index_name} not found error from Elasticsearch. "
+                    + "The index doesn't exist for a newly created ES. It's OK on first run."
+                )
             # create new index with mapping
             if self.elasticsearch_client.indices.exists(index=index_name):
                 self.elasticsearch_client.indices.delete(
@@ -424,6 +427,29 @@ class ElasticsearchSink(Sink[Entity]):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to index entity {record}: {exc}")
+
+    def read_records(self, index: str, query: dict):
+        """Read records from es index
+
+        Args:
+            index: elasticsearch index
+            query: query to be passed to the request body
+        """
+        return self.elasticsearch_client.search(
+            index=index,
+            body=query,
+        )
+
+    def bulk_operation(
+        self,
+        body: List[dict],
+    ):
+        """Perform bulk operations.
+
+        Args:
+            body: https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+        """
+        return self.elasticsearch_client.bulk(body=body)
 
     def _create_table_es_doc(self, table: Table):
         suggest = [

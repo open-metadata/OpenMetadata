@@ -16,8 +16,9 @@ Validate workflow configs and filters
 from __future__ import annotations
 
 import unittest
+import uuid
 from copy import deepcopy
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from time import sleep
 
 import pytest
@@ -25,7 +26,14 @@ import requests
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
+from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
+from metadata.generated.schema.analytics.webAnalyticEventData import (
+    WebAnalyticEventData,
+)
+from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent import (
+    PageViewData,
+)
 from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
     CreateKpiRequest,
 )
@@ -36,6 +44,10 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
 )
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.dataInsight.type.dailyActiveUsers import DailyActiveUsers
+from metadata.generated.schema.dataInsight.type.pageViewsByEntities import (
+    PageViewsByEntities,
+)
 from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithDescriptionByType import (
     PercentageOfEntitiesWithDescriptionByType,
 )
@@ -58,7 +70,7 @@ data_insight_config = {
     "processor": {"type": "data-insight-processor", "config": {}},
     "sink": {
         "type": "elasticsearch",
-        "config": {"es_host": "localhost", "es_port": 9200, "recreate_indexes": True},
+        "config": {"es_host": "localhost", "es_port": 9200, "recreate_indexes": False},
     },
     "workflowConfig": {
         "openMetadataServerConfig": {
@@ -70,6 +82,41 @@ data_insight_config = {
         }
     },
 }
+
+WEB_EVENT_DATA = [
+    WebAnalyticEventData(
+        eventId=None,
+        timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
+        eventType=WebAnalyticEventType.PageView,
+        eventData=PageViewData(
+            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
+            url="/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
+            hostname="localhost",
+            language="en-US",
+            screenSize="1280x720",
+            userId=uuid.uuid4(),
+            sessionId=uuid.uuid4(),
+            pageLoadTime=0.0,
+            referrer="",
+        ),
+    ),
+    WebAnalyticEventData(
+        eventId=None,
+        timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
+        eventType=WebAnalyticEventType.PageView,
+        eventData=PageViewData(
+            fullUrl="http://localhost:8585/table/mysql.default.airflow_db.dag_run/profiler",
+            url="/table/mysql.default.airflow_db.dag_run/profiler",
+            hostname="localhost",
+            language="en-US",
+            screenSize="1280x720",
+            userId=uuid.uuid4(),
+            sessionId=uuid.uuid4(),
+            pageLoadTime=0.0,
+            referrer="",
+        ),
+    ),
+]
 
 
 class DataInsightWorkflowTests(unittest.TestCase):
@@ -111,6 +158,9 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
         cls.metadata.create_kpi(create)
 
+        for event in WEB_EVENT_DATA:
+            cls.metadata.add_web_analytic_events(event)
+
     def test_create_method(self):
         """Test validation of the workflow config is properly happening"""
         DataInsightWorkflow.create(data_insight_config)
@@ -128,21 +178,32 @@ class DataInsightWorkflowTests(unittest.TestCase):
         sleep(1)  # wait for data to be available
 
         # Test the indexes have been created as expected and the data have been loaded
-        entity_report_indexes = requests.get(
+        entity_report_docs = requests.get(
             "http://localhost:9200/entity_report_data_index/_search", timeout=30
         )
-        requests.get(
-            "http://localhost:9200/entity_report_data_index/_search", timeout=30
-        )
-        requests.get(
-            "http://localhost:9200/web_analytic_entity_view_report_data/_search",
+        web_analytic_user_activity_report_data_docs = requests.get(
+            "http://localhost:9200/web_analytic_user_activity_report_data_index/_search",
             timeout=30,
         )
-        assert (
-            entity_report_indexes.json()["hits"]["total"]["value"] > 0
-        )  # check data have been correctly indexed in ES
+        web_analytic_entity_view_report_data_docs = requests.get(
+            "http://localhost:9200/web_analytic_entity_view_report_data_index/_search",
+            timeout=30,
+        )
 
-        # test report endpoint is returning data
+        # check data have been correctly indexed in ES
+        # --------------------------------------------
+        assert entity_report_docs.json()["hits"]["total"]["value"] > 0
+        assert (
+            web_analytic_user_activity_report_data_docs.json()["hits"]["total"]["value"]
+            > 0
+        )
+        assert (
+            web_analytic_entity_view_report_data_docs.json()["hits"]["total"]["value"]
+            > 0
+        )
+
+        # test report endpoints are returning data
+        # --------------------------------------
         report_data = self.metadata.get_data_insight_report_data(
             self.start_ts,
             self.end_ts,
@@ -150,7 +211,22 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
         assert report_data.get("data")
 
-        # test data insight aggregation endpoint is returning data
+        web_entity_analytics = self.metadata.get_data_insight_report_data(
+            self.start_ts,
+            self.end_ts,
+            ReportDataType.WebAnalyticEntityViewReportData.value,
+        )
+        assert web_entity_analytics.get("data")
+
+        web_user_analytics = self.metadata.get_data_insight_report_data(
+            self.start_ts,
+            self.end_ts,
+            ReportDataType.WebAnalyticUserActivityReportData.value,
+        )
+        assert web_user_analytics.get("data")
+
+        # test data insight aggregation endpoints are returning data
+        # ----------------------------------------------------------
         resp = self.metadata.get_aggregated_data_insight_results(
             start_ts=self.start_ts,
             end_ts=self.end_ts,
@@ -171,6 +247,26 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
         assert resp.data
         assert isinstance(resp.data[0], PercentageOfEntitiesWithOwnerByType)
+
+        resp = self.metadata.get_aggregated_data_insight_results(
+            start_ts=self.start_ts,
+            end_ts=self.end_ts,
+            data_insight_chart_nane=DataInsightChartType.DailyActiveUsers.value,
+            data_report_index=DataInsightEsIndex.WebAnalyticUserActivityReportData.value,
+        )
+
+        assert resp.data
+        assert isinstance(resp.data[0], DailyActiveUsers)
+
+        resp = self.metadata.get_aggregated_data_insight_results(
+            start_ts=self.start_ts,
+            end_ts=self.end_ts,
+            data_insight_chart_nane=DataInsightChartType.PageViewsByEntities.value,
+            data_report_index=DataInsightEsIndex.WebAnalyticEntityViewReportData.value,
+        )
+
+        assert resp.data
+        assert isinstance(resp.data[0], PageViewsByEntities)
 
     def test_get_kpis(self):
         """test Kpis are returned as expected"""

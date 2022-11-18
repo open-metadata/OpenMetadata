@@ -49,3 +49,14 @@ export enum DataInsightTabs {
   DATA_ASSETS = 'Data Assets',
   APP_ANALYTICS = 'App Analytics',
 }
+
+export enum KpiDate {
+  START_DATE = 'startDate',
+  END_DATE = 'endDate',
+}
+
+export type KpiDates = {
+  [x in KpiDate]: string;
+};
+
+export type ChartValue = string | number | undefined;
