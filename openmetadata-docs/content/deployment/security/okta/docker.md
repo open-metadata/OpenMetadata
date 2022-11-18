@@ -15,9 +15,9 @@ generated when setting up the account.
 Note: Make sure to add the Ingestion Client ID for the Service application in `AUTHORIZER_INGESTION_PRINCIPALS`. This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
 
 ### 1.1 Before 0.12.1
-<Note>
+
 OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY to be set as per the example below using the escape sequence for quotes.
-</Note>
+
 ```shell
 # OpenMetadata Server Authentication Configuration
 AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
