@@ -110,10 +110,10 @@ jobs:
 
       - name: Clean Up
         run: |
-          cd ./docker/localmetadata
+          cd ./docker/local-metadata
           docker compose down
           rm -rf ${PWD}/docker-volume
-          
+
       - name: Publish Test Report
         if: ${{ always() }}
         uses: scacap/action-surefire-report@v1

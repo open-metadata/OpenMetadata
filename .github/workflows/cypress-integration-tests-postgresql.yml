@@ -133,6 +133,6 @@ jobs:
 
       - name: Clean Up
         run: |
-          cd ./docker/localmetadata
+          cd ./docker/local-metadata
           docker compose down
           rm -rf ${PWD}/docker-volume
