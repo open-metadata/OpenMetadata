@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -33,7 +34,6 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
   const [aggregationsPageSize, setAggregationsPageSize] = useState(
     Object.fromEntries(Object.keys(aggregations).map((k) => [k, 5]))
   );
-
   /**
    * Merging aggregations with filters.
    * The aim is to ensure that if there a filter on aggregationKey `k` with value `v`,
@@ -99,6 +99,16 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
 
   return (
     <>
+      <div className="sidebar-my-data-holder mt-2 mb-3">
+        <Button
+          className="text-primary cursor-pointer p-0"
+          disabled={isEmpty(filters)}
+          type="link"
+          onClick={() => onClearFilter({})}>
+          Clear All
+        </Button>
+      </div>
+      <hr className="m-y-xs" />
       <div
         className="sidebar-my-data-holder mt-2 mb-3"
         data-testid="show-deleted-cntnr">
@@ -123,7 +133,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           </div>
         </div>
       </div>
-      <div className="tw-filter-seperator" />
+      <hr className="m-y-xs" />
       {aggregationEntries.map(
         (
           [aggregationKey, aggregation],
@@ -135,15 +145,6 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
               <h6 className="tw-heading tw-my-1">
                 {translateAggregationKeyToTitle(aggregationKey)}
               </h6>
-              <div className="tw-flex tw-my-1.5">
-                {!isEmpty(filters[aggregationKey]) && (
-                  <span
-                    className="link-text tw-text-xs tw-text-grey-muted"
-                    onClick={() => onClearFilter(aggregationKey)}>
-                    Deselect All
-                  </span>
-                )}
-              </div>
             </div>
             <div
               className="sidebar-my-data-holder"
@@ -164,7 +165,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                     onSelect={onSelectHandler}
                   />
                 ))}
-              <div className="tw-flex tw-justify-around tw-flex-row tw-my-1.5">
+              <div className="m-y-sm">
                 {aggregationsPageSize[aggregationKey] <
                   aggregation.buckets.length && (
                   <p
@@ -180,7 +181,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                 )}
                 {aggregationsPageSize[aggregationKey] > 5 && (
                   <p
-                    className="link-text tw-text-xs"
+                    className="link-text text-xs tw-text-left"
                     onClick={() =>
                       setAggregationsPageSize((prev) => ({
                         ...prev,

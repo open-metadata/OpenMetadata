@@ -42,7 +42,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
 
   return (
     <label
-      className="filter-group tw-justify-between tw-mb-2.5 tw-cursor-pointer"
+      className="filter-group tw-justify-between m-b-xs tw-cursor-pointer"
       data-testid={`filter-container-${name}`}>
       <div className="tw-flex">
         <input
