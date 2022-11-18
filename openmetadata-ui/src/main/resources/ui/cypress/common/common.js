@@ -423,14 +423,6 @@ export const testServiceSampleData = (database, schema, table) => {
 };
 
 /**
- * visit any of the entity tab from home page
- * @param {string} id -> data-testid is required
- */
-export const visitEntityTab = (id) => {
-    cy.get(`[data-testid="${id}"]`).click();
-    cy.get(`[data-testid="${id}-tab"]`).should('be.visible');
-};
-/**
  * Search for entities through the search bar
  * @param {string} term Entity name
  */

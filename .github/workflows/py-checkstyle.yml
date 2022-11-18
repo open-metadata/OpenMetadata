@@ -16,9 +16,6 @@ name: Python Checkstyle
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
 
 permissions:
   contents: read
