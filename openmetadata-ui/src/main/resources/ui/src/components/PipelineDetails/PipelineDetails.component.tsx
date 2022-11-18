@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Table, Tabs, Tooltip } from 'antd';
+import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -43,7 +43,10 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
+import {
+  PIPELINE_DETAILS_TABS,
+  PIPELINE_TASK_TABS,
+} from '../../constants/pipeline.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -199,6 +202,8 @@ const PipelineDetails = ({
   const [pipelinePermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+
+  const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
 
   // local state ends
 
@@ -852,6 +857,7 @@ const PipelineDetails = ({
               gutter={[0, 16]}>
               <Col span={24}>
                 <Description
+                  //   className="m--l-md"
                   description={description}
                   entityFieldTasks={getEntityFieldThreadCounts(
                     EntityField.DESCRIPTION,
@@ -879,17 +885,26 @@ const PipelineDetails = ({
                 />
               </Col>
               <Col span={24}>
-                <Table
-                  bordered
-                  columns={taskColumns}
-                  dataSource={tasksInternal}
-                  pagination={false}
-                  rowKey="name"
-                  size="small"
+                <Radio.Group
+                  buttonStyle="solid"
+                  className="radio-switch"
+                  optionType="button"
+                  options={Object.values(PIPELINE_TASK_TABS)}
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value)}
                 />
               </Col>
-              {!isEmpty(tasks) ? (
-                <Col span={24}>
+              <Col span={24}>
+                {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+                  <Table
+                    bordered
+                    columns={taskColumns}
+                    dataSource={tasksInternal}
+                    pagination={false}
+                    rowKey="name"
+                    size="small"
+                  />
+                ) : !isEmpty(tasks) ? (
                   <Card
                     headStyle={{ background: '#fafafa' }}
                     title={t('label.dag-view')}>
@@ -900,14 +915,14 @@ const PipelineDetails = ({
                       />
                     </div>
                   </Card>
-                </Col>
-              ) : (
-                <div
-                  className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-                  data-testid="no-tasks-data">
-                  <span>{t('label.no-task-available')}</span>
-                </div>
-              )}
+                ) : (
+                  <div
+                    className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                    data-testid="no-tasks-data">
+                    <span>{t('label.no-task-available')}</span>
+                  </div>
+                )}
+              </Col>
             </Row>
           </Tabs.TabPane>
           <Tabs.TabPane

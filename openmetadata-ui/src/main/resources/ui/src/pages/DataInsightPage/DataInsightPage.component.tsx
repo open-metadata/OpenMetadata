@@ -246,7 +246,7 @@ const DataInsightPage = () => {
         <Col span={24}>
           <Radio.Group
             buttonStyle="solid"
-            className="data-insight-switch"
+            className="radio-switch"
             data-testid="data-insight-switch"
             optionType="button"
             options={Object.values(DataInsightTabs)}
