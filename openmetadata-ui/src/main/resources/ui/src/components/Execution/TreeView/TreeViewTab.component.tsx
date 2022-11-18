@@ -14,10 +14,11 @@ import { Card, Col, Empty, Row, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ArrowSvg } from '../../../assets/svg/vector.svg';
 import { PipelineStatus } from '../../../generated/entity/data/pipeline';
 import { getTreeViewData } from '../../../utils/executionUtils';
 import { getStatusBadgeIcon } from '../../../utils/PipelineDetailsUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import SVGIcons from '../../../utils/SvgUtils';
 import { formatDateTimeFromSeconds } from '../../../utils/TimeUtils';
 import './tree-view-tab.less';
 
@@ -43,22 +44,23 @@ const TreeViewTab = ({
 
   return (
     <Card>
-      <Row align="middle" className="m-b-lg m-t-md" justify="center">
-        <SVGIcons
-          alt="result"
-          className="tw-w-4 transform-180 m-r-7 cursor-pointer"
-          icon={Icons.ARROW_RIGHT}
-        />
-        <Typography.Title className="p-b-0" level={5}>
-          {formatDateTimeFromSeconds(startTime)} to{' '}
-          {formatDateTimeFromSeconds(endTime)}
-        </Typography.Title>
-
-        <SVGIcons
-          alt="result"
-          className="tw-w-4 m-l-7 cursor-pointer"
-          icon={Icons.ARROW_RIGHT}
-        />
+      <Row
+        align="middle"
+        className="m-b-lg m-t-md"
+        gutter={16}
+        justify="center">
+        <Col>
+          <ArrowSvg className="cursor-pointer" />
+        </Col>
+        <Col>
+          <Typography.Title className="p-b-0 m-b-0" level={5}>
+            {formatDateTimeFromSeconds(startTime)} to{' '}
+            {formatDateTimeFromSeconds(endTime)}
+          </Typography.Title>
+        </Col>
+        <Col>
+          <ArrowSvg className=" cursor-pointer transform-180" />
+        </Col>
       </Row>
 
       {isEmpty(viewData) && (
