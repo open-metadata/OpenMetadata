@@ -14,7 +14,7 @@
 package org.openmetadata.service.secrets;
 
 import org.apache.logging.log4j.util.Strings;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
