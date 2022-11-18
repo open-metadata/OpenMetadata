@@ -309,7 +309,7 @@
     "server": "Server",
     "feature-plural": "Features",
     "detail-plural": "Details",
-    "add-ingestion": "Add {{type}} {{ingestion}}"
+    "ingestion": "Ingestion"
   },
   "message": {
     "service-email-required": "Service account Email is required",
