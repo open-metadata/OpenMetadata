@@ -857,7 +857,6 @@ const PipelineDetails = ({
               gutter={[0, 16]}>
               <Col span={24}>
                 <Description
-                  //   className="m--l-md"
                   description={description}
                   entityFieldTasks={getEntityFieldThreadCounts(
                     EntityField.DESCRIPTION,
@@ -888,6 +887,7 @@ const PipelineDetails = ({
                 <Radio.Group
                   buttonStyle="solid"
                   className="radio-switch"
+                  data-testid="pipeline-task-switch"
                   optionType="button"
                   options={Object.values(PIPELINE_TASK_TABS)}
                   value={activeTab}
@@ -899,6 +899,7 @@ const PipelineDetails = ({
                   <Table
                     bordered
                     columns={taskColumns}
+                    data-testid="task-table"
                     dataSource={tasksInternal}
                     pagination={false}
                     rowKey="name"
