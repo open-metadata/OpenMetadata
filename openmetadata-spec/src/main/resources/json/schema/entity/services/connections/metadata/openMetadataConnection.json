@@ -190,7 +190,7 @@
           "type": "string"
         },
         "config": {
-          "$ref": "../../../../metadataIngestion/workflow.json#/definitions/componentConfig"
+          "$ref": "../../../../type/basic.json#/definitions/componentConfig"
         }
       },
       "additionalProperties": false,

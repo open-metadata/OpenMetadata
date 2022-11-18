@@ -31,7 +31,7 @@ from metadata.generated.schema.entity.services.metadataService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
-    Sink, ComponentConfig,
+    Sink,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -40,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
+from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
