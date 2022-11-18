@@ -34,7 +34,7 @@ First Open Open-Metadata UI than go to settings > Bots > Ingestion Bot
 <Image
   src="/images/deployment/troubleshoot/jwt-token.png"
   alt="jwt-token"
-  caption="jwt-token"
+  caption="JWT token in Openmetada UI"
 />
 </div>
 
