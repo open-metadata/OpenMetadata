@@ -76,7 +76,7 @@ jobs:
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for $E2E_TEST 🔥"
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
           }
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}

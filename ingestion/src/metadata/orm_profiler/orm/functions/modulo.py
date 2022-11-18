@@ -74,3 +74,13 @@ def _(element, compiler, **kw):
     """SQLite modulo function"""
     value, base = validate_and_compile(element, compiler, **kw)
     return f"{value} % {base}"
+
+
+@compiles(ModuloFn, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    """Azure SQL modulo function"""
+    value, base = validate_and_compile(element, compiler, **kw)
+    if compiler.dialect.driver == "pyodbc":
+        # pyodbc compiles to c++ code.
+        return f"{value} % {base}"
+    return f"{value} %% {base}"

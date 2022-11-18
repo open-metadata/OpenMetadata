@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, {
   Fragment,
@@ -428,12 +428,16 @@ const EntityTable = ({
       <>
         {dataTypeDisplay ? (
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            lowerCase(dataTypeDisplay)
+            toLower(dataTypeDisplay)
           ) : (
             <Popover
               destroyTooltipOnHide
-              content={lowerCase(dataTypeDisplay)}
-              overlayInnerStyle={{ maxWidth: '420px' }}
+              content={toLower(dataTypeDisplay)}
+              overlayInnerStyle={{
+                maxWidth: '420px',
+                overflowWrap: 'break-word',
+                textAlign: 'center',
+              }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay}
