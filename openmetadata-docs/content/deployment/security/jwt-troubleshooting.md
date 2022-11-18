@@ -4,7 +4,7 @@ slug: /deployment/security/jwt-troubleshooting
 ---
 # JWT Troubleshooting
 
-Add the `{domain}:{port}/config/jwks` in the list of publicKeyUrls
+Add the `{domain}:{port}/config/jwks` in the list of publicKeys
 
 ```yaml
   authentication:
