@@ -993,9 +993,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response refreshToken(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest)
       throws IOException {
-    return Response.status(Response.Status.OK)
-        .entity(authHandler.getNewAccessToken(securityContext.getUserPrincipal().getName(), refreshRequest))
-        .build();
+    return Response.status(Response.Status.OK).entity(authHandler.getNewAccessToken(refreshRequest)).build();
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) {
