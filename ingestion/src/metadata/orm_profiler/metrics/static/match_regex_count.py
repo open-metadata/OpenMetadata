@@ -37,9 +37,4 @@ class MatchRegexCount(StaticMetric):
             raise AttributeError(
                 "Match Regex Count requires an expression to be set: add_props(expression=...)(Metrics.MATCH_REGEX_COUNT)"
             )
-        return SumFn(
-            case(
-                [(MatchRegexFn(column(self.col.name), text(self.expression)), 1)],
-                else_=0,
-            )
-        )
+        return SumFn(case([(MatchRegexFn(column(self.col.name), text(self.expression)), 1)], else_=0))
