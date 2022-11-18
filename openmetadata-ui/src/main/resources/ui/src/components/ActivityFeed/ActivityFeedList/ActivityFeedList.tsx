@@ -154,7 +154,12 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const getFilterDropDown = () => {
     return hideFeedFilter && hideThreadFilter ? null : (
-      <Row className="filters-container" justify="space-between">
+      <Row
+        className={classNames(
+          'filters-container',
+          stickyFilter ? 'm-x-xs' : ''
+        )}
+        justify="space-between">
         {/* Feed filter */}
         <Col>
           {!hideFeedFilter && (
