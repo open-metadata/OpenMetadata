@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -25,6 +24,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.resources.Collection;
@@ -36,7 +36,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "ReportData collection", tags = "ReportData collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "ReportData")
+@Collection(name = "reportData")
 public class ReportDataResource {
   public static final String COLLECTION_PATH = "v1/analytic/reportData";
   @Getter protected final ReportDataRepository dao;
@@ -53,17 +53,13 @@ public class ReportDataResource {
     public ReportDataResultList() {
       /* Required for serde */
     }
-
-    public ReportDataResultList(List<ReportData> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
   @Operation(
       operationId = "getReportData",
       summary = "List the report data",
-      tags = "ReportData",
+      tags = "reportData",
       description =
           "Get a list of all the report data for a given reportDataType, optionally filtered by  `startTs` and `endTs` of the result. "
               + "Use cursor-based pagination to limit the number of "
@@ -79,10 +75,10 @@ public class ReportDataResource {
       })
   public ResultList<ReportData> list(
       @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(type = "String"))
+      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
           @NonNull
           @QueryParam("reportDataType")
-          String reportDataType,
+          ReportDataType reportDataType,
       @Parameter(
               description = "Filter reportData results after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -103,7 +99,7 @@ public class ReportDataResource {
   @Operation(
       operationId = "addReportData",
       summary = "Add report data",
-      tags = "ReportData",
+      tags = "reportData",
       description = "Add report data",
       responses = {
         @ApiResponse(
@@ -114,7 +110,6 @@ public class ReportDataResource {
   public Response addReportData(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext, true);
     return dao.addReportData(reportData);
   }
 }

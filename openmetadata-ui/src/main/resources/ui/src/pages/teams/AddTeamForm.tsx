@@ -3,6 +3,7 @@ import { AxiosError } from 'axios';
 import { isUndefined, toLower } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { Team, TeamType } from '../../generated/entity/teams/team';
@@ -14,16 +15,18 @@ type AddTeamFormType = {
   visible: boolean;
   onCancel: () => void;
   onSave: (data: Team) => void;
+  isLoading: boolean;
 };
 
 const AddTeamForm: React.FC<AddTeamFormType> = ({
   visible,
   onCancel,
   onSave,
+  isLoading,
 }) => {
+  const { t } = useTranslation();
   const [description, setDescription] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
-
   const markdownRef = useRef<EditorContentRef>();
 
   const teamTypeOptions = useMemo(() => {
@@ -77,12 +80,13 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     <Modal
       centered
       closable={false}
+      confirmLoading={isLoading}
       okButtonProps={{
         form: 'add-team-form',
         type: 'primary',
         htmlType: 'submit',
       }}
-      title="Add Team"
+      title={t('label.add-team')}
       visible={visible}
       width={650}
       onCancel={onCancel}>
@@ -96,7 +100,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         validateMessages={validationMessages}
         onFinish={handleSubmit}>
         <Form.Item
-          label="Name"
+          label={t('label.name')}
           name="name"
           rules={[
             {
@@ -109,7 +113,9 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
             {
               validator: (_, value) => {
                 if (!isUrlFriendlyName(value)) {
-                  return Promise.reject('Special characters are not allowed');
+                  return Promise.reject(
+                    t('label.special-character-not-allowed')
+                  );
                 }
                 if (
                   !isUndefined(
@@ -118,17 +124,17 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                     )
                   )
                 ) {
-                  return Promise.reject('Name already exists');
+                  return Promise.reject(t('label.name-already-exist'));
                 }
 
                 return Promise.resolve();
               },
             },
           ]}>
-          <Input data-testid="name" placeholder="Enter name" />
+          <Input data-testid="name" placeholder={t('label.enter-name')} />
         </Form.Item>
         <Form.Item
-          label="Display Name"
+          label={t('label.display-name')}
           name="displayName"
           rules={[
             {
@@ -139,17 +145,20 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               max: 128,
             },
           ]}>
-          <Input data-testid="display-name" placeholder="Enter display name" />
+          <Input
+            data-testid="display-name"
+            placeholder={t('label.enter-display-name')}
+          />
         </Form.Item>
-        <Form.Item label="Team type" name="teamType">
+        <Form.Item label={t('label.team-type')} name="teamType">
           <Select
             data-testid="team-selector"
             options={teamTypeOptions}
-            placeholder="Please select a team type"
+            placeholder={t('label.select-team')}
           />
         </Form.Item>
         <Form.Item
-          label="Description"
+          label={t('label.description')}
           name="description"
           style={{
             marginBottom: 0,

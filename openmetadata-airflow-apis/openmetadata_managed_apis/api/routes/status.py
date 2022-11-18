@@ -16,7 +16,7 @@ from typing import Callable
 
 from flask import Blueprint, Response
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_arg_dag_id
+from openmetadata_managed_apis.api.utils import get_arg_dag_id, get_arg_only_queued
 from openmetadata_managed_apis.operations.status import status
 from openmetadata_managed_apis.utils.logger import routes_logger
 
@@ -44,9 +44,9 @@ def get_fn(blueprint: Blueprint) -> Callable:
         Check the status of a DAG runs
         """
         dag_id = get_arg_dag_id()
-
+        only_queued = get_arg_only_queued()
         try:
-            return status(dag_id)
+            return status(dag_id, only_queued)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

@@ -17,10 +17,6 @@ clean_env37:
 install:  ## Install the ingestion module to the current environment
 	python -m pip install ingestion/
 
-.PHONY: devinstall
-devinstall:  ## Install the ingestion module to the current environment
-	python -m pip install -e ingestion/
-
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
 	python -m pip install openmetadata-airflow-apis/
@@ -45,7 +41,7 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 
 .PHONY: lint
 lint: ## Run pylint on the Python sources to analyze the codebase
-	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/
+	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
@@ -58,7 +54,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
 	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
 	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
-	pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
+	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 
 ## Ingestion models generation
 .PHONY: generate
@@ -66,22 +62,14 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
 	mkdir -p ingestion/src/metadata/generated
-	datamodel-codegen --input openmetadata-spec/src/main/resources/json/schema --input-file-type jsonschema --output ingestion/src/metadata/generated/schema --set-default-enum-member
+	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
-
-devgenerate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run the install_dev recipe"
-	mkdir -p ingestion/src/metadata/generated
-	datamodel-codegen --input openmetadata-spec/src/main/resources/json/schema --input-file-type jsonschema --output ingestion/src/metadata/generated/schema --set-default-enum-member
-	$(MAKE) py_antlr js_antlr
-	$(MAKE) devinstall
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests

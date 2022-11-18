@@ -23,7 +23,8 @@
         "PowerBI",
         "Mode",
         "CustomDashboard",
-        "DomoDashboard"
+        "DomoDashboard",
+        "QuickSight"
       ],
       "javaEnums": [
         {
@@ -52,6 +53,9 @@
         },
         {
           "name": "DomoDashboard"
+        },
+        {
+          "name": "QuickSight"
         }
       ]
     },
@@ -92,6 +96,9 @@
             },
             {
               "$ref": "./connections/dashboard/domodashboardConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/quickSightConnection.json"
             }
           ]
         }

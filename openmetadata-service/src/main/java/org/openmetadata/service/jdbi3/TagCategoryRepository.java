@@ -25,10 +25,12 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -88,14 +90,14 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   @Override
   public void prepare(TagCategory entity) {
-    setFullyQualifiedName(entity);
+    /* Nothing to do */
   }
 
   @Override
   public void storeEntity(TagCategory category, boolean update) throws IOException {
     List<Tag> primaryTags = category.getChildren();
     category.setChildren(null); // Children are not stored as json and are constructed on the fly
-    store(category.getId(), category, update);
+    store(category, update);
     category.withChildren(primaryTags);
   }
 
@@ -109,6 +111,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   @Transaction
   public TagCategory delete(UriInfo uriInfo, UUID id) throws IOException {
     TagCategory category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    checkSystemEntityDeletion(category);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), category.getName());
@@ -134,15 +137,21 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       // TODO handle name change
-      recordChange("categoryType", original.getCategoryType(), updated.getCategoryType());
+      // TODO mutuallyExclusive from false to true?
+      recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       updateName(original, updated);
     }
 
     public void updateName(TagCategory original, TagCategory updated) throws IOException {
       if (!original.getName().equals(updated.getName())) {
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
         // Category name changed - update tag names starting from category and all the children tags
         LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
-        tagRepository.updateChildrenTagNames(original.getName(), updated.getName());
+        daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
+        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
       }
 

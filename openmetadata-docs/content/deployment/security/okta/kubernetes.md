@@ -10,7 +10,6 @@ Check the Helm information [here](https://artifacthub.io/packages/search?repo=op
 Once the `Client Id` and `Client Secret` are generated, see the snippet below for an example of where to
 place the client id value and update the authorizer configurations in the `values.yaml`.
 
-Note: Make sure to add the Ingestion Client ID for the Service application in `botPrincipals`. 
 This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
 
 ### Before 0.12.1
@@ -23,9 +22,6 @@ global:
     initialAdmins:
       - "user1"
       - "user2"
-    botPrincipals:
-      - ingestion-bot
-      - "<service_application_client_id>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "okta"

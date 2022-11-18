@@ -17,6 +17,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -39,6 +40,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,7 +67,6 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SQLQuery;
@@ -138,7 +139,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   private void setDefaultFields(Table table) throws IOException {
     EntityReference schemaRef = getContainer(table.getId());
-    DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, Include.ALL);
+    DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
 
@@ -157,6 +158,7 @@ public class TableRepository extends EntityRepository<Table> {
   public void setFullyQualifiedName(Table table) {
     table.setFullyQualifiedName(
         FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
+    setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
   @Transaction
@@ -335,9 +337,9 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     String extension;
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      extension = "table.tableProfile";
+      extension = TABLE_PROFILE_EXTENSION;
     } else if (entityType.equalsIgnoreCase("column")) {
-      extension = "table.columnProfile";
+      extension = TABLE_COLUMN_PROFILE_EXTENSION;
     } else {
       throw new IllegalArgumentException("entityType must be table or column");
     }
@@ -379,6 +381,14 @@ public class TableRepository extends EntityRepository<Table> {
       for (SQLQuery q : storedQueries) {
         storedMapQueries.put(q.getChecksum(), q);
       }
+    }
+    SQLQuery oldQuery = storedMapQueries.get(query.getChecksum());
+    if (oldQuery != null && query.getUsers() != null) {
+      // Merge old and new users
+      List<EntityReference> userList = query.getUsers();
+      userList.addAll(oldQuery.getUsers());
+      HashSet<EntityReference> userSet = new HashSet<>(userList);
+      query.setUsers(new ArrayList<>(userSet));
     }
     storedMapQueries.put(query.getChecksum(), query);
     List<SQLQuery> updatedQueries = new ArrayList<>(storedMapQueries.values());
@@ -527,20 +537,19 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), Fields.EMPTY_FIELDS, Include.ALL);
-    table.setDatabaseSchema(schema.getEntityReference());
-    table.setDatabase(schema.getDatabase());
-    table.setService(schema.getService());
-    table.setServiceType(schema.getServiceType());
-    setFullyQualifiedName(table);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
+    table
+        .withDatabaseSchema(schema.getEntityReference())
+        .withDatabase(schema.getDatabase())
+        .withService(schema.getService())
+        .withServiceType(schema.getServiceType());
 
-    setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
-
-    // Validate table tags and add derived tags to the list
-    table.setTags(addDerivedTags(table.getTags()));
+    // Carry forward ownership from database schema
+    table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
+    table.getColumns().forEach(column -> checkMutuallyExclusive(column.getTags()));
   }
 
   private EntityReference getLocation(Table table) throws IOException {
@@ -562,7 +571,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setColumns(cloneWithoutTags(columnWithTags));
     table.getColumns().forEach(column -> column.setTags(null));
 
-    store(table.getId(), table, update);
+    store(table, update);
 
     // Restore the relationships
     table.withOwner(owner).withTags(tags).withColumns(columnWithTags).withService(service);
@@ -755,7 +764,7 @@ public class TableRepository extends EntityRepository<Table> {
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, "table.tableProfile", startTs, endTs),
+                .listBetweenTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs),
             TableProfile.class);
     return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
@@ -766,7 +775,7 @@ public class TableRepository extends EntityRepository<Table> {
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, "table.columnProfile", startTs, endTs),
+                .listBetweenTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
             ColumnProfile.class);
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
@@ -779,7 +788,7 @@ public class TableRepository extends EntityRepository<Table> {
    */
   private List<DailyCount> aggregateAndFilterDailyCounts(
       List<DailyCount> currentDailyCounts, DailyCount newDailyCount) {
-    var joinCountByDay =
+    Map<String, List<DailyCount>> joinCountByDay =
         Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount)).collect(groupingBy(DailyCount::getDate));
 
     return joinCountByDay.entrySet().stream()
@@ -966,12 +975,10 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if ((addedColumn.getDescription() == null || addedColumn.getDescription().isEmpty())
-              && (deleted.getDescription() == null || !deleted.getDescription().isEmpty())) {
+          if (nullOrEmpty(addedColumn.getDescription()) && nullOrEmpty(deleted.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if ((addedColumn.getTags() == null || addedColumn.getTags().isEmpty())
-              && (deleted.getTags() == null || !deleted.getTags().isEmpty())) {
+          if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
             addedColumn.setTags(deleted.getTags());
           }
         }

@@ -14,40 +14,91 @@ GraphQL queries used during ingestion
 """
 
 DAGSTER_PIPELINE_DETAILS_GRAPHQL = """
-            query AssetNodeQuery {
-            assetNodes {
-                __typename
-                ... on AssetNode {
-                    id
-                    jobNames
-                    groupName
-                    graphName
-                    opName
-                    opNames
-                    jobs{
-                        id
-                        name
-                        description
-                        runs{
-                            id
-                            runId
-                            status
-                            stats{
-                                    ... on RunStatsSnapshot {
-                                            startTime
-                                            endTime
-                                            stepsFailed
-                                        }
-                                }
-                    
-                        }
-                    }
-                
-                
+            query PipelineRuns{
+  repositoriesOrError{
+    __typename 
+    ... on RepositoryConnection{
+      nodes{
+        id,
+        name,
+        location {
+          id
+          name
+        }
+        pipelines{
+          id,
+          name,
+          description,
+          runs{
+            id,
+            runId,
+            status,
+            startTime,
+            stats{
+                ... on RunStatsSnapshot {
+                        startTime
+                        endTime
+                        stepsFailed
                     }
                 }
+            executionPlan{
+              steps{
+                inputs{
+                  name,
+                  dependsOn{
+                    inputs{
+                      name
+                    },
+                    outputs{
+                      name
+                    }
+                  }
+                },
+                outputs{
+                  name
+                }
+              }
+              
             }
-        """
+          }
+        }
+      }
+    }
+    
+  }
+}
+"""
+
+GRAPHQL_RUNS_QUERY = """query SidebarOpGraphsQuery($selector: PipelineSelector!, $handleID: String!) {
+  pipelineOrError(params: $selector) {
+    __typename
+    ... on Pipeline {
+      id
+      name
+      solidHandle(handleID: $handleID) {
+        stepStats(limit: 100) {
+          __typename
+          ... on SolidStepStatsConnection {
+            nodes {
+              runId
+              startTime
+              endTime
+              status
+              __typename
+            }
+            __typename
+          }
+          ... on SolidStepStatusUnavailableError {
+            __typename
+          }
+        }
+        __typename
+      }
+      __typename
+    }
+  }
+}
+"""
 
 
 TEST_QUERY_GRAPHQL = """query Pipeline {
@@ -64,3 +115,27 @@ TEST_QUERY_GRAPHQL = """query Pipeline {
                 }
             }
             }"""
+
+GRAPHQL_QUERY_FOR_JOBS = """query PipelineRuns($selector: GraphSelector!){
+                graphOrError(selector: $selector){
+                    ... on Graph{
+                    id,
+                    name,
+                    description,
+                        solidHandles{
+                            handleID,
+                            solid{
+                                name,
+                                inputs{
+                                    dependsOn {
+                                        solid {
+                                            name
+                                        }
+                                    }
+                                },
+                            }
+                        },
+
+                    }
+                }
+                }"""

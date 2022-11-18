@@ -37,6 +37,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface EntityDAO<T extends EntityInterface> {
+  org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
+
   /** Methods that need to be overridden by interfaces extending this */
   String getTableName();
 
@@ -58,6 +60,32 @@ public interface EntityDAO<T extends EntityInterface> {
       value = "UPDATE <table> SET  json = (:json :: jsonb) WHERE id = :id",
       connectionType = POSTGRES)
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
+
+  default void updateFqn(String oldPrefix, String newPrefix) {
+    LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
+    if (!getNameColumn().equals("fullyQualifiedName")) {
+      return;
+    }
+    String mySqlUpdate =
+        String.format(
+            "UPDATE %s SET json = "
+                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(fullyQualifiedName, '^%s\\.', '%s.')) "
+                + "WHERE fullyQualifiedName LIKE '%s.%%'",
+            getTableName(), oldPrefix, newPrefix, oldPrefix);
+
+    String postgresUpdate =
+        String.format(
+            "UPDATE %s SET json = "
+                + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
+                + "'\"fullyQualifiedName\": \"%s.')::jsonb "
+                + "WHERE fullyQualifiedName LIKE '%s.%%'",
+            getTableName(), oldPrefix, newPrefix, oldPrefix);
+    updateFqnInternal(mySqlUpdate, postgresUpdate);
+  }
+
+  @ConnectionAwareSqlUpdate(value = "<mySqlUpdate>", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "<postgresUpdate>", connectionType = POSTGRES)
+  void updateFqnInternal(@Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);

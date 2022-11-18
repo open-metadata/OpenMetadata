@@ -13,7 +13,7 @@
 Hosts the singledispatch to build source URLs
 """
 import os
-from functools import singledispatch
+from functools import singledispatch, wraps
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
@@ -87,9 +87,47 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
+from metadata.generated.schema.security.credentials.gcsCredentials import (
+    GCSValues,
+    MultipleProjectId,
+    SingleProjectId,
+)
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
+
+
+def update_connection_opts_args(connection):
+    if hasattr(connection, "connectionOptions") and connection.connectionOptions:
+        for key, value in connection.connectionOptions.dict().items():
+            if isinstance(value, str):
+                setattr(
+                    connection.connectionOptions,
+                    key,
+                    CustomSecretStr(value).get_secret_value(),
+                )
+    if hasattr(connection, "connectionArguments") and connection.connectionArguments:
+        for key, value in connection.connectionArguments.dict().items():
+            if isinstance(value, str):
+                setattr(
+                    connection.connectionArguments,
+                    key,
+                    CustomSecretStr(value).get_secret_value(),
+                )
+
+
+def singledispatch_with_options_secrets(fn):
+    """Decorator used for get any secret from the Secrets Manager that has been passed inside connection options
+    or arguments.
+    """
+
+    @wraps(fn)
+    @singledispatch
+    def inner(connection, **kwargs):
+        update_connection_opts_args(connection)
+        return fn(connection, **kwargs)
+
+    return inner
 
 
 def get_connection_url_common(connection):
@@ -130,7 +168,7 @@ def get_connection_url_common(connection):
     return url
 
 
-@singledispatch
+@singledispatch_with_options_secrets
 def get_connection_url(connection):
     """
     Single dispatch method to get the source connection url
@@ -264,7 +302,7 @@ def _(connection: PrestoConnection):
     return url
 
 
-@singledispatch
+@singledispatch_with_options_secrets
 def get_connection_args(connection):
     """
     Single dispatch method to get the connection arguments
@@ -336,10 +374,16 @@ def _(connection: HiveConnection):
         and hasattr(connection.connectionArguments, "auth")
         and connection.connectionArguments.auth in ("LDAP", "CUSTOM")
     ):
-        url += f"{quote_plus(connection.username)}"
+        url += quote_plus(connection.username)
         if not connection.password:
             connection.password = SecretStr("")
         url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+
+    elif connection.username:
+        url += quote_plus(connection.username)
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
         url += "@"
 
     url += connection.hostPort
@@ -363,20 +407,28 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    from google import auth  # pylint: disable=import-outside-toplevel
 
-    _, project_id = auth.default()
     if isinstance(connection.credentials.gcsConfig, GCSValues):
-        if not project_id:
-            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
-        if (
-            not connection.credentials.gcsConfig.privateKey
-            and connection.credentials.gcsConfig.projectId
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcsConfig.projectId, SingleProjectId
         ):
-            # Setting environment variable based on project id given by user / set in ADC
-            project_id = connection.credentials.gcsConfig.projectId
-            os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-        return f"{connection.scheme.value}://{project_id}"
+            if not connection.credentials.gcsConfig.projectId.__root__:
+                return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId or ''}"
+            if (
+                not connection.credentials.gcsConfig.privateKey
+                and connection.credentials.gcsConfig.projectId.__root__
+            ):
+                project_id = connection.credentials.gcsConfig.projectId.__root__
+                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+            return f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId.__root__}"
+        elif isinstance(connection.credentials.gcsConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcsConfig.projectId.__root__:
+                if not connection.credentials.gcsConfig.privateKey and project_id:
+                    # Setting environment variable based on project id given by user / set in ADC
+                    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+                return f"{connection.scheme.value}://{project_id}"
+            return f"{connection.scheme.value}://"
+
     return f"{connection.scheme.value}://"
 
 
@@ -424,7 +476,9 @@ def _(connection: AthenaConnection):
         url += ":"
     url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
 
-    url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
+    staging_url = connection.s3StagingDir.scheme + "://" + str(connection.s3StagingDir)
+
+    url += f"?s3_staging_dir={quote_plus(staging_url)}"
     if connection.workgroup:
         url += f"&work_group={connection.workgroup}"
     if connection.awsConfig.awsSessionToken:

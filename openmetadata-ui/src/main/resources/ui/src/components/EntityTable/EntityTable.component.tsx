@@ -13,9 +13,10 @@
 
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover, Table } from 'antd';
+import { Popover, Table, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, {
   Fragment,
@@ -25,20 +26,19 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTableDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import { Column, JoinedWith } from '../../generated/entity/data/table';
+import { Column } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from '../../utils/CommonUtils';
-import { ENTITY_LINK_SEPARATOR } from '../../utils/EntityUtils';
+  ENTITY_LINK_SEPARATOR,
+  getFrequentlyJoinedColumns,
+} from '../../utils/EntityUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
 import {
   fetchGlossaryTerms,
@@ -57,13 +57,11 @@ import {
   getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from '../../utils/TasksUtils';
-import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-import { TABLE_HEADERS_V1 } from './EntityTable.constants';
-import { EntityTableProps } from './EntityTable.interface';
+import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
 import './EntityTable.style.less';
 
 const EntityTable = ({
@@ -252,21 +250,6 @@ const EntityTable = ({
     setEditColumnTag(undefined);
   };
 
-  const getFrequentlyJoinedWithColumns = (
-    columnName: string
-  ): Array<JoinedWith> => {
-    return (
-      joins.find((join) => join.columnName === columnName)?.joinedWith || []
-    );
-  };
-  const checkIfJoinsAvailable = (columnName: string): boolean => {
-    return (
-      joins &&
-      Boolean(joins.length) &&
-      Boolean(joins.find((join) => join.columnName === columnName))
-    );
-  };
-
   const searchInColumns = (table: Column[], searchText: string): Column[] => {
     const searchedValue: Column[] = table.reduce((searchedCols, column) => {
       const isContainData =
@@ -438,46 +421,29 @@ const EntityTable = ({
     );
   };
 
-  const getDataTypeDisplayCell = (record: Column | Column) => {
+  const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
+    dataTypeDisplay
+  ) => {
     return (
       <>
-        {record.dataTypeDisplay ? (
-          <>
-            {isReadOnly ? (
-              <div className="tw-flex tw-flex-wrap tw-w-60 tw-overflow-x-auto">
-                <RichTextEditorPreviewer
-                  markdown={record.dataTypeDisplay.toLowerCase()}
-                />
-              </div>
-            ) : (
-              <>
-                {record.dataTypeDisplay.length > 25 ? (
-                  <span>
-                    <PopOver
-                      html={
-                        <div className="tw-break-words">
-                          <span>{record.dataTypeDisplay.toLowerCase()}</span>
-                        </div>
-                      }
-                      key="pop-over"
-                      position="bottom"
-                      theme="light"
-                      trigger="click">
-                      <div className="tw-cursor-pointer tw-underline tw-inline-block">
-                        <RichTextEditorPreviewer
-                          markdown={`${record.dataTypeDisplay
-                            .slice(0, 20)
-                            .toLowerCase()}...`}
-                        />
-                      </div>
-                    </PopOver>
-                  </span>
-                ) : (
-                  record.dataTypeDisplay.toLowerCase()
-                )}
-              </>
-            )}
-          </>
+        {dataTypeDisplay ? (
+          isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
+            toLower(dataTypeDisplay)
+          ) : (
+            <Popover
+              destroyTooltipOnHide
+              content={toLower(dataTypeDisplay)}
+              overlayInnerStyle={{
+                maxWidth: '420px',
+                overflowWrap: 'break-word',
+                textAlign: 'center',
+              }}
+              trigger="hover">
+              <Typography.Text ellipsis className="cursor-pointer">
+                {dataTypeDisplay}
+              </Typography.Text>
+            </Popover>
+          )
         ) : (
           '--'
         )}
@@ -485,24 +451,28 @@ const EntityTable = ({
     );
   };
 
-  const getDescriptionCell = (index: number, record: Column | Column) => {
+  const renderDescription: TableCellRendered<Column, 'description'> = (
+    description,
+    record,
+    index
+  ) => {
     return (
       <div className="hover-icon-group">
-        <div className="tw-inline-block">
+        <div className="d-inline-block">
           <div
-            className="tw-flex"
+            className="d-flex"
             data-testid="description"
             id={`column-description-${index}`}>
             <div>
-              {record?.description ? (
-                <RichTextEditorPreviewer markdown={record?.description} />
+              {description ? (
+                <RichTextEditorPreviewer markdown={description} />
               ) : (
                 <span className="tw-no-description">
                   {t('label.no-description')}
                 </span>
               )}
             </div>
-            <div className="tw-flex tw--mt-1.5">
+            <div className="d-flex tw--mt-1.5">
               {!isReadOnly ? (
                 <Fragment>
                   {hasDescriptionEditAccess && (
@@ -550,189 +520,106 @@ const EntityTable = ({
             </div>
           </div>
         </div>
-        {checkIfJoinsAvailable(record?.name) && (
-          <div className="tw-mt-3" data-testid="frequently-joined-columns">
-            <span className="tw-text-grey-muted tw-mr-1">
-              {t('label.frequently-joined-columns')}:
-            </span>
-            <span>
-              {getFrequentlyJoinedWithColumns(record?.name)
-                .slice(0, 3)
-                .map((columnJoin, index) => (
-                  <Fragment key={index}>
-                    {index > 0 && <span className="tw-mr-1">,</span>}
-                    <Link
-                      className="link-text"
-                      to={getTableDetailsPath(
-                        getTableFQNFromColumnFQN(columnJoin.fullyQualifiedName),
-                        getPartialNameFromTableFQN(
-                          columnJoin.fullyQualifiedName,
-                          [FqnPart.Column]
-                        )
-                      )}>
-                      {getPartialNameFromTableFQN(
-                        columnJoin.fullyQualifiedName,
-                        [FqnPart.Database, FqnPart.Table, FqnPart.Column],
-                        FQN_SEPARATOR_CHAR
-                      )}
-                    </Link>
-                  </Fragment>
-                ))}
-
-              {getFrequentlyJoinedWithColumns(record?.name).length > 3 && (
-                <PopOver
-                  html={
-                    <div className="tw-text-left">
-                      {getFrequentlyJoinedWithColumns(record?.name)
-                        ?.slice(3)
-                        .map((columnJoin, index) => (
-                          <Fragment key={index}>
-                            <a
-                              className="link-text tw-block tw-py-1"
-                              href={getTableDetailsPath(
-                                getTableFQNFromColumnFQN(
-                                  columnJoin?.fullyQualifiedName
-                                ),
-                                getPartialNameFromTableFQN(
-                                  columnJoin?.fullyQualifiedName,
-                                  [FqnPart.Column]
-                                )
-                              )}>
-                              {getPartialNameFromTableFQN(
-                                columnJoin?.fullyQualifiedName,
-                                [
-                                  FqnPart.Database,
-                                  FqnPart.Table,
-                                  FqnPart.Column,
-                                ]
-                              )}
-                            </a>
-                          </Fragment>
-                        ))}
-                    </div>
-                  }
-                  position="bottom"
-                  theme="light"
-                  trigger="click">
-                  <span className="show-more tw-ml-1 tw-underline">...</span>
-                </PopOver>
-              )}
-            </span>
-          </div>
+        {getFrequentlyJoinedColumns(
+          record?.name,
+          joins,
+          t('label.frequently-joined-columns')
         )}
       </div>
     );
   };
 
-  const getTagsCell = (index: number, record: Column | Column) => {
-    return (
-      <div className="hover-icon-group">
-        {isReadOnly ? (
-          <div className="tw-flex tw-flex-wrap">
-            <TagsViewer sizeCap={-1} tags={record?.tags || []} />
-          </div>
-        ) : (
-          <div
-            className={classNames(
-              `tw-flex tw-justify-content`,
-              editColumnTag?.index === index || !isEmpty(record.tags)
-                ? 'tw-flex-col tw-items-start'
-                : 'tw-items-center'
-            )}
-            data-testid="tags-wrapper"
-            onClick={() => {
-              if (!editColumnTag) {
-                handleEditColumnTag(record, index);
-                // Fetch tags and terms only once
-                if (allTags.length === 0 || tagFetchFailed) {
-                  fetchTagsAndGlossaryTerms();
-                }
-              }
-            }}>
-            <TagsContainer
-              className="w-max-256"
-              editable={editColumnTag?.index === index}
-              isLoading={isTagLoading && editColumnTag?.index === index}
-              selectedTags={record?.tags || []}
-              showAddTagButton={hasTagEditAccess}
-              size="small"
-              tagList={allTags}
-              type="label"
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags, record?.name);
-              }}
-            />
-
-            <div className="tw-mt-1 tw-flex">
-              {getRequestTagsElement(record)}
-              {getFieldThreadElement(
-                getColumnName(record),
-                'tags',
-                entityFieldThreads as EntityFieldThreads[],
-                onThreadLinkSelect,
-                EntityType.TABLE,
-                entityFqn,
-                `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                  record
-                )}${ENTITY_LINK_SEPARATOR}tags`,
-                Boolean(record?.name?.length)
-              )}
-              {getFieldThreadElement(
-                getColumnName(record),
-                EntityField.TAGS,
-                entityFieldTasks as EntityFieldThreads[],
-                onThreadLinkSelect,
-                EntityType.TABLE,
-                entityFqn,
-                `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
-                  record
-                )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
-                Boolean(record?.name),
-                ThreadType.Task
-              )}
+  const renderTags: TableCellRendered<Column, 'tags'> = useCallback(
+    (tags, record: Column, index: number) => {
+      return (
+        <div className="hover-icon-group">
+          {isReadOnly ? (
+            <div className="tw-flex tw-flex-wrap">
+              <TagsViewer sizeCap={-1} tags={tags || []} />
             </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderCell = useCallback(
-    (key: string, record: Column | Column, index: number) => {
-      switch (key) {
-        case TABLE_HEADERS_V1.dataTypeDisplay:
-          return getDataTypeDisplayCell(record);
-
-        case TABLE_HEADERS_V1.description:
-          return getDescriptionCell(index, record);
-
-        case TABLE_HEADERS_V1.tags:
-          return getTagsCell(index, record);
-
-        default:
-          return (
-            <Fragment>
-              {isReadOnly ? (
-                <div className="tw-inline-block">
-                  <RichTextEditorPreviewer markdown={record.name} />
-                </div>
-              ) : (
-                <span>
-                  {prepareConstraintIcon(record.name, record.constraint)}
-                  <span>{record.name}</span>
-                </span>
+          ) : (
+            <div
+              className={classNames(
+                `tw-flex tw-justify-content`,
+                editColumnTag?.index === index || !isEmpty(tags)
+                  ? 'tw-flex-col tw-items-start'
+                  : 'tw-items-center'
               )}
-            </Fragment>
-          );
-      }
+              data-testid="tags-wrapper"
+              onClick={() => {
+                if (!editColumnTag) {
+                  handleEditColumnTag(record, index);
+                  // Fetch tags and terms only once
+                  if (allTags.length === 0 || tagFetchFailed) {
+                    fetchTagsAndGlossaryTerms();
+                  }
+                }
+              }}>
+              <TagsContainer
+                className="w-max-256"
+                editable={editColumnTag?.index === index}
+                isLoading={isTagLoading && editColumnTag?.index === index}
+                selectedTags={tags || []}
+                showAddTagButton={hasTagEditAccess}
+                size="small"
+                tagList={allTags}
+                type="label"
+                onCancel={() => {
+                  handleTagSelection();
+                }}
+                onSelectionChange={(selectedTags) => {
+                  handleTagSelection(selectedTags, record?.name);
+                }}
+              />
+
+              <div className="tw-mt-1 tw-flex">
+                {getRequestTagsElement(record)}
+                {getFieldThreadElement(
+                  getColumnName(record),
+                  'tags',
+                  entityFieldThreads as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                    record
+                  )}${ENTITY_LINK_SEPARATOR}tags`,
+                  Boolean(record?.name?.length)
+                )}
+                {getFieldThreadElement(
+                  getColumnName(record),
+                  EntityField.TAGS,
+                  entityFieldTasks as EntityFieldThreads[],
+                  onThreadLinkSelect,
+                  EntityType.TABLE,
+                  entityFqn,
+                  `${
+                    EntityField.COLUMNS
+                  }${ENTITY_LINK_SEPARATOR}${getColumnName(
+                    record
+                  )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
+                  Boolean(record?.name),
+                  ThreadType.Task
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
     },
-    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
+    [
+      isReadOnly,
+      editColumnTag,
+      hasTagEditAccess,
+      isTagLoading,
+      handleTagSelection,
+      handleEditColumnTag,
+      fetchTagsAndGlossaryTerms,
+      getRequestTagsElement,
+    ]
   );
 
-  const columns = useMemo(
+  const columns: ColumnsType<Column> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -740,9 +627,13 @@ const EntityTable = ({
         key: 'name',
         accessor: 'name',
         ellipsis: true,
-        width: 180,
-        render: (_: Array<unknown>, record: Column, index: number) =>
-          renderCell(TABLE_HEADERS_V1.name, record, index),
+        width: 220,
+        render: (name: Column['name'], record: Column) => (
+          <Popover destroyTooltipOnHide content={name} trigger="hover">
+            {prepareConstraintIcon(name, record.constraint)}
+            <span>{name}</span>
+          </Popover>
+        ),
       },
       {
         title: t('label.type'),
@@ -750,18 +641,15 @@ const EntityTable = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
-        width: 200,
-        render: (_: Array<unknown>, record: Column, index: number) => {
-          return renderCell(TABLE_HEADERS_V1.dataTypeDisplay, record, index);
-        },
+        width: 220,
+        render: renderDataTypeDisplay,
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        render: (_: Array<unknown>, record: Column, index: number) =>
-          renderCell(TABLE_HEADERS_V1.description, record, index),
+        render: renderDescription,
       },
       {
         title: t('label.tags'),
@@ -769,11 +657,10 @@ const EntityTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (_: Array<unknown>, record: Column | Column, index: number) =>
-          renderCell(TABLE_HEADERS_V1.tags, record, index),
+        render: renderTags,
       },
     ],
-    [editColumnTag, isTagLoading, renderCell]
+    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
   );
 
   useEffect(() => {
@@ -788,6 +675,7 @@ const EntityTable = ({
   return (
     <>
       <Table
+        bordered
         columns={columns}
         data-testid="entity-table"
         dataSource={data}

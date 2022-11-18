@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { addTeam, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
-import { LOGIN } from '../../constants/constants';
+import {
+    addTeam,
+    interceptURL, uuid,
+    verifyResponseStatusCode
+} from '../../common/common';
 
 const buTeamName = `bu-${uuid()}`;
 const divTeamName = `div-${uuid()}`;
@@ -26,20 +29,13 @@ const getTeam = (teamName) => {
     teamType: 'BusinessUnit',
     description: `Team ${teamName} Description`,
     ownername: 'admin',
-  }
+  };
 };
 
 describe('Add nested teams and test TeamsSelectable', () => {
-  before(() => {
-    cy.clearLocalStorageSnapshot();
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
-    cy.saveLocalStorage('localstorage');
-  });
   beforeEach(() => {
-    cy.log('Restoring local storage snapshot')
-    cy.restoreLocalStorage('localstorage');
-    cy.clickOnLogo();
+    cy.login();
+
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     interceptURL('GET', '/api/v1/users*', 'getTeams');
     // Clicking on teams
@@ -53,7 +49,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
 
   it('Add teams', () => {
     interceptURL('GET', '/api/v1/permissions/team/*', 'getPermissions');
-    teamNames.forEach(teamName => {
+    teamNames.forEach((teamName) => {
       addTeam(getTeam(teamName));
 
       cy.reload();
@@ -73,9 +69,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="add-user"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="add-user"]').should('be.visible').click();
 
     cy.get('.ant-select-selector')
       .should('exist')
@@ -84,12 +78,13 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .click()
       .type(buTeamName);
 
-    teamNames.forEach(teamName => {
+    teamNames.forEach((teamName) => {
       cy.get('.ant-tree-select-dropdown')
-        .contains(teamName).should('be.visible');
+        .contains(teamName)
+        .should('be.visible');
     });
 
-    teamNames.forEach(teamName => {
+    teamNames.forEach((teamName) => {
       cy.get('.ant-select-selector')
         .should('exist')
         .scrollIntoView()
@@ -97,7 +92,8 @@ describe('Add nested teams and test TeamsSelectable', () => {
         .click()
         .type(teamName);
       cy.get('.ant-tree-select-dropdown')
-        .contains(teamName).should('be.visible');
+        .contains(teamName)
+        .should('be.visible');
     });
   });
 });

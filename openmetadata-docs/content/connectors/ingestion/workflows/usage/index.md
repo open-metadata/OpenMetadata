@@ -4,7 +4,7 @@ slug: /connectors/ingestion/workflows/usage
 ---
 
 # Usage Workflow
-Learn how to configure the Usage workflow from the UI to ingest Query history and Lineage data from your data sources.
+Learn how to configure the Usage workflow from the UI to ingest Query history data from your data sources.
 
 This workflow is available ONLY for the following connectors:
 - [BigQuery](/connectors/database/bigquery)
@@ -32,9 +32,9 @@ Learn how to do so 👇
 
 ## UI Configuration
 
-Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add Query Usage and Entity Lineage information.
+Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add Query Usage information.
 
-This will populate the Queries and Lineage tab from the Table Entity Page.
+This will populate the Queries tab from the Table Entity Page.
 
 <Image src="/images/openmetadata/ingestion/workflows/usage/table-entity-page.png" alt="table-entity-page" caption="Table Entity Page"/>
 

@@ -15,19 +15,22 @@ package org.openmetadata.service.secrets;
 
 import static java.util.Objects.isNull;
 
-import java.util.List;
+import com.google.common.annotations.VisibleForTesting;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Locale;
 import lombok.Getter;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
+import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.AuthenticationMechanismBuilder;
+import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class SecretsManager {
@@ -36,37 +39,146 @@ public abstract class SecretsManager {
 
   @Getter private final SecretsManagerProvider secretsManagerProvider;
 
+  private Fernet fernet;
+
   protected SecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
     this.secretsManagerProvider = secretsManagerProvider;
     this.clusterPrefix = clusterPrefix;
+    this.fernet = Fernet.getInstance();
   }
 
-  public boolean isLocal() {
-    return false;
-  }
-
-  public abstract Object encryptOrDecryptServiceConnectionConfig(
-      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt);
-
-  abstract Object encryptOrDecryptDbtConfigSource(Object dbtConfigSource, String serviceName, boolean encrypt);
-
-  public void encryptOrDecryptDbtConfigSource(IngestionPipeline ingestionPipeline, boolean encrypt) {
-    encryptOrDecryptDbtConfigSource(ingestionPipeline, ingestionPipeline.getService(), encrypt);
-  }
-
-  public void encryptOrDecryptDbtConfigSource(
-      IngestionPipeline ingestionPipeline, EntityReference service, boolean encrypt) {
-    // DatabaseServiceMetadataPipeline contains dbtConfigSource and must be encrypted
-    if (service.getType().equals(Entity.DATABASE_SERVICE)
-        && ingestionPipeline.getPipelineType().equals(PipelineType.METADATA)) {
-      DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
-          JsonUtils.convertValue(
-              ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
-      databaseServiceMetadataPipeline.setDbtConfigSource(
-          encryptOrDecryptDbtConfigSource(
-              databaseServiceMetadataPipeline.getDbtConfigSource(), service.getName(), encrypt));
-      ingestionPipeline.getSourceConfig().setConfig(databaseServiceMetadataPipeline);
+  public Object encryptOrDecryptServiceConnectionConfig(
+      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType, boolean encrypt) {
+    try {
+      Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
+      Object newConnectionConfig = JsonUtils.convertValue(connectionConfig, clazz);
+      return encryptOrDecryptPasswordFields(
+          newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), encrypt);
+    } catch (Exception e) {
+      throw InvalidServiceConnectionException.byMessage(
+          connectionType, String.format("Failed to encrypt connection instance of %s", connectionType));
     }
+  }
+
+  public AuthenticationMechanism encryptOrDecryptAuthenticationMechanism(
+      String name, AuthenticationMechanism authenticationMechanism, boolean encrypt) {
+    if (authenticationMechanism != null) {
+      authenticationMechanism = AuthenticationMechanismBuilder.build(authenticationMechanism);
+      try {
+        return (AuthenticationMechanism)
+            encryptOrDecryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), encrypt);
+      } catch (Exception e) {
+        throw InvalidServiceConnectionException.byMessage(
+            name, String.format("Failed to encrypt user bot instance [%s]", name));
+      }
+    }
+    return null;
+  }
+
+  public IngestionPipeline encryptOrDecryptIngestionPipeline(IngestionPipeline ingestionPipeline, boolean encrypt) {
+    IngestionPipeline ingestion = IngestionPipelineBuilder.build(ingestionPipeline);
+    try {
+      return (IngestionPipeline)
+          encryptOrDecryptPasswordFields(ingestion, buildSecretId(true, "pipeline", ingestion.getName()), encrypt);
+    } catch (Exception e) {
+      throw InvalidServiceConnectionException.byMessage(
+          ingestion.getName(),
+          String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestion.getName()));
+    }
+  }
+
+  private Object encryptOrDecryptPasswordFields(Object targetObject, String name, boolean encrypt) {
+    if (encrypt) {
+      encryptPasswordFields(targetObject, name);
+    } else {
+      decryptPasswordFields(targetObject);
+    }
+    return targetObject;
+  }
+
+  private void encryptPasswordFields(Object toEncryptObject, String secretId) {
+    // for each get method
+    Arrays.stream(toEncryptObject.getClass().getMethods())
+        .filter(this::isGetMethodOfObject)
+        .forEach(
+            method -> {
+              Object obj = getObjectFromMethod(method, toEncryptObject);
+              String fieldName = method.getName().replaceFirst("get", "");
+              // if the object matches the package of openmetadata
+              if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+                // encryptPasswordFields
+                encryptPasswordFields(obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                // check if it has annotation
+              } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                // store value if proceed
+                String newFieldValue = storeValue(fieldName, (String) obj, secretId);
+                // get setMethod
+                Method toSet = getToSetMethod(toEncryptObject, obj, fieldName);
+                // set new value
+                setValueInMethod(
+                    toEncryptObject,
+                    Fernet.isTokenized(newFieldValue) ? newFieldValue : fernet.encrypt(newFieldValue),
+                    toSet);
+              }
+            });
+  }
+
+  private void decryptPasswordFields(Object toDecryptObject) {
+    // for each get method
+    Arrays.stream(toDecryptObject.getClass().getMethods())
+        .filter(this::isGetMethodOfObject)
+        .forEach(
+            method -> {
+              Object obj = getObjectFromMethod(method, toDecryptObject);
+              String fieldName = method.getName().replaceFirst("get", "");
+              // if the object matches the package of openmetadata
+              if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+                // encryptPasswordFields
+                decryptPasswordFields(obj);
+                // check if it has annotation
+              } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                String fieldValue = (String) obj;
+                // get setMethod
+                Method toSet = getToSetMethod(toDecryptObject, obj, fieldName);
+                // set new value
+                setValueInMethod(
+                    toDecryptObject, Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue, toSet);
+              }
+            });
+  }
+
+  protected abstract String storeValue(String fieldName, String value, String secretId);
+
+  private void setValueInMethod(Object toEncryptObject, String fieldValue, Method toSet) {
+    try {
+      toSet.invoke(toEncryptObject, fieldValue);
+    } catch (IllegalAccessException | InvocationTargetException e) {
+      throw new SecretsManagerException(e.getMessage());
+    }
+  }
+
+  private Method getToSetMethod(Object toEncryptObject, Object obj, String fieldName) {
+    try {
+      return toEncryptObject.getClass().getMethod("set" + fieldName, obj.getClass());
+    } catch (NoSuchMethodException e) {
+      throw new SecretsManagerException(e.getMessage());
+    }
+  }
+
+  private Object getObjectFromMethod(Method method, Object toEncryptObject) {
+    Object obj;
+    try {
+      obj = method.invoke(toEncryptObject);
+    } catch (IllegalAccessException | InvocationTargetException e) {
+      throw new SecretsManagerException(e.getMessage());
+    }
+    return obj;
+  }
+
+  private boolean isGetMethodOfObject(Method method) {
+    return method.getName().startsWith("get")
+        && !method.getReturnType().equals(Void.TYPE)
+        && !method.getReturnType().isPrimitive();
   }
 
   protected String getSecretSeparator() {
@@ -77,17 +189,25 @@ public abstract class SecretsManager {
     return true;
   }
 
-  protected String buildSecretId(String... secretIdValues) {
+  protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
     StringBuilder format = new StringBuilder();
-    format.append(startsWithSeparator() ? getSecretSeparator() : "");
-    format.append(clusterPrefix);
-    for (String secretIdValue : List.of(secretIdValues)) {
-      if (isNull(secretIdValue)) {
-        throw new SecretsManagerException("Cannot build a secret id with null values.");
-      }
-      format.append(getSecretSeparator());
+    if (addClusterPrefix) {
+      format.append(startsWithSeparator() ? getSecretSeparator() : "");
+      format.append(clusterPrefix);
+    } else {
       format.append("%s");
     }
+    // skip first one in case of addClusterPrefix is false to avoid adding extra separator at the beginning
+    Arrays.stream(secretIdValues)
+        .skip(addClusterPrefix ? 0 : 1)
+        .forEach(
+            secretIdValue -> {
+              if (isNull(secretIdValue)) {
+                throw new SecretsManagerException("Cannot build a secret id with null values.");
+              }
+              format.append(getSecretSeparator());
+              format.append("%s");
+            });
     return String.format(format.toString(), (Object[]) secretIdValues).toLowerCase();
   }
 
@@ -103,19 +223,8 @@ public abstract class SecretsManager {
     return serviceType.value().toLowerCase(Locale.ROOT);
   }
 
-  public abstract Object storeTestConnectionObject(TestServiceConnection testServiceConnection);
-
-  public abstract Object encryptOrDecryptBotUserCredentials(String botUserName, Object securityConfig, boolean encrypt);
-
-  public abstract Object encryptOrDecryptBotCredentials(String botName, String botUserName, boolean encrypt);
-
-  public void validateServiceConnection(Object connectionConfig, String connectionType, ServiceType serviceType) {
-    try {
-      Class<?> clazz = createConnectionConfigClass(connectionType, extractConnectionPackageName(serviceType));
-      JsonUtils.readValue(JsonUtils.pojoToJson(connectionConfig), clazz);
-    } catch (Exception exception) {
-      throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to construct connection instance of %s", connectionType));
-    }
+  @VisibleForTesting
+  void setFernet(Fernet fernet) {
+    this.fernet = fernet;
   }
 }

@@ -21,13 +21,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.utils.secrets.secrets_manager_factory import (
-    get_secrets_manager,
-    get_secrets_manager_from_om_connection,
-)
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.singleton import Singleton
-
-from .test_secrets_manager import TestSecretsManager
 
 
 class TestSecretsManagerFactory(TestCase):
@@ -37,31 +32,25 @@ class TestSecretsManagerFactory(TestCase):
 
     def test_get_not_implemented_secret_manager(self):
         with self.assertRaises(NotImplementedError) as not_implemented_error:
-            om_connection: OpenMetadataConnection = (
-                TestSecretsManager.External.build_open_metadata_connection(
-                    SecretsManagerProvider.noop
-                )
+            om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
+                SecretsManagerProvider.noop
             )
             om_connection.secretsManagerProvider = "aws"
-            get_secrets_manager_from_om_connection(om_connection)
+            SecretsManagerFactory(om_connection.secretsManagerProvider)
             self.assertEqual(
                 "[any] is not implemented.", not_implemented_error.exception
             )
 
     def test_get_none_secret_manager(self):
-        om_connection: OpenMetadataConnection = (
-            TestSecretsManager.External.build_open_metadata_connection(
-                SecretsManagerProvider.noop
-            )
+        om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
+            SecretsManagerProvider.noop
         )
         om_connection.secretsManagerProvider = None
-        assert get_secrets_manager_from_om_connection(om_connection) is not None
-        assert (
-            get_secrets_manager(
-                om_connection.secretsManagerProvider, om_connection.clusterName
-            )
-            is not None
+
+        secrets_manager_factory = SecretsManagerFactory(
+            om_connection.secretsManagerProvider
         )
+        assert secrets_manager_factory.get_secrets_manager() is not None
 
     @patch("metadata.clients.aws_client.boto3")
     def test_all_providers_has_implementation(self, mocked_boto3):
@@ -76,14 +65,17 @@ class TestSecretsManagerFactory(TestCase):
                 secretsManagerProvider=secret_manager_provider,
                 hostPort="http://localhost:8585",
             )
-            assert (
-                get_secrets_manager_from_om_connection(open_metadata_connection)
-                is not None
+            secrets_manager_factory = SecretsManagerFactory(
+                open_metadata_connection.secretsManagerProvider,
+                open_metadata_connection.clusterName,
             )
-            assert (
-                get_secrets_manager(
-                    open_metadata_connection.secretsManagerProvider,
-                    open_metadata_connection.clusterName,
-                )
-                is not None
-            )
+            assert secrets_manager_factory.get_secrets_manager() is not None
+
+    @staticmethod
+    def build_open_metadata_connection(
+        secret_manager_provider: SecretsManagerProvider,
+    ) -> OpenMetadataConnection:
+        return OpenMetadataConnection(
+            secretsManagerProvider=secret_manager_provider,
+            hostPort="http://localhost:8585/api",
+        )

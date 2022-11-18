@@ -19,6 +19,7 @@
       "EditTier",
       "EditCustomFields",
       "EditLineage",
+      "EditStatus",
       "EditReviewers",
       "EditTests",
       "EditQueries",
@@ -227,7 +228,8 @@
       "EditDescription",
       "EditDisplayName",
       "EditCustomFields",
-      "EditLineage"
+      "EditLineage",
+      "EditStatus"
     ]
   },
   {
@@ -366,18 +368,6 @@
     ]
   },
   {
-    "name" : "type",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
     "name" : "user",
     "operations" : [
       "Create",
@@ -440,6 +430,17 @@
     ]
   },
   {
+    "name" : "type",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName"
+    ]
+  },
+  {
     "name" : "webAnalyticEvent",
     "operations" : [
       "Create",
@@ -448,6 +449,36 @@
       "EditAll",
       "EditDescription",
       "EditDisplayName"
+    ]
+  },
+  {
+    "name" : "dataInsightChart",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
+  },
+  {
+    "name" : "kpi",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
+  },
+  {
+    "name" : "metadataService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
     ]
   }
 ]

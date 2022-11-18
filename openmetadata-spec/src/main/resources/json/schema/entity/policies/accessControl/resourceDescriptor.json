@@ -29,6 +29,7 @@
         "EditTier",
         "EditCustomFields",
         "EditLineage",
+        "EditStatus",
         "EditReviewers",
         "EditTests",
         "EditQueries",

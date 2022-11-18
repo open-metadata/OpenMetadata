@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { IngestionType, ServiceCategory } from '../../enums/service.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
@@ -29,24 +28,6 @@ export interface ConnectorConfig {
   includeViews: boolean;
   excludeDataProfiler?: boolean;
   enableDataProfiler?: boolean;
-}
-export interface IngestionData {
-  id?: string;
-  name: string;
-  displayName: string;
-  ingestionType: IngestionType;
-  service: EntityReference;
-  scheduleInterval: string;
-  ingestionStatuses?: Array<{
-    state: string;
-    startDate: string;
-    endDate: string;
-  }>;
-  nextExecutionDate?: string;
-  connectorConfig?: ConnectorConfig;
-  owner?: { id: string; name?: string; type: string };
-  startDate?: string;
-  endDate?: string;
 }
 
 export interface IngestionProps {

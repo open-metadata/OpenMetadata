@@ -4,13 +4,20 @@
   "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataServerConnection",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection",
   "definitions": {
     "openmetadataType": {
       "description": "OpenMetadata service type",
       "type": "string",
       "enum": ["OpenMetadata"],
       "default": "OpenMetadata"
+    },
+    "componentConfig": {
+      "description": "key/value pairs to pass to sink component.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "properties": {
@@ -181,8 +188,26 @@
       "type": "boolean",
       "default": false
     },
-    "supportsMetadataExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    "elasticsSearch": {
+      "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of sink component ex: metadata",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "supportsDataInsightExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataInsightExtraction"
+    },
+    "supportsElasticSearchReindexingExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsElasticSearchReindexingExtraction"
     }
   },
   "additionalProperties": false,

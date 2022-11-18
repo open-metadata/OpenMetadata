@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-    getCurrentLocaleDate,
-    getFutureLocaleDateFromCurrentDate
-} from '../../../src/utils/TimeUtils';
-import {
-    descriptionBox,
-    interceptURL,
-    login,
-    verifyResponseStatusCode,
-    visitEntityDetailsPage
-} from '../../common/common';
+import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from '../../../src/utils/TimeUtils';
+import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
@@ -259,19 +250,19 @@ describe('Entity Details Page', () => {
     cy.get('#endtDate').should('be.visible').type(endDate);
     cy.get(descriptionBox).type('Description');
 
-    cy.get('.ant-modal-footer > .ant-btn-primary')
+    interceptURL('POST', '/api/v1/feed', 'waitForAnnouncement')
+    cy.get('[id="announcement-submit"]').scrollIntoView()
       .should('be.visible')
-      .contains('Submit')
-      .scrollIntoView()
       .click();
 
-    cy.wait(5000);
-
+    verifyResponseStatusCode('@waitForAnnouncement', 201)
+    cy.get('.Toastify__close-button >').should('be.visible').click()
     cy.get('.anticon > svg').should('be.visible').click();
 
     // reload page to get the active announcement card
+    interceptURL('GET', '/api/v1/feed?entityLink=*&type=Announcement&activeAnnouncement=true', 'getEntityDetails')
     cy.reload();
-
+    verifyResponseStatusCode('@getEntityDetails', 200)
     // check for announcement card on entity page
     cy.get('[data-testid="announcement-card"]').should('be.visible');
 
@@ -279,7 +270,6 @@ describe('Entity Details Page', () => {
   };
 
   it('Add Owner and Tier for entity', () => {
-    
     addOwnerAndTier(DELETE_ENTITY.table);
   });
 

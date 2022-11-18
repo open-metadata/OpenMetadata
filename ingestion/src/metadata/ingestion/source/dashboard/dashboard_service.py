@@ -20,7 +20,6 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
@@ -108,12 +107,6 @@ class DashboardServiceTopology(ServiceTopology):
                 clear_cache=True,
             ),
             NodeStage(
-                type_=CreateUserRequest,
-                context="owner",
-                processor="yield_owner",
-                nullable=True,
-            ),
-            NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
@@ -146,11 +139,11 @@ class DashboardSourceStatus(SourceStatus):
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
-        logger.info(f"Scanned: {record}")
+        logger.debug(f"Scanned: {record}")
 
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append(key)
-        logger.warning(f"Filtered {key}: {reason}")
+        logger.debug(f"Filtered {key}: {reason}")
 
 
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -220,14 +213,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return  # Dashboard does not support fetching tags except Tableau
 
-    def yield_owner(
-        self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[CreateUserRequest]]:
-        """
-        Method to fetch dashboard owner
-        """
-        return  # Dashboard does not support fetching owner details except Tableau
-
     def yield_dashboard_usage(
         self, *args, **kwargs  # pylint: disable=W0613
     ) -> Optional[Iterable[DashboardUsage]]:
@@ -246,7 +231,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DashboardServiceTopology()
     context = create_source_context(topology)
 
-    @abstractmethod
     def __init__(
         self,
         config: WorkflowSource,

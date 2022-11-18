@@ -27,6 +27,7 @@ import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.exception.PipelineServiceClientException;
 import org.openmetadata.service.util.JsonUtils;
@@ -36,6 +37,14 @@ import org.openmetadata.service.util.PipelineServiceClient;
 public class AirflowRESTClient extends PipelineServiceClient {
   private static final String API_ENDPOINT = "api/v1/openmetadata";
   private static final String DAG_ID = "dag_id";
+
+  private static final Map<String, String> TYPE_TO_TASK =
+      Map.of(
+          PipelineType.METADATA.toString(), "ingestion_task",
+          PipelineType.PROFILER.toString(), "profiler_task",
+          PipelineType.LINEAGE.toString(), "lineage_task",
+          PipelineType.USAGE.toString(), "usage_task",
+          PipelineType.TEST_SUITE.toString(), "test_suite_task");
 
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     super(
@@ -55,6 +64,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
+        ingestionPipeline.setDeployed(true);
         return response.body();
       }
     } catch (Exception e) {
@@ -143,19 +153,15 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
-      String statusEndPoint = "%s/%s/status?dag_id=%s";
+      String statusEndPoint = "%s/%s/status?dag_id=%s&only_queued=true";
       response =
           getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
-        List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
-        ingestionPipeline.setPipelineStatuses(statuses);
-        ingestionPipeline.setDeployed(true);
-        return ingestionPipeline;
-      } else if (response.statusCode() == 404) {
-        ingestionPipeline.setDeployed(false);
+        List<PipelineStatus> pipelineStatusList = JsonUtils.readObjects(response.body(), PipelineStatus.class);
+        return pipelineStatusList;
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage(ingestionPipeline.getName(), e.getMessage());
@@ -170,7 +176,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public Response getServiceStatus() {
     HttpResponse<String> response;
     try {
-      response = getRequestNoAuthForJsonContent("%s/%s/health", serviceURL, API_ENDPOINT);
+      response = getRequestNoAuthForJsonContent(serviceURL, API_ENDPOINT);
       if (response.statusCode() == 200) {
         JSONObject responseJSON = new JSONObject(response.body());
         String ingestionVersion = responseJSON.getString("version");
@@ -248,12 +254,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
+  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after) {
     HttpResponse<String> response;
+    String taskId = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString());
+    // Init empty after query param
+    String afterParam = "";
+    if (after != null) {
+      afterParam = String.format("&after=%s", after);
+    }
     try {
       response =
           getRequestAuthenticatedForJsonContent(
-              "%s/%s/last_dag_logs?dag_id=%s", serviceURL, API_ENDPOINT, ingestionPipeline.getName());
+              "%s/%s/last_dag_logs?dag_id=%s&task_id=%s%s",
+              serviceURL, API_ENDPOINT, ingestionPipeline.getName(), taskId, afterParam);
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
@@ -283,9 +296,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
         .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
   }
 
-  private HttpResponse<String> getRequestNoAuthForJsonContent(String stringUrlFormat, Object... stringReplacement)
+  private HttpResponse<String> getRequestNoAuthForJsonContent(Object... stringReplacement)
       throws IOException, InterruptedException {
-    String url = String.format(stringUrlFormat, stringReplacement);
+    String url = String.format("%s/%s/health", stringReplacement);
     HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header(CONTENT_HEADER, CONTENT_TYPE).GET().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }

@@ -174,7 +174,7 @@ const DatasetDetailsProps = {
   deletePostHandler: jest.fn(),
   tagUpdateHandler: jest.fn(),
   fetchFeedHandler: jest.fn(),
-  handleExtentionUpdate: jest.fn(),
+  handleExtensionUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
 };
 

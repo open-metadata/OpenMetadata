@@ -10,6 +10,7 @@ In this section, we provide guides and references to use the PostgreSQL connecto
 Configure and schedule PostgreSQL metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
 - [Data Profiler](#data-profiler)
 - [DBT Integration](#dbt-integration)
 
@@ -227,6 +228,15 @@ caption="Edit and Deploy the Ingestion Pipeline"
 />
 
 From the Connection tab, you can also Edit the Service if needed.
+
+## Query Usage and Lineage Ingestion
+
+<Tile
+icon="manage_accounts"
+title="Usage Workflow"
+text="Learn more about how to configure the Usage Workflow to ingest Query and Lineage information from the UI."
+link="/connectors/ingestion/workflows/usage"
+/>
 
 ## Data Profiler
 

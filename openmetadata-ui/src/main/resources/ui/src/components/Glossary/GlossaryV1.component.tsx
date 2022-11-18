@@ -27,7 +27,7 @@ import {
 import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
-import { GlossaryTermAssets, LoadingState } from 'Models';
+import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
@@ -67,7 +67,7 @@ import './GlossaryV1.style.less';
 const { Title } = Typography;
 
 type Props = {
-  assetData: GlossaryTermAssets;
+  assetData: AssetsDataType;
   deleteStatus: LoadingState;
   isSearchResultEmpty: boolean;
   glossaryList: ModifiedGlossaryData[];
@@ -349,6 +349,7 @@ const GlossaryV1 = ({
                     }>
                     <button
                       className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
+                      data-testid="add-glossary"
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
@@ -367,6 +368,7 @@ const GlossaryV1 = ({
                 ) : (
                   <DirectoryTree
                     multiple
+                    className="glossary-tree-container"
                     expandedKeys={expandedKey}
                     loadedKeys={loadingKey}
                     selectedKeys={[selectedKey]}
@@ -577,7 +579,7 @@ const GlossaryV1 = ({
           <ButtonAntd
             ghost
             className="tw-h-8 tw-rounded tw-my-3"
-            data-testid="add-webhook-button"
+            data-testid="add-new-glossary"
             disabled={!createGlossaryPermission}
             type="primary"
             onClick={handleAddGlossaryClick}>

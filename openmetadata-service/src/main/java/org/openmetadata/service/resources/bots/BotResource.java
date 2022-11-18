@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.bots;
 
+import static org.openmetadata.service.security.DefaultAuthorizer.user;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,36 +47,74 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 @Path("/v1/bots")
 @Api(value = "Bot collection", tags = "Bot collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots")
+@Collection(name = "bots", order = 8) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
   public BotResource(CollectionDAO dao, Authorizer authorizer) {
     super(Bot.class, new BotRepository(dao), authorizer);
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    // Load system bots
+    List<Bot> bots = dao.getEntitiesFromSeedData();
+    String domain = SecurityUtil.getDomain(config);
+    for (Bot bot : bots) {
+      String userName = bot.getBotUser().getName();
+      User user = user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
+
+      // Add role corresponding to the bot to the user
+      user.setRoles(List.of(RoleResource.getRole(getRoleForBot(bot.getName()))));
+      user = DefaultAuthorizer.addOrUpdateBotUser(user, config);
+
+      bot.withId(UUID.randomUUID())
+          .withBotUser(user.getEntityReference())
+          .withUpdatedBy(userName)
+          .withUpdatedAt(System.currentTimeMillis());
+      dao.initializeEntity(bot);
+    }
+  }
+
+  private static String getRoleForBot(String botName) {
+    switch (botName) {
+      case Entity.INGESTION_BOT_NAME:
+        return Entity.INGESTION_BOT_ROLE;
+      case Entity.QUALITY_BOT_NAME:
+        return Entity.QUALITY_BOT_ROLE;
+      case Entity.PROFILER_BOT_NAME:
+        return Entity.PROFILER_BOT_ROLE;
+      default:
+        throw new IllegalArgumentException("No role found for the bot " + botName);
+    }
   }
 
   @Override
@@ -87,10 +127,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     @SuppressWarnings("unused")
     public BotList() {
       /* Required for serde */
-    }
-
-    public BotList(List<Bot> data) {
-      super(data);
     }
   }
 
@@ -244,7 +280,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create)
       throws IOException {
     Bot bot = getBot(securityContext, create);
-    return create(uriInfo, securityContext, bot, false);
+    return create(uriInfo, securityContext, bot);
   }
 
   @PUT
@@ -263,14 +299,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
     Bot bot = getBot(securityContext, create);
-    Response response = createOrUpdate(uriInfo, securityContext, bot, false);
-    // ensures the secrets' manager store the credentials even when the botUser does not change
-    bot = (Bot) response.getEntity();
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (!BotType.BOT.equals(bot.getBotType())) {
-      secretsManager.encryptOrDecryptBotCredentials(bot.getBotType().value(), bot.getBotUser().getName(), true);
-    }
-    return response;
+    return createOrUpdate(uriInfo, securityContext, bot);
   }
 
   @PATCH
@@ -319,17 +348,32 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the Bot", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    BotType botType = dao.get(null, id, EntityUtil.Fields.EMPTY_FIELDS).getBotType();
-    if (!BotType.BOT.equals(botType)) {
-      throw new IllegalArgumentException(String.format("[%s] can not be deleted.", botType.value()));
-    }
-    return delete(uriInfo, securityContext, id, true, hardDelete, false);
+    return delete(uriInfo, securityContext, id, true, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted bot.",
+      tags = "bots",
+      description = "Restore a soft deleted bot.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Bot ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class)))
+      })
+  public Response restoreBot(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Bot getBot(CreateBot create, String user) throws IOException {
     return copy(new Bot(), create, user)
         .withBotUser(create.getBotUser())
-        .withBotType(BotType.BOT)
+        .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());
   }
 

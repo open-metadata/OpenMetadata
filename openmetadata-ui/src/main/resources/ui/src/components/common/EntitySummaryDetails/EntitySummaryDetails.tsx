@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GROUP_TEAM_TYPE_CHANGE_MSG } from '../../../constants/HelperTextUtil';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
@@ -44,6 +45,7 @@ export interface GetInfoElementsProps {
   updateTeamType?: (type: TeamType) => void;
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
+  deleted?: boolean;
 }
 
 const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
@@ -78,8 +80,10 @@ const EntitySummaryDetails = ({
   updateTeamType,
   removeTier,
   currentOwner,
+  deleted = false,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
+  const { t } = useTranslation();
   const displayVal = data.placeholderText || data.value;
   const [show, setShow] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
@@ -135,11 +139,11 @@ const EntitySummaryDetails = ({
             )
           ) : (
             <>
-              No Owner
+              {t('label.no-entity', { entity: 'Owner' })}
               <span
                 data-testid={`edit-${data.key}-icon`}
                 onClick={() => setShow(!show)}>
-                {updateOwner ? <EditIcon /> : null}
+                {updateOwner && !deleted ? <EditIcon /> : null}
               </span>
             </>
           );
@@ -152,7 +156,7 @@ const EntitySummaryDetails = ({
         retVal =
           !displayVal || displayVal === '--' ? (
             <>
-              No Tier
+              {t('label.no-entity', { entity: 'Tier' })}
               <Dropdown
                 overlay={
                   <TierCard
@@ -163,7 +167,7 @@ const EntitySummaryDetails = ({
                 }
                 trigger={['click']}>
                 <span data-testid={`edit-${data.key}-icon`}>
-                  {updateTier ? <EditIcon /> : null}
+                  {updateTier && !deleted ? <EditIcon /> : null}
                 </span>
               </Dropdown>
             </>
@@ -176,7 +180,14 @@ const EntitySummaryDetails = ({
 
     case 'TeamType':
       {
-        retVal = displayVal ? <>Type - </> : <></>;
+        retVal = displayVal ? <>{t('label.type')} - </> : <></>;
+      }
+
+      break;
+
+    case 'Usage':
+      {
+        retVal = <>{t('label.usage')} - </>;
       }
 
       break;
@@ -190,7 +201,7 @@ const EntitySummaryDetails = ({
                 ? data.showLabel
                   ? `${data.key}: `
                   : null
-                : `No ${data.key}`
+                : `${t('label.no-entity', { entity: data.key })}`
               : null}
           </>
         );
@@ -219,7 +230,10 @@ const EntitySummaryDetails = ({
                 data-testid="owner-link"
                 href={data.value as string}
                 rel="noopener noreferrer"
-                target={data.openInNewTab ? '_blank' : '_self'}>
+                target={data.openInNewTab ? '_blank' : '_self'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}>
                 {displayVal}
                 {data.openInNewTab && (
                   <>

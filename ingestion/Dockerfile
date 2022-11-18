@@ -29,20 +29,36 @@ RUN apt-get update \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
+
+# Security patches for base image
+# monitor no fixed version for
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-LIBTASN16-3061097
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-MARIADB105-2940589
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-BIND9-3027852
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-EXPAT-3023031 we are already installed the latest
+RUN echo "deb http://deb.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list
+RUN apt-get update \
+    && apt-get install -t bullseye-backports -y \
+    curl \
+    libpcre2-8-0 \
+    postgresql-common \
+    expat \
+    bind9
+
 # Required for Starting Ingestion Container in Docker Compose
-COPY --chown=airflow:airflow ingestion/ingestion_dependency.sh /opt/airflow
+COPY --chown=airflow:0 ingestion/ingestion_dependency.sh /opt/airflow
 # Required for Ingesting Sample Data
-COPY --chown=airflow:airflow ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
+COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
 # Required for Airflow DAGs of Sample Data
-COPY --chown=airflow:airflow ingestion/examples/airflow/dags /opt/airflow/dags
+COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 # Provide Execute Permissions to shell script
 RUN chmod +x /opt/airflow/ingestion_dependency.sh
 USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install --upgrade openmetadata-managed-apis --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
-RUN pip install --upgrade openmetadata-ingestion[${INGESTION_DEPENDENCY}]
+RUN pip install "openmetadata-managed-apis==0.12.2.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.12.2.4"
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 

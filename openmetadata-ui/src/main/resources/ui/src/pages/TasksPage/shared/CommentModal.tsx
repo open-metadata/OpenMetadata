@@ -13,6 +13,7 @@
 
 import { Modal } from 'antd';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { Thread } from '../../../generated/entity/feed/thread';
 
@@ -23,6 +24,7 @@ interface CommentModalProps {
   setComment: (value: string) => void;
   onClose: () => void;
   onConfirm: () => void;
+  isLoading: boolean;
 }
 
 const CommentModal: FC<CommentModalProps> = ({
@@ -32,7 +34,10 @@ const CommentModal: FC<CommentModalProps> = ({
   setComment,
   onClose,
   onConfirm,
+  isLoading,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Modal
       centered
@@ -42,6 +47,7 @@ const CommentModal: FC<CommentModalProps> = ({
         className: 'ant-btn-link-custom',
       }}
       closable={false}
+      confirmLoading={isLoading}
       data-testid="comment-modal"
       okButtonProps={{
         disabled: !comment,
@@ -56,7 +62,7 @@ const CommentModal: FC<CommentModalProps> = ({
       <RichTextEditor
         height="208px"
         initialValue={comment}
-        placeHolder="Add comment"
+        placeHolder={t('label.add-comment')}
         style={{ marginTop: '0px' }}
         onTextChange={setComment}
       />

@@ -1,15 +1,14 @@
-import { GlossaryTermAssets } from 'Models';
+import { AssetsDataType } from 'Models';
 import React from 'react';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { Paging } from '../../../generated/type/paging';
-import { getTierFromSearchTableTags } from '../../../utils/TableUtils';
+import { getTierFromEntityInfo } from '../../../utils/CommonUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/next-previous/NextPrevious';
 import TableDataCard from '../../common/table-data-card/TableDataCard';
 
 interface Props {
-  assetData: GlossaryTermAssets;
+  assetData: AssetsDataType;
   currentPage: number;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
 }
@@ -34,14 +33,7 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
                 service={entity.service}
                 serviceType={entity.serviceType || '--'}
                 tags={entity.tags}
-                tier={
-                  (
-                    entity.tier?.tagFQN ||
-                    getTierFromSearchTableTags(
-                      (entity.tags || []).map((tag) => tag.tagFQN)
-                    )
-                  )?.split(FQN_SEPARATOR_CHAR)[1]
-                }
+                tier={getTierFromEntityInfo(entity)}
                 usage={entity.weeklyPercentileRank}
               />
             </div>

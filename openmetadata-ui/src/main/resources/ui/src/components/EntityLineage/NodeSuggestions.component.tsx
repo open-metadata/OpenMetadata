@@ -25,7 +25,6 @@ import React, {
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
-import { INITIAL_FROM } from '../../constants/explore.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -65,7 +64,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     try {
       const data = await searchData(
         value,
-        INITIAL_FROM,
+        1,
         PAGE_SIZE,
         '',
         '',
@@ -118,7 +117,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           aria-orientation="vertical"
           className="tw-origin-top-right tw-absolute tw-z-20
           tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none text-body"
           role="menu">
           {data.map((entity) => (
             <div

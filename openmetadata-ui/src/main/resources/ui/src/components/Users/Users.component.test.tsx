@@ -22,228 +22,13 @@ import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
+import {
+  mockEntityData,
+  mockTeamsData,
+  mockUserData,
+  mockUserRole,
+} from './mocks/User.mocks';
 import Users from './Users.component';
-
-const mockUserData = {
-  id: 'd6764107-e8b4-4748-b256-c86fecc66064',
-  name: 'xyz',
-  displayName: 'XYZ',
-  version: 0.1,
-  updatedAt: 1648704499857,
-  updatedBy: 'xyz',
-  email: 'xyz@gmail.com',
-  href: 'http://localhost:8585/api/v1/users/d6764107-e8b4-4748-b256-c86fecc66064',
-  isAdmin: false,
-  profile: {
-    images: {
-      image:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s96-c',
-      image24:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s24-c',
-      image32:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s32-c',
-      image48:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s48-c',
-      image72:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s72-c',
-      image192:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s192-c',
-      image512:
-        'https://lh3.googleusercontent.com/a-/AOh14Gh8NPux8jEPIuyPWOxAB1od9fGN188Kcp5HeXgc=s512-c',
-    },
-  },
-  teams: [
-    {
-      id: '3362fe18-05ad-4457-9632-84f22887dda6',
-      type: 'team',
-      name: 'Finance',
-      description: 'This is Finance description.',
-      displayName: 'Finance',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/teams/3362fe18-05ad-4457-9632-84f22887dda6',
-    },
-    {
-      id: '5069ddd4-d47e-4b2c-a4c4-4c849b97b7f9',
-      type: 'team',
-      name: 'Data_Platform',
-      description: 'This is Data_Platform description.',
-      displayName: 'Data_Platform',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/teams/5069ddd4-d47e-4b2c-a4c4-4c849b97b7f9',
-    },
-    {
-      id: '7182cc43-aebc-419d-9452-ddbe2fc4e640',
-      type: 'team',
-      name: 'Customer_Support',
-      description: 'This is Customer_Support description.',
-      displayName: 'Customer_Support',
-      deleted: true,
-      href: 'http://localhost:8585/api/v1/teams/7182cc43-aebc-419d-9452-ddbe2fc4e640',
-    },
-  ],
-  owns: [],
-  follows: [],
-  deleted: false,
-  roles: [
-    {
-      id: 'ce4df2a5-aaf5-4580-8556-254f42574aa7',
-      type: 'role',
-      name: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/roles/ce4df2a5-aaf5-4580-8556-254f42574aa7',
-    },
-  ],
-  inheritedRoles: [
-    {
-      id: '3fa30148-72f6-4205-8cab-56696cc23440',
-      type: 'role',
-      name: 'DataConsumer',
-      fullyQualifiedName: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/roles/3fa30148-72f6-4205-8cab-56696cc23440',
-    },
-  ],
-};
-
-const mockTeamsData = {
-  data: [
-    {
-      id: '28aebba3-9399-46b5-af3a-7fcd852bbec9',
-      teamType: 'Group',
-      name: 'Cloud_Infra',
-      fullyQualifiedName: 'Cloud_Infra',
-      displayName: 'Cloud_Infra',
-      description: 'This is Cloud_Infra description.',
-      version: 0.3,
-      updatedAt: 1664444252977,
-      updatedBy: 'bharatdussa',
-      href: 'http://localhost:8585/api/v1/teams/28aebba3-9399-46b5-af3a-7fcd852bbec9',
-      childrenCount: 0,
-      userCount: 18,
-      isJoinable: true,
-      changeDescription: {
-        fieldsAdded: [],
-        fieldsUpdated: [
-          { name: 'teamType', oldValue: 'Department', newValue: 'Group' },
-        ],
-        fieldsDeleted: [],
-        previousVersion: 0.2,
-      },
-      deleted: false,
-      defaultRoles: [],
-      inheritedRoles: [
-        {
-          id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-          type: 'role',
-          name: 'DataConsumer',
-          fullyQualifiedName: 'DataConsumer',
-          description:
-            'Users with Data Consumer role use different data assets for their day to day work.',
-          displayName: 'Data Consumer',
-          deleted: false,
-          href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-        },
-      ],
-    },
-    {
-      id: 'd03d909c-fad6-4d71-b9b4-797187b69f80',
-      teamType: 'Department',
-      name: 'Customer_Support',
-      fullyQualifiedName: 'Customer_Support',
-      displayName: 'Customer_Support',
-      description: 'This is Customer_Support description.',
-      version: 0.1,
-      updatedAt: 1663830444887,
-      updatedBy: 'anonymous',
-      href: 'http://localhost:8585/api/v1/teams/d03d909c-fad6-4d71-b9b4-797187b69f80',
-      childrenCount: 1,
-      userCount: 22,
-      isJoinable: true,
-      deleted: false,
-      defaultRoles: [],
-      inheritedRoles: [
-        {
-          id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-          type: 'role',
-          name: 'DataConsumer',
-          fullyQualifiedName: 'DataConsumer',
-          description:
-            'Users with Data Consumer role use different data assets for their day to day work.',
-          displayName: 'Data Consumer',
-          deleted: false,
-          href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-        },
-      ],
-    },
-    {
-      id: '3f188b91-049f-44e5-8d12-b11047ddfcbc',
-      teamType: 'Group',
-      name: 'Data_Platform',
-      fullyQualifiedName: 'Data_Platform',
-      displayName: 'Data_Platform',
-      description: 'This is Data_Platform description.',
-      version: 0.2,
-      updatedAt: 1664444283179,
-      updatedBy: 'bharatdussa',
-      href: 'http://localhost:8585/api/v1/teams/3f188b91-049f-44e5-8d12-b11047ddfcbc',
-      childrenCount: 0,
-      userCount: 17,
-      isJoinable: true,
-      changeDescription: {
-        fieldsAdded: [],
-        fieldsUpdated: [
-          { name: 'teamType', oldValue: 'Department', newValue: 'Group' },
-        ],
-        fieldsDeleted: [],
-        previousVersion: 0.1,
-      },
-      deleted: false,
-      defaultRoles: [],
-      inheritedRoles: [
-        {
-          id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-          type: 'role',
-          name: 'DataConsumer',
-          fullyQualifiedName: 'DataConsumer',
-          description:
-            'Users with Data Consumer role use different data assets for their day to day work.',
-          displayName: 'Data Consumer',
-          deleted: false,
-          href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-        },
-      ],
-    },
-  ],
-  paging: { total: 7 },
-};
-
-const mockUserRole = {
-  data: [
-    {
-      id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-      name: 'DataConsumer',
-      fullyQualifiedName: 'DataConsumer',
-      displayName: 'Data Consumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      version: 0.1,
-      updatedAt: 1663825430544,
-      updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/roles/3ed7b995-ce8b-4720-9beb-6f4a9c626920',
-      allowDelete: false,
-      deleted: false,
-    },
-  ],
-  paging: {
-    total: 1,
-  },
-};
 
 jest.mock('../../axiosAPIs/rolesAPIV1.ts', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
@@ -325,6 +110,8 @@ const mockProp = {
   feedFilterHandler: feedFilterHandler,
   fetchData: fetchData,
   fetchFeedHandler: mockFetchFeedHandler,
+  followingEntities: mockEntityData,
+  ownedEntities: mockEntityData,
   isFeedLoading: false,
   paging: mockPaging,
   postFeedHandler: postFeed,
@@ -335,6 +122,8 @@ const mockProp = {
   updateThreadHandler: jest.fn(),
   setFeedFilter: jest.fn(),
   threadType: 'Task' as ThreadType.Task,
+  onFollowingEntityPaginate: jest.fn(),
+  onOwnedEntityPaginate: jest.fn(),
   onSwitchChange: jest.fn(),
 };
 
@@ -439,9 +228,9 @@ describe('Test User Component', () => {
       }
     );
 
-    const datasetCard = await findByTestId(container, 'dataset-card');
+    const datasetContainer = await findByTestId(container, 'table-container');
 
-    expect(datasetCard).toBeInTheDocument();
+    expect(datasetContainer).toBeInTheDocument();
   });
 
   it('Should render inherited roles', async () => {
