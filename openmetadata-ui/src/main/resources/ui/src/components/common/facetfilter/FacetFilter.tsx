@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Divider } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AggregationEntry } from '../../../interface/search.interface';
 import {
   compareAggregationKey,
@@ -31,6 +32,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
   onChangeShowDeleted,
   onClearFilter,
 }) => {
+  const { t } = useTranslation();
   const [aggregationsPageSize, setAggregationsPageSize] = useState(
     Object.fromEntries(Object.keys(aggregations).map((k) => [k, 5]))
   );
@@ -105,7 +107,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           disabled={isEmpty(filters)}
           type="link"
           onClick={() => onClearFilter({})}>
-          Clear All
+          {t('label.clearAll')}
         </Button>
       </div>
       <hr className="m-y-xs" />
@@ -113,16 +115,16 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
         className="sidebar-my-data-holder mt-2 mb-3"
         data-testid="show-deleted-cntnr">
         <div
-          className="filter-group tw-justify-between tw-mb-1"
+          className="filter-group justify-between m-b-xs"
           data-testid="filter-container-deleted">
-          <div className="tw-flex">
-            <div className="filters-title tw-w-36 tw-truncate custom-checkbox-label">
+          <div className="flex">
+            <div className="filters-title w-36 truncate custom-checkbox-label">
               Show Deleted
             </div>
           </div>
           <div
             className={classNames(
-              'toggle-switch tw-mr-0',
+              'toggle-switch m-r-0',
               showDeleted ? 'open' : null
             )}
             data-testid="show-deleted"
@@ -141,8 +143,8 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           { length: aggregationsLength }
         ) => (
           <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
-            <div className="tw-flex tw-justify-between tw-flex-col">
-              <h6 className="tw-heading tw-my-1">
+            <div className="flex justify-between flex-col">
+              <h6 className="font-medium text-grey-body m-b-sm m-y-xs">
                 {translateAggregationKeyToTitle(aggregationKey)}
               </h6>
             </div>
@@ -169,33 +171,31 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                 {aggregationsPageSize[aggregationKey] <
                   aggregation.buckets.length && (
                   <p
-                    className="link-text tw-text-xs"
+                    className="link-text text-xs"
                     onClick={() =>
                       setAggregationsPageSize((prev) => ({
                         ...prev,
                         [aggregationKey]: prev[aggregationKey] + 5,
                       }))
                     }>
-                    View more
+                    {t('label.view-more')}
                   </p>
                 )}
                 {aggregationsPageSize[aggregationKey] > 5 && (
                   <p
-                    className="link-text text-xs tw-text-left"
+                    className="link-text text-xs text-left"
                     onClick={() =>
                       setAggregationsPageSize((prev) => ({
                         ...prev,
                         [aggregationKey]: Math.max(5, prev[aggregationKey] - 5),
                       }))
                     }>
-                    View less
+                    {t('label.view-less')}
                   </p>
                 )}
               </div>
             </div>
-            {index !== aggregationsLength - 1 && (
-              <div className="tw-filter-seperator" />
-            )}
+            {index !== aggregationsLength - 1 && <Divider className="m-0" />}
           </div>
         )
       )}
