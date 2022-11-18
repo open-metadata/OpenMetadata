@@ -12,7 +12,7 @@ content below 👇
 
 <YouTube videoId="ld43_jafL9w" start="0:00" end="6:47"/>
 
-## Requirements (OSX and Linux)
+## Requirements (OSX, Linux and Windows)
 
 Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing
 OpenMetadata.
@@ -21,7 +21,7 @@ OpenMetadata.
 
 ### Python (version 3.7 or greater)
 
-To check what version of Python you have, you can use the following command:
+To check the version of Python you have, use the following command:
 
 ```bash
 python3 --version
@@ -33,7 +33,7 @@ python3 --version
 applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps
 deliver software in packages called Containers.
 
-To check what version of Docker you have, please use the following command.
+To check the version of Docker you have, use the following command.
 
 ```commandline
 docker --version
@@ -107,6 +107,9 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
 - Install [WSL2](https://ubuntu.com/wsl)
 - Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts/9n6svws3rx71)
 - Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
+  - Once installed, please follow the steps [here](https://docs.docker.com/desktop/windows/wsl/) and complete all the pre-requisites for a seamless installation and deployment.
+  - After completion of the pre-requisites, please install `python3-pip` and `python3-venv` on your Ubuntu system.
+    - Command: `apt install python3-pip  python3-venv` (Ensure that you have the priviledge to install packages, if not, please use Super User.)
 
 </Collapse>
 

@@ -13,6 +13,7 @@
 Utils module to convert different file types from s3 buckets into a dataframe
 """
 
+import gzip
 import json
 import os
 import traceback
@@ -25,6 +26,12 @@ from pyarrow.parquet import ParquetFile
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+def _get_json_text(key: str, text: bytes) -> str:
+    if key.endswith(".gz"):
+        return gzip.decompress(text)
+    return text.decode("utf-8")
 
 
 def read_csv_from_s3(
@@ -70,8 +77,8 @@ def read_json_from_s3(client: Any, key: str, bucket_name: str, sample_size=100):
     Read the json file from the s3 bucket and return a dataframe
     """
     obj = client.get_object(Bucket=bucket_name, Key=key)
-    json_text = obj["Body"].read().decode("utf-8")
-    data = json.loads(json_text)
+    json_text = obj["Body"].read()
+    data = json.loads(_get_json_text(key, json_text))
     if isinstance(data, list):
         return [pd.DataFrame.from_dict(data[:sample_size])]
     return [

@@ -59,7 +59,7 @@ logger = ingestion_logger()
 
 DATALAKE_INT_TYPES = {"int64", "INT"}
 
-DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet")
+DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet", ".json.gz")
 
 
 class DatalakeSource(DatabaseServiceSource):
@@ -338,7 +338,7 @@ class DatalakeSource(DatabaseServiceSource):
             if key.endswith(".tsv"):
                 return read_tsv_from_gcs(key, bucket_name)
 
-            if key.endswith(".json"):
+            if key.endswith((".json", ".json.gz")):
                 return read_json_from_gcs(client, key, bucket_name)
 
             if key.endswith(".parquet"):
@@ -370,7 +370,7 @@ class DatalakeSource(DatabaseServiceSource):
             if key.endswith(".tsv"):
                 return read_tsv_from_s3(client, key, bucket_name)
 
-            if key.endswith(".json"):
+            if key.endswith((".json", ".json.gz")):
                 return read_json_from_s3(client, key, bucket_name)
 
             if key.endswith(".parquet"):

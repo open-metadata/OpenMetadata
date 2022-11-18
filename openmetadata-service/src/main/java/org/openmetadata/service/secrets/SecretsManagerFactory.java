@@ -15,7 +15,7 @@ package org.openmetadata.service.secrets;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class SecretsManagerFactory {
   @Getter private static SecretsManager secretsManager;

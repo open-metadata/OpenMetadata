@@ -70,7 +70,7 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default JwtResponse getNewAccessToken(String userName, TokenRefreshRequest request) throws IOException {
+  default JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 

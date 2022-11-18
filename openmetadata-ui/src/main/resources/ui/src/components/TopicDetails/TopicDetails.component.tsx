@@ -57,7 +57,7 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
@@ -198,7 +198,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -209,7 +209,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -221,7 +221,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       count: feedCount,
     },
     {
-      name: 'Sample Data',
+      name: t('label.sample-data'),
       icon: {
         alt: 'sample_data',
         name: 'sample-data',
@@ -232,7 +232,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 3,
     },
     {
-      name: 'Config',
+      name: t('label.config'),
       icon: {
         alt: 'config',
         name: 'icon-config',
@@ -243,7 +243,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 4,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       icon: {
         alt: 'lineage',
         name: 'icon-lineage',
@@ -254,7 +254,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-properties'),
       isProtected: false,
       position: 6,
     },
@@ -262,7 +262,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: t('label.owner'),
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -273,7 +273,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: 'Tier',
+      key: t('label.tier'),
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
     ...getConfigDetails(),
@@ -465,8 +465,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
           currentOwner={topicDetails.owner}
@@ -524,12 +524,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
             <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full tw--ml-5">
+                    <div className="tw-col-span-full">
                       <Description
                         description={description}
                         entityFieldTasks={getEntityFieldThreadCounts(
@@ -569,7 +569,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     </Fragment>
                   ) : (
                     <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-                      No schema data available
+                      {t('message.no-schema-data-available')}
                     </div>
                   )}
                 </>
@@ -672,7 +672,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           ) : null}
         </div>
       </div>
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

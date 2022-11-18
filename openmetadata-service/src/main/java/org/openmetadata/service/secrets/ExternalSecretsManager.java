@@ -14,7 +14,7 @@
 package org.openmetadata.service.secrets;
 
 import java.util.Locale;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
