@@ -281,7 +281,10 @@
     "quality": "Quality",
     "insights": "Insights",
     "govern": "Govern",
-    "usage": "Usage"
+    "usage": "Usage",
+    "kpi-target-achieved": "Congratulations on achieving your goals!",
+    "kpi-target-achieved-before-time": "Awesome! You’ve reached your target well before time.",
+    "kpi-target-overdue": "Never mind. It’s time to restructure your goals and progress faster."
   },
   "message": {
     "service-email-required": "Service account Email is required",
