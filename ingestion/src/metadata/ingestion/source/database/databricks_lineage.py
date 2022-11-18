@@ -24,8 +24,6 @@ from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
-QUERY_WITH_DBT = '/* {"app": "dbt"'
 
 
 class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
@@ -65,13 +63,9 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
                 )
                 for row in data:
                     try:
-                        query_text = row.get("query_text")
-                        if not (
-                            query_text.startswith(QUERY_WITH_DBT)
-                            or query_text.startswith(QUERY_WITH_OM_VERSION)
-                        ):
+                        if self.client.is_query_valid(row):
                             yield TableQuery(
-                                query=query_text,
+                                query=row.get("query_text"),
                                 userName=row.get("user_name"),
                                 startTime=row.get("query_start_time_ms"),
                                 endTime=row.get("execution_end_time_ms"),

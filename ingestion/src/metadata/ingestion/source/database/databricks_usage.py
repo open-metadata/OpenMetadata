@@ -24,8 +24,6 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
-QUERY_WITH_DBT = '/* {"app": "dbt"'
 
 
 class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
@@ -95,11 +93,7 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
             )
             for row in data:
                 try:
-                    query_text = row.get("query_text")
-                    if not (
-                        query_text.startswith(QUERY_WITH_DBT)
-                        or query_text.startswith(QUERY_WITH_OM_VERSION)
-                    ):
+                    if self.client.is_query_valid(row):
                         queries.append(
                             TableQuery(
                                 query=row.get("query_text"),
