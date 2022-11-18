@@ -338,7 +338,7 @@ class DatalakeSource(DatabaseServiceSource):
             if key.endswith(".tsv"):
                 return read_tsv_from_gcs(key, bucket_name)
 
-            if key.endswith(".json") or key.endswith(".json.gz"):
+            if key.endswith((".json", ".json.gz")):
                 return read_json_from_gcs(client, key, bucket_name)
 
             if key.endswith(".parquet"):
@@ -370,7 +370,7 @@ class DatalakeSource(DatabaseServiceSource):
             if key.endswith(".tsv"):
                 return read_tsv_from_s3(client, key, bucket_name)
 
-            if key.endswith(".json") or key.endswith(".json.gz"):
+            if key.endswith((".json", ".json.gz")):
                 return read_json_from_s3(client, key, bucket_name)
 
             if key.endswith(".parquet"):
