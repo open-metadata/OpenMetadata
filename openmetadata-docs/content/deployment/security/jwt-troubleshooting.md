@@ -18,7 +18,7 @@ This config with `"http://localhost:8585/api/v1/config/jwks"` is the default beh
 
 JWT Tokens are issued by private certificates.
 
-We need public keys to decrypt it and get at the user name and expiry time etc from that token.
+We need public keys to decrypt it and get that token's user name, expiry time, etc.
 
 In OpenMetadata users can enable SSO for users to login and use JWT tokens issued by OpenMetadata for bots
 The way OpenMetadata issues a JWT Token is using this [config](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml#L155). It uses the `rsapublicKeyFilePath` file to generate a token.
