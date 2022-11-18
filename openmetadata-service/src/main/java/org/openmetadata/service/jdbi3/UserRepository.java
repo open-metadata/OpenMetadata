@@ -89,6 +89,9 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getInheritedRoles(User user) throws IOException {
+    if (Boolean.TRUE.equals(user.getIsBot())) {
+      return null; // No inherited roles for bots
+    }
     getTeams(user);
     return SubjectCache.getInstance() != null ? SubjectCache.getInstance().getRolesForTeams(getTeams(user)) : null;
   }
