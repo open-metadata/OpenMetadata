@@ -14,20 +14,15 @@
 import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, {
-  FC,
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { dropdownIcon as DropDownIcon } from '../../../utils/svgconstant';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import DropDownList from '../../dropdown/DropDownList';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
@@ -42,7 +37,6 @@ import {
   threadFilterList,
 } from './ActivityFeedList.util';
 import FeedListBody from './FeedListBody';
-import FeedListSeparator from './FeedListSeparator';
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
@@ -60,6 +54,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   hideThreadFilter,
   stickyFilter,
 }) => {
+  const { t } = useTranslation();
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -254,7 +249,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         </div>
       ) : null}
       {feedList.length > 0 ? (
-        <Fragment>
+        <>
           {relativeDays.map((d, i) => {
             return (
               <div data-testid={`feed${i}`} key={i}>
@@ -277,7 +272,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             );
           })}
           {withSidePanel && selectedThread && isPanelOpen ? (
-            <Fragment>
+            <>
               <ActivityFeedPanel
                 deletePostHandler={deletePostHandler}
                 open={!isUndefined(selectedThread) && isPanelOpen}
@@ -286,23 +281,19 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 updateThreadHandler={updateThreadHandler}
                 onCancel={onCancel}
               />
-            </Fragment>
+            </>
           ) : null}
-        </Fragment>
+        </>
       ) : (
-        <Fragment>
+        <>
           {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
             <NoFeedPlaceholder entityName={entityName} />
           ) : !refreshFeedCount ? (
-            <Fragment>
-              <FeedListSeparator
-                className="tw-relative tw-mt-1 tw-mb-3.5 tw-pb-5"
-                relativeDay=""
-              />
-              <>No conversations found. Try changing the filter.</>
-            </Fragment>
+            <ErrorPlaceHolder>
+              {t('message.no-data-available-for-selected-filter')}
+            </ErrorPlaceHolder>
           ) : null}
-        </Fragment>
+        </>
       )}
       {confirmationState.state && (
         <DeleteConfirmationModal
