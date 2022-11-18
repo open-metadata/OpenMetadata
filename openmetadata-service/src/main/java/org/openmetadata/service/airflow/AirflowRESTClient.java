@@ -50,8 +50,6 @@ public class AirflowRESTClient extends PipelineServiceClient {
           "usage_task",
           PipelineType.TEST_SUITE.toString(),
           "test_suite_task",
-          PipelineType.TEST_SUITE.toString(),
-          "test_suite_task",
           PipelineType.DATA_INSIGHT.toString(),
           "data_insight_task",
           PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
