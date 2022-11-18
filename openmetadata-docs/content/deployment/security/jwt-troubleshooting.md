@@ -23,7 +23,7 @@ We need public keys to decrypt it and get at the user name and expiry time etc f
 In OpenMetadata users can enable SSO for users to login and use JWT tokens issued by OpenMetadata for bots
 The way OpenMetadata issues a JWT Token is using this [config](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml#L155). It uses the `rsapublicKeyFilePath` file to generate a token.
 
-When the ingestion worfkflow uses this token , we use rsapublicKeyPath to decrypt it. The way we do this is using the response from this endpoint `http://localhost:8585/api/v1/config/jwks`.
+When the ingestion workflow uses this token, we use `rsapublicKeyPath` to decrypt it. The way we do this is using the response from this endpoint `http://localhost:8585/api/v1/config/jwks`.
 
 
 ## Get JWT token from UI.
