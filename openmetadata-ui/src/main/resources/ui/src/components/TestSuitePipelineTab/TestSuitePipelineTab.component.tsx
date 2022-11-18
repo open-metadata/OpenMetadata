@@ -560,6 +560,7 @@ const TestSuitePipelineTab = () => {
       <Col span={24}>
         <Table
           bordered
+          className="table-shadow"
           columns={pipelineColumns}
           dataSource={testSuitePipelines.map((test) => ({
             ...test,
