@@ -177,7 +177,7 @@ test = {
     "scikit-learn==1.0.2",
     "pandas==1.3.5",
     # great_expectations tests
-    "great-expectations==0.15.32",
+    "great-expectations~=0.15.0",
     # Airflow tests
     "apache-airflow==2.3.3",
     # Domo test
