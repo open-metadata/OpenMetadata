@@ -28,11 +28,20 @@ from great_expectations.core.expectation_validation_result import (
 )
 from great_expectations.data_asset.data_asset import DataAsset
 from great_expectations.data_context.data_context import DataContext
-from great_expectations.data_context.types.resource_identifiers import (
-    ExpectationSuiteIdentifier,
-    GeCloudIdentifier,
-    ValidationResultIdentifier,
-)
+
+try:
+    from great_expectations.data_context.types.resource_identifiers import (
+        ExpectationSuiteIdentifier,
+        GeCloudIdentifier,
+        ValidationResultIdentifier,
+    )
+except ImportError:
+    from great_expectations.data_context.types.resource_identifiers import (
+        ExpectationSuiteIdentifier,
+        GXCloudIdentifier as GeCloudIdentifier,
+        ValidationResultIdentifier,
+    )
+
 from great_expectations.validator.validator import Validator
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL

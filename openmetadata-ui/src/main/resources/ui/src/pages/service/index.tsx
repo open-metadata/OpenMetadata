@@ -11,18 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
+import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
+import { t } from 'i18next';
+import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServiceOption, ServiceTypes } from 'Models';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
@@ -70,10 +65,6 @@ import {
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
-} from '../../constants/HelperTextUtil';
-import {
   OPENMETADATA,
   servicesDisplayName,
 } from '../../constants/services.const';
@@ -93,11 +84,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
-import {
-  getEntityMissingError,
-  getEntityName,
-  isEven,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -537,148 +524,73 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getTableHeaders = (): JSX.Element => {
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        return (
-          <>
-            <th className="tableHead-cell">Database Name</th>
-            <th className="tableHead-cell">Description</th>
-            <th className="tableHead-cell">Owner</th>
-            <th className="tableHead-cell">Usage</th>
-          </>
-        );
-      }
-      case ServiceCategory.MESSAGING_SERVICES: {
-        return (
-          <>
-            <th className="tableHead-cell">Topic Name</th>
-            <th className="tableHead-cell">Description</th>
-            <th className="tableHead-cell">Owner</th>
-            <th className="tableHead-cell">Tags</th>
-          </>
-        );
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        return (
-          <>
-            <th className="tableHead-cell">Dashboard Name</th>
-            <th className="tableHead-cell">Description</th>
-            <th className="tableHead-cell">Owner</th>
-            <th className="tableHead-cell">Tags</th>
-          </>
-        );
-      }
-      case ServiceCategory.PIPELINE_SERVICES: {
-        return (
-          <>
-            <th className="tableHead-cell">Pipeline Name</th>
-            <th className="tableHead-cell">Description</th>
-            <th className="tableHead-cell">Owner</th>
-            <th className="tableHead-cell">Tags</th>
-          </>
-        );
-      }
-      case ServiceCategory.ML_MODEL_SERVICES: {
-        return (
-          <>
-            <th className="tableHead-cell">Model Name</th>
-            <th className="tableHead-cell">Description</th>
-            <th className="tableHead-cell">Owner</th>
-            <th className="tableHead-cell">Tags</th>
-          </>
-        );
-      }
-      default:
-        return <></>;
-    }
-  };
-
   const getOptionalTableCells = (data: Database | Topic) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
         const database = data as Database;
 
         return (
-          <td className="tableBody-cell">
-            <p>
-              {getUsagePercentile(
-                database.usageSummary?.weeklyStats?.percentileRank || 0
-              )}
-            </p>
-          </td>
+          <p>
+            {getUsagePercentile(
+              database?.usageSummary?.weeklyStats?.percentileRank || 0
+            )}
+          </p>
         );
       }
       case ServiceCategory.MESSAGING_SERVICES: {
         const topic = data as Topic;
 
-        return (
-          <td className="tableBody-cell">
-            {topic.tags && topic.tags?.length > 0 ? (
-              <TagsViewer
-                showStartWith={false}
-                sizeCap={-1}
-                tags={topic.tags}
-                type="border"
-              />
-            ) : (
-              '--'
-            )}
-          </td>
+        return topic.tags && topic.tags?.length > 0 ? (
+          <TagsViewer
+            showStartWith={false}
+            sizeCap={-1}
+            tags={topic.tags}
+            type="border"
+          />
+        ) : (
+          '--'
         );
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
         const dashboard = data as Dashboard;
 
-        return (
-          <td className="tableBody-cell">
-            {dashboard.tags && dashboard.tags?.length > 0 ? (
-              <TagsViewer
-                showStartWith={false}
-                sizeCap={-1}
-                tags={dashboard.tags}
-                type="border"
-              />
-            ) : (
-              '--'
-            )}
-          </td>
+        return dashboard.tags && dashboard.tags?.length > 0 ? (
+          <TagsViewer
+            showStartWith={false}
+            sizeCap={-1}
+            tags={dashboard.tags}
+            type="border"
+          />
+        ) : (
+          '--'
         );
       }
       case ServiceCategory.PIPELINE_SERVICES: {
         const pipeline = data as Pipeline;
 
-        return (
-          <td className="tableBody-cell">
-            {pipeline.tags && pipeline.tags?.length > 0 ? (
-              <TagsViewer
-                showStartWith={false}
-                sizeCap={-1}
-                tags={pipeline.tags}
-                type="border"
-              />
-            ) : (
-              '--'
-            )}
-          </td>
+        return pipeline.tags && pipeline.tags?.length > 0 ? (
+          <TagsViewer
+            showStartWith={false}
+            sizeCap={-1}
+            tags={pipeline.tags}
+            type="border"
+          />
+        ) : (
+          '--'
         );
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
         const mlmodal = data as Mlmodel;
 
-        return (
-          <td className="tableBody-cell">
-            {mlmodal.tags && mlmodal.tags?.length > 0 ? (
-              <TagsViewer
-                showStartWith={false}
-                sizeCap={-1}
-                tags={mlmodal.tags}
-                type="border"
-              />
-            ) : (
-              '--'
-            )}
-          </td>
+        return mlmodal.tags && mlmodal.tags?.length > 0 ? (
+          <TagsViewer
+            showStartWith={false}
+            sizeCap={-1}
+            tags={mlmodal.tags}
+            type="border"
+          />
+        ) : (
+          '--'
         );
       }
       default:
@@ -971,8 +883,79 @@ const ServicePage: FunctionComponent = () => {
     fetchServicePermission();
   }, [serviceFQN, serviceCategory]);
 
+  const getColumnDetails = (serviceName: ServiceTypes) => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return [t('label.database-name'), t('label.usage')];
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return [t('label.topic-name'), t('label.tags')];
+      }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        return [t('dashboard-name'), t('label.tags')];
+      }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        return [t('pipeline-name'), t('label.tags')];
+      }
+      case ServiceCategory.ML_MODEL_SERVICES: {
+        return [t('model-name'), t('label.tags')];
+      }
+      default:
+        return [];
+    }
+  };
+
+  const tableColumn: ColumnsType<ServicePageData> = useMemo(() => {
+    const [firstColumn, lastColumn] = getColumnDetails(serviceName);
+
+    return [
+      {
+        title: firstColumn,
+        dataIndex: 'displayName',
+        key: 'displayName',
+        render: (text: string, record: ServicePageData) => {
+          return (
+            <Link to={getLinkForFqn(record.fullyQualifiedName || '')}>
+              {isUndefined(text)
+                ? getEntityName(record as unknown as EntityReference)
+                : text}
+            </Link>
+          );
+        },
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string) =>
+          text?.trim() ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            <span className="tw-no-description">
+              {t('label.no-description')}
+            </span>
+          ),
+      },
+      {
+        title: t('label.owner'),
+        dataIndex: 'owner',
+        key: 'owner',
+        render: (record: ServicePageData) => (
+          <p>{record?.owner?.name || '--'}</p>
+        ),
+      },
+      {
+        title: lastColumn,
+        dataIndex: toLower(lastColumn),
+        key: toLower(lastColumn),
+        render: (record: ServicePageData) =>
+          getOptionalTableCells(record as Database),
+      },
+    ];
+  }, []);
+
   return (
-    <PageContainerV1 className="m-t-md">
+    <PageContainerV1>
       {isLoading ? (
         <Loader />
       ) : isError ? (
@@ -982,22 +965,20 @@ const ServicePage: FunctionComponent = () => {
       ) : (
         <>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Col span={24}>
-              <div
-                className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
-                data-testid="service-page">
-                <Space
-                  align="center"
-                  className="tw-justify-between"
-                  style={{ width: '100%' }}>
+            <Row
+              className="p-x-md p-t-lg"
+              data-testid="service-page"
+              gutter={[0, 12]}>
+              <Col span={24}>
+                <Space align="center" className="justify-between w-full">
                   <TitleBreadcrumb titleLinks={slashedTableName} />
                   {serviceDetails?.serviceType !==
                     MetadataServiceType.OpenMetadata && (
                     <Tooltip
                       title={
                         servicePermission.Delete
-                          ? 'Delete'
-                          : NO_PERMISSION_FOR_ACTION
+                          ? t('label.delete')
+                          : t('message.no-permission-for-action')
                       }>
                       <LegacyButton
                         data-testid="service-delete"
@@ -1012,7 +993,7 @@ const ServicePage: FunctionComponent = () => {
                           viewBox="0 0 24 24"
                           width={14}
                         />
-                        Delete
+                        {t('label.delete')}
                       </LegacyButton>
                     </Tooltip>
                   )}
@@ -1032,10 +1013,11 @@ const ServicePage: FunctionComponent = () => {
                     onCancel={() => setDeleteWidgetVisible(false)}
                   />
                 </Space>
-
-                <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
+              </Col>
+              <Col span={24}>
+                <Space>
                   {extraInfo.map((info, index) => (
-                    <span className="tw-flex" key={index}>
+                    <Space key={index}>
                       <EntitySummaryDetails
                         currentOwner={serviceDetails?.owner}
                         data={info}
@@ -1052,173 +1034,133 @@ const ServicePage: FunctionComponent = () => {
                             : undefined
                         }
                       />
-
-                      {extraInfo.length !== 1 &&
-                      index < extraInfo.length - 1 ? (
-                        <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                          |
-                        </span>
-                      ) : null}
-                    </span>
+                    </Space>
                   ))}
-                </div>
-
-                <div
-                  className="tw-my-2 tw--ml-5"
-                  data-testid="description-container">
-                  <Description
-                    description={description || ''}
-                    entityFqn={serviceFQN}
-                    entityName={serviceFQN}
-                    entityType={serviceCategory.slice(0, -1)}
-                    hasEditAccess={
-                      servicePermission.EditAll ||
-                      servicePermission.EditDescription
-                    }
-                    isEdit={isEdit}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                  />
-                </div>
-
-                <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
-                  <TabsPane
-                    activeTab={activeTab}
-                    className="tw-flex-initial"
-                    setActiveTab={activeTabHandler}
-                    tabs={tabs}
-                  />
-                  <div className="tw-flex-grow">
-                    {activeTab === 1 &&
-                      (isEmpty(data) ? (
-                        <ErrorPlaceHolder
-                          doc={CONNECTORS_DOCS}
-                          heading={servicesDisplayName[serviceName]}
+                </Space>
+              </Col>
+              <Col data-testid="description-container" span={24}>
+                <Description
+                  description={description || ''}
+                  entityFqn={serviceFQN}
+                  entityName={serviceFQN}
+                  entityType={serviceCategory.slice(0, -1)}
+                  hasEditAccess={
+                    servicePermission.EditAll ||
+                    servicePermission.EditDescription
+                  }
+                  isEdit={isEdit}
+                  onCancel={onCancel}
+                  onDescriptionEdit={onDescriptionEdit}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                />
+              </Col>
+              <Col span={24}>
+                <TabsPane
+                  activeTab={activeTab}
+                  className="tw-flex-initial"
+                  setActiveTab={activeTabHandler}
+                  tabs={tabs}
+                />
+                <Col span={24}>
+                  {activeTab === 1 &&
+                    (isEmpty(data) ? (
+                      <ErrorPlaceHolder
+                        doc={CONNECTORS_DOCS}
+                        heading={servicesDisplayName[serviceName]}
+                      />
+                    ) : (
+                      <div data-testid="table-container">
+                        <Table
+                          bordered
+                          className="mt-4 table-shadow"
+                          columns={tableColumn}
+                          components={{
+                            body: {
+                              row: ({
+                                children,
+                              }: {
+                                children: React.ReactNode;
+                              }) => <tr data-testid="column">{children}</tr>,
+                            },
+                          }}
+                          data-testid="database-table"
+                          dataSource={data}
+                          pagination={false}
+                          rowKey="id"
+                          size="small"
                         />
-                      ) : (
-                        <Fragment>
-                          <div
-                            className="tw-my-4 tw-table-container"
-                            data-testid="table-container">
-                            <table
-                              className="tw-bg-white tw-w-full"
-                              data-testid="database-tables">
-                              <thead>
-                                <tr className="tableHead-row">
-                                  {getTableHeaders()}
-                                </tr>
-                              </thead>
-                              <tbody className="tableBody">
-                                {data.map((dataObj, index) => (
-                                  <tr
-                                    className={classNames(
-                                      'tableBody-row',
-                                      !isEven(index + 1) ? 'odd-row' : null
-                                    )}
-                                    data-testid="column"
-                                    key={index}>
-                                    <td className="tableBody-cell">
-                                      <Link
-                                        to={getLinkForFqn(
-                                          dataObj.fullyQualifiedName || ''
-                                        )}>
-                                        {getEntityName(
-                                          dataObj as unknown as EntityReference
-                                        )}
-                                      </Link>
-                                    </td>
-                                    <td className="tableBody-cell">
-                                      {dataObj.description ? (
-                                        <RichTextEditorPreviewer
-                                          markdown={dataObj.description}
-                                        />
-                                      ) : (
-                                        <span className="tw-no-description">
-                                          No description
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="tableBody-cell">
-                                      <p>{dataObj?.owner?.name || '--'}</p>
-                                    </td>
-                                    {getOptionalTableCells(dataObj as Database)}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          {Boolean(
-                            !isNil(paging.after) || !isNil(paging.before)
-                          ) && (
-                            <NextPrevious
-                              currentPage={currentPage}
-                              pageSize={PAGE_SIZE}
-                              paging={paging}
-                              pagingHandler={pagingHandler}
-                              totalCount={paging.total}
-                            />
-                          )}
-                        </Fragment>
-                      ))}
+                        {Boolean(
+                          !isNil(paging.after) || !isNil(paging.before)
+                        ) && (
+                          <NextPrevious
+                            currentPage={currentPage}
+                            pageSize={PAGE_SIZE}
+                            paging={paging}
+                            pagingHandler={pagingHandler}
+                            totalCount={paging.total}
+                          />
+                        )}
+                      </div>
+                    ))}
 
-                    {activeTab === 2 && getIngestionTab()}
+                  {activeTab === 2 && getIngestionTab()}
 
-                    {activeTab === 3 && (
-                      <>
-                        <Space className="w-full my-4 justify-end">
+                  {activeTab === 3 && (
+                    <>
+                      <Space className="w-full my-4 justify-end">
+                        <Tooltip
+                          title={
+                            servicePermission.EditAll
+                              ? t('label.edit-connection')
+                              : t('message.no-permission-for-action')
+                          }>
+                          <Button
+                            ghost
+                            data-testid="edit-connection-button"
+                            disabled={!servicePermission.EditAll}
+                            type="primary"
+                            onClick={handleEditConnection}>
+                            {t('label.edit-connection')}
+                          </Button>
+                        </Tooltip>
+                        {allowTestConn && isAirflowRunning && (
                           <Tooltip
                             title={
                               servicePermission.EditAll
-                                ? 'Edit Connection'
-                                : NO_PERMISSION_FOR_ACTION
+                                ? t('label.test-connection')
+                                : t('message.no-permission-for-action')
                             }>
                             <Button
-                              ghost
-                              data-testid="edit-connection-button"
-                              disabled={!servicePermission.EditAll}
+                              data-testid="test-connection-button"
+                              disabled={
+                                !servicePermission.EditAll ||
+                                isTestingConnection ||
+                                (serviceCategory ===
+                                  ServiceCategory.METADATA_SERVICES &&
+                                  serviceFQN === OPENMETADATA)
+                              }
+                              loading={isTestingConnection}
                               type="primary"
-                              onClick={handleEditConnection}>
-                              Edit Connection
+                              onClick={checkTestConnect}>
+                              {t('label.test-connection')}
                             </Button>
                           </Tooltip>
-                          {allowTestConn && isAirflowRunning && (
-                            <Tooltip
-                              title={
-                                servicePermission.EditAll
-                                  ? 'Test Connection'
-                                  : NO_PERMISSION_FOR_ACTION
-                              }>
-                              <Button
-                                data-testid="test-connection-button"
-                                disabled={
-                                  !servicePermission.EditAll ||
-                                  isTestingConnection ||
-                                  (serviceCategory ===
-                                    ServiceCategory.METADATA_SERVICES &&
-                                    serviceFQN === OPENMETADATA)
-                                }
-                                loading={isTestingConnection}
-                                type="primary"
-                                onClick={checkTestConnect}>
-                                Test Connection
-                              </Button>
-                            </Tooltip>
-                          )}
-                        </Space>
-                        <ServiceConnectionDetails
-                          connectionDetails={connectionDetails || {}}
-                          serviceCategory={serviceCategory}
-                          serviceFQN={serviceDetails?.serviceType || ''}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Col>
+                        )}
+                      </Space>
+                      <ServiceConnectionDetails
+                        connectionDetails={connectionDetails || {}}
+                        serviceCategory={serviceCategory}
+                        serviceFQN={serviceDetails?.serviceType || ''}
+                      />
+                    </>
+                  )}
+                </Col>
+              </Col>
+            </Row>
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              {t('message.no-permission-to-view')}
+            </ErrorPlaceHolder>
           )}
         </>
       )}
