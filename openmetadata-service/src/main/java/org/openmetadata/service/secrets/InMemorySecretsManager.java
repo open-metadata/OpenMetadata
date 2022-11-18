@@ -16,7 +16,7 @@ package org.openmetadata.service.secrets;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
 /** Secret Manager used for testing */

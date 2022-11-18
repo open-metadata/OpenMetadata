@@ -197,7 +197,7 @@ const Description: FC<DescriptionProps> = ({
 
   return (
     <div className={`schema-description tw-relative ${className}`}>
-      <div className="tw-px-3 tw-flex description-inner-main-container tw-items-end">
+      <div className="tw-flex description-inner-main-container tw-items-end">
         <div className="tw-relative">
           <div
             className="description tw-h-full tw-overflow-y-scroll tw-relative "
@@ -205,12 +205,11 @@ const Description: FC<DescriptionProps> = ({
             id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
-                className="tw-pl-2"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
               />
             ) : (
-              <span className="tw-no-description tw-p-2">No description </span>
+              <span className="tw-no-description p-y-xs">No description </span>
             )}
           </div>
           {isEdit && (

@@ -574,6 +574,8 @@ const Ingestion: React.FC<IngestionProps> = ({
         {getSearchedIngestions().length ? (
           <div className="tw-mb-6" data-testid="ingestion-table">
             <Table
+              bordered
+              className="table-shadow"
               columns={tableColumn}
               data-testid="schema-table"
               dataSource={getSearchedIngestions()}

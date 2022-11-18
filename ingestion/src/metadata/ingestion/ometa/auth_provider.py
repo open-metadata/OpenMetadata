@@ -154,7 +154,7 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         from google.oauth2 import service_account
 
         credentials = service_account.IDTokenCredentials.from_service_account_file(
-            self.security_config.secretKey,
+            self.security_config.secretKey.get_secret_value(),
             target_audience=self.security_config.audience,
         )
         request = google.auth.transport.requests.Request()
@@ -195,7 +195,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         from okta.request_executor import RequestExecutor
 
         try:
-            _, my_jwk = JWT.get_PEM_JWK(self.security_config.privateKey)
+            _, my_jwk = JWT.get_PEM_JWK(
+                self.security_config.privateKey.get_secret_value()
+            )
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
             generated_jwt_id = str(uuid.uuid4())
@@ -299,7 +301,8 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         conn = http.client.HTTPSConnection(self.security_config.domain)
         payload = (
             f"grant_type=client_credentials&client_id={self.security_config.clientId}"
-            f"&client_secret={self.security_config.secretKey}&audience=https://{self.security_config.domain}/api/v2/"
+            f"&client_secret={self.security_config.secretKey.get_secret_value()}"
+            f"&audience=https://{self.security_config.domain}/api/v2/"
         )
         headers = {"content-type": "application/x-www-form-urlencoded"}
         conn.request(
@@ -341,7 +344,7 @@ class AzureAuthenticationProvider(AuthenticationProvider):
 
         app = ConfidentialClientApplication(
             client_id=self.security_config.clientId,
-            client_credential=self.security_config.clientSecret,
+            client_credential=self.security_config.clientSecret.get_secret_value(),
             authority=self.security_config.authority,
         )
         data = app.acquire_token_for_client(scopes=self.security_config.scopes)
@@ -386,7 +389,7 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         data = {
             "grant_type": "client_credentials",
             "client_id": self.security_config.clientId,
-            "client_secret": self.security_config.secretKey,
+            "client_secret": self.security_config.secretKey.get_secret_value(),
         }
         response = requests.post(
             url=self.security_config.tokenEndpoint,

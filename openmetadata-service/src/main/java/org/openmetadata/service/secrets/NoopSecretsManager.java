@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.secrets;
 
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class NoopSecretsManager extends SecretsManager {
 
