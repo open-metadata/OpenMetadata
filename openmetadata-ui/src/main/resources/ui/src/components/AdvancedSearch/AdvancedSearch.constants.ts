@@ -24,6 +24,7 @@ import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import { suggestQuery } from '../../axiosAPIs/searchAPI';
 import { SuggestionField } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { renderAdvanceSearchButtons } from '../../utils/AdvancedSearchUtils';
 
 const BaseConfig = AntdConfig as BasicConfig;
 
@@ -33,14 +34,27 @@ const BaseConfig = AntdConfig as BasicConfig;
 export const emptyJsonTree: JsonTree = {
   id: QbUtils.uuid(),
   type: 'group',
+  properties: {
+    conjunction: 'AND',
+    not: false,
+  },
   children1: {
     [QbUtils.uuid()]: {
-      type: 'rule',
+      type: 'group',
       properties: {
-        field: null,
-        operator: null,
-        value: [],
-        valueSrc: [],
+        conjunction: 'AND',
+        not: false,
+      },
+      children1: {
+        [QbUtils.uuid()]: {
+          type: 'rule',
+          properties: {
+            field: null,
+            operator: null,
+            value: [],
+            valueSrc: [],
+          },
+        },
       },
     },
   },
@@ -66,6 +80,11 @@ export const autocomplete: (
       hasMore: false,
     }));
 
+const mainWidgetProps = {
+  fullWidth: true,
+  valueLabel: i18next.t('label.criteria') + ':',
+};
+
 /**
  * Common fields that exit for all searchable entities
  */
@@ -83,6 +102,7 @@ const commonQueryBuilderFields: Fields = {
       name: {
         label: 'username',
         type: 'select',
+        mainWidgetProps,
         fieldSettings: {
           asyncFetch: autocomplete([SearchIndex.USER, SearchIndex.TEAM]),
         },
@@ -90,10 +110,12 @@ const commonQueryBuilderFields: Fields = {
       displayName: {
         label: 'name',
         type: 'text',
+        mainWidgetProps,
       },
       type: {
         label: 'type',
         type: 'select',
+        mainWidgetProps,
         fieldSettings: {
           listValues: [
             { value: 'user', title: 'User' },
@@ -107,6 +129,7 @@ const commonQueryBuilderFields: Fields = {
   'tags.tagFQN': {
     label: 'Tags',
     type: 'select',
+    mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
     },
@@ -115,6 +138,7 @@ const commonQueryBuilderFields: Fields = {
   'tier.tagFQN': {
     label: 'Tier',
     type: 'select',
+    mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
     },
@@ -132,6 +156,7 @@ const serviceQueryBuilderFields: Fields = {
       name: {
         label: 'name',
         type: 'select',
+        mainWidgetProps,
         fieldSettings: {
           asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SERVICE),
         },
@@ -156,6 +181,7 @@ const tableQueryBuilderFields: Fields = {
       name: {
         label: 'name',
         type: 'select',
+        mainWidgetProps,
         fieldSettings: {
           asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.DATABASE),
         },
@@ -175,6 +201,7 @@ const tableQueryBuilderFields: Fields = {
       name: {
         label: 'name',
         type: 'select',
+        mainWidgetProps,
         fieldSettings: {
           asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SCHEMA),
         },
@@ -190,6 +217,7 @@ const tableQueryBuilderFields: Fields = {
   name: {
     label: 'Table',
     type: 'select',
+    mainWidgetProps,
     fieldSettings: {
       asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.ROOT),
     },
@@ -202,6 +230,7 @@ const tableQueryBuilderFields: Fields = {
       name: {
         label: 'name',
         type: 'select',
+        mainWidgetProps,
         fieldSettings: {
           asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.COLUMN),
         },
@@ -209,10 +238,12 @@ const tableQueryBuilderFields: Fields = {
       dataType: {
         label: 'data type',
         type: 'text',
+        mainWidgetProps,
       },
       constraint: {
         label: 'constraint',
         type: 'text',
+        mainWidgetProps,
       },
     },
   },
@@ -287,9 +318,12 @@ const initialConfigWithoutFields: BasicConfig = {
     ...BaseConfig.settings,
     showLabels: true,
     canReorder: false,
+    renderSize: 'medium',
     fieldLabel: i18next.t('label.description') + ':',
     operatorLabel: i18next.t('label.condition') + ':',
+    showNot: false,
     valueLabel: i18next.t('label.criteria') + ':',
+    renderButton: renderAdvanceSearchButtons,
   },
 };
 
