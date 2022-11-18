@@ -308,7 +308,8 @@
     "algorithm": "Algorithm",
     "server": "Server",
     "feature-plural": "Features",
-    "detail-plural": "Details"
+    "detail-plural": "Details",
+    "add-ingestion": "Add {{type}} {{ingestion}}"
   },
   "message": {
     "service-email-required": "Service account Email is required",
