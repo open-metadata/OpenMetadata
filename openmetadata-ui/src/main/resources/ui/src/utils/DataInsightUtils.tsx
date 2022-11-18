@@ -516,6 +516,6 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   } else if (isTargetMet) {
     return t('label.kpi-target-achieved');
   } else {
-    return `${pluralize(day, 'day')} left`;
+    return t('label.day-left', { day: pluralize(day, 'day') });
   }
 };
