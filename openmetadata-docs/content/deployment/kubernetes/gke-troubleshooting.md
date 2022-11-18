@@ -6,7 +6,8 @@ slug: /deployment/kubernetes/gke-troubleshooting
 # GKE Setup Troubleshooting
 
 If you came across `invalid access type while creating the pvc`, and the permission pod is stuck in "pending" state.
-The above error might have occurred due to the pvc volumes not setup or pvc volumes are not mount properly
+
+The above error might have occurred due to the pvc volumes not setup or pvc volumes are not mounted properly.
 
 <div className="w-100 flex justify-center">
 <Image
