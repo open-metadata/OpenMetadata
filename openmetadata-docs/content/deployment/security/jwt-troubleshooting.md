@@ -14,7 +14,7 @@ Add the `{domain}:{port}/config/jwks` in the list of publicKeyUrls
     - "http://localhost:8585/api/v1/config/jwks" (your domain and port)
 ```
 
-This config with `"http://localhost:8585/api/v1/config/jwks"` is default behavior. if you configuring and expecting a jwt token to work, its important that config with that.
+This config with `"http://localhost:8585/api/v1/config/jwks"` is the default behavior. If you are configuring and expecting a JWT token to work, configuring with that extra URL is required.
 
 JWT Tokens are issued by private certificates.
 
