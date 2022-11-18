@@ -27,6 +27,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
@@ -49,7 +50,7 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../../components/containers/PageContainer';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -66,7 +67,6 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -108,7 +108,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { databaseSchemaFQN, tab } = useParams<Record<string, string>>();
@@ -547,7 +547,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [
       {
-        title: 'Table Name',
+        title: t('label.table-name'),
         dataIndex: 'name',
         key: 'name',
         render: (text: string, record: Table) => {
@@ -563,7 +563,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         },
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text: string) =>
@@ -580,6 +580,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const getSchemaTableList = () => {
     return (
       <TableAntd
+        bordered
+        className="table-shadow"
         columns={tableColumn}
         data-testid="databaseSchema-tables"
         dataSource={tableData}
@@ -640,29 +642,28 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         <>
           {databaseSchemaPermission.ViewAll ||
           databaseSchemaPermission.ViewBasic ? (
-            <PageContainer>
-              <div
-                className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
-                data-testid="page-container">
-                <Space
-                  align="center"
-                  className="tw-justify-between"
-                  style={{ width: '100%' }}>
-                  <TitleBreadcrumb titleLinks={slashedTableName} />
-                  <ManageButton
-                    isRecursiveDelete
-                    allowSoftDelete={false}
-                    canDelete={databaseSchemaPermission.Delete}
-                    entityFQN={databaseSchemaFQN}
-                    entityId={databaseSchemaId}
-                    entityName={databaseSchemaName}
-                    entityType={EntityType.DATABASE_SCHEMA}
-                  />
-                </Space>
-
-                <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+            <PageContainerV1>
+              <Row
+                className="p-x-md p-t-lg"
+                data-testid="page-container"
+                gutter={[0, 12]}>
+                <Col span={24}>
+                  <Space align="center" className="justify-between w-full">
+                    <TitleBreadcrumb titleLinks={slashedTableName} />
+                    <ManageButton
+                      isRecursiveDelete
+                      allowSoftDelete={false}
+                      canDelete={databaseSchemaPermission.Delete}
+                      entityFQN={databaseSchemaFQN}
+                      entityId={databaseSchemaId}
+                      entityName={databaseSchemaName}
+                      entityType={EntityType.DATABASE_SCHEMA}
+                    />
+                  </Space>
+                </Col>
+                <Col span={24}>
                   {extraInfo.map((info, index) => (
-                    <span className="tw-flex" key={index}>
+                    <Space key={index}>
                       <EntitySummaryDetails
                         currentOwner={databaseSchema?.owner}
                         data={info}
@@ -679,18 +680,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                             : undefined
                         }
                       />
-
-                      {extraInfo.length !== 1 &&
-                      index < extraInfo.length - 1 ? (
-                        <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                          |
-                        </span>
-                      ) : null}
-                    </span>
+                    </Space>
                   ))}
-                </div>
-
-                <div className="tw-pl-2" data-testid="description-container">
+                </Col>
+                <Col data-testid="description-container" span={24}>
                   <Description
                     description={description}
                     entityFieldThreads={getEntityFieldThreadCounts(
@@ -711,76 +704,87 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
-                </div>
-                <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
-                  <TabsPane
-                    activeTab={activeTab}
-                    className="tw-flex-initial"
-                    setActiveTab={activeTabHandler}
-                    tabs={tabs}
-                  />
-                  <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-                    {activeTab === 1 && (
-                      <Fragment>{getSchemaTableList()}</Fragment>
-                    )}
-                    {activeTab === 2 && (
-                      <Row
-                        className="tw-py-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
-                        id="activityfeed">
-                        <Col offset={4} span={16}>
-                          <ActivityFeedList
-                            hideFeedFilter
-                            hideThreadFilter
-                            isEntityFeed
-                            withSidePanel
-                            className=""
-                            deletePostHandler={deletePostHandler}
-                            entityName={databaseSchemaName}
-                            feedList={entityThread}
-                            postFeedHandler={postFeedHandler}
-                            updateThreadHandler={updateThreadHandler}
-                          />
-                        </Col>
-                      </Row>
-                    )}
-                    <div
-                      data-testid="observer-element"
-                      id="observer-element"
-                      ref={elementRef as RefObject<HTMLDivElement>}>
-                      {getLoader()}
-                    </div>
-                  </div>
-                </div>
-                {threadLink ? (
-                  <ActivityThreadPanel
-                    createThread={createThread}
-                    deletePostHandler={deletePostHandler}
-                    open={Boolean(threadLink)}
-                    postFeedHandler={postFeedHandler}
-                    threadLink={threadLink}
-                    updateThreadHandler={updateThreadHandler}
-                    onCancel={onThreadPanelClose}
-                  />
-                ) : null}
-                {selectedField ? (
-                  <RequestDescriptionModal
-                    createThread={createThread}
-                    defaultValue={getDefaultValue(
-                      databaseSchema?.owner as EntityReference
-                    )}
-                    header="Request description"
-                    threadLink={getEntityFeedLink(
-                      EntityType.DATABASE_SCHEMA,
-                      databaseSchemaFQN,
-                      selectedField
-                    )}
-                    onCancel={closeRequestModal}
-                  />
-                ) : null}
-              </div>
-            </PageContainer>
+                </Col>
+                <Col span={24}>
+                  <Row className="tw-mt-4">
+                    <Col span={24}>
+                      <TabsPane
+                        activeTab={activeTab}
+                        className="tw-flex-initial"
+                        setActiveTab={activeTabHandler}
+                        tabs={tabs}
+                      />
+                    </Col>
+                    <Col className="tw-py-4" span={24}>
+                      {activeTab === 1 && (
+                        <Fragment>{getSchemaTableList()}</Fragment>
+                      )}
+                      {activeTab === 2 && (
+                        <Row
+                          className="tw-py-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
+                          id="activityfeed">
+                          <Col offset={4} span={16}>
+                            <ActivityFeedList
+                              hideFeedFilter
+                              hideThreadFilter
+                              isEntityFeed
+                              withSidePanel
+                              className=""
+                              deletePostHandler={deletePostHandler}
+                              entityName={databaseSchemaName}
+                              feedList={entityThread}
+                              postFeedHandler={postFeedHandler}
+                              updateThreadHandler={updateThreadHandler}
+                            />
+                          </Col>
+                        </Row>
+                      )}
+                      <Col
+                        data-testid="observer-element"
+                        id="observer-element"
+                        ref={elementRef as RefObject<HTMLDivElement>}
+                        span={24}>
+                        {getLoader()}
+                      </Col>
+                    </Col>
+                  </Row>
+                </Col>
+                <Col span={24}>
+                  {threadLink ? (
+                    <ActivityThreadPanel
+                      createThread={createThread}
+                      deletePostHandler={deletePostHandler}
+                      open={Boolean(threadLink)}
+                      postFeedHandler={postFeedHandler}
+                      threadLink={threadLink}
+                      updateThreadHandler={updateThreadHandler}
+                      onCancel={onThreadPanelClose}
+                    />
+                  ) : null}
+                </Col>
+                <Col span={24}>
+                  {selectedField ? (
+                    <RequestDescriptionModal
+                      createThread={createThread}
+                      defaultValue={getDefaultValue(
+                        databaseSchema?.owner as EntityReference
+                      )}
+                      header="Request description"
+                      threadLink={getEntityFeedLink(
+                        EntityType.DATABASE_SCHEMA,
+                        databaseSchemaFQN,
+                        selectedField
+                      )}
+                      onCancel={closeRequestModal}
+                    />
+                  ) : null}
+                </Col>
+              </Row>
+            </PageContainerV1>
           ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+            <ErrorPlaceHolder>
+              {t('message.no-permission-to-view')}
+            </ErrorPlaceHolder>
           )}
         </>
       )}

@@ -35,17 +35,14 @@
       "format": "uri",
       "expose": true
     },
-
     "entityTypes": {
       "description": "entity types of the data source.",
       "type": "string"
     },
-
     "serviceType": {
       "description": "service type of the data source.",
       "type": "string"
     },
-
     "atlasHost": {
       "description": "Atlas Host of the data source.",
       "type": "string"

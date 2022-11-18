@@ -60,7 +60,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 
   return (
     <nav className={className} data-testid="breadcrumb">
-      <ol className="list-reset tw-py-2 tw-rounded tw-flex">
+      <ol className="list-reset tw-rounded tw-flex">
         {titleLinks.map((link, index) => {
           const classes =
             'link-title tw-truncate' +

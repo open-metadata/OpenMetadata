@@ -26,7 +26,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.metadataIngestion.workflow import (
-    ComponentConfig1,
     LogLevels,
     OpenMetadataWorkflowConfig,
     Processor,
@@ -36,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
 
@@ -73,7 +73,7 @@ def build_data_insight_workflow_config(
 
     sink = Sink(
         type="elasticsearch",
-        config=ComponentConfig1(
+        config=ComponentConfig(
             **elasticsearch_service_config_dict,
             **elasticsearch_source_config_dict,
         ),

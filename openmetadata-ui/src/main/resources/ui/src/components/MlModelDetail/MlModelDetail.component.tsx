@@ -67,7 +67,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -173,7 +173,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const mlModelPageInfo: ExtraInfo[] = [
     {
-      key: 'Owner',
+      key: t('label.owner'),
       value: getOwnerValue(mlModelDetail.owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(mlModelDetail.owner),
@@ -187,23 +187,23 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           : undefined,
     },
     {
-      key: 'Tier',
+      key: t('label.tier'),
       value: mlModelTier?.tagFQN
         ? mlModelTier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : '',
     },
     {
-      key: 'Algorithm',
+      key: t('label.algorithm'),
       value: mlModelDetail.algorithm,
       showLabel: true,
     },
     {
-      key: 'Target',
+      key: t('label.target'),
       value: mlModelDetail.target,
       showLabel: true,
     },
     {
-      key: 'Server',
+      key: t('label.server'),
       value: mlModelDetail.server,
       showLabel: true,
       isLink: true,
@@ -211,7 +211,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     ...(!isUndefined(mlModelDetail.dashboard)
       ? [
           {
-            key: 'Dashboard',
+            key: t('label.dashboard'),
             value: getDashboardDetailsPath(
               mlModelDetail.dashboard?.fullyQualifiedName as string
             ),
@@ -225,7 +225,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const tabs = [
     {
-      name: 'Features',
+      name: t('label.feature-plural'),
       icon: {
         alt: 'features',
         name: 'icon-features',
@@ -236,13 +236,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       isProtected: false,
       position: 2,
       count: feedCount,
     },
     {
-      name: 'Details',
+      name: t('label.detail-plural'),
       icon: {
         alt: 'details',
         name: 'icon-details',
@@ -253,12 +253,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 3,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       isProtected: false,
       position: 4,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-properties'),
       isProtected: false,
       position: 5,
     },
@@ -517,10 +517,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   ]);
 
   return (
-    <PageContainer>
-      <div
-        className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
-        data-testid="mlmodel-details">
+    <PageContainerV1>
+      <div className="entity-details-container" data-testid="mlmodel-details">
         <EntityPageInfo
           canDelete={mlModelPermissions.Delete}
           currentOwner={mlModelDetail.owner}
@@ -579,7 +577,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
             <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
               {activeTab === 1 && (
                 <Fragment>
@@ -689,7 +687,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onCancel={handleThreadPanelClose}
         />
       ) : null}
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 
