@@ -9,7 +9,7 @@ export const getFeedFilterDropdownIcon = (feedfilter: FeedFilter) => {
       return (
         <SVGIcons
           alt="My Data"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.FOLDER_PRIMARY}
           width="16px"
         />
@@ -19,7 +19,7 @@ export const getFeedFilterDropdownIcon = (feedfilter: FeedFilter) => {
       return (
         <SVGIcons
           alt="Mentions"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.MENTIONS_PRIMARY}
           width="16px"
         />
@@ -29,7 +29,7 @@ export const getFeedFilterDropdownIcon = (feedfilter: FeedFilter) => {
       return (
         <SVGIcons
           alt="Following"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.STAR_PRIMARY}
           width="16px"
         />
@@ -40,7 +40,7 @@ export const getFeedFilterDropdownIcon = (feedfilter: FeedFilter) => {
       return (
         <SVGIcons
           alt="All Activity"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.ALL_APPLICATION_PRIMARY}
           width="16px"
         />
@@ -54,7 +54,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
       return (
         <SVGIcons
           alt="Announcement"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.ANNOUNCEMENT_PRIMARY}
           width="16px"
         />
@@ -64,7 +64,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
       return (
         <SVGIcons
           alt="Conversation"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.COMMENT_PRIMARY}
           width="16px"
         />
@@ -74,7 +74,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
       return (
         <SVGIcons
           alt="Task"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.TASK_PRIMARY}
           width="16px"
         />
@@ -85,7 +85,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
       return (
         <SVGIcons
           alt="All Threads"
-          className="m-r-xss m-b-xss"
+          className="m-r-xss"
           icon={Icons.ALL_APPLICATION_PRIMARY}
           width="16px"
         />

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -160,16 +160,15 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           {!hideFeedFilter && (
             <>
               <Button
+                className="flex items-center"
                 data-testid="feeds"
                 icon={getFeedFilterDropdownIcon(feedFilter)}
                 type="link"
                 onClick={() => setFieldListVisible((visible) => !visible)}>
-                <Space>
-                  <Typography.Text className="font-normal text-primary m-l-xss">
-                    {feedFilterList.find((f) => f.value === feedFilter)?.name}
-                  </Typography.Text>
-                  <DropDownIcon className="dropdown-icon" />
-                </Space>
+                <Typography.Text className="font-normal text-primary m-x-xss">
+                  {feedFilterList.find((f) => f.value === feedFilter)?.name}
+                </Typography.Text>
+                <DropDownIcon className="dropdown-icon" />
               </Button>
               {fieldListVisible && (
                 <DropDownList
@@ -186,20 +185,19 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           {!hideThreadFilter && (
             <>
               <Button
+                className="flex items-center"
                 data-testid="thread-filter"
                 icon={getThreadFilterDropdownIcon(threadType ?? 'ALL')}
                 type="link"
                 onClick={() => setShowThreadTypeList((visible) => !visible)}>
-                <Space>
-                  <Typography.Text className="font-normal text-primary m-l-xss">
-                    {
-                      threadFilterList.find(
-                        (f) => f.value === (threadType ?? 'ALL')
-                      )?.name
-                    }
-                  </Typography.Text>
-                  <DropDownIcon className="dropdown-icon" />
-                </Space>
+                <Typography.Text className="font-normal text-primary m-x-xss">
+                  {
+                    threadFilterList.find(
+                      (f) => f.value === (threadType ?? 'ALL')
+                    )?.name
+                  }
+                </Typography.Text>
+                <DropDownIcon className="dropdown-icon" />
               </Button>
               {showThreadTypeList && (
                 <DropDownList
