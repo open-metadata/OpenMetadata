@@ -46,6 +46,8 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
         // value for number metric
         const calculatedNumberValue = (targetValue / targetMetValue) * 100;
 
+        const daysLeft = getNumberOfDaysForTimestamp(resultData.endDate);
+
         return (
           <Space className="w-full" direction="vertical" key={uniqueId()}>
             <Typography.Text className="data-insight-label-text">
@@ -63,15 +65,13 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
               percent={
                 isPercentage ? calculatedPercentage : calculatedNumberValue
               }
-              showInfo={false}
+              showInfo={targetResult.targetMet}
             />
-            <Typography.Text>
-              {pluralize(
-                getNumberOfDaysForTimestamp(resultData.endDate),
-                'day'
-              )}{' '}
-              left
-            </Typography.Text>
+            {daysLeft > 0 && (
+              <Typography.Text>
+                {pluralize(daysLeft, 'day')} left
+              </Typography.Text>
+            )}
           </Space>
         );
       })}
