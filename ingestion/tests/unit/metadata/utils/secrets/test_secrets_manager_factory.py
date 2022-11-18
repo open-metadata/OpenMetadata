@@ -18,7 +18,7 @@ from unittest.mock import patch
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
