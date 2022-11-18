@@ -127,6 +127,13 @@
       "type": "string",
       "enum": ["system", "user"],
       "default": "user"
+    },
+    "componentConfig": {
+      "description": "key/value pairs to pass to workflow component.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   }
 }
