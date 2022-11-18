@@ -15,7 +15,6 @@ from airflow import DAG
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
     build_dag,
-    build_source,
     metadata_ingestion_workflow,
 )
 
@@ -41,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
+from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -85,10 +85,10 @@ def build_es_reindex_workflow_config(
         ),
         sink=Sink(
             type="elasticsearch",
-            config={
+            config=ComponentConfig(
                 **om_service_elasticsearch_dict,
                 **ingestion_pipeline_elasticsearch_source_config,
-            },
+            ),
         ),
         workflowConfig=WorkflowConfig(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
