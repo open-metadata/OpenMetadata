@@ -465,7 +465,6 @@
     @apply tw-font-sans;
     width: 450px;
     word-break: break-word;
-    z-index: 10001;
   }
 
   .Toastify__toast {

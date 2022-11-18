@@ -14,12 +14,20 @@
 @task-card-border: #c6b5f6;
 @announcement-card-border: #b02aac99;
 @announcement-background-color: #fcf6fc;
+@feed-card-border-color: #dde3ea;
+@feed-card-shadow-color: #0000000f;
+
+.ant-card-feed {
+  border: 1px solid @feed-card-border-color;
+  border-radius: 4px;
+  box-shadow: 1px 1px 8px @feed-card-shadow-color;
+}
 
 .task-feed-card {
-  border: 1px solid @task-card-border !important;
+  border: 1px solid @task-card-border;
 }
 
 .announcement-feed-card {
-  border: 1px solid @announcement-card-border !important;
-  background-color: @announcement-background-color !important;
+  border: 1px solid @announcement-card-border;
+  background-color: @announcement-background-color;
 }

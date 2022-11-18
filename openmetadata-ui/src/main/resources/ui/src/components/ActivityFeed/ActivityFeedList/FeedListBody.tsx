@@ -23,7 +23,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
-import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -138,9 +137,6 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   : ''
               )}
               key={`${index} - card`}
-              style={{
-                ...leftPanelAntCardStyle,
-              }}
               onClick={() =>
                 feed.task && handleCardClick(feed.task.id, isTask)
               }>
