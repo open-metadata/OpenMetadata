@@ -83,7 +83,6 @@ import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../utils/TagsUtils';
-import { getDateTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -597,14 +596,6 @@ const PipelineDetails = ({
         dataIndex: 'taskType',
         width: 180,
         title: t('label.type'),
-      },
-      {
-        key: 'startDate',
-        dataIndex: 'startDate',
-        width: 180,
-        title: t('label.start-date'),
-        render: (startDate: string) =>
-          getDateTimeByTimeStamp(new Date(startDate).valueOf()),
       },
       {
         key: 'description',
