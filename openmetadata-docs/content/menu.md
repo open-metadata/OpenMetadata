@@ -340,6 +340,8 @@ site_menu:
     url: /connectors/database/domo-database/airflow
   - category: Connectors / Database / Domo Database / CLI
     url: /connectors/database/domo-database/cli
+  - category: Connectors / Database / Domo Database / Troubleshoot
+    url: /connectors/database/domo-database/troubleshoot
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard
