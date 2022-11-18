@@ -33,6 +33,7 @@ interface ServiceConfigProps {
     data: ConfigData,
     serviceCategory: ServiceCategory
   ) => Promise<void>;
+  disableTestConnection: boolean;
 }
 
 export const Field = ({ children }: { children: React.ReactNode }) => {
@@ -45,6 +46,7 @@ const ServiceConfig = ({
   serviceType,
   data,
   handleUpdate,
+  disableTestConnection,
 }: ServiceConfigProps) => {
   const history = useHistory();
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -80,6 +82,7 @@ const ServiceConfig = ({
             | DashboardService
             | PipelineService
         }
+        disableTestConnection={disableTestConnection}
         serviceCategory={serviceCategory}
         serviceType={serviceType}
         status={status}
