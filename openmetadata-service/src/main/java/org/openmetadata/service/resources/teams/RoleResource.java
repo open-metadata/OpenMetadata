@@ -94,6 +94,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     List<Role> roles = dao.getEntitiesFromSeedData();
     for (Role role : roles) {
+      role.setFullyQualifiedName(role.getName());
       List<EntityReference> policies = role.getPolicies();
       for (EntityReference policy : policies) {
         EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
