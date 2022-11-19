@@ -308,7 +308,10 @@
     "algorithm": "Algorithm",
     "server": "Server",
     "feature-plural": "Features",
-    "detail-plural": "Details"
+    "detail-plural": "Details",
+    "clearAll": "Clear All",
+    "view-less": "View less",
+    "view-more": "View more"
   },
   "message": {
     "service-email-required": "Service account Email is required",
