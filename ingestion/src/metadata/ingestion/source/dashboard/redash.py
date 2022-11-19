@@ -187,7 +187,9 @@ class RedashSource(DashboardServiceSource):
                     continue
                 yield CreateChartRequest(
                     name=widgets["id"],
-                    displayName=chart_display_name if visualization and visualization["query"] else "",
+                    displayName=chart_display_name
+                    if visualization and visualization["query"]
+                    else "",
                     chartType=get_standard_chart_type(
                         visualization["type"] if visualization else ""
                     ),
