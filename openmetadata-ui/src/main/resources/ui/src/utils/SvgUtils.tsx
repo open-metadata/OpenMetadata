@@ -26,6 +26,7 @@ import IconAdmin from '../assets/svg/admin.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
+import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
 import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -72,8 +73,10 @@ import IconFitView from '../assets/svg/fitview.svg';
 import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconFullScreen from '../assets/svg/full-screen.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
+import IconAllApplicationPrimary from '../assets/svg/ic-all-application-primary.svg';
 import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
+import IconCommentPrimary from '../assets/svg/ic-comment-grey-primary.svg';
 import IconCommentGrey from '../assets/svg/ic-comment-grey.svg';
 import IconDeleteColored, {
   ReactComponent as IcDeleteColored,
@@ -87,6 +90,7 @@ import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
 import IconFilter from '../assets/svg/ic-filter.svg';
+import IconFolderPrimary from '../assets/svg/ic-folder-primary.svg';
 import IconFolder from '../assets/svg/ic-folder.svg';
 import IconGrowthArrow from '../assets/svg/ic-growth-arrow.svg';
 import IconHome from '../assets/svg/ic-home.svg';
@@ -95,6 +99,7 @@ import IconIssues from '../assets/svg/ic-issues.svg';
 import IconLineage from '../assets/svg/ic-lineage.svg';
 import IconLossArrow from '../assets/svg/ic-loss-arrow.svg';
 import IconManage from '../assets/svg/ic-manage.svg';
+import IconMentionsPrimary from '../assets/svg/ic-mentions-primary.svg';
 import IconMentions from '../assets/svg/ic-mentions.svg';
 import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
@@ -108,9 +113,11 @@ import IconSettingGray from '../assets/svg/ic-settings-gray.svg';
 import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
+import IconStarPrimary from '../assets/svg/ic-star-primary.svg';
 import IconStar from '../assets/svg/ic-star.svg';
 import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
+import IconTaskPrimary from '../assets/svg/ic-task-primary.svg';
 import IconTask from '../assets/svg/ic-task.svg';
 import IconTeams from '../assets/svg/ic-teams.svg';
 import IconThumbsUp from '../assets/svg/ic-thumbs-up.svg';
@@ -324,6 +331,7 @@ export const Icons = {
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
   ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
+  ANNOUNCEMENT_PRIMARY: 'icon-announcement-primary',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -348,11 +356,17 @@ export const Icons = {
   FEED_DELETE: 'feed-delete',
   ALERT_BELL: 'alert-bell',
   TASK: 'ic-task',
+  TASK_PRIMARY: 'ic-task-primary',
   ALL_APPLICATION: 'all-application',
+  ALL_APPLICATION_PRIMARY: 'all-application-primary',
   FOLDER: 'ic-folder',
+  FOLDER_PRIMARY: 'ic-folder-primary',
   STAR: 'ic-star',
+  STAR_PRIMARY: 'ic-star-primary',
   MENTIONS: 'ic-mentions',
+  MENTIONS_PRIMARY: 'ic-mentions-primary',
   COMMENT_GREY: 'ic-comment-grey',
+  COMMENT_PRIMARY: 'ic-comment-grey-primary',
   TASK_ICON: 'task-icon',
   TASK_CLOSED: 'task-closed',
   TASK_OPEN: 'task-open',
@@ -887,6 +901,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAnnouncementsBlack;
 
       break;
+    case Icons.ANNOUNCEMENT_PRIMARY:
+      IconComponent = IconAnnouncementsPrimary;
+
+      break;
     case Icons.REQUEST:
       IconComponent = IconRequest;
 
@@ -994,24 +1012,48 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconTask;
 
       break;
+    case Icons.TASK_PRIMARY:
+      IconComponent = IconTaskPrimary;
+
+      break;
     case Icons.ALL_APPLICATION:
       IconComponent = IconAllApplication;
+
+      break;
+    case Icons.ALL_APPLICATION_PRIMARY:
+      IconComponent = IconAllApplicationPrimary;
 
       break;
     case Icons.FOLDER:
       IconComponent = IconFolder;
 
       break;
+    case Icons.FOLDER_PRIMARY:
+      IconComponent = IconFolderPrimary;
+
+      break;
     case Icons.STAR:
       IconComponent = IconStar;
+
+      break;
+    case Icons.STAR_PRIMARY:
+      IconComponent = IconStarPrimary;
 
       break;
     case Icons.MENTIONS:
       IconComponent = IconMentions;
 
       break;
+    case Icons.MENTIONS_PRIMARY:
+      IconComponent = IconMentionsPrimary;
+
+      break;
     case Icons.COMMENT_GREY:
       IconComponent = IconCommentGrey;
+
+      break;
+    case Icons.COMMENT_PRIMARY:
+      IconComponent = IconCommentPrimary;
 
       break;
     case Icons.TASK_CLOSED:
