@@ -41,6 +41,11 @@ const TreeViewTab = ({
     [executions, status]
   );
 
+  const { treeDataList, treeLabelList } = useMemo(
+    () => getTreeData(tasks, viewData),
+    [tasks, viewData]
+  );
+
   const { t } = useTranslation();
 
   return (
@@ -76,7 +81,7 @@ const TreeViewTab = ({
             showIcon
             showLine={{ showLeafIcon: false }}
             switcherIcon={<></>}
-            treeData={getTreeData(tasks, viewData, true)}
+            treeData={treeLabelList}
           />
         </Col>
         <Col span={18}>
@@ -85,7 +90,7 @@ const TreeViewTab = ({
             showIcon
             className="tree-without-indent"
             switcherIcon={<></>}
-            treeData={getTreeData(tasks, viewData)}
+            treeData={treeDataList}
           />
         </Col>
       </Row>

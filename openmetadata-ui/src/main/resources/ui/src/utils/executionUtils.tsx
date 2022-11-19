@@ -12,7 +12,7 @@
  */
 import { Col, Row, Space, Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
-import { groupBy, isUndefined, toLower, uniqueId } from 'lodash';
+import { groupBy, isUndefined, map, toLower, uniqueId } from 'lodash';
 import React, { ReactNode } from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
@@ -128,48 +128,41 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
 
 export const getTreeData = (
   tasks: Task[],
-  viewData: Record<string, ViewDataInterface[]>,
-  isLabelList = false
+  viewData: Record<string, ViewDataInterface[]>
 ) => {
-  const icon = isLabelList ? <div className="tree-view-dot" /> : null;
+  const icon = <div className="tree-view-dot" />;
   let treeDataList: DataNode[] = [];
-
-  const viewDataEntries = Object.entries(viewData);
+  let treeLabelList: DataNode[] = [];
 
   // map execution element to task name
-  const viewElements = viewDataEntries.map((viewDataEntry) => {
-    const key = viewDataEntry[0];
-    const value = viewDataEntry[1];
-
-    return {
-      key,
-      value: (
-        <Row gutter={16} key={uniqueId()}>
-          <Col>
-            <div className="execution-node-container">
-              {value.map((status) => (
-                <Tooltip
-                  key={uniqueId()}
-                  placement="top"
-                  title={
-                    <Space direction="vertical">
-                      <div>{status.timestamp}</div>
-                      <div>{status.executionStatus}</div>
-                    </Space>
-                  }>
-                  <SVGIcons
-                    alt="result"
-                    className="tw-w-6 mr-2 mb-2"
-                    icon={getStatusBadgeIcon(status.executionStatus)}
-                  />
-                </Tooltip>
-              ))}
-            </div>
-          </Col>
-        </Row>
-      ),
-    };
-  });
+  const viewElements = map(viewData, (value, key) => ({
+    key,
+    value: (
+      <Row gutter={16} key={uniqueId()}>
+        <Col>
+          <div className="execution-node-container">
+            {value.map((status) => (
+              <Tooltip
+                key={uniqueId()}
+                placement="top"
+                title={
+                  <Space direction="vertical">
+                    <div>{status.timestamp}</div>
+                    <div>{status.executionStatus}</div>
+                  </Space>
+                }>
+                <SVGIcons
+                  alt="result"
+                  className="tw-w-6 mr-2 mb-2"
+                  icon={getStatusBadgeIcon(status.executionStatus)}
+                />
+              </Tooltip>
+            ))}
+          </div>
+        </Col>
+      </Row>
+    ),
+  }));
 
   for (const task of tasks) {
     const taskName = task.name;
@@ -186,40 +179,66 @@ export const getTreeData = (
     // check if it's an existing tree data
     const existingData = treeDataList.find((tData) => tData.key === taskName);
 
+    // check if it's an existing label data
+    const existingLabel = treeLabelList.find((lData) => lData.key === taskName);
+
     // get the execution element for current task
     const currentViewElement = getExecutionElementByKey(taskName, viewElements);
     const currentTreeData = {
       key: taskName,
-      title: isLabelList ? taskName : currentViewElement?.value ?? null,
+      title: currentViewElement?.value ?? null,
+    };
+
+    const currentLabelData = {
+      key: taskName,
+      title: taskName,
       icon,
     };
 
     // skip the down stream node as it will be render by the parent task
     if (isDownStreamTask) continue;
     else if (hasDownStream) {
+      const dataChildren: DataNode[] = [];
+      const labelChildren: DataNode[] = [];
       // get execution list of downstream tasks
-      const children = downstreamTasks.map((downstreamTask) => {
+
+      for (const downstreamTask of downstreamTasks) {
         const taskElement = getExecutionElementByKey(
           downstreamTask,
           viewElements
         );
 
-        return {
+        dataChildren.push({
           key: downstreamTask,
-          title: isLabelList ? downstreamTask : taskElement?.value ?? null,
+          title: taskElement?.value ?? null,
+        });
+
+        labelChildren.push({
+          key: downstreamTask,
+          title: downstreamTask,
           icon,
-        };
-      });
+        });
+      }
 
       /**
        * if not existing data then push current tree data to tree data list
        * else modified the existing data
        */
       treeDataList = isUndefined(existingData)
-        ? [...treeDataList, { ...currentTreeData, children }]
+        ? [...treeDataList, { ...currentTreeData, children: dataChildren }]
         : treeDataList.map((currentData) => {
             if (currentData.key === existingData.key) {
-              return { ...existingData, children };
+              return { ...existingData, children: dataChildren };
+            } else {
+              return currentData;
+            }
+          });
+
+      treeLabelList = isUndefined(existingLabel)
+        ? [...treeLabelList, { ...currentLabelData, children: labelChildren }]
+        : treeLabelList.map((currentData) => {
+            if (currentData.key === existingLabel.key) {
+              return { ...existingLabel, children: labelChildren };
             } else {
               return currentData;
             }
@@ -228,8 +247,12 @@ export const getTreeData = (
       treeDataList = isUndefined(existingData)
         ? [...treeDataList, currentTreeData]
         : treeDataList;
+
+      treeLabelList = isUndefined(existingLabel)
+        ? [...treeLabelList, currentLabelData]
+        : treeLabelList;
     }
   }
 
-  return treeDataList;
+  return { treeDataList, treeLabelList };
 };
