@@ -15,41 +15,140 @@
   &.query-builder {
     margin: 0;
     font: inherit;
-  }
-
-  .group--children {
-    padding-left: 0;
-  }
-
-  .group-or-rule-container {
-    padding-right: 10px;
-    padding-left: 10px;
-    // border: 1px solid #dde3ea;
+    overflow: visible;
   }
 
   .group-or-rule-container.group-container {
-    padding: 0px 12px;
+    padding-right: 0px;
   }
 
-  .group-or-rule-container.group-container,
-  .group-or-rule-container.rule-container {
-    .group.group-or-rule,
-    .rule.group-or-rule {
-      background: #f9fbfc;
-      /* table */
-
-      border: 1px solid #dde3ea;
-      border-radius: 4px;
-      box-sizing: border-box;
-
-      &:not(:first-child) {
-        padding: 16px 8px;
+  & > .group-or-rule-container.group-container {
+    & > .group.group-or-rule {
+      & > .group--header + .group--children {
+        padding-left: 0;
       }
     }
-
-    .rule.group-or-rule {
-      padding: 0;
+  }
+  .group-or-rule-container.group-container {
+    & > .group.group-or-rule {
+      background-color: transparent;
       border: none;
+
+      & > .group--header {
+        margin: 0;
+        padding: 0;
+
+        .group--conjunctions {
+          position: absolute;
+          left: 0px;
+          top: 0px;
+          .ant-btn-group button span {
+            text-transform: uppercase;
+          }
+        }
+
+        .action.action--ADD-RULE {
+          display: none;
+        }
+        .action.action--DELETE {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+        }
+
+        .action.action--ADD-GROUP {
+          position: absolute;
+          bottom: 8px;
+          z-index: 1;
+          max-width: 128px;
+          border-color: #7147e8;
+          border-radius: 4px;
+          left: 0;
+          right: 0;
+          margin: auto;
+        }
+      }
+    }
+  }
+
+  .ant-btn-group {
+    position: initial;
+  }
+
+  .rule--body {
+    margin-right: 96px;
+  }
+
+  .group--children {
+    padding-top: 22px;
+    padding-bottom: 22px;
+
+    .group-or-rule-container.group-container,
+    .group-or-rule-container.rule-container {
+      .group.group-or-rule,
+      .rule.group-or-rule {
+        background: #f9fbfc;
+        /* table */
+
+        border: 1px solid #dde3ea;
+        border-radius: 4px;
+        box-sizing: border-box;
+
+        &:not(:first-child) {
+          padding: 16px 8px;
+        }
+      }
+
+      .group.group-or-rule {
+        .group--header {
+          .group--conjunctions {
+            position: absolute;
+            right: 36px;
+            top: 62px;
+            left: auto;
+            z-index: 1;
+
+            .ant-btn-group button span {
+              text-transform: uppercase;
+            }
+          }
+
+          .action.action--ADD-RULE {
+            position: absolute;
+            right: 36px;
+            bottom: 32px;
+            z-index: 1;
+            display: block;
+            border-color: #7147e8;
+            border-radius: 4px;
+          }
+
+          .action.action--ADD-GROUP {
+            display: none;
+          }
+
+          .action.action--DELETE {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            z-index: 1;
+
+            font-size: 16px;
+          }
+        }
+      }
+
+      .rule.group-or-rule {
+        padding: 0;
+        border: none;
+
+        .rule--header {
+          .ant-btn-group {
+            align-self: end;
+            margin-bottom: 8px;
+          }
+        }
+      }
     }
   }
 }
