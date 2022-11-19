@@ -362,7 +362,8 @@
     "field-region-name-description": "Region name. Required when using AWS Credentials.",
     "no-permission-for-action": "You do not have the necessary permissions to perform this action.",
     "no-permission-to-view": "You do not have the necessary permissions to view this data.",
-    "no-schema-data-available": " No schema data available"
+    "no-schema-data-available": " No schema data available",
+    "no-data-available-for-selected-filter": "No data found. Try changing the filters."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",
