@@ -31,7 +31,7 @@ const stepsData = [
     step: 1,
     title: 'Ingest Sample Data',
     description:
-      'Run sample data to ingest sample entities into your OpenMetadata.',
+      'Run sample data to ingest sample data assets into your OpenMetadata.',
     link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
   },
   {

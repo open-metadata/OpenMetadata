@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { capitalize, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
@@ -57,6 +58,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AddIngestionPage = () => {
   const { ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
+  const { t } = useTranslation();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
@@ -141,7 +143,7 @@ const AddIngestionPage = () => {
           if (err.response?.status === 409) {
             showErrorToast(
               err,
-              jsonData['api-error-messages']['entity-already-exist-error']
+              t('label.entity-already-exists', { entity: 'Data asset' })
             );
             reject();
           } else {
@@ -229,7 +231,9 @@ const AddIngestionPage = () => {
         activeTitle: true,
       },
       {
-        name: `Add ${capitalize(ingestionType)} Ingestion`,
+        name: t('label.add-workflow-ingestion', {
+          workflow: startCase(ingestionType),
+        }),
         url: '',
         activeTitle: true,
       },
