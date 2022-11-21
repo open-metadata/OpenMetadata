@@ -17,6 +17,7 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional, Union
 
+from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
@@ -45,10 +46,12 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
     against a SQAlchemy source.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
+        sqa_metadata_obj: Optional[MetaData] = None,
         table_sample_precentage: float = None,
         table_sample_query: str = None,
         table_partition_config: dict = None,
@@ -62,7 +65,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         )
         self.set_session_tag(self.session)
 
-        self._table = self._convert_table_to_orm_object()
+        self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
 
         self.table_sample_precentage = table_sample_precentage
         self.table_sample_query = table_sample_query

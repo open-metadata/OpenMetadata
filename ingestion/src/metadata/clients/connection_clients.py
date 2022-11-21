@@ -129,7 +129,7 @@ class DagsterClient:
 
 
 @dataclass
-class DomoDashboardClient:
+class DomoClient:
     def __init__(self, client) -> None:
         self.client = client
 
