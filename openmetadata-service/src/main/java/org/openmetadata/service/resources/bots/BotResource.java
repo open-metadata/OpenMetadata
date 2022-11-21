@@ -96,7 +96,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       User user = user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
 
       // Add role corresponding to the bot to the user
-      // we need to set a mutable list her
+      // we need to set a mutable list here
       user.setRoles(Arrays.asList(RoleResource.getRole(getRoleForBot(bot.getName()))));
       user = DefaultAuthorizer.addOrUpdateBotUser(user, config);
 
