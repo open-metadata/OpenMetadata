@@ -681,19 +681,21 @@ const EntityTable = ({
         dataSource={data}
         expandable={{
           defaultExpandedRowKeys: [],
-          expandIcon: ({ expanded, onExpand, record }) =>
-            record.children ? (
-              <FontAwesomeIcon
-                className="tw-mr-2 tw-cursor-pointer"
-                icon={expanded ? faCaretDown : faCaretRight}
+          rowExpandable: () => true,
+          expandIcon: ({ expanded, onExpand, record }) => {
+            return record.children ? (
+              <span
+                className="m-r-xs cursor-pointer"
                 onClick={(e) =>
                   onExpand(
                     record,
                     e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
                   )
-                }
-              />
-            ) : null,
+                }>
+                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+              </span>
+            ) : null;
+          },
         }}
         pagination={false}
         size="small"
