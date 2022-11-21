@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { login, visitEntityDetailsPage } from '../../common/common';
-import { LOGIN, SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { visitEntityDetailsPage } from '../../common/common';
+import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const TEAM_DETAILS = SEARCH_ENTITY_TABLE.table_1;
 const userURL =
@@ -21,16 +21,8 @@ const teamURL =
   '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index';
 
 describe('Test if the total count of users and teams is correctly displayed in the assign owner widget', () => {
-  before(() => {
-    cy.clearLocalStorageSnapshot();
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
-    cy.saveLocalStorage('localstorage');
-  });
   beforeEach(() => {
-    cy.log('Restoring local storage snapshot');
-    cy.restoreLocalStorage('localstorage');
-    cy.clickOnLogo();
+    cy.login();
   });
 
   it('Check total count of users and teams', () => {
