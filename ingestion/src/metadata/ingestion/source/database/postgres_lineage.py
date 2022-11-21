@@ -33,7 +33,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
     filters = """
                 AND (
                     s.query ILIKE '%%create table %% as select %%'
-                    OR s.query ILIKE '%%insert %%'
+                    OR s.query ILIKE '%%insert%%'
                 )
             """
 
