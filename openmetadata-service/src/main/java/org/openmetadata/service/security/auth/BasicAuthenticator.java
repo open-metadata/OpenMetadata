@@ -156,9 +156,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       LOG.info("Generated Email verification token [" + mailVerificationToken + "]");
       String emailVerificationLink =
           String.format(
-              "%s://%s/users/registrationConfirmation?user=%s&token=%s",
-              uriInfo.getRequestUri().getScheme(),
-              uriInfo.getRequestUri().getHost(),
+              "%s/users/registrationConfirmation?user=%s&token=%s",
+              EmailUtil.getInstance().buildBaseUrl(uriInfo.getRequestUri()),
               user.getFullyQualifiedName(),
               mailVerificationToken);
       try {
@@ -180,9 +179,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     LOG.info("Generated Password Reset verification token [" + mailVerificationToken + "]");
     String passwordResetLink =
         String.format(
-            "%s://%s/users/password/reset?user=%s&token=%s",
-            uriInfo.getRequestUri().getScheme(),
-            uriInfo.getRequestUri().getHost(),
+            "%s/users/password/reset?user=%s&token=%s",
+            EmailUtil.getInstance().buildBaseUrl(uriInfo.getRequestUri()),
             user.getFullyQualifiedName(),
             mailVerificationToken);
     try {
