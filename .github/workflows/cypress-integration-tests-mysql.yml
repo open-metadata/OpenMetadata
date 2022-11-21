@@ -134,6 +134,6 @@ jobs:
       - name: Clean Up
         run: |
           cd ./docker/local-metadata
-          docker compose down
+          docker compose down --remove-orphans
           rm -rf ${PWD}/docker-volume
 
