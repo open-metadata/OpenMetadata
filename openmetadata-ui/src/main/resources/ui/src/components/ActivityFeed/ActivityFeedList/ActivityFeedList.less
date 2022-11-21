@@ -10,21 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.status-border-top {
-  border-top: 1px solid rgba(220, 227, 236, 0.3);
-}
 
-.status-border-right {
-  border-right: 1px solid rgba(220, 227, 236, 0.3);
-}
+@import url('../../../styles/variables.less');
+@filters-container-bg: #f8f9fa;
 
-.tree-view-dot {
-  border-radius: 6px;
-  border: 6px solid #cccccc;
-}
+.feed-list-container {
+  .ant-btn-link {
+    padding: 0px;
+  }
 
-.tree-without-indent {
-  .ant-tree-indent {
-    display: none;
+  .dropdown-icon {
+    fill: @primary-color;
+  }
+
+  .filters-container {
+    position: sticky;
+    top: 0;
+    padding: 0px;
+    z-index: 10;
+    border-bottom: 1px solid @border-color;
+  }
+
+  // Wrapper to hide the shadows of feed cards while scrolling
+  .filters-wrapper {
+    position: sticky;
+    top: 0;
+    margin-left: -8px;
+    margin-right: -8px;
+    z-index: 10;
+    background-color: @filters-container-bg;
   }
 }

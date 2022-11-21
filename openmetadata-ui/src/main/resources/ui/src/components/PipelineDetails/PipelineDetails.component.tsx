@@ -947,7 +947,7 @@ const PipelineDetails = ({
                 {t('label.executions')}
               </span>
             }>
-            <ExecutionsTab pipelineFQN={pipelineFQN} />
+            <ExecutionsTab pipelineFQN={pipelineFQN} tasks={tasks} />
           </Tabs.TabPane>
 
           <Tabs.TabPane

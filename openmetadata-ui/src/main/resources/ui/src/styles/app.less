@@ -105,6 +105,9 @@
 .w-32 {
   width: 8rem;
 }
+.w-36 {
+  width: 9rem;
+}
 .w-72 {
   width: 288px;
 }
@@ -276,6 +279,17 @@
 .cursor-pointer {
   cursor: pointer;
 }
+
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .gap-2 {
   gap: 0.5rem /* 8px */;
 }
@@ -294,6 +308,14 @@
   }
 }
 
+// Font Weight
+.font-normal {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+
 .transform-180 {
   transform: rotate(180deg);
 }
@@ -304,9 +326,6 @@
 
 .bg-white {
   background: @white;
-}
-.font-semibold {
-  font-weight: 600;
 }
 .z-10 {
   z-index: 10;
