@@ -245,7 +245,7 @@ const Ingestion: React.FC<IngestionProps> = ({
             <DropdownIcon
               style={{
                 transform: 'rotate(180deg)',
-                marginTop: '2px',
+                verticalAlign: 'middle',
                 color: '#fff',
               }}
             />
@@ -253,6 +253,7 @@ const Ingestion: React.FC<IngestionProps> = ({
             <DropdownIcon
               style={{
                 color: '#fff',
+                verticalAlign: 'middle',
               }}
             />
           )}
