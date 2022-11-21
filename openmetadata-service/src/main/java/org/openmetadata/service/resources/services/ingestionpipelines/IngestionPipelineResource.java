@@ -324,6 +324,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
+    decryptOrNullify(securityContext, ingestionPipeline);
     Response response = create(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
     return response;
