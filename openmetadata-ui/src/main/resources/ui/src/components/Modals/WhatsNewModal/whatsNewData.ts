@@ -564,18 +564,6 @@ export const WHATS_NEW = [
 -   Admins can view the **aggregated user activity** and get insights into user engagement and user growth.
 -   Admins can check for Daily active users and know how OpenMetadata is being used.
 -   The **Data Insights Report** is emailed weekly to assess team performance.`,
-      Glossary: `-   Introduced the functionality to **bulk upload glossary terms**.
--   Upload a CSV with thousands of terms in one go.
--   Define the **Owners and Reviewers** during bulk upload.
--   Owners and Reviewers will be propagated to every glossary term.
--   Users can **Preview** before uploading to ensure that everything looks right.
--   Support a **Review Workflow** for new term suggestions.
--   Suggested terms will be saved as Draft terms.
--   Admins can review and approve these draft terms.
--   Once approved, these terms can be used for tagging and searching.
--   A glossary term can be moved to a different hierarchy within a glossary or across a glossary.
--   While moving a term, even the child terms will be moved along with the parent term.`,
-
       Lineage: `-   The UI displays end-to-end **lineage** **traceability** for the table and column levels.
 -   Users can search for an entity and expand the graph to unfold lineage.
 -   Displays the upstream and downstream for each node.
