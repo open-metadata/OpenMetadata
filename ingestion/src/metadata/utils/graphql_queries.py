@@ -139,3 +139,24 @@ GRAPHQL_QUERY_FOR_JOBS = """query PipelineRuns($selector: GraphSelector!){
                     }
                 }
                 }"""
+
+TABLEAU_LINEAGE_GRAPHQL_QUERY = """
+{
+  workbooks {
+    id
+    luid
+    name
+    upstreamTables{
+      name
+      schema
+      upstreamDatabases{
+        name
+      }
+      referencedByQueries{
+        name
+        query
+      }
+    }
+  }
+}
+"""

@@ -235,10 +235,6 @@ const Explore: React.FC<ExploreProps> = ({
     setEntityDetails(source);
   };
 
-  const handleFacetFilterClearFilter: FacetFilterProps['onClearFilter'] = (
-    key
-  ) => onChangePostFilter(omit(postFilter, key));
-
   const handleAdvanceFieldClear = () => {
     setSelectedQuickFilters([]);
   };
@@ -298,11 +294,11 @@ const Explore: React.FC<ExploreProps> = ({
           className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
           data-testid="data-summary-container">
           <FacetFilter
-            aggregations={searchResults?.aggregations}
+            aggregations={omit(searchResults?.aggregations, 'entityType')}
             filters={postFilter}
             showDeleted={showDeleted}
             onChangeShowDeleted={onChangeShowDeleted}
-            onClearFilter={handleFacetFilterClearFilter}
+            onClearFilter={onChangePostFilter}
             onSelectHandler={handleFacetFilterChange}
           />
         </Card>

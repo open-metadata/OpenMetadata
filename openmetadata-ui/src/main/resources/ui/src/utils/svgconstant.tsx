@@ -12,14 +12,21 @@
  */
 
 /* eslint-disable max-len */
+import classNames from 'classnames';
 import React, { CSSProperties } from 'react';
 import { TEXT_BODY_COLOR } from '../constants/constants';
 
-export const dropdownIcon = ({ style }: { style?: CSSProperties }) => {
+export const dropdownIcon = ({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) => {
   return (
     <svg
       aria-hidden="true"
-      className="tw-inline-block tw-h-4 tw-w-4 tw-ml-0.5"
+      className={classNames('d-inline-block h-4 w-4', className)}
       fill={style?.color}
       style={style}
       viewBox="0 0 16 16"
