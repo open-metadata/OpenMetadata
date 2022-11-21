@@ -680,10 +680,11 @@ const EntityTable = ({
         data-testid="entity-table"
         dataSource={data}
         expandable={{
-          defaultExpandedRowKeys: [],
-          rowExpandable: () => true,
-          expandIcon: ({ expanded, onExpand, record }) => {
-            return record.children ? (
+          rowExpandable: (record) => {
+            return (record.children && record.children.length > 0) || false;
+          },
+          expandIcon: ({ expanded, onExpand, expandable, record }) =>
+            expandable && (
               <span
                 className="m-r-xs cursor-pointer"
                 onClick={(e) =>
@@ -694,8 +695,7 @@ const EntityTable = ({
                 }>
                 <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
               </span>
-            ) : null;
-          },
+            ),
         }}
         pagination={false}
         size="small"
