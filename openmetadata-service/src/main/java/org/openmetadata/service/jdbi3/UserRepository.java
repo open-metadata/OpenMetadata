@@ -294,7 +294,6 @@ public class UserRepository extends EntityRepository<User> {
       deleteFrom(original.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
       assignRoles(updated, updated.getRoles());
 
-
       List<EntityReference> origRoles = listOrEmpty(original.getRoles());
       List<EntityReference> updatedRoles = listOrEmpty(updated.getRoles());
 
