@@ -309,6 +309,7 @@
     "server": "Server",
     "feature-plural": "Features",
     "detail-plural": "Details",
+    "ingestion": "Ingestion",
     "add-workflow-ingestion": "Add {{workflow}} Ingestion",
     "clearAll": "Clear All",
     "view-less": "View less",
