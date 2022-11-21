@@ -262,11 +262,11 @@ const Ingestion: React.FC<IngestionProps> = ({
           <DropDownList
             horzPosRight
             dropDownList={types.map((type) => ({
-              name: `${t('label.add')} ${startCase(type)} ${t(
+              name: `${t('label.add')} ${startCase(type)} ${
                 type === PipelineType.ElasticSearchReindex
                   ? ''
-                  : 'label.ingestion'
-              )}`,
+                  : t('label.ingestion')
+              }`,
               value: type,
             }))}
             onSelect={(_e, value) =>
