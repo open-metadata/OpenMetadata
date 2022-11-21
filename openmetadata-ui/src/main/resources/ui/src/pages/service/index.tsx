@@ -892,13 +892,13 @@ const ServicePage: FunctionComponent = () => {
         return [t('label.topic-name'), t('label.tags')];
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        return [t('dashboard-name'), t('label.tags')];
+        return [t('label.dashboard-name'), t('label.tags')];
       }
       case ServiceCategory.PIPELINE_SERVICES: {
-        return [t('pipeline-name'), t('label.tags')];
+        return [t('label.pipeline-name'), t('label.tags')];
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
-        return [t('model-name'), t('label.tags')];
+        return [t('label.model-name'), t('label.tags')];
       }
       default:
         return [];
