@@ -13,16 +13,12 @@
 
 import {
     descriptionBox,
-    interceptURL,
-    login,
-    toastNotification,
+    interceptURL, toastNotification,
     verifyResponseStatusCode,
     visitEntityDetailsPage
 } from '../../common/common';
 import {
-    DELETE_TERM,
-    LOGIN,
-    NEW_GLOSSARY,
+    DELETE_TERM, NEW_GLOSSARY,
     NEW_GLOSSARY_TERMS,
     SEARCH_ENTITY_TABLE
 } from '../../constants/constants';
@@ -107,8 +103,7 @@ const goToAssetsTab = (term) => {
 
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
     cy.get('[data-testid="governance"]')
