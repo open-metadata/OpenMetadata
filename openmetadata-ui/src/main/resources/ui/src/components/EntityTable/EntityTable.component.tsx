@@ -680,20 +680,22 @@ const EntityTable = ({
         data-testid="entity-table"
         dataSource={data}
         expandable={{
-          defaultExpandedRowKeys: [],
-          expandIcon: ({ expanded, onExpand, record }) =>
-            record.children ? (
-              <FontAwesomeIcon
-                className="tw-mr-2 tw-cursor-pointer"
-                icon={expanded ? faCaretDown : faCaretRight}
+          rowExpandable: (record) => {
+            return (record.children && record.children.length > 0) || false;
+          },
+          expandIcon: ({ expanded, onExpand, expandable, record }) =>
+            expandable && (
+              <span
+                className="m-r-xs cursor-pointer"
                 onClick={(e) =>
                   onExpand(
                     record,
                     e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
                   )
-                }
-              />
-            ) : null,
+                }>
+                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+              </span>
+            ),
         }}
         pagination={false}
         size="small"
