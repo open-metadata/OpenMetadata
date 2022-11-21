@@ -183,9 +183,12 @@ describe('Test TopicDetails component', () => {
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
-    const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
-    const configTab = await findByTestId(tabs, 'Config');
+    const schemaTab = await findByTestId(tabs, 'label.schema');
+    const activityFeedTab = await findByTestId(
+      tabs,
+      'label.activity-feed-and-task-plural'
+    );
+    const configTab = await findByTestId(tabs, 'label.config');
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -199,7 +202,7 @@ describe('Test TopicDetails component', () => {
     const { container } = render(<TopicDetails {...TopicDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const schema = await findByTestId(container, 'schema');
+    const schema = await findByTestId(container, 'label.schema');
 
     expect(schema).toBeInTheDocument();
   });

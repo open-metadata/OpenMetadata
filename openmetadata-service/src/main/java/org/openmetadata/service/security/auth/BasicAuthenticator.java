@@ -32,6 +32,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -155,9 +156,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       LOG.info("Generated Email verification token [" + mailVerificationToken + "]");
       String emailVerificationLink =
           String.format(
-              "%s://%s/users/registrationConfirmation?user=%s&token=%s",
-              uriInfo.getRequestUri().getScheme(),
-              uriInfo.getRequestUri().getHost(),
+              "%s/users/registrationConfirmation?user=%s&token=%s",
+              EmailUtil.getInstance().buildBaseUrl(uriInfo.getRequestUri()),
               user.getFullyQualifiedName(),
               mailVerificationToken);
       try {
@@ -179,9 +179,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     LOG.info("Generated Password Reset verification token [" + mailVerificationToken + "]");
     String passwordResetLink =
         String.format(
-            "%s://%s/users/password/reset?user=%s&token=%s",
-            uriInfo.getRequestUri().getScheme(),
-            uriInfo.getRequestUri().getHost(),
+            "%s/users/password/reset?user=%s&token=%s",
+            EmailUtil.getInstance().buildBaseUrl(uriInfo.getRequestUri()),
             user.getFullyQualifiedName(),
             mailVerificationToken);
     try {
@@ -320,8 +319,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public JwtResponse getNewAccessToken(String userName, TokenRefreshRequest request) throws IOException {
-    User storedUser = userRepository.getByName(null, userName, userRepository.getFieldsWithUserAuth("*"));
+  public JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+    TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
+    User storedUser = userRepository.get(null, tokenInterface.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
       throw new IllegalArgumentException("User are only allowed to login");
     }

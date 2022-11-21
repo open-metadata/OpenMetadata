@@ -27,13 +27,13 @@
       },
       "secretToken": {
         "title": "Secret Token",
-        "description": "Secret Token to connect DOMO",
+        "description": "Secret token to connect to DOMO",
         "type": "string",
         "format": "password"
       },
       "accessToken": {
         "title": "Access Token",
-        "description": "Access to connecto to DOMO",
+        "description": "Access token to connect to DOMO",
         "type": "string"
       },
       "apiHost": {

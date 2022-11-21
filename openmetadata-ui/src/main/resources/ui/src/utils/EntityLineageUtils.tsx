@@ -72,6 +72,7 @@ import {
   prepareLabel,
 } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
+import { getEncodedFqn } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 
@@ -287,7 +288,15 @@ export const getLineageData = (
                   e.stopPropagation();
                   onSelect(false, {} as SelectedNode);
                   if (node) {
-                    loadNodeHandler(node, 'from');
+                    loadNodeHandler(
+                      {
+                        ...node,
+                        fullyQualifiedName: getEncodedFqn(
+                          node.fullyQualifiedName ?? ''
+                        ),
+                      },
+                      'from'
+                    );
                   }
                 }}>
                 {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
@@ -313,7 +322,15 @@ export const getLineageData = (
                   e.stopPropagation();
                   onSelect(false, {} as SelectedNode);
                   if (node) {
-                    loadNodeHandler(node, 'to');
+                    loadNodeHandler(
+                      {
+                        ...node,
+                        fullyQualifiedName: getEncodedFqn(
+                          node.fullyQualifiedName ?? ''
+                        ),
+                      },
+                      'to'
+                    );
                   }
                 }}>
                 {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&

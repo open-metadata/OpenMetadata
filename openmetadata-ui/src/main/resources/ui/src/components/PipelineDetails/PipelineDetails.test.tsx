@@ -15,7 +15,9 @@ import {
   findByTestId,
   findByText,
   fireEvent,
+  getByText,
   render,
+  screen,
 } from '@testing-library/react';
 import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
@@ -242,26 +244,28 @@ describe('Test PipelineDetails component', () => {
   });
 
   it('Check if active tab is tasks', async () => {
-    const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const taskDetail = await findByTestId(container, 'tasks-dag');
+    render(<PipelineDetails {...PipelineDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
+    const taskDetail = await screen.findByText('label.tasks');
 
     expect(taskDetail).toBeInTheDocument();
   });
 
   it('Should render no tasks data placeholder is tasks list is empty', async () => {
-    const { findByTestId } = render(
-      <PipelineDetails {...PipelineDetailsProps} tasks={[]} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<PipelineDetails {...PipelineDetailsProps} tasks={[]} />, {
+      wrapper: MemoryRouter,
+    });
 
-    expect(await findByTestId('no-tasks-data')).toBeInTheDocument();
+    const switchContainer = screen.getByTestId('pipeline-task-switch');
+
+    const dagButton = getByText(switchContainer, 'Dag');
+
+    act(() => {
+      fireEvent.click(dagButton);
+    });
+
+    expect(await screen.findByTestId('no-tasks-data')).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {

@@ -54,7 +54,8 @@
       ]
     },
     "secretsManagerProvider": {
-      "$ref": "../../../entity/services/connections/metadata/secretsManagerProvider.json"
+      "$ref": "../../../security/secrets/secretsManagerProvider.json",
+      "default": "noop"
     }
   },
   "additionalProperties": false

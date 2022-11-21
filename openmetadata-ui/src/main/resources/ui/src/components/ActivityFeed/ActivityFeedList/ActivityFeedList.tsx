@@ -11,33 +11,32 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, {
-  FC,
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { dropdownIcon as DropDownIcon } from '../../../utils/svgconstant';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import DropDownList from '../../dropdown/DropDownList';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
 import { ActivityFeedListProp } from './ActivityFeedList.interface';
-import { filterList, threadFilterList } from './ActivityFeedList.util';
+import './ActivityFeedList.less';
+import {
+  filterList,
+  getFeedFilterDropdownIcon,
+  getThreadFilterDropdownIcon,
+  threadFilterList,
+} from './ActivityFeedList.util';
 import FeedListBody from './FeedListBody';
-import FeedListSeparator from './FeedListSeparator';
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
@@ -53,7 +52,9 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   onFeedFiltersUpdate,
   hideFeedFilter,
   hideThreadFilter,
+  stickyFilter,
 }) => {
+  const { t } = useTranslation();
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -148,67 +149,68 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const getFilterDropDown = () => {
     return hideFeedFilter && hideThreadFilter ? null : (
-      <div className="tw-flex tw-justify-between tw-py-2 tw-px-1.5">
+      <Row
+        className={classNames(
+          'filters-container',
+          stickyFilter ? 'm-x-xs' : ''
+        )}
+        justify="space-between">
         {/* Feed filter */}
-        {!hideFeedFilter && (
-          <div className="tw-relative tw-mr-5">
-            <Button
-              className="hover:tw-no-underline focus:tw-no-underline"
-              data-testid="feeds"
-              size="custom"
-              tag="button"
-              variant="link"
-              onClick={() => setFieldListVisible((visible) => !visible)}>
-              <span className="tw-font-medium tw-text-primary">
-                {feedFilterList.find((f) => f.value === feedFilter)?.name}
-              </span>
-              <DropDownIcon style={{ color: '#7147E8' }} />
-            </Button>
-            {fieldListVisible && (
-              <DropDownList
-                dropDownList={feedFilterList}
-                value={feedFilter}
-                onSelect={handleDropDown}
-              />
-            )}
-          </div>
-        )}
+        <Col>
+          {!hideFeedFilter && (
+            <>
+              <Button
+                className="flex items-center"
+                data-testid="feeds"
+                icon={getFeedFilterDropdownIcon(feedFilter)}
+                type="link"
+                onClick={() => setFieldListVisible((visible) => !visible)}>
+                <Typography.Text className="font-normal text-primary m-x-xss">
+                  {feedFilterList.find((f) => f.value === feedFilter)?.name}
+                </Typography.Text>
+                <DropDownIcon className="dropdown-icon" />
+              </Button>
+              {fieldListVisible && (
+                <DropDownList
+                  dropDownList={feedFilterList}
+                  value={feedFilter}
+                  onSelect={handleDropDown}
+                />
+              )}
+            </>
+          )}
+        </Col>
         {/* Thread filter */}
-        {!hideThreadFilter && (
-          <div className="tw-relative">
-            <Button
-              className="hover:tw-no-underline focus:tw-no-underline"
-              data-testid="thread-filter"
-              size="custom"
-              tag="button"
-              variant="link"
-              onClick={() => setShowThreadTypeList((visible) => !visible)}>
-              <SVGIcons
-                alt="filter"
-                className="tw-text-primary"
-                icon={Icons.FILTER_PRIMARY}
-                width="14px"
-              />
-              <span className="tw-font-medium tw-text-primary tw-ml-1">
-                {
-                  threadFilterList.find(
-                    (f) => f.value === (threadType ?? 'ALL')
-                  )?.name
-                }
-              </span>
-              <DropDownIcon style={{ color: '#7147E8' }} />
-            </Button>
-            {showThreadTypeList && (
-              <DropDownList
-                horzPosRight
-                dropDownList={threadFilterList}
-                value={threadType}
-                onSelect={handleThreadTypeDropDownChange}
-              />
-            )}
-          </div>
-        )}
-      </div>
+        <Col>
+          {!hideThreadFilter && (
+            <>
+              <Button
+                className="flex items-center"
+                data-testid="thread-filter"
+                icon={getThreadFilterDropdownIcon(threadType ?? 'ALL')}
+                type="link"
+                onClick={() => setShowThreadTypeList((visible) => !visible)}>
+                <Typography.Text className="font-normal text-primary m-x-xss">
+                  {
+                    threadFilterList.find(
+                      (f) => f.value === (threadType ?? 'ALL')
+                    )?.name
+                  }
+                </Typography.Text>
+                <DropDownIcon className="dropdown-icon" />
+              </Button>
+              {showThreadTypeList && (
+                <DropDownList
+                  horzPosRight
+                  dropDownList={threadFilterList}
+                  value={threadType}
+                  onSelect={handleThreadTypeDropDownChange}
+                />
+              )}
+            </>
+          )}
+        </Col>
+      </Row>
     );
   };
 
@@ -230,10 +232,12 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   }, []);
 
   return (
-    <div className={classNames(className)} id="feedData">
-      {feedList.length === 0 && feedFilter === FeedFilter.ALL && !threadType
-        ? null
-        : getFilterDropDown()}
+    <div className={classNames(className, 'feed-list-container')} id="feedData">
+      <div className={stickyFilter ? 'filters-wrapper' : ''}>
+        {feedList.length === 0 && feedFilter === FeedFilter.ALL && !threadType
+          ? null
+          : getFilterDropDown()}
+      </div>
       {refreshFeedCount ? (
         <div className="tw-py-px tw-pt-3 tw-pb-3">
           <button className="tw-refreshButton " onClick={onRefreshFeeds}>
@@ -243,7 +247,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         </div>
       ) : null}
       {feedList.length > 0 ? (
-        <Fragment>
+        <>
           {relativeDays.map((d, i) => {
             return (
               <div data-testid={`feed${i}`} key={i}>
@@ -266,7 +270,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             );
           })}
           {withSidePanel && selectedThread && isPanelOpen ? (
-            <Fragment>
+            <>
               <ActivityFeedPanel
                 deletePostHandler={deletePostHandler}
                 open={!isUndefined(selectedThread) && isPanelOpen}
@@ -275,23 +279,19 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 updateThreadHandler={updateThreadHandler}
                 onCancel={onCancel}
               />
-            </Fragment>
+            </>
           ) : null}
-        </Fragment>
+        </>
       ) : (
-        <Fragment>
+        <>
           {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
             <NoFeedPlaceholder entityName={entityName} />
           ) : !refreshFeedCount ? (
-            <Fragment>
-              <FeedListSeparator
-                className="tw-relative tw-mt-1 tw-mb-3.5 tw-pb-5"
-                relativeDay=""
-              />
-              <>No conversations found. Try changing the filter.</>
-            </Fragment>
+            <ErrorPlaceHolder>
+              {t('message.no-data-available-for-selected-filter')}
+            </ErrorPlaceHolder>
           ) : null}
-        </Fragment>
+        </>
       )}
       {confirmationState.state && (
         <DeleteConfirmationModal

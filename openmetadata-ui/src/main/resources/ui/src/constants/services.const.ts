@@ -67,6 +67,7 @@ import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
+import logo from '../assets/svg/logo-monogram.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
@@ -125,6 +126,7 @@ export const DAGSTER = dagster;
 export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
+export const LOGO = logo;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
@@ -147,10 +149,12 @@ export const excludedService = [
   MetadataServiceType.OpenMetadata,
 ];
 
+export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog'];
+
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
-    customServiceComparator
-  ),
+  databaseServices: (Object.values(DatabaseServiceType) as string[])
+    .filter((key: string) => !IGNORED_DB_SERVICES.includes(key))
+    .sort(customServiceComparator),
   messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
     customServiceComparator
   ),

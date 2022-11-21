@@ -16,6 +16,8 @@ Note: Make sure to add the Ingestion Client ID for the Service application in `A
 
 ### 1.1 Before 0.12.1
 
+OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY to be set as per the example below using the escape sequence for quotes.
+
 ```shell
 # OpenMetadata Server Authentication Configuration
 AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
@@ -34,7 +36,7 @@ AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 AIRFLOW_AUTH_PROVIDER=okta
 OM_AUTH_AIRFLOW_OKTA_CLIENT_ID={OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
 OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL={OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
-OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY={OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
+OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY=\'{"p":"lorem","kty":"RSA","q":"ipsum","d":"dolor","e":"AQAB","use":"sig","kid":"0oa5p908cltOc4fsl5d7","qi":"lorem","dp":"lorem","alg":"RS256","dq":"ipsum","n":"dolor"}\'
 OM_AUTH_AIRFLOW_OKTA_SA_EMAIL={OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
 OM_AUTH_AIRFLOW_OKTA_SCOPES={OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
 ```

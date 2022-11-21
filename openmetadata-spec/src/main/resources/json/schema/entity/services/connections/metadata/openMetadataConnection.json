@@ -86,7 +86,8 @@
       ]
     },
     "secretsManagerProvider": {
-      "$ref": "./secretsManagerProvider.json"
+      "$ref": "./../../../../security/secrets/secretsManagerProvider.json",
+      "default": "noop"
     },
     "secretsManagerCredentials": {
       "description": "OpenMetadata Secrets Manager Client credentials",
