@@ -10,9 +10,11 @@ import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.email.EmailRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -275,6 +277,19 @@ public class EmailUtil {
   public void sendMail(Email email) {
     if (mailer != null && defaultSmtpSettings.getEnableSmtpServer()) {
       mailer.sendMail(email, true);
+    }
+  }
+
+  public String buildBaseUrl(URI uri) {
+    try {
+      if (CommonUtil.nullOrEmpty(this.defaultSmtpSettings.getOpenMetadataUrl())) {
+        return String.format("%s://%s", uri.getScheme(), uri.getHost());
+      } else {
+        URI serverUrl = new URI(this.defaultSmtpSettings.getOpenMetadataUrl());
+        return String.format("%s://%s", serverUrl.getScheme(), serverUrl.getHost());
+      }
+    } catch (Exception ex) {
+      throw new IllegalArgumentException("Missing URI info from URI and SMTP settings.");
     }
   }
 

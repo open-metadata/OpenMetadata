@@ -19,6 +19,7 @@ Workflow definition for the ORM Profiler.
 
 from __future__ import annotations
 
+import time
 import traceback
 from datetime import datetime
 from typing import Optional, Union, cast
@@ -266,6 +267,7 @@ class DataInsightWorkflow:
         logger.info("Data processor finished running")
 
         logger.info("Sleeping for 1 second. Waiting for ES data to be indexed.")
+        time.sleep(1)
         logger.info("Starting KPI runner")
         self._execute_kpi_runner()
         logger.info("KPI runner finished running")

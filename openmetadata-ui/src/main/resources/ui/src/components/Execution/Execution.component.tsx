@@ -20,7 +20,6 @@ import {
   Menu,
   MenuProps,
   Radio,
-  RadioChangeEvent,
   Row,
   Space,
 } from 'antd';
@@ -37,6 +36,7 @@ import {
   EXECUTION_FILTER_RANGE,
   MenuOptions,
 } from '../../constants/execution.constants';
+import { PIPELINE_EXECUTION_TABS } from '../../constants/pipeline.constants';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import {
   getCurrentDateTimeStamp,
@@ -55,11 +55,7 @@ interface ExecutionProps {
 
 const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const { t } = useTranslation();
-
-  const listViewLabel = t('label.list');
-  const treeViewLabel = t('label.tree');
-
-  const [view, setView] = useState(listViewLabel);
+  const [view, setView] = useState(PIPELINE_EXECUTION_TABS.LIST_VIEW);
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
@@ -89,10 +85,6 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleModeChange = (e: RadioChangeEvent) => {
-    setView(e.target.value);
   };
 
   const handleMenuClick: MenuProps['onClick'] = (event) => {
@@ -150,14 +142,14 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <Space className="justify-between w-full">
-              <Radio.Group value={view} onChange={handleModeChange}>
-                <Radio.Button value={listViewLabel}>
-                  {listViewLabel}
-                </Radio.Button>
-                <Radio.Button value={treeViewLabel}>
-                  {treeViewLabel}
-                </Radio.Button>
-              </Radio.Group>
+              <Radio.Group
+                buttonStyle="solid"
+                className="radio-switch"
+                optionType="button"
+                options={Object.values(PIPELINE_EXECUTION_TABS)}
+                value={view}
+                onChange={(e) => setView(e.target.value)}
+              />
               <Space>
                 <Dropdown overlay={menu} placement="bottom">
                   <Button ghost type="primary">
@@ -167,7 +159,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                     </Space>
                   </Button>
                 </Dropdown>
-                {view === listViewLabel ? (
+                {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
                   <>
                     <Button
                       ghost
@@ -206,7 +198,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
             </Space>
           </Col>
           <Col span={24}>
-            {view === listViewLabel ? (
+            {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
               <ListView
                 executions={executions}
                 loading={isLoading}

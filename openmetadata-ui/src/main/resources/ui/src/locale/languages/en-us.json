@@ -309,10 +309,12 @@
     "server": "Server",
     "feature-plural": "Features",
     "detail-plural": "Details",
+    "ingestion": "Ingestion",
     "add-workflow-ingestion": "Add {{workflow}} Ingestion",
     "clearAll": "Clear All",
     "view-less": "View less",
-    "view-more": "View more"
+    "view-more": "View more",
+    "column-plural": "Columns"
   },
   "message": {
     "service-email-required": "Service account Email is required",
