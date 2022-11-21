@@ -19,8 +19,9 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as Lineage_Dashboard,
+    Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
@@ -32,10 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import (
-    clean_raw_query,
-    search_table_entities,
-)
+from metadata.ingestion.lineage.sql_lineage import clean_raw_query
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -128,10 +126,20 @@ class RedashSource(DashboardServiceSource):
         the lineage is being generated based on the query
         """
 
+        to_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageDashboard,
+            service_name=self.config.serviceName,
+            dashboard_name=str(dashboard_details.get("id")),
+        )
+        to_entity = self.metadata.get_by_name(
+            entity=LineageDashboard,
+            fqn=to_fqn,
+        )
         for widgets in dashboard_details.get("widgets", []):
             try:
                 visualization = widgets.get("visualization")
-                if not visualization.get("query"):
+                if not visualization:
                     continue
                 if visualization.get("query", {}).get("query"):
                     parser = LineageRunner(
@@ -139,26 +147,20 @@ class RedashSource(DashboardServiceSource):
                     )
                 for table in parser.source_tables:
                     table_name = str(table)
-                    database_schema = None
-                    if "." in table:
-                        database_schema, table = fqn.split(table_name)[-2:]
-                    table_entities = search_table_entities(
-                        metadata=self.metadata,
-                        database=None,
+                    database_schema_table = fqn.split_table_name(table_name)
+                    from_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
                         service_name=db_service_name,
-                        database_schema=database_schema,
-                        table=table_name,
+                        schema_name=database_schema_table.get("database_schema"),
+                        table_name=database_schema_table.get("table"),
+                        database_name=database_schema_table.get("database"),
                     )
-                    for from_entity in table_entities:
-                        to_entity = self.metadata.get_by_name(
-                            entity=Lineage_Dashboard,
-                            fqn=fqn.build(
-                                self.metadata,
-                                Lineage_Dashboard,
-                                service_name=self.config.serviceName,
-                                dashboard_name=str(dashboard_details.get("id")),
-                            ),
-                        )
+                    from_entity = self.metadata.get_by_name(
+                        entity=Table,
+                        fqn=from_fqn,
+                    )
+                    if from_entity and to_entity:
                         yield self._get_add_lineage_request(
                             to_entity=to_entity, from_entity=from_entity
                         )
