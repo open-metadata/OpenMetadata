@@ -12,15 +12,14 @@
  */
 
 import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from "../../../src/utils/TimeUtils";
-import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from "../../common/common";
-import { ANNOUNCEMENT_ENTITIES, LOGIN } from "../../constants/constants";
+import { descriptionBox, interceptURL, verifyResponseStatusCode, visitEntityDetailsPage } from "../../common/common";
+import { ANNOUNCEMENT_ENTITIES } from "../../constants/constants";
 
 
 
 describe("Entity Announcement", () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
 
   const createAnnouncement = (title, startDate, endDate, description) => {

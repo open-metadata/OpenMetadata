@@ -31,8 +31,7 @@ const adminEmail = `${adminName}@gmail.com`;
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
