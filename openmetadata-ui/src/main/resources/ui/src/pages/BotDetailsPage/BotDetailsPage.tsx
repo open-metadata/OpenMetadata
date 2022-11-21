@@ -15,12 +15,15 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   getBotByName,
   getUserByName,
   revokeUserToken,
   updateBotDetail,
+  updateUserDetail,
 } from '../../axiosAPIs/userAPI';
 import BotDetails from '../../components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -35,6 +38,7 @@ import { UserDetails } from '../../components/Users/Users.interface';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
+import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -50,6 +54,10 @@ const BotDetailsPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
+
+  const { t } = useTranslation();
   const fetchBotPermission = async (entityFqn: string) => {
     setIsLoading(true);
     try {
@@ -71,7 +79,8 @@ const BotDetailsPage = () => {
       const botResponse = await getBotByName(botsName);
 
       const botUserResponse = await getUserByName(
-        botResponse.botUser.fullyQualifiedName || ''
+        botResponse.botUser.fullyQualifiedName || '',
+        'roles,profile'
       );
       setBotUserData(botUserResponse);
       setBotData(botResponse);
@@ -96,6 +105,22 @@ const BotDetailsPage = () => {
         }));
       } else {
         throw jsonData['api-error-messages']['unexpected-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateUserDetails = async (data: UserDetails) => {
+    const updatedDetails = { ...botUserData, ...data };
+    const jsonPatch = compare(botUserData, updatedDetails);
+
+    try {
+      const response = await updateUserDetail(botUserData.id, jsonPatch);
+      if (response) {
+        setBotUserData((prevData) => ({ ...prevData, ...response }));
+      } else {
+        throw t('message.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -133,8 +158,11 @@ const BotDetailsPage = () => {
           botData={botData}
           botPermission={botPermission}
           botUserData={botUserData}
+          isAdminUser={Boolean(isAdminUser)}
+          isAuthDisabled={Boolean(isAuthDisabled)}
           revokeTokenHandler={revokeBotsToken}
           updateBotsDetails={updateBotsDetails}
+          updateUserDetails={updateUserDetails}
           onEmailChange={fetchBotsData}
         />
       );

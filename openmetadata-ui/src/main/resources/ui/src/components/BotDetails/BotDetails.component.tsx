@@ -12,8 +12,9 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Space } from 'antd';
+import { Button as AntdButton, Card, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isArray, isEmpty, isNil, toLower } from 'lodash';
 import React, {
   FC,
   Fragment,
@@ -22,22 +23,27 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import {
   createUserWithPut,
   getAuthMechanismForBotUser,
+  getRoles,
 } from '../../axiosAPIs/userAPI';
+import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
-import { Bot } from '../../generated/entity/bot';
+import { Bot, EntityReference } from '../../generated/entity/bot';
+import { Role } from '../../generated/entity/teams/role';
 import {
   AuthenticationMechanism,
   AuthType,
   User,
 } from '../../generated/entity/teams/user';
+import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -48,7 +54,7 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import { UserDetails } from '../Users/Users.interface';
+import { Option, UserDetails } from '../Users/Users.interface';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
 
@@ -59,6 +65,9 @@ interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   updateBotsDetails: (data: UserDetails) => Promise<void>;
   revokeTokenHandler: () => void;
   onEmailChange: () => void;
+  isAdminUser: boolean;
+  isAuthDisabled: boolean;
+  updateUserDetails: (data: UserDetails) => Promise<void>;
 }
 
 const BotDetails: FC<BotsDetailProp> = ({
@@ -68,14 +77,23 @@ const BotDetails: FC<BotsDetailProp> = ({
   revokeTokenHandler,
   botPermission,
   onEmailChange,
+  isAdminUser,
+  isAuthDisabled,
+  updateUserDetails,
 }) => {
   const [displayName, setDisplayName] = useState(botData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
+  const [isRolesEdit, setIsRolesEdit] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<Option | Array<Option>>(
+    []
+  );
+  const [roles, setRoles] = useState<Array<Role>>([]);
 
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  const { t } = useTranslation();
   const [authenticationMechanism, setAuthenticationMechanism] =
     useState<AuthenticationMechanism>();
 
@@ -102,6 +120,25 @@ const BotDetails: FC<BotsDetailProp> = ({
       setAuthenticationMechanism(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await getRoles(
+        '',
+        undefined,
+        undefined,
+        false,
+        PAGE_SIZE_LARGE
+      );
+      setRoles(response.data);
+    } catch (err) {
+      setRoles([]);
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['fetch-roles-error']
+      );
     }
   };
 
@@ -250,7 +287,7 @@ const BotDetails: FC<BotsDetailProp> = ({
 
   const getDescriptionComponent = () => {
     return (
-      <div className="tw--ml-5">
+      <div>
         <Description
           description={botData.description || ''}
           entityName={getEntityName(botData)}
@@ -264,30 +301,244 @@ const BotDetails: FC<BotsDetailProp> = ({
     );
   };
 
+  const handleRolesChange = () => {
+    // filter out the roles , and exclude the admin one
+    const updatedRoles = isArray(selectedRoles)
+      ? selectedRoles.filter((role) => role.value !== toLower(TERM_ADMIN))
+      : [];
+
+    // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
+    const isAdmin = isArray(selectedRoles)
+      ? selectedRoles.find((role) => role.value === toLower(TERM_ADMIN))
+      : [];
+
+    updateUserDetails({
+      roles: updatedRoles.map((item) => {
+        const roleId = item.value;
+        const role = roles.find((r) => r.id === roleId);
+
+        return { id: roleId, type: 'role', name: role?.name || '' };
+      }),
+      isAdmin: Boolean(isAdmin),
+    });
+
+    setIsRolesEdit(false);
+  };
+
+  const handleOnRolesChange = (options: Option | Option[]) => {
+    if (isNil(options)) {
+      setSelectedRoles([]);
+    } else {
+      setSelectedRoles(options);
+    }
+  };
+
+  const RolesComponent = () => {
+    const userRolesOption = isArray(roles)
+      ? roles.map((role) => ({
+          label: getEntityName(role as unknown as EntityReference),
+          value: role.id,
+        }))
+      : [];
+
+    if (!botUserData.isAdmin) {
+      userRolesOption.push({
+        label: TERM_ADMIN,
+        value: toLower(TERM_ADMIN),
+      });
+    }
+
+    const rolesElement = (
+      <Fragment>
+        {botUserData.isAdmin && (
+          <div className="mb-2 flex items-center gap-2">
+            <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+            <span>{TERM_ADMIN}</span>
+          </div>
+        )}
+        {botUserData?.roles?.map((role, i) => (
+          <div className="mb-2 flex items-center gap-2" key={i}>
+            <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+            <Typography.Text
+              className="ant-typography-ellipsis-custom w-48"
+              ellipsis={{ tooltip: true }}>
+              {getEntityName(role)}
+            </Typography.Text>
+          </div>
+        ))}
+        {!botUserData.isAdmin && isEmpty(botUserData.roles) && (
+          <span className="tw-no-description ">
+            {t('label.no-roles-assigned')}
+          </span>
+        )}
+      </Fragment>
+    );
+
+    if (!isAdminUser && !isAuthDisabled) {
+      return (
+        <Card
+          className="ant-card-feed relative"
+          key="roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="flex items-center justify-between">
+              <h6 className="mb-0">{t('label.roles')}</h6>
+            </div>
+          }>
+          <div className="flex items-center justify-between mb-4">
+            {rolesElement}
+          </div>
+        </Card>
+      );
+    } else {
+      return (
+        <Card
+          className="ant-card-feed relative"
+          key="roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="flex items-center justify-between">
+              <h6 className="mb-0">{t('label.roles')}</h6>
+              {!isRolesEdit && (
+                <button
+                  className="ml-2 focus:tw-outline-none tw-self-baseline"
+                  data-testid="edit-roles"
+                  onClick={() => setIsRolesEdit(true)}>
+                  <SVGIcons
+                    alt="edit"
+                    className="mb-1"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+          }>
+          <div className="mb-4">
+            {isRolesEdit ? (
+              <Space className="w-full" direction="vertical">
+                <Select
+                  aria-label="Select roles"
+                  className="w-full"
+                  id="select-role"
+                  mode="tags"
+                  options={userRolesOption}
+                  placeholder="Roles..."
+                  value={selectedRoles}
+                  onChange={(_, options) => handleOnRolesChange(options)}
+                />
+                <div className="flex justify-end" data-testid="buttons">
+                  <AntdButton
+                    className="text-sm"
+                    data-testid="cancel-roles"
+                    icon={
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="times"
+                      />
+                    }
+                    type="primary"
+                    onMouseDown={() => setIsRolesEdit(false)}
+                  />
+                  <AntdButton
+                    className="text-sm"
+                    data-testid="save-roles"
+                    icon={
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="check"
+                      />
+                    }
+                    type="primary"
+                    onClick={handleRolesChange}
+                  />
+                </div>
+              </Space>
+            ) : (
+              rolesElement
+            )}
+          </div>
+        </Card>
+      );
+    }
+  };
+
+  const InheritedRolesComponent = () => (
+    <Card
+      className="ant-card-feed relative"
+      key="inherited-roles-card-component"
+      style={{
+        ...leftPanelAntCardStyle,
+        marginTop: '20px',
+      }}
+      title={
+        <div className="flex">
+          <h6 className="tw-heading mb-0" data-testid="inherited-roles">
+            {t('label.inherited-roles')}
+          </h6>
+        </div>
+      }>
+      <Fragment>
+        {isEmpty(botUserData.inheritedRoles) ? (
+          <div className="mb-4">
+            <span className="tw-no-description">
+              {t('label.no-inherited-found')}
+            </span>
+          </div>
+        ) : (
+          <div className="flex justify-between flex-col">
+            {botUserData.inheritedRoles?.map((inheritedRole, i) => (
+              <div className="mb-2 flex items-center gap-2" key={i}>
+                <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+
+                <Typography.Text
+                  className="ant-typography-ellipsis-custom w-48"
+                  ellipsis={{ tooltip: true }}>
+                  {getEntityName(inheritedRole)}
+                </Typography.Text>
+              </div>
+            ))}
+          </div>
+        )}
+      </Fragment>
+    </Card>
+  );
+
   const fetchLeftPanel = () => {
     return (
-      <Card
-        className="ant-card-feed"
-        style={{
-          ...leftPanelAntCardStyle,
-          marginTop: '16px',
-        }}>
-        <div data-testid="left-panel">
-          <div className="tw-flex tw-flex-col">
-            <SVGIcons
-              alt="bot-profile"
-              icon={Icons.BOT_PROFILE}
-              width="280px"
-            />
+      <>
+        <Card
+          className="ant-card-feed"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '16px',
+          }}>
+          <div data-testid="left-panel">
+            <div className="flex flex-col">
+              <SVGIcons
+                alt="bot-profile"
+                icon={Icons.BOT_PROFILE}
+                width="280px"
+              />
 
-            <Space className="p-b-md" direction="vertical" size={8}>
-              {getDisplayNameComponent()}
+              <Space className="p-b-md" direction="vertical" size={8}>
+                {getDisplayNameComponent()}
 
-              {getDescriptionComponent()}
-            </Space>
+                {getDescriptionComponent()}
+              </Space>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+        <RolesComponent />
+        <InheritedRolesComponent />
+      </>
     );
   };
 
@@ -310,6 +561,10 @@ const BotDetails: FC<BotsDetailProp> = ({
       </div>
     </Card>
   );
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
 
   useEffect(() => {
     if (botUserData.id) {
