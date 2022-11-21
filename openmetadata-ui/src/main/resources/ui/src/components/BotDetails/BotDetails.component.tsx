@@ -54,9 +54,10 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import { Option, UserDetails } from '../Users/Users.interface';
+import { UserDetails } from '../Users/Users.interface';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
+import './BotDetails.style.less';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botUserData: User;
@@ -86,9 +87,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
   const [isRolesEdit, setIsRolesEdit] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<Option | Array<Option>>(
-    []
-  );
+  const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
 
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -132,7 +131,7 @@ const BotDetails: FC<BotsDetailProp> = ({
         false,
         PAGE_SIZE_LARGE
       );
-      setRoles(response.data);
+      setRoles(response.data.data);
     } catch (err) {
       setRoles([]);
       showErrorToast(
@@ -301,20 +300,26 @@ const BotDetails: FC<BotsDetailProp> = ({
     );
   };
 
+  const prepareSelectedRoles = () => {
+    const defaultRoles = [...(botUserData.roles?.map((role) => role.id) || [])];
+    if (botUserData.isAdmin) {
+      defaultRoles.push(toLower(TERM_ADMIN));
+    }
+    setSelectedRoles(defaultRoles);
+  };
+
   const handleRolesChange = () => {
     // filter out the roles , and exclude the admin one
     const updatedRoles = isArray(selectedRoles)
-      ? selectedRoles.filter((role) => role.value !== toLower(TERM_ADMIN))
+      ? selectedRoles.filter((roleId) => roleId !== toLower(TERM_ADMIN))
       : [];
-
     // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
     const isAdmin = isArray(selectedRoles)
-      ? selectedRoles.find((role) => role.value === toLower(TERM_ADMIN))
+      ? selectedRoles.find((roleId) => roleId === toLower(TERM_ADMIN))
       : [];
 
     updateUserDetails({
-      roles: updatedRoles.map((item) => {
-        const roleId = item.value;
+      roles: updatedRoles.map((roleId) => {
         const role = roles.find((r) => r.id === roleId);
 
         return { id: roleId, type: 'role', name: role?.name || '' };
@@ -325,11 +330,11 @@ const BotDetails: FC<BotsDetailProp> = ({
     setIsRolesEdit(false);
   };
 
-  const handleOnRolesChange = (options: Option | Option[]) => {
-    if (isNil(options)) {
+  const handleOnRolesChange = (selectedOptions: string[]) => {
+    if (isNil(selectedOptions)) {
       setSelectedRoles([]);
     } else {
-      setSelectedRoles(options);
+      setSelectedRoles(selectedOptions);
     }
   };
 
@@ -427,16 +432,18 @@ const BotDetails: FC<BotsDetailProp> = ({
                 <Select
                   aria-label="Select roles"
                   className="w-full"
+                  defaultValue={selectedRoles}
                   id="select-role"
-                  mode="tags"
+                  mode="multiple"
                   options={userRolesOption}
                   placeholder="Roles..."
-                  value={selectedRoles}
-                  onChange={(_, options) => handleOnRolesChange(options)}
+                  onChange={handleOnRolesChange}
                 />
-                <div className="flex justify-end" data-testid="buttons">
+                <div
+                  className="flex justify-end bot-roles-buttons"
+                  data-testid="buttons">
                   <AntdButton
-                    className="text-sm"
+                    className="text-sm mr-1"
                     data-testid="cancel-roles"
                     icon={
                       <FontAwesomeIcon
@@ -567,6 +574,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   }, []);
 
   useEffect(() => {
+    prepareSelectedRoles();
     if (botUserData.id) {
       fetchAuthMechanismForBot();
     }
