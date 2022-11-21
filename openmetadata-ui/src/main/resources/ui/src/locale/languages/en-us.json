@@ -65,7 +65,7 @@
     "enter-display-name": "Enter display name",
     "edit-display-name": "Edit Display Name",
     "enter-name": "Enter Name",
-    "name-already-exist": "Name already exists",
+    "entity-already-exists": "{{entity}} already exists.",
     "special-character-not-allowed": "Special characters are not allowed",
     "add-team": "Add Team",
     "close-with-comment": "Close with comment",
@@ -190,9 +190,9 @@
     "most-recent-session": "Most Recent Session",
     "total-session": "Total Sessions",
     "average-session": "Avg. Session Time",
-    "entity-name": "Entity Name",
+    "data-asset-name": "Data Asset Name",
     "owner": "Owner",
-    "entity-type": "Entity Type",
+    "data-asset-type": "Data Asset Type",
     "total-views": "Total Views",
     "unique-views": "Unique Views",
     "recent-runs": "Recent Runs",
@@ -308,7 +308,11 @@
     "algorithm": "Algorithm",
     "server": "Server",
     "feature-plural": "Features",
-    "detail-plural": "Details"
+    "detail-plural": "Details",
+    "add-workflow-ingestion": "Add {{workflow}} Ingestion",
+    "clearAll": "Clear All",
+    "view-less": "View less",
+    "view-more": "View more"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -362,7 +366,8 @@
     "field-region-name-description": "Region name. Required when using AWS Credentials.",
     "no-permission-for-action": "You do not have the necessary permissions to perform this action.",
     "no-permission-to-view": "You do not have the necessary permissions to view this data.",
-    "no-schema-data-available": " No schema data available"
+    "no-schema-data-available": " No schema data available",
+    "no-data-available-for-selected-filter": "No data found. Try changing the filters."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

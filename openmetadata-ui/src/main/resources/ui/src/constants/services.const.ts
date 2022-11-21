@@ -67,6 +67,7 @@ import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
+import logo from '../assets/svg/logo-monogram.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
@@ -125,6 +126,7 @@ export const DAGSTER = dagster;
 export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
+export const LOGO = logo;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;

@@ -37,7 +37,7 @@ import {
   MenuOptions,
 } from '../../constants/execution.constants';
 import { PIPELINE_EXECUTION_TABS } from '../../constants/pipeline.constants';
-import { PipelineStatus } from '../../generated/entity/data/pipeline';
+import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import {
   getCurrentDateTimeStamp,
   getPastDatesTimeStampFromCurrentDate,
@@ -50,9 +50,10 @@ import TreeViewTab from './TreeView/TreeViewTab.component';
 
 interface ExecutionProps {
   pipelineFQN: string;
+  tasks: Task[];
 }
 
-const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
+const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const { t } = useTranslation();
   const [view, setView] = useState(PIPELINE_EXECUTION_TABS.LIST_VIEW);
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
@@ -209,6 +210,7 @@ const ExecutionsTab = ({ pipelineFQN }: ExecutionProps) => {
                 executions={executions}
                 startTime={startTime}
                 status={status}
+                tasks={tasks}
               />
             )}
           </Col>

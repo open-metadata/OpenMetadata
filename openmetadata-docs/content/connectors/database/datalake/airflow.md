@@ -21,6 +21,12 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
+
+</Note>
+
 ** S3 Permissions **
 
 <p> To execute metadata extraction AWS account should have enough access to fetch required data. The <strong>Bucket Policy</strong> in AWS requires at least these permissions: </p>

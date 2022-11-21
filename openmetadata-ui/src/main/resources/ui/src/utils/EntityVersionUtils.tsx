@@ -511,8 +511,8 @@ export const getSummary = (
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
-                ? 'Entity has been deleted'
-                : 'Entity has been restored';
+                ? 'Data asset has been deleted'
+                : 'Data asset has been restored';
             })
             .join(', ')}
         </p>
