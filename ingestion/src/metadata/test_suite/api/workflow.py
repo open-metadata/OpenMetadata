@@ -22,6 +22,7 @@ from logging import Logger
 from typing import List, Optional, Set, Tuple
 
 from pydantic import ValidationError
+from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_sink
@@ -46,13 +47,13 @@ from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
+from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.orm_profiler.api.models import TablePartitionConfig
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
-from metadata.utils.helpers import create_ometa_client
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.workflow_output_handler import print_test_suite_status
 
@@ -236,7 +237,7 @@ class TestSuiteWorkflow:
             )
         return None
 
-    def _create_runner_interface(self, entity_fqn: str):
+    def _create_runner_interface(self, entity_fqn: str, sqa_metadata_obj: MetaData):
         """create the interface to execute test against SQA sources"""
         table_entity = self._get_table_entity_from_test_case(entity_fqn)
         return SQATestSuiteInterface(
@@ -244,6 +245,7 @@ class TestSuiteWorkflow:
                 entity_fqn
             ),
             ometa_client=create_ometa_client(self.metadata_config),
+            sqa_metadata_obj=sqa_metadata_obj,
             table_entity=table_entity,
             table_sample_precentage=self._get_profile_sample(table_entity)
             if not self._get_profile_query(table_entity)
@@ -412,8 +414,11 @@ class TestSuiteWorkflow:
         unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
 
         for entity_fqn in unique_entity_fqns:
+            sqa_metadata_obj = MetaData()
             try:
-                runner_interface = self._create_runner_interface(entity_fqn)
+                runner_interface = self._create_runner_interface(
+                    entity_fqn, sqa_metadata_obj
+                )
                 data_test_runner = self._create_data_tests_runner(runner_interface)
 
                 for test_case in self._filter_test_cases_for_entity(
