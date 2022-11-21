@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 9;
+export const LATEST_VERSION_ID = 10;
 
-export const COOKIE_VERSION = 'VERSION_0_12_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_13_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -546,6 +546,63 @@ export const WHATS_NEW = [
       'DBT Metadata - Tag': `- We support ingesting DBT tags into OpenMetadata.`,
       'Bots Integration': `- Admins can create bots and their security mechanism from UI.`,
       'Bug Fixes': `- Around 136 Features/Bug fixes/improvements/Tests made it into 0.12.1 release.`,
+    },
+  },
+  {
+    id: 10,
+    version: 'v0.13.0',
+    description: 'Released on 22 November 2022.',
+    features: [],
+    changeLogs: {
+      'Data Insights and KPIs': `-   Provides a single pane view of all the key data metrics.
+-   Analytics are provided based on the metadata metrics, the entities created, the types of entities, and the data evolution over a period of time.
+-   Admins can define the **Key Performance Indicators** (KPIs) and set goals.
+-   Goals can be set towards better documentation, ownership, and tiering.
+-   Goals are based on entities and driven to achieve targets within a specified time.
+-   **Data insights dashboard** provides a quick glance at aspects like data ownership, description coverage, data tiering, and so on.
+-   A timeseries report is provided to track progress and monitor the health of your data.
+-   Admins can view the **aggregated user activity** and get insights into user engagement and user growth.
+-   Admins can check for Daily active users and know how OpenMetadata is being used.
+-   The **Data Insights Report** is emailed weekly to assess team performance.`,
+      Glossary: `-   Introduced the functionality to **bulk upload glossary terms**.
+-   Upload a CSV with thousands of terms in one go.
+-   Define the **Owners and Reviewers** during bulk upload.
+-   Owners and Reviewers will be propagated to every glossary term.
+-   Users can **Preview** before uploading to ensure that everything looks right.
+-   Support a **Review Workflow** for new term suggestions.
+-   Suggested terms will be saved as Draft terms.
+-   Admins can review and approve these draft terms.
+-   Once approved, these terms can be used for tagging and searching.
+-   A glossary term can be moved to a different hierarchy within a glossary or across a glossary.
+-   While moving a term, even the child terms will be moved along with the parent term.`,
+
+      Lineage: `-   The UI displays end-to-end **lineage** **traceability** for the table and column levels.
+-   Users can search for an entity and expand the graph to unfold lineage.
+-   Displays the upstream and downstream for each node.
+-   Lineage Tab UI supports two-finger scrolling to zoom in or zoom out.
+`,
+      'Data Quality': `-   We support **profiling** for **Data lakes** like Amazon S3.
+-   **Freshness metric** has been introduced based on the partition key.
+-   Data freshness is defined by how often the table is being updated and the number of rows being updated.
+-   All this is displayed within the profiler.
+-   Users can create alerts for the same.`,
+      Security: `-   **LDAP SSO** has been introduced.
+-   In the 0.12.1 release, support was added for **basic authentication** to sign up using a Username/Password.
+-   Created multiple **bots to serve different scenarios**. For example, Ingestion Bot, Lineage Bot, Data Quality and Profiler Bot.
+-   The **policies and access control for bots** has been redefined.
+-   Bots can have their own policies. For example, the Ingestion Bot can create and update entities.`,
+      'Advanced Search Improvements': `-   Apart from OpenMetadata's advanced search syntax which is syntax-driven, a **Syntax Editor** has been introduced.
+-   The Syntax Editor is based on And/Or conditions to discover assets quickly.
+`,
+      Connectors: `-   [**Domo**](https://docs.open-metadata.org/connectors/dashboard/domo-dashboard) connector has been introduced. It's a cloud-based dashboard service.
+-   Ingestion framework has been improved.
+-   Adding a [**custom service type**](https://docs.open-metadata.org/connectors/custom-connectors) supported from the 0.12.1 release.`,
+      'Messaging Service Schemas': `-   We now parse **Avro** and **Protobuf Schemas** to extract the fields from **Kafka** and **Redpanda** Messaging services. Previously, the schemas were taken as one payload and just published to OpenMetadata.
+-   A **nested schema** view of the Topic entities is displayed.
+-   Users can **document** each of these fields within a schema by adding description and tags.
+-   Users can **search** based on the fields in the Schema of a Topic.`,
+      'Other Changes': `-   **Soft deleted entities** can be restored. Currently, only the ML Models are not supported.
+-   **Soft deleted teams** can be restored. When restoring a soft deleted parent team, the child teams will not be restored by default.`,
     },
   },
 ];
