@@ -18,7 +18,8 @@ import { DELETE_TERM, SEARCH_INDEX } from '../constants/constants';
 export const descriptionBox =
     '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
-const RETRY_TIMES = 30;
+const RETRY_TIMES = 10;
+const BASE_WAIT_TIME = 20000;
 
 const ADMIN = 'admin';
 
@@ -50,6 +51,7 @@ export const handleIngestionRetry = (
     count = 0,
     ingestionType = 'metadata'
 ) => {
+    let timer = BASE_WAIT_TIME;
     const rowIndex = ingestionType === 'metadata' ? 1 : 2;
 
     interceptURL('GET', '/api/v1/services/ingestionPipelines/*/pipelineStatus?*', 'pipelineStatuses')
@@ -91,7 +93,8 @@ export const handleIngestionRetry = (
             retryCount <= RETRY_TIMES
           ) {
             // retry after waiting for 20 seconds
-            cy.wait(20000);
+            cy.wait(timer);
+            timer *= 2;
             cy.reload();
             checkSuccessState();
           } else {
@@ -885,6 +888,7 @@ export const addTeam = (TEAM_DETAILS) => {
 };
 
 export const retryIngestionRun = () => {
+    let timer = BASE_WAIT_TIME;
     let retryCount = 0;
     const testIngestionsTab = () => {
         cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -914,7 +918,8 @@ export const retryIngestionRun = () => {
           retryCount <= RETRY_TIMES
         ) {
           // retry after waiting for 20 seconds
-          cy.wait(20000);
+          cy.wait(timer);
+          timer *= 2;
           cy.reload();
           checkSuccessState();
         } else {
