@@ -1,5 +1,6 @@
 {
   "name": "tableColumnCountToBeBetween",
+  "fullyQualifiedName": "tableColumnCountToBeBetween",
   "displayName": "Table Column Count To Be Between",
   "description": "This schema defines the test TableColumnCountToBeBetween. Test the number of columns to be between min max value.",
   "entityType": "TABLE",

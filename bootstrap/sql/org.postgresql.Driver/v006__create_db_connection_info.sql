@@ -152,3 +152,8 @@ SET json = jsonb_set(json::jsonb, '{deployed}', 'true'::jsonb, true);
 -- We removed the supportsMetadataExtraction field in the `OpenMetadataConnection` object being used in IngestionPipelines
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{openMetadataServerConnection,supportsMetadataExtraction}';
+
+
+-- Add fqn to test definition
+ALTER TABLE test_definition add column fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL;
+ALTER TABLE test_definition ADD CONSTRAINT fullyQualifiedName_unique UNIQUE(fullyQualifiedName);
