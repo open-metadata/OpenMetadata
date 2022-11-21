@@ -27,6 +27,7 @@ export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   hideFeedFilter?: boolean;
   hideThreadFilter?: boolean;
   refreshFeedCount?: number;
+  stickyFilter?: boolean;
   onRefreshFeeds?: () => void;
   postFeedHandler?: (value: string, id: string) => void;
   deletePostHandler?: (

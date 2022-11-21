@@ -42,13 +42,13 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
 
   return (
     <label
-      className="filter-group tw-justify-between tw-mb-2.5 tw-cursor-pointer"
+      className="filter-group justify-between m-b-xs cursor-pointer"
       data-testid={`filter-container-${name}`}>
-      <div className="tw-flex">
+      <div className="flex">
         <input
           checked={isSelected}
-          className={classNames('tw-mr-1 custom-checkbox', {
-            'tw-cursor-not-allowed': isDisabled,
+          className={classNames('m-r-xs custom-checkbox', {
+            'cursor-not-allowed': isDisabled,
           })}
           data-testid="checkbox"
           disabled={isDisabled}
@@ -60,15 +60,15 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
         />
         <div
           className={classNames(
-            'filters-title tw-w-32 tw-truncate custom-checkbox-label',
-            { 'tw-text-grey-muted': isDisabled }
+            'filters-title w-32 truncate custom-checkbox-label',
+            { 'text-grey-muted': isDisabled }
           )}
           data-testid="checkbox-label">
           {getFilterName(name)}
         </div>
       </div>
       {!isNil(count) &&
-        getCountBadge(count, classNames('tw-py-0 tw-px-0'), isSelected)}
+        getCountBadge(count, classNames('p-y-0 p-x-0'), isSelected)}
     </label>
   );
 };
