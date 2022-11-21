@@ -476,9 +476,7 @@ def _(connection: AthenaConnection):
         url += ":"
     url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
 
-    staging_url = connection.s3StagingDir.scheme + "://" + str(connection.s3StagingDir)
-
-    url += f"?s3_staging_dir={quote_plus(staging_url)}"
+    url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
     if connection.workgroup:
         url += f"&work_group={connection.workgroup}"
     if connection.awsConfig.awsSessionToken:
