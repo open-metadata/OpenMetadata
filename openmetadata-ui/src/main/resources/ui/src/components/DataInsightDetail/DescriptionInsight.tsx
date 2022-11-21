@@ -46,6 +46,7 @@ import {
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
+import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -105,34 +106,40 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
-      <ResponsiveContainer
-        debounce={1}
-        id="description-summary-graph"
-        minHeight={400}>
-        <BarChart data={data} margin={BAR_CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="timestamp" />
+      {data.length ? (
+        <ResponsiveContainer
+          debounce={1}
+          id="description-summary-graph"
+          minHeight={400}>
+          <BarChart data={data} margin={BAR_CHART_MARGIN}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="timestamp" />
 
-          <YAxis />
-          <Tooltip content={<CustomTooltip isPercentage />} />
-          <Legend
-            align="left"
-            content={(props) => renderLegend(props as LegendProps, `${total}%`)}
-            layout="vertical"
-            verticalAlign="top"
-            wrapperStyle={{ left: '0px' }}
-          />
-          {entities.map((entity) => (
-            <Bar
-              barSize={BAR_SIZE}
-              dataKey={entity}
-              fill={ENTITIES_BAR_COLO_MAP[entity]}
-              key={uniqueId()}
-              stackId="description"
+            <YAxis />
+            <Tooltip content={<CustomTooltip isPercentage />} />
+            <Legend
+              align="left"
+              content={(props) =>
+                renderLegend(props as LegendProps, `${total}%`)
+              }
+              layout="vertical"
+              verticalAlign="top"
+              wrapperStyle={{ left: '0px' }}
             />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+            {entities.map((entity) => (
+              <Bar
+                barSize={BAR_SIZE}
+                dataKey={entity}
+                fill={ENTITIES_BAR_COLO_MAP[entity]}
+                key={uniqueId()}
+                stackId="description"
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyGraphPlaceholder />
+      )}
     </Card>
   );
 };
