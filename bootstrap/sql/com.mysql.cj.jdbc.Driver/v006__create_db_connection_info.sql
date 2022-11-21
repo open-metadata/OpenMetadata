@@ -124,7 +124,3 @@ SET json = JSON_INSERT(json ,'$.deployed', 'true');
 -- We removed the supportsMetadataExtraction field in the `OpenMetadataConnection` object being used in IngestionPipelines
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json ,'$.openMetadataServerConnection.supportsMetadataExtraction');
-
--- Add fqn to test definition
-ALTER table test_definition add column fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL;
-ALTER table test_definition ADD CONSTRAINT fullyQualifiedName_unique unique(fullyQualifiedName);

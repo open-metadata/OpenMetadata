@@ -153,7 +153,3 @@ SET json = jsonb_set(json::jsonb, '{deployed}', 'true'::jsonb, true);
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{openMetadataServerConnection,supportsMetadataExtraction}';
 
-
--- Add fqn to test definition
-ALTER TABLE test_definition add column fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL;
-ALTER TABLE test_definition ADD CONSTRAINT fullyQualifiedName_unique UNIQUE(fullyQualifiedName);
