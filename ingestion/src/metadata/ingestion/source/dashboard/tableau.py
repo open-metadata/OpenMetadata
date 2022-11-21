@@ -240,7 +240,7 @@ class TableauSource(DashboardServiceSource):
         data_source = next(
             (
                 data_source
-                for data_source in self.workbook_datasources
+                for data_source in self.workbook_datasources or []
                 if data_source.get("luid") == dashboard_id
             ),
             None,
