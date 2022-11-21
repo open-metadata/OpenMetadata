@@ -58,6 +58,7 @@ import {
 import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
+import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import KPILatestResults from './KPILatestResults';
 
 interface Props {
@@ -204,34 +205,40 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
       }>
       {kpiList.length ? (
         <Row>
-          {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-            <Col span={5}>
-              <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
-            </Col>
-          )}
+          {graphData.length ? (
+            <>
+              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
+                <Col span={5}>
+                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
+                </Col>
+              )}
 
-          <Col span={19}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
-              <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="timestamp" />
-                <YAxis />
-                <Tooltip
-                  content={
-                    <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
-                  }
-                />
-                {kpis.map((kpi, i) => (
-                  <Line
-                    dataKey={kpi}
-                    key={i}
-                    stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
-                    type="monotone"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </Col>
+              <Col span={19}>
+                <ResponsiveContainer debounce={1} minHeight={400}>
+                  <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="timestamp" />
+                    <YAxis />
+                    <Tooltip
+                      content={
+                        <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
+                      }
+                    />
+                    {kpis.map((kpi, i) => (
+                      <Line
+                        dataKey={kpi}
+                        key={i}
+                        stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
+                        type="monotone"
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </Col>
+            </>
+          ) : (
+            <EmptyGraphPlaceholder />
+          )}
         </Row>
       ) : (
         <Space

@@ -23,6 +23,10 @@ buildNumber.properties
 .mvn/timing.properties
 
 catalog-services/catalog-services.iml
+
+# local docker volume
+docker/local-metadata/docker-volume
+
 # Java template
 *.class
 venv
