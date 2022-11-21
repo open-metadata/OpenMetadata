@@ -171,7 +171,7 @@ public class NotificationHandler {
                     user.getName(),
                     user.getEmail(),
                     String.format(
-                        "%s://%s/users/%s/tasks", urlInstance.getScheme(), urlInstance.getHost(), user.getName()),
+                        "%s/users/%s/tasks", EmailUtil.getInstance().buildBaseUrl(urlInstance), user.getName()),
                     thread,
                     EmailUtil.getInstance().getTaskAssignmentSubject(),
                     EmailUtil.TASK_NOTIFICATION_TEMPLATE);
@@ -252,8 +252,8 @@ public class NotificationHandler {
           URI urlInstance = testCase.getHref();
           String testLinkUrl =
               String.format(
-                  "%s://%s/table/%s/activity_feed",
-                  urlInstance.getScheme(), urlInstance.getHost(), testCase.getEntityFQN());
+                  "%s/table/%s/activity_feed",
+                  EmailUtil.getInstance().buildBaseUrl(urlInstance), testCase.getEntityFQN());
           try {
             EmailUtil.getInstance()
                 .sendTestResultEmailNotificationToUser(
