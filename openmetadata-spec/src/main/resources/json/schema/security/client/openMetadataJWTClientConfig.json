@@ -9,7 +9,7 @@
     "jwtToken": {
       "description": "OpenMetadata generated JWT token.",
       "type": "string",
-      "format":"password"
+      "format": "password"
     }
   },
   "additionalProperties": false,
