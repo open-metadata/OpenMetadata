@@ -51,7 +51,7 @@
           "type": "string"
         }
       },
-      "required": ["sql", "serviceName", "tables", "databaseName"]
+      "required": ["sql", "serviceName", "tables"]
     }
   },
   "properties": {
