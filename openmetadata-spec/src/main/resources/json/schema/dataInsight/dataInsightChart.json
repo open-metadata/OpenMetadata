@@ -20,7 +20,7 @@
           "description": "Display Name that identifies this parameter name.",
           "type": "string"
         },
-        "dataType": {
+        "chartDataType": {
           "javaType": "org.openmetadata.schema.type.DataInsightChartDataType",
           "description": "Data type of the parameter (int, date etc.).",
           "type": "string",

@@ -68,7 +68,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
                 List.of(
                     new ChartParameterValues()
                         .withName("Percentage")
-                        .withDataType(DataInsightChartDataType.PERCENTAGE)));
+                        .withChartDataType(DataInsightChartDataType.PERCENTAGE)));
     DI_CHART1 = dataInsightResourceTest.createAndCheckEntity(chartRequest, ADMIN_AUTH_HEADERS);
     DI_CHART1_REFERENCE = DI_CHART1.getEntityReference();
     KPI_TARGET = new KpiTarget().withName("Percentage").withValue("80");
