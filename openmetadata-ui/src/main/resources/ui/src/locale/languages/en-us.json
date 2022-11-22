@@ -314,7 +314,8 @@
     "clearAll": "Clear All",
     "view-less": "View less",
     "view-more": "View more",
-    "column-plural": "Columns"
+    "column-plural": "Columns",
+    "pctile-lowercase": "pctile"
   },
   "message": {
     "service-email-required": "Service account Email is required",
