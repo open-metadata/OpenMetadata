@@ -52,8 +52,12 @@ source:
   serviceConnection:
     config:
       type: Dagster
-      hostPort: http://localhost:8080
-      numberOfStatus: 10
+        # For Local Connection
+        # hostPort: http://locahost:3000/
+        
+        # For Cloud Connection
+        host: "https://<yourorghere>.dagster.cloud/prod"
+        token: token
       dbConnection:
         type: name of database service
         username: db username
@@ -92,13 +96,13 @@ If dagster is deployed on `localhost` and entering `https://localhost:3000` into
 
 </Note>
 
-- **numberOfStatus**: 10
 - **dbConnection**
     - **type**: Name of the Database Service
-    - **username**: db username
-    - **password**: db password
-    - **databaseSchema**: database name
-    - **hostPort**: host and port for database connection
+    - Local Dagster
+      - **hostPort**: host and port for database connection
+    - Cloud Dagster
+      - **host** : host for connection
+      - **token**: token for connection
 
 #### Source Configuration - Source Config
 
