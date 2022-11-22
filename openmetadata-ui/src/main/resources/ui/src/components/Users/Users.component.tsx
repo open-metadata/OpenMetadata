@@ -351,7 +351,7 @@ const Users = ({
   const getDescriptionComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between">
+        <div className="flex items-center justify-between">
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
@@ -365,10 +365,12 @@ const Users = ({
       );
     } else {
       return (
-        <div className="tw--ml-2 tw-px-3">
-          <p className="tw-mt-2">
+        <div className="p-x-sm">
+          <p className="m-t-xs">
             {userData.description || (
-              <span className="tw-no-description">No description </span>
+              <span className="tw-no-description">
+                {t('label.no-description')}
+              </span>
             )}
           </p>
         </div>

@@ -52,8 +52,12 @@ source:
   serviceConnection:
     config:
       type: Dagster
-      hostPort: http://localhost:8080
-      numberOfStatus: 10
+        # For Local Connection
+        # hostPort: http://locahost:3000/
+        
+        # For Cloud Connection
+        host: "https://<yourorghere>.dagster.cloud/prod"
+        token: token
       dbConnection:
         type: name of database service
         username: db username
@@ -84,21 +88,19 @@ workflowConfig:
 #### Source Configuration - Service Connection
 
 
-- **hostPort**: host and port for dagster pipeline
-
 <Note>
 
 If dagster is deployed on `localhost` and entering `https://localhost:3000` into hostPort gives a connection refused error, please enter `https://127.0.0.1:3000` into the hostPort and try again.
 
 </Note>
 
-- **numberOfStatus**: 10
 - **dbConnection**
     - **type**: Name of the Database Service
-    - **username**: db username
-    - **password**: db password
-    - **databaseSchema**: database name
-    - **hostPort**: host and port for database connection
+    - Local Dagster
+      - **hostPort**: host and port for database connection
+    - Cloud Dagster
+      - **host** : host for connection
+      - **token**: token for connection
 
 #### Source Configuration - Source Config
 
