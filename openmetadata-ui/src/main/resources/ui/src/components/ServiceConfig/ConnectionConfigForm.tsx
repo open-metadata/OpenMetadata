@@ -55,6 +55,7 @@ interface Props {
   status: LoadingState;
   onCancel?: () => void;
   onSave: (data: ISubmitEvent<ConfigData>) => void;
+  disableTestConnection?: boolean;
 }
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
@@ -66,6 +67,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   status,
   onCancel,
   onSave,
+  disableTestConnection = false,
 }: Props) => {
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
 
@@ -154,6 +156,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     return (
       <FormBuilder
         cancelText={cancelText}
+        disableTestConnection={disableTestConnection}
         formData={validConfig}
         isAirflowAvailable={isAirflowAvailable}
         okText={okText}

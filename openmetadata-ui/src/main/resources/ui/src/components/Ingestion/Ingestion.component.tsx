@@ -221,7 +221,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const getAddIngestionButton = (type: PipelineType) => {
     return (
       <Button
-        className={classNames('tw-h-8 tw-rounded tw-mb-2')}
+        className={classNames('h-8 rounded-4 m-b-xs')}
         data-testid="add-new-ingestion-button"
         size="small"
         type="primary"
@@ -235,7 +235,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     return (
       <Fragment>
         <Button
-          className={classNames('tw-h-8 tw-rounded tw-mb-2')}
+          className={classNames('h-8 rounded-4 m-b-xs flex items-center')}
           data-testid="add-new-ingestion-button"
           size="small"
           type="primary"
@@ -245,15 +245,15 @@ const Ingestion: React.FC<IngestionProps> = ({
             <DropdownIcon
               style={{
                 transform: 'rotate(180deg)',
-                marginTop: '2px',
+                verticalAlign: 'middle',
                 color: '#fff',
               }}
             />
           ) : (
             <DropdownIcon
               style={{
-                marginTop: '2px',
                 color: '#fff',
+                verticalAlign: 'middle',
               }}
             />
           )}
