@@ -3036,6 +3036,16 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @Bind("startTs") Long startTs,
         @Bind("endTs") long endTs);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and extension = :extension "
+            + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp :orderBy")
+    List<String> listBetweenTimestampsByOrder(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") long endTs,
+        @Bind("orderBy") String orderBy);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
