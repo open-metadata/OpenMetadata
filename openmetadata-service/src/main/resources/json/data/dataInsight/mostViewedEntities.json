@@ -1,5 +1,6 @@
 {
   "name": "mostViewedEntities",
+  "fullyQualifiedName": "mostActiveUsers",
   "displayName": "Most Viewed entites",
   "description": "Displays the most viewed entities.",
   "dataIndexType": "web_analytic_entity_view_report_data_index",
