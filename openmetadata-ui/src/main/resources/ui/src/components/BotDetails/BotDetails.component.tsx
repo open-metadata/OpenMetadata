@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Input, Select, Space, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isArray, isEmpty, isNil, toLower } from 'lodash';
-import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
+import { toLower } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import {
@@ -39,20 +38,16 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Description from '../common/description/Description';
+import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
+import RolesCard from '../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
-import {
-  BotsDetailProps,
-  DescriptionComponentProps,
-  DisplayNameComponentProps,
-  InheritedRolesComponentProps,
-  RolesComponentProps,
-  RolesElementProps,
-} from './BotDetails.interfaces';
+import { BotsDetailProps } from './BotDetails.interfaces';
 import './BotDetails.style.less';
+import DisplayNameComponent from './DisplayNameComponent/DisplayNameComponent.component';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -61,15 +56,12 @@ const BotDetails: FC<BotsDetailProps> = ({
   revokeTokenHandler,
   botPermission,
   onEmailChange,
-  isAdminUser,
-  isAuthDisabled,
   updateUserDetails,
 }) => {
   const [displayName, setDisplayName] = useState(botData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
-  const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
 
@@ -196,92 +188,6 @@ const BotDetails: FC<BotsDetailProps> = ({
     setIsDescriptionEdit(false);
   };
 
-  const DisplayNameComponent = ({
-    isDisplayNameEdit,
-    displayName,
-    onDisplayNameChange,
-    handleDisplayNameChange,
-    displayNamePermission,
-    editAllPermission,
-    setIsDisplayNameEdit,
-  }: DisplayNameComponentProps) => {
-    return (
-      <div className="mt-4 w-full flex">
-        {isDisplayNameEdit ? (
-          <div className="flex items-center gap-2">
-            <Input
-              className="w-full"
-              data-testid="displayName"
-              id="displayName"
-              name={t('label.displayName')}
-              placeholder={t('label.displayName')}
-              value={displayName}
-              onChange={onDisplayNameChange}
-            />
-            <div
-              className="flex justify-end bot-details-buttons"
-              data-testid="buttons">
-              <Button
-                className="text-sm mr-1"
-                data-testid="cancel-displayName"
-                icon={<FontAwesomeIcon className="w-3.5 h-3.5" icon="times" />}
-                type="primary"
-                onMouseDown={() => setIsDisplayNameEdit(false)}
-              />
-
-              <Button
-                className="text-sm mr-1"
-                data-testid="save-displayName"
-                icon={<FontAwesomeIcon className="w-3.5 h-3.5" icon="check" />}
-                type="primary"
-                onClick={handleDisplayNameChange}
-              />
-            </div>
-          </div>
-        ) : (
-          <Fragment>
-            {displayName ? (
-              <Typography.Title className="display-name" level={5}>
-                {displayName}
-              </Typography.Title>
-            ) : (
-              <Typography.Text className="no-description">
-                {t('label.add-display-name')}
-              </Typography.Text>
-            )}
-            {(displayNamePermission || editAllPermission) && (
-              <button
-                className="tw-ml-2 focus:tw-outline-none"
-                data-testid="edit-displayName"
-                onClick={() => setIsDisplayNameEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title={t('label.edit')}
-                  width="16px"
-                />
-              </button>
-            )}
-          </Fragment>
-        )}
-      </div>
-    );
-  };
-
-  const DescriptionComponent = ({ botData }: DescriptionComponentProps) => {
-    return (
-      <Description
-        description={botData.description || ''}
-        entityName={getEntityName(botData)}
-        hasEditAccess={descriptionPermission || editAllPermission}
-        isEdit={isDescriptionEdit}
-        onCancel={() => setIsDescriptionEdit(false)}
-        onDescriptionEdit={() => setIsDescriptionEdit(true)}
-        onDescriptionUpdate={handleDescriptionChange}
-      />
-    );
-  };
-
   const prepareSelectedRoles = () => {
     const defaultRoles = [...(botUserData.roles?.map((role) => role.id) || [])];
     if (botUserData.isAdmin) {
@@ -290,202 +196,10 @@ const BotDetails: FC<BotsDetailProps> = ({
     setSelectedRoles(defaultRoles);
   };
 
-  const handleRolesChange = () => {
-    // filter out the roles , and exclude the admin one
-    const updatedRoles = isArray(selectedRoles)
-      ? selectedRoles.filter((roleId) => roleId !== toLower(TERM_ADMIN))
-      : [];
-    // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
-    const isAdmin = isArray(selectedRoles)
-      ? selectedRoles.find((roleId) => roleId === toLower(TERM_ADMIN))
-      : [];
-
-    updateUserDetails({
-      roles: updatedRoles.map((roleId) => {
-        const role = roles.find((r) => r.id === roleId);
-
-        return { id: roleId, type: 'role', name: role?.name || '' };
-      }),
-      isAdmin: Boolean(isAdmin),
-    });
-
-    setIsRolesEdit(false);
-  };
-
-  const handleOnRolesChange = (selectedOptions: string[]) => {
-    if (isNil(selectedOptions)) {
-      setSelectedRoles([]);
-    } else {
-      setSelectedRoles(selectedOptions);
-    }
-  };
-
-  const RolesElement = ({ botUserData }: RolesElementProps) => (
-    <Fragment>
-      {botUserData.isAdmin && (
-        <div className="mb-2 flex items-center gap-2">
-          <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
-          <span>{TERM_ADMIN}</span>
-        </div>
-      )}
-      {botUserData?.roles?.map((role, i) => (
-        <div className="mb-2 flex items-center gap-2" key={i}>
-          <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
-          <Typography.Text
-            className="ant-typography-ellipsis-custom w-48"
-            ellipsis={{ tooltip: true }}>
-            {getEntityName(role)}
-          </Typography.Text>
-        </div>
-      ))}
-      {!botUserData.isAdmin && isEmpty(botUserData.roles) && (
-        <span className="no-description ">{t('label.no-roles-assigned')}</span>
-      )}
-    </Fragment>
-  );
-
-  const RolesComponent = ({ roles, botUserData }: RolesComponentProps) => {
-    const userRolesOption = isArray(roles)
-      ? roles.map((role) => ({
-          label: getEntityName(role),
-          value: role.id,
-        }))
-      : [];
-
-    if (!botUserData.isAdmin) {
-      userRolesOption.push({
-        label: TERM_ADMIN,
-        value: toLower(TERM_ADMIN),
-      });
-    }
-
-    if (isAdminUser && !isAuthDisabled) {
-      return (
-        <Card
-          className="ant-card-feed relative bot-details-card mt-2.5"
-          key="roles-card"
-          title={
-            <div className="flex items-center justify-between">
-              <h6 className="mb-0">{t('label.roles')}</h6>
-              {!isRolesEdit && (
-                <button
-                  className="m-l-xs focus:tw-outline-none tw-self-baseline"
-                  data-testid="edit-roles"
-                  onClick={() => setIsRolesEdit(true)}>
-                  <SVGIcons
-                    alt="edit"
-                    className="m-b-xss"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                </button>
-              )}
-            </div>
-          }>
-          <div className="mb-4">
-            {isRolesEdit ? (
-              <Space className="w-full" direction="vertical">
-                <Select
-                  aria-label="Select roles"
-                  className="w-full"
-                  defaultValue={selectedRoles}
-                  id="select-role"
-                  mode="multiple"
-                  options={userRolesOption}
-                  placeholder={`${t('label.roles')}...`}
-                  onChange={handleOnRolesChange}
-                />
-                <div
-                  className="flex justify-end bot-details-buttons"
-                  data-testid="buttons">
-                  <Button
-                    className="text-sm mr-1"
-                    data-testid="cancel-roles"
-                    icon={
-                      <FontAwesomeIcon className="w-3.5 h-3.5" icon="times" />
-                    }
-                    type="primary"
-                    onMouseDown={() => setIsRolesEdit(false)}
-                  />
-                  <Button
-                    className="text-sm"
-                    data-testid="save-roles"
-                    icon={
-                      <FontAwesomeIcon className="w-3.5 h-3.5" icon="check" />
-                    }
-                    type="primary"
-                    onClick={handleRolesChange}
-                  />
-                </div>
-              </Space>
-            ) : (
-              <RolesElement botUserData={botUserData} />
-            )}
-          </div>
-        </Card>
-      );
-    } else {
-      return (
-        <Card
-          className="ant-card-feed relative bot-details-card mt-2.5"
-          key="roles-card"
-          title={
-            <div className="flex items-center justify-between">
-              <h6 className="mb-0">{t('label.roles')}</h6>
-            </div>
-          }>
-          <div className="flex items-center justify-between mb-4">
-            <RolesElement botUserData={botUserData} />
-          </div>
-        </Card>
-      );
-    }
-  };
-
-  const InheritedRolesComponent = ({
-    botUserData,
-  }: InheritedRolesComponentProps) => (
-    <Card
-      className="ant-card-feed relative bot-details-card mt-2.5"
-      key="inherited-roles-card-component"
-      title={
-        <div className="flex">
-          <h6 className="heading mb-0" data-testid="inherited-roles">
-            {t('label.inherited-roles')}
-          </h6>
-        </div>
-      }>
-      <Fragment>
-        {isEmpty(botUserData.inheritedRoles) ? (
-          <div className="mb-4">
-            <span className="no-description">
-              {t('label.no-inherited-found')}
-            </span>
-          </div>
-        ) : (
-          <div className="flex justify-between flex-col">
-            {botUserData.inheritedRoles?.map((inheritedRole, i) => (
-              <div className="mb-2 flex items-center gap-2" key={i}>
-                <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
-
-                <Typography.Text
-                  className="ant-typography-ellipsis-custom w-48"
-                  ellipsis={{ tooltip: true }}>
-                  {getEntityName(inheritedRole)}
-                </Typography.Text>
-              </div>
-            ))}
-          </div>
-        )}
-      </Fragment>
-    </Card>
-  );
-
   const fetchLeftPanel = () => {
     return (
       <>
-        <Card className="ant-card-feed bot-details-card mt-2">
+        <Card className="page-layout-v1-left-panel mt-2">
           <div data-testid="left-panel">
             <div className="flex flex-col">
               <SVGIcons
@@ -506,31 +220,30 @@ const BotDetails: FC<BotsDetailProps> = ({
                   }
                   onDisplayNameChange={onDisplayNameChange}
                 />
-                <DescriptionComponent botData={botData} />
+                <Description
+                  description={botData.description || ''}
+                  entityName={getEntityName(botData)}
+                  hasEditAccess={descriptionPermission || editAllPermission}
+                  isEdit={isDescriptionEdit}
+                  onCancel={() => setIsDescriptionEdit(false)}
+                  onDescriptionEdit={() => setIsDescriptionEdit(true)}
+                  onDescriptionUpdate={handleDescriptionChange}
+                />
               </Space>
             </div>
           </div>
         </Card>
-        <RolesComponent botUserData={botUserData} roles={roles} />
-        <InheritedRolesComponent botUserData={botUserData} />
+        <RolesCard
+          roles={roles}
+          selectedRoles={selectedRoles}
+          setSelectedRoles={(selectedRoles) => setSelectedRoles(selectedRoles)}
+          updateUserDetails={updateUserDetails}
+          userData={botUserData}
+        />
+        <InheritedRolesCard userData={botUserData} />
       </>
     );
   };
-
-  const rightPanel = (
-    <Card className="ant-card-feed bot-details-card mt-2">
-      <div data-testid="right-panel">
-        <div className="flex flex-col">
-          <Typography.Text className="mb-2 text-lg">
-            {t('label.token-security')}
-          </Typography.Text>
-          <Typography.Text className="mb-2">
-            {t('message.token-security-description')}
-          </Typography.Text>
-        </div>
-      </div>
-    </Card>
-  );
 
   useEffect(() => {
     fetchRoles();
@@ -562,8 +275,23 @@ const BotDetails: FC<BotsDetailProps> = ({
         />
       }
       leftPanel={fetchLeftPanel()}
-      rightPanel={rightPanel}>
-      <Card data-testid="center-panel bot-details-card mt-2">
+      rightPanel={
+        <Card className="page-layout-v1-left-panel mt-2">
+          <div data-testid="right-panel">
+            <div className="flex flex-col">
+              <Typography.Text className="mb-2 text-lg">
+                {t('label.token-security')}
+              </Typography.Text>
+              <Typography.Text className="mb-2">
+                {t('message.token-security-description')}
+              </Typography.Text>
+            </div>
+          </div>
+        </Card>
+      }>
+      <Card
+        className="page-layout-v1-left-panel mt-2"
+        data-testid="center-panel">
         {authenticationMechanism ? (
           <>
             {isAuthMechanismEdit ? (
