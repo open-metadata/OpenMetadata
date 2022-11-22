@@ -90,9 +90,9 @@ const ServiceConfig = ({
   };
 
   return (
-    <div className="tw-bg-white tw-h-full">
+    <div className="bg-white h-full">
       <div
-        className="tw-max-w-xl tw-pb-6"
+        className="w-full p-b-lg"
         data-testid="service-config"
         id="serviceConfig">
         <div className="tw-mx-auto">{getDynamicFields()}</div>

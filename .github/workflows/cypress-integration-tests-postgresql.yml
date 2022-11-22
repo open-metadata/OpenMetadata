@@ -135,7 +135,4 @@ jobs:
         run: |
           cd ./docker/local-metadata
           docker compose down --remove-orphans
-
           rm -rf ${PWD}/docker-volume
-
-

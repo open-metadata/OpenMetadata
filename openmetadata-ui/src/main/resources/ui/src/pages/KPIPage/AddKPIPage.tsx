@@ -37,7 +37,7 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import './KPIPage.less';
 
 import { t } from 'i18next';
-import { postKPI } from '../../axiosAPIs/KpiAPI';
+import { getListKPIs, postKPI } from '../../axiosAPIs/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,
@@ -58,6 +58,7 @@ import {
   DataType,
 } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import {
@@ -96,6 +97,7 @@ const AddKPIPage = () => {
   const [metricValue, setMetricValue] = useState<number>(0);
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
   const [kpiDates, setKpiDates] = useState<KpiDates>(KPI_DATES);
+  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
 
   const metricTypes = useMemo(
     () =>
@@ -108,6 +110,14 @@ const AddKPIPage = () => {
     [selectedChart]
   );
 
+  const chartOptions = useMemo(() => {
+    return dataInsightCharts.filter(
+      (chart) =>
+        // only show unmapped charts
+        !kpiList.find((kpi) => kpi.dataInsightChart.name === chart.name)
+    );
+  }, [kpiList, dataInsightCharts]);
+
   const fetchCharts = async () => {
     try {
       const response = await getListDataInsightCharts();
@@ -119,6 +129,17 @@ const AddKPIPage = () => {
       setDataInsightCharts(supportedCharts);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchKpiList = async () => {
+    try {
+      const response = await getListKPIs({
+        fields: 'dataInsightChart',
+      });
+      setKpiList(response.data);
+    } catch (err) {
+      setKpiList([]);
     }
   };
 
@@ -180,6 +201,7 @@ const AddKPIPage = () => {
 
   useEffect(() => {
     fetchCharts();
+    fetchKpiList();
   }, []);
 
   return (
@@ -249,10 +271,11 @@ const AddKPIPage = () => {
               ]}>
               <Select
                 data-testid="dataInsightChart"
+                notFoundContent={t('message.all-charts-are-mapped')}
                 placeholder={t('label.select-a-chart')}
                 value={selectedChart?.id}
                 onChange={handleChartSelect}>
-                {dataInsightCharts.map((chart) => (
+                {chartOptions.map((chart) => (
                   <Option key={chart.id}>
                     {chart.displayName || chart.name}
                   </Option>
