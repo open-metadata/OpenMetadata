@@ -77,10 +77,14 @@ export const getKPIByName = async (kpiName: string, params?: ListParams) => {
   return response.data;
 };
 
-export const getListKpiResult = async (fqn: string, params: KpiResultParam) => {
+export const getListKpiResult = async (
+  fqn: string,
+  params: KpiResultParam,
+  orderBy = 'ASC'
+) => {
   const response = await APIClient.get<PagingResponse<KpiResult[]>>(
     `/kpi/${fqn}/kpiResult`,
-    { params }
+    { params: { ...params, orderBy } }
   );
 
   return response.data;
