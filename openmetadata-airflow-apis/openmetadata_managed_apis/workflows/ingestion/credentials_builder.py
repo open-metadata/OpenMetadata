@@ -7,6 +7,7 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.utils.secrets.secrets_manager import SECRET_MANAGER_AIRFLOW_CONF
 
 
@@ -15,10 +16,10 @@ def build_aws_credentials() -> Optional[AWSCredentials]:
         credentials = AWSCredentials(
             awsRegion=conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_region", fallback="")
         )
-        credentials.awsAccessKeyId = SecretStr(
-            conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_access_key_id", fallback="")
+        credentials.awsAccessKeyId = conf.get(
+            SECRET_MANAGER_AIRFLOW_CONF, "aws_access_key_id", fallback=""
         )
-        credentials.awsSecretAccessKey = SecretStr(
+        credentials.awsSecretAccessKey = CustomSecretStr(
             conf.get(SECRET_MANAGER_AIRFLOW_CONF, "aws_secret_access_key", fallback="")
         )
         return credentials
