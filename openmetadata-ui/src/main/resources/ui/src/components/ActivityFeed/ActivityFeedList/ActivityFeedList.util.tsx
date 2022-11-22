@@ -53,7 +53,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
     case ThreadType.Announcement:
       return (
         <SVGIcons
-          alt="Conversation"
+          alt="Announcement"
           className="m-r-xss"
           icon={Icons.ANNOUNCEMENT_BASIC_PRIMARY}
           width="16px"
