@@ -73,10 +73,18 @@ then
       rm -rf $PWD/docker-volume
     fi
 fi
+
+if [[ $VIRTUAL_ENV == "" ]]; 
+then 
+  echo "Please Use Virtual Environment and make sure to generate Pydantic Models"; 
+else
+  echo "Generating Pydantic Models"; 
+  make install_dev generate
+fi
+
 echo "Stopping any previous Local Docker Containers"
 docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
 docker compose -f docker/local-metadata/docker-compose.yml down
-
 
 echo "Starting Local Docker Containers"
 mkdir -p docker-volume && mkdir -p docker-volume/db-data

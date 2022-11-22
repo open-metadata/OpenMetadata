@@ -1,5 +1,6 @@
 {
   "name": "tableColumnCountToEqual",
+  "fullyQualifiedName": "tableColumnCountToEqual",
   "displayName": "Table Column Count To Equal",
   "description": "This test defines the test TableColumnCountToEqual. Test the number of columns equal to a value.",
   "entityType": "TABLE",
