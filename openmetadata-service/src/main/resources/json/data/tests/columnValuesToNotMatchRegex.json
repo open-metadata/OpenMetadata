@@ -1,5 +1,6 @@
 {
   "name": "columnValuesToNotMatchRegex",
+  "fullyQualifiedName": "columnValuesToNotMatchRegex",
   "displayName": "Column Values To Not Match Regex",
   "description": "This schema defines the test ColumnValuesToNotMatchRegex. Test the values in a column to not match a given regular expression. ",
   "entityType": "COLUMN",

@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -95,7 +96,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       User user = user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
 
       // Add role corresponding to the bot to the user
-      user.setRoles(List.of(RoleResource.getRole(getRoleForBot(bot.getName()))));
+      // we need to set a mutable list here
+      user.setRoles(Arrays.asList(RoleResource.getRole(getRoleForBot(bot.getName()))));
       user = DefaultAuthorizer.addOrUpdateBotUser(user, config);
 
       bot.withId(UUID.randomUUID())

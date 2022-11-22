@@ -1,5 +1,6 @@
 {
   "name": "columnValuesToBeBetween",
+  "fullyQualifiedName": "columnValuesToBeBetween",
   "displayName": "Column Values To Be Between",
   "description": "This schema defines the test ColumnValuesToBeBetween. Test the values in a column to be between minimum and maximum value. ",
   "entityType": "COLUMN",
