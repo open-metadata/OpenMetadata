@@ -213,6 +213,11 @@ class Workflow:
         return cls(config)
 
     def execute(self):
+        """
+        Pass each record from the source down the pipeline:
+        Source -> (Processor) -> Sink
+        or Source -> (Processor) -> Stage -> BulkSink
+        """
         self.timer.trigger()
 
         try:
