@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.bots;
 
-import static org.openmetadata.service.security.DefaultAuthorizer.user;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,29 +59,32 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/bots")
 @Api(value = "Bot collection", tags = "Bot collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots", order = 8) // initialize after user resource
+@Collection(name = "bots", order = 4) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
+  protected static EntityRepository<User> USER_REPOSITORY;
 
   public BotResource(CollectionDAO dao, Authorizer authorizer) {
     super(Bot.class, new BotRepository(dao), authorizer);
+    USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
   }
 
   @Override
@@ -93,12 +94,12 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     String domain = SecurityUtil.getDomain(config);
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
-      User user = user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
+      User user = UserUtil.user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
 
       // Add role corresponding to the bot to the user
       // we need to set a mutable list here
       user.setRoles(Arrays.asList(RoleResource.getRole(getRoleForBot(bot.getName()))));
-      user = DefaultAuthorizer.addOrUpdateBotUser(user, config);
+      user = UserUtil.addOrUpdateBotUser(user, config);
 
       bot.withId(UUID.randomUUID())
           .withBotUser(user.getEntityReference())

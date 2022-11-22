@@ -274,6 +274,10 @@ public class EmailUtil {
     }
   }
 
+  public boolean isSMTPServerEnabled() {
+    return defaultSmtpSettings.getEnableSmtpServer();
+  }
+
   public void sendMail(Email email) {
     if (mailer != null && defaultSmtpSettings.getEnableSmtpServer()) {
       mailer.sendMail(email, true);
