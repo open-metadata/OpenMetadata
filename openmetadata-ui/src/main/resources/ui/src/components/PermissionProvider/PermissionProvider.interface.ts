@@ -21,7 +21,7 @@ export type OperationPermission = {
   [key in Operation]: boolean;
 };
 
-export type ServicePermission = {
+export type IngestionServicePermission = {
   [key: string]: OperationPermission;
 };
 

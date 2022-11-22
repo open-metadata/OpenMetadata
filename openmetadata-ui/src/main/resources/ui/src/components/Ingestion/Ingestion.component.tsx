@@ -52,8 +52,8 @@ import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
+  IngestionServicePermission,
   ResourceEntity,
-  ServicePermission,
 } from '../PermissionProvider/PermissionProvider.interface';
 import { IngestionProps } from './ingestion.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
@@ -102,26 +102,23 @@ const Ingestion: React.FC<IngestionProps> = ({
     setSearchText(searchValue);
   };
 
-  const [list, setList] = useState<Array<IngestionPipeline>>(ingestionList);
+  const [ingestionData, setIngestionData] =
+    useState<Array<IngestionPipeline>>(ingestionList);
   const [servicePermission, setServicePermission] =
-    useState<ServicePermission>();
+    useState<IngestionServicePermission>();
 
   const fetchServicePermission = async () => {
-    const promiseList = ingestionList.map(
-      async (item) =>
-        await getEntityPermissionByFqn(
-          ResourceEntity.INGESTION_PIPELINE,
-          item.name
-        )
-    );
     try {
-      const response = await Promise.allSettled(promiseList);
+      const promises = ingestionList.map((item) =>
+        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
+      );
+      const response = await Promise.allSettled(promises);
 
       const permissionData = response.reduce((acc, cv, index) => {
         return {
           ...acc,
           [ingestionList?.[index].name]:
-            cv.status === 'fulfilled' ? cv.value : '',
+            cv.status === 'fulfilled' ? cv.value : {},
         };
       }, {});
 
@@ -131,7 +128,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     }
   };
 
-  const editPermission = (service: string): boolean =>
+  const getEditPermission = (service: string): boolean =>
     !servicePermission?.[service]?.EditAll;
 
   const getSupportedPipelineTypes = () => {
@@ -345,7 +342,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const getSearchedIngestions = () => {
     const sText = lowerCase(searchText);
 
-    setList(
+    setIngestionData(
       sText
         ? ingestionList.filter(
             (ing) =>
@@ -385,7 +382,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           <Button
             data-testid="re-deploy-btn"
             disabled={
-              !isRequiredDetailsAvailable || editPermission(ingestion.name)
+              !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
             }
             type="link"
             onClick={() => handleDeployIngestion(ingestion.id as string)}>
@@ -398,7 +395,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <Button
           data-testid="deploy"
           disabled={
-            !isRequiredDetailsAvailable || editPermission(ingestion.name)
+            !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
           }
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
@@ -498,7 +495,8 @@ const Ingestion: React.FC<IngestionProps> = ({
                   <Button
                     data-testid="pause"
                     disabled={
-                      !isRequiredDetailsAvailable || editPermission(record.name)
+                      !isRequiredDetailsAvailable ||
+                      getEditPermission(record.name)
                     }
                     type="link"
                     onClick={() =>
@@ -511,7 +509,8 @@ const Ingestion: React.FC<IngestionProps> = ({
                 <Button
                   data-testid="unpause"
                   disabled={
-                    !isRequiredDetailsAvailable || editPermission(record.name)
+                    !isRequiredDetailsAvailable ||
+                    getEditPermission(record.name)
                   }
                   type="link"
                   onClick={() => handleEnableDisableIngestion(record.id || '')}>
@@ -522,7 +521,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               <Button
                 data-testid="edit"
                 disabled={
-                  !isRequiredDetailsAvailable || editPermission(record.name)
+                  !isRequiredDetailsAvailable || getEditPermission(record.name)
                 }
                 type="link"
                 onClick={() => handleUpdate(record)}>
@@ -622,7 +621,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         </div>
         <div className="tw-flex tw-justify-between">
           <div className="tw-w-4/12">
-            {searchText || !isEmpty(list) ? (
+            {searchText || !isEmpty(ingestionData) ? (
               <Searchbar
                 placeholder="Search for ingestion..."
                 searchValue={searchText}
@@ -637,14 +636,14 @@ const Ingestion: React.FC<IngestionProps> = ({
               getAddIngestionElement()}
           </div>
         </div>
-        {!isEmpty(list) ? (
+        {!isEmpty(ingestionData) ? (
           <div className="tw-mb-6" data-testid="ingestion-table">
             <Table
               bordered
               className="table-shadow"
               columns={tableColumn}
               data-testid="schema-table"
-              dataSource={list}
+              dataSource={ingestionData}
               pagination={false}
               rowKey="name"
               size="small"
