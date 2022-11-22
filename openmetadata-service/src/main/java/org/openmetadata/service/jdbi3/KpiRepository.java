@@ -72,7 +72,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     }
     Map<String, Object> values = new HashMap<>();
     for (ChartParameterValues parameterValue : dataInsightChartMetric) {
-      values.put(parameterValue.getName(), parameterValue.getDataType());
+      values.put(parameterValue.getName(), parameterValue.getChartDataType());
     }
     for (KpiTarget kpiTarget : kpiTargetDef) {
       if (!values.containsKey(kpiTarget.getName())) {
