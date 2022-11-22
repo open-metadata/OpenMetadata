@@ -102,23 +102,37 @@ const Ingestion: React.FC<IngestionProps> = ({
     setSearchText(searchValue);
   };
 
-  const [list, setList] = useState<Array<IngestionPipeline>>([]);
+  const [list, setList] = useState<Array<IngestionPipeline>>(ingestionList);
   const [servicePermission, setServicePermission] =
     useState<ServicePermission>();
 
-  const fetchServicePermission = () => {
-    list.forEach(async (item) => {
-      try {
-        const response = await getEntityPermissionByFqn(
+  const fetchServicePermission = async () => {
+    const promiseList = ingestionList.map(
+      async (item) =>
+        await getEntityPermissionByFqn(
           ResourceEntity.INGESTION_PIPELINE,
           item.name
-        );
-        setServicePermission((prev) => ({ ...prev, [item.name]: response }));
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    });
+        )
+    );
+    try {
+      const response = await Promise.allSettled(promiseList);
+
+      const permissionData = response.reduce((acc, cv, index) => {
+        return {
+          ...acc,
+          [ingestionList?.[index].name]:
+            cv.status === 'fulfilled' ? cv.value : '',
+        };
+      }, {});
+
+      setServicePermission(permissionData);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
+
+  const editPermission = (service: string): boolean =>
+    !servicePermission?.[service]?.EditAll;
 
   const getSupportedPipelineTypes = () => {
     let pipelineType = [];
@@ -348,7 +362,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   useEffect(() => {
     fetchServicePermission();
-  }, [list]);
+  }, []);
 
   const separator = (
     <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
@@ -371,8 +385,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           <Button
             data-testid="re-deploy-btn"
             disabled={
-              !isRequiredDetailsAvailable ||
-              !servicePermission?.[ingestion.name]?.EditAll
+              !isRequiredDetailsAvailable || editPermission(ingestion.name)
             }
             type="link"
             onClick={() => handleDeployIngestion(ingestion.id as string)}>
@@ -385,8 +398,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <Button
           data-testid="deploy"
           disabled={
-            !isRequiredDetailsAvailable ||
-            !servicePermission?.[ingestion.name]?.EditAll
+            !isRequiredDetailsAvailable || editPermission(ingestion.name)
           }
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
@@ -486,8 +498,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                   <Button
                     data-testid="pause"
                     disabled={
-                      !isRequiredDetailsAvailable ||
-                      !servicePermission?.[record.name]?.EditAll
+                      !isRequiredDetailsAvailable || editPermission(record.name)
                     }
                     type="link"
                     onClick={() =>
@@ -500,8 +511,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 <Button
                   data-testid="unpause"
                   disabled={
-                    !isRequiredDetailsAvailable ||
-                    !servicePermission?.[record.name]?.EditAll
+                    !isRequiredDetailsAvailable || editPermission(record.name)
                   }
                   type="link"
                   onClick={() => handleEnableDisableIngestion(record.id || '')}>
@@ -512,8 +522,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               <Button
                 data-testid="edit"
                 disabled={
-                  !isRequiredDetailsAvailable ||
-                  !servicePermission?.[record.name]?.EditAll
+                  !isRequiredDetailsAvailable || editPermission(record.name)
                 }
                 type="link"
                 onClick={() => handleUpdate(record)}>
