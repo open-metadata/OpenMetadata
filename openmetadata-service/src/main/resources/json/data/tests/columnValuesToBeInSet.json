@@ -1,5 +1,6 @@
 {
   "name": "columnValuesToBeInSet",
+  "fullyQualifiedName": "columnValuesToBeInSet",
   "displayName": "Column Values To Be In Set",
   "description": "This schema defines the test ColumnValuesToBeInSet. Test the column values are in the set.",
   "entityType": "COLUMN",

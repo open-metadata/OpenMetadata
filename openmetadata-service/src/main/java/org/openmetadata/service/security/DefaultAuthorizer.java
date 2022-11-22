@@ -327,6 +327,7 @@ public class DefaultAuthorizer implements Authorizer {
     user.setAuthenticationMechanism(authMechanism);
     user.setDescription(user.getDescription());
     user.setDisplayName(user.getDisplayName());
+    user.setUpdatedBy(ADMIN_USER_NAME);
     return addOrUpdateUser(user);
   }
 

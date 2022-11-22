@@ -24,15 +24,15 @@ const msPerYear = msPerDay * 365;
 const formattingObj = {
   sameDay: "'Today'",
   lastDay: "'Yesterday'",
-  lastWeek: 'dd MMMM yyyy',
-  sameElse: 'dd MMMM yyyy',
+  lastWeek: "DDD 'at' hh:mm a",
+  sameElse: "DDD 'at' hh:mm a",
 };
 
 const activityFeedTimeFormat = {
-  sameDay: "'Today at' t a",
-  lastDay: "'Yesterday at' t a",
-  lastWeek: "'Last' EEEE 'at' t a",
-  sameElse: 'dd/MM/yyyy',
+  sameDay: "'Today at' hh:mm a",
+  lastDay: "'Yesterday at' hh:mm a",
+  lastWeek: "'Last' EEEE 'at' hh:mm a",
+  sameElse: "DDD 'at' hh:mm a",
 };
 
 /**
@@ -46,13 +46,11 @@ const activityFeedTimeFormat = {
 const getCalendarFormat = (myDateTime: DateTime, now: DateTime): string => {
   const diff = myDateTime.diff(now.startOf('day'), 'days').as('days');
 
-  if (diff < -1) return 'lastWeek';
+  if (diff < -7) return 'sameElse';
+  else if (diff < 0) return 'lastWeek';
+  else if (diff < 1) return 'lastDay';
 
-  if (diff < 0) return 'lastDay';
-
-  if (diff < 1) return 'sameDay';
-
-  return 'sameElse';
+  return 'sameDay';
 };
 
 export const getRelativeTimeDifference = (
@@ -331,11 +329,12 @@ export const getFormattedDateFromMilliSeconds = (
 
 /**
  * It takes a timestamp in milliseconds and returns a formatted date like 'Oct 14, 1983, 9:30 AM'.
+ * reference: https://moment.github.io/luxon/#/formatting?id=table-of-tokens
  * @param timeStamp The timeStamp in milliseconds.
  * @returns formatted date like 'Oct 14, 1983, 9:30 AM'.
  */
 export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
-  DateTime.fromMillis(timeStamp).toLocaleString(DateTime.DATETIME_MED);
+  DateTime.fromMillis(timeStamp).toFormat("DDD 'at' hh:mm a");
 
 /**
  * @param seconds EPOCH seconds

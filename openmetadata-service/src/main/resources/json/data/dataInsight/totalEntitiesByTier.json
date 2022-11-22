@@ -1,5 +1,6 @@
 {
   "name": "TotalEntitiesByTier",
+  "fullyQualifiedName": "TotalEntitiesByTier",
   "displayName": "Percentage of Entities With Tier",
   "description": "Display the percentage of entities with tier by type.",
   "dataIndexType": "entity_report_data_index",

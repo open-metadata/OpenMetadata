@@ -1,5 +1,6 @@
 {
   "name": "tableRowCountToBeBetween",
+  "fullyQualifiedName": "tableRowCountToBeBetween",
   "displayName": "Table Row Count To Be Between",
   "description": "This defines the test TableRowCountToBeBetween. Test the number of rows to between to two values.",
   "entityType": "TABLE",
