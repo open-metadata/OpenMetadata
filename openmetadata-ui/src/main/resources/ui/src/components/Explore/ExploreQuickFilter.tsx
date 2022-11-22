@@ -104,7 +104,7 @@ const ExploreQuickFilter: FC<ExploreQuickFilterProps> = ({
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      if (field.key === 'tags') {
+      if (field.key === 'tags.tagFQN') {
         getTagSuggestions(query)
           .then((res) => {
             const suggestOptions =

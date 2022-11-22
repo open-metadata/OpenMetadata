@@ -314,6 +314,8 @@
     "view-less": "View less",
     "view-more": "View more",
     "column-plural": "Columns",
+    "field-plural": "Fields",
+    "delete-group": "Delete Group",
     "add-display-name": "Add display name",
     "token-security": "Token Security",
     "teams": "Teams",

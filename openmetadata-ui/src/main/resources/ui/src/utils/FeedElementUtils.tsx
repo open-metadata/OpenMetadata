@@ -58,7 +58,7 @@ export const getFieldThreadElement = (
       <SVGIcons
         alt="comments"
         className="tw-mt-0.5"
-        heigth="16px"
+        height="16px"
         icon={isTaskType ? Icons.TASK_ICON : Icons.COMMENT}
         width="16px"
       />

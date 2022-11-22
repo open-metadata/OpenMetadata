@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
 import IconCognito from '../assets/img/icon-aws-cognito.png';
@@ -197,10 +198,11 @@ import IconWebhook from '../assets/svg/webhook.svg';
 import IconWhatsNew from '../assets/svg/whatsNew.svg';
 
 type Props = {
-  alt: string;
   icon: string;
-  className?: string;
-} & Record<string, string>;
+} & React.DetailedHTMLProps<
+  React.ImgHTMLAttributes<HTMLImageElement>,
+  HTMLImageElement
+>;
 
 export const Icons = {
   LOGO: 'logo',
@@ -387,12 +389,7 @@ export const Icons = {
   NO_DATA_PLACEHOLDER: 'no-data-placeholder',
 };
 
-const SVGIcons: FunctionComponent<Props> = ({
-  alt,
-  icon,
-  className = '',
-  ...props
-}: Props) => {
+const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
   let IconComponent;
   switch (icon) {
     case Icons.MY_DATA:
@@ -1143,12 +1140,11 @@ const SVGIcons: FunctionComponent<Props> = ({
 
   return IconComponent ? (
     <img
-      alt={alt}
-      className={`svg-icon ${className}`}
+      // eslint-disable-next-line react/prop-types
+      className={`svg-icon ${props.className ? props.className : ''}`}
       data-testid="image"
       src={IconComponent}
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...props}
+      {...omit(props, ['src', 'className'])}
     />
   ) : null;
 };

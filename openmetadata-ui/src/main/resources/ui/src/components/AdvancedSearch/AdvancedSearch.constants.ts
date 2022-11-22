@@ -319,7 +319,7 @@ const initialConfigWithoutFields: BasicConfig = {
     showLabels: true,
     canReorder: false,
     renderSize: 'medium',
-    fieldLabel: i18next.t('label.description') + ':',
+    fieldLabel: i18next.t('label.field-plural') + ':',
     operatorLabel: i18next.t('label.condition') + ':',
     showNot: false,
     valueLabel: i18next.t('label.criteria') + ':',
