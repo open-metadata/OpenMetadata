@@ -440,11 +440,15 @@ class OpenMetadataAuthenticationProvider(AuthenticationProvider):
 
     def auth_token(self) -> None:
         if not self.jwt_token:
-            if os.path.isfile(self.security_config.jwtToken):
-                with open(self.security_config.jwtToken, "r", encoding="utf-8") as file:
+            if os.path.isfile(self.security_config.jwtToken.get_secret_value()):
+                with open(
+                    self.security_config.jwtToken.get_secret_value(),
+                    "r",
+                    encoding="utf-8",
+                ) as file:
                     self.jwt_token = file.read().rstrip()
             else:
-                self.jwt_token = self.security_config.jwtToken
+                self.jwt_token = self.security_config.jwtToken.get_secret_value()
 
     def get_access_token(self):
         self.auth_token()

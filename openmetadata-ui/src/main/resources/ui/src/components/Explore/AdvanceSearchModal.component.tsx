@@ -1,4 +1,5 @@
-import { Modal } from 'antd';
+import { Button, Modal, Space } from 'antd';
+import { delay } from 'lodash';
 import React, { FunctionComponent, useState } from 'react';
 import { JsonTree } from 'react-awesome-query-builder';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +11,7 @@ interface Props {
   onSubmit: (filter?: Record<string, unknown>) => void;
   onCancel: () => void;
   searchIndex: SearchIndex;
-  onChangeJsonTree: (tree: JsonTree) => void;
+  onChangeJsonTree: (tree?: JsonTree) => void;
   jsonTree?: JsonTree;
 }
 
@@ -28,18 +29,39 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
 
   const { t } = useTranslation();
 
+  const handleAdvanceSearchReset = () => {
+    delay(onChangeJsonTree, 100);
+  };
+
   return (
     <Modal
       destroyOnClose
+      closable={false}
+      footer={
+        <Space className="justify-between w-full">
+          <Button
+            className="float-right"
+            size="small"
+            onClick={handleAdvanceSearchReset}>
+            Reset
+          </Button>
+          <div>
+            <Button onClick={onCancel}>Cancel</Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                onSubmit(queryFilter);
+                onCancel();
+              }}>
+              Apply
+            </Button>
+          </div>
+        </Space>
+      }
       okText={t('label.submit')}
       title={t('label.advanced-search')}
       visible={visible}
-      width={950}
-      onCancel={onCancel}
-      onOk={() => {
-        onSubmit(queryFilter);
-        onCancel();
-      }}>
+      width={950}>
       <AdvancedSearch
         jsonTree={jsonTree}
         searchIndex={searchIndex}

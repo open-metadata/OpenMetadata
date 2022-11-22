@@ -15,12 +15,14 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   getBotByName,
   getUserByName,
   revokeUserToken,
   updateBotDetail,
+  updateUserDetail,
 } from '../../axiosAPIs/userAPI';
 import BotDetails from '../../components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -50,6 +52,8 @@ const BotDetailsPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
+  const { t } = useTranslation();
+
   const fetchBotPermission = async (entityFqn: string) => {
     setIsLoading(true);
     try {
@@ -71,7 +75,8 @@ const BotDetailsPage = () => {
       const botResponse = await getBotByName(botsName);
 
       const botUserResponse = await getUserByName(
-        botResponse.botUser.fullyQualifiedName || ''
+        botResponse.botUser.fullyQualifiedName || '',
+        'roles,profile'
       );
       setBotUserData(botUserResponse);
       setBotData(botResponse);
@@ -96,6 +101,22 @@ const BotDetailsPage = () => {
         }));
       } else {
         throw jsonData['api-error-messages']['unexpected-error'];
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateUserDetails = async (data: UserDetails) => {
+    const updatedDetails = { ...botUserData, ...data };
+    const jsonPatch = compare(botUserData, updatedDetails);
+
+    try {
+      const response = await updateUserDetail(botUserData.id, jsonPatch);
+      if (response) {
+        setBotUserData((prevData) => ({ ...prevData, ...response }));
+      } else {
+        throw t('message.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -135,6 +156,7 @@ const BotDetailsPage = () => {
           botUserData={botUserData}
           revokeTokenHandler={revokeBotsToken}
           updateBotsDetails={updateBotsDetails}
+          updateUserDetails={updateUserDetails}
           onEmailChange={fetchBotsData}
         />
       );
