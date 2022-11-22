@@ -12,17 +12,10 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button as AntdButton, Card, Select, Space, Typography } from 'antd';
+import { Button, Card, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isArray, isEmpty, isNil, toLower } from 'lodash';
-import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import {
@@ -36,42 +29,32 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
-import { Bot } from '../../generated/entity/bot';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthenticationMechanism,
   AuthType,
-  User,
 } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import PageLayout from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import { UserDetails } from '../Users/Users.interface';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
+import {
+  BotsDetailProps,
+  DescriptionComponentProps,
+  DisplayNameComponentProps,
+  InheritedRolesComponentProps,
+  RolesComponentProps,
+  RolesElementProps,
+} from './BotDetails.interfaces';
 import './BotDetails.style.less';
 
-interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
-  botUserData: User;
-  botData: Bot;
-  botPermission: OperationPermission;
-  updateBotsDetails: (data: UserDetails) => Promise<void>;
-  revokeTokenHandler: () => void;
-  onEmailChange: () => void;
-  isAdminUser: boolean;
-  isAuthDisabled: boolean;
-  updateUserDetails: (data: UserDetails) => Promise<void>;
-}
-
-const BotDetails: FC<BotsDetailProp> = ({
+const BotDetails: FC<BotsDetailProps> = ({
   botData,
   botUserData,
   updateBotsDetails,
@@ -134,10 +117,7 @@ const BotDetails: FC<BotsDetailProp> = ({
       setRoles(response.data.data);
     } catch (err) {
       setRoles([]);
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['fetch-roles-error']
-      );
+      showErrorToast(err as AxiosError);
     }
   };
 
@@ -216,54 +196,58 @@ const BotDetails: FC<BotsDetailProp> = ({
     setIsDescriptionEdit(false);
   };
 
-  const getDisplayNameComponent = () => {
+  const DisplayNameComponent = ({
+    isDisplayNameEdit,
+    displayName,
+    onDisplayNameChange,
+    handleDisplayNameChange,
+    displayNamePermission,
+    editAllPermission,
+    setIsDisplayNameEdit,
+  }: DisplayNameComponentProps) => {
     return (
-      <div className="tw-mt-4 tw-w-full">
+      <div className="mt-4 w-full flex">
         {isDisplayNameEdit ? (
-          <div className="tw-flex tw-items-center tw-gap-2">
-            <input
-              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
+          <div className="flex items-center gap-2">
+            <Input
+              className="w-full"
               data-testid="displayName"
               id="displayName"
-              name="displayName"
-              placeholder="displayName"
-              type="text"
+              name={t('label.displayName')}
+              placeholder={t('label.displayName')}
               value={displayName}
               onChange={onDisplayNameChange}
             />
-            <div className="tw-flex tw-justify-end" data-testid="buttons">
+            <div
+              className="flex justify-end bot-details-buttons"
+              data-testid="buttons">
               <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                className="text-sm mr-1"
                 data-testid="cancel-displayName"
-                size="custom"
-                theme="primary"
-                variant="contained"
-                onMouseDown={() => setIsDisplayNameEdit(false)}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
-              </Button>
+                icon={<FontAwesomeIcon className="w-3.5 h-3.5" icon="times" />}
+                type="primary"
+                onMouseDown={() => setIsDisplayNameEdit(false)}
+              />
+
               <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                className="text-sm mr-1"
                 data-testid="save-displayName"
-                size="custom"
-                theme="primary"
-                variant="contained"
-                onClick={handleDisplayNameChange}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
-              </Button>
+                icon={<FontAwesomeIcon className="w-3.5 h-3.5" icon="check" />}
+                type="primary"
+                onClick={handleDisplayNameChange}
+              />
             </div>
           </div>
         ) : (
           <Fragment>
             {displayName ? (
-              <span
-                className="tw-text-base tw-font-medium tw-mr-2"
-                data-testid="bot-displayName">
+              <Typography.Title className="display-name" level={5}>
                 {displayName}
-              </span>
+              </Typography.Title>
             ) : (
-              <span className="no-description tw-text-sm">
-                Add display name
-              </span>
+              <Typography.Text className="no-description">
+                {t('label.add-display-name')}
+              </Typography.Text>
             )}
             {(displayNamePermission || editAllPermission) && (
               <button
@@ -273,7 +257,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                 <SVGIcons
                   alt="edit"
                   icon="icon-edit"
-                  title="Edit"
+                  title={t('label.edit')}
                   width="16px"
                 />
               </button>
@@ -284,19 +268,17 @@ const BotDetails: FC<BotsDetailProp> = ({
     );
   };
 
-  const getDescriptionComponent = () => {
+  const DescriptionComponent = ({ botData }: DescriptionComponentProps) => {
     return (
-      <div>
-        <Description
-          description={botData.description || ''}
-          entityName={getEntityName(botData)}
-          hasEditAccess={descriptionPermission || editAllPermission}
-          isEdit={isDescriptionEdit}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
-          onDescriptionUpdate={handleDescriptionChange}
-        />
-      </div>
+      <Description
+        description={botData.description || ''}
+        entityName={getEntityName(botData)}
+        hasEditAccess={descriptionPermission || editAllPermission}
+        isEdit={isDescriptionEdit}
+        onCancel={() => setIsDescriptionEdit(false)}
+        onDescriptionEdit={() => setIsDescriptionEdit(true)}
+        onDescriptionUpdate={handleDescriptionChange}
+      />
     );
   };
 
@@ -338,7 +320,31 @@ const BotDetails: FC<BotsDetailProp> = ({
     }
   };
 
-  const RolesComponent = () => {
+  const RolesElement = ({ botUserData }: RolesElementProps) => (
+    <Fragment>
+      {botUserData.isAdmin && (
+        <div className="mb-2 flex items-center gap-2">
+          <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+          <span>{TERM_ADMIN}</span>
+        </div>
+      )}
+      {botUserData?.roles?.map((role, i) => (
+        <div className="mb-2 flex items-center gap-2" key={i}>
+          <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
+          <Typography.Text
+            className="ant-typography-ellipsis-custom w-48"
+            ellipsis={{ tooltip: true }}>
+            {getEntityName(role)}
+          </Typography.Text>
+        </div>
+      ))}
+      {!botUserData.isAdmin && isEmpty(botUserData.roles) && (
+        <span className="no-description ">{t('label.no-roles-assigned')}</span>
+      )}
+    </Fragment>
+  );
+
+  const RolesComponent = ({ roles, botUserData }: RolesComponentProps) => {
     const userRolesOption = isArray(roles)
       ? roles.map((role) => ({
           label: getEntityName(role),
@@ -353,41 +359,11 @@ const BotDetails: FC<BotsDetailProp> = ({
       });
     }
 
-    const rolesElement = (
-      <Fragment>
-        {botUserData.isAdmin && (
-          <div className="mb-2 flex items-center gap-2">
-            <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
-            <span>{TERM_ADMIN}</span>
-          </div>
-        )}
-        {botUserData?.roles?.map((role, i) => (
-          <div className="mb-2 flex items-center gap-2" key={i}>
-            <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
-            <Typography.Text
-              className="ant-typography-ellipsis-custom w-48"
-              ellipsis={{ tooltip: true }}>
-              {getEntityName(role)}
-            </Typography.Text>
-          </div>
-        ))}
-        {!botUserData.isAdmin && isEmpty(botUserData.roles) && (
-          <span className="no-description ">
-            {t('label.no-roles-assigned')}
-          </span>
-        )}
-      </Fragment>
-    );
-
     if (isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed relative"
+          className="ant-card-feed relative bot-details-card mt-2.5"
           key="roles-card"
-          style={{
-            ...leftPanelAntCardStyle,
-            marginTop: '20px',
-          }}
           title={
             <div className="flex items-center justify-between">
               <h6 className="mb-0">{t('label.roles')}</h6>
@@ -421,9 +397,9 @@ const BotDetails: FC<BotsDetailProp> = ({
                   onChange={handleOnRolesChange}
                 />
                 <div
-                  className="flex justify-end bot-roles-buttons"
+                  className="flex justify-end bot-details-buttons"
                   data-testid="buttons">
-                  <AntdButton
+                  <Button
                     className="text-sm mr-1"
                     data-testid="cancel-roles"
                     icon={
@@ -432,7 +408,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                     type="primary"
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
-                  <AntdButton
+                  <Button
                     className="text-sm"
                     data-testid="save-roles"
                     icon={
@@ -444,7 +420,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                 </div>
               </Space>
             ) : (
-              rolesElement
+              <RolesElement botUserData={botUserData} />
             )}
           </div>
         </Card>
@@ -452,33 +428,27 @@ const BotDetails: FC<BotsDetailProp> = ({
     } else {
       return (
         <Card
-          className="ant-card-feed relative"
+          className="ant-card-feed relative bot-details-card mt-2.5"
           key="roles-card"
-          style={{
-            ...leftPanelAntCardStyle,
-            marginTop: '20px',
-          }}
           title={
             <div className="flex items-center justify-between">
               <h6 className="mb-0">{t('label.roles')}</h6>
             </div>
           }>
           <div className="flex items-center justify-between mb-4">
-            {rolesElement}
+            <RolesElement botUserData={botUserData} />
           </div>
         </Card>
       );
     }
   };
 
-  const InheritedRolesComponent = () => (
+  const InheritedRolesComponent = ({
+    botUserData,
+  }: InheritedRolesComponentProps) => (
     <Card
-      className="ant-card-feed relative"
+      className="ant-card-feed relative bot-details-card mt-2.5"
       key="inherited-roles-card-component"
-      style={{
-        ...leftPanelAntCardStyle,
-        marginTop: '20px',
-      }}
       title={
         <div className="flex">
           <h6 className="heading mb-0" data-testid="inherited-roles">
@@ -515,12 +485,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const fetchLeftPanel = () => {
     return (
       <>
-        <Card
-          className="ant-card-feed"
-          style={{
-            ...leftPanelAntCardStyle,
-            marginTop: '16px',
-          }}>
+        <Card className="ant-card-feed bot-details-card mt-2">
           <div data-testid="left-panel">
             <div className="flex flex-col">
               <SVGIcons
@@ -530,34 +495,38 @@ const BotDetails: FC<BotsDetailProp> = ({
               />
 
               <Space className="p-b-md" direction="vertical" size={8}>
-                {getDisplayNameComponent()}
-
-                {getDescriptionComponent()}
+                <DisplayNameComponent
+                  displayName={displayName}
+                  displayNamePermission={displayNamePermission}
+                  editAllPermission={editAllPermission}
+                  handleDisplayNameChange={handleDisplayNameChange}
+                  isDisplayNameEdit={isDisplayNameEdit}
+                  setIsDisplayNameEdit={(value: boolean) =>
+                    setIsDisplayNameEdit(value)
+                  }
+                  onDisplayNameChange={onDisplayNameChange}
+                />
+                <DescriptionComponent botData={botData} />
               </Space>
             </div>
           </div>
         </Card>
-        <RolesComponent />
-        <InheritedRolesComponent />
+        <RolesComponent botUserData={botUserData} roles={roles} />
+        <InheritedRolesComponent botUserData={botUserData} />
       </>
     );
   };
 
   const rightPanel = (
-    <Card
-      className="ant-card-feed"
-      style={{
-        ...leftPanelAntCardStyle,
-        marginTop: '16px',
-      }}>
+    <Card className="ant-card-feed bot-details-card mt-2">
       <div data-testid="right-panel">
-        <div className="tw-flex tw-flex-col">
-          <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
-          <p className="tw-mb-2">
-            Anyone who has your JWT Token will be able to send REST API requests
-            to the OpenMetadata Server. Do not expose the JWT Token in your
-            application code. Do not share it on GitHub or anywhere else online.
-          </p>
+        <div className="flex flex-col">
+          <Typography.Text className="mb-2 text-lg">
+            {t('label.token-security')}
+          </Typography.Text>
+          <Typography.Text className="mb-2">
+            {t('message.token-security-description')}
+          </Typography.Text>
         </div>
       </div>
     </Card>
@@ -594,12 +563,7 @@ const BotDetails: FC<BotsDetailProp> = ({
       }
       leftPanel={fetchLeftPanel()}
       rightPanel={rightPanel}>
-      <Card
-        data-testid="center-panel"
-        style={{
-          ...leftPanelAntCardStyle,
-          marginTop: '16px',
-        }}>
+      <Card data-testid="center-panel bot-details-card mt-2">
         {authenticationMechanism ? (
           <>
             {isAuthMechanismEdit ? (
