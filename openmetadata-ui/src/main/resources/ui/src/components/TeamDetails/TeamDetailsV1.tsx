@@ -1059,9 +1059,7 @@ const TeamDetailsV1 = ({
               </>
             ))}
           </Space>
-          <div
-            className="tw-mb-3 tw--ml-5 tw-mt-2"
-            data-testid="description-container">
+          <div className="m-b-sm m-t-xs" data-testid="description-container">
             <Description
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
