@@ -1,5 +1,6 @@
 {
     "name": "tableColumnNameToExist",
+    "fullyQualifiedName": "tableColumnNameToExist",
     "displayName": "Table Column Name To Exist",
     "description": "This test defines the test TableColumnNameToExist. Test the table columns exists in the table.",
     "entityType": "TABLE",

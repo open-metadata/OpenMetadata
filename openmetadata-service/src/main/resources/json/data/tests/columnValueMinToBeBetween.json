@@ -1,5 +1,6 @@
 {
     "name": "columnValueMinToBeBetween",
+    "fullyQualifiedName": "columnValueMinToBeBetween",
     "displayName": "Column Value Min. To Be Between",
     "description": "This schema defines the test ColumnValueMinToBeBetween. Test the minimum value in a col is within a range.",
     "entityType": "COLUMN",

@@ -1,5 +1,6 @@
 {
     "name": "columnValuesSumToBeBetween",
+    "fullyQualifiedName": "columnValuesSumToBeBetween",
     "displayName": "Column Values Sum To Be Between",
     "description": "This schema defines the test ColumnValuesSumToBeBetween. Test the sum of the values of a col is within a range.",
     "entityType": "COLUMN",
