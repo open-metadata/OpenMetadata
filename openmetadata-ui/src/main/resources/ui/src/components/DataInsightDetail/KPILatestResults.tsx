@@ -38,13 +38,7 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
 
         const suffix = isPercentage ? '%' : '';
 
-        // value for percentage metric
-        const calculatedPercentage =
-          toNumber(targetPercentValue) +
-          (100 - toNumber(targetMetPercentValue));
-
-        // value for number metric
-        const calculatedNumberValue = (targetValue / targetMetValue) * 100;
+        const currentProgress = (targetValue / targetMetValue) * 100;
 
         const daysLeft = getNumberOfDaysForTimestamp(resultData.endDate);
 
@@ -63,12 +57,7 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 isPercentage ? targetMetPercentValue : targetMetValue
               }${suffix}`}</Typography.Text>
             </Space>
-            <Progress
-              percent={
-                isPercentage ? calculatedPercentage : calculatedNumberValue
-              }
-              showInfo={isTargetMet}
-            />
+            <Progress percent={currentProgress} showInfo={isTargetMet} />
             <Typography.Text className="data-insight-label-text">
               {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
             </Typography.Text>

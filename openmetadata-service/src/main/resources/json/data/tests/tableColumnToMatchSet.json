@@ -1,5 +1,6 @@
 {
     "name": "tableColumnToMatchSet",
+    "fullyQualifiedName": "tableColumnToMatchSet",
     "displayName": "Table Column Names To Match Set",
     "description": "This test defines the test TableColumnToMatchSet. Test the table columns match a set of values. Unordered by default.",
     "entityType": "TABLE",

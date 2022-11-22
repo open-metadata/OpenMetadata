@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { interceptURL, login, verifyResponseStatusCode } from "../../common/common";
-import { BASE_URL, LOGIN } from "../../constants/constants";
+import { interceptURL, verifyResponseStatusCode } from "../../common/common";
+import { BASE_URL } from "../../constants/constants";
 
 describe("Logout User", () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
 
   it("After login logout the user and invalidate the token", () => {

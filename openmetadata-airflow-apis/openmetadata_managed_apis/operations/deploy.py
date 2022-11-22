@@ -30,11 +30,15 @@ from openmetadata_managed_apis.api.utils import (
     scan_dags_job_background,
 )
 from openmetadata_managed_apis.utils.logger import operations_logger
+from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
+    build_secrets_manager_credentials,
+)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = operations_logger()
 
@@ -56,7 +60,13 @@ class DagDeployer:
         logger.info(
             f"Received the following Airflow Configuration: {ingestion_pipeline.airflowConfig}"
         )
-
+        # we need to instantiate the secret manager in case secrets are passed
+        SecretsManagerFactory(
+            ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider,
+            build_secrets_manager_credentials(
+                ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
+            ),
+        )
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
 
