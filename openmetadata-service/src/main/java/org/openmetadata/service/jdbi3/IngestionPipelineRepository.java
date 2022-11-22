@@ -226,7 +226,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   /** Handles entity updated from PUT and POST operation. */
   public class IngestionPipelineUpdater extends EntityUpdater {
     public IngestionPipelineUpdater(IngestionPipeline original, IngestionPipeline updated, Operation operation) {
-      super(original, updated, operation);
+      super(buildIngestionPipelineDecrypted(original), updated, operation);
     }
 
     @Override
@@ -285,5 +285,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         recordChange("enabled", origEnabled, updatedEnabled);
       }
     }
+  }
+
+  private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
+    IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
+    decrypted = SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
+    return decrypted;
   }
 }

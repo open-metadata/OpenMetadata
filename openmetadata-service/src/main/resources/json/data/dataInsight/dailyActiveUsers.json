@@ -1,5 +1,6 @@
 {
   "name": "dailyActiveUsers",
+  "fullyQualifiedName": "dailyActiveUsers",
   "displayName": "Daily active users on the platform",
   "description": "Display the number of users active.",
   "dataIndexType": "web_analytic_user_activity_report_data_index",

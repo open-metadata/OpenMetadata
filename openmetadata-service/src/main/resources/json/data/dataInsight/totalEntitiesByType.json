@@ -1,5 +1,6 @@
 {
   "name": "TotalEntitiesByType",
+  "fullyQualifiedName": "TotalEntitiesByType",
   "displayName": "Total Entities",
   "description": "Display the total of entities by type.",
   "dataIndexType": "entity_report_data_index",

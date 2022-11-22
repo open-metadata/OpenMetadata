@@ -1,5 +1,6 @@
 {
     "name": "columnValueMeanToBeBetween",
+    "fullyQualifiedName": "columnValueMeanToBeBetween",
     "displayName": "Column Value Mean To BeBetween",
     "description": "This schema defines the test ColumnValueMeanToBeBetween. Test the mean value in a col is within a range.",
     "entityType": "COLUMN",
