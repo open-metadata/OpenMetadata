@@ -324,6 +324,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
+    decryptOrNullify(securityContext, ingestionPipeline);
     Response response = create(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
     return response;
@@ -375,6 +376,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
+    decryptOrNullify(securityContext, ingestionPipeline);
     Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity());
     return response;
@@ -400,9 +402,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+    decryptOrNullify(securityContext, ingestionPipeline);
     pipelineServiceClient.deployPipeline(ingestionPipeline);
     createOrUpdate(uriInfo, securityContext, ingestionPipeline);
-    decryptOrNullify(securityContext, ingestionPipeline);
     return addHref(uriInfo, ingestionPipeline);
   }
 

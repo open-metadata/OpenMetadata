@@ -13,12 +13,10 @@
 import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
 import {
     descriptionBox,
-    interceptURL,
-    login,
-    uuid,
+    interceptURL, uuid,
     verifyResponseStatusCode
 } from '../../common/common';
-import { DELETE_TERM, LOGIN } from '../../constants/constants';
+import { DELETE_TERM } from '../../constants/constants';
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
@@ -73,8 +71,7 @@ const revokeToken = () => {
 
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')

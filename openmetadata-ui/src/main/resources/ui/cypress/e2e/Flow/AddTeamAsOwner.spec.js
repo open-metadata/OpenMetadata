@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { addTeam, interceptURL, login, uuid, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
-import { LOGIN, SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { addTeam, interceptURL, uuid, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const teamName = `team-group-test-${uuid()}`;
 const TEAM_DETAILS = {
@@ -25,8 +25,7 @@ const TEAM_DETAILS = {
 
 describe('Create a team and add that team as a owner of the entity', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
 
   /**
