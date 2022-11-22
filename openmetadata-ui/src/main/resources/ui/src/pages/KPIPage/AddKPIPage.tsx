@@ -53,9 +53,9 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import {
+  ChartDataType,
   ChartParameterValues,
   DataInsightChart,
-  DataType,
 } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -103,8 +103,8 @@ const AddKPIPage = () => {
     () =>
       (selectedChart?.metrics ?? []).filter((metric) =>
         // only return supported data type
-        [DataType.Number, DataType.Percentage].includes(
-          metric.dataType as DataType
+        [ChartDataType.Number, ChartDataType.Percentage].includes(
+          metric.chartDataType as ChartDataType
         )
       ),
     [selectedChart]
@@ -166,7 +166,8 @@ const AddKPIPage = () => {
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     const startDate = getTimeStampByDateTime(kpiDates.startDate);
     const endDate = getTimeStampByDateTime(kpiDates.endDate);
-    const metricType = selectedMetric?.dataType as unknown as KpiTargetType;
+    const metricType =
+      selectedMetric?.chartDataType as unknown as KpiTargetType;
 
     const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
 
@@ -300,7 +301,7 @@ const AddKPIPage = () => {
                 onChange={handleMetricSelect}>
                 {metricTypes.map((metric) => (
                   <Option key={metric.name}>
-                    {`${metric.name} (${metric.dataType})`}
+                    {`${metric.name} (${metric.chartDataType})`}
                   </Option>
                 ))}
               </Select>
@@ -323,7 +324,8 @@ const AddKPIPage = () => {
                   },
                 ]}>
                 <>
-                  {selectedMetric.dataType === DataType.Percentage && (
+                  {selectedMetric.chartDataType ===
+                    ChartDataType.Percentage && (
                     <Row gutter={20}>
                       <Col span={20}>
                         <Slider
@@ -356,7 +358,7 @@ const AddKPIPage = () => {
                       </Col>
                     </Row>
                   )}
-                  {selectedMetric.dataType === DataType.Number && (
+                  {selectedMetric.chartDataType === ChartDataType.Number && (
                     <InputNumber
                       className="w-full"
                       min={0}
