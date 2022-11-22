@@ -268,9 +268,9 @@
     "interval-unit": "Interval Unit",
     "select-teams": "Select Teams",
     "select-tiers": "Select Tiers",
-    "kpi-list": "Kpi list",
-    "kpi-name": "Kpi name",
-    "kpi-display-name": "Kpi display name",
+    "kpi-list": "KPI list",
+    "kpi-name": "KPI name",
+    "kpi-display-name": "KPI display name",
     "data-insight-chart": "Data insight chart",
     "data-assets": "Data Assets",
     "app-analytics": "App Analytics",
@@ -316,7 +316,8 @@
     "column-plural": "Columns",
     "add-display-name": "Add display name",
     "token-security": "Token Security",
-    "teams": "Teams"
+    "teams": "Teams",
+    "pctile-lowercase": "pctile"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -349,7 +350,7 @@
     "data-insight-chart-required": "Data insight chart is required",
     "metric-type-required": "Metric type is required",
     "metric-value-required": "Metric value is required",
-    "no-kpi-found": "No Kpi found with name {{name}}",
+    "no-kpi-found": "No KPI found with name {{name}}",
     "no-kpi-available-add-new-one": "No kpi's are available, add one by clicking Add KPI button.",
     "delete-action-description": "Deleting this {{entityType}} will permanently remove its metadata from OpenMetadata.",
     "restore-action-description": "Restoring this {{entityType}} will restore its metadata in OpenMetadata.",
@@ -373,7 +374,8 @@
     "no-schema-data-available": " No schema data available",
     "no-data-available-for-selected-filter": "No data found. Try changing the filters.",
     "token-security-description": "Anyone who has your JWT Token will be able to send REST API requests to the OpenMetadata Server. Do not expose the JWT Token in your application code. Do not share it on GitHub or anywhere else online.",
-    "org-url-required": "OrgURL is required"
+    "org-url-required": "OrgURL is required",
+    "all-charts-are-mapped": "All charts are mapped with existing KPIs."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",
