@@ -20,11 +20,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Set;
 import lombok.Getter;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -40,6 +42,8 @@ public abstract class SecretsManager {
   @Getter private final SecretsManagerProvider secretsManagerProvider;
 
   private Fernet fernet;
+
+  private static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES = Set.of(OpenMetadataJWTClientConfig.class);
 
   protected SecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
     this.secretsManagerProvider = secretsManagerProvider;
@@ -97,30 +101,32 @@ public abstract class SecretsManager {
   }
 
   private void encryptPasswordFields(Object toEncryptObject, String secretId) {
-    // for each get method
-    Arrays.stream(toEncryptObject.getClass().getMethods())
-        .filter(this::isGetMethodOfObject)
-        .forEach(
-            method -> {
-              Object obj = getObjectFromMethod(method, toEncryptObject);
-              String fieldName = method.getName().replaceFirst("get", "");
-              // if the object matches the package of openmetadata
-              if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                // encryptPasswordFields
-                encryptPasswordFields(obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
-                // check if it has annotation
-              } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                // store value if proceed
-                String newFieldValue = storeValue(fieldName, (String) obj, secretId);
-                // get setMethod
-                Method toSet = getToSetMethod(toEncryptObject, obj, fieldName);
-                // set new value
-                setValueInMethod(
-                    toEncryptObject,
-                    Fernet.isTokenized(newFieldValue) ? newFieldValue : fernet.encrypt(newFieldValue),
-                    toSet);
-              }
-            });
+    if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
+      // for each get method
+      Arrays.stream(toEncryptObject.getClass().getMethods())
+          .filter(this::isGetMethodOfObject)
+          .forEach(
+              method -> {
+                Object obj = getObjectFromMethod(method, toEncryptObject);
+                String fieldName = method.getName().replaceFirst("get", "");
+                // if the object matches the package of openmetadata
+                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+                  // encryptPasswordFields
+                  encryptPasswordFields(obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                  // check if it has annotation
+                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                  // store value if proceed
+                  String newFieldValue = storeValue(fieldName, (String) obj, secretId);
+                  // get setMethod
+                  Method toSet = getToSetMethod(toEncryptObject, obj, fieldName);
+                  // set new value
+                  setValueInMethod(
+                      toEncryptObject,
+                      Fernet.isTokenized(newFieldValue) ? newFieldValue : fernet.encrypt(newFieldValue),
+                      toSet);
+                }
+              });
+    }
   }
 
   private void decryptPasswordFields(Object toDecryptObject) {
