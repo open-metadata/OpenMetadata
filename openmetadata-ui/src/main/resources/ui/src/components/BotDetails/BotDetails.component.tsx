@@ -36,7 +36,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
-import { Bot, EntityReference } from '../../generated/entity/bot';
+import { Bot } from '../../generated/entity/bot';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthenticationMechanism,
@@ -261,7 +261,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                 {displayName}
               </span>
             ) : (
-              <span className="tw-no-description tw-text-sm">
+              <span className="no-description tw-text-sm">
                 Add display name
               </span>
             )}
@@ -341,7 +341,7 @@ const BotDetails: FC<BotsDetailProp> = ({
   const RolesComponent = () => {
     const userRolesOption = isArray(roles)
       ? roles.map((role) => ({
-          label: getEntityName(role as unknown as EntityReference),
+          label: getEntityName(role),
           value: role.id,
         }))
       : [];
@@ -372,33 +372,14 @@ const BotDetails: FC<BotsDetailProp> = ({
           </div>
         ))}
         {!botUserData.isAdmin && isEmpty(botUserData.roles) && (
-          <span className="tw-no-description ">
+          <span className="no-description ">
             {t('label.no-roles-assigned')}
           </span>
         )}
       </Fragment>
     );
 
-    if (!isAdminUser && !isAuthDisabled) {
-      return (
-        <Card
-          className="ant-card-feed relative"
-          key="roles-card"
-          style={{
-            ...leftPanelAntCardStyle,
-            marginTop: '20px',
-          }}
-          title={
-            <div className="flex items-center justify-between">
-              <h6 className="mb-0">{t('label.roles')}</h6>
-            </div>
-          }>
-          <div className="flex items-center justify-between mb-4">
-            {rolesElement}
-          </div>
-        </Card>
-      );
-    } else {
+    if (isAdminUser && !isAuthDisabled) {
       return (
         <Card
           className="ant-card-feed relative"
@@ -412,12 +393,12 @@ const BotDetails: FC<BotsDetailProp> = ({
               <h6 className="mb-0">{t('label.roles')}</h6>
               {!isRolesEdit && (
                 <button
-                  className="ml-2 focus:tw-outline-none tw-self-baseline"
+                  className="m-l-xs focus:tw-outline-none tw-self-baseline"
                   data-testid="edit-roles"
                   onClick={() => setIsRolesEdit(true)}>
                   <SVGIcons
                     alt="edit"
-                    className="mb-1"
+                    className="m-b-xss"
                     icon="icon-edit"
                     title="Edit"
                     width="16px"
@@ -436,7 +417,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                   id="select-role"
                   mode="multiple"
                   options={userRolesOption}
-                  placeholder="Roles..."
+                  placeholder={`${t('label.roles')}...`}
                   onChange={handleOnRolesChange}
                 />
                 <div
@@ -446,10 +427,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                     className="text-sm mr-1"
                     data-testid="cancel-roles"
                     icon={
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="times"
-                      />
+                      <FontAwesomeIcon className="w-3.5 h-3.5" icon="times" />
                     }
                     type="primary"
                     onMouseDown={() => setIsRolesEdit(false)}
@@ -458,10 +436,7 @@ const BotDetails: FC<BotsDetailProp> = ({
                     className="text-sm"
                     data-testid="save-roles"
                     icon={
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="check"
-                      />
+                      <FontAwesomeIcon className="w-3.5 h-3.5" icon="check" />
                     }
                     type="primary"
                     onClick={handleRolesChange}
@@ -471,6 +446,25 @@ const BotDetails: FC<BotsDetailProp> = ({
             ) : (
               rolesElement
             )}
+          </div>
+        </Card>
+      );
+    } else {
+      return (
+        <Card
+          className="ant-card-feed relative"
+          key="roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="flex items-center justify-between">
+              <h6 className="mb-0">{t('label.roles')}</h6>
+            </div>
+          }>
+          <div className="flex items-center justify-between mb-4">
+            {rolesElement}
           </div>
         </Card>
       );
@@ -487,7 +481,7 @@ const BotDetails: FC<BotsDetailProp> = ({
       }}
       title={
         <div className="flex">
-          <h6 className="tw-heading mb-0" data-testid="inherited-roles">
+          <h6 className="heading mb-0" data-testid="inherited-roles">
             {t('label.inherited-roles')}
           </h6>
         </div>
@@ -495,7 +489,7 @@ const BotDetails: FC<BotsDetailProp> = ({
       <Fragment>
         {isEmpty(botUserData.inheritedRoles) ? (
           <div className="mb-4">
-            <span className="tw-no-description">
+            <span className="no-description">
               {t('label.no-inherited-found')}
             </span>
           </div>
