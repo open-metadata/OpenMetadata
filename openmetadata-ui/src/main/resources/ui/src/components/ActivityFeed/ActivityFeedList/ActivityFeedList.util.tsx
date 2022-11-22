@@ -55,7 +55,7 @@ export const getThreadFilterDropdownIcon = (threadType: ThreadType | 'ALL') => {
         <SVGIcons
           alt="Announcement"
           className="m-r-xss"
-          icon={Icons.ANNOUNCEMENT_PRIMARY}
+          icon={Icons.ANNOUNCEMENT_BASIC_PRIMARY}
           width="16px"
         />
       );
