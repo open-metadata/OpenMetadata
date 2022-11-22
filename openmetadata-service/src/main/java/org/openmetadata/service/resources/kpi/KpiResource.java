@@ -425,9 +425,10 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = "Order the result ", schema = @Schema(type = "string"))
+          @Valid
           @QueryParam("orderBy")
           @DefaultValue("DESC")
-          String orderBy)
+          CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
       throws IOException {
     return dao.getKpiResults(fqn, startTs, endTs, orderBy);
   }

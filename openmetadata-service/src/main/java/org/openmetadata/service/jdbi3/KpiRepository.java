@@ -185,7 +185,9 @@ public class KpiRepository extends EntityRepository<Kpi> {
         daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
-  public ResultList<KpiResult> getKpiResults(String fqn, Long startTs, Long endTs, String orderBy) throws IOException {
+  public ResultList<KpiResult> getKpiResults(
+      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
+      throws IOException {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(
