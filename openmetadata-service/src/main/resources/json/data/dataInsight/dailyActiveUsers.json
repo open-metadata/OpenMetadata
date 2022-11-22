@@ -5,9 +5,9 @@
   "description": "Display the number of users active.",
   "dataIndexType": "web_analytic_user_activity_report_data_index",
   "dimensions": [
-    {"name": "timestamp","dataType":"INT"}
+    {"name": "timestamp","chartDataType":"INT"}
   ],
   "metrics": [
-    {"name": "activeUsers", "displayName": "Number of active users", "dataType": "NUMBER"}
+    {"name": "activeUsers", "displayName": "Number of active users", "chartDataType": "NUMBER"}
   ]
 }
