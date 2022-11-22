@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { login, visitEntityDetailsPage } from '../../common/common';
-import { LOGIN, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import { visitEntityDetailsPage } from '../../common/common';
+import { SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tableEntity = SEARCH_ENTITY_TABLE.table_1;
 const topicEntity = SEARCH_ENTITY_TOPIC.topic_1;
@@ -29,8 +29,7 @@ const ENTITIES_LIST = [
 
 describe('Entity Details Page', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
 
   ENTITIES_LIST.map((entity) => {

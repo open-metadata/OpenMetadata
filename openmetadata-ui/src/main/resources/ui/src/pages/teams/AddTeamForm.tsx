@@ -124,7 +124,9 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                     )
                   )
                 ) {
-                  return Promise.reject(t('label.name-already-exist'));
+                  return Promise.reject(
+                    t('label.entity-already-exists', { entity: 'Name' })
+                  );
                 }
 
                 return Promise.resolve();

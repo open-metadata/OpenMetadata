@@ -46,6 +46,7 @@ import {
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
+import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -101,30 +102,36 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
-      <ResponsiveContainer debounce={1} minHeight={400}>
-        <BarChart data={data} margin={BAR_CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="timestamp" />
-          <YAxis />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            align="left"
-            content={(props) => renderLegend(props as LegendProps, `${total}`)}
-            layout="vertical"
-            verticalAlign="top"
-            wrapperStyle={{ left: '0px' }}
-          />
-          {tiers.map((tier) => (
-            <Bar
-              barSize={BAR_SIZE}
-              dataKey={tier}
-              fill={TIER_BAR_COLOR_MAP[tier]}
-              key={uniqueId()}
-              stackId="tier"
+      {data.length ? (
+        <ResponsiveContainer debounce={1} minHeight={400}>
+          <BarChart data={data} margin={BAR_CHART_MARGIN}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="timestamp" />
+            <YAxis />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              align="left"
+              content={(props) =>
+                renderLegend(props as LegendProps, `${total}`)
+              }
+              layout="vertical"
+              verticalAlign="top"
+              wrapperStyle={{ left: '0px' }}
             />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+            {tiers.map((tier) => (
+              <Bar
+                barSize={BAR_SIZE}
+                dataKey={tier}
+                fill={TIER_BAR_COLOR_MAP[tier]}
+                key={uniqueId()}
+                stackId="tier"
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyGraphPlaceholder />
+      )}
     </Card>
   );
 };

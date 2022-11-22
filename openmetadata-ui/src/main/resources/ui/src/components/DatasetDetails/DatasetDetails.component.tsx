@@ -456,10 +456,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const onOwnerUpdate = (newOwner?: Table['owner']) => {
     if (newOwner) {
+      const existingOwner = tableDetails.owner;
       const updatedTableDetails = {
         ...tableDetails,
         owner: {
-          ...tableDetails.owner,
+          ...existingOwner,
           ...newOwner,
         },
       };

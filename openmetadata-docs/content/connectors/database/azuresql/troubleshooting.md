@@ -16,4 +16,17 @@ To solve this issue, you can edit your Service Connection by adding the followin
 - Key: `autocommit`
 - Value: `true`
 
-<Image src="/images/openmetadata/connectors/database/azuresql/autocommit.png" alt="autocommit"/> 
+<Image src="/images/openmetadata/connectors/azuresql/autocommit.png" alt="autocommit"/>
+
+ 
+* ** Cannot open server '[server name]' requested by the login. Client with IP address '[your IP]' is not allowed to access the server **
+
+This is an exception you can get when trying to connect to AzureSQL using SQLAlchemy (the internal OpenMetadata Ingestion library for reaching databases).
+
+
+To solve this issue, you need to add your IP address in firewall rules for your Azure SQL instance.
+
+<Image src="/images/openmetadata/connectors/azuresql/azure-firewall.png"
+alt="azure sql firewall rules"
+caption="azure sql firewall rules"
+/>
