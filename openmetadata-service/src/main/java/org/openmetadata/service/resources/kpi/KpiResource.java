@@ -425,7 +425,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = "Order the result ", schema = @Schema(type = "string"))
-          @NonNull
           @QueryParam("orderBy")
           @DefaultValue("DESC")
           String orderBy)
