@@ -18,9 +18,7 @@ import {
     descriptionBox,
     goToAddNewServicePage,
     handleIngestionRetry,
-    interceptURL,
-    login,
-    mySqlConnectionInput,
+    interceptURL, mySqlConnectionInput,
     scheduleIngestion,
     testServiceCreationAndIngestion,
     toastNotification,
@@ -29,9 +27,7 @@ import {
     visitEntityDetailsPage
 } from '../../common/common';
 import {
-    API_SERVICE, DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM,
-    LOGIN,
-    MYDATA_SUMMARY_OPTIONS,
+    API_SERVICE, DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM, MYDATA_SUMMARY_OPTIONS,
     NEW_COLUMN_TEST_CASE,
     NEW_TABLE_TEST_CASE,
     NEW_TEST_SUITE,
@@ -250,8 +246,6 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Add Column test case should work properly', () => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
     goToProfilerTab();
     cy.get('[data-testid="add-test-id"]')
       .scrollIntoView()
@@ -327,8 +321,6 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Delete Column Test Case should work properly', () => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
