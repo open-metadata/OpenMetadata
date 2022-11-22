@@ -574,6 +574,13 @@ export const WHATS_NEW = [
         isImage: false,
         path: 'https://www.youtube.com/embed/4EYUdBm5-K4',
       },
+      {
+        title: 'Data Lake Profiler',
+        description:
+          'With the OpenMetadata UI, users can now create and deploy profiling workflows for the Data Lake connector, which supports AWS S3 and GCS.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/KJ0vHGRIcG4',
+      },
     ],
     changeLogs: {
       'Data Insights and KPIs': `-   Provides a single pane view of all the key data metrics.
