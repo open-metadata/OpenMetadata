@@ -54,7 +54,7 @@ logger = ingestion_logger()
 T = TypeVar("T")
 
 SUCCESS_THRESHOLD_VALUE = 90
-REPORTS_INTERVAL_SECONDS = 10
+REPORTS_INTERVAL_SECONDS = 30
 
 
 class InvalidWorkflowJSONException(Exception):
