@@ -17,6 +17,7 @@ from __future__ import annotations
 import traceback
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 
 from pydantic import ValidationError
 from sqlalchemy import Column
@@ -43,7 +44,7 @@ from metadata.orm_profiler.metrics.core import (
 )
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
-from metadata.orm_profiler.orm.registry import NOT_COMPUTE
+from metadata.orm_profiler.orm.registry import NOT_COMPUTE, NOT_COMPUTE_OM
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -312,6 +313,7 @@ class Profiler(Generic[TMetric]):
             column
             for column in self.columns
             if isinstance(column, Column) and column.type.__class__ not in NOT_COMPUTE
+            or isinstance(column, ColumnBaseModel) and column.datatype not in NOT_COMPUTE_OM
         ]
 
         column_metrics_for_thread_pool = [
