@@ -27,7 +27,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -52,7 +51,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
@@ -257,14 +255,15 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   @Override
   public CreateDatabaseService createPutRequest(String name) {
-    String secretPassword = "secret:/openmetadata/database/" + name + "/password";
+    SnowflakeConnection snowflakeConnection =
+        JsonUtils.convertValue(SNOWFLAKE_DATABASE_CONNECTION.getConfig(), SnowflakeConnection.class);
+    DatabaseConnection databaseConnection =
+        JsonUtils.convertValue(SNOWFLAKE_DATABASE_CONNECTION, DatabaseConnection.class);
+    String secretPassword = "secret:/openmetadata/database/" + name.toLowerCase() + "/password";
     return new CreateDatabaseService()
         .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
-        .withConnection(
-            TestUtils.SNOWFLAKE_DATABASE_CONNECTION.withConfig(
-                ((SnowflakeConnection) SNOWFLAKE_DATABASE_CONNECTION.getConfig())
-                    .withPassword(Fernet.getInstance().encrypt(secretPassword.toLowerCase(Locale.ROOT)))));
+        .withConnection(databaseConnection.withConfig(snowflakeConnection.withPassword(secretPassword)));
   }
 
   @Override
