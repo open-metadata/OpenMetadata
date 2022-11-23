@@ -236,23 +236,50 @@ const Explore: React.FC<ExploreProps> = ({
     setEntityDetails(source);
   };
 
+  const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
+    const term = {} as Record<string, unknown>;
+
+    data.forEach((filter) => {
+      if (filter.key) {
+        term[filter.key] = filter.value;
+      }
+    });
+
+    onChangeAdvancedSearchQueryFilter(
+      isEmpty(term)
+        ? undefined
+        : {
+            query: { bool: { must: [{ term }] } },
+          }
+    );
+  };
+
   const handleAdvanceFieldClear = () => {
     setSelectedQuickFilters([]);
   };
 
   const handleAdvanceFieldRemove = (value: string) => {
-    setSelectedQuickFilters((prev) => prev.filter((p) => p.key !== value));
+    setSelectedQuickFilters((prev) => {
+      const data = prev.filter((p) => p.key !== value);
+      handleAdvanceSearchFilter(data);
+
+      return data;
+    });
   };
 
   const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
-      return pre.map((preField) => {
+      const data = pre.map((preField) => {
         if (preField.key === field.key) {
           return field;
         } else {
           return preField;
         }
       });
+
+      handleAdvanceSearchFilter(data);
+
+      return data;
     });
   };
 
@@ -278,23 +305,6 @@ const Explore: React.FC<ExploreProps> = ({
       document.removeEventListener('keydown', escapeKeyHandler);
     };
   }, []);
-
-  useEffect(() => {
-    const term = {} as Record<string, unknown>;
-    selectedQuickFilters.map((filter) => {
-      if (filter.key) {
-        term[filter.key] = filter.value;
-      }
-    });
-
-    onChangeAdvancedSearchQueryFilter(
-      isEmpty(term)
-        ? undefined
-        : {
-            query: { bool: { must: [{ term }] } },
-          }
-    );
-  }, [selectedQuickFilters]);
 
   return (
     <PageLayoutV1
