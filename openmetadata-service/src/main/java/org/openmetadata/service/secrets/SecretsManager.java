@@ -116,7 +116,7 @@ public abstract class SecretsManager {
                   // check if it has annotation
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                   // store value if proceed
-                  String newFieldValue = storeValue(fieldName, (String) obj, secretId);
+                  String newFieldValue = storeValue(fieldName, decryptFernetIfApplies((String) obj), secretId);
                   // get setMethod
                   Method toSet = getToSetMethod(toEncryptObject, obj, fieldName);
                   // set new value
@@ -127,6 +127,10 @@ public abstract class SecretsManager {
                 }
               });
     }
+  }
+
+  private String decryptFernetIfApplies(String value) {
+    return Fernet.isTokenized(value) ? fernet.decrypt(value) : value;
   }
 
   private void decryptPasswordFields(Object toDecryptObject) {
