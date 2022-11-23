@@ -178,7 +178,7 @@ export const AuthProvider = ({
       })
       .catch((err: AxiosError) => {
         resetUserDetails();
-        // TODO
+        // TODO: test coverage
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((err.response?.data as any).code !== 404) {
           showErrorToast(
