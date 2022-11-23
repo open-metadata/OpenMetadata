@@ -458,21 +458,20 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <div className="tw--ml-5">
-                <Description
-                  description={policy.description || ''}
-                  entityFqn={policy.fullyQualifiedName}
-                  entityName={getEntityName(policy)}
-                  entityType={EntityType.POLICY}
-                  hasEditAccess={
-                    policyPermission.EditAll || policyPermission.EditDescription
-                  }
-                  isEdit={editDescription}
-                  onCancel={() => setEditDescription(false)}
-                  onDescriptionEdit={() => setEditDescription(true)}
-                  onDescriptionUpdate={handleDescriptionUpdate}
-                />
-              </div>
+              <Description
+                description={policy.description || ''}
+                entityFqn={policy.fullyQualifiedName}
+                entityName={getEntityName(policy)}
+                entityType={EntityType.POLICY}
+                hasEditAccess={
+                  policyPermission.EditAll || policyPermission.EditDescription
+                }
+                isEdit={editDescription}
+                onCancel={() => setEditDescription(false)}
+                onDescriptionEdit={() => setEditDescription(true)}
+                onDescriptionUpdate={handleDescriptionUpdate}
+              />
+
               <Tabs defaultActiveKey="rules">
                 <TabPane key="rules" tab="Rules">
                   {isEmpty(policy.rules) ? (

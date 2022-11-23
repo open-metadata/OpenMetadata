@@ -22,6 +22,7 @@ import os
 import shutil
 import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic import ValidationError
@@ -324,5 +325,6 @@ class MetadataUsageBulkSink(BulkSink):
         return self.status
 
     def close(self):
-        shutil.rmtree(self.config.filename)
+        if Path(self.config.filename).exists():
+            shutil.rmtree(self.config.filename)
         self.metadata.close()

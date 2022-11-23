@@ -104,7 +104,7 @@ const ExplorePage: FunctionComponent = () => {
         pathname: history.location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
-          queryFilter: JSON.stringify(queryFilter),
+          queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
           page: 1,
         }),
       });

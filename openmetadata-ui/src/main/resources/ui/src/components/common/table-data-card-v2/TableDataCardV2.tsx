@@ -35,6 +35,7 @@ import {
   getOwnerValue,
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import { getUsagePercentile } from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
@@ -92,8 +93,10 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
 
     if ('usageSummary' in source) {
       _otherDetails.push({
-        key: 'Usage',
-        value: source.usageSummary?.weeklyStats?.count,
+        value: getUsagePercentile(
+          source.usageSummary?.weeklyStats?.percentileRank || 0,
+          true
+        ),
       });
     }
 

@@ -11,71 +11,63 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Space } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { toLower } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import {
   createUserWithPut,
   getAuthMechanismForBotUser,
+  getRoles,
 } from '../../axiosAPIs/userAPI';
+import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/globalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
-import { Bot } from '../../generated/entity/bot';
+import { Role } from '../../generated/entity/teams/role';
 import {
   AuthenticationMechanism,
   AuthType,
-  User,
 } from '../../generated/entity/teams/user';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
+import RolesCard from '../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import PageLayout from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import { UserDetails } from '../Users/Users.interface';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
+import { BotsDetailProps } from './BotDetails.interfaces';
+import './BotDetails.style.less';
+import DisplayNameComponent from './DisplayNameComponent/DisplayNameComponent.component';
 
-interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
-  botUserData: User;
-  botData: Bot;
-  botPermission: OperationPermission;
-  updateBotsDetails: (data: UserDetails) => Promise<void>;
-  revokeTokenHandler: () => void;
-  onEmailChange: () => void;
-}
-
-const BotDetails: FC<BotsDetailProp> = ({
+const BotDetails: FC<BotsDetailProps> = ({
   botData,
   botUserData,
   updateBotsDetails,
   revokeTokenHandler,
   botPermission,
   onEmailChange,
+  updateUserDetails,
 }) => {
   const [displayName, setDisplayName] = useState(botData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
+  const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
+  const [roles, setRoles] = useState<Array<Role>>([]);
 
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  const { t } = useTranslation();
   const [authenticationMechanism, setAuthenticationMechanism] =
     useState<AuthenticationMechanism>();
 
@@ -102,6 +94,22 @@ const BotDetails: FC<BotsDetailProp> = ({
       setAuthenticationMechanism(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await getRoles(
+        '',
+        undefined,
+        undefined,
+        false,
+        PAGE_SIZE_LARGE
+      );
+      setRoles(response.data.data);
+    } catch (err) {
+      setRoles([]);
+      showErrorToast(err as AxiosError);
     }
   };
 
@@ -180,138 +188,69 @@ const BotDetails: FC<BotsDetailProp> = ({
     setIsDescriptionEdit(false);
   };
 
-  const getDisplayNameComponent = () => {
-    return (
-      <div className="tw-mt-4 tw-w-full">
-        {isDisplayNameEdit ? (
-          <div className="tw-flex tw-items-center tw-gap-2">
-            <input
-              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
-              data-testid="displayName"
-              id="displayName"
-              name="displayName"
-              placeholder="displayName"
-              type="text"
-              value={displayName}
-              onChange={onDisplayNameChange}
-            />
-            <div className="tw-flex tw-justify-end" data-testid="buttons">
-              <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                data-testid="cancel-displayName"
-                size="custom"
-                theme="primary"
-                variant="contained"
-                onMouseDown={() => setIsDisplayNameEdit(false)}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
-              </Button>
-              <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                data-testid="save-displayName"
-                size="custom"
-                theme="primary"
-                variant="contained"
-                onClick={handleDisplayNameChange}>
-                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Fragment>
-            {displayName ? (
-              <span
-                className="tw-text-base tw-font-medium tw-mr-2"
-                data-testid="bot-displayName">
-                {displayName}
-              </span>
-            ) : (
-              <span className="tw-no-description tw-text-sm">
-                Add display name
-              </span>
-            )}
-            {(displayNamePermission || editAllPermission) && (
-              <button
-                className="tw-ml-2 focus:tw-outline-none"
-                data-testid="edit-displayName"
-                onClick={() => setIsDisplayNameEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
-              </button>
-            )}
-          </Fragment>
-        )}
-      </div>
-    );
-  };
-
-  const getDescriptionComponent = () => {
-    return (
-      <div className="tw--ml-5">
-        <Description
-          description={botData.description || ''}
-          entityName={getEntityName(botData)}
-          hasEditAccess={descriptionPermission || editAllPermission}
-          isEdit={isDescriptionEdit}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
-          onDescriptionUpdate={handleDescriptionChange}
-        />
-      </div>
-    );
+  const prepareSelectedRoles = () => {
+    const defaultRoles = [...(botUserData.roles?.map((role) => role.id) || [])];
+    if (botUserData.isAdmin) {
+      defaultRoles.push(toLower(TERM_ADMIN));
+    }
+    setSelectedRoles(defaultRoles);
   };
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        className="ant-card-feed"
-        style={{
-          ...leftPanelAntCardStyle,
-          marginTop: '16px',
-        }}>
-        <div data-testid="left-panel">
-          <div className="tw-flex tw-flex-col">
-            <SVGIcons
-              alt="bot-profile"
-              icon={Icons.BOT_PROFILE}
-              width="280px"
-            />
+      <>
+        <Card className="page-layout-v1-left-panel mt-2">
+          <div data-testid="left-panel">
+            <div className="flex flex-col">
+              <SVGIcons
+                alt="bot-profile"
+                icon={Icons.BOT_PROFILE}
+                width="280px"
+              />
 
-            <Space className="p-b-md" direction="vertical" size={8}>
-              {getDisplayNameComponent()}
-
-              {getDescriptionComponent()}
-            </Space>
+              <Space className="p-b-md" direction="vertical" size={8}>
+                <DisplayNameComponent
+                  displayName={displayName}
+                  displayNamePermission={displayNamePermission}
+                  editAllPermission={editAllPermission}
+                  handleDisplayNameChange={handleDisplayNameChange}
+                  isDisplayNameEdit={isDisplayNameEdit}
+                  setIsDisplayNameEdit={(value: boolean) =>
+                    setIsDisplayNameEdit(value)
+                  }
+                  onDisplayNameChange={onDisplayNameChange}
+                />
+                <Description
+                  description={botData.description || ''}
+                  entityName={getEntityName(botData)}
+                  hasEditAccess={descriptionPermission || editAllPermission}
+                  isEdit={isDescriptionEdit}
+                  onCancel={() => setIsDescriptionEdit(false)}
+                  onDescriptionEdit={() => setIsDescriptionEdit(true)}
+                  onDescriptionUpdate={handleDescriptionChange}
+                />
+              </Space>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+        <RolesCard
+          roles={roles}
+          selectedRoles={selectedRoles}
+          setSelectedRoles={(selectedRoles) => setSelectedRoles(selectedRoles)}
+          updateUserDetails={updateUserDetails}
+          userData={botUserData}
+        />
+        <InheritedRolesCard userData={botUserData} />
+      </>
     );
   };
 
-  const rightPanel = (
-    <Card
-      className="ant-card-feed"
-      style={{
-        ...leftPanelAntCardStyle,
-        marginTop: '16px',
-      }}>
-      <div data-testid="right-panel">
-        <div className="tw-flex tw-flex-col">
-          <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
-          <p className="tw-mb-2">
-            Anyone who has your JWT Token will be able to send REST API requests
-            to the OpenMetadata Server. Do not expose the JWT Token in your
-            application code. Do not share it on GitHub or anywhere else online.
-          </p>
-        </div>
-      </div>
-    </Card>
-  );
+  useEffect(() => {
+    fetchRoles();
+  }, []);
 
   useEffect(() => {
+    prepareSelectedRoles();
     if (botUserData.id) {
       fetchAuthMechanismForBot();
     }
@@ -336,13 +275,23 @@ const BotDetails: FC<BotsDetailProp> = ({
         />
       }
       leftPanel={fetchLeftPanel()}
-      rightPanel={rightPanel}>
+      rightPanel={
+        <Card className="page-layout-v1-left-panel mt-2">
+          <div data-testid="right-panel">
+            <div className="flex flex-col">
+              <Typography.Text className="mb-2 text-lg">
+                {t('label.token-security')}
+              </Typography.Text>
+              <Typography.Text className="mb-2">
+                {t('message.token-security-description')}
+              </Typography.Text>
+            </div>
+          </div>
+        </Card>
+      }>
       <Card
-        data-testid="center-panel"
-        style={{
-          ...leftPanelAntCardStyle,
-          marginTop: '16px',
-        }}>
+        className="page-layout-v1-left-panel mt-2"
+        data-testid="center-panel">
         {authenticationMechanism ? (
           <>
             {isAuthMechanismEdit ? (

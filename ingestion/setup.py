@@ -68,6 +68,7 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {"pyodbc"},
     "bigquery": {
+        "grpcio==1.50.0",
         "sqlalchemy-bigquery>=1.2.2",
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",

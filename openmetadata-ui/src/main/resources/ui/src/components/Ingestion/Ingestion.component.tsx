@@ -19,8 +19,9 @@ import cronstrue from 'cronstrue';
 import { useTranslation } from 'react-i18next';
 
 import { ColumnsType } from 'antd/lib/table';
-import { isNil, lowerCase, startCase } from 'lodash';
-import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import { AxiosError } from 'axios';
+import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
@@ -40,7 +41,7 @@ import {
 } from '../../utils/RouterUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import PopOver from '../common/popover/PopOver';
@@ -49,6 +50,11 @@ import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
+import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
+import {
+  IngestionServicePermission,
+  ResourceEntity,
+} from '../PermissionProvider/PermissionProvider.interface';
 import { IngestionProps } from './ingestion.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 
@@ -71,6 +77,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 }: IngestionProps) => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [searchText, setSearchText] = useState('');
   const [showActions, setShowActions] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
@@ -94,6 +101,35 @@ const Ingestion: React.FC<IngestionProps> = ({
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
   };
+
+  const [ingestionData, setIngestionData] =
+    useState<Array<IngestionPipeline>>(ingestionList);
+  const [servicePermission, setServicePermission] =
+    useState<IngestionServicePermission>();
+
+  const fetchServicePermission = async () => {
+    try {
+      const promises = ingestionList.map((item) =>
+        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
+      );
+      const response = await Promise.allSettled(promises);
+
+      const permissionData = response.reduce((acc, cv, index) => {
+        return {
+          ...acc,
+          [ingestionList?.[index].name]:
+            cv.status === 'fulfilled' ? cv.value : {},
+        };
+      }, {});
+
+      setServicePermission(permissionData);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const getEditPermission = (service: string): boolean =>
+    !servicePermission?.[service]?.EditAll;
 
   const getSupportedPipelineTypes = () => {
     let pipelineType = [];
@@ -221,7 +257,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const getAddIngestionButton = (type: PipelineType) => {
     return (
       <Button
-        className={classNames('tw-h-8 tw-rounded tw-mb-2')}
+        className={classNames('h-8 rounded-4 m-b-xs')}
         data-testid="add-new-ingestion-button"
         size="small"
         type="primary"
@@ -235,8 +271,9 @@ const Ingestion: React.FC<IngestionProps> = ({
     return (
       <Fragment>
         <Button
-          className={classNames('tw-h-8 tw-rounded tw-mb-2')}
+          className={classNames('h-8 rounded-4 m-b-xs flex items-center')}
           data-testid="add-new-ingestion-button"
+          disabled={!permissions.Create}
           size="small"
           type="primary"
           onClick={() => setShowActions((pre) => !pre)}>
@@ -245,15 +282,15 @@ const Ingestion: React.FC<IngestionProps> = ({
             <DropdownIcon
               style={{
                 transform: 'rotate(180deg)',
-                marginTop: '2px',
+                verticalAlign: 'middle',
                 color: '#fff',
               }}
             />
           ) : (
             <DropdownIcon
               style={{
-                marginTop: '2px',
                 color: '#fff',
+                verticalAlign: 'middle',
               }}
             />
           )}
@@ -302,17 +339,27 @@ const Ingestion: React.FC<IngestionProps> = ({
     return element;
   };
 
-  const getSearchedIngestions = useCallback(() => {
+  const getSearchedIngestions = () => {
     const sText = lowerCase(searchText);
 
-    return sText
-      ? ingestionList.filter(
-          (ing) =>
-            lowerCase(ing.displayName).includes(sText) ||
-            lowerCase(ing.name).includes(sText)
-        )
-      : ingestionList;
+    setIngestionData(
+      sText
+        ? ingestionList.filter(
+            (ing) =>
+              lowerCase(ing.displayName).includes(sText) ||
+              lowerCase(ing.name).includes(sText)
+          )
+        : ingestionList
+    );
+  };
+
+  useEffect(() => {
+    getSearchedIngestions();
   }, [searchText, ingestionList]);
+
+  useEffect(() => {
+    fetchServicePermission();
+  }, []);
 
   const separator = (
     <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
@@ -334,7 +381,9 @@ const Ingestion: React.FC<IngestionProps> = ({
 
           <Button
             data-testid="re-deploy-btn"
-            disabled={!isRequiredDetailsAvailable}
+            disabled={
+              !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
+            }
             type="link"
             onClick={() => handleDeployIngestion(ingestion.id as string)}>
             {getLoadingStatus(currDeployId, ingestion.id, t('label.re-deploy'))}
@@ -345,6 +394,9 @@ const Ingestion: React.FC<IngestionProps> = ({
       return (
         <Button
           data-testid="deploy"
+          disabled={
+            !isRequiredDetailsAvailable || getEditPermission(ingestion.name)
+          }
           type="link"
           onClick={() => handleDeployIngestion(ingestion.id as string)}>
           {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
@@ -442,7 +494,10 @@ const Ingestion: React.FC<IngestionProps> = ({
                   {separator}
                   <Button
                     data-testid="pause"
-                    disabled={!isRequiredDetailsAvailable}
+                    disabled={
+                      !isRequiredDetailsAvailable ||
+                      getEditPermission(record.name)
+                    }
                     type="link"
                     onClick={() =>
                       handleEnableDisableIngestion(record.id || '')
@@ -453,7 +508,10 @@ const Ingestion: React.FC<IngestionProps> = ({
               ) : (
                 <Button
                   data-testid="unpause"
-                  disabled={!isRequiredDetailsAvailable}
+                  disabled={
+                    !isRequiredDetailsAvailable ||
+                    getEditPermission(record.name)
+                  }
                   type="link"
                   onClick={() => handleEnableDisableIngestion(record.id || '')}>
                   {t('label.unpause')}
@@ -462,7 +520,9 @@ const Ingestion: React.FC<IngestionProps> = ({
               {separator}
               <Button
                 data-testid="edit"
-                disabled={!isRequiredDetailsAvailable}
+                disabled={
+                  !isRequiredDetailsAvailable || getEditPermission(record.name)
+                }
                 type="link"
                 onClick={() => handleUpdate(record)}>
                 {t('label.edit')}
@@ -470,6 +530,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               {separator}
               <Button
                 data-testid="delete"
+                disabled={!servicePermission?.[record.name]?.Delete}
                 type="link"
                 onClick={() => ConfirmDelete(record.id as string, record.name)}>
                 {deleteSelection.id === record.id ? (
@@ -560,7 +621,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         </div>
         <div className="tw-flex tw-justify-between">
           <div className="tw-w-4/12">
-            {searchText || getSearchedIngestions().length > 0 ? (
+            {searchText || !isEmpty(ingestionData) ? (
               <Searchbar
                 placeholder="Search for ingestion..."
                 searchValue={searchText}
@@ -575,14 +636,14 @@ const Ingestion: React.FC<IngestionProps> = ({
               getAddIngestionElement()}
           </div>
         </div>
-        {getSearchedIngestions().length ? (
+        {!isEmpty(ingestionData) ? (
           <div className="tw-mb-6" data-testid="ingestion-table">
             <Table
               bordered
               className="table-shadow"
               columns={tableColumn}
               data-testid="schema-table"
-              dataSource={getSearchedIngestions()}
+              dataSource={ingestionData}
               pagination={false}
               rowKey="name"
               size="small"
