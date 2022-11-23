@@ -13,7 +13,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -26,7 +25,6 @@ import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.metadata.MetadataServiceResource;
 import org.openmetadata.service.util.JsonUtils;
@@ -166,14 +164,14 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
   @Override
   public CreateMetadataService createPutRequest(String name) {
-    String secretPassword = "secret:/openmetadata/metadata/" + name + "/password";
+    MetadataConnection metadataConnection = JsonUtils.convertValue(AMUNDSEN_CONNECTION, MetadataConnection.class);
+    AmundsenConnection amundsenConnection =
+        JsonUtils.convertValue(AMUNDSEN_CONNECTION.getConfig(), AmundsenConnection.class);
+    String secretPassword = "secret:/openmetadata/metadata/" + name.toLowerCase() + "/password";
     return new CreateMetadataService()
         .withName(name)
         .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
-        .withConnection(
-            AMUNDSEN_CONNECTION.withConfig(
-                ((AmundsenConnection) AMUNDSEN_CONNECTION.getConfig())
-                    .withPassword(Fernet.getInstance().encrypt(secretPassword.toLowerCase(Locale.ROOT)))));
+        .withConnection(metadataConnection.withConfig(amundsenConnection.withPassword(secretPassword)));
   }
 
   @Override
