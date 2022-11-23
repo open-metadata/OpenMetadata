@@ -149,16 +149,11 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
           @QueryParam("supportedDataType")
           String supportedDataTypeParam)
       throws IOException {
-    ListFilter filter = new ListFilter(include);
-    if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
-    }
-    if (testPlatformParam != null) {
-      filter.addQueryParam("testPlatform", testPlatformParam);
-    }
-    if (supportedDataTypeParam != null) {
-      filter.addQueryParam("supportedDataType", supportedDataTypeParam);
-    }
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("entityType", entityType)
+            .addQueryParam("testPlatform", testPlatformParam)
+            .addQueryParam("supportedDataType", supportedDataTypeParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

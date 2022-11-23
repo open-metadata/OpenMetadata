@@ -41,6 +41,10 @@ public class BotRepository extends EntityRepository<Bot> {
   @Override
   public void prepare(Bot entity) throws IOException {
     User user = daoCollection.userDAO().findEntityById(entity.getBotUser().getId(), Include.ALL);
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new IllegalArgumentException(
+          String.format("User [%s] can be assigned to a Bot since isBot flag is not set", user.getName()));
+    }
     entity.getBotUser().withName(user.getName()).withDisplayName(user.getDisplayName());
   }
 

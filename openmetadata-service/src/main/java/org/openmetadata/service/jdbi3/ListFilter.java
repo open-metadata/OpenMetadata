@@ -20,8 +20,10 @@ public class ListFilter {
     this.include = include;
   }
 
-  public ListFilter addQueryParam(String name, String value) {
-    queryParams.put(name, value);
+  public ListFilter addQueryParam(String name, Object value) {
+    if (value != null) {
+      queryParams.put(name, String.valueOf(value));
+    }
     return this;
   }
 

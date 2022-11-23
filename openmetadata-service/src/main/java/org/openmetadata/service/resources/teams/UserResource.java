@@ -66,7 +66,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -90,7 +89,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -221,13 +219,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
-    if (isAdmin != null) {
-      filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
-    }
-    if (isBot != null) {
-      filter.addQueryParam("isBot", String.valueOf(isBot));
-    }
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("team", teamParam)
+            .addQueryParam("isAdmin", isAdmin)
+            .addQueryParam("isBot", isBot);
     ResultList<User> users = listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     users.getData().forEach(user -> decryptOrNullify(securityContext, user));
     return users;
@@ -536,9 +532,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
-    }
-    if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately
-      return createOrUpdateBot(user, create, uriInfo, securityContext);
     }
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
@@ -1021,61 +1014,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (dao.checkEmailAlreadyExists(email)) {
       throw new RuntimeException("User with Email Already Exists");
     }
-  }
-
-  private Response createOrUpdateBot(User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext)
-      throws IOException {
-    User original = retrieveBotUser(user, uriInfo);
-    String botName = create.getBotName();
-    EntityInterface bot = retrieveBot(botName);
-    // check if the bot user exists
-    if (!botHasRelationshipWithUser(bot, original)
-        && original != null
-        && userHasRelationshipWithAnyBot(original, bot)) {
-      // throw an exception if user already has a relationship with a bot
-      List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
-      bot =
-          Entity.getEntityRepository(Entity.BOT)
-              .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
-      throw new IllegalArgumentException(
-          String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
-    }
-    // TODO remove this
-    addAuthMechanismToBot(user, create, uriInfo);
-    RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
-    decryptOrNullify(securityContext, response.getEntity());
-    return response.toResponse();
-  }
-
-  private EntityInterface retrieveBot(String botName) {
-    try {
-      return Entity.getEntityRepository(Entity.BOT).getByName(null, botName, Fields.EMPTY_FIELDS);
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
-    List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
-    return !userBotRelationship.isEmpty()
-        && (botUser == null
-            || (userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId()))));
-  }
-
-  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return dao.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
-  }
-
-  private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
-    if (bot == null || user == null) {
-      return false;
-    }
-    List<CollectionDAO.EntityRelationshipRecord> botUserRelationships = retrieveBotRelationshipsFor(bot);
-    return !botUserRelationships.isEmpty() && botUserRelationships.get(0).getId().equals(user.getId());
-  }
-
-  private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(EntityInterface bot) {
-    return dao.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
   // TODO remove this

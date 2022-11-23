@@ -65,7 +65,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -77,7 +76,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -102,7 +100,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
@@ -284,12 +281,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
     CreateUser create = createRequest(test).withRoles(roles);
-    List<UUID> createdRoles = Arrays.asList(role1.getId(), role2.getId());
-    CreateUser created = createRequest(test).withRoles(createdRoles);
     User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure User has relationship to these roles
-    String[] expectedRoles = createdRoles.stream().map(UUID::toString).sorted().toArray(String[]::new);
+    String[] expectedRoles = roles.stream().map(UUID::toString).sorted().toArray(String[]::new);
     List<EntityReference> roleReferences = user.getRoles();
     String[] actualRoles = roleReferences.stream().map(ref -> ref.getId().toString()).sorted().toArray(String[]::new);
     assertArrayEquals(expectedRoles, actualRoles);
@@ -682,7 +677,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void put_generateToken_bot_user_200_ok(TestInfo test) throws HttpResponseException {
+  void put_generateToken_bot_user_200_ok() throws HttpResponseException {
     AuthenticationMechanism authMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthType.SSO)
@@ -856,42 +851,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEntityReferences(List.of(DATA_CONSUMER_ROLE_REF, DATA_STEWARD_ROLE_REF), user_team21.getInheritedRoles());
   }
 
-  @Test
-  void put_failIfBotUserIsAlreadyAssignedToAnotherBot(TestInfo test) throws HttpResponseException {
-    BotResourceTest botResourceTest = new BotResourceTest();
-    String botName = "test-bot-user-fail";
-    // create bot user
-    CreateUser createBotUser = createBotUserRequest("test-bot-user").withBotName(botName);
-    User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
-    // assign bot user to a bot
-    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
-    botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    // put user with a different bot name
-    CreateUser createWrongBotUser = createBotUserRequest("test-bot-user").withBotName("test-bot-user-fail-2");
-    assertResponse(
-        () -> updateEntity(createWrongBotUser, BAD_REQUEST, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Bot user [test-bot-user] is already used by [%s] bot.", botName));
-  }
-
-  @Test
-  void put_ok_ifBotUserIsBotUserOfBot(TestInfo test) throws HttpResponseException {
-    BotResourceTest botResourceTest = new BotResourceTest();
-    String botName = "test-bot-ok";
-    // create bot user
-    CreateUser createBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);
-    User botUser = updateEntity(createBotUser, CREATED, ADMIN_AUTH_HEADERS);
-    EntityReference botUserRef = Objects.requireNonNull(botUser).getEntityReference();
-    // assign bot user to a bot
-    CreateBot create = botResourceTest.createRequest(test).withBotUser(botUserRef).withName(botName);
-    botResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    // put again user with same bot name
-    CreateUser createDifferentBotUser = createBotUserRequest("test-bot-user-ok").withBotName(botName);
-    updateEntity(createDifferentBotUser, OK, ADMIN_AUTH_HEADERS);
-    assertNotNull(createDifferentBotUser);
-  }
-
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -900,8 +859,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       throw new AuthenticationException("Invalid token", e);
     }
 
-    // Check if expired
-    // if the expiresAt set to null, treat it as never expiring token
+    // If expiresAt set to null, treat it as never expiring token
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       throw new AuthenticationException("Expired token!");
