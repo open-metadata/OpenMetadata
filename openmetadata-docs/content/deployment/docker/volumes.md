@@ -16,7 +16,7 @@ To make changes to the `docker-compose.yaml` file you will need to download it f
 ## Volumes for MYSQL container:
 Following are the changes we have to do while mounting the directory for mysql in OpenMetadata.
 - Update or add the volume in the docker-compose.yml file
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.3-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -30,7 +30,7 @@ services:
 ## Volumes for PostgreSQL container:
 Following are the changes we have to do while mounting the directory for postgresql in OpenMetadata.
 - Update or add the volume in the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.3-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -45,7 +45,7 @@ services:
 ## Volumes for ingestion container
 Following are the changes we have to do while mounting the directory for ingestion in OpenMetadata. Here we will maintaing different directory for dag_generated_configs, dags and secrets.
 - Remove the below section from the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.3-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 volumes:
@@ -54,7 +54,7 @@ volumes:
   ingestion-volume-tmp:
 ```
 - Update or add the volume in the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.3-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -75,7 +75,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.12.2
+    image: openmetadata/db:0.13.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -88,7 +88,7 @@ services:
         ipv4_address: 172.16.240.10
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.12.2
+    image: openmetadata/ingestion:0.13.0
     depends_on:
       - mysql
     expose:
