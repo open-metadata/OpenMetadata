@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, {
-  CloseCircleOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
+import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import i18next from 'i18next';
 import { isUndefined } from 'lodash';
@@ -31,6 +27,7 @@ import {
 
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
   switch (index) {
@@ -126,13 +123,13 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     );
   } else if (type === 'delGroup') {
     return (
-      <Icon
-        className="action action--DELETE"
-        component={
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          DeleteOutlined as React.ForwardRefExoticComponent<any>
-        }
-        onClick={props?.onClick}
+      <SVGIcons
+        alt={i18next.t('label.delete-group')}
+        className="action action--DELETE cursor-pointer "
+        height={16}
+        icon={Icons.DELETE_COLORED}
+        width={16}
+        onClick={props?.onClick as () => void}
       />
     );
   }

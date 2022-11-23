@@ -5,11 +5,11 @@
   "description": "Display the percentage of entities with tier by type.",
   "dataIndexType": "entity_report_data_index",
   "dimensions": [
-    {"name": "timestamp","dataType":"INT"},
-    {"name": "entityTier", "displayName": "Entity Tier", "dataType": "STRING"}
+    {"name": "timestamp","chartDataType":"INT"},
+    {"name": "entityTier", "displayName": "Entity Tier", "chartDataType": "STRING"}
   ],
   "metrics": [
-    {"name": "entityCountFraction", "displayName": "Total Count of Entity", "dataType": "PERCENTAGE"},
-    {"name": "entityCount", "displayName": "Total Entities", "dataType": "NUMBER"}
+    {"name": "entityCountFraction", "displayName": "Total Count of Entity", "chartDataType": "PERCENTAGE"},
+    {"name": "entityCount", "displayName": "Total Entities", "chartDataType": "NUMBER"}
   ]
 }

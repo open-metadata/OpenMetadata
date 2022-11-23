@@ -221,4 +221,5 @@ export const COMMON_UI_SCHEMA = {
   },
 };
 
-export const OPENMETADATA = 'Openmetadata';
+export const OPENMETADATA = 'OpenMetadata';
+export const JWT_CONFIG = 'openMetadataJWTClientConfig';

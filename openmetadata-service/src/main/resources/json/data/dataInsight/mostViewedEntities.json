@@ -5,10 +5,10 @@
   "description": "Displays the most viewed entities.",
   "dataIndexType": "web_analytic_entity_view_report_data_index",
   "dimensions": [
-    {"name": "entityFqn","dataType":"STRING"},
-    {"name": "owner","dataType":"STRING"}
+    {"name": "entityFqn","chartDataType":"STRING"},
+    {"name": "owner","chartDataType":"STRING"}
   ],
   "metrics": [
-    {"name": "pageViews", "displayName": "Total number of page view", "dataType": "INT"}
+    {"name": "pageViews", "displayName": "Total number of page view", "chartDataType": "INT"}
   ]
 }

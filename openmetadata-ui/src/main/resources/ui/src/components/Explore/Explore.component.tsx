@@ -20,6 +20,7 @@ import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
+  isEmpty,
   isNil,
   isNumber,
   lowerCase,
@@ -190,7 +191,7 @@ const Explore: React.FC<ExploreProps> = ({
       });
     } catch {
       showErrorToast(
-        t('message.entity-fetch-error', {
+        t('server.entity-fetch-error', {
           entity: `profile details for table ${source?.name || ''}`,
         })
       );
@@ -285,6 +286,14 @@ const Explore: React.FC<ExploreProps> = ({
         term[filter.key] = filter.value;
       }
     });
+
+    onChangeAdvancedSearchQueryFilter(
+      isEmpty(term)
+        ? undefined
+        : {
+            query: { bool: { must: [{ term }] } },
+          }
+    );
   }, [selectedQuickFilters]);
 
   return (

@@ -24,6 +24,13 @@
 
   & > .group-or-rule-container.group-container {
     & > .group.group-or-rule {
+      .group--children {
+        .group-or-rule-container.group-container:first-child {
+          .group--header .action.action--DELETE {
+            display: none;
+          }
+        }
+      }
       & > .group--header + .group--children {
         padding-left: 0;
       }
@@ -76,7 +83,7 @@
   }
 
   .rule--body {
-    margin-right: 96px;
+    margin-right: 124px;
   }
 
   .group--children {
@@ -104,7 +111,7 @@
           .group--conjunctions {
             position: absolute;
             right: 36px;
-            top: 62px;
+            top: 60px;
             left: auto;
             z-index: 1;
 
@@ -207,4 +214,39 @@
   padding: 0 7px;
   overflow: hidden;
   opacity: 1;
+}
+
+.rule-container .ant-btn-group {
+  visibility: hidden;
+}
+.rule-container + .rule-container .ant-btn-group {
+  visibility: visible;
+}
+
+.rule--field {
+  width: 180px;
+
+  .ant-select {
+    width: 100% !important;
+  }
+}
+
+.rule--operator,
+.widget--widget {
+  margin-left: 16px;
+}
+
+.rule--operator {
+  width: 120px;
+  .ant-select {
+    width: 100%;
+  }
+}
+
+.rule--widget {
+  min-width: 180px;
+  .ant-select,
+  .widget--widget {
+    width: 100% !important;
+  }
 }

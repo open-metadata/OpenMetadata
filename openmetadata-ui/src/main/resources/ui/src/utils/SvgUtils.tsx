@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
 import IconCognito from '../assets/img/icon-aws-cognito.png';
@@ -25,6 +26,7 @@ import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAdmin from '../assets/svg/admin.svg';
 import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
+import IconAnnouncementsBasicPrimary from '../assets/svg/announcements-basic-primary.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
 import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
 import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
@@ -197,10 +199,11 @@ import IconWebhook from '../assets/svg/webhook.svg';
 import IconWhatsNew from '../assets/svg/whatsNew.svg';
 
 type Props = {
-  alt: string;
   icon: string;
-  className?: string;
-} & Record<string, string>;
+} & React.DetailedHTMLProps<
+  React.ImgHTMLAttributes<HTMLImageElement>,
+  HTMLImageElement
+>;
 
 export const Icons = {
   LOGO: 'logo',
@@ -332,6 +335,7 @@ export const Icons = {
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
   ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
   ANNOUNCEMENT_PRIMARY: 'icon-announcement-primary',
+  ANNOUNCEMENT_BASIC_PRIMARY: 'icon-announcement-basic-primary',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -387,12 +391,7 @@ export const Icons = {
   NO_DATA_PLACEHOLDER: 'no-data-placeholder',
 };
 
-const SVGIcons: FunctionComponent<Props> = ({
-  alt,
-  icon,
-  className = '',
-  ...props
-}: Props) => {
+const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
   let IconComponent;
   switch (icon) {
     case Icons.MY_DATA:
@@ -905,6 +904,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAnnouncementsPrimary;
 
       break;
+    case Icons.ANNOUNCEMENT_BASIC_PRIMARY:
+      IconComponent = IconAnnouncementsBasicPrimary;
+
+      break;
     case Icons.REQUEST:
       IconComponent = IconRequest;
 
@@ -1143,12 +1146,11 @@ const SVGIcons: FunctionComponent<Props> = ({
 
   return IconComponent ? (
     <img
-      alt={alt}
-      className={`svg-icon ${className}`}
+      // eslint-disable-next-line react/prop-types
+      className={`svg-icon ${props.className ? props.className : ''}`}
       data-testid="image"
       src={IconComponent}
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...props}
+      {...omit(props, ['src', 'className'])}
     />
   ) : null;
 };
