@@ -30,7 +30,8 @@ If you are upgrading production this is the recommended version to upgrade.
  
  
  
-## Breaking Changes from 0.12.x Release
+## Breaking Changes from 0.13.0 Feature Release
+## Breaking Changes from 0.12.x Stable Release
 
 OpenMetadata Release 0.12.x introduces below breaking changes -
 
