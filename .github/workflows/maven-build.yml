@@ -106,6 +106,7 @@ jobs:
         run: |
           cd ./docker/local-metadata
           docker compose down --remove-orphans
+          chmod 777 ${PWD}/docker-volume
           rm -rf ${PWD}/docker-volume
 
       - name: Publish Test Report
