@@ -191,7 +191,7 @@ const Explore: React.FC<ExploreProps> = ({
       });
     } catch {
       showErrorToast(
-        t('message.entity-fetch-error', {
+        t('server.entity-fetch-error', {
           entity: `profile details for table ${source?.name || ''}`,
         })
       );
