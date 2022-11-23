@@ -78,6 +78,7 @@ public class EmailUtil {
       } else {
         DEFAULT_SMTP_SETTINGS = new SmtpSettings();
       }
+      INSTANCE = new EmailUtil();
       INITIALIZED = true;
     } else {
       INITIALIZED = false;
