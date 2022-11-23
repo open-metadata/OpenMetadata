@@ -27,7 +27,7 @@ public class BotTokenCache {
 
   public BotTokenCache() {
     BOTS_TOKEN_CACHE =
-        CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(15, TimeUnit.MINUTES).build(new BotTokenLoader());
+        CacheBuilder.newBuilder().maximumSize(2000).expireAfterAccess(45, TimeUnit.MINUTES).build(new BotTokenLoader());
   }
 
   public String getToken(String botName) {
