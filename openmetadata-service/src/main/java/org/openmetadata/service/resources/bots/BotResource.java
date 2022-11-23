@@ -59,7 +59,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.Collection;
@@ -80,11 +79,9 @@ import org.openmetadata.service.util.UserUtil;
 @Collection(name = "bots", order = 4) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
-  protected static EntityRepository<User> USER_REPOSITORY;
 
   public BotResource(CollectionDAO dao, Authorizer authorizer) {
     super(Bot.class, new BotRepository(dao), authorizer);
-    USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
   }
 
   @Override
