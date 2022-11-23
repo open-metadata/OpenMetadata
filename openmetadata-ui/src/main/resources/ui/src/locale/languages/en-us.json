@@ -380,8 +380,7 @@
     "all-charts-are-mapped": "All charts are mapped with existing KPIs."
   },
   "server": {
-    "no-followed-entities": "You have not followed anything yet.",
-    "no-owned-entities": "You have not owned anything yet.",
+    "no-user-entities": "You have not {{type}} anything yet.",
     "no-task-available": "No task data is available",
     "entity-fetch-error": "Error while fetching {{entity}}",
     "feed-post-error": "Error while posting the message!",

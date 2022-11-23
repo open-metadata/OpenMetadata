@@ -503,7 +503,7 @@ const TeamsPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('message.entity-fetch-error', {
+          t('server.entity-fetch-error', {
             entity: 'Team Assets',
           })
         );

@@ -562,7 +562,7 @@ const TeamDetailsV1 = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('message.entity-fetch-error', {
+        t('server.entity-fetch-error', {
           entity: 'User Permissions',
         })
       );
