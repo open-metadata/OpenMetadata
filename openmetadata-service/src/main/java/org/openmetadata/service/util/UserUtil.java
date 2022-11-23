@@ -76,29 +76,7 @@ public final class UserUtil {
       User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
       updateUserWithHashedPwd(user, pwd);
       addOrUpdateUser(user);
-      sendInviteMailToAdmin(user, pwd);
-    }
-  }
-
-  public static void sendInviteMailToAdmin(User user, String pwd) {
-    if (EmailUtil.getInstance() != null && EmailUtil.getInstance().isSMTPServerEnabled()) {
-      Map<String, String> templatePopulator = new HashMap<>();
-      templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
-      templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
-      templatePopulator.put(EmailUtil.USERNAME, user.getName());
-      templatePopulator.put(EmailUtil.PASSWORD, pwd);
-      templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
-      try {
-        EmailUtil.getInstance()
-            .sendMail(
-                EmailUtil.getInstance().getEmailInviteSubject(),
-                templatePopulator,
-                user.getEmail(),
-                EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-                EmailUtil.INVITE_RANDOM_PWD);
-      } catch (Exception ex) {
-        LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
-      }
+      EmailUtil.sendInviteMailToAdmin(user, pwd);
     }
   }
 
