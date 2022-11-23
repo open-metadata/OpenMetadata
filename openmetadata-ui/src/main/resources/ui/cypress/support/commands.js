@@ -89,19 +89,17 @@ Cypress.Commands.add('storeSession', (username, password) => {
   Its currently Experimental feature, but cypress is encouraging to use this feature
   as Cypress.Cookies.preserveOnce() and Cypress.Cookies.defaults() has been deprecated
   */
- 
+
   cy.session([username, password], () => {
     cy.visit('/');
     cy.get('[id="email"]').should('be.visible').clear().type(username);
     cy.get('[id="password"]').should('be.visible').clear().type(password);
     interceptURL('POST', '/api/v1/users/login', 'login');
-    interceptURL('GET', '/api/v1/users/*', 'loadPage');
     cy.get('[data-testid="login"]')
       .contains('Login')
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@login', 200);
-    verifyResponseStatusCode('@loadPage', 200);
     cy.url().should('eq', `${BASE_URL}/my-data`);
     cy.get('[data-testid="tables"]').should('be.visible');
   });
