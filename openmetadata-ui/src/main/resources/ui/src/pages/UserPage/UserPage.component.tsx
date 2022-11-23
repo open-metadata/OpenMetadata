@@ -104,7 +104,7 @@ const UserPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('message.entity-fetch-error', {
+          t('server.entity-fetch-error', {
             entity: 'User Details',
           })
         );
@@ -152,7 +152,7 @@ const UserPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('message.entity-fetch-error', {
+          t('server.entity-fetch-error', {
             entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
           })
         );
@@ -207,7 +207,7 @@ const UserPage = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            t('message.entity-fetch-error', {
+            t('server.entity-fetch-error', {
               entity: 'Activity Feeds',
             })
           );
