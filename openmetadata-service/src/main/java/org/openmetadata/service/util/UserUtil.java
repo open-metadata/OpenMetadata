@@ -13,9 +13,7 @@ import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECT
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;

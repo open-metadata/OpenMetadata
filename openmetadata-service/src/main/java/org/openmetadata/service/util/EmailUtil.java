@@ -5,7 +5,6 @@ import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTPS;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP_TLS;
 
-import com.google.common.cache.CacheBuilder;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -14,27 +13,19 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.teams.CreateUser;
-import org.openmetadata.schema.email.EmailRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;
 import org.simplejavamail.api.mailer.config.TransportStrategy;
 import org.simplejavamail.email.EmailBuilder;
 import org.simplejavamail.mailer.MailerBuilder;
-
-import javax.ws.rs.core.UriInfo;
 
 @Slf4j
 public class EmailUtil {
@@ -228,7 +219,7 @@ public class EmailUtil {
     }
   }
 
-   public void sendMail(Email email) {
+  public void sendMail(Email email) {
     if (MAILER != null && DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
       MAILER.sendMail(email, true);
     }
@@ -272,7 +263,6 @@ public class EmailUtil {
   public void testConnection() {
     MAILER.testConnection();
   }
-
 
   private String getEmailVerificationSubject() {
     return String.format(EMAIL_VERIFICATION_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
