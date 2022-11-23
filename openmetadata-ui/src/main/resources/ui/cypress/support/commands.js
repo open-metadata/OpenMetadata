@@ -66,7 +66,14 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 });
 
 Cypress.Commands.add('goToHomePage', () => {
+  interceptURL('GET', '/api/v1/util/entities/count', 'count');
+  interceptURL('GET', '/api/v1/feed', 'feed');
+  interceptURL('GET', '/api/v1/users/name/*?fields=profile', 'userProfile');
+  cy.visit('/');
   cy.get('[data-testid="whats-new-dialog"]').should('be.visible');
+  verifyResponseStatusCode('@count', 200);
+  verifyResponseStatusCode('@feed', 200);
+  verifyResponseStatusCode('@userProfile', 200);
   cy.get('[data-testid="closeWhatsNew"]').click();
   cy.get('[data-testid="whats-new-dialog"]').should('not.exist');
 });
@@ -106,6 +113,5 @@ Cypress.Commands.add('storeSession', (username, password) => {
 
 Cypress.Commands.add('login', () => {
   cy.storeSession(LOGIN.username, LOGIN.password);
-  cy.visit('/');
   cy.goToHomePage();
 });
