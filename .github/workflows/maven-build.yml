@@ -40,7 +40,7 @@ jobs:
           - ubuntu-latest
         node-version:
           - 16.x
-
+    steps:
       - name: Checkout
         uses: actions/checkout@v2
         with:
