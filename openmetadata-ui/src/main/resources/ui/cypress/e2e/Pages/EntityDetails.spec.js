@@ -12,13 +12,12 @@
  */
 
 import { getCurrentLocaleDate, getFutureLocaleDateFromCurrentDate } from '../../../src/utils/TimeUtils';
-import { descriptionBox, interceptURL, login, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
-import { DELETE_ENTITY, DELETE_TERM, LOGIN } from '../../constants/constants';
+import { descriptionBox, interceptURL, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
 
 describe('Entity Details Page', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
 
   const deleteEntity = (value) => {

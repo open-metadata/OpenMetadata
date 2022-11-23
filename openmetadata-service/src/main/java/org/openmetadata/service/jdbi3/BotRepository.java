@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -23,6 +24,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
+@Slf4j
 public class BotRepository extends EntityRepository<Bot> {
 
   static final String BOT_UPDATE_FIELDS = "botUser";

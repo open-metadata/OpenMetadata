@@ -16,6 +16,7 @@ package org.openmetadata.service.util;
 import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.METADATA;
 
 import java.util.List;
+import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
@@ -23,12 +24,27 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
+import org.openmetadata.schema.security.client.AzureSSOClientConfig;
+import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
+import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.security.client.OktaSSOClientConfig;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.service.Entity;
 
 public class IngestionPipelineBuilder {
 
   private static final List<Class<?>> DBT_CONFIG_CLASSES =
       List.of(DbtCloudConfig.class, DbtGCSConfig.class, DbtHttpConfig.class, DbtLocalConfig.class, DbtS3Config.class);
+
+  private static final List<Class<?>> SECURITY_CONFIG_CLASSES =
+      List.of(
+          OpenMetadataJWTClientConfig.class,
+          GoogleSSOClientConfig.class,
+          OktaSSOClientConfig.class,
+          Auth0SSOClientConfig.class,
+          AzureSSOClientConfig.class,
+          CustomOIDCSSOClientConfig.class);
 
   /**
    * Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`.
@@ -49,18 +65,33 @@ public class IngestionPipelineBuilder {
               databaseServiceMetadataPipeline.withDbtConfigSource(
                   buildDbtConfigSource(databaseServiceMetadataPipeline.getDbtConfigSource())));
     }
+    if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
+      ingestionPipeline
+          .getOpenMetadataServerConnection()
+          .setSecurityConfig(
+              buildSecurityConfig(ingestionPipeline.getOpenMetadataServerConnection().getSecurityConfig()));
+    }
     return ingestionPipeline;
   }
 
   private static Object buildDbtConfigSource(Object config) {
+    return buildBasedOnClassList(config, DBT_CONFIG_CLASSES);
+  }
+
+  private static Object buildSecurityConfig(Object config) {
+    return buildBasedOnClassList(config, SECURITY_CONFIG_CLASSES);
+  }
+
+  @Nullable
+  private static Object buildBasedOnClassList(Object config, List<Class<?>> listOfClasses) {
     if (config != null) {
-      for (Class<?> clazz : DBT_CONFIG_CLASSES) {
+      for (Class<?> clazz : listOfClasses) {
         try {
           return JsonUtils.convertValue(config, clazz);
         } catch (Exception ignored) {
         }
       }
-      throw new IllegalArgumentException("Impossible to parse the config of the source config.");
+      throw new IllegalArgumentException("Impossible to parse the object of the Ingestion Pipeline.");
     }
     return null;
   }

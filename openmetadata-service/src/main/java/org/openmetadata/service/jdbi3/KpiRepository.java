@@ -72,7 +72,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     }
     Map<String, Object> values = new HashMap<>();
     for (ChartParameterValues parameterValue : dataInsightChartMetric) {
-      values.put(parameterValue.getName(), parameterValue.getDataType());
+      values.put(parameterValue.getName(), parameterValue.getChartDataType());
     }
     for (KpiTarget kpiTarget : kpiTargetDef) {
       if (!values.containsKey(kpiTarget.getName())) {
@@ -185,13 +185,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
         daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
-  public ResultList<KpiResult> getKpiResults(String fqn, Long startTs, Long endTs) throws IOException {
+  public ResultList<KpiResult> getKpiResults(
+      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
+      throws IOException {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, KPI_RESULT_EXTENSION, startTs, endTs),
+                .listBetweenTimestampsByOrder(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy),
             KpiResult.class);
     return new ResultList<>(kpiResults, String.valueOf(startTs), String.valueOf(endTs), kpiResults.size());
   }

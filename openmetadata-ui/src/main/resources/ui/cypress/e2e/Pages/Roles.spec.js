@@ -13,12 +13,9 @@
 
 import {
     descriptionBox,
-    interceptURL,
-    login,
-    uuid,
+    interceptURL, uuid,
     verifyResponseStatusCode
 } from '../../common/common';
-import { LOGIN } from '../../constants/constants';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -58,8 +55,7 @@ const removePolicyFromRole = (policyName) => {
 
 describe('Roles page should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 

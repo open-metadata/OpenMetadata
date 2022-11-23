@@ -21,6 +21,7 @@ import BotDetails from './BotDetails.component';
 const revokeTokenHandler = jest.fn();
 const updateBotsDetails = jest.fn();
 const onEmailChange = jest.fn();
+const updateUserDetails = jest.fn();
 
 const botUserData = {
   id: 'ea09aed1-0251-4a75-b92a-b65641610c53',
@@ -71,6 +72,8 @@ const mockAuthMechanism = {
 const mockProp = {
   botUserData,
   botData,
+  isAdminUser: true,
+  isAuthDisabled: false,
   botPermission: {
     Create: true,
     Delete: true,
@@ -83,6 +86,7 @@ const mockProp = {
   revokeTokenHandler,
   updateBotsDetails,
   onEmailChange,
+  updateUserDetails,
 };
 
 jest.mock('../../utils/PermissionsUtils', () => ({

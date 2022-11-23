@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
-import { LOGIN } from '../../constants/constants';
+import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
 
 
 const MSteamName = `MSTeam-ct-test-${uuid()}`;
@@ -20,8 +19,7 @@ const endpointURL = 'http://localhost:8585';
 
 describe('MSTeams Page', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')

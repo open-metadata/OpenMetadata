@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import i18n from 'i18next';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
@@ -73,8 +74,8 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
   const usagePercentile = `${
-    isLiteral ? 'Usage' : ''
-  } - ${ordinalPercentile} pctile`;
+    isLiteral ? i18n.t('label.usage') : ''
+  } - ${ordinalPercentile} ${i18n.t('label.pctile-lowercase')}`;
 
   return usagePercentile;
 };
