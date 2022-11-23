@@ -109,8 +109,8 @@ Go to Settings -> Elasticsearch
 
 <Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex/>
 
-Click on **reindex all**
+Click on reindex al
 
-in the dialog box choose **Recreate Indexes** to **All**
+in the dialog box choose Recreate Indexes to All
 
  <Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
