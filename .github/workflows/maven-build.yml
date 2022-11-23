@@ -106,7 +106,7 @@ jobs:
         run: |
           cd ./docker/local-metadata
           docker compose down --remove-orphans
-          rm -rf ${PWD}/docker-volume
+          sudo rm -rf ${PWD}/docker-volume
 
       - name: Publish Test Report
         if: ${{ always() }}

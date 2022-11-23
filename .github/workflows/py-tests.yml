@@ -108,7 +108,7 @@ jobs:
       run: |
         cd ./docker/local-metadata
         docker compose down --remove-orphans
-        rm -rf ${PWD}/docker-volume
+        sudo rm -rf ${PWD}/docker-volume
 
 
       # we have to pass these args values since we are working with the 'pull_request_target' trigger
