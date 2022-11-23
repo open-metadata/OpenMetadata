@@ -100,8 +100,7 @@ Cypress.Commands.add('storeSession', (username, password) => {
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@login', 200);
-    cy.url().should('eq', `${BASE_URL}/my-data`);
-    cy.get('[data-testid="tables"]').should('be.visible');
+    cy.url().should('not.eq', `${BASE_URL}/signin`);
   });
 });
 
