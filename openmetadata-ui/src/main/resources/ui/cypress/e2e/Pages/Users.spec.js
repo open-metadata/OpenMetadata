@@ -14,14 +14,11 @@
 import {
     addUser,
     deleteSoftDeletedUser,
-    interceptURL,
-    login,
-    restoreUser,
+    interceptURL, restoreUser,
     softDeleteUser,
     uuid,
     verifyResponseStatusCode
 } from '../../common/common';
-import { LOGIN } from '../../constants/constants';
 
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
@@ -81,8 +78,7 @@ describe('Users flow should work properly', () => {
 
 describe('Admin flow should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
