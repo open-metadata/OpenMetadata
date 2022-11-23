@@ -168,7 +168,7 @@ class DataInsightWorkflow:
                         "lte": lte,
                     }
                 }
-            }
+            },
         }
         data = self.es_sink.read_records(index, query)
         try:
