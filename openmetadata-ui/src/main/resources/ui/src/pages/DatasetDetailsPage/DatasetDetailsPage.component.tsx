@@ -560,7 +560,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             setCurrentVersion(version + '');
             setTableDetails((previous) => ({
               ...previous,
-              owner,
+              ...(owner ? { owner } : {}),
               version,
               tags,
             }));

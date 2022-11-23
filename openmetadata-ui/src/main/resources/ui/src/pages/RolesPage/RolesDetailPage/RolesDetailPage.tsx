@@ -378,21 +378,20 @@ const RolesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="roles-detail" data-testid="role-details">
-              <div className="tw--ml-5">
-                <Description
-                  description={role.description || ''}
-                  entityFqn={role.fullyQualifiedName}
-                  entityName={getEntityName(role)}
-                  entityType={EntityType.ROLE}
-                  hasEditAccess={
-                    rolePermission.EditAll || rolePermission.EditDescription
-                  }
-                  isEdit={editDescription}
-                  onCancel={() => setEditDescription(false)}
-                  onDescriptionEdit={() => setEditDescription(true)}
-                  onDescriptionUpdate={handleDescriptionUpdate}
-                />
-              </div>
+              <Description
+                description={role.description || ''}
+                entityFqn={role.fullyQualifiedName}
+                entityName={getEntityName(role)}
+                entityType={EntityType.ROLE}
+                hasEditAccess={
+                  rolePermission.EditAll || rolePermission.EditDescription
+                }
+                isEdit={editDescription}
+                onCancel={() => setEditDescription(false)}
+                onDescriptionEdit={() => setEditDescription(true)}
+                onDescriptionUpdate={handleDescriptionUpdate}
+              />
+
               <Tabs data-testid="tabs" defaultActiveKey="policies">
                 <TabPane key="policies" tab="Policies">
                   <Space className="tw-w-full" direction="vertical">

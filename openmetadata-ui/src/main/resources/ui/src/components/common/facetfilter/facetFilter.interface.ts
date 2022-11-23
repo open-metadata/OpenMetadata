@@ -19,7 +19,7 @@ export interface FacetFilterProps {
   filters?: FilterObject;
   showDeleted?: boolean;
   onSelectHandler: (checked: boolean, name: string, key: string) => void;
-  onClearFilter: (value: keyof FilterObject) => void;
+  onClearFilter: (filter: FilterObject) => void;
   onChangeShowDeleted: (checked: boolean) => void;
 }
 

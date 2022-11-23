@@ -37,7 +37,7 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import './KPIPage.less';
 
 import { t } from 'i18next';
-import { postKPI } from '../../axiosAPIs/KpiAPI';
+import { getListKPIs, postKPI } from '../../axiosAPIs/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
   KPI_DATES,
@@ -53,14 +53,18 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import {
+  ChartDataType,
   ChartParameterValues,
   DataInsightChart,
-  DataType,
 } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
-import { getDisabledDates } from '../../utils/DataInsightUtils';
+import {
+  getDisabledDates,
+  getKpiTargetValueByMetricType,
+} from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 const { Option } = Select;
@@ -93,17 +97,26 @@ const AddKPIPage = () => {
   const [metricValue, setMetricValue] = useState<number>(0);
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
   const [kpiDates, setKpiDates] = useState<KpiDates>(KPI_DATES);
+  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
 
   const metricTypes = useMemo(
     () =>
       (selectedChart?.metrics ?? []).filter((metric) =>
         // only return supported data type
-        [DataType.Number, DataType.Percentage].includes(
-          metric.dataType as DataType
+        [ChartDataType.Number, ChartDataType.Percentage].includes(
+          metric.chartDataType as ChartDataType
         )
       ),
     [selectedChart]
   );
+
+  const chartOptions = useMemo(() => {
+    return dataInsightCharts.filter(
+      (chart) =>
+        // only show unmapped charts
+        !kpiList.find((kpi) => kpi.dataInsightChart.name === chart.name)
+    );
+  }, [kpiList, dataInsightCharts]);
 
   const fetchCharts = async () => {
     try {
@@ -116,6 +129,17 @@ const AddKPIPage = () => {
       setDataInsightCharts(supportedCharts);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchKpiList = async () => {
+    try {
+      const response = await getListKPIs({
+        fields: 'dataInsightChart',
+      });
+      setKpiList(response.data);
+    } catch (err) {
+      setKpiList([]);
     }
   };
 
@@ -142,6 +166,10 @@ const AddKPIPage = () => {
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     const startDate = getTimeStampByDateTime(kpiDates.startDate);
     const endDate = getTimeStampByDateTime(kpiDates.endDate);
+    const metricType =
+      selectedMetric?.chartDataType as unknown as KpiTargetType;
+
+    const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
 
     const formData: CreateKpiRequest = {
       dataInsightChart: {
@@ -153,11 +181,11 @@ const AddKPIPage = () => {
       displayName: values.displayName,
       startDate,
       endDate,
-      metricType: selectedMetric?.dataType as unknown as KpiTargetType,
+      metricType,
       targetDefinition: [
         {
           name: selectedMetric?.name as string,
-          value: metricValue + '',
+          value: targetValue + '',
         },
       ],
     };
@@ -174,6 +202,7 @@ const AddKPIPage = () => {
 
   useEffect(() => {
     fetchCharts();
+    fetchKpiList();
   }, []);
 
   return (
@@ -243,10 +272,11 @@ const AddKPIPage = () => {
               ]}>
               <Select
                 data-testid="dataInsightChart"
+                notFoundContent={t('message.all-charts-are-mapped')}
                 placeholder={t('label.select-a-chart')}
                 value={selectedChart?.id}
                 onChange={handleChartSelect}>
-                {dataInsightCharts.map((chart) => (
+                {chartOptions.map((chart) => (
                   <Option key={chart.id}>
                     {chart.displayName || chart.name}
                   </Option>
@@ -271,7 +301,7 @@ const AddKPIPage = () => {
                 onChange={handleMetricSelect}>
                 {metricTypes.map((metric) => (
                   <Option key={metric.name}>
-                    {`${metric.name} (${metric.dataType})`}
+                    {`${metric.name} (${metric.chartDataType})`}
                   </Option>
                 ))}
               </Select>
@@ -294,7 +324,8 @@ const AddKPIPage = () => {
                   },
                 ]}>
                 <>
-                  {selectedMetric.dataType === DataType.Percentage && (
+                  {selectedMetric.chartDataType ===
+                    ChartDataType.Percentage && (
                     <Row gutter={20}>
                       <Col span={20}>
                         <Slider
@@ -327,7 +358,7 @@ const AddKPIPage = () => {
                       </Col>
                     </Row>
                   )}
-                  {selectedMetric.dataType === DataType.Number && (
+                  {selectedMetric.chartDataType === ChartDataType.Number && (
                     <InputNumber
                       className="w-full"
                       min={0}

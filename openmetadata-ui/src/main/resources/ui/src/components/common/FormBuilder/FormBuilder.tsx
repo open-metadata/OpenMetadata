@@ -37,6 +37,7 @@ interface Props extends FormProps<ConfigData> {
   status?: LoadingState;
   onCancel?: () => void;
   onTestConnection?: (formData: ConfigData) => Promise<void>;
+  disableTestConnection: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -51,6 +52,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   onTestConnection,
   uiSchema,
   isAirflowAvailable,
+  disableTestConnection,
   ...props
 }: Props) => {
   const formRef = useRef<CoreForm<ConfigData>>();
@@ -188,7 +190,7 @@ const FormBuilder: FunctionComponent<Props> = ({
               'tw-opacity-40': connectionTesting,
             })}
             data-testid="test-connection-btn"
-            disabled={connectionTesting}
+            disabled={connectionTesting || disableTestConnection}
             size="small"
             theme="primary"
             variant="outlined"

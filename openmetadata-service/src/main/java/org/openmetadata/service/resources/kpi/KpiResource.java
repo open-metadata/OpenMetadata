@@ -423,9 +423,14 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Filter kpi results before the given end timestamp", schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
-          Long endTs)
+          Long endTs,
+      @Parameter(description = "Order the result ", schema = @Schema(type = "string"))
+          @Valid
+          @QueryParam("orderBy")
+          @DefaultValue("DESC")
+          CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
       throws IOException {
-    return dao.getKpiResults(fqn, startTs, endTs);
+    return dao.getKpiResults(fqn, startTs, endTs, orderBy);
   }
 
   @GET

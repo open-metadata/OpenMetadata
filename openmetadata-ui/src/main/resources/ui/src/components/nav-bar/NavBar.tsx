@@ -294,7 +294,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.DATA_INSIGHT,
                 }}>
-                {t('label.insight')}
+                {t('label.insights')}
               </NavLink>
               <Dropdown
                 className="cursor-pointer"

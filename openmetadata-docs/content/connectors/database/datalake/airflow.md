@@ -21,6 +21,12 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
+
+</Note>
+
 ** S3 Permissions **
 
 <p> To execute metadata extraction AWS account should have enough access to fetch required data. The <strong>Bucket Policy</strong> in AWS requires at least these permissions: </p>
@@ -46,7 +52,23 @@ custom Airflow plugins to handle the workflow deployment.
 
 ### Python Requirements
 
-To run the Datalake ingestion, you will need to install:
+If running OpenMetadata version greater than 0.13, you will need to install the Datalake ingestion for GCS or S3:
+
+#### S3 installation
+
+```bash
+pip3 install "openmetadata-ingestion[datalake-s3]"
+```
+
+#### GCS installation
+
+```bash
+pip3 install "openmetadata-ingestion[datalake-gcs]"
+```
+
+#### If version <0.13
+
+You will be installing the requirements together for S3 and GCS
 
 ```bash
 pip3 install "openmetadata-ingestion[datalake]"

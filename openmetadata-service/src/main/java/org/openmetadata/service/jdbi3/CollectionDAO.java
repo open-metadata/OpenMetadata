@@ -1884,8 +1884,11 @@ public interface CollectionDAO {
     @SqlQuery("SELECT source, tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@Bind("targetFQN") String targetFQN);
 
-    @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
-    int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
+    @SqlQuery(
+        "SELECT COUNT(*) FROM tag_usage "
+            + "WHERE (tagFQN LIKE CONCAT(:tagFqn, '.%') OR tagFQN = :tagFqn) "
+            + "AND source = :source")
+    int getTagCount(@Bind("source") int source, @Bind("tagFqn") String tagFqn);
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN")
     void deleteTagsByTarget(@Bind("targetFQN") String targetFQN);
@@ -2950,6 +2953,11 @@ public interface CollectionDAO {
   }
 
   interface EntityExtensionTimeSeriesDAO {
+    enum OrderBy {
+      ASC,
+      DESC
+    };
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_extension_time_series(entityFQN, extension, jsonSchema, json) "
@@ -3033,6 +3041,16 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @Bind("startTs") Long startTs,
         @Bind("endTs") long endTs);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series where entityFQN = :entityFQN and extension = :extension "
+            + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp <orderBy>")
+    List<String> listBetweenTimestampsByOrder(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") long endTs,
+        @Define("orderBy") OrderBy orderBy);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

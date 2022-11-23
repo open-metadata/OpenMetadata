@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     TableProfile,
 )
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
@@ -313,7 +314,8 @@ class Profiler(Generic[TMetric]):
             for column in self.columns
             if isinstance(column, Column)
             and column.type.__class__ not in NOT_COMPUTE
-            or column.datatype not in NOT_COMPUTE_OM
+            or isinstance(column, ColumnBaseModel)
+            and column.datatype not in NOT_COMPUTE_OM
         ]
 
         column_metrics_for_thread_pool = [

@@ -19,6 +19,7 @@ Workflow definition for the ORM Profiler.
 
 from __future__ import annotations
 
+import time
 import traceback
 from datetime import datetime
 from typing import Optional, Union, cast
@@ -192,6 +193,7 @@ class DataInsightWorkflow:
     def _execute_data_processor(self):
         """Data processor method to refine raw data into report data and ingest it in ES"""
         for report_data_type in ReportDataType:
+            has_checked_and_handled_existing_es_data = False
             logger.info(f"Processing data for report type {report_data_type}")
             try:
                 self.data_processor = DataProcessor.create(
@@ -201,9 +203,11 @@ class DataInsightWorkflow:
                     if hasattr(self, "sink"):
                         self.sink.write_record(record)
                     if hasattr(self, "es_sink"):
-                        self._check_and_handle_existing_es_data(
-                            DataInsightEsIndex[record.data.__class__.__name__].value
-                        )
+                        if not has_checked_and_handled_existing_es_data:
+                            self._check_and_handle_existing_es_data(
+                                DataInsightEsIndex[record.data.__class__.__name__].value
+                            )
+                            has_checked_and_handled_existing_es_data = True
                         self.es_sink.write_record(record)
                     else:
                         logger.warning(
@@ -263,6 +267,7 @@ class DataInsightWorkflow:
         logger.info("Data processor finished running")
 
         logger.info("Sleeping for 1 second. Waiting for ES data to be indexed.")
+        time.sleep(1)
         logger.info("Starting KPI runner")
         self._execute_kpi_runner()
         logger.info("KPI runner finished running")

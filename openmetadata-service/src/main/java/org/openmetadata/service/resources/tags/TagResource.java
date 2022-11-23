@@ -75,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tags")
+@Collection(name = "tags", order = 6) // initialize after Glossary and GlossaryTerm
 public class TagResource {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   private final TagRepository dao;
@@ -119,6 +119,7 @@ public class TagResource {
                                 .withProvider(tagCategory.getProvider()));
               });
       daoCategory.initCategory(tagCategory);
+      TagLabelCache.initialize();
     }
   }
 

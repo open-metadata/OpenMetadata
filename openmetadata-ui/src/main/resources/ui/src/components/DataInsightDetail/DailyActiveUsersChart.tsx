@@ -39,6 +39,7 @@ import {
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
+import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -91,21 +92,25 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
-      <ResponsiveContainer debounce={1} minHeight={400}>
-        <LineChart
-          data={getFormattedActiveUsersData(dailyActiveUsers)}
-          margin={BAR_CHART_MARGIN}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="timestamp" />
-          <YAxis />
-          <Tooltip content={<CustomTooltip />} />
-          <Line
-            dataKey="activeUsers"
-            stroke={DATA_INSIGHT_GRAPH_COLORS[3]}
-            type="monotone"
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {dailyActiveUsers.length ? (
+        <ResponsiveContainer debounce={1} minHeight={400}>
+          <LineChart
+            data={getFormattedActiveUsersData(dailyActiveUsers)}
+            margin={BAR_CHART_MARGIN}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="timestamp" />
+            <YAxis />
+            <Tooltip content={<CustomTooltip />} />
+            <Line
+              dataKey="activeUsers"
+              stroke={DATA_INSIGHT_GRAPH_COLORS[3]}
+              type="monotone"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyGraphPlaceholder />
+      )}
     </Card>
   );
 };

@@ -13,14 +13,16 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import classNames from 'classnames';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
-import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { tabsInfo } from '../../../constants/explore.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -30,16 +32,15 @@ import {
   getEntityId,
   getEntityName,
   getEntityPlaceHolder,
-  getNameFromFQN,
   getOwnerValue,
-  getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
+import { getUsagePercentile } from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
+import TableDataCardTitle from './TableDataCardTitle.component';
+import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
   id: string;
@@ -60,6 +61,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   handleSummaryPanelDisplay,
 }) => {
   const location = useLocation();
+  const { tab } = useParams<{ tab: string }>();
 
   const otherDetails = useMemo(() => {
     const _otherDetails: ExtraInfo[] = [
@@ -91,8 +93,10 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
 
     if ('usageSummary' in source) {
       _otherDetails.push({
-        key: 'Usage',
-        value: source.usageSummary?.weeklyStats?.count,
+        value: getUsagePercentile(
+          source.usageSummary?.weeklyStats?.percentileRank || 0,
+          true
+        ),
       });
     }
 
@@ -114,34 +118,14 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     }
   };
 
-  const RenderTitle = useMemo(() => {
-    const title = (
-      <button
-        className="tw-text-grey-body tw-font-semibold"
-        data-testid={`${getPartialNameFromTableFQN(
-          source.fullyQualifiedName ?? '',
-          [FqnPart.Service]
-        )}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`}
-        id={`${id}Title`}
-        onClick={handleLinkClick}>
-        {stringToHTML(source.name)}
-      </button>
-    );
-
-    if (location.pathname.includes(ROUTES.TOUR)) {
-      return title;
-    }
-
-    return (
-      <Link to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
-        {title}
-      </Link>
-    );
-  }, []);
-
   return (
     <div
-      className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
+      className={classNames(
+        'data-asset-info-card-container',
+        tab === tabsInfo.table_search_index.path
+          ? 'table-data-card-container'
+          : ''
+      )}
       data-testid="table-data-card"
       id={id}
       onClick={() => {
@@ -160,7 +144,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
             src={serviceTypeLogo(source.serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
-            {RenderTitle}
+            <TableDataCardTitle
+              handleLinkClick={handleLinkClick}
+              id={id}
+              searchIndex={searchIndex}
+              source={source}
+            />
           </h6>
           {source.deleted && (
             <>

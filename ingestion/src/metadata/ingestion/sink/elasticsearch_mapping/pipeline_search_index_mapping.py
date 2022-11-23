@@ -16,6 +16,34 @@ import textwrap
 PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
+"settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      },
+      "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        }
+      },
+      "filter": {
+        "om_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
+      }
+    }
+  },
   "mappings": {
     "properties": {
       "id": {
@@ -35,15 +63,11 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "displayName": {
         "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "analyzer": "om_analyzer"
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -64,13 +88,16 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "tasks": {
         "properties": {
           "name": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "displayName": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "taskUrl": {
             "type": "text"

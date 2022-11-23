@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.secrets;
 
-import static org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider.MANAGED_AWS;
+import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MANAGED_AWS;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;

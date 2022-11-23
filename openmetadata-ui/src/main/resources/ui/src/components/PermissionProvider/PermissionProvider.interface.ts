@@ -21,6 +21,10 @@ export type OperationPermission = {
   [key in Operation]: boolean;
 };
 
+export type IngestionServicePermission = {
+  [key: string]: OperationPermission;
+};
+
 export enum ResourceEntity {
   ALL = 'all',
   BOT = 'bot',

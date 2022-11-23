@@ -23,7 +23,6 @@ import { useTranslation } from 'react-i18next';
 import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAPI';
 import {
   IngestionPipeline,
-  PipelineState,
   PipelineStatus,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
@@ -80,11 +79,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
       {loading ? (
         <Skeleton.Input size="small" />
       ) : isEmpty(recentRunStatus) ? (
-        <p
-          className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${PipelineState.Queued} tw-px-1 tw-text-white tw-text-center`}
-          data-testid="pipeline-status">
-          {capitalize(PipelineState.Queued)}
-        </p>
+        <p data-testid="pipeline-status">--</p>
       ) : (
         recentRunStatus.map((r, i) => {
           const status =

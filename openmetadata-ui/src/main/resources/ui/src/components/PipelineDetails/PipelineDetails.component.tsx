@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Table, Tabs, Tooltip } from 'antd';
+import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -42,9 +42,11 @@ import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
+import {
+  PIPELINE_DETAILS_TABS,
+  PIPELINE_TASK_TABS,
+} from '../../constants/pipeline.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -83,7 +85,6 @@ import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../utils/TagsUtils';
-import { getDateTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -92,7 +93,7 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
@@ -200,6 +201,8 @@ const PipelineDetails = ({
   const [pipelinePermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+
+  const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
 
   // local state ends
 
@@ -577,7 +580,7 @@ const PipelineDetails = ({
   const taskColumns: ColumnsType<Task> = useMemo(
     () => [
       {
-        key: 'name',
+        key: t('label.name'),
         dataIndex: 'name',
         title: t('label.name'),
         render: (name, record) => (
@@ -593,21 +596,13 @@ const PipelineDetails = ({
         ),
       },
       {
-        key: 'type',
+        key: t('label.type'),
         dataIndex: 'taskType',
         width: 180,
         title: t('label.type'),
       },
       {
-        key: 'startDate',
-        dataIndex: 'startDate',
-        width: 180,
-        title: t('label.start-date'),
-        render: (startDate: string) =>
-          getDateTimeByTimeStamp(new Date(startDate).valueOf()),
-      },
-      {
-        key: 'description',
+        key: t('label.description'),
         dataIndex: 'description',
         width: 350,
         title: t('label.description'),
@@ -619,15 +614,17 @@ const PipelineDetails = ({
               {text ? (
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
-                <span className="tw-no-description">No description</span>
+                <span className="tw-no-description">
+                  {t('label.no-description')}
+                </span>
               )}
             </div>
             {!deleted && (
               <Tooltip
                 title={
                   pipelinePermissions.EditAll
-                    ? 'Edit Description'
-                    : NO_PERMISSION_FOR_ACTION
+                    ? t('label.edit-description')
+                    : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
@@ -646,7 +643,7 @@ const PipelineDetails = ({
         ),
       },
       {
-        key: 'tags',
+        key: t('label.tags'),
         dataIndex: 'tags',
         title: t('label.tags'),
         width: 350,
@@ -679,7 +676,7 @@ const PipelineDetails = ({
 
   useEffect(() => {
     switch (tab) {
-      case PIPELINE_DETAILS_TABS.EntityLineage:
+      case PIPELINE_DETAILS_TABS.Lineage:
         !deleted && isEmpty(entityLineage) && getLineageData();
 
         break;
@@ -782,8 +779,8 @@ const PipelineDetails = ({
   }, [pipelineFQN, description, pipelineDetails, tasks]);
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={pipelinePermissions.Delete}
           currentOwner={pipelineDetails.owner}
@@ -846,7 +843,9 @@ const PipelineDetails = ({
                 {t('label.tasks')}
               </span>
             }>
-            <Row gutter={[16, 16]}>
+            <Row
+              className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
+              gutter={[0, 16]}>
               <Col span={24}>
                 <Description
                   description={description}
@@ -876,18 +875,31 @@ const PipelineDetails = ({
                 />
               </Col>
               <Col span={24}>
-                <Table
-                  bordered
-                  columns={taskColumns}
-                  dataSource={tasksInternal}
-                  pagination={false}
-                  rowKey="name"
-                  size="small"
+                <Radio.Group
+                  buttonStyle="solid"
+                  className="radio-switch"
+                  data-testid="pipeline-task-switch"
+                  optionType="button"
+                  options={Object.values(PIPELINE_TASK_TABS)}
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value)}
                 />
               </Col>
-              {!isEmpty(tasks) ? (
-                <Col span={24}>
-                  <Card title={t('label.dag-view')}>
+              <Col span={24}>
+                {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+                  <Table
+                    bordered
+                    columns={taskColumns}
+                    data-testid="task-table"
+                    dataSource={tasksInternal}
+                    pagination={false}
+                    rowKey="name"
+                    size="small"
+                  />
+                ) : !isEmpty(tasks) ? (
+                  <Card
+                    headStyle={{ background: '#fafafa' }}
+                    title={t('label.dag-view')}>
                     <div className="h-100">
                       <TasksDAGView
                         selectedExec={selectedExecution}
@@ -895,14 +907,14 @@ const PipelineDetails = ({
                       />
                     </div>
                   </Card>
-                </Col>
-              ) : (
-                <div
-                  className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-                  data-testid="no-tasks-data">
-                  <span>{t('label.no-task-available')}</span>
-                </div>
-              )}
+                ) : (
+                  <div
+                    className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                    data-testid="no-tasks-data">
+                    <span>{t('label.no-task-available')}</span>
+                  </div>
+                )}
+              </Col>
             </Row>
           </Tabs.TabPane>
           <Tabs.TabPane
@@ -951,14 +963,12 @@ const PipelineDetails = ({
                 {t('label.executions')}
               </span>
             }>
-            <ExecutionsTab pipelineFQN={pipelineFQN} />
+            <ExecutionsTab pipelineFQN={pipelineFQN} tasks={tasks} />
           </Tabs.TabPane>
 
           <Tabs.TabPane
-            key={PIPELINE_DETAILS_TABS.EntityLineage}
-            tab={
-              <span data-testid="Lineage">{t('label.entity-lineage')}</span>
-            }>
+            key={PIPELINE_DETAILS_TABS.Lineage}
+            tab={<span data-testid="Lineage">{t('label.lineage')}</span>}>
             <div className="h-full bg-white">
               <EntityLineageComponent
                 addLineageHandler={addLineageHandler}
@@ -1039,7 +1049,7 @@ const PipelineDetails = ({
           onCancel={closeRequestModal}
         />
       ) : null}
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

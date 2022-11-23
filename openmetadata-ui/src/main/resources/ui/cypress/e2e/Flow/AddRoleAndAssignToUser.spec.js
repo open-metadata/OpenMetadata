@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from "../../common/common";
-import { LOGIN } from "../../constants/constants";
+import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from "../../common/common";
 
 const roleName = `Role-test-${uuid()}`;
 const userName = `Usercttest${uuid()}`;
@@ -20,8 +19,7 @@ const userEmail = `${userName}@gmail.com`;
 
 describe("Test Add role and assign it to the user", () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
     
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 

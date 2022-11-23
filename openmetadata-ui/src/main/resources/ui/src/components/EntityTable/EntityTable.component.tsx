@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, {
   Fragment,
@@ -428,12 +428,16 @@ const EntityTable = ({
       <>
         {dataTypeDisplay ? (
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            lowerCase(dataTypeDisplay)
+            toLower(dataTypeDisplay)
           ) : (
             <Popover
               destroyTooltipOnHide
-              content={lowerCase(dataTypeDisplay)}
-              overlayInnerStyle={{ maxWidth: '420px' }}
+              content={toLower(dataTypeDisplay)}
+              overlayInnerStyle={{
+                maxWidth: '420px',
+                overflowWrap: 'break-word',
+                textAlign: 'center',
+              }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay}
@@ -676,20 +680,22 @@ const EntityTable = ({
         data-testid="entity-table"
         dataSource={data}
         expandable={{
-          defaultExpandedRowKeys: [],
-          expandIcon: ({ expanded, onExpand, record }) =>
-            record.children ? (
-              <FontAwesomeIcon
-                className="tw-mr-2 tw-cursor-pointer"
-                icon={expanded ? faCaretDown : faCaretRight}
+          rowExpandable: (record) => {
+            return (record.children && record.children.length > 0) || false;
+          },
+          expandIcon: ({ expanded, onExpand, expandable, record }) =>
+            expandable && (
+              <span
+                className="m-r-xs cursor-pointer"
                 onClick={(e) =>
                   onExpand(
                     record,
                     e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
                   )
-                }
-              />
-            ) : null,
+                }>
+                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+              </span>
+            ),
         }}
         pagination={false}
         size="small"
