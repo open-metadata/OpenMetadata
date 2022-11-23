@@ -317,7 +317,8 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
         SELECT column_name, data_type, column_default, is_nullable, comment
-        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id and com.object_type='COLUMN' and col.column_name=com.child_object # pylint: disable=line-too-long
+        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id
+        and com.object_type='COLUMN' and col.column_name=com.child_object
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
         UNION ALL
@@ -519,3 +520,10 @@ REDSHIFT_PARTITION_DETAILS = """
   from SVV_TABLE_INFO
   where diststyle not like 'AUTO%%'
 """
+
+
+HIVE_GET_COMMENTS = textwrap.dedent(
+    """
+    describe formatted {schema_name}.{table_name}
+"""
+)

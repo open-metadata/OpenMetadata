@@ -42,6 +42,8 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+Note: To fetch metadata from oracle db we use python-oracledb and this support 12c, 18c, 19c and 21c versions! 
+
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page

@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  fireEvent,
+  getByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { act } from 'react-test-renderer';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -189,7 +197,6 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
-  getCountBadge: jest.fn(),
   getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
@@ -197,7 +204,13 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
+  getFeedCounts: jest.fn(),
+  getCountBadge: jest.fn().mockImplementation((count) => <p>{count}</p>),
 }));
+
+jest.mock('../Execution/Execution.component', () => {
+  return jest.fn().mockImplementation(() => <p>Executions</p>);
+});
 
 describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
@@ -209,66 +222,104 @@ describe('Test PipelineDetails component', () => {
     );
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description Component/i);
-    const tabs = await findByTestId(container, 'tabs');
-    const detailsTab = await findByTestId(tabs, 'Details');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
-    const lineageTab = await findByTestId(tabs, 'Lineage');
+    const tasksTab = await findByText(container, 'label.tasks');
+    const activityFeedTab = await findByText(
+      container,
+      'label.activity-feed-and-task-plural'
+    );
+    const lineageTab = await findByText(container, 'label.lineage');
+    const executionsTab = await findByText(container, 'label.executions');
+    const customPropertiesTab = await findByText(
+      container,
+      'label.custom-properties'
+    );
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(tabs).toBeInTheDocument();
-    expect(detailsTab).toBeInTheDocument();
+    expect(tasksTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();
+    expect(executionsTab).toBeInTheDocument();
+    expect(customPropertiesTab).toBeInTheDocument();
   });
 
-  it('Check if active tab is details', async () => {
+  it('Check if active tab is tasks', async () => {
+    render(<PipelineDetails {...PipelineDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
+    const taskDetail = await screen.findByText('label.tasks');
+
+    expect(taskDetail).toBeInTheDocument();
+  });
+
+  it('Should render no tasks data placeholder is tasks list is empty', async () => {
+    render(<PipelineDetails {...PipelineDetailsProps} tasks={[]} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const switchContainer = screen.getByTestId('pipeline-task-switch');
+
+    const dagButton = getByText(switchContainer, 'Dag');
+
+    act(() => {
+      fireEvent.click(dagButton);
+    });
+
+    expect(await screen.findByTestId('no-tasks-data')).toBeInTheDocument();
+  });
+
+  it('Check if active tab is activity feed', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const taskDetail = await findByTestId(container, 'tasks-dag');
-    const pipelineStatus = await findByTestId(
+
+    const activityFeedTab = await findByText(
       container,
-      'pipeline-status-list'
+      'label.activity-feed-and-task-plural'
     );
 
-    expect(taskDetail).toBeInTheDocument();
-    expect(pipelineStatus).toBeInTheDocument();
-  });
+    await act(async () => {
+      fireEvent.click(activityFeedTab);
+    });
 
-  it('Should render no tasks data placeholder is tasks list is empty', async () => {
-    const { findByTestId } = render(
-      <PipelineDetails {...PipelineDetailsProps} tasks={[]} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    expect(await findByTestId('no-tasks-data')).toBeInTheDocument();
-  });
-
-  it('Check if active tab is activity feed', async () => {
-    const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={2} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
     const activityFeedList = await findByText(container, /ActivityFeedList/i);
 
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is lineage', async () => {
+  it('should render execution tab', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
+      <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
     );
+
+    const activityFeedTab = await findByText(container, 'label.executions');
+
+    await act(async () => {
+      fireEvent.click(activityFeedTab);
+    });
+    const executions = await findByText(container, 'Executions');
+
+    expect(executions).toBeInTheDocument();
+  });
+
+  it('Check if active tab is lineage', async () => {
+    const { container } = render(
+      <PipelineDetails {...PipelineDetailsProps} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const activityFeedTab = await findByText(container, 'label.lineage');
+
+    await act(async () => {
+      fireEvent.click(activityFeedTab);
+    });
     const lineage = await findByTestId(container, 'lineage');
 
     expect(lineage).toBeInTheDocument();
@@ -276,11 +327,20 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is custom properties', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
     );
+
+    const activityFeedTab = await findByText(
+      container,
+      'label.custom-properties'
+    );
+
+    await act(async () => {
+      fireEvent.click(activityFeedTab);
+    });
     const customProperties = await findByText(
       container,
       'CustomPropertyTable.component'
@@ -291,16 +351,23 @@ describe('Test PipelineDetails component', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
     );
 
+    const activityFeedTab = await findByText(
+      container,
+      'label.activity-feed-and-task-plural'
+    );
+
+    await act(async () => {
+      fireEvent.click(activityFeedTab);
+    });
+
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 });

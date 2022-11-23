@@ -13,8 +13,8 @@
 
 /// <reference types="cypress" />
 
-import { interceptURL, login, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage, visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, LOGIN, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import { interceptURL, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
+import { ENTITIES, FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tables = Object.values(SEARCH_ENTITY_TABLE);
 const topics = Object.values(SEARCH_ENTITY_TOPIC);
@@ -23,36 +23,10 @@ const pipelines = Object.values(SEARCH_ENTITY_PIPELINE);
 
 describe('MyData page should work', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login()
     interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
     interceptURL('GET', '/api/v1/search/*', 'explorePageSearch');
   });
-
-  const checkRecentlyViewElement = () => {
-    verifyResponseStatusCode('@explorePageSearch', 200);
-    cy.get('[data-testid="table-data-card"] a')
-      .first()
-      .should('be.visible')
-      .scrollIntoView()
-      .click();
-    verifyResponseStatusCode('@getEntityDetails', 200);
-    cy.get('[data-testid="inactive-link"]')
-      .invoke('text')
-      .then((text) => {
-        cy.clickOnLogo();
-        cy.get(`[data-testid="Recently Viewed-${text}"]`)
-          .contains(text)
-          .should('be.visible')
-          .click();
-        cy.get('[data-testid="inactive-link"]')
-          .invoke('text')
-          .then((newText) => {
-            expect(newText).equal(text);
-          });
-        cy.clickOnLogo();
-      });
-  };
 
   const checkRecentlySearchElement = (term) => {
     searchEntity(term, false);
@@ -146,24 +120,31 @@ describe('MyData page should work', () => {
     });
   });
 
-  it('Recent view section and redirection should work for table entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.tables);
-    checkRecentlyViewElement();
-  });
-
-  it('Recent view section and redirection should work for topic entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.topics);
-    checkRecentlyViewElement();
-  });
-
-  it('Recent view section and redirection should work for dashboard entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.dashboards);
-    checkRecentlyViewElement();
-  });
-
-  it('Recent view section and redirection should work for pipeline entity', () => {
-    visitEntityTab(MYDATA_SUMMARY_OPTIONS.pipelines);
-    checkRecentlyViewElement();
+  Object.values(ENTITIES).map((entity) => {
+    const text = entity.entityObj.displayName ?? entity.entityObj.term
+    it(`Recent view section and redirection should work for ${entity.name} entity`, () => {
+      visitEntityDetailsPage(
+        entity.entityObj.term,
+        entity.entityObj.serviceName,
+        entity.entityObj.entity
+      );
+      cy.get('[data-testid="inactive-link"]')
+        .invoke('text')
+        .then((newText) => {
+          expect(newText).equal(text);
+        });
+      cy.clickOnLogo();
+      cy.get(`[data-testid="Recently Viewed-${text}"]`)
+        .contains(text)
+        .should('be.visible')
+        .click();
+      cy.get('[data-testid="inactive-link"]')
+        .invoke('text')
+        .then((newText) => {
+          expect(newText).equal(text);
+        });
+      cy.clickOnLogo();
+    });
   });
 
   it('Listing Recent search terms with redirection should work properly', () => {
@@ -176,27 +157,19 @@ describe('MyData page should work', () => {
   });
 
   it('My data, following & feed section should work properly for table entity', () => {
-    tables.forEach((table) => {
-      followAndOwnTheEntity(table);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_TABLE.table_1);
   });
 
   it('My data, following & feed section should work properly for topic entity', () => {
-    topics.forEach((topic) => {
-      followAndOwnTheEntity(topic);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_TOPIC.topic_1);
   });
 
-  it('My data, following & feed section should work properly for dashboard entity', () => {
-    dashboards.forEach((dashboard) => {
-      followAndOwnTheEntity(dashboard);
-    });
+  it.skip('My data, following & feed section should work properly for dashboard entity', () => {
+    followAndOwnTheEntity(SEARCH_ENTITY_DASHBOARD.dashboard_1);
   });
 
   it('My data, following & feed section should work properly for pipeline entity', () => {
-    pipelines.forEach((pipeline) => {
-      followAndOwnTheEntity(pipeline);
-    });
+    followAndOwnTheEntity(SEARCH_ENTITY_PIPELINE.pipeline_1);
   });
 
   it.skip('My data and following section, CTA should work properly', () => {

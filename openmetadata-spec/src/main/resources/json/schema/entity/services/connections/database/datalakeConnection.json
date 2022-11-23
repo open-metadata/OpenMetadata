@@ -9,10 +9,11 @@
     "datalakeType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Datalake"],
+      "enum": [
+        "Datalake"
+      ],
       "default": "Datalake"
     },
-
     "GCSConfig": {
       "title": "DataLake GCS Config Source",
       "description": "DataLake Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",
@@ -76,8 +77,14 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-  "required": ["configSource"]
+  "required": [
+    "configSource"
+  ]
 }

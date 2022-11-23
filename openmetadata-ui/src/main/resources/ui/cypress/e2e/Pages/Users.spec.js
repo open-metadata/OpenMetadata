@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { addUser, deleteSoftDeletedUser, interceptURL, login, restoreUser, softDeleteUser, uuid, verifyResponseStatusCode } from '../../common/common';
+import {
+    addUser,
+    deleteSoftDeletedUser,
+    interceptURL,
+    login,
+    restoreUser,
+    softDeleteUser,
+    uuid,
+    verifyResponseStatusCode
+} from '../../common/common';
 import { LOGIN } from '../../constants/constants';
 
 const userName = `Usercttest${uuid()}`;
@@ -22,15 +31,18 @@ const adminEmail = `${adminName}@gmail.com`;
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15', 'getUsers');
-    cy.get('.ant-menu-title-content')
+    interceptURL(
+      'GET',
+      '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15',
+      'getUsers'
+    );
+    cy.get('[data-testid="settings-left-panel"]')
       .contains('Users')
       .should('exist')
       .should('be.visible')
@@ -39,7 +51,7 @@ describe('Users flow should work properly', () => {
 
   it('Add new User', () => {
     //Clicking on Add user button
-    cy.get('.ant-btn').contains('Add User').click();
+    cy.get('[data-testid="add-user"]').click();
 
     addUser(userName, userEmail);
     verifyResponseStatusCode('@getUsers', 200);
@@ -76,7 +88,11 @@ describe('Admin flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-      interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isAdmin=true&isBot=false&limit=15', 'getAdmins');
+    interceptURL(
+      'GET',
+      '/api/v1/users?fields=profile,teams,roles&&isAdmin=true&isBot=false&limit=15',
+      'getAdmins'
+    );
     cy.get('.ant-menu-title-content')
       .contains('Admins')
       .should('exist')
@@ -86,7 +102,7 @@ describe('Admin flow should work properly', () => {
 
   it('Add admin user', () => {
     //Clicking on add user button
-    cy.get('.ant-btn').contains('Add User').click();
+    cy.get('[data-testid="add-user"]').click();
 
     //Setting the user to admin before adding user
     cy.get('[data-testid="admin"]')
@@ -114,8 +130,8 @@ describe('Admin flow should work properly', () => {
   it('Restore soft deleted admin', () => {
     restoreUser(adminName);
   });
-
-  it('Permanently Delete Soft Deleted admin', () => {
+  // Todo:- Flaky test, Ref:- https://cloud.cypress.io/projects/a9yxci/runs/9124/test-results/bd7584d2-b8a8-42a5-89c5-c05851b9ea76
+  it.skip('Permanently Delete Soft Deleted admin', () => {
     softDeleteUser(adminName);
     deleteSoftDeletedUser(adminName);
   });

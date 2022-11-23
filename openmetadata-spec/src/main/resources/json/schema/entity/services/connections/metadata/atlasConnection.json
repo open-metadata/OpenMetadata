@@ -30,19 +30,19 @@
     },
     "hostPort": {
       "description": "Host and port of the data source.",
-      "type": "string"
+      "title": "Host and Port",
+      "type": "string",
+      "format": "uri",
+      "expose": true
     },
-
     "entityTypes": {
       "description": "entity types of the data source.",
       "type": "string"
     },
-
     "serviceType": {
       "description": "service type of the data source.",
       "type": "string"
     },
-
     "atlasHost": {
       "description": "Atlas Host of the data source.",
       "type": "string"

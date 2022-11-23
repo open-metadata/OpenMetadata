@@ -13,9 +13,10 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { cloneDeep, isUndefined } from 'lodash';
-import { SearchResponse } from 'Models';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { AssetsDataType, FormattedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -35,13 +36,14 @@ import {
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import TeamDetailsV1 from '../../components/TeamDetails/TeamDetailsV1';
-import Teams from '../../components/TeamDetails/Teams';
 import {
   INITIAL_PAGING_VALUE,
+  LIST_SIZE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
+import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -49,8 +51,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
-import { formatUsersResponse } from '../../utils/APIUtils';
+import { formatDataResponse, formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
@@ -60,6 +61,7 @@ import AddUsersModalV1 from './AddUsersModalV1';
 
 const TeamsPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -69,7 +71,7 @@ const TeamsPage = () => {
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
   const [users, setUsers] = useState<User[]>([]);
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
-  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(0);
   const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGING_VALUE);
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
@@ -78,6 +80,12 @@ const TeamsPage = () => {
   const [userSearchValue, setUserSearchValue] = useState<string>('');
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [assets, setAssets] = useState<AssetsDataType>({
+    data: [],
+    total: 0,
+    currPage: 1,
+  });
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -126,11 +134,12 @@ const TeamsPage = () => {
   };
 
   const fetchAllTeams = async (
-    isPageLoading = true,
+    loading = true,
     parentTeam?: string,
     updateChildNode = false
   ) => {
-    isPageLoading && setIsPageLoading(true);
+    loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
+
     try {
       const { data } = await getTeams(
         ['defaultRoles', 'userCount', 'childrenCount'],
@@ -154,12 +163,9 @@ const TeamsPage = () => {
         setAllTeam(modifiedTeams);
       }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
-    setIsPageLoading(false);
+    loading && setIsDataLoading((isDataLoading) => --isDataLoading);
   };
 
   /**
@@ -169,7 +175,7 @@ const TeamsPage = () => {
     team: string,
     paging = {} as { [key: string]: string }
   ) => {
-    setIsDataLoading(true);
+    setIsDataLoading((isDataLoading) => ++isDataLoading);
     getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
       .then((res) => {
         if (res.data) {
@@ -181,7 +187,7 @@ const TeamsPage = () => {
         setUsers([]);
         setUserPaging({ total: 0 });
       })
-      .finally(() => setIsDataLoading(false));
+      .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
   const fetchTeamByFqn = async (name: string) => {
@@ -205,15 +211,13 @@ const TeamsPage = () => {
         getCurrentTeamUsers(data.name);
         setSelectedTeam(data);
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        throw t('server.unexpected-response');
       }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    } finally {
+      setIsPageLoading(false);
     }
-    setIsPageLoading(false);
   };
 
   /**
@@ -222,6 +226,7 @@ const TeamsPage = () => {
    */
   const createNewTeam = async (data: Team) => {
     try {
+      setIsLoading(true);
       const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
@@ -234,19 +239,22 @@ const TeamsPage = () => {
         const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
         fetchAllTeams(true, parent);
         fetchTeamByFqn(selectedTeam.name);
+        handleAddTeam(false);
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['create-team-error']
+        t('message.entity-creation-error', {
+          entity: 'Team',
+        })
       );
     } finally {
-      handleAddTeam(false);
+      setIsLoading(false);
     }
   };
 
   const searchUsers = (text: string, currentPage: number) => {
-    setIsDataLoading(true);
+    setIsDataLoading((isDataLoading) => ++isDataLoading);
     searchData(
       text,
       currentPage,
@@ -266,7 +274,7 @@ const TeamsPage = () => {
       .catch(() => {
         setUsers([]);
       })
-      .finally(() => setIsDataLoading(false));
+      .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
   const updateTeamHandler = (updatedData: Team, fetchTeam = true) => {
@@ -283,13 +291,15 @@ const TeamsPage = () => {
             }
             resolve();
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-team-error']
+            t('server.entity-updating-error', {
+              entity: 'Team',
+            })
           );
           reject();
         });
@@ -312,50 +322,36 @@ const TeamsPage = () => {
   };
 
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
-    // setIsPageLoading(true);
     updateUserDetail(id, data)
       .then((res) => {
         if (res) {
           AppState.updateUserDetails(res);
           fetchTeamByFqn(selectedTeam.name);
-          showSuccessToast(
-            jsonData['api-success-messages']['join-team-success'],
-            2000
-          );
+          showSuccessToast(t('server.join-team-success'), 2000);
         } else {
-          throw jsonData['api-error-messages']['join-team-error'];
+          throw t('server.join-team-error');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['join-team-error']);
-        // setIsRightPanelLoading(false);
+        showErrorToast(err, t('server.join-team-error'));
       });
   };
 
   const handleLeaveTeamClick = (id: string, data: Operation[]) => {
-    // setIsRightPanelLoading(true);
-
     return new Promise<void>((resolve) => {
       updateUserDetail(id, data)
         .then((res) => {
           if (res) {
             AppState.updateUserDetails(res);
             fetchTeamByFqn(selectedTeam.name);
-            showSuccessToast(
-              jsonData['api-success-messages']['leave-team-success'],
-              2000
-            );
+            showSuccessToast(t('server.leave-team-success'), 2000);
             resolve();
           } else {
-            throw jsonData['api-error-messages']['leave-team-error'];
+            throw t('server.leave-team-error');
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['leave-team-error']
-          );
-          // setIsRightPanelLoading(false);
+          showErrorToast(err, t('server.leave-team-error'));
         });
     });
   };
@@ -376,13 +372,15 @@ const TeamsPage = () => {
           if (res) {
             fetchTeamByFqn(res.name);
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-team-error']
+            t('server.entity-updating-error', {
+              entity: 'Team',
+            })
           );
         })
         .finally(() => {
@@ -412,13 +410,15 @@ const TeamsPage = () => {
           if (res) {
             fetchTeamByFqn(res.name);
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
-            jsonData['api-error-messages']['update-team-error']
+            t('server.entity-updating-error', {
+              entity: 'Team',
+            })
           );
         })
         .finally(() => {
@@ -450,7 +450,7 @@ const TeamsPage = () => {
         if (response) {
           fetchTeamByFqn(response.name);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -470,6 +470,60 @@ const TeamsPage = () => {
     setShowDeletedTeam(checked);
   };
 
+  const fetchAssets = () => {
+    searchData(
+      `owner.id:${selectedTeam.id}`,
+      assets.currPage,
+      LIST_SIZE,
+      ``,
+      '',
+      '',
+      myDataSearchIndex
+    )
+      .then((res: SearchResponse) => {
+        const hits = res?.data?.hits?.hits;
+        if (hits?.length > 0) {
+          const data = formatDataResponse(hits);
+          const total = res.data.hits.total.value;
+          setAssets({
+            data,
+            total,
+            currPage: assets.currPage,
+          });
+        } else {
+          const data = [] as FormattedTableData[];
+          const total = 0;
+          setAssets({
+            data,
+            total,
+            currPage: assets.currPage,
+          });
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          t('message.entity-fetch-error', {
+            entity: 'Team Assets',
+          })
+        );
+      });
+  };
+
+  const handleAssetsPaginate = (page: string | number) => {
+    setAssets((pre) => ({ ...pre, currPage: page as number }));
+  };
+
+  useEffect(() => {
+    if (!isEmpty(selectedTeam) && !isUndefined(selectedTeam)) {
+      fetchAssets();
+    }
+  }, [selectedTeam]);
+
+  useEffect(() => {
+    fetchAssets();
+  }, [assets.currPage]);
+
   useEffect(() => {
     if (
       (entityPermissions.ViewAll || entityPermissions.ViewBasic) &&
@@ -478,7 +532,7 @@ const TeamsPage = () => {
       if (fqn) {
         fetchTeamByFqn(fqn);
       }
-      fetchAllTeams(false, fqn);
+      fetchAllTeams(true, fqn);
       setCurrentFqn(fqn);
     }
   }, [entityPermissions, fqn]);
@@ -491,66 +545,59 @@ const TeamsPage = () => {
     return <Loader />;
   }
 
-  return (
+  return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
     <>
-      {entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
-        <>
-          {isUndefined(fqn) ? (
-            <Teams
-              data={allTeam}
-              showDeletedTeam={showDeletedTeam}
-              onAddTeamClick={handleAddTeam}
-              onShowDeletedTeamChange={handleShowDeletedTeam}
-              onTeamExpand={fetchAllTeams}
-            />
-          ) : (
-            <TeamDetailsV1
-              afterDeleteAction={afterDeleteAction}
-              childTeams={allTeam}
-              currentTeam={selectedTeam}
-              currentTeamUserPage={currentUserPage}
-              currentTeamUsers={users}
-              descriptionHandler={descriptionHandler}
-              handleAddTeam={handleAddTeam}
-              handleAddUser={handleAddUsers}
-              handleCurrentUserPage={handleCurrentUserPage}
-              handleJoinTeamClick={handleJoinTeamClick}
-              handleLeaveTeamClick={handleLeaveTeamClick}
-              handleTeamUsersSearchAction={handleUsersSearchAction}
-              hasAccess={isAuthDisabled || isAdminUser}
-              isDescriptionEditable={isDescriptionEditable}
-              isTeamMemberLoading={isDataLoading}
-              removeUserFromTeam={removeUserFromTeam}
-              showDeletedTeam={showDeletedTeam}
-              teamUserPagin={userPaging}
-              teamUserPaginHandler={userPagingHandler}
-              teamUsersSearchText={userSearchValue}
-              updateTeamHandler={updateTeamHandler}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onShowDeletedTeamChange={handleShowDeletedTeam}
-              onTeamExpand={fetchAllTeams}
-            />
-          )}
-
-          {isAddingUsers && (
-            <AddUsersModalV1
-              header={`Adding new users to ${getEntityName(selectedTeam)}`}
-              list={selectedTeam.users || []}
-              onCancel={() => setIsAddingUsers(false)}
-              onSave={(data) => addUsersToTeam(data)}
-            />
-          )}
-
-          <AddTeamForm
-            visible={isAddingTeam}
-            onCancel={() => setIsAddingTeam(false)}
-            onSave={(data) => createNewTeam(data as Team)}
-          />
-        </>
+      {isEmpty(selectedTeam) ? (
+        <ErrorPlaceHolder>{t('label.no-team-found')}</ErrorPlaceHolder>
       ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
+        <TeamDetailsV1
+          afterDeleteAction={afterDeleteAction}
+          assets={assets}
+          childTeams={allTeam}
+          currentTeam={selectedTeam}
+          currentTeamUserPage={currentUserPage}
+          currentTeamUsers={users}
+          descriptionHandler={descriptionHandler}
+          handleAddTeam={handleAddTeam}
+          handleAddUser={handleAddUsers}
+          handleCurrentUserPage={handleCurrentUserPage}
+          handleJoinTeamClick={handleJoinTeamClick}
+          handleLeaveTeamClick={handleLeaveTeamClick}
+          handleTeamUsersSearchAction={handleUsersSearchAction}
+          hasAccess={isAuthDisabled || isAdminUser}
+          isDescriptionEditable={isDescriptionEditable}
+          isTeamMemberLoading={isDataLoading}
+          removeUserFromTeam={removeUserFromTeam}
+          showDeletedTeam={showDeletedTeam}
+          teamUserPagin={userPaging}
+          teamUserPaginHandler={userPagingHandler}
+          teamUsersSearchText={userSearchValue}
+          updateTeamHandler={updateTeamHandler}
+          onAssetsPaginate={handleAssetsPaginate}
+          onDescriptionUpdate={onDescriptionUpdate}
+          onShowDeletedTeamChange={handleShowDeletedTeam}
+          onTeamExpand={fetchAllTeams}
+        />
       )}
+
+      {isAddingUsers && (
+        <AddUsersModalV1
+          header={`Adding new users to ${getEntityName(selectedTeam)}`}
+          isVisible={isAddingUsers}
+          list={selectedTeam.users || []}
+          onCancel={() => setIsAddingUsers(false)}
+          onSave={(data) => addUsersToTeam(data)}
+        />
+      )}
+      <AddTeamForm
+        isLoading={isLoading}
+        visible={isAddingTeam}
+        onCancel={() => setIsAddingTeam(false)}
+        onSave={(data) => createNewTeam(data as Team)}
+      />
     </>
+  ) : (
+    <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
   );
 };
 

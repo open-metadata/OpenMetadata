@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
-import { LOGIN } from '../../constants/constants';
+import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from '../../common/common';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -59,7 +58,7 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
     .scrollIntoView()
     .type(ruleDescription);
   //Select resource dropdown
-  cy.get('[data-testid="resuorces"]')
+  cy.get('[data-testid="resources"]')
     .scrollIntoView()
     .should('be.visible')
     .click();
@@ -91,13 +90,12 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
 
 describe('Policy page should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
-    cy.get('[data-menu-id*="policies"]').should('be.visible').click();
+    cy.get('[data-testid="settings-left-panel"]').contains('Policies').should('be.visible').click();
 
     cy.wait('@getPolicies', { timeout: 15000 })
       .its('response.statusCode')

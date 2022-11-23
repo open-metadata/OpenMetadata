@@ -30,7 +30,6 @@ import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner";
@@ -56,7 +55,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void prepare(DatabaseSchema schema) throws IOException {
     populateDatabase(schema);
-    setFullyQualifiedName(schema);
   }
 
   @Override
@@ -68,12 +66,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     schema.withOwner(null).withService(null).withHref(null);
 
-    if (update) {
-      daoCollection.databaseSchemaDAO().update(schema.getId(), JsonUtils.pojoToJson(schema));
-    } else {
-      daoCollection.databaseSchemaDAO().insert(schema);
-    }
-
+    store(schema, update);
     // Restore the relationships
     schema.withOwner(owner).withService(service);
   }
@@ -121,9 +114,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private void populateDatabase(DatabaseSchema schema) throws IOException {
-    Database database = Entity.getEntity(schema.getDatabase(), Fields.EMPTY_FIELDS, ALL);
-    schema.setDatabase(database.getEntityReference());
-    schema.setService(database.getService());
-    schema.setServiceType(database.getServiceType());
+    Database database = Entity.getEntity(schema.getDatabase(), "owner", ALL);
+    schema
+        .withDatabase(database.getEntityReference())
+        .withService(database.getService())
+        .withServiceType(database.getServiceType());
+
+    // Carry forward ownership from database, if necessary
+    schema.withOwner(schema.getOwner() == null ? database.getOwner() : schema.getOwner());
   }
 }

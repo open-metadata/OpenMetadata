@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TEAM;
 
 import java.io.IOException;
@@ -27,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
@@ -73,16 +71,9 @@ public class UserRepository extends EntityRepository<User> {
     return new Fields(tempFields, fields);
   }
 
-  @Override
-  public EntityReference getOriginalOwner(User entity) {
-    // For User entity, the entity and the owner are the same
-    return entity.getEntityReference();
-  }
-
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user) throws IOException {
-    setFullyQualifiedName(user);
     validateTeams(user);
     validateRoles(user.getRoles());
   }
@@ -98,8 +89,11 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getInheritedRoles(User user) throws IOException {
+    if (Boolean.TRUE.equals(user.getIsBot())) {
+      return null; // No inherited roles for bots
+    }
     getTeams(user);
-    return SubjectCache.getInstance().getRolesForTeams(getTeams(user));
+    return SubjectCache.getInstance() != null ? SubjectCache.getInstance().getRolesForTeams(getTeams(user)) : null;
   }
 
   @Override
@@ -112,14 +106,13 @@ public class UserRepository extends EntityRepository<User> {
     user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
-      user.getAuthenticationMechanism()
-          .setConfig(
-              secretsManager.encryptOrDecryptBotUserCredentials(
-                  user.getName(), user.getAuthenticationMechanism().getConfig(), true));
+    if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
+      user.withAuthenticationMechanism(
+          secretsManager.encryptOrDecryptAuthenticationMechanism(
+              user.getName(), user.getAuthenticationMechanism(), true));
     }
 
-    store(user.getId(), user, update);
+    store(user, update);
 
     // Restore the relationships
     user.withRoles(roles).withTeams(teams);
@@ -211,7 +204,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getTeamChildren(UUID teamId) throws IOException {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
-      return EntityUtil.populateEntityReferencesById(children, Entity.TEAM);
+      return EntityUtil.populateEntityReferencesById(EntityUtil.toIDs(children), Entity.TEAM);
     }
     List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
     return EntityUtil.populateEntityReferences(children, TEAM);
@@ -221,19 +214,6 @@ public class UserRepository extends EntityRepository<User> {
     User user = getByName(uriInfo, userName, Fields.EMPTY_FIELDS, Include.ALL);
     List<EntityReference> teams = getTeams(user);
     return getGroupTeams(teams);
-  }
-
-  @Transaction
-  public User getByNameWithSecretManager(String fqn, Fields fields) throws IOException {
-    User user = getByName(null, fqn, fields, NON_DELETED);
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    if (user.getAuthenticationMechanism() != null) {
-      user.getAuthenticationMechanism()
-          .withConfig(
-              secretsManager.encryptOrDecryptBotUserCredentials(
-                  user.getName(), user.getAuthenticationMechanism().getConfig(), false));
-    }
-    return user;
   }
 
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) throws IOException {

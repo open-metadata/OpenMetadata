@@ -17,13 +17,16 @@ import airbyte from '../assets/img/Airbyte.png';
 import noDataFound from '../assets/img/no-data-placeholder.svg';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
+import amundsen from '../assets/img/service-icon-amundsen.png';
 import athena from '../assets/img/service-icon-athena.png';
+import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
+import domo from '../assets/img/service-icon-domo.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
@@ -32,11 +35,13 @@ import glue from '../assets/img/service-icon-glue.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import kafka from '../assets/img/service-icon-kafka.png';
+import kinesis from '../assets/img/service-icon-kinesis.png';
 import looker from '../assets/img/service-icon-looker.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
 import metabase from '../assets/img/service-icon-metabase.png';
 import mode from '../assets/img/service-icon-mode.png';
 import mssql from '../assets/img/service-icon-mssql.png';
+import nifi from '../assets/img/service-icon-nifi.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -45,9 +50,11 @@ import prefect from '../assets/img/service-icon-prefect.png';
 import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
 import query from '../assets/img/service-icon-query.png';
+import quicksight from '../assets/img/service-icon-quicksight.png';
 import redash from '../assets/img/service-icon-redash.png';
 import redpanda from '../assets/img/service-icon-redpanda.png';
 import redshift from '../assets/img/service-icon-redshift.png';
+import sagemaker from '../assets/img/service-icon-sagemaker.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
 import scikit from '../assets/img/service-icon-scikit.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
@@ -60,6 +67,7 @@ import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
+import logo from '../assets/svg/logo-monogram.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
@@ -68,6 +76,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { customServiceComparator } from '../utils/StringsUtils';
@@ -115,6 +124,9 @@ export const DATALAKE = datalake;
 export const MODE = mode;
 export const DAGSTER = dagster;
 export const FIVETRAN = fivetran;
+export const AMUNDSEN = amundsen;
+export const ATLAS = atlas;
+export const LOGO = logo;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
@@ -123,15 +135,26 @@ export const DATABASE_DEFAULT = databaseDefault;
 export const TOPIC_DEFAULT = topicDefault;
 export const DASHBOARD_DEFAULT = dashboardDefault;
 export const PIPELINE_DEFAULT = pipelineDefault;
+export const NIFI = nifi;
+export const KINESIS = kinesis;
+export const QUICKSIGHT = quicksight;
+export const DOMO = domo;
+export const SAGEMAKER = sagemaker;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
-export const excludedService = [MlModelServiceType.Sklearn];
+export const excludedService = [
+  MlModelServiceType.Sklearn,
+  MetadataServiceType.MetadataES,
+  MetadataServiceType.OpenMetadata,
+];
+
+export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog'];
 
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
-    customServiceComparator
-  ),
+  databaseServices: (Object.values(DatabaseServiceType) as string[])
+    .filter((key: string) => !IGNORED_DB_SERVICES.includes(key))
+    .sort(customServiceComparator),
   messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
     customServiceComparator
   ),
@@ -142,6 +165,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     customServiceComparator
   ),
   mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
+    customServiceComparator
+  ),
+  metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
 };
@@ -160,6 +186,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   dashboards: ServiceCategory.DASHBOARD_SERVICES,
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
+  metadata: ServiceCategory.METADATA_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -168,6 +195,7 @@ export const servicesDisplayName: { [key: string]: string } = {
   dashboardServices: 'Dashboard Service',
   pipelineServices: 'Pipeline Service',
   mlmodelServices: 'ML Model Service',
+  metadataServices: 'Metadata Service',
 };
 
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
@@ -192,3 +220,6 @@ export const COMMON_UI_SCHEMA = {
     ...DEF_UI_SCHEMA,
   },
 };
+
+export const OPENMETADATA = 'OpenMetadata';
+export const JWT_CONFIG = 'openMetadataJWTClientConfig';

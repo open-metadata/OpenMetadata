@@ -51,7 +51,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 
         gcs_values = GCSValues(
             type="my_type",
-            projectId="project_id",
+            projectId=["project_id"],
             privateKeyId="private_key_id",
             privateKey=private_key,
             clientEmail="email@mail.com",
@@ -61,7 +61,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 
         expected_dict = {
             "type": "my_type",
-            "project_id": "project_id",
+            "project_id": ["project_id"],
             "private_key_id": "private_key_id",
             "private_key": private_key,
             "client_email": "email@mail.com",

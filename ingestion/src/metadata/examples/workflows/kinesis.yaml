@@ -1,0 +1,20 @@
+source:
+  type: kinesis
+  serviceName: local_kinesis
+  serviceConnection:
+    config:
+      type: Kinesis
+      awsConfig:
+        awsRegion: eu-west-1
+  sourceConfig:
+    config:
+      type: MessagingMetadata
+      generateSampleData: false
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: "DEBUG"
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

@@ -38,18 +38,17 @@
             },
             {
               "$ref": "testSuitePipeline.json"
+            },
+            {
+              "$ref": "metadataToElasticSearchPipeline.json"
+            },
+            {
+              "$ref": "dataInsightPipeline.json"
             }
           ]
         }
       },
       "additionalProperties": false
-    },
-    "componentConfig": {
-      "description": "key/value pairs to pass to sink component.",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
     },
     "source": {
       "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",
@@ -83,7 +82,7 @@
           "type": "string"
         },
         "config": {
-          "$ref": "#/definitions/componentConfig"
+          "$ref": "../type/basic.json#/definitions/componentConfig"
         }
       },
       "additionalProperties": false,
@@ -98,7 +97,7 @@
           "type": "string"
         },
         "config": {
-          "$ref": "#/definitions/componentConfig"
+          "$ref": "../type/basic.json#/definitions/componentConfig"
         }
       },
       "additionalProperties": false,
@@ -113,7 +112,7 @@
           "type": "string"
         },
         "config": {
-          "$ref": "#/definitions/componentConfig"
+          "$ref": "../type/basic.json#/definitions/componentConfig"
         }
       },
       "additionalProperties": false,
@@ -128,7 +127,7 @@
           "type": "string"
         },
         "config": {
-          "$ref": "#/definitions/componentConfig"
+          "$ref": "../type/basic.json#/definitions/componentConfig"
         }
       },
       "additionalProperties": false,
@@ -153,7 +152,7 @@
           "$ref": "../entity/services/connections/metadata/openMetadataConnection.json"
         },
         "config": {
-          "$ref": "#/definitions/componentConfig"
+          "$ref": "../type/basic.json#/definitions/componentConfig"
         }
       },
       "additionalProperties": false,
@@ -190,6 +189,14 @@
         },
         "workflowConfig": {
           "$ref": "#/definitions/workflowConfig"
+        },
+        "ingestionPipelineFQN": {
+          "description": "Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline",
+          "type": "string"
+        },
+        "pipelineRunId": {
+          "description": "Unique identifier of pipeline run, used to identify the current pipleine run",
+          "$ref": "../type/basic.json#/definitions/uuid"
         }
       },
       "required": ["source", "workflowConfig"],

@@ -19,7 +19,6 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from pytest import raises
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
@@ -39,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
@@ -79,7 +79,11 @@ class SQAInterfaceTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             self.sqa_profiler_interface = SQAProfilerInterface(
-                sqlite_conn, table_entity=table_entity, ometa_client=None
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=sqlite_conn,
+                    table_entity=table_entity,
+                    ometa_client=None,
+                )
             )
         self.table = User
 
@@ -113,7 +117,11 @@ class SQAInterfaceTestMultiThread(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, table_entity=table_entity, ometa_client=None
+            profiler_interface_args=ProfilerInterfaceArgs(
+                service_connection_config=sqlite_conn,
+                table_entity=table_entity,
+                ometa_client=None,
+            )
         )
 
     @classmethod

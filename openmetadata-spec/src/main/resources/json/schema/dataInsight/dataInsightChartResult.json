@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/dataInsightChartResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataInsightChartResult",
+  "description": "DataInsightChartResult represents data that will be consumed by a specific chart",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.dataInsight.DataInsightChartResult",
+  "definitions": {
+    "dataInsightChartType": {
+      "description": "chart type. Must match `name` of a `dataInsightChartDefinition`.",
+      "type": "string",
+      "enum": [
+        "TotalEntitiesByType",
+        "TotalEntitiesByTier",
+        "PercentageOfEntitiesWithDescriptionByType",
+        "PercentageOfEntitiesWithOwnerByType",
+        "DailyActiveUsers",
+        "MostActiveUsers",
+        "MostViewedEntities",
+        "PageViewsByEntities"
+      ]
+    }
+  },
+  "properties": {
+    "chartType": {
+      "description": "Chart Type that will consume the data. Must match name of dataInsightChart.",
+      "$ref": "#/definitions/dataInsightChartType"
+    },
+    "data": {
+      "description": "Array of consumable data.",
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {"$ref": "./type/percentageOfEntitiesWithDescriptionByType.json"},
+          {"$ref": "./type/percentageOfEntitiesWithOwnerByType.json"},
+          {"$ref": "./type/totalEntitiesByTier.json"},
+          {"$ref": "./type/totalEntitiesByType.json"},
+          {"$ref": "./type/dailyActiveUsers.json"},
+          {"$ref": "./type/pageViewsByEntities.json"},
+          {"$ref": "type/mostActiveUsers.json"},
+          {"$ref": "type/mostViewedEntities.json"}
+        ]
+      }
+    }
+  },
+  "required": ["chartType"],
+  "additionalProperties": false
+}

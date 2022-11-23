@@ -48,6 +48,7 @@ const DeleteWidgetModal = ({
   const [value, setValue] = useState<DeleteType>(
     allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
   );
+  const [isLoading, setIsLoading] = useState(false);
 
   const prepareDeleteMessage = (softDelete = false) => {
     const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}.`;
@@ -102,7 +103,10 @@ const DeleteWidgetModal = ({
       return `glossaries`;
     } else if (entityType === EntityType.POLICY) {
       return 'policies';
-    } else if (entityType === EntityType.TEST_SUITE) {
+    } else if (
+      entityType === EntityType.TEST_SUITE ||
+      entityType === EntityType.KPI
+    ) {
       return entityType;
     } else {
       return `${entityType}s`;
@@ -114,6 +118,7 @@ const DeleteWidgetModal = ({
   };
 
   const handleOnEntityDeleteConfirm = () => {
+    setIsLoading(false);
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(
       prepareType ? prepareEntityType() : entityType,
@@ -153,6 +158,7 @@ const DeleteWidgetModal = ({
       })
       .finally(() => {
         handleOnEntityDeleteCancel();
+        setIsLoading(false);
       });
   };
 
@@ -218,6 +224,8 @@ const DeleteWidgetModal = ({
 
   return (
     <Modal
+      closable={false}
+      confirmLoading={isLoading}
       data-testid="delete-modal"
       footer={Footer()}
       okText="Delete"

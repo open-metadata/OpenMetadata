@@ -43,6 +43,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -85,17 +86,13 @@ public class MessagingServiceResource
   public static class MessagingServiceList extends ResultList<MessagingService> {
     @SuppressWarnings("unused") /* Required for tests */
     public MessagingServiceList() {}
-
-    public MessagingServiceList(List<MessagingService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
   @Operation(
       operationId = "listMessagingService",
       summary = "List messaging services",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description =
           "Get a list of messaging services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -144,7 +141,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getMessagingServiceByID",
       summary = "Get a messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a messaging service by `id`.",
       responses = {
         @ApiResponse(
@@ -179,7 +176,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getMessagingServiceByFQN",
       summary = "Get messaging service by name",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a messaging service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -214,7 +211,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "listAllMessagingServiceVersion",
       summary = "List messaging service versions",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a list of all the versions of a messaging service identified by `id`",
       responses = {
         @ApiResponse(
@@ -250,7 +247,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getSpecificMessagingServiceVersion",
       summary = "Get a version of the messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Get a version of the messaging service by given `id`",
       responses = {
         @ApiResponse(
@@ -280,7 +277,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createMessagingService",
       summary = "Create a messaging service",
-      tags = "MessagingService",
+      tags = "messagingService",
       description = "Create a new messaging service.",
       responses = {
         @ApiResponse(
@@ -294,7 +291,7 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }
@@ -303,7 +300,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createOrUpdateMessagingService",
       summary = "Update messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -317,7 +314,7 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService update)
       throws IOException {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }
@@ -327,7 +324,7 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingService",
       summary = "Delete a messaging service",
-      tags = "MessagingService",
+      tags = "messagingServices",
       description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -346,7 +343,27 @@ public class MessagingServiceResource
           boolean hardDelete,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted MessagingService.",
+      tags = "messagingServices",
+      description = "Restore a soft deleted MessagingService.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the MessagingService ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class)))
+      })
+  public Response restoreMessagingService(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private MessagingService getService(CreateMessagingService create, String user) throws IOException {

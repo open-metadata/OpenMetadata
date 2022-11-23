@@ -5,9 +5,11 @@ slug: /deployment/security/azure/bare-metal
 
 # Azure SSO for Bare Metal
 
-## Update conf/openmetadata.yaml
+Get the `Client Id` and `Tenant ID` from Azure Application configured in [Step 3](/deployment/security/azure#step-3-where-to-find-the-credentials).
 
-Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
+Get the Azure Service Application `Client Id`, `Client Secret`, `Authority`, `Scopes` from the information collected in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
+
+## Update conf/openmetadata.yaml
 
 ```yaml
 authenticationConfiguration:
@@ -15,7 +17,7 @@ authenticationConfiguration:
   publicKeyUrls:
     - "https://login.microsoftonline.com/common/discovery/keys"
   authority: "https://login.microsoftonline.com/{Tenant ID}"
-  clientId: "{Client ID}"
+  clientId: "{Client ID}" # Azure Application
   callbackUrl: "http://localhost:8585/callback"
 ```
 
@@ -31,8 +33,6 @@ authorizerConfiguration:
   adminPrincipals:
     - "user1"
     - "user2"
-  botPrincipals:
-    - "ingestion-bot"
   principalDomain: "open-metadata.org"
 ```
 
@@ -41,6 +41,8 @@ In `0.12.1` the `className` and `containerRequestFilter` must replace `org.openm
 Finally, update the Airflow information:
 
 **Before 0.12.1**
+
+Once the `Client Id` and `Client Secret` are generated for Azure SSO Service Application, add in `openmetadata.yaml` file for the information collected in [Step 9](/deployment/security/azure#step-9-note-down-the-clientid-and-authority).
 
 ```yaml
 airflowConfiguration:
@@ -54,7 +56,7 @@ airflowConfiguration:
       clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
       authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
       scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
-      clientId: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
+      clientId: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""} # Azure Service Application
 ```
 
 **After 0.12.1**
@@ -67,5 +69,8 @@ airflowConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
 ```
 
-**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
-ingesting data from Airflow.
+<Note>
+
+Follow [this](/deployment/security/azure#step-10-update-ingestion-bot-with-azure-sso-service-application) guide to configure the `ingestion-bot` credentials for ingesting data from Airflow.
+
+</Note>

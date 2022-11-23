@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
+import 'react-awesome-query-builder/lib/css/styles.css';
+import 'reactflow/dist/base.css';
+import 'reactflow/dist/style.css';
 import 'tailwindcss/tailwind.css';
 import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import './antd-master.less';
 import './app.less';
 import './components/glossary.less';
 import './components/profiler.less';
+import './components/radio.less';
+import './components/react-awesome-query.less';
 import './components/size.less';
 import './components/step.less';
 import './fonts.css';

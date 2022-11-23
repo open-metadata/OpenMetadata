@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Input } from 'antd';
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DbtConfig } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import {
   errorMsg,
   getSeparator,
@@ -32,11 +33,13 @@ interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAccountIdChange: (value: string) => void;
   handleCloudAuthTokenChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
+  handleDbtCloudProjectId: (value: string) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudAccountId = '',
   dbtCloudAuthToken = '',
+  dbtCloudProjectId,
   dbtUpdateDescriptions = false,
   okText,
   cancelText,
@@ -45,10 +48,11 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   handleCloudAccountIdChange,
   handleCloudAuthTokenChange,
   handleUpdateDescriptions,
+  handleDbtCloudProjectId,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
-  const validate = (data: DbtConfigSource) => {
+  const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtCloudConfig(data);
     setErrors(reqErrors);
 
@@ -60,6 +64,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtCloudAccountId,
       dbtCloudAuthToken,
       dbtUpdateDescriptions,
+      dbtCloudProjectId,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -97,16 +102,36 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT cloud account authentication token.
         </p>
-        <input
+        <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="cloud-auth-token"
           id="cloud-auth-token"
           name="cloud-auth-token"
-          type="text"
           value={dbtCloudAuthToken}
           onChange={(e) => handleCloudAuthTokenChange(e.target.value)}
         />
         {errors?.dbtCloudAuthToken && errorMsg(errors.dbtCloudAuthToken)}
+      </Field>
+
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="dbtCloudProjectId">
+          DBT Cloud Project Id
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          In case of multiple projects in a DBT cloud account, specify the
+          project&apos;s id from which you want to extract the DBT run artifacts
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="dbtCloudProjectId"
+          id="dbtCloudProjectId"
+          name="dbtCloudProjectId"
+          type="text"
+          value={dbtCloudProjectId}
+          onChange={(e) => handleDbtCloudProjectId(e.target.value)}
+        />
       </Field>
       {getSeparator('')}
 

@@ -12,6 +12,7 @@
  */
 
 import { interceptURL, login, verifyResponseStatusCode } from '../../common/common';
+import { BASE_URL, LOGIN_ERROR_MESSAGE } from '../../constants/constants';
 
 const CREDENTIALS = {
   firstName: 'Test',
@@ -21,10 +22,6 @@ const CREDENTIALS = {
 };
 const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
-
-const baseURL = location.origin;
-
-const ERROR_MESSAGE = 'You have entered an invalid username or password.';
 
 describe('Login flow should work properly', () => {
   it('Signup and Login with signed up credentials', () => {
@@ -57,13 +54,13 @@ describe('Login flow should work properly', () => {
       .type(CREDENTIALS.password);
     //Click on create account button
     cy.get('.ant-btn').contains('Create Account').should('be.visible').click();
-    cy.url().should('eq', `${baseURL}/signin`).and('contain', 'signin');
+    cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
 
     //Login with the created user
 
     login(CREDENTIALS.email, CREDENTIALS.password);
     cy.goToHomePage();
-    cy.url().should('eq', `${baseURL}/my-data`);
+    cy.url().should('eq', `${BASE_URL}/my-data`);
 
     //Verify user profile
     cy.get('[data-testid="avatar"]').should('be.visible').click();
@@ -89,14 +86,14 @@ describe('Login flow should work properly', () => {
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
       .invoke('text')
-      .should('eq', ERROR_MESSAGE);
+      .should('eq', LOGIN_ERROR_MESSAGE);
 
     //Login with invalid password
     login(CREDENTIALS.email, invalidPassword);
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
       .invoke('text')
-      .should('eq', ERROR_MESSAGE);
+      .should('eq', LOGIN_ERROR_MESSAGE);
   });
 
   it('Forgot password and login with new password', () => {
@@ -110,7 +107,7 @@ describe('Login flow should work properly', () => {
       .click();
 
     cy.url()
-      .should('eq', `${baseURL}/forgot-password`)
+      .should('eq', `${BASE_URL}/forgot-password`)
       .and('contain', 'forgot-password');
     //Enter email
     cy.get('[id="email"]').should('be.visible').clear().type(CREDENTIALS.email);

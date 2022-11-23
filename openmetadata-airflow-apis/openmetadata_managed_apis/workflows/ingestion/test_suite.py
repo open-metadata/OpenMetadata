@@ -52,6 +52,7 @@ def build_test_suite_workflow_config(
             loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
     )
 
     return workflow_config

@@ -76,7 +76,6 @@ public class RoleRepository extends EntityRepository<Role> {
    */
   @Override
   public void prepare(Role role) throws IOException {
-    setFullyQualifiedName(role);
     if (listOrEmpty(role.getPolicies()).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
     }
@@ -95,7 +94,7 @@ public class RoleRepository extends EntityRepository<Role> {
     // Don't store policy and href as JSON. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();
     role.withPolicies(null).withHref(null);
-    store(role.getId(), role, update);
+    store(role, update);
     role.withPolicies(policies); // Restore policies
   }
 
@@ -114,7 +113,8 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   protected void preDelete(Role entity) {
     if (FALSE.equals(entity.getAllowDelete())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.deletionNotAllowed(Entity.ROLE, entity.getName()));
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));
     }
   }
 

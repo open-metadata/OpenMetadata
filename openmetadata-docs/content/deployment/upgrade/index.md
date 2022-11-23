@@ -112,7 +112,7 @@ to the following guide for our backup utility:
     color="violet-70"
     icon="luggage"
     bold="Backup Metadata"
-    href="/deployment/upgrade/backup-metadata"
+    href="/deployment/backup-restore-metadata"
   >
     Learn how to back up MySQL data.
   </InlineCallout>

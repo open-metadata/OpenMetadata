@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { ChangePasswordRequest } from '../generated/auth/changePasswordRequest';
 import { LoginRequest } from '../generated/auth/loginRequest';
+import { LogoutRequest } from '../generated/auth/logoutRequest';
 import { PasswordResetRequest } from '../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../generated/auth/registrationRequest';
 import { TokenRefreshRequest } from '../generated/auth/tokenRefreshRequest';
@@ -68,7 +69,7 @@ export const resetPassword = async (payload: PasswordResetRequest) => {
 };
 
 export const confirmRegistration = async (token: string) => {
-  const response = await axiosClient.get(
+  const response = await axiosClient.put(
     `${apiPath}/registrationConfirmation?token=${token}`
   );
 
@@ -76,7 +77,7 @@ export const confirmRegistration = async (token: string) => {
 };
 
 export const resendRegistrationToken = async () => {
-  const response = await axiosClient.get(`${apiPath}/resendRegistrationToken`);
+  const response = await axiosClient.put(`${apiPath}/resendRegistrationToken`);
 
   return response;
 };
@@ -98,6 +99,15 @@ export const changePassword = async (payload: ChangePasswordRequest) => {
 
 export const generateRandomPwd = async () => {
   const response = await axiosClient.get(`${apiPath}/generateRandomPwd`);
+
+  return response.data;
+};
+
+/**
+ * Logout a User(Only called for saml and basic Auth)
+ */
+export const logoutUser = async (payload: LogoutRequest) => {
+  const response = await axiosClient.post(`${apiPath}/logout`, payload);
 
   return response.data;
 };

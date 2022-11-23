@@ -5,12 +5,13 @@
   "description": "Policy for all the users of an organization.",
   "enabled": true,
   "allowDelete": false,
+  "provider": "system",
   "rules": [
     {
       "name": "OrganizationPolicy-Owner-Rule",
       "description" : "Allow all the operations on an entity for the owner.",
       "resources" : ["all"],
-      "operations": ["All"],
+      "operations": ["EditAll", "ViewAll", "Delete"],
       "effect": "allow",
       "condition": "isOwner()"
     },

@@ -10,3 +10,4 @@ slug: /connectors/pipeline
 - [Glue Pipeline](/connectors/pipeline/glue-pipeline)
 - [Fivetran](/connectors/pipeline/fivetran)
 - [Dagster](/connectors/pipeline/dagster)
+- [Domo Pipeline](/connectors/pipeline/domo-pipeline)

@@ -10,6 +10,7 @@ In this section, we provide guides and references to use the Dagster connector.
 Configure and schedule Dagster metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Dagster Versions](#dagster-versions)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -39,6 +40,11 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+## Dagster Versions
+OpenMetadata is integrated with dagster upto version [1.0.13](https://docs.dagster.io/getting-started) and will continue to work for future dagster versions.
+
+The ingestion framework uses [dagster graphql python client](https://docs.dagster.io/_apidocs/libraries/dagster-graphql#dagster_graphql.DagsterGraphQLClient) to connect to the dagster instance and perform the API calls
 
 ## Metadata Ingestion
 
@@ -107,9 +113,20 @@ this connector. Please follow the instructions below to ensure that
 you've configured the connector to read from your dagster service as
 desired.
 
+#### Local Dagster Connection
+<div className="w-100 flex justify-center">
+
+<Image
+  src="/images/openmetadata/connectors/dagster/service-connection-local.png"
+  alt="Configure service connection"
+  caption="Configure the service connection by filling the form"
+/>
+</div>
+
+#### Cloud Dagster Connection
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/dagster/service-connection.png"
+  src="/images/openmetadata/connectors/dagster/service-connection-cloud.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />
@@ -129,8 +146,12 @@ the changes.
 
 #### Connection Options
 
-- **Dagster API Key**: Dagster API Key.
-- **Dagster API Secret**: Dagster API Secret.
+
+- **Case 1: Local Dagster**
+  - hostPort: eg.`localhost:3000` or `127.0.0.1:3000` or `host:port`
+- **Case 2: Cloud Dagster**
+  - host: eg. `https://<yourorghere>.dagster.cloud/prod`
+  - token: To connect to cloud Dagster
 
 ### 6. Configure Metadata Ingestion
 

@@ -12,7 +12,7 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { FormErrorData } from 'Models';
+import { AssetsDataType, FormErrorData } from 'Models';
 import { UserType } from '../enums/user.enum';
 import { Team } from '../generated/entity/teams/team';
 import {
@@ -90,12 +90,13 @@ export interface TeamsAndUsersProps {
 export interface TeamDetailsProp {
   currentTeam: Team;
   teams?: Team[];
+  assets: AssetsDataType;
   currentTeamUsers: User[];
   teamUserPagin: Paging;
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
-  isTeamMemberLoading: boolean;
+  isTeamMemberLoading: number;
   hasAccess: boolean;
   handleAddTeam: (value: boolean) => void;
   descriptionHandler: (value: boolean) => void;
@@ -114,9 +115,10 @@ export interface TeamDetailsProp {
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   childTeams: Team[];
   showDeletedTeam: boolean;
+  onAssetsPaginate: (page: string | number) => void;
   onShowDeletedTeamChange: (checked: boolean) => void;
   onTeamExpand: (
-    isPageLoading?: boolean,
+    loading?: boolean,
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;

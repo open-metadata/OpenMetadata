@@ -12,10 +12,14 @@
  */
 
 import { Col, Row } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
+import { restoreTable } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
@@ -43,13 +47,15 @@ import {
   getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -58,7 +64,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
@@ -126,10 +132,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
-  handleExtentionUpdate,
+  handleExtensionUpdate,
   updateThreadHandler,
   entityFieldTaskCount,
 }: DatasetDetailsProps) => {
+  const { t } = useTranslation();
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -209,7 +217,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -220,7 +228,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -232,7 +240,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       count: feedCount,
     },
     {
-      name: 'Sample Data',
+      name: t('label.sample-data'),
       icon: {
         alt: 'sample_data',
         name: 'sample-data',
@@ -248,7 +256,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 3,
     },
     {
-      name: 'Queries',
+      name: t('label.query-plural'),
       icon: {
         alt: 'table_queries',
         name: 'table_queries',
@@ -264,7 +272,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 4,
     },
     {
-      name: 'Profiler & Data Quality',
+      name: t('label.profiler-amp-data-quality'),
       icon: {
         alt: 'profiler',
         name: 'icon-profiler',
@@ -281,7 +289,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 5,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       icon: {
         alt: 'lineage',
         name: 'icon-lineage',
@@ -292,7 +300,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 7,
     },
     {
-      name: 'DBT',
+      name: t('label.dbt-uppercase'),
       icon: {
         alt: 'dbt-model',
         name: 'dbtmodel-light-grey',
@@ -304,7 +312,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-properties'),
       isProtected: false,
       position: 9,
     },
@@ -372,7 +380,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           <span
             className={classNames({
               'tw--ml-6': rowData.length > 1,
-            })}>{`${tableProfile.rowCount || 0} rows`}</span>
+            })}>{`${tableProfile?.rowCount?.toLocaleString() || 0} rows`}</span>
         </div>
       );
     } else {
@@ -382,7 +390,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: t('label.owner'),
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -395,14 +403,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: 'Tier',
+      key: t('label.tier'),
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    { key: 'Type', value: `${tableType}`, showLabel: true },
+    { key: t('label.type'), value: `${tableType}`, showLabel: true },
     { value: usage },
     { value: `${weeklyUsageCount} Queries` },
     {
-      key: 'Columns',
+      key: t('label.column-plural'),
       value:
         tableProfile && tableProfile?.columnCount
           ? `${tableProfile.columnCount} Columns`
@@ -411,7 +419,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           : '',
     },
     {
-      key: 'Rows',
+      key: t('label.row-plural'),
       value: prepareTableRowInfo(),
     },
   ];
@@ -448,12 +456,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const onOwnerUpdate = (newOwner?: Table['owner']) => {
     if (newOwner) {
+      const existingOwner = tableDetails.owner;
       const updatedTableDetails = {
         ...tableDetails,
         owner: {
-          ...tableDetails.owner,
+          ...existingOwner,
           ...newOwner,
         },
+      };
+      settingsUpdateHandler(updatedTableDetails);
+    }
+  };
+
+  const onOwnerRemove = () => {
+    if (tableDetails) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        owner: undefined,
       };
       settingsUpdateHandler(updatedTableDetails);
     }
@@ -482,6 +501,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const onRemoveTier = () => {
+    if (tableDetails) {
+      const updatedTableDetails = {
+        ...tableDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedTableDetails);
+    }
+  };
+
   /**
    * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
@@ -503,6 +532,26 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       setFollowersCount((preValu) => preValu + 1);
       setIsFollowing(true);
       followTableHandler();
+    }
+  };
+
+  const handleRestoreTable = async () => {
+    try {
+      await restoreTable(tableDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.table'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.table'),
+        })
+      );
     }
   };
 
@@ -538,6 +587,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const onThreadPanelClose = () => {
     setThreadLink('');
+  };
+
+  const handleFullScreenClick = () => {
+    history.push(getLineageViewPath(EntityType.TABLE, datasetFQN));
   };
 
   const getLoader = () => {
@@ -577,10 +630,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   );
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
+          currentOwner={tableDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -600,6 +654,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           followersList={followers}
           isFollowing={isFollowing}
           isTagEditable={tablePermissions.EditAll || tablePermissions.EditTags}
+          removeOwner={
+            tablePermissions.EditAll || tablePermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            tablePermissions.EditAll || tablePermissions.EditTier
+              ? onRemoveTier
+              : undefined
+          }
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
@@ -616,6 +680,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreTable}
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
@@ -626,13 +691,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
             <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
               {activeTab === 1 && (
                 <div
                   className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full"
                   id="schemaDetails">
-                  <div className="tw-col-span-3 tw--ml-5">
+                  <div className="tw-col-span-3">
                     <Description
                       description={description}
                       entityFieldTasks={getEntityFieldThreadCounts(
@@ -758,7 +823,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {activeTab === 7 && (
                 <div
                   className={classNames(
-                    'tw-px-2',
                     location.pathname.includes(ROUTES.TOUR)
                       ? 'tw-h-70vh'
                       : 'tw-h-full'
@@ -778,6 +842,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}
@@ -796,7 +861,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     tableDetails as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.TABLE}
-                  handleExtentionUpdate={handleExtentionUpdate}
+                  handleExtensionUpdate={handleExtensionUpdate}
                 />
               )}
               <div
@@ -834,7 +899,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           ) : null}
         </div>
       </div>
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

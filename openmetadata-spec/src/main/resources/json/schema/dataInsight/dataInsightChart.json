@@ -1,0 +1,127 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/dataInsightChart.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataInsightChart",
+  "description": "DataInsightChart represents the definition of a chart with its parameters",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.dataInsight.DataInsightChart",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "chartParameterValues": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.dataInsight.ChartParameterValues",
+      "description": "This schema defines the parameter values for a chart.",
+      "properties": {
+        "name": {
+          "description": "name of the parameter.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this parameter name.",
+          "type": "string"
+        },
+        "chartDataType": {
+          "javaType": "org.openmetadata.schema.type.DataInsightChartDataType",
+          "description": "Data type of the parameter (int, date etc.).",
+          "type": "string",
+          "enum": [
+            "NUMBER",
+            "INT",
+            "FLOAT",
+            "DOUBLE",
+            "DECIMAL",
+            "TIMESTAMP",
+            "TIME",
+            "DATE",
+            "DATETIME",
+            "ARRAY",
+            "MAP",
+            "SET",
+            "STRING",
+            "BOOLEAN",
+            "PERCENTAGE"
+          ]
+        }
+      }
+    },
+    "dataReportIndex": {
+      "javaType": "org.openmetadata.schema.type.DataReportIndex",
+      "description": "Index where data are stored",
+      "type": "string",
+      "enum": [
+        "entity_report_data_index",
+        "web_analytic_entity_view_report_data_index",
+        "web_analytic_user_activity_report_data_index"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this table instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this data insight chart.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this data insight chart.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the data insight chart.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "dataIndexType": {
+      "$ref": "#/definitions/dataReportIndex"
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/chartParameterValues"
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/chartParameterValues"
+      }
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

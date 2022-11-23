@@ -41,6 +41,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -84,17 +85,13 @@ public class MlModelServiceResource
   public static class MlModelServiceList extends ResultList<MlModelService> {
     @SuppressWarnings("unused") /* Required for tests */
     public MlModelServiceList() {}
-
-    public MlModelServiceList(List<MlModelService> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   @GET
   @Operation(
       operationId = "listMlModelService",
       summary = "List mlModel services",
-      tags = "mlModelService",
+      tags = "mlModelServices",
       description =
           "Get a list of mlModel services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -143,7 +140,7 @@ public class MlModelServiceResource
   @Operation(
       operationId = "getMlModelServiceByID",
       summary = "Get a mlModel service",
-      tags = "mlModelService",
+      tags = "mlModelServices",
       description = "Get a mlModel service by `id`.",
       responses = {
         @ApiResponse(
@@ -178,7 +175,7 @@ public class MlModelServiceResource
   @Operation(
       operationId = "getMlModelServiceByFQN",
       summary = "Get mlModel service by name",
-      tags = "mlModelService",
+      tags = "mlModelServices",
       description = "Get a mlModel service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -213,7 +210,7 @@ public class MlModelServiceResource
   @Operation(
       operationId = "listAllMlModelServiceVersion",
       summary = "List mlModel service versions",
-      tags = "mlModelService",
+      tags = "mlModelServices",
       description = "Get a list of all the versions of a mlModel service identified by `id`",
       responses = {
         @ApiResponse(
@@ -249,7 +246,7 @@ public class MlModelServiceResource
   @Operation(
       operationId = "getSpecificMlModelService",
       summary = "Get a version of the mlModel service",
-      tags = "mlModelService",
+      tags = "mlModelServices",
       description = "Get a version of the mlModel service by given `id`",
       responses = {
         @ApiResponse(
@@ -293,7 +290,7 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService create)
       throws IOException {
     MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, service, true);
+    Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
@@ -302,7 +299,7 @@ public class MlModelServiceResource
   @Operation(
       operationId = "createOrUpdateMlModelService",
       summary = "Update mlModel service",
-      tags = "mlModelService",
+      tags = "mlModelServices",
       description = "Create a new mlModel service or update an existing mlModel service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -316,7 +313,7 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModelService update)
       throws IOException {
     MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, true);
+    Response response = createOrUpdate(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }
@@ -326,7 +323,7 @@ public class MlModelServiceResource
   @Operation(
       operationId = "deleteMlModelService",
       summary = "Delete a mlModel service",
-      tags = "mlModelService",
+      tags = "mlModelServices",
       description =
           "Delete a mlModel services. If mlModels (and tasks) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -346,7 +343,26 @@ public class MlModelServiceResource
           boolean hardDelete,
       @Parameter(description = "Id of the mlModel service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted MlModelService.",
+      tags = "mlModelServices",
+      description = "Restore a soft deleted MlModelService.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the MlModelService ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class)))
+      })
+  public Response restoreTable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private MlModelService getService(CreateMlModelService create, String user) throws IOException {

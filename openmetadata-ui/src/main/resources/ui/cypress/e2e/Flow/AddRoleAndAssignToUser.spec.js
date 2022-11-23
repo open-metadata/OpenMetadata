@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from "../../common/common";
-import { LOGIN } from "../../constants/constants";
+import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from "../../common/common";
 
 const roleName = `Role-test-${uuid()}`;
 const userName = `Usercttest${uuid()}`;
@@ -20,8 +19,7 @@ const userEmail = `${userName}@gmail.com`;
 
 describe("Test Add role and assign it to the user", () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
     
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
 
@@ -60,8 +58,6 @@ describe("Test Add role and assign it to the user", () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Clicking outside to close the dropdown
-    cy.get('.ant-card-body').click();
     //Save the role
     cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
@@ -100,15 +96,34 @@ describe("Test Add role and assign it to the user", () => {
     .should('exist')
     .should('be.visible')
     .type('Adding user');
+
+    interceptURL('GET', '/api/v1/users/generateRandomPwd', 'generatePassword');
+    cy.get('[data-testid="password-generator"]').scrollIntoView().should('be.visible').click();
+    verifyResponseStatusCode('@generatePassword', 200);
     
     cy.get(`[id="menu-button-Roles"]`).should("exist").should("be.visible").click()
 
-    cy.get(`[data-testid="${roleName}"]`).should("be.visible").click()
+    cy.get(`[data-testid="${roleName}"]`).scrollIntoView().should("be.visible").click()
 
-    cy.get('body').click()
-    
+    cy.get('[data-testid="roles-dropdown"]').click();
+
+    cy.wait(1000);
+
+    interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15', 'getUserPage');
+
     cy.get('[data-testid="save-user"]').scrollIntoView().click();
 
+    verifyResponseStatusCode('@getUserPage', 200);
 
+    cy.get('[data-testid="searchbar"]').should('exist').should('be.visible').type(userName);
+
+    cy.get(`[data-testid="${userName}"]`).should('be.visible');
+
+    interceptURL('GET', '/api/v1/users/*', 'userDetailsPage')
+    cy.get(`[data-testid="${userName}"]`).should('be.visible').click();
+    verifyResponseStatusCode('@userDetailsPage', 200)
+
+    cy.get('[data-testid="left-panel"]').should('be.visible').should('contain', roleName)
+    
   })
 })

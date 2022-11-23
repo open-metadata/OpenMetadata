@@ -13,8 +13,31 @@
 
 /// <reference types="cypress" />
 
-import { deleteCreatedService, descriptionBox, goToAddNewServicePage, handleIngestionRetry, interceptURL, login, mySqlConnectionInput, scheduleIngestion, testServiceCreationAndIngestion, uuid, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
-import { DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM, LOGIN, MYDATA_SUMMARY_OPTIONS, NEW_COLUMN_TEST_CASE, NEW_TABLE_TEST_CASE, NEW_TEST_SUITE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import {
+    deleteCreatedService,
+    descriptionBox,
+    goToAddNewServicePage,
+    handleIngestionRetry,
+    interceptURL,
+    login,
+    mySqlConnectionInput,
+    scheduleIngestion,
+    testServiceCreationAndIngestion,
+    toastNotification,
+    uuid,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
+} from '../../common/common';
+import {
+    API_SERVICE, DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM,
+    LOGIN,
+    MYDATA_SUMMARY_OPTIONS,
+    NEW_COLUMN_TEST_CASE,
+    NEW_TABLE_TEST_CASE,
+    NEW_TEST_SUITE,
+    SERVICE_TYPE,
+    TEAM_ENTITY
+} from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -52,7 +75,7 @@ describe('Data Quality and Profiler should work properly', () => {
       serviceName
     );
   });
-
+  
   it('Add Profiler ingestion', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
@@ -83,7 +106,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();
-    cy.get('[data-testid="profileSample"]').should('be.visible').type(0.01);
+    cy.get('[data-testid="profileSample"]').should('be.visible').type(10);
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
@@ -102,7 +125,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     handleIngestionRetry('database', true, 0, 'profiler');
   });
-
+  
   it('Check if profiler is ingested properly or not', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
@@ -158,14 +181,12 @@ describe('Data Quality and Profiler should work properly', () => {
     // wait for ingestion to run
     cy.clock();
     cy.wait(10000);
-    interceptURL(
-      'GET',
-      '/api/v1/testCase?fields=testCaseResult,testDefinition,testSuite&testSuiteId=*&limit=10',
-      'testCase'
-    );
+    interceptURL('GET', '/api/v1/testCase?fields=*', 'testCase');
     cy.get('[data-testid="view-service-button"]')
       .should('be.visible')
       .click({ force: true });
+
+    verifyResponseStatusCode('@getEntityDetails', 200);
 
     verifyResponseStatusCode('@testCase', 200);
     cy.contains(`${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`).should(
@@ -232,10 +253,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
-    cy.get('.Toastify__toast-body')
-      .contains('Test Case deleted successfully!')
-      .should('be.visible')
-      .wait(200);
+    toastNotification('Test Case deleted successfully!')
     cy.get('table').contains('No Data').should('be.visible');
   });
 
@@ -356,12 +374,7 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Delete Test suite should work properly', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    cy.get('[data-testid="global-setting-left-panel"]')
-      .contains('Test Suite')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="appbar-item-data-quality"]').should('be.visible').click();
     cy.get(`[data-row-key="${NEW_TEST_SUITE.name}"] > :nth-child(1) > a`)
       .contains(NEW_TEST_SUITE.name)
       .should('be.visible')
@@ -390,7 +403,7 @@ describe('Data Quality and Profiler should work properly', () => {
   it('delete created service', () => {
     login(LOGIN.username, LOGIN.password);
     cy.goToHomePage();
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName);
+    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
   });
 
   it('Profiler matrix and test case graph should visible', () => {

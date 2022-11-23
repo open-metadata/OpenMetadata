@@ -11,50 +11,82 @@
  *  limitations under the License.
  */
 
-import { FilterObject, SearchResponse } from 'Models';
+import { DefaultOptionType } from 'antd/lib/select';
+import { JsonTree } from 'react-awesome-query-builder';
+import { SearchIndex } from '../../enums/search.enum';
+import { SearchResponse } from '../../interface/search.interface';
+import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
 
 export type UrlParams = {
   searchQuery: string;
   tab: string;
 };
 
-export type ExploreSearchData = {
-  resSearchResults: SearchResponse;
-  resAggServiceType: SearchResponse;
-  resAggTier: SearchResponse;
-  resAggTag: SearchResponse;
-  resAggDatabase: SearchResponse;
-  resAggDatabaseSchema: SearchResponse;
-  resAggServiceName: SearchResponse;
-};
+export type ExploreSearchIndex =
+  | SearchIndex.TABLE
+  | SearchIndex.PIPELINE
+  | SearchIndex.DASHBOARD
+  | SearchIndex.MLMODEL
+  | SearchIndex.TOPIC;
+
+export type ExploreSearchIndexKey =
+  | 'TABLE'
+  | 'PIPELINE'
+  | 'DASHBOARD'
+  | 'MLMODEL'
+  | 'TOPIC';
+
+export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {
-  tabCounts: TabCounts;
-  searchText: string;
-  initialFilter?: FilterObject;
-  searchFilter?: FilterObject;
+  tabCounts?: SearchHitCounts;
+
+  searchResults?: SearchResponse<ExploreSearchIndex>;
+
+  advancedSearchJsonTree?: JsonTree;
+  onChangeAdvancedSearchJsonTree: (jsonTree: JsonTree | undefined) => void;
+  onChangeAdvancedSearchQueryFilter: (
+    queryFilter: Record<string, unknown> | undefined
+  ) => void;
+
+  postFilter?: FilterObject;
+  onChangePostFilter: (filter: FilterObject) => void;
+
+  searchIndex: ExploreSearchIndex;
+  onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
+
   sortValue: string;
-  tab: string;
-  searchQuery: string;
+  onChangeSortValue: (sortValue: string) => void;
+
+  sortOrder: string;
+  onChangeSortOder: (sortOder: string) => void;
+
   showDeleted: boolean;
-  isFilterSelected: boolean;
-  fetchCount: () => void;
-  handleFilterChange: (data: FilterObject) => void;
-  handlePathChange: (path: string) => void;
-  handleSearchText?: (text: string) => void;
-  onShowDeleted: (checked: boolean) => void;
-  handleTabCounts: (value: { [key: string]: number }) => void;
+  onChangeShowDeleted: (showDeleted: boolean) => void;
+
+  page?: number;
+  onChangePage?: (page: number) => void;
+
+  loading?: boolean;
 }
 
-export interface AdvanceField {
+export interface ExploreQuickFilterField {
   key: string;
   value: string | undefined;
 }
 
-export interface TabCounts {
-  table: number;
-  topic: number;
-  dashboard: number;
-  pipeline: number;
-  mlmodel: number;
+export interface ExploreQuickFilterProps {
+  index: string;
+  field: ExploreQuickFilterField;
+  onFieldRemove: (value: string) => void;
+  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
+}
+
+export interface SearchInputProps {
+  options: DefaultOptionType[];
+  value: string | undefined;
+  handleChange: (value: string) => void;
+  handleSearch: (value: string) => void;
+  handleSelect: (value: string) => void;
+  handleClear: () => void;
 }

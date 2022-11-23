@@ -388,10 +388,13 @@ describe('Test DatabaseDetails page', () => {
       container,
       'database-databaseSchemas'
     );
-    const headerName = await findByText(container, 'Schema Name');
-    const headerDescription = await findByText(databaseTable, 'Description');
-    const headerOwner = await findByText(container, 'Owner');
-    const headerUsage = await findByText(container, 'Usage');
+    const headerName = await findByText(container, 'label.schema-name');
+    const headerDescription = await findByText(
+      databaseTable,
+      'label.description'
+    );
+    const headerOwner = await findByText(container, 'label.owner');
+    const headerUsage = await findByText(container, 'label.usage');
 
     expect(databaseTable).toBeInTheDocument();
     expect(headerName).toBeInTheDocument();

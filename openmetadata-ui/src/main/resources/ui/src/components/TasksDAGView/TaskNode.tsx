@@ -12,7 +12,7 @@
  */
 
 import React, { CSSProperties, Fragment } from 'react';
-import { Handle, HandleType, NodeProps, Position } from 'react-flow-renderer';
+import { Handle, HandleType, NodeProps, Position } from 'reactflow';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 
 const handleStyles = {

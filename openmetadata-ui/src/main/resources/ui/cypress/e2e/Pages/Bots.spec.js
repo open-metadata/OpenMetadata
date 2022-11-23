@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
-import { descriptionBox, interceptURL, login, uuid, verifyResponseStatusCode } from '../../common/common';
-import { DELETE_TERM, LOGIN } from '../../constants/constants';
+import {
+    descriptionBox,
+    interceptURL, uuid,
+    verifyResponseStatusCode
+} from '../../common/common';
+import { DELETE_TERM } from '../../constants/constants';
 
 const botName = `Bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
@@ -67,8 +71,7 @@ const revokeToken = () => {
 
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
       .should('be.visible')
@@ -78,7 +81,7 @@ describe('Bots Page should work properly', () => {
       'api/v1/bots?limit=100&include=non-deleted',
       'getBotsList'
     );
-    cy.get('.ant-menu-title-content')
+    cy.get('[data-testid="settings-left-panel"]')
       .contains('Bots')
       .scrollIntoView()
       .should('be.visible')

@@ -20,8 +20,6 @@ global:
     initialAdmins:
       - "user1"
       - "user2"
-    botPrincipals:
-      - "<service_application_client_id>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"
@@ -50,8 +48,6 @@ global:
     initialAdmins:
       - "user1"
       - "user2"
-    botPrincipals:
-      - "<service_application_client_id>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "custom-oidc"

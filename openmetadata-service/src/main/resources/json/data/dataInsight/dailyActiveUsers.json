@@ -1,0 +1,13 @@
+{
+  "name": "dailyActiveUsers",
+  "fullyQualifiedName": "dailyActiveUsers",
+  "displayName": "Daily active users on the platform",
+  "description": "Display the number of users active.",
+  "dataIndexType": "web_analytic_user_activity_report_data_index",
+  "dimensions": [
+    {"name": "timestamp","chartDataType":"INT"}
+  ],
+  "metrics": [
+    {"name": "activeUsers", "displayName": "Number of active users", "chartDataType": "NUMBER"}
+  ]
+}

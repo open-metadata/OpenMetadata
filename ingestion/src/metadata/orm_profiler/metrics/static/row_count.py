@@ -44,3 +44,7 @@ class RowCount(StaticMetric):
     @_label
     def fn(self):
         return func.count()
+
+    @_label
+    def dl_fn(self, data_frame=None):
+        return len(data_frame.index)

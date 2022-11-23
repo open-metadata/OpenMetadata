@@ -207,6 +207,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <>
       <Table
+        bordered
+        className="table-shadow"
         columns={columns}
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
         expandable={{

@@ -73,7 +73,6 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     assertEquals(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
     assertEquals(config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
     assertEquals(config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
-    assertEquals(config.getAuthorizerConfiguration().getBotPrincipals(), auth.getBotPrincipals());
     assertEquals(config.getAuthorizerConfiguration().getContainerRequestFilter(), auth.getContainerRequestFilter());
     assertEquals(
         config.getAuthorizerConfiguration().getEnableSecureSocketConnection(), auth.getEnableSecureSocketConnection());

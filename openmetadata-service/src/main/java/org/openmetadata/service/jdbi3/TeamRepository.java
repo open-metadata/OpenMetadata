@@ -65,6 +65,7 @@ import org.openmetadata.service.util.ResultList;
 public class TeamRepository extends EntityRepository<Team> {
   static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
   static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType";
+  private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
@@ -78,8 +79,8 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     team.setUsers(fields.contains("users") ? getUsers(team) : null);
     team.setOwns(fields.contains("owns") ? getOwns(team) : null);
-    team.setDefaultRoles(fields.contains("defaultRoles") ? getDefaultRoles(team) : null);
-    team.setInheritedRoles(fields.contains("defaultRoles") ? getInheritedRoles(team) : null);
+    team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : null);
+    team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? getInheritedRoles(team) : null);
     team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
     team.setParents(fields.contains("parents") ? getParents(team) : null);
     team.setChildren(fields.contains("children") ? getChildren(team.getId()) : null);
@@ -102,7 +103,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void prepare(Team team) throws IOException {
-    setFullyQualifiedName(team);
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
     validateUsers(team.getUsers());
@@ -123,7 +123,7 @@ public class TeamRepository extends EntityRepository<Team> {
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null).withInheritedRoles(null);
 
-    store(team.getId(), team, update);
+    store(team, update);
 
     // Restore the relationships
     team.withUsers(users)
@@ -338,7 +338,7 @@ public class TeamRepository extends EntityRepository<Team> {
   private List<EntityReference> getChildren(UUID teamId) throws IOException {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
-      return EntityUtil.populateEntityReferencesById(children, Entity.TEAM);
+      return EntityUtil.populateEntityReferencesById(EntityUtil.toIDs(children), Entity.TEAM);
     }
     List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
     return EntityUtil.populateEntityReferences(children, TEAM);
@@ -530,7 +530,7 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> origDefaultRoles = listOrEmpty(origTeam.getDefaultRoles());
       List<EntityReference> updatedDefaultRoles = listOrEmpty(updatedTeam.getDefaultRoles());
       updateToRelationships(
-          "defaultRoles",
+          DEFAULT_ROLES,
           TEAM,
           origTeam.getId(),
           Relationship.HAS,

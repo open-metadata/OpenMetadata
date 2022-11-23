@@ -14,7 +14,8 @@
 import { Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
-import { postkillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { useTranslation } from 'react-i18next';
+import { postKillIngestionPipelineById } from '../../../axiosAPIs/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface KillIngestionModalProps {
@@ -32,24 +33,22 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   onClose,
   onIngestionWorkflowsUpdate,
 }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      const response = await postkillIngestionPipelineById(pipelineId);
+      const response = await postKillIngestionPipelineById(pipelineId);
       const status = response.status;
       if (status === 200) {
         onClose();
-        showSuccessToast(
-          `Successfully killed running workflows for ${pipelinName}.`
-        );
+        showSuccessToast(` ${t('message.kill-successfully')}  ${pipelinName}.`);
         onIngestionWorkflowsUpdate();
       }
     } catch (error) {
       // catch block error is unknown type so we have to cast it to respective type
       showErrorToast(error as AxiosError);
-      onClose();
     } finally {
       setIsLoading(false);
     }
@@ -62,13 +61,12 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       confirmLoading={isLoading}
       data-testid="kill-modal"
       okText="Confirm"
-      title={`Kill ${pipelinName} ?`}
+      title={`${t('label.kill')} ${pipelinName} ?`}
       visible={isModalOpen}
       onCancel={onClose}
       onOk={handleConfirm}>
       <Typography.Text data-testid="kill-modal-body">
-        Once you kill this Ingestion, all running and queued workflows will be
-        stopped and marked as Failed.
+        {t('message.kill-ingestion-warning')}
       </Typography.Text>
     </Modal>
   );

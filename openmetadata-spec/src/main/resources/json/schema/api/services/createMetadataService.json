@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/createMetadataService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateMetadataServiceRequest",
+  "description": "Create Metadata Service entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.services.CreateMetadataService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Metadata service.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of Metadata entity.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "serviceType": {
+      "$ref": "../../entity/services/metadataService.json#/definitions/metadataServiceType"
+    },
+    "connection": {
+      "$ref": "../../entity/services/metadataService.json#/definitions/metadataConnection"
+    },
+    "owner": {
+      "description": "Owner of this Metadata service.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "serviceType", "connection"],
+  "additionalProperties": false
+}

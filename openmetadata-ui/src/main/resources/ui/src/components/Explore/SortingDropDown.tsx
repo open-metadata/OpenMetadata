@@ -12,17 +12,22 @@
  */
 
 import { Dropdown, Menu } from 'antd';
-import React, { FC } from 'react';
+import React from 'react';
 import { normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 
-interface Props {
+export interface SortingField {
+  name: string;
+  value: string;
+}
+
+export interface SortingDropdownProps {
   sortField: string;
-  fieldList: Array<{ name: string; value: string }>;
+  fieldList: SortingField[];
   handleFieldDropDown: (value: string) => void;
 }
 
-const SortingDropDown: FC<Props> = ({
+const SortingDropDown: React.FC<SortingDropdownProps> = ({
   fieldList,
   handleFieldDropDown,
   sortField,
@@ -40,7 +45,7 @@ const SortingDropDown: FC<Props> = ({
 
   return (
     <Dropdown
-      className="tw-self-end tw-mb-2 tw-mr-2 tw-cursor-pointer"
+      className="tw-self-end tw-mr-2 tw-cursor-pointer"
       data-testid="dropdown"
       overlay={menu}
       trigger={['click']}>

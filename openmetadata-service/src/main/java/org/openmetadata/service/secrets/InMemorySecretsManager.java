@@ -16,18 +16,18 @@ package org.openmetadata.service.secrets;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
 /** Secret Manager used for testing */
-public class InMemorySecretsManager extends ThirdPartySecretsManager {
+public class InMemorySecretsManager extends ExternalSecretsManager {
 
   private static InMemorySecretsManager INSTANCE;
 
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
   protected InMemorySecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
-    super(secretsManagerProvider, clusterPrefix);
+    super(secretsManagerProvider, clusterPrefix, 0);
   }
 
   public static InMemorySecretsManager getInstance(String clusterPrefix) {

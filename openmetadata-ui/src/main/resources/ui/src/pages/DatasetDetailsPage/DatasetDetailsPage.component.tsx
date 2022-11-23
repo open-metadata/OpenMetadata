@@ -560,7 +560,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             setCurrentVersion(version + '');
             setTableDetails((previous) => ({
               ...previous,
-              owner,
+              ...(owner ? { owner } : {}),
               version,
               tags,
             }));
@@ -852,7 +852,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTableHandler={followTable}
               followers={followers}
-              handleExtentionUpdate={handleExtentionUpdate}
+              handleExtensionUpdate={handleExtentionUpdate}
               isLineageLoading={isLineageLoading}
               isNodeLoading={isNodeLoading}
               isQueriesLoading={isTableQueriesLoading}

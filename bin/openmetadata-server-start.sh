@@ -71,7 +71,6 @@ else
   JAVA="$JAVA_HOME/bin/java"
 fi
 
-OPENMETADATA_DEBUG="true"
 # Set Debug options if enabled
 if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 

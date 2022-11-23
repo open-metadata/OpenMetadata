@@ -112,10 +112,7 @@ describe('Test PipelineDetails component', () => {
     const { container } = render(<TasksDAGView {...TasksDAGViewProps} />, {
       wrapper: MemoryRouter,
     });
-    const reactFlowElement = await findByTestId(
-      container,
-      'react-flow-component'
-    );
+    const reactFlowElement = await findByTestId(container, 'rf__wrapper');
 
     expect(reactFlowElement).toBeInTheDocument();
   });

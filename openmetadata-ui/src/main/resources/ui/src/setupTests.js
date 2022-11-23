@@ -45,3 +45,20 @@ window.ResizeObserver = jest.fn().mockImplementation(() => ({
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
+
+/**
+ * mock implementation of IntersectionObserver
+ */
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+}));
+
+/**
+ * mock react-i18next
+ */
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key) => key,
+  }),
+}));

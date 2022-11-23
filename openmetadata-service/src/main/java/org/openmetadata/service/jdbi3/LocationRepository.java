@@ -161,8 +161,6 @@ public class LocationRepository extends EntityRepository<Location> {
     StorageService storageService = getService(location.getService().getId(), location.getService().getType());
     location.setService(storageService.getEntityReference());
     location.setServiceType(storageService.getServiceType());
-    setFullyQualifiedName(location);
-    location.setTags(addDerivedTags(location.getTags()));
   }
 
   @Override
@@ -175,7 +173,7 @@ public class LocationRepository extends EntityRepository<Location> {
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     location.withOwner(null).withService(null).withHref(null).withTags(null);
 
-    store(location.getId(), location, update);
+    store(location, update);
 
     // Restore the relationships
     location.withOwner(owner).withService(service).withTags(tags);

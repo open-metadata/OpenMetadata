@@ -38,8 +38,9 @@
     },
     "s3StagingDir": {
       "title": "S3 Staging Directory",
-      "description": "S3 Staging Directory.",
-      "type": "string"
+      "description": "S3 Staging Directory. Example: s3://postgres/input/",
+      "type": "string",
+      "format": "uri"
     },
     "workgroup": {
       "title": "Athena Workgroup",

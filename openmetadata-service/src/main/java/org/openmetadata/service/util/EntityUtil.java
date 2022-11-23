@@ -28,7 +28,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
 import lombok.NonNull;
@@ -70,6 +69,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public final class EntityUtil {
@@ -92,7 +92,6 @@ public final class EntityUtil {
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
   public static final Comparator<Filters> compareFilters = Comparator.comparing(Filters::getEventType);
   public static final Comparator<EventFilter> compareEventFilters = Comparator.comparing(EventFilter::getEntityType);
-  public static final Comparator<MetadataOperation> compareOperation = Comparator.comparing(MetadataOperation::value);
 
   //
   // Matchers used for matching two items in a list
@@ -221,14 +220,10 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferencesById(List<String> ids, @NonNull String entityType)
+  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType)
       throws IOException {
-    List<EntityReference> refs = new ArrayList<>(ids.size());
-    for (String id : ids) {
-      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
-    }
-    refs.sort(compareEntityReference);
-    return refs;
+    List<EntityReference> refs = toEntityReferences(list, entityType);
+    return populateEntityReferences(refs);
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink) {
@@ -284,6 +279,12 @@ public final class EntityUtil {
     return entityReferences;
   }
 
+  public static List<UUID> toIDs(List<String> list) {
+    List<UUID> ids = new ArrayList<>(list.size());
+    list.forEach(entry -> ids.add(UUID.fromString(entry)));
+    return ids;
+  }
+
   public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
     if (ids == null) {
       return null;
@@ -336,13 +337,6 @@ public final class EntityUtil {
     public boolean contains(String field) {
       return fieldList.contains(field);
     }
-  }
-
-  public static List<UUID> getIDList(List<EntityReference> refList) {
-    if (refList == null) {
-      return Collections.emptyList();
-    }
-    return refList.stream().sorted(compareEntityReference).map(EntityReference::getId).collect(Collectors.toList());
   }
 
   /** Entity version extension name formed by entityType.version.versionNumber. Example - `table.version.0.1` */
@@ -430,14 +424,30 @@ public final class EntityUtil {
         .withDeleted(from.getDeleted());
   }
 
-  public static TagLabel getTagLabel(GlossaryTerm term) {
+  public static List<TagLabel> toTagLabels(GlossaryTerm... terms) {
+    List<TagLabel> list = new ArrayList<>();
+    for (GlossaryTerm term : terms) {
+      list.add(toTagLabel(term));
+    }
+    return list;
+  }
+
+  public static List<TagLabel> toTagLabels(Tag... tags) {
+    List<TagLabel> list = new ArrayList<>();
+    for (Tag tag : tags) {
+      list.add(toTagLabel(tag));
+    }
+    return list;
+  }
+
+  public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
   }
 
-  public static TagLabel getTagLabel(Tag tag) {
+  public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
@@ -460,5 +470,25 @@ public final class EntityUtil {
   public static void fieldUpdated(ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
     FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
     change.getFieldsUpdated().add(fieldChange);
+  }
+
+  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) throws IOException {
+    return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
+  }
+
+  public static UUID getId(EntityReference ref) {
+    return ref == null ? null : ref.getId();
+  }
+
+  public static String getFqn(EntityReference ref) {
+    return ref == null ? null : ref.getFullyQualifiedName();
+  }
+
+  public static String getFqn(EntityInterface entity) {
+    return entity == null ? null : entity.getFullyQualifiedName();
+  }
+
+  public static EntityReference getEntityReference(EntityInterface entity) {
+    return entity == null ? null : entity.getEntityReference();
   }
 }

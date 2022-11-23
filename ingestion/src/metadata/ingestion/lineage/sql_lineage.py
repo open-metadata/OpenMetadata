@@ -25,6 +25,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.helpers import insensitive_match, insensitive_replace
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRUCache
 
@@ -39,6 +40,34 @@ DictConfigurator.configure = configure
 
 logger = utils_logger()
 LRU_CACHE_SIZE = 4096
+
+
+def clean_raw_query(raw_query: str) -> str:
+    """
+    Given a raw query from any input (e.g., view definition,
+    query from logs, etc.), perform a cleaning step
+    before passing it to the LineageRunner
+    """
+    clean_query = insensitive_replace(
+        raw_str=raw_query,
+        to_replace=" copy grants ",  # snowflake specific
+        replace_by=" ",  # remove it as it does not add any value to lineage
+    )
+
+    clean_query = insensitive_replace(
+        raw_str=clean_query.strip(),
+        to_replace="\n",  # remove line breaks
+        replace_by=" ",
+    )
+
+    if insensitive_match(clean_query, ".*merge into .*when matched.*"):
+        clean_query = insensitive_replace(
+            raw_str=clean_query,
+            to_replace="when matched.*",  # merge into queries specific
+            replace_by="",  # remove it as LineageRunner is not able to perform the lineage
+        )
+
+    return clean_query.strip()
 
 
 def split_raw_table_name(database: str, raw_name: str) -> dict:
@@ -128,9 +157,8 @@ def get_table_entities_from_query(
     :return: List of tables matching the criteria
     """
 
-    # First try to find the data from the given db and schema
-    # Otherwise, pick it up from the table_name str
-    # Finally, try with upper case
+    # First try to find the data from the given db and schema (with table name as given or uppercase)
+    # Otherwise, pick it up from the table_name str (with table name as given or uppercase)
 
     split_table = table_name.split(".")
     empty_list: List[Any] = [None]  # Otherwise, there's a typing error in the concat
@@ -145,6 +173,15 @@ def get_table_entities_from_query(
         database=database_name,
         database_schema=database_schema,
         table=table,
+    ) or (
+        table
+        and search_table_entities(
+            metadata=metadata,
+            service_name=service_name,
+            database=database_name,
+            database_schema=database_schema,
+            table=table.upper(),
+        )
     )
 
     if table_entities:
@@ -156,6 +193,15 @@ def get_table_entities_from_query(
         database=database_query,
         database_schema=schema_query,
         table=table,
+    ) or (
+        table
+        and search_table_entities(
+            metadata=metadata,
+            service_name=service_name,
+            database=database_query,
+            database_schema=schema_query,
+            table=table.upper(),
+        )
     )
 
     if table_entities:
@@ -217,9 +263,9 @@ def _build_table_lineage(
         from_table_raw_name=str(from_table_raw_name),
         column_lineage_map=column_lineage_map,
     )
-    lineage_details = None
+    lineage_details = LineageDetails(sqlQuery=query)
     if col_lineage:
-        lineage_details = LineageDetails(sqlQuery=query, columnsLineage=col_lineage)
+        lineage_details.columnsLineage = col_lineage
     if from_entity and to_entity:
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
@@ -332,7 +378,7 @@ def get_lineage_by_query(
 
     try:
         logger.debug(f"Running lineage with query: {query}")
-        result = LineageRunner(query)
+        result = LineageRunner(clean_raw_query(query))
 
         raw_column_lineage = result.get_column_lineage()
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -406,7 +452,7 @@ def get_lineage_via_table_entity(
 
     try:
         logger.debug(f"Getting lineage via table entity using query: {query}")
-        parser = LineageRunner(query)
+        parser = LineageRunner(clean_raw_query(query))
         to_table_name = table_entity.name.__root__
 
         for from_table_name in parser.source_tables:

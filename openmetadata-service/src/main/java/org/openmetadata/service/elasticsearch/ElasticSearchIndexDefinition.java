@@ -1,7 +1,7 @@
 package org.openmetadata.service.elasticsearch;
 
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.resources.elasticSearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
@@ -35,6 +35,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
+  private static final String REASON_TRACE = "Reason: [%s] , Trace : [%s]";
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
@@ -63,7 +64,13 @@ public class ElasticSearchIndexDefinition {
     TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
     GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json"),
     MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/mlmodel_index_mapping.json"),
-    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/tag_index_mapping.json");
+    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/tag_index_mapping.json"),
+    ENTITY_REPORT_DATA_INDEX("entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
+    WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
+        "web_analytic_entity_view_report_data_index", "/elasticsearch/web_analytic_entity_view_report_data_index.json"),
+    WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX(
+        "web_analytic_user_activity_report_data_index",
+        "/elasticsearch/web_analytic_user_activity_report_data_index.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -117,7 +124,7 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
           getContext("Creating Index", elasticSearchIndexType.indexName),
-          String.format("Reason: [%s] , Trace : [%s]", e.getMessage(), ExceptionUtils.getStackTrace(e)));
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to create Elastic Search indexes due to", e);
       return false;
     }
@@ -150,7 +157,7 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
           getContext("Updating Index", elasticSearchIndexType.indexName),
-          String.format("Reason: [%s] , Trace : [%s]", e.getMessage(), ExceptionUtils.getStackTrace(e)));
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to update Elastic Search indexes due to", e);
     }
   }
@@ -168,7 +175,7 @@ public class ElasticSearchIndexDefinition {
     } catch (IOException e) {
       updateElasticSearchFailureStatus(
           getContext("Deleting Index", elasticSearchIndexType.indexName),
-          String.format("Reason: [%s] , Trace : [%s]", e.getMessage(), ExceptionUtils.getStackTrace(e)));
+          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }

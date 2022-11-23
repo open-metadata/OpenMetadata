@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -47,6 +46,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -85,10 +85,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     @SuppressWarnings("unused")
     GlossaryList() {
       // Empty constructor needed for deserialization
-    }
-
-    public GlossaryList(List<Glossary> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -274,7 +270,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
     Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, glossary, true);
+    return create(uriInfo, securityContext, glossary);
   }
 
   @PATCH
@@ -286,7 +282,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       description = "Update an existing glossary using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
@@ -320,7 +316,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
     Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, glossary, true);
+    return createOrUpdate(uriInfo, securityContext, glossary);
   }
 
   @DELETE
@@ -347,10 +343,33 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           boolean hardDelete,
       @Parameter(description = "Glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete, true);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted Glossary.",
+      tags = "glossaries",
+      description = "Restore a soft deleted Glossary.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Glossary ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class)))
+      })
+  public Response restoreGlossary(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) throws IOException {
-    return copy(new Glossary(), create, user).withReviewers(create.getReviewers()).withTags(create.getTags());
+    return copy(new Glossary(), create, user)
+        .withReviewers(create.getReviewers())
+        .withTags(create.getTags())
+        .withProvider(create.getProvider())
+        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

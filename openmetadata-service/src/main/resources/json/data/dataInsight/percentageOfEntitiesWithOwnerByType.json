@@ -1,0 +1,16 @@
+{
+  "name": "PercentageOfEntitiesWithOwnerByType",
+  "fullyQualifiedName": "PercentageOfEntitiesWithOwnerByType",
+  "displayName": "Percentage of Entities With Owner",
+  "description": "Display the percentage of entities with owner by type.",
+  "dataIndexType": "entity_report_data_index",
+  "dimensions": [
+    {"name": "timestamp","chartDataType":"INT"},
+    {"name": "entityType", "displayName": "Entity Type", "chartDataType": "STRING"}
+  ],
+  "metrics": [
+    {"name": "hasOwnerFraction", "displayName": "Percentage of Completed Owner", "chartDataType": "PERCENTAGE"},
+    {"name": "hasOwner", "displayName": "Entities with Owner", "chartDataType": "NUMBER"},
+    {"name": "entityCount", "displayName": "Total Entities", "chartDataType": "INT"}
+  ]
+}

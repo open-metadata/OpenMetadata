@@ -20,6 +20,9 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
+import { restoreTopic } from '../../axiosAPIs/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -37,14 +40,16 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getLineageViewPath } from '../../utils/RouterUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -52,7 +57,7 @@ import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropert
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
@@ -108,6 +113,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   lineageTabData,
   onExtensionUpdate,
 }: TopicDetailsProps) => {
+  const { t } = useTranslation();
+  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -191,7 +198,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -202,7 +209,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feeds & Tasks',
+      name: t('label.activity-feed-and-task-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -214,7 +221,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       count: feedCount,
     },
     {
-      name: 'Sample Data',
+      name: t('label.sample-data'),
       icon: {
         alt: 'sample_data',
         name: 'sample-data',
@@ -225,7 +232,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 3,
     },
     {
-      name: 'Config',
+      name: t('label.config'),
       icon: {
         alt: 'config',
         name: 'icon-config',
@@ -236,7 +243,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 4,
     },
     {
-      name: 'Lineage',
+      name: t('label.lineage'),
       icon: {
         alt: 'lineage',
         name: 'icon-lineage',
@@ -247,7 +254,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
     {
-      name: 'Custom Properties',
+      name: t('label.custom-properties'),
       isProtected: false,
       position: 6,
     },
@@ -255,7 +262,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: t('label.owner'),
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -266,7 +273,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: 'Tier',
+      key: t('label.tier'),
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
     ...getConfigDetails(),
@@ -310,6 +317,27 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       settingsUpdateHandler(updatedTopicDetails);
     }
   };
+
+  const onOwnerRemove = () => {
+    if (topicDetails) {
+      const updatedTopicDetails = {
+        ...topicDetails,
+        owner: undefined,
+      };
+      settingsUpdateHandler(updatedTopicDetails);
+    }
+  };
+
+  const onTierRemove = () => {
+    if (topicDetails) {
+      const updatedTopicDetails = {
+        ...topicDetails,
+        tags: undefined,
+      };
+      settingsUpdateHandler(updatedTopicDetails);
+    }
+  };
+
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Topic['tags'] = newTier
@@ -330,6 +358,26 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       return settingsUpdateHandler(updatedTopicDetails);
     } else {
       return Promise.reject();
+    }
+  };
+
+  const handleRestoreTopic = async () => {
+    try {
+      await restoreTopic(topicDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.topic'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.topic'),
+        })
+      );
     }
   };
 
@@ -363,6 +411,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <div />
       </div>
     );
+  };
+
+  const handleFullScreenClick = () => {
+    history.push(getLineageViewPath(EntityType.TOPIC, topicFQN));
   };
 
   const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
@@ -413,10 +465,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={topicPermissions.Delete}
+          currentOwner={topicDetails.owner}
           deleted={deleted}
           entityFieldTasks={getEntityFieldThreadCounts(
             EntityField.TAGS,
@@ -436,6 +489,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           followersList={followers}
           isFollowing={isFollowing}
           isTagEditable={topicPermissions.EditAll || topicPermissions.EditTags}
+          removeOwner={
+            topicPermissions.EditAll || topicPermissions.EditOwner
+              ? onOwnerRemove
+              : undefined
+          }
+          removeTier={
+            topicPermissions.EditAll || topicPermissions.EditTier
+              ? onTierRemove
+              : undefined
+          }
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
@@ -452,6 +515,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           }
           version={version}
           versionHandler={versionHandler}
+          onRestoreEntity={handleRestoreTopic}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
@@ -460,12 +524,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
             <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full tw--ml-5">
+                    <div className="tw-col-span-full">
                       <Description
                         description={description}
                         entityFieldTasks={getEntityFieldThreadCounts(
@@ -505,7 +569,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     </Fragment>
                   ) : (
                     <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-                      No schema data available
+                      {t('message.no-schema-data-available')}
                     </div>
                   )}
                 </>
@@ -560,6 +624,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     lineageLeafNodes={lineageTabData.lineageLeafNodes}
                     loadNodeHandler={lineageTabData.loadNodeHandler}
                     removeLineageHandler={lineageTabData.removeLineageHandler}
+                    onFullScreenClick={handleFullScreenClick}
                   />
                 </div>
               )}
@@ -569,7 +634,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     topicDetails as CustomPropertyProps['entityDetails']
                   }
                   entityType={EntityType.TOPIC}
-                  handleExtentionUpdate={onExtensionUpdate}
+                  handleExtensionUpdate={onExtensionUpdate}
                 />
               )}
               <div
@@ -607,7 +672,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           ) : null}
         </div>
       </div>
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

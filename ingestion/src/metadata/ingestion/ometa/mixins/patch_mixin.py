@@ -162,6 +162,9 @@ class OMetaPatchMixin(Generic[T]):
         if not table:
             return None
 
+        if not table.columns:
+            return None
+
         col_index, col = find_column_in_table_with_index(
             column_name=column_name, table=table
         )

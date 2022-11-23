@@ -26,6 +26,17 @@
       "type": "string",
       "format": "uri"
     },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Airbyte.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Airbyte.",
+      "type": "string",
+      "format": "password"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

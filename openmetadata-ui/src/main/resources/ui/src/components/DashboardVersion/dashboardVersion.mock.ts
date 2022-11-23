@@ -38,7 +38,7 @@ export const dashboardVersionProp = {
         deleted: false,
       },
       {
-        id: '0698ab5d-a122-4b86-a6e5-d10bf3550bd7',
+        id: '0698ab5d-a122-4b86-a6e5-d10bf3550bd6',
         type: 'chart',
         name: 'without_description',
         description: '',

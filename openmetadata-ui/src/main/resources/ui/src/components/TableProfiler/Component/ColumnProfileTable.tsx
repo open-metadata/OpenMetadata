@@ -274,6 +274,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         />
       </div>
       <Table
+        bordered
         columns={tableColumn}
         dataSource={data}
         pagination={false}

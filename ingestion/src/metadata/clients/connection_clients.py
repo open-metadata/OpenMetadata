@@ -56,6 +56,12 @@ class KafkaClient:
 
 
 @dataclass
+class KinesisClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class MetabaseClient:
     def __init__(self, client) -> None:
         self.client = client
@@ -92,6 +98,12 @@ class LookerClient:
 
 
 @dataclass
+class QuickSightClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class DatalakeClient:
     def __init__(self, client, config) -> None:
         self.client = client
@@ -117,6 +129,12 @@ class MlflowClientWrapper:
 
 
 @dataclass
+class SageMakerClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
 class FivetranClient:
     def __init__(self, client) -> None:
         self.client = client
@@ -124,17 +142,24 @@ class FivetranClient:
 
 @dataclass
 class DagsterClient:
-    def __init__(self, client) -> None:
+    def __init__(self, client, config) -> None:
         self.client = client
+        self.config = config
 
 
 @dataclass
-class DomoDashboardClient:
+class DomoClient:
     def __init__(self, client) -> None:
         self.client = client
 
 
 @dataclass
 class NifiClientWrapper:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class AmundsenClient:
     def __init__(self, client) -> None:
         self.client = client

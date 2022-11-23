@@ -123,6 +123,7 @@ const jsonData = {
     'fetch-entity-permissions-error': 'Unable to get permission for entity.',
     'fetch-test-suite-error': 'Error while fetching test suite',
     'fetch-test-cases-error': 'Error while fetching test cases',
+    'fetch-entity-details-error': 'Error while fetching entity.',
 
     'test-connection-error': 'Error while testing connection!',
 
@@ -138,6 +139,7 @@ const jsonData = {
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-ingestion-error': 'Error while updating ingestion workflow',
     'update-owner-error': 'Error while updating owner',
+    'remove-owner-error': 'Error while removing owner',
     'update-role-error': 'Error while updating role!',
     'update-service-config-error': 'Error while updating ingestion workflow',
     'update-tags-error': 'Error while updating tags!',
