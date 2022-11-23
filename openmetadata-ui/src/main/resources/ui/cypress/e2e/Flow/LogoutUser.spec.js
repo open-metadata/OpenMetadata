@@ -19,7 +19,7 @@ describe("Logout User", () => {
     cy.login();
   });
 
-  it("After login logout the user and invalidate the token", () => {
+  it.skip("After login logout the user and invalidate the token", () => {
     
     cy.get('[data-testid="avatar"]').should("be.visible").click()
 
