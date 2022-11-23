@@ -66,7 +66,7 @@ public class EmailUtil {
 
   public static void initialize(OpenMetadataApplicationConfig config) {
     if (!INITIALIZED) {
-      if (config.getSmtpSettings() != null) {
+      if (config.getSmtpSettings() != null && config.getSmtpSettings().getEnableSmtpServer()) {
         try {
           DEFAULT_SMTP_SETTINGS = config.getSmtpSettings();
           MAILER = createMailer(DEFAULT_SMTP_SETTINGS);
