@@ -17,7 +17,7 @@ volumes:
 services:
   postgresql:
     container_name: openmetadata_postgresql
-    image: openmetadata/postgresql:0.13.0-preview.0
+    image: openmetadata/postgresql:0.13.0
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -52,7 +52,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.13.0-preview.0
+    image: openmetadata/server:0.13.0
     environment:
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -143,7 +143,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.13.0-preview.0
+    image: openmetadata/ingestion:0.13.0
     depends_on:
       elasticsearch:
         condition: service_started
