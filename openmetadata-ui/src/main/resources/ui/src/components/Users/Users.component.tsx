@@ -942,8 +942,8 @@ const Users = ({
           ) : (
             <ErrorPlaceHolder>
               {tabNumber === 3
-                ? t('message.no-owned-entities')
-                : t('message.no-followed-entities')}
+                ? t('server.no-owned-entities')
+                : t('server.no-followed-entities')}
             </ErrorPlaceHolder>
           )}
         </div>
