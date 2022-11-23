@@ -88,8 +88,13 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "columns": {
         "properties": {
           "name": {
-            "type": "text",
-            "analyzer": "om_analyzer"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "dataType": {
             "type": "text"

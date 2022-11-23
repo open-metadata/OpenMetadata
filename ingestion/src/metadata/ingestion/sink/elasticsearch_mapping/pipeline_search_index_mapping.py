@@ -88,8 +88,13 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "tasks": {
         "properties": {
           "name": {
-            "type": "text",
-            "analyzer": "om_analyzer"
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "displayName": {
             "type": "text",
