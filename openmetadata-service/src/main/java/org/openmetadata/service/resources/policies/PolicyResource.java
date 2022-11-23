@@ -100,6 +100,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     // Load any existing rules from database, before loading seed data.
     dao.initSeedDataFromResources();
     ResourceRegistry.add(listOrEmpty(PolicyResource.getResourceDescriptors()));
+    PolicyCache.initialize();
   }
 
   public static class PolicyList extends ResultList<Policy> {

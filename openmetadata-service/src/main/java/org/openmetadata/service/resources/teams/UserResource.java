@@ -126,6 +126,7 @@ import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -141,7 +142,7 @@ import org.openmetadata.service.util.TokenUtil;
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "users")
+@Collection(name = "users", order = 3)
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
@@ -177,6 +178,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.loginAttemptCache = new LoginAttemptCache(config);
+    this.dao.initializeUsers(config);
+    SubjectCache.initialize();
   }
 
   public static class UserList extends ResultList<User> {

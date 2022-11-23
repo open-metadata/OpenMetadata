@@ -14,6 +14,11 @@
 package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.BotType;
 import org.openmetadata.schema.entity.teams.User;
@@ -21,11 +26,15 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.UserUtil;
 
+@Slf4j
 public class BotRepository extends EntityRepository<Bot> {
 
   static final String BOT_UPDATE_FIELDS = "botUser";
@@ -44,6 +53,30 @@ public class BotRepository extends EntityRepository<Bot> {
     setFullyQualifiedName(entity);
     User user = daoCollection.userDAO().findEntityById(entity.getBotUser().getId(), Include.ALL);
     entity.getBotUser().withName(user.getName()).withDisplayName(user.getDisplayName());
+  }
+
+  public void initializeBotUsers(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+    LOG.debug("Checking user entries for bot users");
+    Set<String> botPrincipalUsers =
+        new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getBotPrincipals());
+    Set<String> botUsers = Arrays.stream(BotType.values()).map(BotType::value).collect(Collectors.toSet());
+    String domain = SecurityUtil.getDomain(openMetadataApplicationConfig);
+    botUsers.remove(BotType.BOT.value());
+    botUsers.addAll(botPrincipalUsers);
+    for (String botUser : botUsers) {
+      User user = UserUtil.user(botUser, domain, botUser).withIsBot(true).withIsAdmin(false);
+      user = UserUtil.addOrUpdateBotUser(user, openMetadataApplicationConfig);
+      if (user != null) {
+        BotType botType;
+        try {
+          botType = BotType.fromValue(botUser);
+        } catch (IllegalArgumentException e) {
+          botType = BotType.BOT;
+        }
+        Bot bot = UserUtil.bot(user).withBotUser(user.getEntityReference()).withBotType(botType);
+        UserUtil.addOrUpdateBot(bot);
+      }
+    }
   }
 
   @Override

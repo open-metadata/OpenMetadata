@@ -70,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tags")
+@Collection(name = "tags", order = 6)
 public class TagResource {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   private final TagRepository dao;
@@ -114,6 +114,7 @@ public class TagResource {
                       t.getChildren().forEach(c -> c.withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now));
                     });
             daoCategory.initCategory(tagCategory);
+            TagLabelCache.initialize();
           } catch (Exception e) {
             LOG.warn("Failed to initialize the tag files {}", tagFile, e);
           }

@@ -10,10 +10,12 @@ import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.email.EmailRequest;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;
@@ -51,26 +53,38 @@ public class EmailUtil {
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
 
-  private static EmailUtil INSTANCE = null;
-  private SmtpSettings defaultSmtpSettings = null;
-  private Mailer mailer = null;
-  private Configuration templateConfiguration = null;
+  private static EmailUtil INSTANCE;
+  private static SmtpSettings DEFAULT_SMTP_SETTINGS;
+  private static Mailer MAILER;
+  private static Configuration TEMPLATE_CONFIGURATION;
+  private static volatile boolean INITIALIZED = false;
 
-  private EmailUtil(SmtpSettings smtpServerSettings) {
-    try {
-      this.defaultSmtpSettings = smtpServerSettings;
-      this.mailer = this.createMailer(smtpServerSettings);
-      this.templateConfiguration = new Configuration(VERSION_2_3_28);
-    } catch (Exception ex) {
-      LOG.error("Error in instantiating [MAILER] : Reason {} ", ex.getMessage());
+  public static void initialize(OpenMetadataApplicationConfig config) {
+    if (!INITIALIZED) {
+      if (config.getSmtpSettings() != null && config.getSmtpSettings().getEnableSmtpServer()) {
+        try {
+          DEFAULT_SMTP_SETTINGS = config.getSmtpSettings();
+          MAILER = createMailer(DEFAULT_SMTP_SETTINGS);
+          TEMPLATE_CONFIGURATION = new Configuration(VERSION_2_3_28);
+          LOG.info("Email Util cache is initialized");
+        } catch (Exception ex) {
+          LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
+        }
+      } else {
+        DEFAULT_SMTP_SETTINGS = new SmtpSettings();
+      }
+      INSTANCE = new EmailUtil();
+      INITIALIZED = true;
+    } else {
+      INITIALIZED = false;
+      LOG.info("Email Util is already initialized");
     }
   }
 
-  private Mailer createMailer(SmtpSettings smtpServerSettings) {
+  private static Mailer createMailer(SmtpSettings smtpServerSettings) {
     TransportStrategy strategy = SMTP;
     switch (smtpServerSettings.getTransportationStrategy()) {
       case SMTP:
-        strategy = SMTP;
         break;
       case SMPTS:
         strategy = SMTPS;
@@ -92,145 +106,26 @@ public class EmailUtil {
     return INSTANCE;
   }
 
-  public Email buildEmailWithSender(EmailRequest request) {
-    EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
-    if (request.getSenderMail() != null
-        && !request.getSenderMail().equals("")
-        && request.getRecipientMails() != null
-        && request.getRecipientMails().size() != 0
-        && request.getSubject() != null
-        && !request.getSubject().equals("")) {
-      // Sender Details
-      if (request.getSenderName() != null && !request.getSenderName().equals("")) {
-        emailBuilder.from(request.getSenderName(), request.getSenderMail());
-      } else {
-        emailBuilder.from(request.getSenderMail());
+  public static void sendInviteMailToAdmin(User user, String pwd) {
+    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
+      templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
+      templatePopulator.put(EmailUtil.USERNAME, user.getName());
+      templatePopulator.put(EmailUtil.PASSWORD, pwd);
+      templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getInstance().getOMUrl());
+      try {
+        EmailUtil.getInstance()
+            .sendMail(
+                EmailUtil.getInstance().getEmailInviteSubject(),
+                templatePopulator,
+                user.getEmail(),
+                EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+                EmailUtil.INVITE_RANDOM_PWD);
+      } catch (Exception ex) {
+        LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
       }
-
-      // Recipient
-      request
-          .getRecipientMails()
-          .forEach(
-              (pair) -> {
-                if (pair.getName() != null && !pair.getName().equals("")) {
-                  emailBuilder.to(pair.getName(), pair.getEmail());
-                } else {
-                  emailBuilder.to(pair.getEmail());
-                }
-              });
-
-      // CC
-      if (request.getCcMails() != null) {
-        request
-            .getCcMails()
-            .forEach(
-                (pair) -> {
-                  if (pair.getName() != null && !pair.getName().equals("")) {
-                    emailBuilder.cc(pair.getName(), pair.getEmail());
-                  } else {
-                    emailBuilder.cc(pair.getEmail());
-                  }
-                });
-      }
-
-      // BCC
-      if (request.getBccMails() != null) {
-        request
-            .getBccMails()
-            .forEach(
-                (pair) -> {
-                  if (pair.getName() != null && !pair.getName().equals("")) {
-                    emailBuilder.bcc(pair.getName(), pair.getEmail());
-                  } else {
-                    emailBuilder.bcc(pair.getEmail());
-                  }
-                });
-      }
-
-      // Subject
-      if (request.getSubject() != null) {
-        emailBuilder.withSubject(request.getSubject());
-      }
-
-      if (request.getContent() != null) {
-        if (request.getContentType() == EmailRequest.ContentType.HTML) {
-          emailBuilder.withHTMLText(request.getContent());
-        } else {
-          emailBuilder.withPlainText(request.getContent());
-        }
-      }
-
-    } else {
-      throw new RuntimeException("Email Request is missing Required Details");
     }
-    return emailBuilder.buildEmail();
-  }
-
-  public Email buildEmailWithDefaultSender(EmailRequest request) {
-    EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
-    if (request.getRecipientMails() != null
-        && request.getRecipientMails().size() != 0
-        && request.getSubject() != null
-        && !request.getSubject().equals("")) {
-      // Sender Details
-      emailBuilder.from(defaultSmtpSettings.getSenderMail());
-
-      // Recipient
-      request
-          .getRecipientMails()
-          .forEach(
-              (pair) -> {
-                if (pair.getName() != null && !pair.getName().equals("")) {
-                  emailBuilder.to(pair.getName(), pair.getEmail());
-                } else {
-                  emailBuilder.to(pair.getEmail());
-                }
-              });
-
-      // CC
-      if (request.getCcMails() != null) {
-        request
-            .getCcMails()
-            .forEach(
-                (pair) -> {
-                  if (pair.getName() != null && !pair.getName().equals("")) {
-                    emailBuilder.cc(pair.getName(), pair.getEmail());
-                  } else {
-                    emailBuilder.cc(pair.getEmail());
-                  }
-                });
-      }
-
-      // BCC
-      if (request.getBccMails() != null) {
-        request
-            .getBccMails()
-            .forEach(
-                (pair) -> {
-                  if (pair.getName() != null && !pair.getName().equals("")) {
-                    emailBuilder.bcc(pair.getName(), pair.getEmail());
-                  } else {
-                    emailBuilder.bcc(pair.getEmail());
-                  }
-                });
-      }
-
-      // Subject
-      if (request.getSubject() != null) {
-        emailBuilder.withSubject(request.getSubject());
-      }
-
-      if (request.getContent() != null) {
-        if (request.getContentType() == EmailRequest.ContentType.HTML) {
-          emailBuilder.withHTMLText(request.getContent());
-        } else {
-          emailBuilder.withPlainText(request.getContent());
-        }
-      }
-    } else {
-      throw new RuntimeException("Email Request is missing Required Details");
-    }
-    return emailBuilder.buildEmail();
   }
 
   public void sendMail(
@@ -239,10 +134,10 @@ public class EmailUtil {
     EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
     emailBuilder.withSubject(subject);
     emailBuilder.to(to);
-    emailBuilder.from(defaultSmtpSettings.getSenderMail());
+    emailBuilder.from(DEFAULT_SMTP_SETTINGS.getSenderMail());
 
-    templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
-    Template template = templateConfiguration.getTemplate(templatePath);
+    TEMPLATE_CONFIGURATION.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+    Template template = TEMPLATE_CONFIGURATION.getTemplate(templatePath);
 
     // write the freemarker output to a StringWriter
     StringWriter stringWriter = new StringWriter();
@@ -253,55 +148,40 @@ public class EmailUtil {
   }
 
   public void sendMail(Email email) {
-    if (mailer != null && defaultSmtpSettings.getEnableSmtpServer()) {
-      mailer.sendMail(email, true);
+    if (MAILER != null && DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+      MAILER.sendMail(email, true);
     }
   }
 
   public void testConnection() {
-    mailer.testConnection();
-  }
-
-  public void sendMailWithSmtp(Email email, SmtpSettings settings) {
-    createMailer(settings).sendMail(email);
-  }
-
-  public static class EmailUtilBuilder {
-    private EmailUtilBuilder() {}
-
-    public static EmailUtil build(SmtpSettings smtpServerSettings) {
-      if (INSTANCE == null) {
-        INSTANCE = new EmailUtil(smtpServerSettings);
-      }
-      return INSTANCE;
-    }
+    MAILER.testConnection();
   }
 
   public String getEmailVerificationSubject() {
-    return String.format(EMAIL_VERIFICATION_SUBJECT, defaultSmtpSettings.getEmailingEntity());
+    return String.format(EMAIL_VERIFICATION_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
   }
 
   public String getPasswordResetSubject() {
-    return String.format(PASSWORD_RESET_SUBJECT, defaultSmtpSettings.getEmailingEntity());
+    return String.format(PASSWORD_RESET_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
   }
 
   public String getAccountStatusChangeSubject() {
-    return String.format(ACCOUNT_STATUS_SUBJECT, defaultSmtpSettings.getEmailingEntity());
+    return String.format(ACCOUNT_STATUS_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
   }
 
   public String getEmailInviteSubject() {
-    return String.format(INVITE_SUBJECT, defaultSmtpSettings.getEmailingEntity());
+    return String.format(INVITE_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
   }
 
   public String getEmailingEntity() {
-    return defaultSmtpSettings.getEmailingEntity();
+    return DEFAULT_SMTP_SETTINGS.getEmailingEntity();
   }
 
   public String getSupportUrl() {
-    return defaultSmtpSettings.getSupportUrl();
+    return DEFAULT_SMTP_SETTINGS.getSupportUrl();
   }
 
   public String getOMUrl() {
-    return defaultSmtpSettings.getOpenMetadataUrl();
+    return DEFAULT_SMTP_SETTINGS.getOpenMetadataUrl();
   }
 }
