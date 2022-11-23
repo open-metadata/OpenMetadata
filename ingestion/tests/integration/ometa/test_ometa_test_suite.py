@@ -12,6 +12,7 @@
 """
 OpenMetadata API test suite mixin test
 """
+from datetime import datetime
 from unittest import TestCase
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -25,6 +26,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCase as OMetaTestCase
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
@@ -35,6 +41,10 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
 
 
 class OMetaTestSuiteTest(TestCase):
@@ -93,6 +103,17 @@ class OMetaTestSuiteTest(TestCase):
             )
         )
 
+        cls.metadata.add_test_case_results(
+            test_results=TestCaseResult(
+                timestamp=int(datetime.utcnow().timestamp()),
+                testCaseStatus=TestCaseStatus.Success,
+                result="Test Case Succes",
+                sampleData=None,
+                testResultValue=[TestResultValue(name="foo", value="10")],
+            ),
+            test_case_fqn="sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",
+        )
+
     def test_get_or_create_test_suite(self):
         """test we get a test suite object"""
         test_suite = self.metadata.get_or_create_test_suite(
@@ -117,18 +138,21 @@ class OMetaTestSuiteTest(TestCase):
         assert test_case.name.__root__ == "testCaseForIntegration"
         assert isinstance(test_case, OMetaTestCase)
 
+    def test_get_test_case_results(self):
+        """test get test case result method"""
+        res = self.metadata.get_test_case_results(
+            "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+        )
+
+        assert res
+
     @classmethod
     def tearDownClass(cls) -> None:
         cls.metadata.delete(
             entity=TestSuite,
             entity_id=cls.test_suite.id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=TestDefinition,
-            entity_id=cls.test_definition.id,
             recursive=True,
             hard_delete=True,
         )
