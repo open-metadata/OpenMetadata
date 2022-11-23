@@ -136,8 +136,8 @@ You might need to pass your own `values.yaml` with the `--values` flag
  Go to Settings -> Elasticsearch
 <Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project"/>
 
- Click on **reindex all**
- in the dialog box choose **Recreate Indexes** to All
+ Click on reindex all
+ in the dialog box choose Recreate Indexes to All
  <Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
 
 ## Troubleshooting for 0.12 Release
