@@ -113,4 +113,4 @@ Click on "reindex all"
 
 in the dialog box choose "Recreate Indexes" to All
 
-![](/images/deployment/upgrade/reindex-ES.png)
+ <Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
