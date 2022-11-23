@@ -43,7 +43,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
-from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.workflow_helper import (
     set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
 )
@@ -87,8 +87,6 @@ class Workflow:
         """
         self.config = config
         self._timer: Optional[RepeatedTimer] = None
-
-        set_loggers_level(config.workflowConfig.loggerLevel.value)
 
         source_type = self.config.source.type.lower()
 

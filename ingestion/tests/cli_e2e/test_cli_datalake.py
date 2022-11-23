@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Test MySql connector with CLI
+Test Datalake connector with CLI
 """
 from typing import List
 
@@ -18,43 +18,10 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 from .test_cli_db_base_common import CliCommonDB
 
 
-class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
-    create_table_query: str = """
-        CREATE TABLE persons (
-            person_id int,
-            full_name varchar(255)
-        )
-    """
-
-    create_view_query: str = """
-        CREATE VIEW view_persons AS
-            SELECT *
-            FROM openmetadata_db.persons;
-    """
-
-    insert_data_queries: List[str] = [
-        "INSERT INTO persons (person_id, full_name) VALUES (1,'Peter Parker');",
-        "INSERT INTO persons (person_id, full_name) VALUES (1, 'Clark Kent');",
-    ]
-
-    drop_table_query: str = """
-        DROP TABLE IF EXISTS openmetadata_db.persons;
-    """
-
-    drop_view_query: str = """
-        DROP VIEW  IF EXISTS openmetadata_db.view_persons;
-    """
-
+class DatalakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def get_connector_name() -> str:
-        return "mysql"
-
-    def create_table_and_view(self) -> None:
-        SQACommonMethods.create_table_and_view(self)
-
-    def delete_table_and_view(self) -> None:
-        SQACommonMethods.delete_table_and_view(self)
+        return "Datalake"
 
     @staticmethod
     def expected_tables() -> int:
@@ -65,7 +32,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "local_mysql.default.openmetadata_db.persons"
+        return "local_datalake.default.openmetadata_db.persons"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
