@@ -433,6 +433,7 @@ class OMetaTableTest(TestCase):
         assert table_with_query.tableQueries[0].query == query_no_user.query
         assert table_with_query.tableQueries[0].users is None
 
+        # Validate that we can properly add user information
         query_with_user = SqlQuery(query="select * from awesome", users=[self.owner])
 
         self.metadata.ingest_table_queries_data(
