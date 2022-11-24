@@ -64,7 +64,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Glossary collection", tags = "Glossary collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "glossaries")
+@Collection(name = "glossaries", order = 4)
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
 

@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -69,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Bot collection", tags = "Bot collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots")
+@Collection(name = "bots", order = 4)
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
@@ -83,14 +84,14 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return entity;
   }
 
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    this.dao.initializeBotUsers(config);
+  }
+
   public static class BotList extends ResultList<Bot> {
     @SuppressWarnings("unused")
     public BotList() {
       /* Required for serde */
-    }
-
-    public BotList(List<Bot> data) {
-      super(data);
     }
   }
 

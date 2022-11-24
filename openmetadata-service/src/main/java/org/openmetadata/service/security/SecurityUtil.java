@@ -19,6 +19,8 @@ import java.security.Principal;
 import java.util.Map;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
@@ -44,6 +46,11 @@ public final class SecurityUtil {
     }
     String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
     return principal == null ? null : principal.split("@")[0];
+  }
+
+  public static String getDomain(OpenMetadataApplicationConfig config) {
+    String principalDomain = config.getAuthorizerConfiguration().getPrincipalDomain();
+    return CommonUtil.nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
   }
 
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {

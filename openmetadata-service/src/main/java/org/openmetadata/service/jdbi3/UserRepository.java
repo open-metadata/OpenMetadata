@@ -32,19 +32,23 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.teams.authn.SSOAuthMechanism;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
@@ -71,6 +75,24 @@ public class UserRepository extends EntityRepository<User> {
       return new Fields(tempFields, String.join(",", tempFields));
     }
     return new Fields(tempFields, fields);
+  }
+
+  public void initializeUsers(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+    LOG.debug("Checking user entries for admin users");
+    Set<String> adminUsers =
+        new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getAdminPrincipals());
+    String domain = SecurityUtil.getDomain(openMetadataApplicationConfig);
+    String providerType = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
+    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+      UserUtil.handleBasicAuth(adminUsers, domain);
+    } else {
+      UserUtil.addUsers(adminUsers, domain, true);
+    }
+
+    LOG.debug("Checking user entries for test users");
+    Set<String> testUsers =
+        new HashSet<>(openMetadataApplicationConfig.getAuthorizerConfiguration().getTestPrincipals());
+    UserUtil.addUsers(testUsers, domain, null);
   }
 
   @Override

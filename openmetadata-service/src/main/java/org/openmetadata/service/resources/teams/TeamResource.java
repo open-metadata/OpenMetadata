@@ -71,7 +71,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Teams collection", tags = "Teams collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "teams", order = 3) // Load after roles, and policy resources
+@Collection(name = "teams", order = 2) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
 
