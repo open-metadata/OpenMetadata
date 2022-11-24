@@ -171,13 +171,13 @@ elasticsearch:
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
 
 eventMonitoringConfiguration:
-  publisher: ${MONITOR_PUBLISHER:-noop}  # Possible values are "noop", "cloudwatch"
-  batchSize: ${MONITOR_PUBLISHER_BATCH_SIZE:-10}
+  eventMonitor: ${EVENT_MONITOR:-noop}  # Possible values are "noop", "cloudwatch"
+  batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
   # it will use the default auth provider for AWS services if parameters are not set
   parameters:
-    region: ${OM_SM_REGION:-""}
-    accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
-    secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
+    region: ${OM_MONITOR_REGION:-""}
+    accessKeyId: ${OM_MONITOR_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${OM_MONITOR_ACCESS_KEY:-""}
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
