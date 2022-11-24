@@ -56,6 +56,23 @@ AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
+### 1.3 After 0.13.0
+
+```shell
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+
+AUTHENTICATION_PROVIDER=custom-oidc
+CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=KeyCloak
+AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8080/realms/myrealm/protocol/openid-connect/certs}]
+AUTHENTICATION_AUTHORITY={http://localhost:8080/realms/myrealm}
+AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+```
+
 **Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.
 
