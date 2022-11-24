@@ -21,29 +21,29 @@ from .test_cli_db_base_common import CliCommonDB
 class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     create_table_query: str = """
-        CREATE TABLE orders (
+        CREATE TABLE `open-metadata-beta.exclude_me`.orders (
             id int,
-            order_name varchar(255)
+            order_name string
         )
     """
 
     create_view_query: str = """
-        CREATE VIEW view_orders AS
+        CREATE VIEW `open-metadata-beta.exclude_me`.view_orders AS
             SELECT *
-            FROM openmetadata_db.orders;
+            FROM `open-metadata-beta.exclude_me`.orders ;
     """
 
     insert_data_queries: List[str] = [
-        "INSERT INTO orders (id, order_name) VALUES (1,'XBOX');",
-        "INSERT INTO persons (id, order_name) VALUES (2, 'PS5');",
+        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (1,'XBOX');",
+        "INSERT INTO `open-metadata-beta.exclude_me`.orders (id, order_name) VALUES (2,'PS');",
     ]
 
     drop_table_query: str = """
-        DROP TABLE IF EXISTS openmetadata_db.orders;
+        DROP TABLE IF EXISTS `open-metadata-beta.exclude_me`.orders;
     """
 
     drop_view_query: str = """
-        DROP VIEW  IF EXISTS openmetadata_db.view_orders;
+        DROP VIEW  IF EXISTS `open-metadata-beta.exclude_me`.view_orders;
     """
 
     def create_table_and_view(self) -> None:
@@ -58,14 +58,14 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_tables() -> int:
-        return 4
+        return 2
 
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "local_bigquery.default.openmetadata_db.persons"
+        return "local_bigquery.open-metadata-beta.exclude_me.orders"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
@@ -97,4 +97,4 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 4
+        return 2
