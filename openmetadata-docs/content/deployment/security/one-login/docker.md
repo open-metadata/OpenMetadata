@@ -54,6 +54,22 @@ AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
+### 1.3 After 0.13.0
+
+```shell
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+
+AUTHENTICATION_PROVIDER=custom-oidc
+AUTHENTICATION_PUBLIC_KEYS={public key url} # Update with your Public Key URL
+AUTHENTICATION_AUTHORITY={issuer url} # Update with your Issuer URL
+AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+```
+
 **Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.
 
