@@ -13,13 +13,8 @@
 
 package org.openmetadata.service.resources.events;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.openmetadata.service.util.EntityUtil.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -38,11 +33,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.events.CreateWebhook;
 import org.openmetadata.schema.filter.EventFilter;
 import org.openmetadata.schema.filter.Filters;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.FailureDetails;
-import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.Webhook.Status;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -292,7 +283,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   @Test
-  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) {
+  protected void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) {
     // TODO fix this test as currently bot can't update webhook
   }
 
