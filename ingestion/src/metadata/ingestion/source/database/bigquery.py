@@ -223,7 +223,7 @@ class BigquerySource(CommonDbSourceService):
         ):
             self.set_inspector(database_name=self.project_ids)
             yield self.project_ids
-        if hasattr(
+        elif hasattr(
             self.service_connection.credentials.gcsConfig, "projectId"
         ) and isinstance(
             self.service_connection.credentials.gcsConfig.projectId, MultipleProjectId
