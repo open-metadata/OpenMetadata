@@ -249,6 +249,7 @@ def run_docker(  # pylint: disable=too-many-branches
             compose_files=[docker_compose_file_path],
             compose_env_file=env_file,
         )
+
         if docker_obj_instance.start:
             start_docker(
                 docker=docker,

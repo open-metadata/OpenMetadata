@@ -16,7 +16,7 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 <Warning>
 
-It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+It is adviced to go through [openmetadata release notes](/deployment/upgrade/versions/012-to-013) before starting the upgrade process. 
 
 </Warning>
 
@@ -25,6 +25,7 @@ It is adviced to go through [openmetadata release notes](/deployment/upgrade#bre
 OpenMetadata release binaries are maintained as GitHub releases.
 
 To download a specific release binary:
+
 1. Visit [github.com/open-metadata/OpenMetadata/releases](https://github.com/open-metadata/OpenMetadata/releases). The latest
   release will be at the top of this page. 
 2. Locate the Assets' section for the release you want to upgrade to. 
@@ -81,13 +82,6 @@ MySQL) and index (in Elasticsearch).
 ./bootstrap/bootstrap_storage.sh migrate-all
 ```
 
-<Note>
-
-This step will be different in the 0.9 to 0.10 upgrade as it is a backward incompatible change.
-
-Find specific instructions [here](/deployment/upgrade/versions/090-to-010).
-
-</Note>
 
 ### 6. Restart the OpenMetadata server
 
@@ -108,3 +102,15 @@ You will need to replace `<connectorname>` in the command below with the name of
 ```commandline
 pip3 install --upgrade "openmetadata-ingestion[<connectorname>]"
 ```
+
+### Re-index all your metadata
+
+Go to Settings -> Elasticsearch
+
+<Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex"/>
+
+Click on reindex all
+
+in the dialog box choose Recreate Indexes to All
+
+ <Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
