@@ -82,7 +82,7 @@ const AddGlossaryTerm = ({
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
-      setReviewer(glossaryData?.reviewers as EntityReference[]);
+      setReviewer(glossaryData?.reviewers);
     }
   }, [glossaryData]);
 

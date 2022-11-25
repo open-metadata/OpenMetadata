@@ -61,8 +61,8 @@ const RelatedTermsModal = ({
     setIsLoading(true);
     searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
       .then((res) => {
-        const termResult = (
-          formatSearchGlossaryTermResponse(res.data.hits.hits) as GlossaryTerm[]
+        const termResult = formatSearchGlossaryTermResponse(
+          res.data.hits.hits
         ).filter((item) => {
           const isTermExist = relatedTerms?.some(
             (term) => term.fullyQualifiedName === item.fullyQualifiedName

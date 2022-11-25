@@ -180,7 +180,7 @@ declare module 'Models' {
     displayName: string;
     description: string;
     fullyQualifiedName: string;
-    owner?: EntityReference;
+    owner: EntityReference;
     tableType?: string;
     tags: string[] | TagLabel[];
     dailyStats?: number;

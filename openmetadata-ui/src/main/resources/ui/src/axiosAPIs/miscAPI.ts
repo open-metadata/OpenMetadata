@@ -24,7 +24,7 @@ import {
   SearchResponse,
 } from '../interface/search.interface';
 import { getCurrentUserId } from '../utils/CommonUtils';
-import { getSearchAPIQuery } from '../utils/SearchUtils';
+import { getSearchAPIQueryParams } from '../utils/SearchUtils';
 import APIClient from './index';
 
 export const searchData = <SI extends SearchIndex>(
@@ -34,12 +34,12 @@ export const searchData = <SI extends SearchIndex>(
   filters: string,
   sortField: string,
   sortOrder: string,
-  searchIndex: SI,
+  searchIndex: SI | SI[],
   onlyDeleted = false,
   trackTotalHits = false
 ) => {
-  return APIClient.get<SearchResponse<SI>>(
-    `/search/query?${getSearchAPIQuery(
+  return APIClient.get<SearchResponse<SI>>(`/search/query`, {
+    params: getSearchAPIQueryParams(
       queryString,
       from,
       size,
@@ -49,8 +49,8 @@ export const searchData = <SI extends SearchIndex>(
       searchIndex,
       onlyDeleted,
       trackTotalHits
-    )}`
-  );
+    ),
+  });
 };
 
 export const getOwnershipCount: Function = (
@@ -183,13 +183,12 @@ export const getTeamsByQuery = async (params: {
 export const getTagSuggestions = (term: string) => {
   const params = {
     q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
+    index: `${SearchIndex.TAG},${SearchIndex.TAG}`,
   };
 
-  return APIClient.get<RawSuggestResponse<SearchIndex.GLOSSARY>>(
-    `/search/suggest`,
-    { params }
-  );
+  return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {
+    params,
+  });
 };
 
 export const getSearchedUsers = (
@@ -213,15 +212,10 @@ export const getSearchedUsersAndTeams = (
   from: number,
   size = 10
 ) => {
-  return searchData(
-    queryString,
-    from,
-    size,
-    '',
-    '',
-    '',
-    `${SearchIndex.USER},${SearchIndex.TEAM}` as SearchIndex
-  );
+  return searchData(queryString, from, size, '', '', '', [
+    SearchIndex.USER,
+    SearchIndex.TEAM,
+  ]);
 };
 
 export const deleteEntity = async (

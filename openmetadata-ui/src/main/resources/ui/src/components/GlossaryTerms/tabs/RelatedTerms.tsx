@@ -19,8 +19,8 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { SearchResponse } from '../../../interface/search.interface';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
+import { getEntityReferenceFromGlossary } from '../../../utils/GlossaryUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import SummaryDetail from '../SummaryDetail';
 
@@ -80,12 +80,14 @@ const RelatedTerms = ({
     searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
       .then((res) => {
         const termResult = formatSearchGlossaryTermResponse(
-          (res?.data as SearchResponse<SearchIndex.GLOSSARY>)?.hits?.hits
+          res.data.hits.hits
         ).filter((item) => {
           return item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName;
-        }) as unknown as EntityReference[];
+        });
 
-        const data = searchText ? getSearchedTerms(termResult) : termResult;
+        const results = termResult.map(getEntityReferenceFromGlossary);
+
+        const data = searchText ? getSearchedTerms(results) : results;
         setOptions(data);
       })
       .catch(() => {
