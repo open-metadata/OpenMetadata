@@ -29,7 +29,7 @@ import { PRIMERY_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../generated/type/entityLineage';
+import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';

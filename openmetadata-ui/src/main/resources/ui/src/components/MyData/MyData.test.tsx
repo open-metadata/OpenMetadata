@@ -22,7 +22,7 @@ import {
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { User } from '../../generated/entity/teams/user';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
 import MyData from './MyData.component';
 import { MyDataProps } from './MyData.interface';

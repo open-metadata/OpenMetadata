@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React, { useState } from 'react';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import SVGIcons from '../../utils/SvgUtils';
 
 type Props<T> = {

@@ -18,7 +18,7 @@ import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../../generated/type/entityLineage';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { SearchResponse } from '../../../interface/search.interface';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';

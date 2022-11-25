@@ -22,10 +22,8 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import {
-  EntityLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';

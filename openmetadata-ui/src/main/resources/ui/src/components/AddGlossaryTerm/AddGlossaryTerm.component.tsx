@@ -23,7 +23,7 @@ import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import {
   errorMsg,
   isUrlFriendlyName,

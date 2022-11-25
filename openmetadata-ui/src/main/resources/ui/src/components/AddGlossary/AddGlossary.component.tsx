@@ -20,7 +20,7 @@ import React, { useRef, useState } from 'react';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import {
   errorMsg,
   getCurrentUserId,

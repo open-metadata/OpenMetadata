@@ -20,7 +20,7 @@ import { AssetsDataType, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -43,6 +43,7 @@ import AssetsTabs from './tabs/AssetsTabs.component';
 import GlossaryTermReferences from './tabs/GlossaryTermReferences';
 import GlossaryTermSynonyms from './tabs/GlossaryTermSynonyms';
 import RelatedTerms from './tabs/RelatedTerms';
+
 const { Text } = Typography;
 
 type Props = {

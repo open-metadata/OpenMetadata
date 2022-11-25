@@ -19,7 +19,7 @@ import { getSuggestedUsers, searchData } from '../../../axiosAPIs/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
-import { EntityReference } from '../../../generated/type/entityLineage';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { SearchResponse } from '../../../interface/search.interface';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';

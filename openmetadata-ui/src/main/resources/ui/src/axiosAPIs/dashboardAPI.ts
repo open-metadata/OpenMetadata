@@ -16,7 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { RestoreEntitiesRequestType } from 'Models';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
-import { EntityReference } from '../generated/type/entityLineage';
+import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
 import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';

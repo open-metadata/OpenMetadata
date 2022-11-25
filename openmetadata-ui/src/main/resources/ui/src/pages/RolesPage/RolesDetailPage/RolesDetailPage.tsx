@@ -43,7 +43,7 @@ import {
 } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
-import { EntityReference } from '../../../generated/type/entityLineage';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {

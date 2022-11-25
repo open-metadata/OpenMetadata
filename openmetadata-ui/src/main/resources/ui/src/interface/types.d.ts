@@ -13,9 +13,10 @@
 
 declare module 'Models' {
   import { ChangeDescription } from '../generated/entity/data/dashboard';
-  import { EntityReference } from '../generated/type/entityLineage';
+  import { EntityReference } from '../generated/type/entityReference';
   import { TagLabel } from '../generated/type/tagLabel';
   import { Paging } from './../generated/type/paging';
+
   export interface RestoreEntitiesRequestType {
     id: string;
   }

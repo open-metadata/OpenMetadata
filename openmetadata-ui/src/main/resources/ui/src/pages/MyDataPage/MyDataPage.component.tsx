@@ -37,7 +37,7 @@ import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';

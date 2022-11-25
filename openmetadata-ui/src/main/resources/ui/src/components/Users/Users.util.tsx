@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from '../../generated/entity/teams/user';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 export const userPageFilterList = [
