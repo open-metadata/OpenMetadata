@@ -51,7 +51,7 @@ const GlobalSearchSuggestions = ({
   selectRef,
 }: GlobalSearchSuggestionsProp) => {
   const history = useHistory();
-  const [options, setOptions] = useState<Array<Option>>([]);
+  const [options, setOptions] = useState<Option[]>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
@@ -267,8 +267,14 @@ const GlobalSearchSuggestions = ({
       getSuggestions(searchText)
         .then((res) => {
           if (res.data) {
-            setOptions(res.data.suggest['metadata-suggest'][0].options);
-            setSuggestions(res.data.suggest['metadata-suggest'][0].options);
+            setOptions(
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
+            );
+            setSuggestions(
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
+            );
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }

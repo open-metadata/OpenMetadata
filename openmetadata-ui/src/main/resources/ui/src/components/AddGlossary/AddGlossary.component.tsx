@@ -269,7 +269,7 @@ const AddGlossary = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleReviewerRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );

@@ -18,7 +18,6 @@ import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { SearchResponse } from '../../../interface/search.interface';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -51,7 +50,7 @@ const RelatedTermsModal = ({
     const currOptions = selectedOption.map(
       (item) => item.fullyQualifiedName || item.name
     );
-    const data = searchedData.filter((item: GlossaryTerm) => {
+    const data = searchedData.filter((item) => {
       return !currOptions.includes(item.fullyQualifiedName || item.name);
     });
 
@@ -63,9 +62,7 @@ const RelatedTermsModal = ({
     searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
       .then((res) => {
         const termResult = (
-          formatSearchGlossaryTermResponse(
-            (res?.data as SearchResponse<SearchIndex.GLOSSARY>)?.hits?.hits
-          ) as GlossaryTerm[]
+          formatSearchGlossaryTermResponse(res.data.hits.hits) as GlossaryTerm[]
         ).filter((item) => {
           const isTermExist = relatedTerms?.some(
             (term) => term.fullyQualifiedName === item.fullyQualifiedName
@@ -110,7 +107,7 @@ const RelatedTermsModal = ({
           name: '',
           displayName: d.displayName || d.name,
           id: d.id,
-          type: d.type,
+          type: 'tag',
           isChecked: isIncludeInOptions(d.id),
         }}
         key={d.id}

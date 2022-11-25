@@ -280,8 +280,14 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
       getSuggestions(searchText)
         .then((res) => {
           if (res.data) {
-            setOptions(res.data.suggest['metadata-suggest'][0].options);
-            setSuggestions(res.data.suggest['metadata-suggest'][0].options);
+            setOptions(
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
+            );
+            setSuggestions(
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
+            );
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }

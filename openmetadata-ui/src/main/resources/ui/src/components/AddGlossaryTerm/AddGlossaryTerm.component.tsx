@@ -76,7 +76,7 @@ const AddGlossaryTerm = ({
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
-  const [relatedTerms, setRelatedTerms] = useState<Array<GlossaryTerm>>([]);
+  const [relatedTerms, setRelatedTerms] = useState<GlossaryTerm[]>([]);
   const [synonyms, setSynonyms] = useState('');
   const [references, setReferences] = useState<TermReference[]>([]);
 
@@ -94,7 +94,7 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<GlossaryTerm>) => {
+  const handleRelatedTermsSave = (terms: GlossaryTerm[]) => {
     setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };
@@ -210,13 +210,10 @@ const AddGlossaryTerm = ({
       }))
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
-    const updatedTerms = relatedTerms.map(
-      (term) =>
-        ({
-          id: term.id,
-          type: term.type,
-        } as EntityReference)
-    );
+    const updatedTerms = relatedTerms.map((term) => ({
+      id: term.id,
+      type: 'tag',
+    }));
 
     if (validateForm(updatedReference)) {
       const updatedName = name.trim();
@@ -298,7 +295,6 @@ const AddGlossaryTerm = ({
           can be added or updated to the Glossary. The glossary terms can be
           reviewed by certain users, who can accept or reject the terms.
         </div>
-        {/* {getDocButton('Read Glossary Term Doc', '', 'glossary-term-doc')} */}
       </>
     );
   };
@@ -466,7 +462,7 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleTermRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );
@@ -496,7 +492,7 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleReviewerRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );

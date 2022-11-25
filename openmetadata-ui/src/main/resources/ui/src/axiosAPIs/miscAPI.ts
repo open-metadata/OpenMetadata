@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { ExploreSearchIndex } from '../components/Explore/explore.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -27,18 +27,18 @@ import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
 
-export const searchData = (
+export const searchData = <SI extends SearchIndex>(
   queryString: string,
   from: number,
   size: number,
   filters: string,
   sortField: string,
   sortOrder: string,
-  searchIndex: SearchIndex,
+  searchIndex: SI,
   onlyDeleted = false,
   trackTotalHits = false
 ) => {
-  return APIClient.get<SearchResponse<typeof searchIndex>>(
+  return APIClient.get<SearchResponse<SI>>(
     `/search/query?${getSearchAPIQuery(
       queryString,
       from,
@@ -87,20 +87,32 @@ export const fetchAirflowConfig = async () => {
   return response.data;
 };
 
-export const getSuggestions = (
+export const getSuggestions = <T extends SearchIndex>(
   queryString: string,
-  searchIndex?: SearchIndex
+  searchIndex?: T
 ) => {
   const params = {
     q: queryString,
-    index:
-      searchIndex ??
-      (`${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}` as SearchIndex),
+    index: searchIndex ?? [
+      SearchIndex.DASHBOARD,
+      SearchIndex.TABLE,
+      SearchIndex.TOPIC,
+      SearchIndex.PIPELINE,
+      SearchIndex.MLMODEL,
+    ],
   };
 
-  return APIClient.get<RawSuggestResponse<typeof params.index>>(
+  if (searchIndex) {
+    return APIClient.get<RawSuggestResponse<T>>(`/search/suggest`, {
+      params,
+    });
+  }
+
+  return APIClient.get<RawSuggestResponse<ExploreSearchIndex>>(
     `/search/suggest`,
-    { params }
+    {
+      params,
+    }
   );
 };
 
@@ -123,21 +135,6 @@ export const deleteLineageEdge: Function = (
   return APIClient.delete(
     `/lineage/${fromEntity}/${fromId}/${toEntity}/${toId}`
   );
-};
-
-export const getInitialEntity = (
-  index: SearchIndex,
-  params = {} as AxiosRequestConfig
-): Promise<AxiosResponse> => {
-  return APIClient.get(`/search/query`, {
-    params: {
-      q: WILD_CARD_CHAR,
-      from: 0,
-      size: 5,
-      index,
-      ...params,
-    },
-  });
 };
 
 export const getSuggestedUsers = (term: string) => {

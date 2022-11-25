@@ -27,7 +27,9 @@ import {
 } from '../constants/char.constants';
 import { PRIMERY_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../generated/type/entityLineage';
 import { SearchResponse } from '../interface/search.interface';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
@@ -384,4 +386,19 @@ export const getGlossariesWithRootTerms = (
         reject(err);
       });
   });
+};
+
+export const getEntityReferenceFromGlossary = (
+  glossary: Glossary
+): EntityReference => {
+  return {
+    deleted: glossary.deleted,
+    href: glossary.href,
+    fullyQualifiedName: glossary.fullyQualifiedName ?? '',
+    id: glossary.id,
+    type: 'glossary',
+    description: glossary.description,
+    displayName: glossary.displayName,
+    name: glossary.name,
+  };
 };

@@ -73,7 +73,10 @@ export const formatSearchQueryResponse = <
   SI extends Array<SearchIndex> ? SI[number] : SI,
   TIncludeFields
 > => {
-  let _data;
+  let _data = {} as SearchResponse<
+    SI extends Array<SearchIndex> ? SI[number] : SI,
+    TIncludeFields
+  >;
 
   _data = data;
 
@@ -94,14 +97,20 @@ export const formatSearchQueryResponse = <
     hits: {
       ..._data.hits,
       hits: isArray(_data.hits.hits)
-        ? _data.hits.hits.map((hit: { _source: Record<string, unknown> }) =>
+        ? _data.hits.hits.map((hit) =>
             '_source' in hit
               ? 'entityType' in hit._source
                 ? {
                     ...hit,
                     _source: {
-                      ...hit._source,
-                      type: hit._source.entityType,
+                      ...(hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                        ? SI[number]
+                        : SI]),
+                      type: (
+                        hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                          ? SI[number]
+                          : SI]
+                      ).entityType,
                     },
                   }
                 : hit
@@ -262,12 +271,21 @@ export const formatSuggestQueryResponse = <
 
   /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
       This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
-  _data = _data.map((datum: { _source: Record<string, unknown> }) =>
+  _data = _data.map((datum) =>
     '_source' in datum
       ? 'entityType' in datum._source
         ? {
             ...datum,
-            _source: { ...datum._source, type: datum._source.entityType },
+            _source: {
+              ...(datum._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                ? SI[number]
+                : SI]),
+              type: (
+                datum._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                  ? SI[number]
+                  : SI]
+              ).entityType,
+            },
           }
         : datum
       : datum

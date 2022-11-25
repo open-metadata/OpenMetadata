@@ -18,11 +18,8 @@ import ProfilePicture from '../../components/common/ProfilePicture/ProfilePictur
 import { EntityReference } from '../../generated/type/entityLineage';
 import SVGIcons from '../../utils/SvgUtils';
 
-type Props = {
-  item: Pick<EntityReference, 'displayName' | 'id' | 'name' | 'type'> & {
-    email?: string;
-    isChecked: boolean;
-  };
+type Props<T> = {
+  item: T;
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isCheckBoxes?: boolean;
@@ -30,14 +27,16 @@ type Props = {
   onRemove?: (value: string) => void;
 };
 
-const CheckboxUserCard = ({
+const CheckboxUserCard = <
+  T extends EntityReference & { isChecked: boolean; type: string }
+>({
   item,
   isActionVisible = false,
   isIconVisible = false,
   isCheckBoxes = false,
   onSelect,
   onRemove,
-}: Props) => {
+}: Props<T>) => {
   const [isChecked, setIsChecked] = useState(item.isChecked);
 
   return (

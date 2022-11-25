@@ -164,7 +164,7 @@ export const omitDeep = <T>(
         result.push(value);
       } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (result as any)[key] = value as never;
+        (result as any)[key] = value;
       }
     }
   });
