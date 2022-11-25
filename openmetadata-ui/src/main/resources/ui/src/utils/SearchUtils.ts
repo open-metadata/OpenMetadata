@@ -39,3 +39,7 @@ export const getSearchAPIQuery = (
     searchIndex ? `&index=${searchIndex}` : ''
   }${trackTotalHits ? '&track_total_hits=true' : ''}`;
 };
+
+// will add back slash "\" before quote in string if present
+export const getQueryWithSlash = (query: string): string =>
+  query.replace(/["']/g, '\\$&');
