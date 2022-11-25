@@ -174,10 +174,10 @@ eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-noop}  # Possible values are "noop", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
   # it will use the default auth provider for AWS services if parameters are not set
-  parameters:
-    region: ${OM_MONITOR_REGION:-""}
-    accessKeyId: ${OM_MONITOR_ACCESS_KEY_ID:-""}
-    secretAccessKey: ${OM_MONITOR_ACCESS_KEY:-""}
+  # parameters:
+  #   region: ${OM_MONITOR_REGION:-""}
+  #   accessKeyId: ${OM_MONITOR_ACCESS_KEY_ID:-""}
+  #   secretAccessKey: ${OM_MONITOR_ACCESS_KEY:-""}
 
 eventHandlerConfiguration:
   eventHandlerClassNames:

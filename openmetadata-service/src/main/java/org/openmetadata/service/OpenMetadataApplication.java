@@ -310,13 +310,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
       final EventMonitor eventMonitor =
           EventMonitorFactory.createEventMonitor(
-              openMetadataApplicationConfig.getEventMonitorConfiguration(), openMetadataApplicationConfig.getClusterName());
+              openMetadataApplicationConfig.getEventMonitorConfiguration(),
+              openMetadataApplicationConfig.getClusterName());
       EventMonitorPublisher eventMonitorPublisher =
-            new EventMonitorPublisher(
-                    openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
+          new EventMonitorPublisher(openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
       EventPubSub.addEventHandler(eventMonitorPublisher);
     }
-
   }
 
   private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {

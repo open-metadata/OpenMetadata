@@ -236,6 +236,8 @@
       <artifactId>ssm</artifactId>
       <version>${awssdk.version}</version>
     </dependency>
+
+    <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>cloudwatch</artifactId>

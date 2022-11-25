@@ -13,11 +13,10 @@
 
 package org.openmetadata.service.monitoring;
 
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.schema.monitoring.EventMonitorProvider;
-
-import java.util.Map;
 
 @Getter
 @Setter
