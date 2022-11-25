@@ -326,7 +326,7 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <LeftPanelCard id="glossary">
+      <LeftPanelCard data-testid="glossary-left-panel" id="glossary">
         <div className="tw-h-full tw-py-2">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
             <h6 className="tw-heading tw-text-sm tw-font-semibold">Glossary</h6>
@@ -518,7 +518,9 @@ const GlossaryV1 = ({
               </Row>
             ) : (
               <Space className="display-name">
-                <Title level={4}>{getEntityName(selectedData)}</Title>
+                <Title data-testid="glossary-entity-name" level={4}>
+                  {getEntityName(selectedData)}
+                </Title>
                 <Tooltip
                   title={
                     editDisplayNamePermission

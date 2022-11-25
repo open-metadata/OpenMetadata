@@ -120,8 +120,8 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.get('[data-testid="view-service-button"]')
       .scrollIntoView()
-      .should('be.visible')
-      .click();
+      .should('exist')
+      .click({ force: true });
 
     handleIngestionRetry('database', true, 0, 'profiler');
   });
