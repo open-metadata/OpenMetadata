@@ -25,6 +25,7 @@ RUN apt-get update \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
+    vim \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
