@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Row, Typography } from 'antd';
+import Modal from 'antd/lib/modal/Modal';
 import { AxiosResponse } from 'axios';
-import { isUndefined } from 'lodash';
+import { t } from 'i18next';
+import { isUndefined, uniqueId } from 'lodash';
 import { FormattedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
@@ -20,22 +23,16 @@ import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
-
-type ReviewerModalProp = {
-  reviewer?: Array<FormattedUsersData>;
-  onCancel: () => void;
-  onSave: (reviewer: Array<FormattedUsersData>) => void;
-  header: string;
-};
+import { ReviewerModalProp } from './ReviewerModal.interface';
 
 const ReviewerModal = ({
   reviewer,
   onCancel,
   onSave,
   header,
+  visible,
 }: ReviewerModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -110,26 +107,6 @@ const ReviewerModal = ({
     }
   };
 
-  const getUserCards = () => {
-    return options.map((d) => (
-      <CheckboxUserCard
-        isActionVisible
-        isCheckBoxes
-        isIconVisible
-        item={{
-          name: d.name,
-          displayName: d.displayName || d.name,
-          email: d.email,
-          id: d.id,
-          isChecked: isIncludeInOptions(d.id),
-          type: d.type,
-        }}
-        key={d.id}
-        onSelect={selectionHandler}
-      />
-    ));
-  };
-
   useEffect(() => {
     if (!isUndefined(reviewer) && reviewer.length) {
       setOptions(reviewer);
@@ -138,55 +115,74 @@ const ReviewerModal = ({
   }, []);
 
   return (
-    <dialog className="tw-modal" data-testid="modal-container">
-      <div className="tw-modal-backdrop" onClick={() => onCancel()} />
-      <div className="tw-modal-container tw-overflow-y-auto tw-max-w-3xl tw-max-h-screen">
-        <div className="tw-modal-header">
-          <p className="tw-modal-title tw-text-grey-body" data-testid="header">
-            {header}
-          </p>
-        </div>
-        <div className="tw-modal-body">
-          <Searchbar
-            placeholder="Search for user..."
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchAction}
-          />
-          <div className="tw-min-h-256">
-            {isLoading ? (
-              <Loader />
-            ) : options.length > 0 ? (
-              <div className="tw-grid tw-grid-cols-3 tw-gap-4">
-                {getUserCards()}
-              </div>
-            ) : (
-              <p className="tw-text-center tw-mt-10 tw-text-grey-muted tw-text-base">
-                No user available
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="tw-modal-footer" data-testid="cta-container">
+    <Modal
+      centered
+      destroyOnClose
+      closable={false}
+      data-testid="confirmation-modal"
+      footer={
+        <div data-testid="cta-container">
           <Button
-            size="regular"
-            theme="primary"
-            variant="link"
+            data-testid="cancel"
+            key="remove-edge-btn"
+            type="text"
             onClick={onCancel}>
-            Cancel
+            {t('label.cancel')}
           </Button>
           <Button
-            data-testid="saveButton"
-            size="regular"
-            theme="primary"
-            type="submit"
-            variant="contained"
+            data-testid="save-button"
+            key="save-btn"
+            type="primary"
             onClick={() => onSave(selectedOption)}>
-            Save
+            {t('label.save')}
           </Button>
         </div>
-      </div>
-    </dialog>
+      }
+      title={
+        <Typography.Text strong data-testid="header">
+          {header}
+        </Typography.Text>
+      }
+      visible={visible}
+      width={800}>
+      <>
+        <Searchbar
+          placeholder={`${t('label.search-for-user')}...`}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
+        {isLoading ? (
+          <Loader />
+        ) : options.length > 0 ? (
+          <Row gutter={[16, 16]}>
+            {options.map((d) => (
+              <Col key={uniqueId()} span={8}>
+                <CheckboxUserCard
+                  isActionVisible
+                  isCheckBoxes
+                  isIconVisible
+                  item={{
+                    name: d.name,
+                    displayName: d.displayName || d.name,
+                    email: d.email,
+                    id: d.id,
+                    isChecked: isIncludeInOptions(d.id),
+                    type: d.type,
+                  }}
+                  key={d.id}
+                  onSelect={selectionHandler}
+                />
+              </Col>
+            ))}
+          </Row>
+        ) : (
+          <Typography.Text className="flex justify-center mt-10 text-grey-muted text-base">
+            {t('label.no-user-available')}
+          </Typography.Text>
+        )}
+      </>
+    </Modal>
   );
 };
 

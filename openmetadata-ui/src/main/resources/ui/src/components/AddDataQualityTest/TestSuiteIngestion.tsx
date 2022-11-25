@@ -248,16 +248,14 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           />
         )}
       </Col>
-
-      {showDeployModal && (
-        <DeployIngestionLoaderModal
-          action={ingestionAction}
-          ingestionName={ingestionData?.name || ''}
-          isDeployed={isIngestionDeployed}
-          isIngestionCreated={isIngestionCreated}
-          progress={ingestionProgress}
-        />
-      )}
+      <DeployIngestionLoaderModal
+        action={ingestionAction}
+        ingestionName={ingestionData?.name || ''}
+        isDeployed={isIngestionDeployed}
+        isIngestionCreated={isIngestionCreated}
+        progress={ingestionProgress}
+        visible={showDeployModal}
+      />
     </Row>
   );
 };

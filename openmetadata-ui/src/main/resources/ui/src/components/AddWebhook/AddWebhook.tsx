@@ -25,6 +25,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -123,7 +124,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
   const { permissions } = usePermissionProvider();
-
+  const { t } = useTranslation();
   const editWebhookPermission = useMemo(
     () =>
       !isEmpty(permissions) &&
@@ -619,17 +620,17 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 </div>
               )}
             </Field>
-            {data && isDelete && deleteWebhookPermission && (
-              <ConfirmationModal
-                bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
-                cancelText="Cancel"
-                confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-                confirmText="Delete"
-                header="Are you sure?"
-                onCancel={() => setIsDelete(false)}
-                onConfirm={handleDelete}
-              />
-            )}
+            <ConfirmationModal
+              bodyText={t('message.delete-webhook-permanently', {
+                webhookName: data ? data.name : '',
+              })}
+              cancelText={t('label.cancel')}
+              confirmText={t('label.delete')}
+              header={t('label.are-you-sure')}
+              visible={isDelete && deleteWebhookPermission}
+              onCancel={() => setIsDelete(false)}
+              onConfirm={handleDelete}
+            />
           </div>
         </div>
       </PageLayout>

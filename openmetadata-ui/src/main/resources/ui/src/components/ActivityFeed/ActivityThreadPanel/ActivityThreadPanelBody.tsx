@@ -331,12 +331,11 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         )}
       </div>
-      {confirmationState.state && (
-        <DeleteConfirmationModal
-          onDelete={onPostDelete}
-          onDiscard={onDiscard}
-        />
-      )}
+      <DeleteConfirmationModal
+        visible={confirmationState.state}
+        onDelete={onPostDelete}
+        onDiscard={onDiscard}
+      />
     </Fragment>
   );
 };

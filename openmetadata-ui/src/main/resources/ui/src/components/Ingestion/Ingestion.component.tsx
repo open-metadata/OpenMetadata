@@ -683,17 +683,14 @@ const Ingestion: React.FC<IngestionProps> = ({
     <div data-testid="ingestion-container">
       {getIngestionTab()}
 
-      {isConfirmationModalOpen && (
-        <EntityDeleteModal
-          entityName={deleteSelection.name}
-          entityType="ingestion"
-          loadingState={deleteSelection.state}
-          onCancel={handleCancelConfirmationModal}
-          onConfirm={() =>
-            handleDelete(deleteSelection.id, deleteSelection.name)
-          }
-        />
-      )}
+      <EntityDeleteModal
+        entityName={deleteSelection.name}
+        entityType={t('label.ingestion')}
+        loadingState={deleteSelection.state}
+        visible={isConfirmationModalOpen}
+        onCancel={handleCancelConfirmationModal}
+        onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}
+      />
     </div>
   );
 };

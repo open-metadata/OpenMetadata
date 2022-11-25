@@ -52,7 +52,6 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
-import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -75,7 +74,6 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { Post, Thread } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
@@ -88,7 +86,6 @@ import {
   getCurrentDatabaseSchemaDetailsTab,
 } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -138,7 +135,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -220,13 +216,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const onThreadPanelClose = () => {
     setThreadLink('');
-  };
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
   };
 
   const getEntityFeedCount = () => {
@@ -701,7 +690,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
-                    onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </Col>
@@ -759,23 +747,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                       threadLink={threadLink}
                       updateThreadHandler={updateThreadHandler}
                       onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
-                </Col>
-                <Col span={24}>
-                  {selectedField ? (
-                    <RequestDescriptionModal
-                      createThread={createThread}
-                      defaultValue={getDefaultValue(
-                        databaseSchema?.owner as EntityReference
-                      )}
-                      header="Request description"
-                      threadLink={getEntityFeedLink(
-                        EntityType.DATABASE_SCHEMA,
-                        databaseSchemaFQN,
-                        selectedField
-                      )}
-                      onCancel={closeRequestModal}
                     />
                   ) : null}
                 </Col>

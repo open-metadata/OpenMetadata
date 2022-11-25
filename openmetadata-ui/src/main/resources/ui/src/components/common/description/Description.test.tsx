@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  queryByTestId,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
@@ -67,16 +73,6 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock(
-  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
-  () => ({
-    ModalWithMarkdownEditor: jest
-      .fn()
-      .mockReturnValue(
-        <p data-testid="editor-modal">ModalWithMarkdownEditor</p>
-      ),
-  })
-);
 jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
   return jest
     .fn()
@@ -120,30 +116,26 @@ describe('Test Description Component', () => {
   });
 
   it('Check if it has isEdit as true', async () => {
-    const { container } = render(
-      <Description {...mockDescriptionProp} isEdit />,
-      {
+    await act(async () => {
+      render(<Description {...mockDescriptionProp} isEdit />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const descriptionContainer = await findByTestId(container, 'description');
-    const editorModal = await findByTestId(container, 'editor-modal');
+    const descriptionContainer = await screen.findByTestId('description');
+    const editorModal = await screen.findByTestId('markdown-editor');
 
     expect(descriptionContainer).toBeInTheDocument();
     expect(editorModal).toBeInTheDocument();
   });
 
   it('Check if it has isEdit as false', async () => {
-    const { container } = render(
-      <Description {...mockDescriptionProp} isEdit={false} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<Description {...mockDescriptionProp} isEdit={false} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const descriptionContainer = await findByTestId(container, 'description');
-    const editorModal = queryByTestId(container, 'editor-modal');
+    const descriptionContainer = await screen.findByTestId('description');
+    const editorModal = screen.queryByTestId('markdown-editor');
 
     expect(descriptionContainer).toBeInTheDocument();
     expect(editorModal).not.toBeInTheDocument();

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getAuthMechanismForBotUser } from '../../axiosAPIs/userAPI';
@@ -147,25 +153,24 @@ describe('Test BotsDetail Component', () => {
   });
 
   it('Test Revoke token flow', async () => {
-    const { container } = render(<BotDetails {...mockProp} />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<BotDetails {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    const revokeButton = await findByTestId(container, 'revoke-button');
+    const revokeButton = await screen.findByTestId('revoke-button');
 
     expect(revokeButton).toBeInTheDocument();
 
     fireEvent.click(revokeButton);
 
     // should open confirmartion before revoking token
-    const confirmationModal = await findByTestId(
-      container,
-      'confirmation-modal'
-    );
+    const confirmationModal = await screen.findByTestId('confirmation-modal');
 
     expect(confirmationModal).toBeInTheDocument();
 
-    const confirmButton = await findByTestId(confirmationModal, 'save-button');
+    const confirmButton = await screen.findByTestId('save-button');
 
     expect(confirmButton).toBeInTheDocument();
 

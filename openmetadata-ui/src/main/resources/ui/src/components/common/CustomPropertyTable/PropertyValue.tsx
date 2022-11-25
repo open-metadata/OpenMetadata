@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
@@ -83,8 +84,11 @@ export const PropertyValue: FC<Props> = ({
       case 'markdown':
         return (
           <ModalWithMarkdownEditor
-            header={`Edit Property: "${propertyName}"`}
-            placeholder="Enter Property Value"
+            visible
+            header={t('label.edit-property', {
+              propertyName,
+            })}
+            placeholder={t('label.enter-property-value')}
             value={value || ''}
             onCancel={onHideInput}
             onSave={onInputSave}

@@ -15,8 +15,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
-import { FormErrorData, LoadingState } from 'Models';
+import { FormErrorData } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
@@ -71,19 +72,7 @@ import { getTagCategories, isSystemTierTags } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
-
-type DeleteTagDetailsType = {
-  id: string;
-  name: string;
-  categoryName?: string;
-  isCategory: boolean;
-  status?: LoadingState;
-};
-
-type DeleteTagsType = {
-  data: DeleteTagDetailsType | undefined;
-  state: boolean;
-};
+import { DeleteTagsType } from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -704,72 +693,71 @@ const TagsPage = () => {
               rowKey="id"
               size="small"
             />
-            {isEditTag && (
-              <ModalWithMarkdownEditor
-                header={`Edit description for ${editTag?.name}`}
-                placeholder="Enter Description"
-                value={editTag?.description as string}
-                onCancel={() => {
-                  setIsEditTag(false);
-                  setEditTag(undefined);
-                }}
-                onSave={updatePrimaryTag}
-              />
-            )}
-            {isAddingCategory && (
-              <FormModal
-                errorData={errorDataCategory}
-                form={Form}
-                header="Adding new category"
-                initialData={{
-                  name: '',
-                  description: '',
-                }}
-                isSaveButtonDisabled={!isEmpty(errorDataCategory)}
-                onCancel={() => setIsAddingCategory(false)}
-                onChange={(data) => {
-                  setErrorDataCategory({});
-                  onNewCategoryChange(data as TagCategory);
-                }}
-                onSave={(data) => createCategory(data as TagCategory)}
-              />
-            )}
-            {isAddingTag && (
-              <FormModal
-                errorData={errorDataTag}
-                form={Form}
-                header={`Adding new tag on ${
-                  currentCategory?.displayName ?? currentCategory?.name
-                }`}
-                initialData={{
-                  name: '',
-                  description: '',
-                }}
-                isSaveButtonDisabled={!isEmpty(errorDataTag)}
-                onCancel={() => setIsAddingTag(false)}
-                onChange={(data) => {
-                  setErrorDataTag({});
-                  onNewTagChange(data as TagCategory);
-                }}
-                onSave={(data) => createPrimaryTag(data as TagCategory)}
-              />
-            )}
-            {deleteTags.state && (
-              <ConfirmationModal
-                bodyText={`Are you sure you want to delete the tag ${
-                  deleteTags.data?.isCategory ? 'category' : ''
-                } "${deleteTags.data?.name}"?`}
-                cancelText="Cancel"
-                confirmText="Confirm"
-                header={`Delete Tag ${
-                  deleteTags.data?.isCategory ? 'Category' : ''
-                }`}
-                onCancel={() =>
-                  setDeleteTags({ data: undefined, state: false })
-                }
-                onConfirm={handleConfirmClick}
-              />
-            )}
+            <ModalWithMarkdownEditor
+              header={t('label.edit-description-for', {
+                entityName: editTag?.name,
+              })}
+              placeholder={t('label.enter-description')}
+              value={editTag?.description as string}
+              visible={isEditTag}
+              onCancel={() => {
+                setIsEditTag(false);
+                setEditTag(undefined);
+              }}
+              onSave={updatePrimaryTag}
+            />
+
+            <FormModal
+              errorData={errorDataCategory}
+              form={Form}
+              header={t('label.adding-new-category')}
+              initialData={{
+                name: '',
+                description: '',
+              }}
+              isSaveButtonDisabled={!isEmpty(errorDataCategory)}
+              visible={isAddingCategory}
+              onCancel={() => setIsAddingCategory(false)}
+              onChange={(data) => {
+                setErrorDataCategory({});
+                onNewCategoryChange(data as TagCategory);
+              }}
+              onSave={(data) => createCategory(data as TagCategory)}
+            />
+            <FormModal
+              errorData={errorDataTag}
+              form={Form}
+              header={t('label.adding-new-tag', {
+                categoryName:
+                  currentCategory?.displayName ?? currentCategory?.name,
+              })}
+              initialData={{
+                name: '',
+                description: '',
+              }}
+              isSaveButtonDisabled={!isEmpty(errorDataTag)}
+              visible={isAddingTag}
+              onCancel={() => setIsAddingTag(false)}
+              onChange={(data) => {
+                setErrorDataTag({});
+                onNewTagChange(data as TagCategory);
+              }}
+              onSave={(data) => createPrimaryTag(data as TagCategory)}
+            />
+            <ConfirmationModal
+              bodyText={t('message.are-you-sure-delete-tag', {
+                isCategory: deleteTags.data?.isCategory ? 'category' : '',
+                tagName: deleteTags.data?.name,
+              })}
+              cancelText={t('label.cancel')}
+              confirmText={t('label.confirm')}
+              header={t('label.delete-tag', {
+                isCategory: deleteTags.data?.isCategory ? 'Category' : '',
+              })}
+              visible={deleteTags.state}
+              onCancel={() => setDeleteTags({ data: undefined, state: false })}
+              onConfirm={handleConfirmClick}
+            />
           </div>
         )}
       </PageLayoutV1>

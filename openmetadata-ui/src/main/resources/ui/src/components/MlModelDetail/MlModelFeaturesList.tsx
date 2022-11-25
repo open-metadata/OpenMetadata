@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
@@ -354,11 +355,14 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
               </div>
             ))}
           </div>
-          {!isEmpty(selectedFeature) && editDescription && (
+          {!isEmpty(selectedFeature) && (
             <ModalWithMarkdownEditor
-              header={`Edit feature: "${selectedFeature.name}"`}
-              placeholder="Enter feature description"
+              header={t('label.edit-feature', {
+                featureName: selectedFeature.name,
+              })}
+              placeholder={t('label.enter-feature-description')}
               value={selectedFeature.description as string}
+              visible={editDescription}
               onCancel={handleCancelEditDescription}
               onSave={handleDescriptionChange}
             />

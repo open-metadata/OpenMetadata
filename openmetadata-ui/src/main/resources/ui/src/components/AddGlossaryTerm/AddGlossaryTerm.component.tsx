@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import {
   EditorContentRef,
@@ -73,7 +74,7 @@ const AddGlossaryTerm = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showRevieweModal, setShowRevieweModal] = useState(false);
+  const [showReviewerModal, setShowReviewerModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
@@ -103,7 +104,7 @@ const AddGlossaryTerm = ({
   };
 
   const onReviewerModalCancel = () => {
-    setShowRevieweModal(false);
+    setShowReviewerModal(false);
   };
 
   const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
@@ -482,7 +483,7 @@ const AddGlossaryTerm = ({
                 size="x-small"
                 theme="primary"
                 variant="contained"
-                onClick={() => setShowRevieweModal(true)}>
+                onClick={() => setShowReviewerModal(true)}>
                 <FontAwesomeIcon icon="plus" />
               </Button>
             </div>
@@ -517,23 +518,21 @@ const AddGlossaryTerm = ({
           </Field>
         </div>
 
-        {showRelatedTermsModal && (
-          <RelatedTermsModal
-            header="Add Related Terms"
-            relatedTerms={relatedTerms}
-            onCancel={onRelatedTermsModalCancel}
-            onSave={handleRelatedTermsSave}
-          />
-        )}
+        <RelatedTermsModal
+          header={t('label.add-related-terms')}
+          relatedTerms={relatedTerms}
+          visible={showRelatedTermsModal}
+          onCancel={onRelatedTermsModalCancel}
+          onSave={handleRelatedTermsSave}
+        />
 
-        {showRevieweModal && (
-          <ReviewerModal
-            header="Add Reviewers"
-            reviewer={reviewer}
-            onCancel={onReviewerModalCancel}
-            onSave={handleReviewerSave}
-          />
-        )}
+        <ReviewerModal
+          header={t('label.add-reviewers')}
+          reviewer={reviewer}
+          visible={showReviewerModal}
+          onCancel={onReviewerModalCancel}
+          onSave={handleReviewerSave}
+        />
       </div>
     </PageLayout>
   );

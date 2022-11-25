@@ -118,6 +118,10 @@ jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => {
   return jest.fn().mockReturnValue(<>TitleBreadcrumb</>);
 });
 
+jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () => {
+  return jest.fn().mockReturnValue(<>EntityDeleteModal</>);
+});
+
 jest.mock('antd', () => ({
   Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),

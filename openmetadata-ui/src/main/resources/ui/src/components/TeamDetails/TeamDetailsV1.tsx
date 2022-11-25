@@ -56,7 +56,11 @@ import {
 } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
+import {
+  AddAttribute,
+  PlaceholderProps,
+  TeamDetailsProp,
+} from '../../interface/teamsAndUsers.interface';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import {
   commonUserDetailColumns,
@@ -99,22 +103,6 @@ import ListEntities from './RolesAndPoliciesList';
 import { getTabs, searchTeam } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
-
-interface AddAttribute {
-  type: EntityType;
-  selectedData: EntityReference[];
-}
-
-interface PlaceholderProps {
-  title?: string;
-  disabled?: boolean;
-  label?: string;
-  onClick?: () => void;
-  heading?: string;
-  description?: React.ReactNode;
-  button?: React.ReactNode;
-  datatestid?: string;
-}
 
 const TeamDetailsV1 = ({
   assets,
@@ -617,14 +605,14 @@ const TeamDetailsV1 = ({
 
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
-      ? `${t('label.leave-the-team')} ${
-          currentTeam?.displayName ?? currentTeam?.name
-        }?`
-      : `${t('label.remove')} ${
-          deletingUser.user?.displayName ?? deletingUser.user?.name
-        }?`;
+      ? t('label.leave-the-team', {
+          teamName: currentTeam?.displayName ?? currentTeam?.name,
+        })
+      : t('label.remove', {
+          userName: deletingUser.user?.displayName ?? deletingUser.user?.name,
+        });
 
-    return `${t('label.sure-want-to')} ${text}`;
+    return t('message.are-you-sure-want-to', { text });
   };
 
   const openGroupIcon = useMemo(
@@ -1265,20 +1253,17 @@ const TeamDetailsV1 = ({
         />
       )}
 
-      {deletingUser.state && (
-        <ConfirmationModal
-          bodyText={removeUserBodyText(deletingUser.leave)}
-          cancelText={t('label.cancel')}
-          confirmText={t('label.confirm')}
-          header={
-            deletingUser.leave
-              ? t('label.leave-team')
-              : t('label.removing-user')
-          }
-          onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
-          onConfirm={handleRemoveUser}
-        />
-      )}
+      <ConfirmationModal
+        bodyText={removeUserBodyText(deletingUser.leave)}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.confirm')}
+        header={
+          deletingUser.leave ? t('label.leave-team') : t('label.removing-user')
+        }
+        visible={deletingUser.state}
+        onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
+        onConfirm={handleRemoveUser}
+      />
 
       {addAttribute && (
         <AddAttributeModal

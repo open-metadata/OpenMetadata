@@ -113,12 +113,11 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           onSave={postFeed}
         />
       </div>
-      {confirmationState.state && (
-        <DeleteConfirmationModal
-          onDelete={onPostDelete}
-          onDiscard={onDiscard}
-        />
-      )}
+      <DeleteConfirmationModal
+        visible={confirmationState.state}
+        onDelete={onPostDelete}
+        onDiscard={onDiscard}
+      />
     </div>
   );
 };

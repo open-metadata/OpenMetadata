@@ -13,25 +13,20 @@
 
 import { Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useMemo, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { CustomProperty, Type } from '../../generated/entity/type';
+import { CustomProperty } from '../../generated/entity/type';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-
-interface CustomPropertyTableProp {
-  hasAccess: boolean;
-  customProperties: CustomProperty[];
-  updateEntityType: (
-    customProperties: Type['customProperties']
-  ) => Promise<void>;
-}
-
-type Operation = 'delete' | 'update' | 'no-operation';
+import {
+  CustomPropertyTableProp,
+  Operation,
+} from './CustomPropertyTable.interface';
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
@@ -158,25 +153,29 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         rowKey="name"
         size="small"
       />
-      {deleteCheck && (
-        <ConfirmationModal
-          bodyText={`Are you sure you want to delete the property ${selectedProperty.name}`}
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header={`Delete property ${selectedProperty.name}`}
-          onCancel={resetSelectedProperty}
-          onConfirm={handlePropertyDelete}
-        />
-      )}
-      {updateCheck && (
-        <ModalWithMarkdownEditor
-          header={`Edit Property: "${selectedProperty.name}"`}
-          placeholder="Enter Property Description"
-          value={selectedProperty.description || ''}
-          onCancel={resetSelectedProperty}
-          onSave={handlePropertyUpdate}
-        />
-      )}
+      <ConfirmationModal
+        bodyText={t('message.are-you-sure-delete-property', {
+          propertyName: selectedProperty.name,
+        })}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.confirm')}
+        header={t('label.delete-property', {
+          propertyName: selectedProperty.name,
+        })}
+        visible={deleteCheck}
+        onCancel={resetSelectedProperty}
+        onConfirm={handlePropertyDelete}
+      />
+      <ModalWithMarkdownEditor
+        header={t('label.edit-property', {
+          propertyName: selectedProperty.name,
+        })}
+        placeholder={t('label.enter-property-description')}
+        value={selectedProperty.description || ''}
+        visible={updateCheck}
+        onCancel={resetSelectedProperty}
+        onSave={handlePropertyUpdate}
+      />
     </Fragment>
   );
 };

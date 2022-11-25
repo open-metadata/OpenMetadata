@@ -85,6 +85,9 @@
 .rounded-4 {
   border-radius: 4px;
 }
+.rounded-6 {
+  border-radius: 6px;
+}
 .rounded-full {
   border-radius: 9999px;
 }
@@ -92,6 +95,9 @@
 // Width
 .w-4 {
   width: 16px;
+}
+.w-6 {
+  width: 24px;
 }
 .w-8 {
   width: 32px;
@@ -117,6 +123,12 @@
 .w-48 {
   width: 12rem;
 }
+.w-60 {
+  width: 15rem;
+}
+.w-120 {
+  width: 30rem;
+}
 .w-11-12 {
   width: 91.666667%;
 }
@@ -138,9 +150,6 @@
 .w-300 {
   width: 300px;
 }
-.w-60 {
-  width: 60%;
-}
 .w-3\.5 {
   width: 0.875rem;
 }
@@ -158,6 +167,9 @@
 .h-4 {
   height: 16px;
 }
+.h-6 {
+  height: 24px;
+}
 .h-7 {
   height: 28px;
 }
@@ -166,6 +178,15 @@
 }
 .h-9 {
   height: 36px;
+}
+.h-10 {
+  height: 40px;
+}
+.h-20 {
+  height: 80px;
+}
+.h-40 {
+  height: 160px;
 }
 .h-100 {
   height: 400px;
@@ -191,20 +212,12 @@
   min-height: 100%;
 }
 
-// Text alignment
-.text-left {
-  text-align: left;
-}
-.text-center {
-  text-align: center;
-}
-.text-right {
-  text-align: right;
-}
-
 // flex
 .flex {
   display: flex;
+}
+.inline-flex {
+  display: inline-flex;
 }
 .items-center {
   align-items: center;
@@ -248,10 +261,18 @@
   font-weight: 500;
 }
 
+.border {
+  border-width: 1px;
+}
 .border-l-2 {
   border-left: 2px;
 }
-
+.border-r-2 {
+  border-right-width: 2px;
+}
+.border-separate {
+  border-collapse: separate;
+}
 .border-primary {
   border-color: @primary;
 }

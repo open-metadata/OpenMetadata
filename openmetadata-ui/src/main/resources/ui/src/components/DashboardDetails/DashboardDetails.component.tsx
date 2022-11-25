@@ -47,8 +47,6 @@ import {
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import {
   fetchGlossaryTerms,
@@ -72,7 +70,6 @@ import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
@@ -142,7 +139,6 @@ const DashboardDetails = ({
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -172,13 +168,6 @@ const DashboardDetails = ({
       fetchResourcePermission();
     }
   }, [dashboardDetails.id]);
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
@@ -748,7 +737,6 @@ const DashboardDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -826,8 +814,11 @@ const DashboardDetails = ({
       </div>
       {editChart && (
         <ModalWithMarkdownEditor
-          header={`Edit Chart: "${editChart.chart.displayName}"`}
-          placeholder="Enter Chart Description"
+          visible
+          header={t('label.edit-chart', {
+            chartName: editChart.chart.displayName,
+          })}
+          placeholder={t('label.enter-chart-description')}
           value={editChart.chart.description || ''}
           onCancel={closeEditChartModal}
           onSave={onChartUpdate}
@@ -843,19 +834,6 @@ const DashboardDetails = ({
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
-        />
-      ) : null}
-      {selectedField ? (
-        <RequestDescriptionModal
-          createThread={createThread}
-          defaultValue={getDefaultValue(owner as EntityReference)}
-          header="Request description"
-          threadLink={getEntityFeedLink(
-            EntityType.DASHBOARD,
-            dashboardFQN,
-            selectedField
-          )}
-          onCancel={closeRequestModal}
         />
       ) : null}
     </PageContainerV1>

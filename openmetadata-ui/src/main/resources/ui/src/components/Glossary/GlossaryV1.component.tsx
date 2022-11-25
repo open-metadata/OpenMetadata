@@ -26,6 +26,7 @@ import {
 } from 'antd';
 import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
 import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
@@ -561,12 +562,13 @@ const GlossaryV1 = ({
             ))}
         </>
       )}
-      {selectedData && isDelete && (
+      {selectedData && (
         <EntityDeleteModal
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
-          entityType="Glossary"
+          entityType={t('label.glossary')}
           loadingState={deleteStatus}
+          visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
         />
