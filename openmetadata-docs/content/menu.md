@@ -52,6 +52,8 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
+  - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
+    url: /deployment/kubernetes/gke-troubleshooting
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -133,6 +135,8 @@ site_menu:
     url: /deployment/security/enable-ssl/openmetadata-server
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
+  - category: Deployment / Enable Security / JWT Troubleshooting
+    url: /deployment/security/jwt-troubleshooting
 
   - category: Deployment / Enable Secrets Manager
     url: /deployment/secrets-manager
@@ -340,6 +344,8 @@ site_menu:
     url: /connectors/database/domo-database/airflow
   - category: Connectors / Database / Domo Database / CLI
     url: /connectors/database/domo-database/cli
+  - category: Connectors / Database / Domo Database / Troubleshoot
+    url: /connectors/database/domo-database/troubleshoot
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard

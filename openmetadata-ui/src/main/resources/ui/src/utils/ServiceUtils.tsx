@@ -60,6 +60,7 @@ import {
   IBMDB2,
   KAFKA,
   KINESIS,
+  LOGO,
   LOOKER,
   MARIADB,
   METABASE,
@@ -276,6 +277,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case MetadataServiceType.Atlas:
       return ATLAS;
+
+    case MetadataServiceType.OpenMetadata:
+      return LOGO;
 
     default: {
       let logo;

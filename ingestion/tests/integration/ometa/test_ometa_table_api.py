@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataType,
     JoinedWith,
+    SqlQuery,
     Table,
     TableData,
     TableJoins,
@@ -325,7 +326,7 @@ class OMetaTableTest(TestCase):
         profile = CreateTableProfileRequest(
             tableProfile=table_profile, columnProfile=column_profile
         )
-        res_profile = self.metadata.ingest_profile_data(res, profile)
+        self.metadata.ingest_profile_data(res, profile)
         res_from_table = self.metadata.get_by_name(
             entity=Table, fqn=self.entity.fullyQualifiedName, fields=["profile"]
         )
@@ -407,6 +408,44 @@ class OMetaTableTest(TestCase):
         self.metadata.delete(
             entity=Table, entity_id=str(direct_join_table_res.id.__root__)
         )
+
+    def test_table_queries(self):
+        """
+        Test add and update table query data
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        res = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName
+        )
+
+        query_no_user = SqlQuery(query="select * from awesome")
+
+        self.metadata.ingest_table_queries_data(
+            table=res, table_queries=[query_no_user]
+        )
+        table_with_query: Table = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["tableQueries"]
+        )
+
+        assert len(table_with_query.tableQueries) == 1
+        assert table_with_query.tableQueries[0].query == query_no_user.query
+        assert table_with_query.tableQueries[0].users is None
+
+        # Validate that we can properly add user information
+        query_with_user = SqlQuery(query="select * from awesome", users=[self.owner])
+
+        self.metadata.ingest_table_queries_data(
+            table=res, table_queries=[query_with_user]
+        )
+        table_with_query: Table = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["tableQueries"]
+        )
+
+        assert len(table_with_query.tableQueries) == 1
+        assert table_with_query.tableQueries[0].query == query_with_user.query
+        assert table_with_query.tableQueries[0].users == [self.owner]
 
     def test_list_versions(self):
         """

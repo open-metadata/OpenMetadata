@@ -50,6 +50,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -385,6 +388,12 @@ class OpenMetadata(
             ),
         ):
             return "/services/metadataServices"
+
+        if issubclass(
+            entity,
+            IngestionPipeline,
+        ):
+            return "/services/ingestionPipelines"
 
         if issubclass(
             entity,

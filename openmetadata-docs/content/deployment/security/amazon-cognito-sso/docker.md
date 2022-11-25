@@ -17,7 +17,6 @@ generated when setting up the account in the previous steps.
 AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
 AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=aws-cognito

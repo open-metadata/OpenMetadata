@@ -13,13 +13,15 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import classNames from 'classnames';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
+import { tabsInfo } from '../../../constants/explore.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
@@ -33,6 +35,7 @@ import {
   getOwnerValue,
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import { getUsagePercentile } from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
@@ -58,6 +61,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   handleSummaryPanelDisplay,
 }) => {
   const location = useLocation();
+  const { tab } = useParams<{ tab: string }>();
 
   const otherDetails = useMemo(() => {
     const _otherDetails: ExtraInfo[] = [
@@ -89,8 +93,10 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
 
     if ('usageSummary' in source) {
       _otherDetails.push({
-        key: 'Usage',
-        value: source.usageSummary?.weeklyStats?.count,
+        value: getUsagePercentile(
+          source.usageSummary?.weeklyStats?.percentileRank || 0,
+          true
+        ),
       });
     }
 
@@ -114,7 +120,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
 
   return (
     <div
-      className="table-data-card-container"
+      className={classNames(
+        'data-asset-info-card-container',
+        tab === tabsInfo.table_search_index.path
+          ? 'table-data-card-container'
+          : ''
+      )}
       data-testid="table-data-card"
       id={id}
       onClick={() => {

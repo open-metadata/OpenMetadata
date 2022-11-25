@@ -19,6 +19,7 @@ Workflow definition for the ORM Profiler.
 
 from __future__ import annotations
 
+import time
 import traceback
 from datetime import datetime
 from typing import Optional, Union, cast
@@ -159,6 +160,7 @@ class DataInsightWorkflow:
         gte = get_beginning_of_day_timestamp_mill()
         lte = get_end_of_day_timestamp_mill()
         query = {
+            "size": 1000,
             "query": {
                 "range": {
                     "timestamp": {
@@ -166,7 +168,7 @@ class DataInsightWorkflow:
                         "lte": lte,
                     }
                 }
-            }
+            },
         }
         data = self.es_sink.read_records(index, query)
         try:
@@ -266,6 +268,7 @@ class DataInsightWorkflow:
         logger.info("Data processor finished running")
 
         logger.info("Sleeping for 1 second. Waiting for ES data to be indexed.")
+        time.sleep(1)
         logger.info("Starting KPI runner")
         self._execute_kpi_runner()
         logger.info("KPI runner finished running")

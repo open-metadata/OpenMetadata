@@ -306,12 +306,18 @@ describe('Test MyDataDetailsPage page', () => {
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
     const description = await findByText(container, /Description/i);
     const tabs = await findByTestId(container, 'tabs');
-    const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feeds & Tasks');
-    const sampleDataTab = await findByTestId(tabs, 'Sample Data');
-    const queriesTab = await findByTestId(tabs, 'Queries');
-    const profilerTab = await findByTestId(tabs, 'Profiler & Data Quality');
-    const lineageTab = await findByTestId(tabs, 'Lineage');
+    const schemaTab = await findByTestId(tabs, 'label.schema');
+    const activityFeedTab = await findByTestId(
+      tabs,
+      'label.activity-feed-and-task-plural'
+    );
+    const sampleDataTab = await findByTestId(tabs, 'label.sample-data');
+    const queriesTab = await findByTestId(tabs, 'label.query-plural');
+    const profilerTab = await findByTestId(
+      tabs,
+      'label.profiler-amp-data-quality'
+    );
+    const lineageTab = await findByTestId(tabs, 'label.lineage');
     const dbtTab = queryByTestId(tabs, 'DBT');
 
     expect(relatedTables).toBeInTheDocument();

@@ -29,7 +29,6 @@ import { Link, useHistory } from 'react-router-dom';
 import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/feed.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -69,7 +68,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
+import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -541,7 +540,7 @@ const DashboardDetails = ({
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
-        title: 'Chart Name',
+        title: t('label.chart-name'),
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
@@ -560,13 +559,13 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: 'Chart Type',
+        title: t('label.chart-type'),
         dataIndex: 'chartType',
         key: 'chartType',
         width: 100,
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         width: 300,
@@ -578,15 +577,17 @@ const DashboardDetails = ({
               {text ? (
                 <RichTextEditorPreviewer markdown={text} />
               ) : (
-                <span className="tw-no-description">No description</span>
+                <span className="tw-no-description">
+                  {t('label.no-description')}
+                </span>
               )}
             </div>
             {!deleted && (
               <Tooltip
                 title={
                   dashboardPermissions.EditAll
-                    ? 'Edit Description'
-                    : NO_PERMISSION_FOR_ACTION
+                    ? t('label.edit-description')
+                    : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
@@ -605,7 +606,7 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: 'Tags',
+        title: t('label.tags'),
         dataIndex: 'tags',
         key: 'tags',
         width: 300,
@@ -655,8 +656,8 @@ const DashboardDetails = ({
   );
 
   return (
-    <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+    <PageContainerV1>
+      <div className="entity-details-container">
         <EntityPageInfo
           canDelete={dashboardPermissions.Delete}
           currentOwner={dashboardDetails.owner}
@@ -723,7 +724,7 @@ const DashboardDetails = ({
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full tw--ml-5">
+                    <div className="tw-col-span-full">
                       <Description
                         description={description}
                         entityFieldTasks={getEntityFieldThreadCounts(
@@ -754,6 +755,7 @@ const DashboardDetails = ({
                   </div>
                   <Table
                     bordered
+                    className="p-t-xs"
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}
@@ -856,7 +858,7 @@ const DashboardDetails = ({
           onCancel={closeRequestModal}
         />
       ) : null}
-    </PageContainer>
+    </PageContainerV1>
   );
 };
 

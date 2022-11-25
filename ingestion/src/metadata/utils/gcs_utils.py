@@ -13,6 +13,7 @@
 Utils module to convert different file types from gcs buckets into a dataframe
 """
 
+import gzip
 import json
 import traceback
 from typing import Any
@@ -25,6 +26,12 @@ from pyarrow.parquet import ParquetFile
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+def _get_json_text(key: str, text: str) -> str:
+    if key.endswith(".gz"):
+        return gzip.decompress(text)
+    return text
 
 
 def read_csv_from_gcs(  # pylint: disable=inconsistent-return-statements
@@ -75,7 +82,8 @@ def read_json_from_gcs(  # pylint: disable=inconsistent-return-statements
 
     try:
         bucket = client.get_bucket(bucket_name)
-        data = json.loads(bucket.get_blob(key).download_as_string())
+        text = bucket.get_blob(key).download_as_string()
+        data = json.loads(_get_json_text(key, text))
         if isinstance(data, list):
             return [pd.DataFrame.from_records(data)]
         return [

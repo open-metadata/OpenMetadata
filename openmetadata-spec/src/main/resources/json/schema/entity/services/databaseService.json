@@ -43,6 +43,7 @@
         "PinotDB",
         "Datalake",
         "DomoDatabase",
+        "QueryLog",
         "CustomDatabase"
       ],
       "javaEnums": [
@@ -129,6 +130,9 @@
         },
         {
           "name": "DomoDatabase"
+        },
+        {
+          "name": "QueryLog"
         },
         {
           "name": "CustomDatabase"

@@ -12,7 +12,8 @@
     },
     "secretKey": {
       "description": "Custom OIDC Client Secret Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "tokenEndpoint": {
       "description": "Custom OIDC token endpoint.",

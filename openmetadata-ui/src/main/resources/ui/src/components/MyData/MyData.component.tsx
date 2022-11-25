@@ -228,6 +228,7 @@ const MyData: React.FC<MyDataProps> = ({
           {feedData?.length > 0 || !filtersApplied || newFeedsLength ? (
             <>
               <ActivityFeedList
+                stickyFilter
                 withSidePanel
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}

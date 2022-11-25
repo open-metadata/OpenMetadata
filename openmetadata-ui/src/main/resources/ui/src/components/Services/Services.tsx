@@ -157,7 +157,7 @@ const Services = ({
                         <div
                           className="tw-flex tw-justify-end"
                           data-testid="service-icon">
-                          {getServiceLogo(service.serviceType || '', 'tw-h-8')}
+                          {getServiceLogo(service.serviceType || '', 'h-7')}
                         </div>
                       </div>
                     </div>

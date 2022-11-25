@@ -8,17 +8,32 @@ slug: /deployment/upgrade
 ## Releases
 
 OpenMetadata community will be doing feature releases and stable releases. 
+
  - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
  - Stable releases are to upgrade your production environments and share it with your users.
 
-## 0.12.1 - Stable release
- 
- OpenMetadata 0.12.1 is a stable release. For Release notes please check here 
- Join our slack https://slack.open-metadata.org provide your feedback and help community to get to the stable 0.12.1 release
- 
-## Breaking Changes from 0.12.1 Release
+## 0.13.0 - Feature Release
 
-OpenMetadata Release 0.12.1 introduces below breaking changes -
+OpenMetadata 0.13.0 is a **feature release**. 
+
+**Don't upgrade your production with 0.13.0 feature release** 
+
+Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.org/deployment) and please give us any feedback on our [community slack](https://slack.open-metadata.org)
+
+
+## 0.12.3 - Stable release
+ 
+ OpenMetadata 0.12.3 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) 
+
+If you are upgrading production this is the recommended version to upgrade.
+  
+ 
+ 
+ 
+## Breaking Changes from 0.13.0 Feature Release
+## Breaking Changes from 0.12.x Stable Release
+
+OpenMetadata Release 0.12.x introduces below breaking changes -
 
 ### Change of OpenMetadata Service Namespace
 

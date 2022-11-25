@@ -14,14 +14,11 @@
 import {
     addUser,
     deleteSoftDeletedUser,
-    interceptURL,
-    login,
-    restoreUser,
+    interceptURL, restoreUser,
     softDeleteUser,
     uuid,
     verifyResponseStatusCode
 } from '../../common/common';
-import { LOGIN } from '../../constants/constants';
 
 const userName = `Usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
@@ -31,8 +28,7 @@ const adminEmail = `${adminName}@gmail.com`;
 
 describe('Users flow should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
@@ -82,8 +78,7 @@ describe('Users flow should work properly', () => {
 
 describe('Admin flow should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]')
       .should('exist')
@@ -131,8 +126,8 @@ describe('Admin flow should work properly', () => {
   it('Restore soft deleted admin', () => {
     restoreUser(adminName);
   });
-
-  it('Permanently Delete Soft Deleted admin', () => {
+  // Todo:- Flaky test, Ref:- https://cloud.cypress.io/projects/a9yxci/runs/9124/test-results/bd7584d2-b8a8-42a5-89c5-c05851b9ea76
+  it.skip('Permanently Delete Soft Deleted admin', () => {
     softDeleteUser(adminName);
     deleteSoftDeletedUser(adminName);
   });

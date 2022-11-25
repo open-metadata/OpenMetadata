@@ -96,6 +96,7 @@ const ExplorePage: FunctionComponent = () => {
       pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
       search: Qs.stringify({ page: 1 }),
     });
+    setAdvancedSearchQueryFilter(undefined);
   };
 
   const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
@@ -104,7 +105,7 @@ const ExplorePage: FunctionComponent = () => {
         pathname: history.location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
-          queryFilter: JSON.stringify(queryFilter),
+          queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
           page: 1,
         }),
       });

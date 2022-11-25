@@ -8,7 +8,8 @@
   "properties": {
     "clientSecret": {
       "description": "Azure SSO client secret key",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "authority": {
       "description": "Azure SSO Authority",

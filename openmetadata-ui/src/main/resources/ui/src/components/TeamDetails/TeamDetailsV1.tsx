@@ -179,6 +179,14 @@ const TeamDetailsV1 = ({
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
 
+  const teamCount = useMemo(
+    () =>
+      isOrganization && currentTeam && currentTeam.childrenCount
+        ? currentTeam.childrenCount + 1
+        : table.length,
+    [table, isOrganization, currentTeam.childrenCount]
+  );
+
   const tabs = useMemo(
     () =>
       getTabs(
@@ -186,9 +194,9 @@ const TeamDetailsV1 = ({
         teamUserPagin,
         isGroupType,
         isOrganization,
-        table.length
+        teamCount
       ),
-    [currentTeam, teamUserPagin, searchTerm, table]
+    [currentTeam, teamUserPagin, searchTerm, teamCount]
   );
 
   const createTeamPermission = useMemo(
@@ -554,7 +562,7 @@ const TeamDetailsV1 = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('message.entity-fetch-error', {
+        t('server.entity-fetch-error', {
           entity: 'User Permissions',
         })
       );
@@ -1051,9 +1059,7 @@ const TeamDetailsV1 = ({
               </>
             ))}
           </Space>
-          <div
-            className="tw-mb-3 tw--ml-5 tw-mt-2"
-            data-testid="description-container">
+          <div className="m-b-sm m-t-xs" data-testid="description-container">
             <Description
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}

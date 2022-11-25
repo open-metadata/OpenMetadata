@@ -198,9 +198,10 @@ const BasicAuthProvider = ({
 
   const handleLogout = async () => {
     const token = localState.getOidcToken();
+    const refreshToken = localState.getRefreshToken();
     if (token) {
       try {
-        await logoutUser(token);
+        await logoutUser({ token, refreshToken });
         localState.removeOidcToken();
         history.push(ROUTES.SIGNIN);
       } catch (error) {

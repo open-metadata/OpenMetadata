@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import React, { FC } from 'react';
@@ -23,7 +24,10 @@ import {
   prepareFeedLink,
 } from '../../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
-import { getDayTimeByTimeStamp } from '../../../../utils/TimeUtils';
+import {
+  getDateTimeFromMilliSeconds,
+  getDayTimeByTimeStamp,
+} from '../../../../utils/TimeUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
@@ -135,9 +139,15 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       {feedType === ThreadType.Task && getTaskLinkElement}
       {feedType === ThreadType.Announcement && getAnnouncementLinkElement}
 
-      <span className="tw-text-grey-muted" data-testid="timestamp">
-        {timeStamp && ' - ' + getDayTimeByTimeStamp(timeStamp)}
-      </span>
+      {timeStamp && (
+        <Tooltip
+          className="tw-text-grey-muted"
+          title={getDateTimeFromMilliSeconds(timeStamp)}>
+          <span data-testid="timestamp">
+            {' - ' + getDayTimeByTimeStamp(timeStamp)}
+          </span>
+        </Tooltip>
+      )}
     </div>
   );
 };

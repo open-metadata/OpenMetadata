@@ -499,7 +499,9 @@ export const getFrequentlyJoinedWithColumns = (
   columnName: string,
   joins: Array<ColumnJoins>
 ): Array<JoinedWith> => {
-  return joins.find((join) => join.columnName === columnName)?.joinedWith || [];
+  return (
+    joins?.find((join) => join.columnName === columnName)?.joinedWith || []
+  );
 };
 
 export const getFrequentlyJoinedColumns = (

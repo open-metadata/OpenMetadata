@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { descriptionBox, interceptURL, login, verifyResponseStatusCode } from '../../common/common';
-import { LOGIN, service } from '../../constants/constants';
+import { descriptionBox, interceptURL, verifyResponseStatusCode } from '../../common/common';
+import { service } from '../../constants/constants';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
     //redirecting to services page
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();

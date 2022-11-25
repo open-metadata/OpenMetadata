@@ -20,6 +20,7 @@ import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
+  isEmpty,
   isNil,
   isNumber,
   lowerCase,
@@ -190,7 +191,7 @@ const Explore: React.FC<ExploreProps> = ({
       });
     } catch {
       showErrorToast(
-        t('message.entity-fetch-error', {
+        t('server.entity-fetch-error', {
           entity: `profile details for table ${source?.name || ''}`,
         })
       );
@@ -235,27 +236,50 @@ const Explore: React.FC<ExploreProps> = ({
     setEntityDetails(source);
   };
 
-  const handleFacetFilterClearFilter: FacetFilterProps['onClearFilter'] = (
-    key
-  ) => onChangePostFilter(omit(postFilter, key));
+  const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
+    const term = {} as Record<string, unknown>;
+
+    data.forEach((filter) => {
+      if (filter.key) {
+        term[filter.key] = filter.value;
+      }
+    });
+
+    onChangeAdvancedSearchQueryFilter(
+      isEmpty(term)
+        ? undefined
+        : {
+            query: { bool: { must: [{ term }] } },
+          }
+    );
+  };
 
   const handleAdvanceFieldClear = () => {
     setSelectedQuickFilters([]);
   };
 
   const handleAdvanceFieldRemove = (value: string) => {
-    setSelectedQuickFilters((prev) => prev.filter((p) => p.key !== value));
+    setSelectedQuickFilters((prev) => {
+      const data = prev.filter((p) => p.key !== value);
+      handleAdvanceSearchFilter(data);
+
+      return data;
+    });
   };
 
   const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
-      return pre.map((preField) => {
+      const data = pre.map((preField) => {
         if (preField.key === field.key) {
           return field;
         } else {
           return preField;
         }
       });
+
+      handleAdvanceSearchFilter(data);
+
+      return data;
     });
   };
 
@@ -282,15 +306,6 @@ const Explore: React.FC<ExploreProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    const term = {} as Record<string, unknown>;
-    selectedQuickFilters.map((filter) => {
-      if (filter.key) {
-        term[filter.key] = filter.value;
-      }
-    });
-  }, [selectedQuickFilters]);
-
   return (
     <PageLayoutV1
       leftPanel={
@@ -298,11 +313,11 @@ const Explore: React.FC<ExploreProps> = ({
           className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
           data-testid="data-summary-container">
           <FacetFilter
-            aggregations={searchResults?.aggregations}
+            aggregations={omit(searchResults?.aggregations, 'entityType')}
             filters={postFilter}
             showDeleted={showDeleted}
             onChangeShowDeleted={onChangeShowDeleted}
-            onClearFilter={handleFacetFilterClearFilter}
+            onClearFilter={onChangePostFilter}
             onSelectHandler={handleFacetFilterChange}
           />
         </Card>

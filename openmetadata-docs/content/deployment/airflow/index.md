@@ -117,6 +117,7 @@ The OpenMetadata server takes all its configurations from a YAML file. You can f
 `openmetadata.yaml`, update the `airflowConfiguration` section accordingly.
 
 ```yaml
+# For Bare Metal Installations
 [...]
 
 airflowConfiguration:
@@ -124,7 +125,6 @@ airflowConfiguration:
    username: ${AIRFLOW_USERNAME:-admin}
    password: ${AIRFLOW_PASSWORD:-admin}
    metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-   authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"}
 
 [...]
 ```
@@ -134,6 +134,22 @@ If using Docker, make sure that you are passing the correct environment variable
 ```env
 AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
 SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://openmetadata-server:8585/api}
+```
+
+If using Kubernetes, make sure that you are passing the correct values to Helm Chart:
+
+```yaml
+# Custom OpenMetadata Values.yaml
+global:
+   airflow:
+    enabled: true
+    # endpoint url for airflow
+    host: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
+    auth:
+      username: admin
+      password:
+        secretRef: airflow-secrets
+        secretKey: openmetadata-airflow-password
 ```
 
 #### Validating the installation
