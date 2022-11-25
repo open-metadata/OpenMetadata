@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
-import { getQueryWithSlash } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Aggregations,
@@ -26,6 +25,7 @@ import {
   SuggestResponse,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
+import { getQueryWithSlash } from '../utils/SearchUtils';
 import APIClient from './index';
 
 const getSearchIndexParam: (

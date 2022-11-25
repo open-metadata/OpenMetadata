@@ -525,7 +525,3 @@ export const ENTITY_PATH = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
 };
-
-// will add back slash "\" before quote in string if present
-export const getQueryWithSlash = (query: string): string =>
-  query.replace(/["']/g, '\\$&');
