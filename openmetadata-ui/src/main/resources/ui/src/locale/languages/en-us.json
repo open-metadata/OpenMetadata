@@ -353,7 +353,7 @@
     "metric-type-required": "Metric type is required",
     "metric-value-required": "Metric value is required",
     "no-kpi-found": "No KPI found with name {{name}}",
-    "no-kpi-available-add-new-one": "No kpi's are available, add one by clicking Add KPI button.",
+    "no-kpi-available-add-new-one": "No KPI's are available, add one by clicking Add KPI button.",
     "delete-action-description": "Deleting this {{entityType}} will permanently remove its metadata from OpenMetadata.",
     "restore-action-description": "Restoring this {{entityType}} will restore its metadata in OpenMetadata.",
     "announcement-action-description": "Set up banners to inform your team of upcoming maintenance, updates, &amp; deletions.",
