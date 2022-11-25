@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
+import { getQueryWithSlash } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Aggregations,
@@ -167,7 +168,7 @@ export const rawSearchQuery = <
     >
   >('/search/query', {
     params: {
-      q: query,
+      q: getQueryWithSlash(query || ''),
       index: getSearchIndexParam(searchIndex),
       from: (pageNumber - 1) * pageSize,
       size: pageSize,
