@@ -15,22 +15,21 @@ import {
     deleteCreatedService,
     editOwnerforCreatedService,
     goToAddNewServicePage,
-    login,
     testServiceCreationAndIngestion,
     updateDescriptionForIngestedTables,
     uuid
 } from '../../common/common';
-import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const tableName = 'personsx';
 const description = `This is ${serviceName} description`;
+const filterPattern = 'dbt_jaffle'
 
 describe('BigQuery Ingestion', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
 
   it('add and ingest data', () => {
@@ -72,7 +71,14 @@ describe('BigQuery Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      // no schema or database filters
+      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .check();
+        cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .type(filterPattern);
     };
 
     testServiceCreationAndIngestion(
