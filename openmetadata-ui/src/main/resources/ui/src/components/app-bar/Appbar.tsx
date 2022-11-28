@@ -13,6 +13,7 @@
 
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
@@ -44,7 +45,10 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
+
+const cookieStorage = new CookieStorage();
 
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
@@ -317,7 +321,10 @@ const Appbar: React.FC = (): JSX.Element => {
   }, [searchQuery]);
 
   useEffect(() => {
-    setIsFeatureModalOpen(!isFirstTimeUser);
+    setIsFeatureModalOpen(
+      // TODO: Add !isFirstTimeUser to condition if showing Welcome Modal
+      cookieStorage.getItem(COOKIE_VERSION) !== 'true'
+    );
   }, [isFirstTimeUser]);
 
   useEffect(() => {
