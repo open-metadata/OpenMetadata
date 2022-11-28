@@ -25,7 +25,6 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { Connection } from '../../generated/entity/services/databaseService';
 import {
@@ -90,7 +89,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     state: '',
   });
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
-  const noConnectionMsg = `${serviceName} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.`;
   const isOpenmetadataService = useMemo(
     () =>
       serviceDetails.connection?.config?.type ===
@@ -188,7 +186,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         setCurrTriggerId({ id, state: 'success' });
         setTimeout(() => {
           setCurrTriggerId({ id: '', state: '' });
-          showSuccessToast('Pipeline triggered successfully');
+          showSuccessToast(t('message.pipeline-trigger-success-message'));
         }, 1500);
       })
       .catch(() => setCurrTriggerId({ id: '', state: '' }));
@@ -262,7 +260,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         size="small"
         type="primary"
         onClick={() => handleAddIngestionClick(type)}>
-        Add {startCase(type)} Ingestion
+        {t('label.add-pipeline-ingestion', { pipelineType: startCase(type) })}
       </Button>
     );
   };
@@ -277,7 +275,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           size="small"
           type="primary"
           onClick={() => setShowActions((pre) => !pre)}>
-          Add Ingestion{' '}
+          {t('label.add-pipeline-ingestion', { pipelineType: '' })}
           {showActions ? (
             <DropdownIcon
               style={{
@@ -417,7 +415,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               title={
                 permissions.ViewAll || permissions.ViewBasic
                   ? t('label.view-dag')
-                  : NO_PERMISSION_TO_VIEW
+                  : t('message.no-permission-to-view')
               }>
               <Button
                 className="tw-mr-2"
@@ -589,7 +587,6 @@ const Ingestion: React.FC<IngestionProps> = ({
       },
     ],
     [
-      NO_PERMISSION_TO_VIEW,
       permissions,
       airflowEndpoint,
       getTriggerDeployButton,
@@ -615,7 +612,11 @@ const Ingestion: React.FC<IngestionProps> = ({
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
               <FontAwesomeIcon icon={faExclamationCircle} />
-              <p> {noConnectionMsg} </p>
+              <p>
+                {t('message.no-service-connection-details-message', {
+                  serviceName,
+                })}
+              </p>
             </div>
           )}
         </div>
@@ -623,7 +624,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           <div className="tw-w-4/12">
             {searchText || !isEmpty(ingestionData) ? (
               <Searchbar
-                placeholder="Search for ingestion..."
+                placeholder={`${t('message.search-for-ingestion')}...`}
                 searchValue={searchText}
                 typingInterval={500}
                 onSearch={handleSearchAction}
@@ -686,7 +687,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       {isConfirmationModalOpen && (
         <EntityDeleteModal
           entityName={deleteSelection.name}
-          entityType="ingestion"
+          entityType={t('label.ingestion-lowercase')}
           loadingState={deleteSelection.state}
           onCancel={handleCancelConfirmationModal}
           onConfirm={() =>

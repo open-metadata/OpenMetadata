@@ -319,7 +319,15 @@
     "add-display-name": "Add display name",
     "token-security": "Token Security",
     "teams": "Teams",
-    "pctile-lowercase": "pctile"
+    "ingestion-lowercase": "ingestion",
+    "pctile-lowercase": "pctile",
+    "add-pipeline-ingestion": "Add {{pipelineType}} Ingestion",
+    "ca-certs": "Ca Certs",
+    "region-name": "Region Name",
+    "timeout": "Timeout",
+    "use-aws-credentials": "Use Aws Credentials",
+    "use-ssl": "Use SSL",
+    "verify-certs": "Verify Certs"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -377,7 +385,10 @@
     "no-data-available-for-selected-filter": "No data found. Try changing the filters.",
     "token-security-description": "Anyone who has your JWT Token will be able to send REST API requests to the OpenMetadata Server. Do not expose the JWT Token in your application code. Do not share it on GitHub or anywhere else online.",
     "org-url-required": "OrgURL is required",
-    "all-charts-are-mapped": "All charts are mapped with existing KPIs."
+    "all-charts-are-mapped": "All charts are mapped with existing KPIs.",
+    "no-service-connection-details-message": "{{serviceName}} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.",
+    "pipeline-trigger-success-message": "Pipeline triggered successfully",
+    "search-for-ingestion": "Search for ingestion"
   },
   "server": {
     "no-user-entities": "You have not {{type}} anything yet.",
@@ -392,7 +403,8 @@
     "join-team-error": "Error while joining the team!",
     "leave-team-error": "Error while leaving the team!",
     "no-query-available": "No query available",
-    "unexpected-response": "Unexpected response from server!"
+    "unexpected-response": "Unexpected response from server!",
+    "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}"
   },
   "url": {}
 }
