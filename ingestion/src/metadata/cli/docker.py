@@ -278,7 +278,11 @@ def run_docker(  # pylint: disable=too-many-branches
             logger.info("Do you want to Delete the docker mounted volumes from host")
             user_response = input("Please enter [y/N]\n")
             if user_response == "y":
-                shutil.rmtree(MAIN_DIR)
+                try:
+                    shutil.rmtree(MAIN_DIR)
+                except FileNotFoundError as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(err)
             docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
             logger.info(
                 "Stopped docker compose for OpenMetadata and removing images, networks, volumes."
