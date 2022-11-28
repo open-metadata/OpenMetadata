@@ -25,6 +25,7 @@ import {
   SuggestResponse,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
+import { getQueryWithSlash } from '../utils/SearchUtils';
 import APIClient from './index';
 
 const getSearchIndexParam: (
@@ -167,7 +168,7 @@ export const rawSearchQuery = <
     >
   >('/search/query', {
     params: {
-      q: query,
+      q: getQueryWithSlash(query || ''),
       index: getSearchIndexParam(searchIndex),
       from: (pageNumber - 1) * pageSize,
       size: pageSize,

@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
-import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Glue';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const tableName = 'cloudfront_logs2';
 const description = `This is ${serviceName} description`;
+const filterPattern = 'default';
 
 describe('Glue Ingestion', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
 
   it('add and ingest data', () => {
@@ -46,7 +46,14 @@ describe('Glue Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      // no filters
+      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .check();
+      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .type(filterPattern);
     };
 
     testServiceCreationAndIngestion(
