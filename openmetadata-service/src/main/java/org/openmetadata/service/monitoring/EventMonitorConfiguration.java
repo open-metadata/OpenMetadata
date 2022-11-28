@@ -22,8 +22,6 @@ import org.openmetadata.schema.monitoring.EventMonitorProvider;
 @Setter
 public class EventMonitorConfiguration {
 
-  public static final EventMonitorProvider DEFAULT_EVENT_MONITORING = EventMonitorProvider.NOOP;
-
   private EventMonitorProvider eventMonitor;
 
   private int batchSize;
