@@ -5,7 +5,6 @@
   "description": "OpenMetadata Event Monitor Provider.",
   "type": "string",
   "javaType": "org.openmetadata.schema.monitoring.EventMonitorProvider",
-  "enum": ["noop", "cloudwatch"],
-  "default": "noop",
+  "enum": ["cloudwatch"],
   "additionalProperties": false
 }

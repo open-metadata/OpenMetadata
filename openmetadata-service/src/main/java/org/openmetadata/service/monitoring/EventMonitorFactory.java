@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2022 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.service.monitoring;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -12,20 +24,12 @@ public class EventMonitorFactory {
     if (eventMonitor != null) {
       return eventMonitor;
     }
-    EventMonitorProvider eventMonitorProvider =
-        config != null && config.getEventMonitor() != null
-            ? config.getEventMonitor()
-            : EventMonitorConfiguration.DEFAULT_EVENT_MONITORING;
+    EventMonitorProvider eventMonitorProvider = config != null ? config.getEventMonitor() : null;
 
-    switch (eventMonitorProvider) {
-      case NOOP:
-        eventMonitor = NoopEventMonitor.getInstance(eventMonitorProvider, config, clusterName);
-        break;
-      case CLOUDWATCH:
-        eventMonitor = CloudwatchEventMonitor.getInstance(eventMonitorProvider, config, clusterName);
-        break;
-      default:
-        throw new IllegalArgumentException("Not implemented Event monitor: " + eventMonitorProvider);
+    if (eventMonitorProvider == EventMonitorProvider.CLOUDWATCH) {
+      eventMonitor = new CloudwatchEventMonitor(eventMonitorProvider, config, clusterName);
+    } else {
+      throw new IllegalArgumentException("Not implemented Event monitor: " + eventMonitorProvider);
     }
 
     return eventMonitor;
