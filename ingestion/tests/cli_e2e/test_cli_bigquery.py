@@ -28,9 +28,9 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     create_view_query: str = """
-        CREATE VIEW `open-metadata-beta.exclude_me`.view_orders AS
-            SELECT *
-            FROM `open-metadata-beta.exclude_me`.orders ;
+       CREATE VIEW `open-metadata-beta.exclude_me.view_orders` AS
+                     SELECT orders.id as id, orders.order_name as order_name
+                       FROM `open-metadata-beta`.exclude_me.orders;
     """
 
     insert_data_queries: List[str] = [
@@ -81,20 +81,20 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 2
+        return 1
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
-        return 2
+        return 1
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 2
+        return 1
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 2
+        return 1
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 2
+        return 1
