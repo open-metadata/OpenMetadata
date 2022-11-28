@@ -93,7 +93,7 @@ export const handleIngestionRetry = (
             $ingestionStatus.text() !== 'Success' &&
             retryCount <= RETRY_TIMES
           ) {
-            // retry after waiting for 20 seconds
+            // retry after waiting with log1 method [20s,40s,80s,160s,320s]
             cy.wait(timer);
             timer *= 2;
             cy.reload();
@@ -894,7 +894,7 @@ export const retryIngestionRun = () => {
           $ingestionStatus.text() !== 'Success' &&
           retryCount <= RETRY_TIMES
         ) {
-          // retry after waiting for 20 seconds
+          // retry after waiting with log1 method [20s,40s,80s,160s,320s]
           cy.wait(timer);
           timer *= 2;
           cy.reload();
