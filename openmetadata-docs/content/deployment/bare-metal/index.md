@@ -58,6 +58,14 @@ OpenMetadata performs metadata ingestion using ingestion
 connectors designed to run in Airflow or another workflow scheduler. To install Airflow, please see the
 [Airflow Installation guide](/deployment/airflow).
 
+## Minimum Sizing Requirements
+
+- Our minimum specs recommendation for the OpenMetadata Deployment (one replica) is 2 vCPUs and 4 Gigs with 20 Gigs of volume size if using persistent volumes for logs.
+- For Elasticsearch, 2 vCPUs and 2 Gigs RAM (per instance) with 30 Gigs of Storage volume attached.
+- For the database, 2 vCPUs and 2 Gigs RAM (per instance) with 30 Gigs of Storage Volume Attached (dynamic expansion up to 100 Gigs).
+
+These settings apply as well when using managed instances, such as RDS or AWS OpenSearch.
+
 # Procedure
 
 ## 1. Download the distribution
@@ -157,7 +165,7 @@ We support
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.1 or Amazon OpenSearch engine version upto 1.3
 - Amazon RDS (PostgreSQL) engine version upto 14.2-R1
 
-For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
+For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata bare metal systems to connect with Database and ElasticSearch.
 
