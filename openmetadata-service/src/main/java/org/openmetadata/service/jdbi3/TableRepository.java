@@ -126,13 +126,9 @@ public class TableRepository extends EntityRepository<Table> {
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
     getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
-    table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-    table.setProfile(fields.contains("profile") ? getTableProfile(table) : null);
-    getColumnProfile(fields.contains("profile"), table.getColumns());
     table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
-    table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
     return table;
   }
@@ -216,6 +212,29 @@ public class TableRepository extends EntityRepository<Table> {
         .insert(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
+  }
+
+  @Transaction
+  public Table getSampleData(UUID tableId) throws IOException {
+    // Validate the request content
+    Table table = dao.findEntityById(tableId);
+
+    TableData sampleData = JsonUtils.readValue(
+          daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_SAMPLE_DATA_EXTENSION),
+          TableData.class);
+    table.setSampleData(sampleData);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table;
+  }
+
+  @Transaction
+  public Table deleteSampleData(UUID tableId) throws IOException {
+    // Validate the request content
+    Table table = dao.findEntityById(tableId);
+
+    daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table;
   }
 
   @Transaction
@@ -399,6 +418,25 @@ public class TableRepository extends EntityRepository<Table> {
         .insert(tableId.toString(), "table.tableQueries", "sqlQuery", JsonUtils.pojoToJson(updatedQueries));
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
+  }
+
+  @Transaction
+  public Table getQueries(UUID tableId) throws IOException {
+    // Validate the request content
+    Table table = dao.findEntityById(tableId);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table.withTableQueries(getQueries(table));
+  }
+
+  private List<SQLQuery> getQueries(Table table) throws IOException {
+    List<SQLQuery> tableQueries =
+        JsonUtils.readObjects(
+            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableQueries"),
+            SQLQuery.class);
+    if (tableQueries != null) {
+      tableQueries.sort(Comparator.comparing(SQLQuery::getVote, Comparator.reverseOrder()));
+    }
+    return tableQueries;
   }
 
   @Transaction
@@ -782,6 +820,7 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
+
   /**
    * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
    * or, if there is already data for the date {@code newDailyCount.getDate()}, replace older count with the new one.
@@ -890,11 +929,7 @@ public class TableRepository extends EntityRepository<Table> {
     return dc -> CommonUtil.dateInRange(RestUtil.DATE_FORMAT, dc.getDate(), 0, 30);
   }
 
-  private TableData getSampleData(Table table) throws IOException {
-    return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_SAMPLE_DATA_EXTENSION),
-        TableData.class);
-  }
+
 
   private TableProfile getTableProfile(Table table) throws IOException {
     return JsonUtils.readValue(
@@ -902,17 +937,6 @@ public class TableRepository extends EntityRepository<Table> {
             .entityExtensionTimeSeriesDao()
             .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
         TableProfile.class);
-  }
-
-  private List<SQLQuery> getQueries(Table table) throws IOException {
-    List<SQLQuery> tableQueries =
-        JsonUtils.readObjects(
-            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableQueries"),
-            SQLQuery.class);
-    if (tableQueries != null) {
-      tableQueries.sort(Comparator.comparing(SQLQuery::getVote, Comparator.reverseOrder()));
-    }
-    return tableQueries;
   }
 
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) throws IOException {
