@@ -3,6 +3,43 @@ title: Latest Release
 slug: /overview/latest-release
 ---
 
+
+# 0.13.0 Release - Nov 23rd 2022 🎉
+This is our stable release and we recommend community to upgrade to the 0.12.1 release
+
+## Data Insights
+
+Data insights aims to provide a single pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators(KPIs) and set goals within OpenMetadata to work towards better documentation, owernship, tiering
+
+
+## Lienage Traceability
+
+Lineage UI has been transformed to enhance user experience. Users can get a holistic view of an entity from the Lineage tab. When a entity is selected, the UI displays end-to-end lineage traceability for the table and column levels, Just search for an entity and expand the graph to unfold lineage. It'll display the upstream/downstream of nodes
+
+## Search Relevancy and Advanced Search
+
+- Default operator for search queries is chaned to "OR"
+- We are ranking search results based on weekly usage metric. In searches similarly ranked tables with higher weekly usage will be shown first in the results
+- An advanced search feature has been introduced in the 0.13.0 release, which helps users discover assets quickly with a syntax editor on AND/OR conditions
+
+## Data Lake Profiler
+
+- Users can now create and deploy profiling workflows for Data Lake connector which supports AWS S3 and GCS
+
+## Security
+- LDAP login is now supported
+- Bot accounts now have policies
+
+## Connectors
+New connectors are an essential part of every release in OpenMetadata. We are introducing four new connectors in this release:
+
+- Domo is a cloud-based dashboard service. The Domo Business Cloud is a low-code data app platform that takes the power of BI to the next level by combining all your data and putting it to work across any business process or workflow. OpenMetadata supports Domo as a Database, Dashboard, as well as a Pipeline service.
+- AWS SageMaker is a fully managed machine learning service, where data scientists and developers can quickly and easily build and train machine learning models, and then directly deploy them into a production-ready hosted environment.
+- AWS Kinesis is a cloud-based messaging service that allows real-time processing of streaming large amounts of data per second.
+- AWS QuickSight is a cloud-scale business intelligence (BI) service that allows everyone in the organization to understand the data by asking questions in natural language, exploring through interactive dashboards, or automatically looking for patterns and outliers powered by machine learning.
+
+
+
 # 0.12.1 Release - Oct 3rd 2022 🎉
 This is our stable release and we recommend community to upgrade to the 0.12.1 release
 
@@ -12,7 +49,7 @@ This is our stable release and we recommend community to upgrade to the 0.12.1 r
 - Email notifications for forgotten password and new user signed up
 - Admin can add new users and send an email 
 
-## ElasticSearch full re-index through Uigur
+## ElasticSearch full re-index through UI
 
 - Now admins can full re-index elasticsearch through the UI itself
 

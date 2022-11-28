@@ -221,11 +221,15 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             dict: _description_
         """
 
-        user_entity: Optional[User] = self.metadata.get_by_id(
-            User,
-            user_id,
-            fields=["*"],
-        )
+        try:
+            user_entity: Optional[User] = self.metadata.get_by_id(
+                User,
+                user_id,
+                fields=["*"],
+            )
+        except Exception as exc:
+            logger.warning(f"Could not get user details - {exc}")
+            return {}
 
         if not user_entity:
             return {}

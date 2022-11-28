@@ -386,7 +386,9 @@ public class TableRepository extends EntityRepository<Table> {
     if (oldQuery != null && query.getUsers() != null) {
       // Merge old and new users
       List<EntityReference> userList = query.getUsers();
-      userList.addAll(oldQuery.getUsers());
+      if (oldQuery.getUsers() != null) {
+        userList.addAll(oldQuery.getUsers());
+      }
       HashSet<EntityReference> userSet = new HashSet<>(userList);
       query.setUsers(new ArrayList<>(userSet));
     }

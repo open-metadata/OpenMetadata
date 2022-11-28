@@ -15,12 +15,8 @@ To make changes to the `docker-compose.yaml` file you will need to download it f
 
 ## Volumes for MYSQL container:
 Following are the changes we have to do while mounting the directory for mysql in OpenMetadata.
-- Create a directory to keep your MySQL data or files in the host machine.
-```commandline
-mkdir -p /opt/openmetadata/db
-```
 - Update or add the volume in the docker-compose.yml file
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -28,17 +24,13 @@ services:
   mysql:
     ...
     volumes:
-      - /opt/openmetadata/db:/var/lib/mysql
+      - ./docker-volume/db:/var/lib/mysql
     ...
 ```
 ## Volumes for PostgreSQL container:
 Following are the changes we have to do while mounting the directory for postgresql in OpenMetadata.
-- Create a directory to keep your PostgreSQL data or files in the host machine.
-```commandline
-mkdir -p /opt/openmetadata/db
-```
 - Update or add the volume in the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -46,18 +38,14 @@ services:
  postgresql:
     ...
     volumes:
-      - /opt/openmetadata/db:/var/lib/postgresql
+      - ./docker-volume/db:/var/lib/postgresql/data
     ...
 ```
 
 ## Volumes for ingestion container
 Following are the changes we have to do while mounting the directory for ingestion in OpenMetadata. Here we will maintaing different directory for dag_generated_configs, dags and secrets.
-- Create a directory to keep your ingestion data or files in the host machine.
-```commandline
-mkdir -p /opt/openmetadata/dag_config /opt/openmetadata/dags /opt/openmetadata/secrets
-```
 - Remove the below section from the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 volumes:
@@ -66,7 +54,7 @@ volumes:
   ingestion-volume-tmp:
 ```
 - Update or add the volume in the docker-compose.yml file.
-Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.12.2-release/docker-compose.yml) .
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
 ```commandline
 version: "3.9"
@@ -74,9 +62,9 @@ services:
   ingestion:
     ...
     volumes:
-      - /opt/openmetadata/dag_config:/opt/airflow/dag_generated_configs
-      - /opt/openmetadata/dags:/opt/airflow/dags
-      - /opt/openmetadata/secrets:/tmp
+      - ./docker-volume/dag_config:/opt/airflow/dag_generated_configs
+      - ./docker-volume/dags:/opt/airflow/dags
+      - ./docker-volume/secrets:/tmp
     ...
 ```
 
@@ -87,20 +75,20 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.12.2
+    image: openmetadata/db:0.13.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
     expose:
       - 3306
     volumes:
-      - /opt/openmetadata/db:/var/lib/mysql
+      - ./docker-volume/db:/var/lib/mysql
     networks:
       app_net:
         ipv4_address: 172.16.240.10
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.12.2
+    image: openmetadata/ingestion:0.13.0
     depends_on:
       - mysql
     expose:
@@ -114,9 +102,9 @@ services:
       - "localhost:172.16.240.11"
       - "localhost:172.16.240.13"
     volumes:
-      - /opt/openmetadata/dag_config:/opt/airflow/dag_generated_configs
-      - /opt/openmetadata/dags:/opt/airflow/dags
-      - /opt/openmetadata/secrets:/tmp
+      - ./docker-volume/dag_config:/opt/airflow/dag_generated_configs
+      - ./docker-volume/dags:/opt/airflow/dags
+      - ./docker-volume/secrets:/tmp
 ```
 
 Once these changes are done, restart the container via:
@@ -124,4 +112,10 @@ Once these changes are done, restart the container via:
 ```commandline
 docker compose down && docker compose up -d
 ```
-
+<Note>
+If you are starting  the OpenMetadata Docker containers using below command:
+```command line
+metadata docker --start
+```
+Then the docker volume directory will be created under the folder where the docker-compose file will be present.
+</Note>
