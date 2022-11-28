@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.secrets.SecretsManagerConfiguration;
 
 @Getter
@@ -86,6 +87,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
+
+  @JsonProperty("eventMonitoringConfiguration")
+  private EventMonitorConfiguration eventMonitorConfiguration;
 
   @JsonProperty("clusterName")
   private String clusterName;
