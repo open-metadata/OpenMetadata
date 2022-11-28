@@ -58,5 +58,6 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
+  "required": ["username", "password", "hostPort"],
   "additionalProperties": false
 }
