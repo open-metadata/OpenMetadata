@@ -15,31 +15,49 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 
 You can check the latest release [here](/overview/releases).
 
-## 0.13.0 Release - Nov 16th, 2022
+## 0.13.1 Release - Dec 22nd, 2022
 
 <TileContainer>
   <Tile
-    title="Data Insights"
+    title="Lineage"
+    text=""
+    background="purple-70"
+    bordercolor="purple-70"
+    link=""
+    size="half"
+  >
+    <li>UI Improvements to the queries collected and attached to a table. Allow users upvote a query to show as an example</li>
+  </Tile>
+  <Tile
+    title="Collaboration"
     text=""
     background="pink-70"
     bordercolor="pink-70"
-    link="https://github.com/open-metadata/OpenMetadata/issues/4652"
   >
-    <li>Data Insights will provide analytics on top of metadata collected in OpenMetadata.</li>
-    <li>Reports/Dashboards on how to your data is doing</li>
-    <li>Data Ownership/Description coverage</li>
-    <li>Admins should be able to view aggregated user activity, such as user growth and user engagement, in OpenMetadata</li>
-    <li>Weekly Data Insights Reports to the team to understand how their team is performing relative to KPIs set at the org level and, in general, nudging the teams to get to better data by giving insights into the metadata.</li>
+    <li>Improvements Task & Activity Feed</li>
+    <li>Capture the popularity of entities based on thumbs up and down</li>
+    <li>Knowledge Articles - Users/Data Stewards can build knowledge articles right within OpenMetadata and attach them at the entity or database level. These articles can be searchable</li>
   </Tile>
-  <Tile
-    title="Access Control and Policies"
+ <Tile
+    title="Data Quality"
     text=""
     background="yellow-70"
-    bordercolor="yellow-70"
-    link="https://github.com/open-metadata/OpenMetadata/issues/4199"
+    bordercolor="blue-70"
   >
-    <li>Add Search Results Integration</li>
-    <li>Roles and Policies application to TestSuite and TestCases</li>
+    <li>Freshness based on the partition key</li>
+    <li>TestCase versioning and results applying to a specific version so that UI can show the results as per the test case version</li>
+  </Tile>
+   <Tile
+    title="Notifications"
+    text=""
+    background="green-70"
+    bordercolor="green-70"
+    link="https://github.com/open-metadata/OpenMetadata/issues/5803"
+    size="half"
+  >
+    <li>Improved workflow to build Alerts and filtering mechanisms</li>
+    <li>Admins can now configure email templates. </li>
+    <li>Admins can set up an email notification for an event, such as a schema change notification, etc..</li>
   </Tile>
   <Tile
     title="Glossary"
@@ -55,51 +73,16 @@ You can check the latest release [here](/overview/releases).
     <li>Propagate tags/glossary by tagging at the database/schema level and applying them to all the schemas/tables underneath them.</li>
   </Tile>
   <Tile
-    title="Notifications"
-    text=""
-    background="green-70"
-    bordercolor="green-70"
-    link="https://github.com/open-metadata/OpenMetadata/issues/5803"
-    size="half"
-  >
-    <li>Improved workflow to build Alerts and filtering mechanisms</li>
-    <li>Admins can now configure email templates. </li>
-    <li>Admins can set up an email notification for an event, such as a schema change notification, etc..</li>
-  </Tile>
-  <Tile
-    title="Lineage"
+    title="Access Control and Policies **tentative**"
     text=""
     background="yellow-70"
-    bordercolor="blue-70"
+    bordercolor="yellow-70"
+    link="https://github.com/open-metadata/OpenMetadata/issues/4199"
   >
-    <li>Better lineage coverage for DBT and PowerBI</li>
-    <li>Traceability at the table-level land column-level lineage</li>
-    <li>Showcase transformations or functions used to convert one column to another as an edge</li>
-    <li>Improvements to our SQL Parser to collect lineage and extend the parser to more SQL dialects</li>
+    <li>Add Search Results Integration</li>
+    <li>Roles and Policies application to TestSuite and TestCases</li>
   </Tile>
-  <Tile
-    title="Data Quality"
-    text=""
-    background="yellow-70"
-    bordercolor="blue-70"
-  >
-    <li>Freshness based on the partition key</li>
-    <li>TestCase versioning and results applying to a specific version so that UI can show the results as per the test case version</li>
-    <li>Auto Classification by Tagging entities using profiler - **beta**</li>
-  </Tile>
-  <Tile
-    title="Connectors"
-    text=""
-    background="blue-70"
-    bordercolor="purple-70"
-  >
-    <li>Domo</li>
-    <li>Databricks SQL</li>
-    <li>Amundsen</li>
-    <li>Improve coverage of primary/foreign key/partition details for all the databases/data </li>
-    <li>Several improvements to the Ingestion framework.</li>
-  </Tile>
-  <Tile
+   <Tile
     title="Messaging - Kafka & Redpanda"
     text=""
     background="purple-70"
@@ -110,17 +93,19 @@ You can check the latest release [here](/overview/releases).
     <li>Users can search based on fields in a schema of a topic.</li>
   </Tile>
   <Tile
-    title="Reverse Metadata"
+    title="Reverse Metadata **beta**"
     text=""
     background="yellow-70"
     bordercolor="blue-70"
   >
     <li>We are super excited about this feature coming in 0.13.0</li>
   </Tile>
-  
+
 </TileContainer>
 
-## 1.0 Release - Dec 21st, 2022
+
+
+## 1.0 Release - Feb 6th, 2022
 
 <TileContainer>
   <Tile
@@ -142,7 +127,6 @@ You can check the latest release [here](/overview/releases).
     size="half"
   >
     <li>Spark Lineage</li>
-    <li>Propagation of tags and descriptions through the column-level lineage</li>
     <li>UI Improvements to the queries collected and attached to a table. Allow users upvote a query to show as an example</li>
   </Tile>
   <Tile
@@ -202,7 +186,7 @@ You can check the latest release [here](/overview/releases).
   </Tile>
 </TileContainer>
 
-## 1.1 Release - Feb 15th 2023
+## 1.1 Release - March 15th 2023
 
 <TileContainer>
   <Tile
@@ -213,6 +197,17 @@ You can check the latest release [here](/overview/releases).
   >
     <li>Automation framework to listen change events to run automated workflows</li>
   </Tile>
+   <Tile
+    title="Lineage"
+    text=""
+    background="purple-70"
+    bordercolor="purple-70"
+    link=""
+    size="half"
+  >
+    <li>Propagation of tags and descriptions through the column-level lineage</li>
+  </Tile>
+
   <Tile
     title="Data Observability"
     text=""
