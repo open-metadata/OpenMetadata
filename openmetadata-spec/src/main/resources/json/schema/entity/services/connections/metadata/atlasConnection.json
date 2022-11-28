@@ -39,20 +39,8 @@
       "description": "entity types of the data source.",
       "type": "string"
     },
-    "serviceType": {
-      "description": "service type of the data source.",
-      "type": "string"
-    },
     "atlasHost": {
       "description": "Atlas Host of the data source.",
-      "type": "string"
-    },
-    "dbService": {
-      "description": "source database of the data source.",
-      "type": "string"
-    },
-    "messagingService": {
-      "description": "messaging service source of the data source.",
       "type": "string"
     },
     "database": {

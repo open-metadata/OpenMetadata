@@ -28,6 +28,12 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.api.services.createMessagingService import (
+    CreateMessagingServiceRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -38,8 +44,6 @@ from metadata.generated.schema.entity.services.connections.metadata.atlasConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -49,9 +53,13 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
+from metadata.utils.amundsen_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.connections import get_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+REQUEST_DESCRIPTION = "Atlas Metadata"
 
 
 class AtlasSourceStatus(SourceStatus):
@@ -91,7 +99,7 @@ class AtlasSource(Source):
         self.schema_registry_url = "http://localhost:8081"
         self.bootstrap_servers = "http://localhost:9092"
 
-        self.atlas_client = AtlasClient(config)
+        self.atlas_client = get_connection(self.service_connection)
         path = Path(self.service_connection.entityTypes)
         if not path.is_file():
             logger.error(f"File not found {self.service_connection.entityTypes}")
@@ -126,15 +134,11 @@ class AtlasSource(Source):
 
     def next_record(self):
         for key in self.service_connection.entityTypes["Table"].keys():
-            self.service = self.metadata.get_by_name(
-                entity=DatabaseService, fqn=self.service_connection.dbService
-            )
+            self.service = self.get_database_service()
             self.tables[key] = self.atlas_client.list_entities(entity_type=key)
 
         for key in self.service_connection.entityTypes.get("Topic", []):
-            self.message_service = self.metadata.get_by_name(
-                entity=MessagingService, fqn=self.service_connection.messagingService
-            )
+            self.message_service = self.get_message_service()
             self.topics[key] = self.atlas_client.list_entities(entity_type=key)
 
         if self.tables:
@@ -191,14 +195,12 @@ class AtlasSource(Source):
                         self.service_connection.entityTypes["Table"][name]["db"]
                     ]
                     yield self.get_database_entity(db_entity["displayText"])
-
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.service_connection.dbService,
+                        service_name=self.service.name.__root__,
                         database_name=db_entity["displayText"],
                     )
-
                     database_object = self.metadata.get_by_name(
                         entity=Database, fqn=database_fqn
                     )
@@ -213,7 +215,7 @@ class AtlasSource(Source):
                     database_schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,
-                        service_name=self.config.serviceConnection.__root__.config.dbService,
+                        service_name=self.service.name.__root__,
                         database_name=db_entity["displayText"],
                         schema_name=db_entity["displayText"],
                     )
@@ -332,6 +334,36 @@ class AtlasSource(Source):
                         to_fqn, self.metadata_config, "table"
                     )
                     yield from self.yield_lineage(from_entity_ref, to_entity_ref)
+
+    def get_database_service(self):
+        service = self.metadata.create_or_update(
+            CreateDatabaseServiceRequest(
+                name=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
+                description=REQUEST_DESCRIPTION,
+                displayName="hive",
+                serviceType=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
+                connection=SERVICE_TYPE_MAPPER["hive"]["connection"],
+            )
+        )
+        if service is not None:
+            return service
+        logger.error("Failed to create a service with name detlaLake")
+        return None
+
+    def get_message_service(self):
+        service = self.metadata.create_or_update(
+            CreateMessagingServiceRequest(
+                name=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
+                description=REQUEST_DESCRIPTION,
+                displayName=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
+                serviceType=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
+                connection=SERVICE_TYPE_MAPPER.get("kafka")["connection"],
+            )
+        )
+        if service is not None:
+            return service
+        logger.error("Failed to create a service with name kafka")
+        return None
 
     def yield_lineage(self, from_entity_ref, to_entity_ref):
         if from_entity_ref and to_entity_ref and from_entity_ref != to_entity_ref:
