@@ -407,9 +407,9 @@ const Ingestion: React.FC<IngestionProps> = ({
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'displayName',
-        key: 'displayName',
-        render: (text, record) =>
+        dataIndex: 'name',
+        key: 'name',
+        render: (text) =>
           airflowEndpoint ? (
             <Tooltip
               title={
@@ -421,7 +421,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 className="tw-mr-2"
                 data-testid="airflow-tree-view"
                 disabled={!(permissions.ViewAll || permissions.ViewBasic)}
-                href={`${airflowEndpoint}/tree?dag_id=${record.name}`}
+                href={`${airflowEndpoint}/tree?dag_id=${text}`}
                 rel="noopener noreferrer"
                 target="_blank"
                 type="link">
