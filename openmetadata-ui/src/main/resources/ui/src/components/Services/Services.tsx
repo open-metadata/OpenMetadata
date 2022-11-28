@@ -91,7 +91,7 @@ const Services = ({
                 }>
                 <Button
                   className="tw-h-8 tw-rounded tw-mb-2"
-                  data-testid="add-new-service-button"
+                  data-testid="add-service-button"
                   disabled={!addServicePermission && !isAuthDisabled}
                   size="small"
                   theme="primary"
