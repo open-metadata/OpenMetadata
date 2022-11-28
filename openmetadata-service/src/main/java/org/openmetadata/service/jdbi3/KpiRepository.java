@@ -225,14 +225,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateFromRelationships(
+      updateToRelationships(
           "dataInsightChart",
           KPI,
-          new ArrayList<>(List.of(original.getDataInsightChart())),
-          new ArrayList<>(List.of(updated.getDataInsightChart())),
+          original.getId(),
           Relationship.USES,
           DATA_INSIGHT_CHART,
-          updated.getId());
+          new ArrayList<>(List.of(original.getDataInsightChart())),
+          new ArrayList<>(List.of(updated.getDataInsightChart())),
+          false);
       recordChange("targetDefinition", original.getTargetDefinition(), updated.getTargetDefinition());
       recordChange("startDate", original.getStartDate(), updated.getStartDate());
       recordChange("endDate", original.getEndDate(), updated.getEndDate());
