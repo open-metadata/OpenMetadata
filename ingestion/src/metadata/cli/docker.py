@@ -23,7 +23,6 @@ from base64 import b64encode
 from datetime import timedelta
 from typing import Optional
 
-import click
 import requests
 from requests._internal_utils import to_native_string
 
@@ -208,7 +207,7 @@ def file_path_check(file_path, database: str):
     return docker_compose_file_path
 
 
-def run_docker(  # pylint: disable=too-many-branches
+def run_docker(  # pylint: disable=too-many-branches too-many-statements
     docker_obj_instance: DockerActions,
     file_path: str,
     env_file_path: str,
