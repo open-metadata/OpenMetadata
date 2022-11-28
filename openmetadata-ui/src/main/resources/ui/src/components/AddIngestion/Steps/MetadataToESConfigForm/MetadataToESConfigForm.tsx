@@ -20,7 +20,6 @@ import {
   Switch,
   Typography,
 } from 'antd';
-import { startCase } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -58,7 +57,7 @@ const MetadataToESConfigForm = ({
         label={
           <EsConfigFieldLabel
             description={t('message.field-ca-certs-description')}
-            label={startCase('caCerts')}
+            label={t('label.ca-certs')}
           />
         }
         name="caCerts">
@@ -68,7 +67,7 @@ const MetadataToESConfigForm = ({
         label={
           <EsConfigFieldLabel
             description={t('message.field-region-name-description')}
-            label={startCase('regionName')}
+            label={t('label.region-name')}
           />
         }
         name="regionName">
@@ -78,7 +77,7 @@ const MetadataToESConfigForm = ({
         label={
           <EsConfigFieldLabel
             description={t('message.field-timeout-description')}
-            label={startCase('timeout')}
+            label={t('label.timeout')}
           />
         }
         name="timeout">
@@ -87,7 +86,7 @@ const MetadataToESConfigForm = ({
       <Divider />
       <Form.Item
         className="switch-item"
-        label={startCase('useAwsCredentials')}
+        label={t('label.use-aws-credentials')}
         name="useAwsCredentials">
         <Switch />
       </Form.Item>
@@ -97,7 +96,7 @@ const MetadataToESConfigForm = ({
       <Divider />
       <Form.Item
         className="switch-item"
-        label={startCase('useSSL')}
+        label={t('label.use-ssl')}
         name="useSSL">
         <Switch />
       </Form.Item>
@@ -107,7 +106,7 @@ const MetadataToESConfigForm = ({
       <Divider />
       <Form.Item
         className="switch-item"
-        label={startCase('verifyCerts')}
+        label={t('label.verify-certs')}
         name="verifyCerts">
         <Switch />
       </Form.Item>

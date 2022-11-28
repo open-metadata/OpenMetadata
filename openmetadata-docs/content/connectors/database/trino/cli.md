@@ -397,6 +397,11 @@ processor:
   #           - MEAN
   #           - MEDIAN
   #           - ...
+  #     partitionConfig:
+  #       enablePartitioning: <set to true to use partitioning>
+  #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
+  #       partitionInterval: <partition interval>
+  #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
 sink:
   type: metadata-rest
   config: {}

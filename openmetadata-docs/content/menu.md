@@ -576,6 +576,9 @@ site_menu:
   - category: Features / Glossaries
     url: /openmetadata/glossaries
 
+  - category: Features / Data Insights
+    url: /openmetadata/data-insight
+
   - category: Main Concepts
     url: /main-concepts
     color: violet-70
