@@ -29,7 +29,6 @@ public class EventMonitorFactoryTest {
   void setUp() {
     config = new EventMonitorConfiguration();
     config.setParameters(new HashMap<>());
-    EventMonitorFactory.setEventMonitor(null);
   }
 
   @Test
