@@ -94,7 +94,8 @@ const AddIngestion = ({
   const [saveState, setSaveState] = useState<LoadingState>('initial');
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [ingestionName, setIngestionName] = useState(
-    data?.name ?? getIngestionName(serviceData.name, pipelineType)
+    (status === FormSubmitType.ADD ? data?.name : data?.displayName) ??
+      getIngestionName(serviceData.name, pipelineType)
   );
   const [ingestSampleData, setIngestSampleData] = useState(
     (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
@@ -629,6 +630,7 @@ const AddIngestion = ({
             ? undefined
             : repeatFrequency,
         },
+        displayName: ingestionName,
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         sourceConfig: {
           config: {
