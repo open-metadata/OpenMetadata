@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 
@@ -33,16 +34,30 @@ export const getSearchAPIQueryParams = (
       : `*${queryString}*`
     : WILD_CARD_CHAR;
 
-  return {
-    q: query + filters ? ` AND ${filters}` : '',
+  const params: Record<string, string | boolean | number | string[]> = {
+    q: query + (filters ? ` AND ${filters}` : ''),
     from: start,
     size,
-    deleted: onlyDeleted,
     index: searchIndex,
-    sort_field: sortField ?? undefined,
-    sort_order: sortOrder ?? undefined,
-    track_total_hits: trackTotalHits ?? undefined,
   };
+
+  if (onlyDeleted) {
+    params.deleted = onlyDeleted;
+  }
+
+  if (!isEmpty(sortField)) {
+    params.sort_field = sortField;
+  }
+
+  if (!isEmpty(sortOrder)) {
+    params.sort_order = sortOrder;
+  }
+
+  if (trackTotalHits) {
+    params.track_total_hits = trackTotalHits;
+  }
+
+  return params;
 };
 
 // will add back slash "\" before quote in string if present
