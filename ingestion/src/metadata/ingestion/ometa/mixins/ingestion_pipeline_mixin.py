@@ -14,7 +14,10 @@ Mixin class containing ingestion pipeline specific methods
 To be used by OpenMetadata class
 """
 
+from typing import List, Optional
+
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
     PipelineStatus,
 )
 from metadata.ingestion.ometa.client import REST
@@ -64,4 +67,41 @@ class OMetaIngestionPipelineMixin:
         )
         if resp:
             return PipelineStatus(**resp)
+        return None
+
+    def run_pipeline(self, ingestion_pipeline_id: str) -> IngestionPipeline:
+        """Run ingestion pipeline workflow
+
+        Args:
+            ingestion_pipeline_id (str): ingestion pipeline uuid
+        """
+        resp = self.client.post(
+            f"/services/ingestionPipelines/trigger/{ingestion_pipeline_id}"
+        )
+
+        return IngestionPipeline.parse_obj(resp)
+
+    def get_pipeline_status_between_ts(
+        self,
+        ingestion_pipeline_fqn: str,
+        start_ts: int,
+        end_ts: int,
+    ) -> Optional[List[PipelineStatus]]:
+        """Get pipeline status between timestamp
+
+        Args:
+            ingestion_pipeline_fqn (str): pipeline fqn
+            start_ts (int): start_ts
+            end_ts (int): end_ts
+        """
+
+        params = {"startTs": start_ts, "endTs": end_ts}
+
+        resp = self.client.get(
+            f"/services/ingestionPipelines/{ingestion_pipeline_fqn}/pipelineStatus",
+            data=params,
+        )
+
+        if resp:
+            return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
         return None

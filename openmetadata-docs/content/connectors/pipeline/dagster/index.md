@@ -113,9 +113,20 @@ this connector. Please follow the instructions below to ensure that
 you've configured the connector to read from your dagster service as
 desired.
 
+#### Local Dagster Connection
+<div className="w-100 flex justify-center">
+
+<Image
+  src="/images/openmetadata/connectors/dagster/service-connection-local.png"
+  alt="Configure service connection"
+  caption="Configure the service connection by filling the form"
+/>
+</div>
+
+#### Cloud Dagster Connection
 <div className="w-100 flex justify-center">
 <Image
-  src="/images/openmetadata/connectors/dagster/service-connection.png"
+  src="/images/openmetadata/connectors/dagster/service-connection-cloud.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form"
 />
@@ -135,8 +146,12 @@ the changes.
 
 #### Connection Options
 
-- **Dagster API Key**: Dagster API Key.
-- **Dagster API Secret**: Dagster API Secret.
+
+- **Case 1: Local Dagster**
+  - hostPort: eg.`localhost:3000` or `127.0.0.1:3000` or `host:port`
+- **Case 2: Cloud Dagster**
+  - host: eg. `https://<yourorghere>.dagster.cloud/prod`
+  - token: To connect to cloud Dagster
 
 ### 6. Configure Metadata Ingestion
 

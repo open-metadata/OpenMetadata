@@ -14,11 +14,11 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 </Note>
 
-Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/011-to-012) for the specific details related to upgrading to 0.12 
+Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/012-to-013) for the specific details related to upgrading to 0.13
 
 <Warning>
 
-It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release) before starting the upgrade process.
 
 </Warning>
 
@@ -41,9 +41,9 @@ Make a backup of your database. You can find the steps to follow [here](/deploym
 
 ### 3. Add Volumes and Publish Ports
 
-Update the docker compose file you just downloaded to add persistent volume for MySQL. You can follow the steps [here](/deployment/docker/volumes#docker-volumes). If you had previously configured volumes for MySQL and the ingestion container make sure the 0.12.1 compose file is referencing the correct volume so that 0.11.5 data will be available when upgrading to 0.12.1.
+Update the docker compose file you just downloaded to add persistent volume for MySQL. You can follow the steps [here](/deployment/docker/volumes#docker-volumes). If you had previously configured volumes for MySQL and the ingestion container make sure the 0.13.0 compose file is referencing the correct volume so that 0.12.x data will be available when upgrading to 0.13.0.
 
-**Note:** in 0.12.1 we are not publishing MySQL ports to the host container. If you wish to do so you will need to update the MySQL service in the compose file to have the following configuration
+**Note:** in 0.13.0 we are not publishing MySQL ports to the host container. If you wish to do so you will need to update the MySQL service in the compose file to have the following configuration
 ```yaml
 services:
   mysql:
@@ -53,21 +53,10 @@ services:
     ...
 ```
 
-### 4. Prepare Airflow upgrade to 2.3 (Only if upgrading from 0.11.x)
-
-(If you are upgrading from 0.11.x to 0.12.x) In 0.12.x we are using airflow 2.3.3. There is a known issue when upgrading from airflow 2.1.x to 2.3.3. Make sure to look at the following notes [here](/deployment/upgrade/versions/011-to-012#airflow-version) for more details
-
 ### 5. Stop, Remove and Start your Containers
 Stop and remove (without deleting volumes) the already running containers. Then run the `docker compose up -d` command on the new compose file.
 
-### 6. Update DAGs config
-#### 6.1 Update imports
-If you are using `openmetadata/ingestion` Docker image and you've upgraded to 0.12.x reusing volumes mounted to the `openmetadata/ingestion:0.11.5` container you will need to run the `metadata openmetadata-imports-migration` command inside the `openmetadata/ingestion:0.12.x` container. Indeed, `openmetadata-airflow-managed-apis` has been renamed to `openmetadata-managed-apis` and its import from `import openmetadata` to `import openmetadata_managed_apis`. If the import paths are not updated through the `metadata` command it will result in broken DAGs. By default the command will look for DAGs stored in `/opt/airflow/dags`. If you have changed where generated DAGs are stored you can specify the path to where your DAGs are stored `metadata openmetadata-imports-migration -d <path/to/folder>`
 
-#### 6.2 Update config file path
-If you are using `openmetadata/ingestion` Docker image in 0.12.1 and migrated either from 0.12.0 or 0.11.x `dags` and `dag_generated_config` have changed path. Dags and generated config files are now stored respectively in `/opt/airflow/dags` and `/opt/airflow/dag_generated_config`. You will need to run the `metadata openmetadata-imports-migration` command with the `--change-config-file-path` inside the `openmetadata/ingestion:0.12.x` container to make sure DAGs workflow are pointing to the correct config file.
-
-You can run 6.1 and 6.2 together using the following command `metadata openmetadata-imports-migration --change-config-file-path`.
 
 ### Troubleshooting
 #### Permission Denied when running `metadata openmetadata-imports-migration`

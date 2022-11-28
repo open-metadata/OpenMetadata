@@ -66,7 +66,7 @@ class SecretsManagerFactory(metaclass=Singleton):
             return NoopSecretsManager()
         if secrets_manager_provider in (
             SecretsManagerProvider.aws,
-            SecretsManagerProvider.managed_aws_ssm,
+            SecretsManagerProvider.managed_aws,
         ):
             return AWSSecretsManager(credentials)
         if secrets_manager_provider in (

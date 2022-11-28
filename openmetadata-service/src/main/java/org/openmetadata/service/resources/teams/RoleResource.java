@@ -102,6 +102,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       }
       dao.initializeEntity(role);
     }
+    RoleCache.initialize();
   }
 
   public static class RoleList extends ResultList<Role> {

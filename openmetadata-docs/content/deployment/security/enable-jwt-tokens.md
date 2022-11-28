@@ -87,41 +87,19 @@ If you are using OpenMetadata shipped Airflow container with our APIs to deploy 
 OpenMetadata UIs. Configure the below section to enable JWT Token
 
 ```yaml
+# For Bare Metal Installations
 airflowConfiguration:
   apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openmetadata"
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"openmetadata"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openmetadata"
   authConfig:
-    azure:
-      clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
-      authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
-      clientId:  ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
-    google:
-      secretKey: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
-      audience: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
-    okta:
-      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
-      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
-      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
-      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
-    auth0:
-      clientId: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID:-""}
-      secretKey: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET:-""}
-      domain: ${OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL:-""}
-    customOidc:
-      clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
-      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
-      tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
     openmetadata:
-      jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
+      jwtToken: ${OM_AUTH_JWT_TOKEN:-"<JWT_TOKEN_FROM_UI_SETTINGS_BOTS>"}
 ```
 
-In the above configuration, configure `authProvider` to be "openmetadata" and configure `OM_AUTH_JWT_TOKEN` with the JWT
-token generated in the bots page.
+In the above configuration, you can see we configure `authProvider` to be "openmetadata" and `OM_AUTH_JWT_TOKEN` with the JWT token that was generated in the bots page.
 
 ### Using Ingestion Framework
 

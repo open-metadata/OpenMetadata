@@ -58,6 +58,22 @@ AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
+### 1.3 After 0.13.0
+
+```shell
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+
+AUTHENTICATION_PROVIDER=okta
+AUTHENTICATION_PUBLIC_KEYS={ISSUER_URL}/v1/keys # Update with your Issuer URL
+AUTHENTICATION_AUTHORITY={ISSUER_URL} # Update with your Issuer URL
+AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+```
+
 **Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.
 

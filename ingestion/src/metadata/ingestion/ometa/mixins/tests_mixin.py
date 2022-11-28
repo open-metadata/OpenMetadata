@@ -194,3 +194,32 @@ class OMetaTestsMixin:
             )
         )
         return test_case
+
+    def get_test_case_results(
+        self,
+        test_case_fqn: str,
+        start_ts: int,
+        end_ts: int,
+    ) -> Optional[List[TestCaseResult]]:
+        """Retrieve list of test cases
+
+        Args:
+            test_case_fqn (str): test_case_fqn
+            start_ts (int): timestamp
+            end_ts (int): timestamp
+        """
+
+        # timestamp should be changed to milliseconds in https://github.com/open-metadata/OpenMetadata/issues/8930
+        params = {
+            "startTs": start_ts // 1000,
+            "endTs": end_ts // 1000,
+        }
+
+        resp = self.client.get(
+            f"/testCase/{test_case_fqn}/testCaseResult",
+            params,
+        )
+
+        if resp:
+            return [TestCaseResult.parse_obj(entity) for entity in resp["data"]]
+        return None

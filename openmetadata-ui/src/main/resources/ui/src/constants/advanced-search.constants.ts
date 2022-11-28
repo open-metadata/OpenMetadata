@@ -18,7 +18,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: 'Tag',
-    key: 'tags',
+    key: 'tags.tagFQN',
   },
   {
     label: 'Service',
@@ -63,4 +63,4 @@ export const ALL_DROPDOWN_ITEMS = [
   ...PIPELINE_DROPDOWN_ITEMS,
 ];
 
-export const MISC_FIELDS = ['owner.name', 'tags'];
+export const MISC_FIELDS = ['owner.name', 'tags.tagFQN'];

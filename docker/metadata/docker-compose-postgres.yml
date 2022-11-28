@@ -27,7 +27,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-     - ${PWD}/docker-volume/db-data-postgres:/var/lib/postgresql
+     - ./docker-volume/db-data-postgres:/var/lib/postgresql/data
     
     networks:
       - app_net

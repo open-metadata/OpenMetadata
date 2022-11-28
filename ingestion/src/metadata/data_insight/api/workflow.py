@@ -160,6 +160,7 @@ class DataInsightWorkflow:
         gte = get_beginning_of_day_timestamp_mill()
         lte = get_end_of_day_timestamp_mill()
         query = {
+            "size": 1000,
             "query": {
                 "range": {
                     "timestamp": {
@@ -167,7 +168,7 @@ class DataInsightWorkflow:
                         "lte": lte,
                     }
                 }
-            }
+            },
         }
         data = self.es_sink.read_records(index, query)
         try:

@@ -149,10 +149,12 @@ export const excludedService = [
   MetadataServiceType.OpenMetadata,
 ];
 
+export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog'];
+
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: (Object.values(DatabaseServiceType) as string[]).sort(
-    customServiceComparator
-  ),
+  databaseServices: (Object.values(DatabaseServiceType) as string[])
+    .filter((key: string) => !IGNORED_DB_SERVICES.includes(key))
+    .sort(customServiceComparator),
   messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
     customServiceComparator
   ),
@@ -219,4 +221,5 @@ export const COMMON_UI_SCHEMA = {
   },
 };
 
-export const OPENMETADATA = 'Openmetadata';
+export const OPENMETADATA = 'OpenMetadata';
+export const JWT_CONFIG = 'openMetadataJWTClientConfig';
