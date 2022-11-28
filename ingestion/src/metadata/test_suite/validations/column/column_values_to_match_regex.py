@@ -56,9 +56,7 @@ def _get_match_count(like_count, regex_count, runner, col) -> Optional[int]:
         )
         return regex_count_dict.get(Metrics.REGEX_COUNT.name)
     except CompileError as err:
-        logger.warning(
-            f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
-        )
+        logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
         like_count_dict = dict(runner.dispatch_query_select_first(like_count(col).fn()))
         return like_count_dict.get(Metrics.LIKE_COUNT.name)
 

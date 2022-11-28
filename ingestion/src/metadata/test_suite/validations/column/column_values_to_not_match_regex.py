@@ -56,9 +56,7 @@ def _get_not_match_count(not_like_count, not_regex_count, runner, col) -> Option
         )
         return not_regex_count_dict.get(Metrics.NOT_REGEX_COUNT.name)
     except CompileError as err:
-        logger.warning(
-            f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
-        )
+        logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
         not_like_count_dict = dict(
             runner.dispatch_query_select_first(not_like_count(col).fn())
         )
