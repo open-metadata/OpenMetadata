@@ -12,8 +12,6 @@
  */
 package org.openmetadata.service.monitoring;
 
-import com.google.common.annotations.VisibleForTesting;
-import lombok.Getter;
 import org.openmetadata.schema.monitoring.EventMonitorProvider;
 
 public class EventMonitorFactory {
@@ -28,5 +26,4 @@ public class EventMonitorFactory {
 
     throw new IllegalArgumentException("Not implemented Event monitor: " + eventMonitorProvider);
   }
-
 }
