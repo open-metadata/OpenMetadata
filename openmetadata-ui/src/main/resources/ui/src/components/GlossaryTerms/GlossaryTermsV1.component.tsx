@@ -16,10 +16,11 @@ import { Button, Card, Col, Divider, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { AssetsDataType, EntityTags, FormattedUsersData } from 'Models';
+import { AssetsDataType, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -42,6 +43,7 @@ import AssetsTabs from './tabs/AssetsTabs.component';
 import GlossaryTermReferences from './tabs/GlossaryTermReferences';
 import GlossaryTermSynonyms from './tabs/GlossaryTermSynonyms';
 import RelatedTerms from './tabs/RelatedTerms';
+
 const { Text } = Typography;
 
 type Props = {
@@ -71,7 +73,7 @@ const GlossaryTermsV1 = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(1);
   const [showRevieweModal, setShowRevieweModal] = useState<boolean>(false);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
   const tabs = [
     {
@@ -90,7 +92,7 @@ const GlossaryTermsV1 = ({
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (data: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (data: Array<EntityReference>) => {
     if (!isEqual(data, reviewer)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
       const oldReviewer = data.filter((d) => includes(reviewer, d));
@@ -208,7 +210,7 @@ const GlossaryTermsV1 = ({
     if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
       setReviewer(
         glossaryTerm.reviewers.map((d) => ({
-          ...(d as FormattedUsersData),
+          ...d,
           type: 'user',
         }))
       );
@@ -346,12 +348,6 @@ const GlossaryTermsV1 = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-term">
-      {/* TODO: Add this stat when supporting status updation  */}
-      {/* <div className="tw-flex tw-gap-11 tw-mb-2">
-        <div className="tw-font-medium">Status</div>
-        <div>{glossaryTerm.status}</div>
-      </div> */}
-
       <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
         {!isTagEditable && (
           <>
