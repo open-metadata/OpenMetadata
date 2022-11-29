@@ -19,7 +19,6 @@ import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityReference } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -49,6 +48,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Table } from '../../../generated/entity/data/table';
 import {
+  EntityReference,
   Post,
   TaskDetails,
   TaskType,

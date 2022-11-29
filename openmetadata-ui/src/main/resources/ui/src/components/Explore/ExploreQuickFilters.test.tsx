@@ -13,6 +13,7 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 
@@ -26,7 +27,7 @@ jest.mock('./AdvanceSearchModal.component', () => ({
   AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
 }));
 
-const index = 'table_search_index';
+const index = SearchIndex.TABLE;
 const fields = [
   { key: 'owner.name', value: undefined },
   { key: 'column_names', value: undefined },
