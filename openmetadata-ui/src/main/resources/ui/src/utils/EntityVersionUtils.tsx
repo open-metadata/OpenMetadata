@@ -28,7 +28,7 @@ import {
   DESCRIPTIONLENGTH,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
-import { EntityField } from '../constants/feed.constants';
+import { EntityField } from '../constants/Feeds.constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
 import {

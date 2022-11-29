@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import athenaConnection from '../jsons/connectionSchemas/connections/database/athenaConnection.json';
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
