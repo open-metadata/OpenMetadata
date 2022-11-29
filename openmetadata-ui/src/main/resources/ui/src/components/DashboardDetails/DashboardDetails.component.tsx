@@ -610,39 +610,46 @@ const DashboardDetails = ({
         dataIndex: 'tags',
         key: 'tags',
         width: 300,
-        render: (text, record, index) => (
-          <div
-            className="relative tableBody-cell"
-            data-testid="tags-wrapper"
-            onClick={() => handleTagContainerClick(record, index)}>
-            {deleted ? (
-              <div className="tw-flex tw-flex-wrap">
-                <TagsViewer sizeCap={-1} tags={text || []} />
-              </div>
-            ) : (
-              <TagsContainer
-                editable={editChartTags?.index === index}
-                isLoading={isTagLoading && editChartTags?.index === index}
-                selectedTags={text as EntityTags[]}
-                showAddTagButton={
-                  dashboardPermissions.EditAll || dashboardPermissions.EditTags
-                }
-                size="small"
-                tagList={tagList}
-                type="label"
-                onCancel={() => {
-                  handleChartTagSelection();
-                }}
-                onSelectionChange={(tags) => {
-                  handleChartTagSelection(tags, {
-                    chart: record,
-                    index,
-                  });
-                }}
-              />
-            )}
-          </div>
-        ),
+        render: (tags: Dashboard['tags'], record, index) => {
+          tags?.sort((tag1, tag2) =>
+            tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
+          );
+
+          return (
+            <div
+              className="relative tableBody-cell"
+              data-testid="tags-wrapper"
+              onClick={() => handleTagContainerClick(record, index)}>
+              {deleted ? (
+                <Space>
+                  <TagsViewer sizeCap={-1} tags={tags || []} />
+                </Space>
+              ) : (
+                <TagsContainer
+                  editable={editChartTags?.index === index}
+                  isLoading={isTagLoading && editChartTags?.index === index}
+                  selectedTags={tags || []}
+                  showAddTagButton={
+                    dashboardPermissions.EditAll ||
+                    dashboardPermissions.EditTags
+                  }
+                  size="small"
+                  tagList={tagList}
+                  type="label"
+                  onCancel={() => {
+                    handleChartTagSelection();
+                  }}
+                  onSelectionChange={(tags) => {
+                    handleChartTagSelection(tags, {
+                      chart: record,
+                      index,
+                    });
+                  }}
+                />
+              )}
+            </div>
+          );
+        },
       },
     ],
     [
@@ -652,6 +659,7 @@ const DashboardDetails = ({
       tagList,
       deleted,
       isTagLoading,
+      charts,
     ]
   );
 
