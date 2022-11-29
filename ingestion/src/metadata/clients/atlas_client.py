@@ -32,7 +32,7 @@ class AtlasClient:
             config.username, config.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
-            base_url=config.atlasHost,
+            base_url=config.hostPort,
             auth_header="Authorization",
             api_version="api",
             auth_token=self.get_auth_token,
