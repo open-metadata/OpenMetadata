@@ -11,13 +11,10 @@
 """
 testSuite DAG function builder
 """
+import json
 
 from airflow import DAG
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    test_suite_workflow,
-)
+from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -29,6 +26,30 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Sink,
     WorkflowConfig,
 )
+from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from metadata.utils.logger import set_loggers_level
+
+
+def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
+    """
+    Task that creates and runs the test suite workflow.
+
+    The workflow_config gets cooked form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+    """
+
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    workflow = TestSuiteWorkflow.create(config)
+
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
 
 
 def build_test_suite_workflow_config(
