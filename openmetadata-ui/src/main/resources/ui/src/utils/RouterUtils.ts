@@ -44,7 +44,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/globalSettings.constants';
-import { arrServiceTypes } from '../constants/services.const';
+import { arrServiceTypes } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';

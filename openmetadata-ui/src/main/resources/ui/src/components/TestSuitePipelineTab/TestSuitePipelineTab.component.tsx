@@ -28,13 +28,8 @@ import {
   triggerIngestionPipelineById,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
-import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
-} from '../../constants/HelperTextUtil';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import jsonData from '../../jsons/en';
 import { getLoadingStatus } from '../../utils/CommonUtils';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -153,7 +148,10 @@ const TestSuitePipelineTab = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        `${jsonData['api-error-messages']['delete-ingestion-error']} ${displayName}`
+        t('server.ingestion-workflow-operation-error', {
+          operation: 'deleting',
+          displayName,
+        })
       );
     } finally {
       handleCancelConfirmationModal();
@@ -174,10 +172,7 @@ const TestSuitePipelineTab = () => {
       await enableDisableIngestionPipelineById(id);
       getAllIngestionWorkflows();
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
   };
 
@@ -207,7 +202,10 @@ const TestSuitePipelineTab = () => {
       getAllIngestionWorkflows();
     } catch (error) {
       showErrorToast(
-        `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
+        t('server.ingestion-workflow-operation-error', {
+          operation: 'triggering',
+          displayName,
+        })
       );
       setCurrTriggerId({ id: '', state: '' });
     }
@@ -229,7 +227,10 @@ const TestSuitePipelineTab = () => {
       setCurrDeployId({ id: '', state: '' });
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-ingestion-error']
+        t('server.ingestion-workflow-operation-error', {
+          operation: 'updating',
+          displayName: '',
+        })
       );
     }
   };
@@ -239,7 +240,11 @@ const TestSuitePipelineTab = () => {
       return (
         <>
           <Tooltip
-            title={editPermission ? t('label.run') : NO_PERMISSION_FOR_ACTION}>
+            title={
+              editPermission
+                ? t('label.run')
+                : t('message.no-permission-for-action')
+            }>
             <Button
               data-testid="run"
               disabled={!editPermission}
@@ -253,7 +258,9 @@ const TestSuitePipelineTab = () => {
           {separator}
           <Tooltip
             title={
-              editPermission ? t('label.re-deploy') : NO_PERMISSION_FOR_ACTION
+              editPermission
+                ? t('label.re-deploy')
+                : t('message.no-permission-for-action')
             }>
             <Button
               data-testid="re-deploy-btn"
@@ -274,7 +281,11 @@ const TestSuitePipelineTab = () => {
     } else {
       return (
         <Tooltip
-          title={editPermission ? t('label.deploy') : NO_PERMISSION_FOR_ACTION}>
+          title={
+            editPermission
+              ? t('label.deploy')
+              : t('message.no-permission-for-action')
+          }>
           <Button
             data-testid="deploy"
             disabled={!editPermission}
@@ -311,12 +322,15 @@ const TestSuitePipelineTab = () => {
   const pipelineColumns = useMemo(() => {
     const column: ColumnsType<IngestionPipeline> = [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         render: (name: string) => {
           return (
-            <Tooltip title={viewPermission ? name : NO_PERMISSION_TO_VIEW}>
+            <Tooltip
+              title={
+                viewPermission ? name : t('message.no-permission-to-view')
+              }>
               <Button type="link">
                 <a
                   className="link-text tw-mr-2"
@@ -338,12 +352,12 @@ const TestSuitePipelineTab = () => {
         },
       },
       {
-        title: 'Type',
+        title: t('label.type'),
         dataIndex: 'pipelineType',
         key: 'pipelineType',
       },
       {
-        title: 'Schedule',
+        title: t('label.schedule'),
         dataIndex: 'airflowConfig',
         key: 'airflowEndpoint',
         render: (_, record) => {
@@ -375,7 +389,7 @@ const TestSuitePipelineTab = () => {
         },
       },
       {
-        title: 'Recent Runs',
+        title: t('label.recent-runs'),
         dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
         render: (_, record) => (
@@ -385,7 +399,7 @@ const TestSuitePipelineTab = () => {
         ),
       },
       {
-        title: 'Actions',
+        title: t('label.actions'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => {
@@ -400,7 +414,7 @@ const TestSuitePipelineTab = () => {
                       title={
                         editPermission
                           ? t('label.pause')
-                          : NO_PERMISSION_FOR_ACTION
+                          : t('message.no-permission-for-action')
                       }>
                       <Button
                         data-testid="pause"
@@ -418,7 +432,7 @@ const TestSuitePipelineTab = () => {
                     title={
                       editPermission
                         ? t('label.unpause')
-                        : NO_PERMISSION_FOR_ACTION
+                        : t('message.no-permission-for-action')
                     }>
                     <Button
                       data-testid="unpause"
@@ -434,7 +448,9 @@ const TestSuitePipelineTab = () => {
                 {separator}
                 <Tooltip
                   title={
-                    editPermission ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+                    editPermission
+                      ? t('label.edit')
+                      : t('message.no-permission-for-action')
                   }>
                   <Button
                     data-testid="edit"
@@ -456,7 +472,7 @@ const TestSuitePipelineTab = () => {
                   title={
                     deletePermission
                       ? t('label.delete')
-                      : NO_PERMISSION_FOR_ACTION
+                      : t('message.no-permission-for-action')
                   }>
                   <Button
                     data-testid="delete"
@@ -479,7 +495,9 @@ const TestSuitePipelineTab = () => {
                 {separator}
                 <Tooltip
                   title={
-                    editPermission ? t('label.kill') : NO_PERMISSION_FOR_ACTION
+                    editPermission
+                      ? t('label.kill')
+                      : t('message.no-permission-for-action')
                   }>
                   <Button
                     data-testid="kill"
@@ -495,7 +513,9 @@ const TestSuitePipelineTab = () => {
                 {separator}
                 <Tooltip
                   title={
-                    viewPermission ? t('label.logs') : NO_PERMISSION_FOR_ACTION
+                    viewPermission
+                      ? t('label.logs')
+                      : t('message.no-permission-for-action')
                   }>
                   <Button
                     data-testid="logs"
@@ -551,7 +571,7 @@ const TestSuitePipelineTab = () => {
     <ErrorPlaceHolderIngestion />
   ) : (
     <TestCaseCommonTabContainer
-      buttonName="Add Ingestion"
+      buttonName={t('label.add-pipeline-ingestion', { pipelineType: '' })}
       hasAccess={createPermission}
       showButton={testSuitePipelines.length === 0}
       onButtonClick={() => {
@@ -572,7 +592,7 @@ const TestSuitePipelineTab = () => {
         {isConfirmationModalOpen && (
           <EntityDeleteModal
             entityName={deleteSelection.name}
-            entityType="ingestion"
+            entityType={t('label.ingestion-lowercase')}
             loadingState={deleteSelection.state}
             onCancel={handleCancelConfirmationModal}
             onConfirm={() =>

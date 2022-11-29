@@ -14,10 +14,11 @@ Test MySql connector with CLI
 """
 from typing import List
 
+from .common_e2e_sqa_mixins import SQACommonMethods
 from .test_cli_db_base_common import CliCommonDB
 
 
-class MysqlCliTest(CliCommonDB.TestSuite):
+class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     create_table_query: str = """
         CREATE TABLE persons (
@@ -50,18 +51,10 @@ class MysqlCliTest(CliCommonDB.TestSuite):
         return "mysql"
 
     def create_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
-            connection.execute(self.create_table_query)
-            for insert_query in self.insert_data_queries:
-                connection.execute(insert_query)
-            connection.execute(self.create_view_query)
-            connection.close()
+        SQACommonMethods.create_table_and_view(self)
 
     def delete_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
-            connection.execute(self.drop_view_query)
-            connection.execute(self.drop_table_query)
-            connection.close()
+        SQACommonMethods.delete_table_and_view(self)
 
     @staticmethod
     def expected_tables() -> int:

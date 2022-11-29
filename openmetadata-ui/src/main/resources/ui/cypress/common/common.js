@@ -18,7 +18,8 @@ import { DELETE_TERM, SEARCH_INDEX } from '../constants/constants';
 export const descriptionBox =
     '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
-const RETRY_TIMES = 30;
+const RETRY_TIMES = 4; 
+const BASE_WAIT_TIME = 20000;
 
 const ADMIN = 'admin';
 
@@ -50,9 +51,11 @@ export const handleIngestionRetry = (
     count = 0,
     ingestionType = 'metadata'
 ) => {
+    let timer = BASE_WAIT_TIME;
     const rowIndex = ingestionType === 'metadata' ? 1 : 2;
 
     interceptURL('GET', '/api/v1/services/ingestionPipelines/*/pipelineStatus?*', 'pipelineStatuses')
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails')
 
     // ingestions page
     let retryCount = count;
@@ -90,9 +93,11 @@ export const handleIngestionRetry = (
             $ingestionStatus.text() !== 'Success' &&
             retryCount <= RETRY_TIMES
           ) {
-            // retry after waiting for 20 seconds
-            cy.wait(20000);
+            // retry after waiting with log1 method [20s,40s,80s,160s,320s]
+            cy.wait(timer);
+            timer *= 2;
             cy.reload();
+            verifyResponseStatusCode('@serviceDetails', 200)
             checkSuccessState();
           } else {
             cy.get(
@@ -379,47 +384,21 @@ export const goToAddNewServicePage = (service_type) => {
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
-    cy.get('.ant-menu-title-content')
+    interceptURL('GET', '/api/v1/services/*', 'getServiceList')
+    cy.get('[data-testid="global-setting-left-panel"]')
         .contains(service_type)
         .should('be.visible')
         .click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@getServiceList', 200)
 
-    cy.get('.ant-card').then(($serviceCount) => {
-        if ($serviceCount.length > 0) {
-            cy.get('[data-testid="add-new-service-button"]')
-                .should('be.visible')
-                .click();
-        } else {
-            cy.get('[data-testid="add-service-button"]').should('be.visible').click();
-        }
-    });
+    cy.get('[data-testid="add-service-button"]').should('be.visible').click();
 
     // Add new service page
     cy.url().should('include', '/add-service');
     cy.get('[data-testid="header"]').should('be.visible');
     cy.contains('Add New Service').should('be.visible');
     cy.get('[data-testid="service-category"]').should('be.visible');
-};
-
-export const testServiceSampleData = (database, schema, table) => {
-    cy.get('[data-testid="Databases"]').click();
-    cy.get('[data-testid="column"] > :nth-child(1)')
-        .should('be.visible')
-        .contains(database);
-
-    cy.get('[data-testid="column"] > :nth-child(1) > a').click();
-    cy.get('[data-testid="table-column"] > :nth-child(1)')
-        .should('be.visible')
-        .contains(schema);
-
-    cy.get('[data-testid="table-column"] > :nth-child(1) > a').click();
-    cy.get('.odd-row > :nth-child(1) > a').should('be.visible').contains(table);
-
-    cy.get('.odd-row > :nth-child(1) > a').click();
-    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(table);
-    cy.get('[data-testid="Schema"]').should('be.visible');
 };
 
 /**
@@ -885,6 +864,8 @@ export const addTeam = (TEAM_DETAILS) => {
 };
 
 export const retryIngestionRun = () => {
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails')
+    let timer = BASE_WAIT_TIME;
     let retryCount = 0;
     const testIngestionsTab = () => {
         cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -913,9 +894,11 @@ export const retryIngestionRun = () => {
           $ingestionStatus.text() !== 'Success' &&
           retryCount <= RETRY_TIMES
         ) {
-          // retry after waiting for 20 seconds
-          cy.wait(20000);
+          // retry after waiting with log1 method [20s,40s,80s,160s,320s]
+          cy.wait(timer);
+          timer *= 2;
           cy.reload();
+          verifyResponseStatusCode('@serviceDetails', 200);
           checkSuccessState();
         } else {
           cy.get('[data-testid="pipeline-status"]').should(

@@ -10,7 +10,7 @@
     {
       "name": "forbiddenRegex",
       "displayName": "RegEx Pattern",
-      "description": "The regular expression the column entries should not match.",
+      "description": "The regular expression the column entries should not match. For database without regex support (i.e. MSSQL, AzureSQL) this test will use `NOT LIKE`.",
       "dataType": "STRING",
       "required": true
     }

@@ -146,12 +146,9 @@ export const fetchOptions = (
 ) => {
   getUserSuggestions(query)
     .then((res) => {
-      // TODO: Fix types below
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hits = (res.data as any).suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line
-      const suggestOptions = hits.map((hit: any) => ({
-        label: hit._source.name ?? hit._source.display_name,
+      const hits = res.data.suggest['metadata-suggest'][0]['options'];
+      const suggestOptions = hits.map((hit) => ({
+        label: hit._source.name ?? hit._source.displayName,
         value: hit._id,
         type: hit._source.entityType,
       }));
