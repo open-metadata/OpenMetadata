@@ -82,10 +82,8 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 from metadata.utils.partition import get_partition_details
-from metadata.utils.workflow_helper import (
-    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
-)
 from metadata.utils.workflow_output_handler import print_profiler_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = profiler_logger()
 
@@ -94,7 +92,7 @@ class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
 
 
-class ProfilerWorkflow:
+class ProfilerWorkflow(WorkflowStatusMixin):
     """
     Configure and run the ORM profiler
     """
@@ -418,55 +416,65 @@ class ProfilerWorkflow:
         Run the profiling and tests
         """
 
-        databases = self.get_database_entities()
+        try:
 
-        if not databases:
-            raise ValueError(
-                "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
-                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
-                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
-            )
+            databases = self.get_database_entities()
 
-        for database in databases:
-            copied_service_config = self.copy_service_config(database)
-            try:
-                sqa_metadata_obj = MetaData()
-                for entity in self.get_table_entities(database=database):
-                    try:
-                        profiler_interface = self.create_profiler_interface(
-                            sqa_metadata_obj=sqa_metadata_obj,
-                            service_connection_config=copied_service_config,
-                            table_entity=entity,
-                        )
-                        self.create_profiler_obj(entity, profiler_interface)
-                        profile: ProfilerResponse = self.profiler_obj.process(
-                            self.source_config.generateSampleData
-                        )
-                        profiler_interface.close()
-                        if hasattr(self, "sink"):
-                            self.sink.write_record(profile)
-                        self.status.failures.extend(
-                            profiler_interface.processor_status.failures
-                        )  # we can have column level failures we need to report
-                        self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
-                        self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
-                    except Exception as exc:  # pylint: disable=broad-except
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            "Unexpected exception processing entity "
-                            f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
-                        )
-                        self.status.failures.extend(
-                            profiler_interface.processor_status.failures  # type: ignore
-                        )
-                        self.source_status.failure(
-                            entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
-                        )
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Unexpected exception executing in database [{database}]: {exc}"
+            if not databases:
+                raise ValueError(
+                    "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
+                    f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
+                    f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
                 )
+
+            for database in databases:
+                copied_service_config = self.copy_service_config(database)
+                try:
+                    sqa_metadata_obj = MetaData()
+                    for entity in self.get_table_entities(database=database):
+                        try:
+                            profiler_interface = self.create_profiler_interface(
+                                sqa_metadata_obj=sqa_metadata_obj,
+                                service_connection_config=copied_service_config,
+                                table_entity=entity,
+                            )
+                            self.create_profiler_obj(entity, profiler_interface)
+                            profile: ProfilerResponse = self.profiler_obj.process(
+                                self.source_config.generateSampleData
+                            )
+                            profiler_interface.close()
+                            if hasattr(self, "sink"):
+                                self.sink.write_record(profile)
+                            self.status.failures.extend(
+                                profiler_interface.processor_status.failures
+                            )  # we can have column level failures we need to report
+                            self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
+                            self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
+                        except Exception as exc:  # pylint: disable=broad-except
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                "Unexpected exception processing entity "
+                                f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
+                            )
+                            self.status.failures.extend(
+                                profiler_interface.processor_status.failures  # type: ignore
+                            )
+                            self.source_status.failure(
+                                entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
+                            )
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Unexpected exception executing in database [{database}]: {exc}"
+                    )
+
+            # At the end of the `execute`, update the associated Ingestion Pipeline status as success
+            self.set_ingestion_pipeline_status(PipelineState.success)
+
+        # Any unhandled exception breaking the workflow should update the status
+        except Exception as err:
+            self.set_ingestion_pipeline_status(PipelineState.failed)
+            raise err
 
     def print_status(self) -> None:
         """
@@ -521,7 +529,6 @@ class ProfilerWorkflow:
         """
         Close all connections
         """
-        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
 
     def _retrieve_service_connection_if_needed(self) -> None:
@@ -555,15 +562,3 @@ class ProfilerWorkflow:
                     f"Error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
-
-    def set_ingestion_pipeline_status(self, state: PipelineState):
-        """
-        Method to set the pipeline status of current ingestion pipeline
-        """
-        pipeline_run_id = set_ingestion_pipeline_status_helper(
-            state=state,
-            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
-            pipeline_run_id=self.config.pipelineRunId,
-            metadata=self.metadata,
-        )
-        self.config.pipelineRunId = pipeline_run_id
