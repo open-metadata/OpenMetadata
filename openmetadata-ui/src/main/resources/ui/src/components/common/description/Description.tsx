@@ -18,7 +18,7 @@ import { isFunction, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
-import { EntityField } from '../../../constants/feed.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { isTaskSupported } from '../../../utils/CommonUtils';
