@@ -43,7 +43,7 @@ import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePic
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { PanelTab, TaskOperation } from '../../../constants/feed.constants';
+import { PanelTab, TaskOperation } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Table } from '../../../generated/entity/data/table';

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
-import { EntityField } from '../../../constants/feed.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { Table } from '../../../generated/entity/data/table';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
