@@ -57,9 +57,9 @@ from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.connections import get_connection
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 
 logger = ingestion_logger()
 
