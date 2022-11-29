@@ -15,6 +15,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
     PipelineStatus,
@@ -78,3 +79,14 @@ class WorkflowStatusMixin:
             self.metadata.create_or_update_pipeline_status(
                 self.config.ingestionPipelineFQN, pipeline_status
             )
+
+    def raise_from_status(self, raise_warnings=False):
+        """
+        Method to raise error if failed execution
+        and updating Ingestion Pipeline Status
+        """
+        try:
+            self._raise_from_status_internal(raise_warnings)
+        except WorkflowExecutionError as err:
+            self.set_ingestion_pipeline_status(PipelineState.failed)
+            raise err

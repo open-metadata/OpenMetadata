@@ -494,7 +494,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             return 1
         return 0
 
-    def raise_from_status(self, raise_warnings=False):
+    def _raise_from_status_internal(self, raise_warnings=False):
         """
         Check source, processor and sink status and raise if needed
 

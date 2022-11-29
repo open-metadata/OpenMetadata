@@ -275,7 +275,7 @@ class Workflow(WorkflowStatusMixin):
             pipeline_state = PipelineState.partialSuccess
         self.set_ingestion_pipeline_status(pipeline_state)
 
-    def raise_from_status(self, raise_warnings=False):
+    def _raise_from_status_internal(self, raise_warnings=False):
         """
         Method to raise error if failed execution
         """

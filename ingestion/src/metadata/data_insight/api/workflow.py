@@ -279,7 +279,7 @@ class DataInsightWorkflow(WorkflowStatusMixin):
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
 
-    def raise_from_status(self, raise_warnings=False):
+    def _raise_from_status_internal(self, raise_warnings=False):
         if self.data_processor and self.data_processor.get_status().failures:
             raise WorkflowExecutionError(
                 "Source reported errors", self.data_processor.get_status()
