@@ -38,18 +38,20 @@ export const searchData = <SI extends SearchIndex>(
   onlyDeleted = false,
   trackTotalHits = false
 ) => {
-  return APIClient.get<SearchResponse<SI>>(`/search/query`, {
-    params: getSearchAPIQueryParams(
-      queryString,
-      from,
-      size,
-      filters,
-      sortField,
-      sortOrder,
-      searchIndex,
-      onlyDeleted,
-      trackTotalHits
-    ),
+  const { q, ...params } = getSearchAPIQueryParams(
+    queryString,
+    from,
+    size,
+    filters,
+    sortField,
+    sortOrder,
+    searchIndex,
+    onlyDeleted,
+    trackTotalHits
+  );
+
+  return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
+    params,
   });
 };
 
