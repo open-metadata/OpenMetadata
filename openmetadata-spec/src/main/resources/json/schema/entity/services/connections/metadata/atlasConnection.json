@@ -29,7 +29,7 @@
       "format": "password"
     },
     "hostPort": {
-      "description": "Atlas Host of the data source.",
+      "description": "Host and port of the Atlas service.",
       "title": "Host and Port",
       "type": "string",
       "format": "uri",
