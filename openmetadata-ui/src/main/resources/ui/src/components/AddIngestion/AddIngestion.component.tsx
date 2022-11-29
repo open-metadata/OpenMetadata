@@ -723,6 +723,7 @@ const AddIngestion = ({
             databaseServiceNames={databaseServiceNames}
             description={description}
             enableDebugLog={enableDebugLog}
+            formType={status}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
             handleDatasetServiceName={(val) => setDatabaseServiceNames(val)}

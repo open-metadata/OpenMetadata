@@ -13,6 +13,7 @@
 
 import { findAllByText, findByTestId, render } from '@testing-library/react';
 import React from 'react';
+import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
@@ -66,6 +67,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   includeView: false,
   includeTags: false,
   pipelineType: PipelineType.Metadata,
+  formType: FormSubmitType.EDIT,
   queryLogDuration: 1,
   resultLimit: 100,
   stageFileLocation: '',

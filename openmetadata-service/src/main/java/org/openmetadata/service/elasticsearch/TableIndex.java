@@ -13,7 +13,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TableIndex implements ElasticSearchIndex {
-  final List<String> excludeFields = List.of("sampleData", "tableProfile", "joins", "changeDescription");
+  private static final List<String> excludeFields =
+      List.of(
+          "sampleData",
+          "tableProfile",
+          "joins",
+          "changeDescription",
+          "tableQueries, viewDefinition, tableProfilerConfig, profile, location, tableQueries, " + "tests, dataModel");
+
   final Table table;
 
   public TableIndex(Table table) {

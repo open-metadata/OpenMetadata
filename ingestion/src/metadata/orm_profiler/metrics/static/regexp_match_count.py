@@ -10,28 +10,32 @@
 #  limitations under the License.
 
 """
-Count Metric definition
+Regex Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import column, func
+from sqlalchemy import case, column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.utils.logger import profiler_logger
-
-logger = profiler_logger()
+from metadata.orm_profiler.orm.functions.sum import SumFn
 
 
-class Count(StaticMetric):
+class RegexCount(StaticMetric):
     """
-    COUNT Metric
+    REGEX_COUNT Metric
 
-    Given a column, return the count. Ignores NULL values
+    Given a column, and an expression, return the number of
+    rows that match it
+
+    This Metric needs to be initialised passing the expression to check
+    add_props(expression="j.*")(Metrics.REGEX_COUNT.value)
     """
+
+    expression: str
 
     @classmethod
     def name(cls):
-        return "valuesCount"
+        return "regexCount"
 
     @property
     def metric_type(self):
@@ -39,15 +43,10 @@ class Count(StaticMetric):
 
     @_label
     def fn(self):
-        return func.count(column(self.col.name))
-
-    @_label
-    def dl_fn(self, data_frame=None):
-        try:
-            return len(data_frame[self.col.name])
-        except Exception as err:
-            logger.debug(
-                f"Don't know how to process type {self.col.datatype} when computing Count"
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
-            logger.error(err)
-            return 0
+        return SumFn(
+            case([(column(self.col.name).regexp_match(self.expression), 1)], else_=0)
+        )
