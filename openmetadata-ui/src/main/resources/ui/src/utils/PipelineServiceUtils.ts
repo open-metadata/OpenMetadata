@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { EntityReference } from '../generated/type/entityReference';

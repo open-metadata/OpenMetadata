@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { FC, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { Thread } from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';
 import { getEntityField, getEntityFQN } from '../../../utils/FeedUtils';

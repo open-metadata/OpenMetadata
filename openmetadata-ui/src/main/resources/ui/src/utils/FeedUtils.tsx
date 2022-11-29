@@ -47,7 +47,7 @@ import {
   linkRegEx,
   mentionRegEx,
   teamsLinkRegEx,
-} from '../constants/feed.constants';
+} from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';

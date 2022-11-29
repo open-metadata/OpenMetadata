@@ -12,10 +12,7 @@
  */
 
 import React, { FC } from 'react';
-import {
-  confirmationBodyText,
-  confirmHeadertext,
-} from '../../../constants/feed.constants';
+import { useTranslation } from 'react-i18next';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 
 interface DeleteConfirmationModalProp {
@@ -27,14 +24,16 @@ const DeleteConfirmationModal: FC<DeleteConfirmationModalProp> = ({
   onDiscard,
   onDelete,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <ConfirmationModal
       bodyClassName="tw-h-18"
-      bodyText={confirmationBodyText}
-      cancelText="Cancel"
+      bodyText={t('message.confirm-delete-message')}
+      cancelText={t('label.cancel')}
       className="tw-w-auto tw-h-screen"
-      confirmText="Delete"
-      header={confirmHeadertext}
+      confirmText={t('label.delete')}
+      header={t('label.delete-message-question-mark')}
       onCancel={onDiscard}
       onConfirm={onDelete}
     />
