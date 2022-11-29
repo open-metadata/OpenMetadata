@@ -327,7 +327,12 @@
     "timeout": "Timeout",
     "use-aws-credentials": "Use Aws Credentials",
     "use-ssl": "Use SSL",
-    "verify-certs": "Verify Certs"
+    "verify-certs": "Verify Certs",
+    "source-plural": "Sources",
+    "data-source": "Data Source",
+    "features-used": "Features Used",
+    "edit-tags": "Edit Tags",
+    "edit-feature": "Edit Feature"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -388,7 +393,9 @@
     "all-charts-are-mapped": "All charts are mapped with existing KPIs.",
     "no-service-connection-details-message": "{{serviceName}} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.",
     "pipeline-trigger-success-message": "Pipeline triggered successfully",
-    "search-for-ingestion": "Search for ingestion"
+    "search-for-ingestion": "Search for ingestion",
+    "enter-feature-description": "Enter feature description",
+    "no-features-data-available": "No features data available"
   },
   "server": {
     "no-user-entities": "You have not {{type}} anything yet.",

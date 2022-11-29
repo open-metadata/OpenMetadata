@@ -80,7 +80,21 @@
   text-decoration: underline;
 }
 
-//  Radius
+// Border
+.no-border {
+  border: none;
+}
+.border-l-2 {
+  border-left: 2px;
+}
+.border-primary {
+  border-color: @primary;
+}
+.border-gray {
+  border-color: @gray;
+}
+
+// Radius
 
 .rounded-4 {
   border-radius: 4px;
@@ -186,6 +200,9 @@
 .h-full {
   height: 100%;
 }
+.h-auto {
+  height: auto;
+}
 
 .h-min-full {
   min-height: 100%;
@@ -246,17 +263,6 @@
 }
 .text-semi-bold {
   font-weight: 500;
-}
-
-.border-l-2 {
-  border-left: 2px;
-}
-
-.border-primary {
-  border-color: @primary;
-}
-.border-gray {
-  border-color: @gray;
 }
 
 .bg-primary-lite {
