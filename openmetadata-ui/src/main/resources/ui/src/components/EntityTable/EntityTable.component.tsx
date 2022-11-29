@@ -531,6 +531,10 @@ const EntityTable = ({
 
   const renderTags: TableCellRendered<Column, 'tags'> = useCallback(
     (tags, record: Column, index: number) => {
+      tags?.sort((tag1, tag2) =>
+        tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
+      );
+
       return (
         <div className="hover-icon-group">
           {isReadOnly ? (
