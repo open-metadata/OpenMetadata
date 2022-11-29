@@ -241,7 +241,6 @@ class Workflow(WorkflowStatusMixin):
 
         # Any unhandled exception breaking the workflow should update the status
         except Exception as err:
-            print("SETTING STATUS TO FAILED")
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
 
