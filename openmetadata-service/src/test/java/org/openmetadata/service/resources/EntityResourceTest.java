@@ -344,7 +344,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TestDefinitionResourceTest().setupTestDefinitions(test);
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
-    new KpiResourceTest().setupKpi(test);
+    new KpiResourceTest().setupKpi();
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
@@ -372,6 +372,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Create request such as CreateTable, CreateChart returned by concrete implementation
   public final K createRequest(TestInfo test) {
     return createRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
+  }
+
+  public final K createRequest() {
+    return createRequest(String.format("test%s", UUID.randomUUID()))
+        .withDescription("")
+        .withDisplayName(null)
+        .withOwner(null);
   }
 
   public final K createPutRequest(TestInfo test) {
@@ -520,7 +527,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       createdUUIDs.add(
           createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS).getId());
     }
-
     T entity = createEntity(createRequest(getEntityName(test, 0), "", null, null), ADMIN_AUTH_HEADERS);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
@@ -862,7 +868,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
+  protected void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     K create = createRequest(getEntityName(test), "", "", null);
     // Create first time using POST
     createEntity(create, ADMIN_AUTH_HEADERS);
@@ -1071,7 +1077,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
+  protected void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with empty description
     K request = createRequest(getEntityName(test), "", "displayName", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -1084,11 +1090,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
+  protected void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with non-empty description
     K request = createRequest(getEntityName(test), supportsEmptyDescription ? null : "description", null, null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-
     // BOT user can update empty description and empty displayName
     ChangeDescription change = getChangeDescription(entity.getVersion());
     request = createPutRequest(getEntityName(test), "description", "displayName", null);
