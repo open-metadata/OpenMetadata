@@ -411,63 +411,68 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         return copy_service_connection_config
 
+    def run_profiler_workflow(self):
+        """
+        Main logic for the profiler workflow
+        """
+        databases = self.get_database_entities()
+
+        if not databases:
+            raise ValueError(
+                "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
+                f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
+                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"
+                # pylint: disable=line-too-long
+            )
+
+        for database in databases:
+            copied_service_config = self.copy_service_config(database)
+            try:
+                sqa_metadata_obj = MetaData()
+                for entity in self.get_table_entities(database=database):
+                    try:
+                        profiler_interface = self.create_profiler_interface(
+                            sqa_metadata_obj=sqa_metadata_obj,
+                            service_connection_config=copied_service_config,
+                            table_entity=entity,
+                        )
+                        self.create_profiler_obj(entity, profiler_interface)
+                        profile: ProfilerResponse = self.profiler_obj.process(
+                            self.source_config.generateSampleData
+                        )
+                        profiler_interface.close()
+                        if hasattr(self, "sink"):
+                            self.sink.write_record(profile)
+                        self.status.failures.extend(
+                            profiler_interface.processor_status.failures
+                        )  # we can have column level failures we need to report
+                        self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
+                        self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
+                    except Exception as exc:  # pylint: disable=broad-except
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            "Unexpected exception processing entity "
+                            f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
+                        )
+                        self.status.failures.extend(
+                            profiler_interface.processor_status.failures  # type: ignore
+                        )
+                        self.source_status.failure(
+                            entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
+                        )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Unexpected exception executing in database [{database}]: {exc}"
+                )
+
     def execute(self):
         """
         Run the profiling and tests
         """
 
         try:
-
-            databases = self.get_database_entities()
-
-            if not databases:
-                raise ValueError(
-                    "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
-                    f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
-                    f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
-                )
-
-            for database in databases:
-                copied_service_config = self.copy_service_config(database)
-                try:
-                    sqa_metadata_obj = MetaData()
-                    for entity in self.get_table_entities(database=database):
-                        try:
-                            profiler_interface = self.create_profiler_interface(
-                                sqa_metadata_obj=sqa_metadata_obj,
-                                service_connection_config=copied_service_config,
-                                table_entity=entity,
-                            )
-                            self.create_profiler_obj(entity, profiler_interface)
-                            profile: ProfilerResponse = self.profiler_obj.process(
-                                self.source_config.generateSampleData
-                            )
-                            profiler_interface.close()
-                            if hasattr(self, "sink"):
-                                self.sink.write_record(profile)
-                            self.status.failures.extend(
-                                profiler_interface.processor_status.failures
-                            )  # we can have column level failures we need to report
-                            self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
-                            self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
-                        except Exception as exc:  # pylint: disable=broad-except
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                "Unexpected exception processing entity "
-                                f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
-                            )
-                            self.status.failures.extend(
-                                profiler_interface.processor_status.failures  # type: ignore
-                            )
-                            self.source_status.failure(
-                                entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
-                            )
-                except Exception as exc:  # pylint: disable=broad-except
-                    logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Unexpected exception executing in database [{database}]: {exc}"
-                    )
-
+            self.run_profiler_workflow()
             # At the end of the `execute`, update the associated Ingestion Pipeline status as success
             self.set_ingestion_pipeline_status(PipelineState.success)
 

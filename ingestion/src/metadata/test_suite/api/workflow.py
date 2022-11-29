@@ -381,57 +381,60 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             return runtime_created_test_cases
         return []
 
+    def run_test_suite(self):
+        """
+        Main running logic
+        """
+        test_suites = (
+            self.get_test_suite_entity_for_ui_workflow()
+            or self.get_or_create_test_suite_entity_for_cli_workflow()
+        )
+        if not test_suites:
+            logger.warning("No testSuite found in configuration file. Exiting.")
+            sys.exit(1)
+
+        test_cases = self.get_test_cases_from_test_suite(test_suites)
+        if self.processor_config.testSuites:
+            test_cases.extend(self.add_test_cases_from_cli_config(test_cases))
+
+        unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
+
+        for entity_fqn in unique_entity_fqns:
+            sqa_metadata_obj = MetaData()
+            try:
+                runner_interface = self._create_runner_interface(
+                    entity_fqn, sqa_metadata_obj
+                )
+                data_test_runner = self._create_data_tests_runner(runner_interface)
+
+                for test_case in self._filter_test_cases_for_entity(
+                    entity_fqn, test_cases
+                ):
+                    try:
+                        test_result = data_test_runner.run_and_handle(test_case)
+                        if not test_result:
+                            continue
+                        if hasattr(self, "sink"):
+                            self.sink.write_record(test_result)
+                        logger.info(
+                            f"Successfully ran test case {test_case.name.__root__}"
+                        )
+                        self.status.processed(test_case.fullyQualifiedName.__root__)
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Could not run test case {test_case.name}: {exc}"
+                        )
+                        self.status.failure(entity_fqn)
+            except TypeError as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Could not run test case for table {entity_fqn}: {exc}")
+                self.status.failure(entity_fqn)
+
     def execute(self):
         """Execute test suite workflow"""
         try:
-            test_suites = (
-                self.get_test_suite_entity_for_ui_workflow()
-                or self.get_or_create_test_suite_entity_for_cli_workflow()
-            )
-            if not test_suites:
-                logger.warning("No testSuite found in configuration file. Exiting.")
-                sys.exit(1)
-
-            test_cases = self.get_test_cases_from_test_suite(test_suites)
-            if self.processor_config.testSuites:
-                test_cases.extend(self.add_test_cases_from_cli_config(test_cases))
-
-            unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
-
-            for entity_fqn in unique_entity_fqns:
-                sqa_metadata_obj = MetaData()
-                try:
-                    runner_interface = self._create_runner_interface(
-                        entity_fqn, sqa_metadata_obj
-                    )
-                    data_test_runner = self._create_data_tests_runner(runner_interface)
-
-                    for test_case in self._filter_test_cases_for_entity(
-                        entity_fqn, test_cases
-                    ):
-                        try:
-                            test_result = data_test_runner.run_and_handle(test_case)
-                            if not test_result:
-                                continue
-                            if hasattr(self, "sink"):
-                                self.sink.write_record(test_result)
-                            logger.info(
-                                f"Successfully ran test case {test_case.name.__root__}"
-                            )
-                            self.status.processed(test_case.fullyQualifiedName.__root__)
-                        except Exception as exc:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Could not run test case {test_case.name}: {exc}"
-                            )
-                            self.status.failure(entity_fqn)
-                except TypeError as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Could not run test case for table {entity_fqn}: {exc}"
-                    )
-                    self.status.failure(entity_fqn)
-
+            self.run_test_suite()
             # At the end of the `execute`, update the associated Ingestion Pipeline status as success
             self.set_ingestion_pipeline_status(PipelineState.success)
 
