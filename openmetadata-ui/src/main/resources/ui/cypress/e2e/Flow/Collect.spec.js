@@ -61,7 +61,7 @@ describe('Collect end point should work properly', () => {
   });
 
   Object.values(PAGES).map((page) => {
-    it(`${page.name} page`, () => {
+    it(`Visit ${page.name} page should trigger collect API`, () => {
       cy.get(page.mainMenuId).should('be.visible').click();
       if (page.subMenu) {
         cy.get(page.subMenu).should('be.visible').click();
