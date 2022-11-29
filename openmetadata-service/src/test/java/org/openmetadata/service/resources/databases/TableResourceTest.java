@@ -1997,8 +1997,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public static Table getTableQueriesData(UUID tableId, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public static Table getTableQueriesData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableQuery");
     return TestUtils.get(target, Table.class, authHeaders);
   }
