@@ -533,7 +533,7 @@ class DatabaseServiceSource(
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            if self.source_config.markDeletedTablesFromFilterOnly:
+            if not self.source_config.markAllDeletedTables:
                 schema_names_list = self.get_database_schema_names()
                 for schema_name in schema_names_list:
                     schema_fqn = fqn.build(
