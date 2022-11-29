@@ -34,7 +34,7 @@ global:
       customOidc:
         clientId: ""
         # absolute path of secret file on airflow instance
-        secretKeyPath: ""
+        secretKey: ""
         tokenEndpoint: ""
 ```
 
