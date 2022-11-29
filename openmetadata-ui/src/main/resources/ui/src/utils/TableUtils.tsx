@@ -34,7 +34,7 @@ import {
   getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
-import { GlobalSettingsMenuCategory } from '../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';

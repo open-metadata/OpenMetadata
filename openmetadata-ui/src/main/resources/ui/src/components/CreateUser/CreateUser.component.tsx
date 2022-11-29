@@ -30,7 +30,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { passwordErrorMessage } from '../../constants/error-message';
+import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
   passwordRegex,
   validEmailRegEx,

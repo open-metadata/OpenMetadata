@@ -29,7 +29,7 @@ import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+} from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Bot } from '../../generated/entity/bot';

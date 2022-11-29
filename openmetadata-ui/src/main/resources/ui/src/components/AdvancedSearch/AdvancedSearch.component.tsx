@@ -18,8 +18,11 @@ import {
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
+import {
+  emptyJsonTree,
+  getQbConfigs,
+} from '../../constants/AdvancedSearch.constants';
 import { elasticSearchFormat } from '../../utils/QueryBuilderElasticsearchFormatUtils';
-import { emptyJsonTree, getQbConfigs } from './AdvancedSearch.constants';
 import { AdvancedSearchProps } from './AdvancedSearch.interface';
 
 const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
