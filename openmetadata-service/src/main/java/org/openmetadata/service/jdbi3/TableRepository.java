@@ -219,9 +219,10 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
 
-    TableData sampleData = JsonUtils.readValue(
-          daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_SAMPLE_DATA_EXTENSION),
-          TableData.class);
+    TableData sampleData =
+        JsonUtils.readValue(
+            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_SAMPLE_DATA_EXTENSION),
+            TableData.class);
     table.setSampleData(sampleData);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
@@ -820,7 +821,6 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
-
   /**
    * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
    * or, if there is already data for the date {@code newDailyCount.getDate()}, replace older count with the new one.
@@ -928,8 +928,6 @@ public class TableRepository extends EntityRepository<Table> {
   private Predicate<DailyCount> inLast30Days() {
     return dc -> CommonUtil.dateInRange(RestUtil.DATE_FORMAT, dc.getDate(), 0, 30);
   }
-
-
 
   private TableProfile getTableProfile(Table table) throws IOException {
     return JsonUtils.readValue(

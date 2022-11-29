@@ -94,29 +94,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
-  @Override
-  protected MetadataOperation[] getViewOperations(Fields fields) {
-    List<MetadataOperation> operations = new ArrayList<>(List.of(MetadataOperation.VIEW_BASIC));
-    if (fields.contains("tests")) {
-      operations.add(MetadataOperation.VIEW_TESTS);
-    }
-    if (fields.contains("tableQueries")) {
-      operations.add(MetadataOperation.VIEW_QUERIES);
-    }
-    if (fields.contains("profile")) {
-      operations.add(MetadataOperation.VIEW_DATA_PROFILE);
-    }
-    if (fields.contains("sampleData")) {
-      operations.add(MetadataOperation.VIEW_SAMPLE_DATA);
-    }
-    if (operations.size() == 5) {
-      return EntityResource.VIEW_ALL_OPERATIONS; // All view operations are requested
-    }
-    return operations.toArray(new MetadataOperation[0]);
-  }
-
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
+    allowedFields.add("customMetrics");
   }
 
   public static class TableList extends ResultList<Table> {
@@ -528,10 +508,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       tags = "tables",
       description = "get sample data from the table.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully update the Table",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Table getSampleData(
       @Context UriInfo uriInfo,
@@ -539,10 +519,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid TableData tableData)
       throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.getSampleData(id);
-    return addHref(uriInfo, table);
+    return addHref(uriInfo, dao.getSampleData(id));
   }
 
   @DELETE
@@ -553,10 +532,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       tags = "tables",
       description = "delete sample data from the table.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Successfully update the Table",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Table deleteSampleData(
       @Context UriInfo uriInfo,
@@ -594,7 +573,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     Table table = dao.addTableProfilerConfig(id, tableProfilerConfig);
     return addHref(uriInfo, table);
   }
-
 
   @GET
   @Path("/{id}/tableProfilerConfig")
@@ -662,6 +640,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfileList.class)))
       })
   public ResultList<TableProfile> listTableProfiles(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
           String fqn,
@@ -676,7 +655,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getTableProfiles(fqn, startTs, endTs);
   }
 
@@ -713,6 +693,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getColumnProfiles(fqn, startTs, endTs);
   }
 
@@ -830,10 +812,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       tags = "tables",
       description = "get table query data from the table.",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "OK",
-              content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Table getQuery(
       @Context UriInfo uriInfo,
@@ -841,7 +823,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Valid SQLQuery sqlQuery)
       throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.getQueries(id);
     return addHref(uriInfo, table);
