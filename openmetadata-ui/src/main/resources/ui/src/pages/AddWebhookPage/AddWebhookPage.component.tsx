@@ -116,7 +116,7 @@ const AddWebhookPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      <div className="tw-self-center">
+      <div className="self-center">
         <AddWebhook
           allowAccess={createPermission}
           header={`Add ${HEADER_TEXT_WEBHOOK[webhookType]}`}

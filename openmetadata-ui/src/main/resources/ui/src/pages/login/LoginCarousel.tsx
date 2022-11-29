@@ -28,15 +28,16 @@ const LoginCarousel = () => {
             <div>
               <img
                 alt="slider"
-                className="tw-w-full"
+                className="w-full"
                 loading="lazy"
                 src={data.image}
               />
             </div>
-            <div className="tw-mt-24 tw-mb-11">
+            <div className="mt-24 mb-11">
               <p
-                className="tw-text-center tw-w-5/6 tw-mx-auto tw-font-medium tw-text-white tw-text-xl"
-                data-testid="carousel-slide-description">
+                className="text-center mx-auto font-medium text-white text-xl"
+                data-testid="carousel-slide-description"
+                style={{ width: '83%' }}>
                 {data.description}
               </p>
             </div>

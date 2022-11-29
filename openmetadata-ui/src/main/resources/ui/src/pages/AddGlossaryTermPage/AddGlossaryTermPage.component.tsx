@@ -207,7 +207,7 @@ const AddGlossaryTermPage = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="tw-self-center">
+        <div className="self-center">
           <AddGlossaryTerm
             allowAccess={createPermission}
             glossaryData={glossaryData as Glossary}
