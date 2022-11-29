@@ -52,6 +52,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const handleSubmit = (data: Team) => {
     data = {
       ...data,
+      name: data.name.trimEnd(),
+      displayName: data.displayName?.trimEnd(),
       description,
     };
     onSave(data);
