@@ -14,7 +14,6 @@
 import { List, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import { SearchResponse } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import React, { useEffect, useState } from 'react';
 import { searchData } from '../../axiosAPIs/miscAPI';
@@ -32,6 +31,7 @@ import {
   User,
 } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { SearchResponse } from '../../interface/search.interface';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -90,8 +90,12 @@ const AddUsersModalV1 = ({
 
   const searchUsers = (text: string, page: number) => {
     searchData(text, page, PAGE_SIZE_MEDIUM, '', '', '', SearchIndex.USER)
-      .then((res: SearchResponse) => {
-        const data = getFilterUserData(formatUsersResponse(res.data.hits.hits));
+      .then((res) => {
+        const data = getFilterUserData(
+          formatUsersResponse(
+            (res.data as SearchResponse<SearchIndex.USER>).hits.hits
+          )
+        );
         setTotalESCount(res.data.hits.total.value);
         setCurrentPage((pre) => pre + 1);
         setUniqueUser((pre) => [...pre, ...data]);

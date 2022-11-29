@@ -16,7 +16,7 @@ import Qs from 'qs';
 
 const axiosClient = axios.create({
   baseURL: '/api/v1',
-  paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'repeat' }),
+  paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'comma' }),
 });
 
 export default axiosClient;

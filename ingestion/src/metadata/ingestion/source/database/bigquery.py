@@ -274,7 +274,7 @@ class BigquerySource(CommonDbSourceService):
             except NotImplementedError:
                 logger.warning("View definition not implemented")
                 view_definition = ""
-            return view_definition
+            return f"CREATE VIEW {schema_name}.{table_name} AS {view_definition}"
         return None
 
     def get_table_partition_details(

@@ -55,6 +55,7 @@ export interface AddIngestionProps {
 }
 
 export interface ConfigureIngestionProps {
+  formType: FormSubmitType;
   ingestionName: string;
   description?: string;
   databaseServiceNames: string[];

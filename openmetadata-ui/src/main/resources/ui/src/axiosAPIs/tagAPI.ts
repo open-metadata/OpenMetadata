@@ -65,17 +65,18 @@ export const createTag = async (name: string, data: TagsCategory) => {
   return response.data;
 };
 
-export const updateTag = (
+export const updateTag = async (
   category: string,
   tagName: string,
   data: TagsCategory
 ) => {
-  return APIClient.put(`/tags/${category}/${tagName}`, data);
+  const response = await APIClient.put(`/tags/${category}/${tagName}`, data);
+
+  return response.data;
 };
 
-export const deleteTag = (
-  categoryName: string,
-  tagId: string
-): Promise<AxiosResponse> => {
-  return APIClient.delete(`/tags/${categoryName}/${tagId}`);
+export const deleteTag = async (categoryName: string, tagId: string) => {
+  const response = await APIClient.delete(`/tags/${categoryName}/${tagId}`);
+
+  return response.data;
 };

@@ -73,6 +73,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.monitoring.EventMonitor;
+import org.openmetadata.service.monitoring.EventMonitorFactory;
+import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -302,6 +305,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           new ElasticSearchEventPublisher(
               openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
+    }
+
+    if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
+      final EventMonitor eventMonitor =
+          EventMonitorFactory.createEventMonitor(
+              openMetadataApplicationConfig.getEventMonitorConfiguration(),
+              openMetadataApplicationConfig.getClusterName());
+      EventMonitorPublisher eventMonitorPublisher =
+          new EventMonitorPublisher(openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
+      EventPubSub.addEventHandler(eventMonitorPublisher);
     }
   }
 
