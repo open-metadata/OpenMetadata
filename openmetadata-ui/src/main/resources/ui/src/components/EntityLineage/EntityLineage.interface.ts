@@ -16,10 +16,8 @@ import { HTMLAttributes } from 'react';
 import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
-import {
-  EntityLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 
 export interface SelectedNode {
   name: string;

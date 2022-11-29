@@ -19,7 +19,6 @@ import {
   FormattedGlossarySuggestion,
   GlossarySuggestionHit,
   LoadingState,
-  SearchResponse,
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -42,7 +41,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import jsonData from '../../jsons/en';
-import { formatDataResponse } from '../../utils/APIUtils';
+import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
 import {
   getChildGlossaryTerms,
   getGlossariesWithRootTerms,
@@ -235,8 +234,8 @@ const GlossaryPageV1 = () => {
         '',
         myDataSearchIndex
       )
-        .then((res: SearchResponse) => {
-          const hits = res?.data?.hits?.hits;
+        .then((res) => {
+          const hits = res?.data?.hits?.hits as SearchEntityHits;
           if (hits?.length > 0) {
             setAssetData((pre) => {
               const data = formatDataResponse(hits);

@@ -32,39 +32,49 @@ jest.mock('../utils/APIUtils', () => ({
 }));
 
 jest.mock('./index', () => ({
-  get: jest.fn().mockImplementation((url) => `get_request${url}`),
-  delete: jest.fn().mockImplementation((url) => `delete_request${url}`),
-  post: jest
+  get: jest
     .fn()
-    .mockImplementation((url, data) => ({ url: `post_request${url}`, data })),
-  put: jest
+    .mockImplementation((url) =>
+      Promise.resolve({ data: `get_request${url}` })
+    ),
+  delete: jest
     .fn()
-    .mockImplementation((url, data) => ({ url: `put_request${url}`, data })),
+    .mockImplementation((url) =>
+      Promise.resolve({ data: `delete_request${url}` })
+    ),
+  post: jest.fn().mockImplementation((url, data) =>
+    Promise.resolve({
+      data: { url: `post_request${url}`, data },
+    })
+  ),
+  put: jest.fn().mockImplementation((url, data) =>
+    Promise.resolve({
+      data: { url: `put_request${url}`, data },
+    })
+  ),
 }));
 
-// TODO: improve API unit tests as per standards
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip('API functions should work properly', () => {
-  it('getTags function should work properly', () => {
-    const result = getTags('querry');
+describe('API functions should work properly', () => {
+  it('getTags function should work properly', async () => {
+    const data = await getTags('querry');
 
-    expect(result).toEqual(`get_request/tags?fields=querry`);
+    expect(data).toEqual(`get_request/tags?fields=querry`);
   });
 
-  it('getCategory function should work properly', () => {
-    const result = getCategory('categoryName', 'querry');
+  it('getCategory function should work properly', async () => {
+    const result = await getCategory('categoryName', 'querry');
 
     expect(result).toEqual(`get_request/tags/categoryName?fields=querry`);
   });
 
-  it('deleteTagCategory function should work properly', () => {
-    const result = deleteTagCategory('categoryId');
+  it('deleteTagCategory function should work properly', async () => {
+    const result = await deleteTagCategory('categoryId');
 
     expect(result).toEqual(`delete_request/tags/categoryId`);
   });
 
-  it('deleteTag function should work properly', () => {
-    const result = deleteTag('testCategory', 'categoryId');
+  it('deleteTag function should work properly', async () => {
+    const result = await deleteTag('testCategory', 'categoryId');
 
     expect(result).toEqual(`delete_request/tags/testCategory/categoryId`);
   });
@@ -76,9 +86,9 @@ describe.skip('API functions should work properly', () => {
     expect(result).toEqual({ url: `post_request/tags`, data: mockPostData });
   });
 
-  it('createTag function should work properly', () => {
+  it('createTag function should work properly', async () => {
     const mockPostData = { name: 'newTag' } as TagsCategory;
-    const result = createTag('testCategory', mockPostData);
+    const result = await createTag('testCategory', mockPostData);
 
     expect(result).toEqual({
       url: `post_request/tags/testCategory`,
@@ -86,12 +96,12 @@ describe.skip('API functions should work properly', () => {
     });
   });
 
-  it('updateTagCategory function should work properly', () => {
+  it('updateTagCategory function should work properly', async () => {
     const mockUpdateData = {
       name: 'testCategory',
       description: 'newDescription',
     };
-    const result = updateTagCategory('testCategory', mockUpdateData);
+    const result = await updateTagCategory('testCategory', mockUpdateData);
 
     expect(result).toEqual({
       url: `put_request/tags/testCategory`,
@@ -99,12 +109,12 @@ describe.skip('API functions should work properly', () => {
     });
   });
 
-  it('updateTag function should work properly', () => {
+  it('updateTag function should work properly', async () => {
     const mockUpdateData = {
       name: 'tagName',
       description: 'newDescription',
     };
-    const result = updateTag('testCategory', 'tagName', mockUpdateData);
+    const result = await updateTag('testCategory', 'tagName', mockUpdateData);
 
     expect(result).toEqual({
       url: `put_request/tags/testCategory/tagName`,

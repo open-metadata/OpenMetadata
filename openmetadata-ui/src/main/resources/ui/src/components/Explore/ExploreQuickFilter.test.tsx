@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from './explore.interface';
 import AdvancedField from './ExploreQuickFilter';
 
@@ -70,7 +71,7 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: { suggest: mockData } })),
 }));
 
-const index = 'table_search_index';
+const index = SearchIndex.TABLE;
 const field = {
   key: 'owner.name',
   value: undefined,
