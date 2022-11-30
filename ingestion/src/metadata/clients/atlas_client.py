@@ -28,12 +28,11 @@ class AtlasClient:
     def __init__(self, config: AtlasConnection, raw_data: bool = False):
 
         self.config = config
-        config_obj = self.config.serviceConnection.__root__.config
         self.auth_token = generate_http_basic_token(
-            config_obj.username, config_obj.password.get_secret_value()
+            config.username, config.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
-            base_url=config_obj.atlasHost,
+            base_url=config.hostPort,
             auth_header="Authorization",
             api_version="api",
             auth_token=self.get_auth_token,

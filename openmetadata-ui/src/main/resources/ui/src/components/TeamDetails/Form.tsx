@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FormErrorData, Team } from 'Models';
+import { FormErrorData } from 'Models';
 import React, {
   forwardRef,
   useEffect,
@@ -20,6 +20,7 @@ import React, {
   useState,
 } from 'react';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import { Team } from '../../generated/entity/teams/team';
 import { errorMsg } from '../../utils/CommonUtils';
 
 type FormProp = {
@@ -67,8 +68,8 @@ const Form: React.FC<FormProp> = forwardRef(
         saveData({
           ...data,
           name: data.name.trim(),
-          displayName: data.displayName.trim(),
-          description: data.description.trim(),
+          displayName: data.displayName?.trim(),
+          description: data.description?.trim(),
         });
       }
     }, [data]);
@@ -115,7 +116,7 @@ const Form: React.FC<FormProp> = forwardRef(
             <div>
               <label className="tw-form-label">Description</label>
               <RichTextEditor
-                initialValue={data.description}
+                initialValue={data.description ?? ''}
                 ref={markdownRef}
               />
             </div>

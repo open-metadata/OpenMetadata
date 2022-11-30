@@ -18,7 +18,7 @@ import {
   ANNOUNCEMENT_BG,
   ANNOUNCEMENT_BORDER,
   TASK_BORDER,
-} from '../../../constants/feed.constants';
+} from '../../../constants/Feeds.constants';
 import {
   Post,
   ThreadTaskStatus,

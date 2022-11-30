@@ -26,7 +26,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.ws.rs.core.Response;
@@ -292,7 +298,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   @Test
-  void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) {
+  protected void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) {
     // TODO fix this test as currently bot can't update webhook
   }
 

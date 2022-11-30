@@ -31,7 +31,7 @@ import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePic
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { EntityField } from '../../../constants/feed.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,

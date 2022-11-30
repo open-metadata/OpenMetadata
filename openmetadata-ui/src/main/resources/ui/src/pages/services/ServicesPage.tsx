@@ -24,7 +24,7 @@ import { usePermissionProvider } from '../../components/PermissionProvider/Permi
 import Services from '../../components/Services/Services';
 import { pagingObject } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { SERVICE_CATEGORY } from '../../constants/services.const';
+import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { ServiceCategory as Category } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';

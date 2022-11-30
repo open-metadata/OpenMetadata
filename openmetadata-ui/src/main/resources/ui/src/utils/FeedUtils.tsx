@@ -32,9 +32,10 @@ import {
   updateThread,
 } from '../axiosAPIs/feedsAPI';
 import {
-  getInitialEntity,
+  getSearchedUsers,
   getSuggestions,
   getUserSuggestions,
+  searchData,
 } from '../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -46,7 +47,7 @@ import {
   linkRegEx,
   mentionRegEx,
   teamsLinkRegEx,
-} from '../constants/feed.constants';
+} from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
@@ -169,18 +170,16 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
     if (!searchTerm) {
-      const data = await getInitialEntity(SearchIndex.USER);
-      // TODO: fix below type issues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hits = (data as any).data.hits.hits;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      atValues = hits.map((hit: any) => {
+      const data = await getSearchedUsers('*', 0, 5);
+      const hits = data.data.hits.hits;
+
+      atValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
 
         return {
           id: hit._id,
           value: getEntityPlaceHolder(
-            `@${hit._source.name ?? hit._source.display_name}`,
+            `@${hit._source.name ?? hit._source.displayName}`,
             hit._source.deleted
           ),
           link: buildMentionLink(
@@ -215,12 +214,10 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   } else {
     let hashValues = [];
     if (!searchTerm) {
-      // TODO: fix below type issues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await getInitialEntity(SearchIndex.TABLE);
+      const data = await searchData('*', 0, 5, '', '', '', SearchIndex.TABLE);
       const hits = data.data.hits.hits;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      hashValues = hits.map((hit: any) => {
+
+      hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
 
         return {
@@ -228,16 +225,15 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
           value: `#${entityType}/${hit._source.name}`,
           link: buildMentionLink(
             entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName)
+            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
         };
       });
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await getSuggestions(searchTerm);
+      const data = await getSuggestions(searchTerm);
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      hashValues = hits.map((hit: any) => {
+
+      hashValues = hits.map((hit) => {
         const entityType = hit._source.entityType;
 
         return {
@@ -245,7 +241,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
           value: `#${entityType}/${hit._source.name}`,
           link: buildMentionLink(
             entityType,
-            getEncodedFqn(hit._source.fullyQualifiedName)
+            getEncodedFqn(hit._source.fullyQualifiedName ?? '')
           ),
         };
       });

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, mySqlConnectionInput, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
-import { API_SERVICE, LOGIN, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, mySqlConnectionInput, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import { API_SERVICE, SERVICE_TYPE, TEAM_ENTITY } from '../../constants/constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -21,8 +21,7 @@ const description = `This is ${tableName} description`;
 
 describe('MySQL Ingestion', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);

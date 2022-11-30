@@ -15,6 +15,7 @@ import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef, useState } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
+import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
@@ -81,6 +82,7 @@ const ConfigureIngestion = ({
   onUseFqnFilterClick,
   onCancel,
   onNext,
+  formType,
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
@@ -496,6 +498,7 @@ const ConfigureIngestion = ({
           <input
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="name"
+            disabled={formType === FormSubmitType.EDIT}
             id="name"
             name="name"
             type="text"

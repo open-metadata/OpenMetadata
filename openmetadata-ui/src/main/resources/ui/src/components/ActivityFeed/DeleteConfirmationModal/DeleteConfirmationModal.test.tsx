@@ -16,11 +16,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 
-jest.mock('../../../constants/feed.constants', () => ({
-  confirmationBodyText: '',
-  confirmHeadertext: '',
-}));
-
 jest.mock('../../Modals/ConfirmationModal/ConfirmationModal', () => {
   return jest
     .fn()

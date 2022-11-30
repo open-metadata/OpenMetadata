@@ -13,10 +13,11 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { flatten } from 'lodash';
-import { FormattedGlossaryTermData, TagOption } from 'Models';
+import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../generated/api/data/createTable';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Table } from '../../generated/entity/data/table';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import EntityTableV1 from './EntityTable.component';
@@ -224,9 +225,7 @@ jest.mock('../tags/tags', () => {
 jest.mock('../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map(
-      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
-    );
+    return terms.map((term: GlossaryTerm) => term?.fullyQualifiedName);
   }),
 }));
 
