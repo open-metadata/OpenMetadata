@@ -12,7 +12,7 @@
  */
 
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { camelCase } from 'lodash';
+import { camelCase, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
 import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-activity.svg';
@@ -45,10 +45,12 @@ export interface MenuListItem {
 export interface MenuList {
   category: string;
   items: MenuListItem[];
+  isAdmin?: boolean;
 }
 
 export const getGlobalSettingsMenuWithPermission = (
-  permissions: UIPermission
+  permissions: UIPermission,
+  isAdminUser: boolean | undefined
 ) => {
   return [
     {
@@ -225,6 +227,7 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: (
             <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
           ),
+          isAdmin: isAdminUser,
         },
       ],
     },
@@ -277,6 +280,7 @@ export const getGlobalSettingMenuItem = (
     label: string;
     isProtected: boolean;
     icon: React.ReactNode;
+    isAdmin?: boolean;
   }[],
   type?: string
 ): {
@@ -288,7 +292,11 @@ export const getGlobalSettingMenuItem = (
 } => {
   const subItems = children
     ? children
-        .filter((menu) => menu.isProtected)
+        .filter((menu) =>
+          menu.isAdmin
+            ? menu.isProtected
+            : menu.isProtected && isUndefined(menu.isAdmin)
+        )
         .map(({ label, icon }) => {
           return getGlobalSettingMenuItem(label, camelCase(label), key, icon);
         })

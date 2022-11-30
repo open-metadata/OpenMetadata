@@ -18,6 +18,7 @@ import React, { useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
+import { useAuth } from '../../hooks/authHooks';
 import {
   getGlobalSettingMenuItem,
   getGlobalSettingsMenuWithPermission,
@@ -34,9 +35,11 @@ const GlobalSettingLeftPanel = () => {
 
   const { permissions } = usePermissionProvider();
 
+  const { isAdminUser } = useAuth();
+
   const menuItems: ItemType[] = useMemo(
     () =>
-      getGlobalSettingsMenuWithPermission(permissions).reduce(
+      getGlobalSettingsMenuWithPermission(permissions, isAdminUser).reduce(
         (acc: ItemType[], curr: MenuList) => {
           const menuItem = getGlobalSettingMenuItem(
             curr.category,
