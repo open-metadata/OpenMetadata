@@ -623,7 +623,7 @@ const PipelineDetails = ({
               <Tooltip
                 title={
                   pipelinePermissions.EditAll
-                    ? t('label.edit-description')
+                    ? t('label.edit-entity', { entity: 'Description' })
                     : t('message.no-permission-for-action')
                 }>
                 <button
@@ -1012,7 +1012,7 @@ const PipelineDetails = ({
 
       {editTask && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-task')}: "${
+          header={`${t('label.edit-entity', { entity: 'Task' })}: "${
             editTask.task.displayName || editTask.task.name
           }"`}
           placeholder={t('label.type-field-name', {

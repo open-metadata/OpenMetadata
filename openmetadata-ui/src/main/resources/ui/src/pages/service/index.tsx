@@ -1111,7 +1111,7 @@ const ServicePage: FunctionComponent = () => {
                         <Tooltip
                           title={
                             servicePermission.EditAll
-                              ? t('label.edit-connection')
+                              ? t('label.edit-entity', { entity: 'Connection' })
                               : t('message.no-permission-for-action')
                           }>
                           <Button
@@ -1120,7 +1120,7 @@ const ServicePage: FunctionComponent = () => {
                             disabled={!servicePermission.EditAll}
                             type="primary"
                             onClick={handleEditConnection}>
-                            {t('label.edit-connection')}
+                            {t('label.edit-entity', { entity: 'Connection' })}
                           </Button>
                         </Tooltip>
                         {allowTestConn && isAirflowRunning && (

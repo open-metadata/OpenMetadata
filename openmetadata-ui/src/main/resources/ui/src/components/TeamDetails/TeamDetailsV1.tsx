@@ -946,7 +946,7 @@ const TeamDetailsV1 = ({
                   title={
                     entityPermissions.EditAll ||
                     entityPermissions.EditDisplayName
-                      ? t('label.edit-display-name')
+                      ? t('label.edit-entity', { entity: 'Display Name' })
                       : NO_PERMISSION_FOR_ACTION
                   }>
                   <button

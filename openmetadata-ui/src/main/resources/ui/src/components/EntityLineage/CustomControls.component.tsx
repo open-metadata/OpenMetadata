@@ -251,7 +251,7 @@ const CustomControls: FC<ControlProps> = ({
               disabled={!hasEditAccess}
               title={
                 hasEditAccess
-                  ? t('label.edit-lineage')
+                  ? t('label.edit-entity', { entity: 'Lineage' })
                   : NO_PERMISSION_FOR_ACTION
               }
               onClick={onEditLinageClick}>

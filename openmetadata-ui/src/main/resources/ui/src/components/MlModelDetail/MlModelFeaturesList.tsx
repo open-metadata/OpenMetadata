@@ -248,7 +248,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                               <Tooltip
                                 title={
                                   permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-tags')
+                                    ? t('label.edit-entity', { entity: 'Tags' })
                                     : t('message.no-permission-for-action')
                                 }>
                                 <Button
@@ -272,7 +272,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                               <Tooltip
                                 title={
                                   permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-tags')
+                                    ? t('label.edit-entity', { entity: 'Tags' })
                                     : t('message.no-permission-for-action')
                                 }>
                                 <Button
@@ -351,7 +351,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         </Row>
         {!isEmpty(selectedFeature) && editDescription && (
           <ModalWithMarkdownEditor
-            header={`${t('label.edit-feature')}: "${selectedFeature.name}"`}
+            header={`${t('label.edit-entity', { entity: 'Feature' })}: "${
+              selectedFeature.name
+            }"`}
             placeholder={t('message.enter-feature-description')}
             value={selectedFeature.description as string}
             onCancel={handleCancelEditDescription}
