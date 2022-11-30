@@ -59,17 +59,15 @@ from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
-from metadata.utils.workflow_helper import (
-    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
-)
 from metadata.utils.workflow_output_handler import print_data_insight_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = data_insight_logger()
 
 NOW = datetime.utcnow().timestamp() * 1000
 
 
-class DataInsightWorkflow:
+class DataInsightWorkflow(WorkflowStatusMixin):
     """
     Configure and run the Data Insigt workflow
 
@@ -263,17 +261,25 @@ class DataInsightWorkflow:
 
     def execute(self):
         """Execute workflow"""
-        logger.info("Starting data processor execution")
-        self._execute_data_processor()
-        logger.info("Data processor finished running")
+        try:
+            logger.info("Starting data processor execution")
+            self._execute_data_processor()
+            logger.info("Data processor finished running")
 
-        logger.info("Sleeping for 1 second. Waiting for ES data to be indexed.")
-        time.sleep(1)
-        logger.info("Starting KPI runner")
-        self._execute_kpi_runner()
-        logger.info("KPI runner finished running")
+            logger.info("Sleeping for 1 second. Waiting for ES data to be indexed.")
+            time.sleep(1)
+            logger.info("Starting KPI runner")
+            self._execute_kpi_runner()
+            logger.info("KPI runner finished running")
 
-    def raise_from_status(self, raise_warnings=False):
+            # At the end of the `execute`, update the associated Ingestion Pipeline status as success
+            self.set_ingestion_pipeline_status(PipelineState.success)
+        # Any unhandled exception breaking the workflow should update the status
+        except Exception as err:
+            self.set_ingestion_pipeline_status(PipelineState.failed)
+            raise err
+
+    def _raise_from_status_internal(self, raise_warnings=False):
         if self.data_processor and self.data_processor.get_status().failures:
             raise WorkflowExecutionError(
                 "Source reported errors", self.data_processor.get_status()
@@ -308,17 +314,4 @@ class DataInsightWorkflow:
         """
         Close all connections
         """
-        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
-
-    def set_ingestion_pipeline_status(self, state: PipelineState):
-        """
-        Method to set the pipeline status of current ingestion pipeline
-        """
-        pipeline_run_id = set_ingestion_pipeline_status_helper(
-            state=state,
-            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
-            pipeline_run_id=self.config.pipelineRunId,
-            metadata=self.metadata,
-        )
-        self.config.pipelineRunId = pipeline_run_id
