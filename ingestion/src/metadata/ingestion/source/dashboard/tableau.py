@@ -124,7 +124,8 @@ class TableauSource(DashboardServiceSource):
                     "\nSomething went wrong while connecting to Tableau Metadata APIs\n"
                     "Please check if the Tableau Metadata APIs are enabled for you Tableau instance\n"
                     "For more information on enabling the Tableau Metadata APIs follow the link below\n"
-                    "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html#enable-the-tableau-metadata-api-for-tableau-server\n"  # pylint: disable=line-too-long
+                    "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+                    "#enable-the-tableau-metadata-api-for-tableau-server\n"
                 )
 
         return super().prepare()
