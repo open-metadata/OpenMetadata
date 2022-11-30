@@ -82,10 +82,8 @@ from metadata.utils.class_helper import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 from metadata.utils.partition import get_partition_details
-from metadata.utils.workflow_helper import (
-    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
-)
 from metadata.utils.workflow_output_handler import print_profiler_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = profiler_logger()
 
@@ -94,7 +92,7 @@ class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
 
 
-class ProfilerWorkflow:
+class ProfilerWorkflow(WorkflowStatusMixin):
     """
     Configure and run the ORM profiler
     """
@@ -413,11 +411,10 @@ class ProfilerWorkflow:
 
         return copy_service_connection_config
 
-    def execute(self):
+    def run_profiler_workflow(self):
         """
-        Run the profiling and tests
+        Main logic for the profiler workflow
         """
-
         databases = self.get_database_entities()
 
         if not databases:
@@ -468,6 +465,21 @@ class ProfilerWorkflow:
                     f"Unexpected exception executing in database [{database}]: {exc}"
                 )
 
+    def execute(self):
+        """
+        Run the profiling and tests
+        """
+
+        try:
+            self.run_profiler_workflow()
+            # At the end of the `execute`, update the associated Ingestion Pipeline status as success
+            self.set_ingestion_pipeline_status(PipelineState.success)
+
+        # Any unhandled exception breaking the workflow should update the status
+        except Exception as err:
+            self.set_ingestion_pipeline_status(PipelineState.failed)
+            raise err
+
     def print_status(self) -> None:
         """
         Print the workflow results with click
@@ -486,7 +498,7 @@ class ProfilerWorkflow:
             return 1
         return 0
 
-    def raise_from_status(self, raise_warnings=False):
+    def _raise_from_status_internal(self, raise_warnings=False):
         """
         Check source, processor and sink status and raise if needed
 
@@ -521,7 +533,6 @@ class ProfilerWorkflow:
         """
         Close all connections
         """
-        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
 
     def _retrieve_service_connection_if_needed(self) -> None:
@@ -555,15 +566,3 @@ class ProfilerWorkflow:
                     f"Error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
-
-    def set_ingestion_pipeline_status(self, state: PipelineState):
-        """
-        Method to set the pipeline status of current ingestion pipeline
-        """
-        pipeline_run_id = set_ingestion_pipeline_status_helper(
-            state=state,
-            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
-            pipeline_run_id=self.config.pipelineRunId,
-            metadata=self.metadata,
-        )
-        self.config.pipelineRunId = pipeline_run_id

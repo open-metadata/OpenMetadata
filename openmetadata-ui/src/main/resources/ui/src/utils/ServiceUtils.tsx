@@ -26,7 +26,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../components/PermissionProvider/PermissionProvider.interface';
-import { GlobalSettingOptions } from '../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   addLineageIngestionGuide,
   addMetadataIngestionGuide,
@@ -92,7 +92,7 @@ import {
   TOPIC_DEFAULT,
   TRINO,
   VERTICA,
-} from '../constants/services.const';
+} from '../constants/Services.constant';
 import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';

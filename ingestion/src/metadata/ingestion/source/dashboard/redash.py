@@ -12,7 +12,6 @@
 Redash source module
 """
 import traceback
-from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -33,22 +32,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import clean_raw_query
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-
-# Prevent sqllineage from modifying the logger config
-# Disable the DictConfigurator.configure method while importing LineageRunner
-configure = DictConfigurator.configure
-DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner  # pylint: disable=C0413
-
-# Reverting changes after import is done
-DictConfigurator.configure = configure
-
 
 logger = ingestion_logger()
 
@@ -142,28 +131,26 @@ class RedashSource(DashboardServiceSource):
                 if not visualization:
                     continue
                 if visualization.get("query", {}).get("query"):
-                    parser = LineageRunner(
-                        clean_raw_query(visualization["query"]["query"])
-                    )
-                for table in parser.source_tables:
-                    table_name = str(table)
-                    database_schema_table = fqn.split_table_name(table_name)
-                    from_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=db_service_name,
-                        schema_name=database_schema_table.get("database_schema"),
-                        table_name=database_schema_table.get("table"),
-                        database_name=database_schema_table.get("database"),
-                    )
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=from_fqn,
-                    )
-                    if from_entity and to_entity:
-                        yield self._get_add_lineage_request(
-                            to_entity=to_entity, from_entity=from_entity
+                    lineage_parser = LineageParser(visualization["query"]["query"])
+                    for table in lineage_parser.source_tables:
+                        table_name = str(table)
+                        database_schema_table = fqn.split_table_name(table_name)
+                        from_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=db_service_name,
+                            schema_name=database_schema_table.get("database_schema"),
+                            table_name=database_schema_table.get("table"),
+                            database_name=database_schema_table.get("database"),
                         )
+                        from_entity = self.metadata.get_by_name(
+                            entity=Table,
+                            fqn=from_fqn,
+                        )
+                        if from_entity and to_entity:
+                            yield self._get_add_lineage_request(
+                                to_entity=to_entity, from_entity=from_entity
+                            )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(

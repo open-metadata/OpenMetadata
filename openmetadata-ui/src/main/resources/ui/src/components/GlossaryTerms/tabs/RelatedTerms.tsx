@@ -13,13 +13,14 @@
 
 import { Select, Spin, Typography } from 'antd';
 import { cloneDeep, debounce, includes } from 'lodash';
-import { EntityReference, SearchResponse } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
+import { getEntityReferenceFromGlossary } from '../../../utils/GlossaryUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import SummaryDetail from '../SummaryDetail';
 
@@ -77,16 +78,16 @@ const RelatedTerms = ({
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
     searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
-        const termResult = (
-          formatSearchGlossaryTermResponse(
-            res?.data?.hits?.hits || []
-          ) as EntityReference[]
+      .then((res) => {
+        const termResult = formatSearchGlossaryTermResponse(
+          res.data.hits.hits
         ).filter((item) => {
           return item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName;
         });
 
-        const data = searchText ? getSearchedTerms(termResult) : termResult;
+        const results = termResult.map(getEntityReferenceFromGlossary);
+
+        const data = searchText ? getSearchedTerms(results) : results;
         setOptions(data);
       })
       .catch(() => {

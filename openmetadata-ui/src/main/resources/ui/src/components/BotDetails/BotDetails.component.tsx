@@ -26,7 +26,7 @@ import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+} from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Role } from '../../generated/entity/teams/role';
 import {

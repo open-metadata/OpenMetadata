@@ -11,19 +11,11 @@
  *  limitations under the License.
  */
 
-import { StepperStepType } from 'Models';
-import { FilterPattern } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ToastOptions } from 'react-toastify';
 
-export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
-  { name: 'Configure Ingestion', step: 1 },
-  { name: 'Configure DBT', step: 2 },
-  { name: 'Configure Metadata to ES Config (Optional)', step: 3 },
-  { name: 'Schedule Interval', step: 4 },
-];
-
-export const INGESTION_SCHEDULER_INITIAL_VALUE = '0 * * * *';
-
-export const INITIAL_FILTER_PATTERN: FilterPattern = {
-  includes: [],
-  excludes: [],
+export const TOAST_OPTIONS: ToastOptions = {
+  autoClose: false,
+  hideProgressBar: true,
+  draggable: false,
+  closeOnClick: false,
 };

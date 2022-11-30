@@ -28,7 +28,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
@@ -652,7 +652,7 @@ const EntityTable = ({
         render: renderDescription,
       },
       {
-        title: t('label.tags'),
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
@@ -702,7 +702,9 @@ const EntityTable = ({
       />
       {editColumn && (
         <ModalWithMarkdownEditor
-          header={`${t('label:edit-column')}: "${editColumn.column.name}"`}
+          header={`${t('label.edit-entity', { entity: t('label.column') })}: "${
+            editColumn.column.name
+          }"`}
           placeholder={t('label.enter-column-description')}
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}

@@ -41,6 +41,10 @@
   font-size: 1rem /* 16px */;
   line-height: 1.5rem /* 24px */;
 }
+.text-xl {
+  font-size: 1.25rem /* 20px */;
+  line-height: 1.75rem /* 28px */;
+}
 
 .text-2xl {
   font-size: 1.5rem /* 24px */;
@@ -80,115 +84,33 @@
   text-decoration: underline;
 }
 
-//  Radius
+// Border
+.no-border {
+  border: none;
+}
+.border-1 {
+  border-width: 1px;
+}
+.border-l-2 {
+  border-left: 2px;
+}
+.border-main {
+  border-color: @border-color;
+}
+.border-primary {
+  border-color: @primary;
+}
+.border-gray {
+  border-color: @gray;
+}
+
+// Radius
 
 .rounded-4 {
   border-radius: 4px;
 }
 .rounded-full {
   border-radius: 9999px;
-}
-
-// Width
-.w-4 {
-  width: 16px;
-}
-.w-8 {
-  width: 32px;
-}
-.w-9 {
-  width: 36px;
-}
-.w-16 {
-  width: 64px;
-}
-.w-24 {
-  width: 6rem;
-}
-.w-32 {
-  width: 8rem;
-}
-.w-36 {
-  width: 9rem;
-}
-.w-72 {
-  width: 288px;
-}
-.w-48 {
-  width: 12rem;
-}
-.w-11-12 {
-  width: 91.666667%;
-}
-.w-min-0 {
-  min-width: 0;
-}
-.w-max-20 {
-  max-width: 20%;
-}
-.w-max-200 {
-  max-width: 200px;
-}
-.w-max-500 {
-  max-width: 500px;
-}
-.w-500 {
-  width: 500px;
-}
-.w-300 {
-  width: 300px;
-}
-.w-60 {
-  width: 60%;
-}
-.w-3\.5 {
-  width: 0.875rem;
-}
-.w-full {
-  width: 100%;
-}
-.w-max-256 {
-  max-width: 256px;
-}
-.w-auto {
-  width: auto;
-}
-
-//Height
-.h-4 {
-  height: 16px;
-}
-.h-7 {
-  height: 28px;
-}
-.h-8 {
-  height: 32px;
-}
-.h-9 {
-  height: 36px;
-}
-.h-100 {
-  height: 400px;
-}
-.h-min-100 {
-  min-height: 100vh;
-}
-.h-min-80 {
-  min-height: 80vh;
-}
-.h-min-50 {
-  min-height: 50vh;
-}
-.h-3\.5 {
-  height: 0.875rem;
-}
-
-.h-full {
-  height: 100%;
-}
-
-.h-min-full {
-  min-height: 100%;
 }
 
 // Text alignment
@@ -224,6 +146,9 @@
 .flex-col {
   flex-direction: column;
 }
+.flex-initial {
+  flex: 0 1 auto;
+}
 .flex-center {
   display: flex;
   align-items: center;
@@ -247,18 +172,9 @@
 .text-semi-bold {
   font-weight: 500;
 }
-
-.border-l-2 {
-  border-left: 2px;
+.bg-body-main {
+  background: @body-bg-color;
 }
-
-.border-primary {
-  border-color: @primary;
-}
-.border-gray {
-  border-color: @gray;
-}
-
 .bg-primary-lite {
   background: @primary-light;
 }
@@ -280,6 +196,9 @@
 }
 .card-box-shadow {
   box-shadow: rgba(0, 0, 0, 0.06) 1px 1px 8px;
+}
+.shadow-base {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
 .opacity-60 {
   opacity: 0.6;

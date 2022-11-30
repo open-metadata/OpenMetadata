@@ -1252,6 +1252,22 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table1 = getEntity(table1.getId(), "*", authHeaders);
     verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
+
+    // Table profile with column profile as null
+    timestamp = TestUtils.dateToTimestamp("2022-09-09");
+    tableProfile =
+        new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp).withProfileSample(10.0);
+    createTableProfile = new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(null);
+    putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
+    verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
+
+    // Table profile without column profile
+    timestamp = TestUtils.dateToTimestamp("2022-10-09");
+    tableProfile =
+        new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp).withProfileSample(10.0);
+    createTableProfile = new CreateTableProfile().withTableProfile(tableProfile);
+    putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
+    verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
   }
 
   @Test

@@ -23,6 +23,12 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
+
+</Note>
+
 ### Usage and Lineage considerations
 
 When extracting lineage and usage information from Postgres we base our finding on the `pg_stat_statements` table.

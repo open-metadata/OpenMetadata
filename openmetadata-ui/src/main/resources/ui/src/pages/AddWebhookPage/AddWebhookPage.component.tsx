@@ -23,7 +23,7 @@ import { ResourceEntity } from '../../components/PermissionProvider/PermissionPr
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+} from '../../constants/GlobalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import {
   CreateWebhook,
@@ -116,7 +116,7 @@ const AddWebhookPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      <div className="tw-self-center">
+      <div className="self-center">
         <AddWebhook
           allowAccess={createPermission}
           header={`Add ${HEADER_TEXT_WEBHOOK[webhookType]}`}
