@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
@@ -83,7 +84,7 @@ const AddRolePage = () => {
 
   const handleSumbit = async () => {
     const data = {
-      name,
+      name: trim(name),
       description,
       policies: selectedPolicies.map((policy) => ({
         id: policy,
