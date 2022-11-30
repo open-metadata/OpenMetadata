@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isEmpty, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isNil, trim } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, {
   FunctionComponent,
@@ -225,7 +225,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const handleSave = () => {
     if (validateForm()) {
       const oData: CreateWebhook = {
-        name,
+        name: trim(name),
         description: markdownRef.current?.getEditorContent() || undefined,
         endpoint: endpointUrl,
         eventFilters: eventFilterFormData ?? ([] as EventFilter[]),
