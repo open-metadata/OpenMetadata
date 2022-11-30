@@ -205,7 +205,7 @@ const NavBar = ({
               to={{
                 pathname: ROUTES.TAGS,
               }}>
-              {t('label.tags')}
+              {t('label.tag-plural')}
             </NavLink>
           ),
         },
