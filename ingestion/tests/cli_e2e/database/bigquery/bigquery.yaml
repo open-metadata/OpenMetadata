@@ -11,7 +11,7 @@ source:
           type: service_account
           projectId: $E2E_BQ_PROJECT_ID
           privateKeyId: $CYPRESS_BQ_PRIVATE_KEY_ID
-          privateKey: $CYPRESS_BQ_PRIVATE_KEY
+          privateKey: $E2E_BQ_PRIVATE_KEY
           clientEmail: $CYPRESS_BQ_CLIENT_EMAIL
           clientId: $CYPRESS_BQ_CLIENT_ID
   sourceConfig:

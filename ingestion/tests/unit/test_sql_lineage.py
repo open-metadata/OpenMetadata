@@ -12,21 +12,10 @@
 """
 sql lineage utils tests
 """
-from logging.config import DictConfigurator
 from unittest import TestCase
 
-from sqllineage.runner import LineageRunner
-
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import populate_column_lineage_map
-
-# Prevent sqllineage from modifying the logger config
-# Disable the DictConfigurator.configure method while importing LineageRunner
-configure = DictConfigurator.configure
-DictConfigurator.configure = lambda _: None
-
-# Reverting changes after import is done
-DictConfigurator.configure = configure
-
 
 QUERY = [
     "CREATE TABLE MYTABLE2 AS SELECT * FROM MYTABLE1;",
@@ -50,7 +39,7 @@ class SqlLineageTest(TestCase):
     def test_populate_column_lineage_map(self):
 
         for i in range(len(QUERY)):
-            result = LineageRunner(QUERY[i])
-            raw_column_lineage = result.get_column_lineage()
+            lineage_parser = LineageParser(QUERY[i])
+            raw_column_lineage = lineage_parser.column_lineage
             lineage_map = populate_column_lineage_map(raw_column_lineage)
             self.assertEqual(lineage_map, EXPECTED_LINEAGE_MAP[i])

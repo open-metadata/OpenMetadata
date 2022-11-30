@@ -889,16 +889,16 @@ const ServicePage: FunctionComponent = () => {
         return [t('label.database-name'), t('label.usage')];
       }
       case ServiceCategory.MESSAGING_SERVICES: {
-        return [t('label.topic-name'), t('label.tags')];
+        return [t('label.topic-name'), t('label.tag-plural')];
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        return [t('label.dashboard-name'), t('label.tags')];
+        return [t('label.dashboard-name'), t('label.tag-plural')];
       }
       case ServiceCategory.PIPELINE_SERVICES: {
-        return [t('label.pipeline-name'), t('label.tags')];
+        return [t('label.pipeline-name'), t('label.tag-plural')];
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
-        return [t('label.model-name'), t('label.tags')];
+        return [t('label.model-name'), t('label.tag-plural')];
       }
       default:
         return [];
@@ -1111,7 +1111,9 @@ const ServicePage: FunctionComponent = () => {
                         <Tooltip
                           title={
                             servicePermission.EditAll
-                              ? t('label.edit-connection')
+                              ? t('label.edit-entity', {
+                                  entity: t('label.connection'),
+                                })
                               : t('message.no-permission-for-action')
                           }>
                           <Button
@@ -1120,7 +1122,9 @@ const ServicePage: FunctionComponent = () => {
                             disabled={!servicePermission.EditAll}
                             type="primary"
                             onClick={handleEditConnection}>
-                            {t('label.edit-connection')}
+                            {t('label.edit-entity', {
+                              entity: t('label.connection'),
+                            })}
                           </Button>
                         </Tooltip>
                         {allowTestConn && isAirflowRunning && (
