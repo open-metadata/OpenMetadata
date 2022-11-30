@@ -69,21 +69,12 @@ public class TableIndex implements ElasticSearchIndex {
     // Table FQN has 4 parts
     String[] fqnPartsWithoutService = table.getFullyQualifiedName().split(Pattern.quote(Entity.SEPARATOR), 2);
     if (fqnPartsWithoutService.length == 2) {
-      suggest.add(
-          ElasticSearchSuggest.builder()
-              .input(fqnPartsWithoutService[1])
-              .weight(5)
-              .build());
+      suggest.add(ElasticSearchSuggest.builder().input(fqnPartsWithoutService[1]).weight(5).build());
       String[] fqnPartsWithoutDB = fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
       if (fqnPartsWithoutDB.length == 2) {
-        suggest.add(
-            ElasticSearchSuggest.builder()
-                .input(fqnPartsWithoutDB[1])
-                .weight(5)
-                .build());
+        suggest.add(ElasticSearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
       }
     }
-
   }
 
   private void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {

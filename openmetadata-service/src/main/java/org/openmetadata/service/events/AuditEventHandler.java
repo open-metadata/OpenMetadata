@@ -28,6 +28,7 @@ import org.slf4j.MarkerFactory;
 public class AuditEventHandler implements EventHandler {
   private final Marker auditMarker = MarkerFactory.getMarker("AUDIT");
   private final String ANONYMOUS_USER = "anonymous";
+
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     // Nothing to do
   }
