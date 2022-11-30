@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getDashboardByFqn } from '../../../axiosAPIs/dashboardAPI';
@@ -63,6 +64,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 }
 
 const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+  const { t } = useTranslation();
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
 
   const entityTier = useMemo(() => {
@@ -179,7 +181,9 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
               </Space>
             ) : (
               <Typography.Text className="text-xs text-grey-muted">
-                No Owner
+                {t('label.no-entity', {
+                  entity: 'Owner',
+                })}
               </Typography.Text>
             )}
           </div>
@@ -187,7 +191,11 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
           <Typography.Text
             className="text-xs text-grey-muted"
             data-testid="tier">
-            {entityTier ? entityTier : ' No Tier'}
+            {entityTier
+              ? entityTier
+              : t('label.no-entity', {
+                  entity: 'Tier',
+                })}
           </Typography.Text>
         </Space>
 
@@ -199,7 +207,9 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
             />
           ) : (
             <Typography.Text className="text-xs text-grey-muted">
-              No description
+              {t('label.no-entity', {
+                entity: 'Description',
+              })}
             </Typography.Text>
           )}
         </div>
