@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { ServiceOption, ServicesData, ServiceTypes } from 'Models';
@@ -24,7 +25,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
-import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { addServiceGuide } from '../../constants/service-guide.constant';
 import { OPENMETADATA } from '../../constants/Services.constant';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -54,8 +55,8 @@ function EditConnectionFormPage() {
     return (
       guide && (
         <>
-          <h6 className="tw-heading tw-text-base">{guide.title}</h6>
-          <div className="tw-mb-5">{guide.description}</div>
+          <Typography.Title level={5}>{guide.title}</Typography.Title>
+          <div className="mb-5">{guide.description}</div>
         </>
       )
     );
@@ -150,14 +151,14 @@ function EditConnectionFormPage() {
       </ErrorPlaceHolder>
     ) : (
       <PageLayout
-        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+        classes="w-max-1080 h-full p-t-xss"
         header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
         layout={PageLayoutType['2ColRTL']}
         rightPanel={fetchRightPanel()}>
-        <div className="tw-form-container">
-          <h6 className="tw-heading tw-text-base">
+        <div className="form-container">
+          <Typography.Title level={5}>
             {`Edit ${serviceFQN} Service Connection`}
-          </h6>
+          </Typography.Title>
           <ServiceConfig
             data={serviceDetails as ServicesData}
             disableTestConnection={
@@ -176,7 +177,7 @@ function EditConnectionFormPage() {
 
   return (
     <PageContainerV1>
-      <div className="tw-self-center">
+      <div className="self-center">
         <>{isLoading ? <Loader /> : renderPage()}</>
       </div>
     </PageContainerV1>

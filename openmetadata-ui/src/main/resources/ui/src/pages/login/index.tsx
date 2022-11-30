@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Form, Input, Typography } from 'antd';
+import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
@@ -181,17 +181,15 @@ const SigninPage = () => {
   const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
 
   return (
-    <div className="tw-flex tw-flex-col tw-h-full">
-      <div
-        className="tw-flex tw-bg-body-main tw-flex-grow"
-        data-testid="signin-page">
-        <div className="tw-w-5/12">
+    <div className="flex flex-col h-full">
+      <Row className="flex bg-body-main flex-grow" data-testid="signin-page">
+        <Col span={10}>
           <div
-            className={classNames('mt-24 tw-text-center flex-center flex-col', {
+            className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
+            <Typography.Text className="mt-8 w-80 text-xl text-semi-bold text-grey-muted">
               {t('label.om-description')}{' '}
             </Typography.Text>
 
@@ -242,13 +240,13 @@ const SigninPage = () => {
                 </Form>
                 {loginError && (
                   <div
-                    className="tw-flex tw-flex-col m-y-md"
+                    className="flex flex-col m-y-md"
                     data-testid="login-error-container">
-                    <div className="tw-flex tw-border tw-border-main tw-rounded tw-p-3 error-alert ">
-                      <div className="tw-mr-2">
+                    <div className="flex border-1 border-main rounded-4 p-sm error-alert ">
+                      <div className="m-r-xs">
                         <SVGIcons
                           alt="failed"
-                          className="tw-w-5"
+                          className="w-5"
                           data-testid="failed-icon"
                           icon={Icons.FAIL_BADGE}
                         />
@@ -291,23 +289,23 @@ const SigninPage = () => {
               <div className="">{getSignInButton()}</div>
             )}
           </div>
-        </div>
-        <div className="tw-w-7/12 tw-relative">
-          <div className="tw-absolute tw-inset-0">
+        </Col>
+        <Col className="relative" span={14}>
+          <div className="absolute inset-0">
             <img
               alt="bg-image"
-              className="tw-w-full tw-h-full"
+              className="w-full h-full"
               data-testid="bg-image"
               src={loginBG}
             />
           </div>
-          <div className="tw-relative">
-            <div className="tw-flex tw-justify-center tw-mt-44 tw-mb-10">
+          <div className="relative">
+            <div className="flex justify-center mt-44 mb-10">
               <LoginCarousel />
             </div>
           </div>
-        </div>
-      </div>
+        </Col>
+      </Row>
     </div>
   );
 };

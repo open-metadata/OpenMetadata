@@ -27,8 +27,6 @@ import { t } from 'i18next';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
-
-import { autocomplete } from '../../components/AdvancedSearch/AdvancedSearch.constants';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
@@ -40,6 +38,7 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
+import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { ROUTES } from '../../constants/constants';
 import {
   DAY_FILTER,

@@ -22,7 +22,7 @@ import {
 import React from 'react';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { getUsers } from '../../axiosAPIs/userAPI';
-import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { MOCK_USER_DATA } from './mockUserData';
 import UserListPageV1 from './UserListPageV1';
 

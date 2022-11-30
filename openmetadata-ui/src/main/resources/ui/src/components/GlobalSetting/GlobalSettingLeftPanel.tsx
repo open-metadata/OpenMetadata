@@ -16,7 +16,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React, { useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { GlobalSettingOptions } from '../../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
 import {
   getGlobalSettingMenuItem,
