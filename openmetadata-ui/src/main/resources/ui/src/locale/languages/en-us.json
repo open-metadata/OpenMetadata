@@ -22,7 +22,7 @@
     "search-logs": "Search logs",
     "edit": "Edit",
     "edit-column": "Edit column",
-    "om-description": "Centralized Metadata Store, Discover, Collaborate and get your Data Right",
+    "om-description": "centralized metadata store, discover, collaborate and get your data right",
     "login": "Login",
     "forgot-password": "Forgot Password",
     "or-lowercase": "or",
@@ -327,7 +327,20 @@
     "timeout": "Timeout",
     "use-aws-credentials": "Use Aws Credentials",
     "use-ssl": "Use SSL",
-    "verify-certs": "Verify Certs"
+    "verify-certs": "Verify Certs",
+    "configure-ingestion": "Configure Ingestion",
+    "configure-dbt": "Configure DBT",
+    "configure-metadata-to-es-config-optional": "Configure Metadata To ES Config (Optional)",
+    "schedule-interval": "Schedule Interval",
+    "entity-service": "{{entity}} Service",
+    "database": "Database",
+    "messaging": "Messaging",
+    "ml-model": "ML Model",
+    "metadata": "Metadata",
+    "select-service-type": "Select Service Type",
+    "configure-service": "Configure Service",
+    "connection-details": "Connection Details",
+    "markdown-editor-placeholder": "Use @mention to tag a user or a team.\nUse #mention to tag a data asset."
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -388,7 +401,9 @@
     "all-charts-are-mapped": "All charts are mapped with existing KPIs.",
     "no-service-connection-details-message": "{{serviceName}} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.",
     "pipeline-trigger-success-message": "Pipeline triggered successfully",
-    "search-for-ingestion": "Search for ingestion"
+    "search-for-ingestion": "Search for ingestion",
+    "confirm-delete-message": "Are you sure you want to permanently delete this message?",
+    "delete-message-question-mark": "Delete Message?"
   },
   "server": {
     "no-user-entities": "You have not {{type}} anything yet.",

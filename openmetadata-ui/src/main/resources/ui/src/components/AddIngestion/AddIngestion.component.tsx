@@ -17,7 +17,7 @@ import React, { useMemo, useState } from 'react';
 import {
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
-} from '../../constants/ingestion.constant';
+} from '../../constants/Ingestions.constant';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';

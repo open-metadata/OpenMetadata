@@ -18,7 +18,7 @@ import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
-import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
+import { STEPS_FOR_ADD_SERVICE } from '../../constants/Services.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
