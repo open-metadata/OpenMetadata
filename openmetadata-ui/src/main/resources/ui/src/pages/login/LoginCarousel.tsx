@@ -35,9 +35,8 @@ const LoginCarousel = () => {
             </div>
             <div className="mt-24 mb-11">
               <p
-                className="text-center mx-auto font-medium text-white text-xl"
-                data-testid="carousel-slide-description"
-                style={{ width: '83%' }}>
+                className="text-center carousal-description font-medium text-white text-xl"
+                data-testid="carousel-slide-description">
                 {data.description}
               </p>
             </div>

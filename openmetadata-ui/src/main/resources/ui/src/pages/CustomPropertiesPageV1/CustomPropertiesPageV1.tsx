@@ -181,7 +181,7 @@ const CustomEntityDetailV1 = () => {
         {activeTab === 2 && (
           <div data-testid="entity-schema">
             <SchemaEditor
-              className="customPropertiesSchemaEditor p-y-md"
+              className="custom-properties-schemaEditor p-y-md"
               editorClass="custom-entity-schema"
               value={JSON.parse(selectedEntityTypeDetail.schema ?? '{}')}
             />

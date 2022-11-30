@@ -253,7 +253,7 @@ const AddIngestionPage = () => {
       return (
         <div className="self-center">
           <PageLayout
-            classes="max-w-full-1080 h-full p-t-md"
+            classes="w-max-1080 h-full p-t-md"
             header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
             layout={PageLayoutType['2ColRTL']}
             rightPanel={getServiceIngestionStepGuide(

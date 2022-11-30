@@ -151,7 +151,7 @@ function EditConnectionFormPage() {
       </ErrorPlaceHolder>
     ) : (
       <PageLayout
-        classes="max-w-full-1080 h-full p-t-xss"
+        classes="w-max-1080 h-full p-t-xss"
         header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
         layout={PageLayoutType['2ColRTL']}
         rightPanel={fetchRightPanel()}>
