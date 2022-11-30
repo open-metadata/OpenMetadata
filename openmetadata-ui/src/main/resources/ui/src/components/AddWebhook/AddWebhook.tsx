@@ -29,7 +29,7 @@ import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+} from '../../constants/GlobalSettings.constants';
 import {
   CONFIGURE_MS_TEAMS_TEXT,
   CONFIGURE_SLACK_TEXT,

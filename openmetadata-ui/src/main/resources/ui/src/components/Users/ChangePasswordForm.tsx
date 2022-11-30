@@ -1,7 +1,7 @@
 import { Form, Input, Modal } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { passwordErrorMessage } from '../../constants/error-message';
+import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import { passwordRegex } from '../../constants/regex.constants';
 import { ChangePasswordRequest } from '../../generated/auth/changePasswordRequest';
 

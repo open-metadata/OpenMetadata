@@ -63,7 +63,7 @@ import {
   pagingObject,
 } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
-import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPENMETADATA,
   servicesDisplayName,

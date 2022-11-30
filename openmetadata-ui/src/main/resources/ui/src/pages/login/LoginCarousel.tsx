@@ -17,7 +17,7 @@ import Slider from 'react-slick';
 import {
   LOGIN_SLIDE,
   LOGIN_SLIDER_SETTINGS,
-} from '../../constants/login.const';
+} from '../../constants/Login.constants';
 
 const LoginCarousel = () => {
   return (

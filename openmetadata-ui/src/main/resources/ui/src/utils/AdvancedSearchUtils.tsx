@@ -23,7 +23,7 @@ import {
   DASHBOARD_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
-} from '../constants/advanced-search.constants';
+} from '../constants/AdvancedSearch.constants';
 
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
