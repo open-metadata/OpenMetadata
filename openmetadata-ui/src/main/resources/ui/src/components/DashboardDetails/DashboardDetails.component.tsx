@@ -586,7 +586,7 @@ const DashboardDetails = ({
               <Tooltip
                 title={
                   dashboardPermissions.EditAll
-                    ? t('label.edit-description')
+                    ? t('label.edit-entity', { entity: 'Description' })
                     : t('message.no-permission-for-action')
                 }>
                 <button
@@ -611,10 +611,6 @@ const DashboardDetails = ({
         key: 'tags',
         width: 300,
         render: (tags: Dashboard['tags'], record, index) => {
-          tags?.sort((tag1, tag2) =>
-            tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
-          );
-
           return (
             <div
               className="relative tableBody-cell"

@@ -12,6 +12,8 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
+import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const defaultFields = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},
 ${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS},${TabSpecificField.EXTENSION}`;
@@ -63,4 +65,11 @@ export const getCurrentDashboardTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const sortTagsForCharts = (charts: ChartType[]) => {
+  return charts.map((chart) => ({
+    ...chart,
+    tags: sortTagsCaseInsensitive(chart.tags || []),
+  }));
 };
