@@ -22,11 +22,13 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
 
+    // adding manual wait to open dropdown in UI
+    cy.wait(500);
     cy.get('[data-testid="appbar-item-tags"]')
       .should('be.visible')
-      .click({ force: true });
+      .click();
     verifyResponseStatusCode('@getTags', 200);
   });
 

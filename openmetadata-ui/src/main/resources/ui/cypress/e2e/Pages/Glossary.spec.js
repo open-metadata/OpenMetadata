@@ -109,12 +109,14 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
+    // adding manual wait to open dropdown in UI
+    cy.wait(500);
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
 
     // Todo: need to remove below uncaught exception once tree-view error resolves
     cy.on('uncaught:exception', () => {

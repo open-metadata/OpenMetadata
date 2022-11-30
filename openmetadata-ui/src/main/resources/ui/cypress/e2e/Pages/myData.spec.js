@@ -186,7 +186,7 @@ describe('MyData page should work', () => {
     followAndOwnTheEntity(SEARCH_ENTITY_PIPELINE.pipeline_1);
   });
 
-  it('My data and following section, CTA should work properly', () => {
+  it.skip('My data and following section, CTA should work properly', () => {
     cy.get('[data-testid="my-data-container"]')
       .find('[data-testid*="My data"]')
       .should('have.length', FOLLOWING_MYDATA_COUNT);

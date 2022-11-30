@@ -69,6 +69,7 @@ describe('Services page should work properly', () => {
 
     cy.get('[data-testid="list-item"]')
       .contains(service.Owner)
+      .scrollIntoView()
       .should('be.visible')
       .click();
 

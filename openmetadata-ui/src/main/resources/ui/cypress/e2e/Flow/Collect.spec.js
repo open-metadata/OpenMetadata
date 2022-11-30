@@ -64,6 +64,8 @@ describe('Collect end point should work properly', () => {
     it(`Visit ${page.name} page should trigger collect API`, () => {
       cy.get(page.mainMenuId).should('be.visible').click();
       if (page.subMenu) {
+        // adding manual wait to open dropdown in UI
+        cy.wait(500);
         cy.get(page.subMenu).should('be.visible').click();
       }
       assertCollectEndPoint();
