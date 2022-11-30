@@ -346,6 +346,15 @@
     "service": "Service",
     "chart": "Chart",
     "task": "Task",
+    "edit-description-for": "Edit Description for {{entityName}}",
+    "search-for-followers": "Search for followers",
+    "followers-of": "Followers of {{entityName}}",
+    "open-metadata-logo": "OpenMetadata Logo",
+    "json-data": "JSON data",
+    "type-to-confirm": "Type <0>{{text}}</0> to confirm",
+    "explore-now": "Explore Now",
+    "successfully-completed-the-tour": "You’ve successfully completed the tour.",
+    "get-started-with-open-metadata": "Get started with OpenMetadata",
     "add-entity": "Add {{entity}}"
   },
   "message": {

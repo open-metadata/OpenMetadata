@@ -11,29 +11,15 @@
  *  limitations under the License.
  */
 
+import { Button, Input, Modal, Typography } from 'antd';
 import classNames from 'classnames';
-import React, {
-  ChangeEvent,
-  FC,
-  HTMLAttributes,
-  useCallback,
-  useState,
-} from 'react';
+import { t } from 'i18next';
+import React, { ChangeEvent, useCallback, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
 import { getTitleCase } from '../../../utils/EntityUtils';
-import { Button } from '../../buttons/Button/Button';
-import Loader from '../../Loader/Loader';
+import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
-interface Prop extends HTMLAttributes<HTMLDivElement> {
-  onConfirm: () => void;
-  onCancel: () => void;
-  entityName: string;
-  entityType: string;
-  loadingState: string;
-  bodyText?: string;
-  softDelete?: boolean;
-}
-
-const EntityDeleteModal: FC<Prop> = ({
+const EntityDeleteModal = ({
   loadingState = 'initial',
   className,
   entityName,
@@ -42,7 +28,8 @@ const EntityDeleteModal: FC<Prop> = ({
   onConfirm,
   bodyText,
   softDelete = false,
-}: Prop) => {
+  visible,
+}: EntityDeleteModalProp) => {
   const [name, setName] = useState('');
 
   const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -53,83 +40,79 @@ const EntityDeleteModal: FC<Prop> = ({
     return name === 'DELETE';
   }, [name]);
 
+  const isLoadingWaiting = useMemo(
+    () => loadingState === 'waiting',
+    [loadingState]
+  );
+
   return (
-    <dialog
-      className={classNames('tw-modal', className)}
-      data-testid="delete-confirmation-modal">
-      <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-w-120">
-        <div className={classNames('tw-modal-header')}>
-          <p className="tw-modal-title tw-break-all" data-testid="modal-header">
-            {softDelete ? (
-              <span>
-                Soft delete <strong>{entityName}</strong>
-              </span>
-            ) : (
-              <span>
-                Delete <strong>{entityName}</strong>
-              </span>
-            )}
-          </p>
-        </div>
-        <div className={classNames('tw-modal-body')} data-testid="body-text">
-          <p className="tw-mb-2">
-            {bodyText ||
-              `Once you delete this ${getTitleCase(
-                entityType
-              )}, it will be removed permanently`}
-          </p>
-          <p className="tw-mb-2">
-            Type <strong>DELETE</strong> to confirm
-          </p>
-          <input
-            autoComplete="off"
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="confirmation-text-input"
-            disabled={loadingState === 'waiting'}
-            name="entityName"
-            placeholder="DELETE"
-            type="text"
-            value={name}
-            onChange={handleOnChange}
-          />
-        </div>
-        <div className={classNames('tw-modal-footer tw-justify-end')}>
+    <Modal
+      centered
+      destroyOnClose
+      className={className}
+      closable={false}
+      data-testid="delete-confirmation-modal"
+      footer={
+        <div data-testid="delete-confirmation-modal-footer">
           <Button
-            className={classNames('tw-mr-2')}
+            className={classNames('mr-2')}
             data-testid="discard-button"
-            disabled={loadingState === 'waiting'}
-            size="regular"
-            theme="primary"
-            variant="text"
+            disabled={isLoadingWaiting}
+            type="text"
             onClick={onCancel}>
-            Cancel
+            {t('label.cancel')}
           </Button>
-          {loadingState === 'waiting' ? (
-            <Button
-              disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              data-testid="loading-button"
-              size="regular"
-              theme="primary"
-              variant="contained">
-              <Loader size="small" type="white" />
-            </Button>
-          ) : (
-            <Button
-              data-testid="confirm-button"
-              disabled={!isNameMatching()}
-              size="regular"
-              theme="primary"
-              type="submit"
-              variant="contained"
-              onClick={onConfirm}>
-              Confirm
-            </Button>
-          )}
+          <Button
+            data-testid={isLoadingWaiting ? 'loading-button' : 'confirm-button'}
+            disabled={!isNameMatching()}
+            loading={isLoadingWaiting}
+            type="primary"
+            onClick={onConfirm}>
+            {t('label.confirm')}
+          </Button>
         </div>
+      }
+      title={
+        <Typography.Text data-testid="modal-header">
+          {softDelete ? (
+            <span>
+              {t('label.soft-delete')} <strong>{entityName}</strong>
+            </span>
+          ) : (
+            <span>
+              {t('label.delete')} <strong>{entityName}</strong>
+            </span>
+          )}
+        </Typography.Text>
+      }
+      visible={visible}
+      width={600}>
+      <div data-testid="body-text">
+        <Typography className="mb-2">
+          {bodyText ||
+            t('message.delete-entity-permanently', {
+              entityType: getTitleCase(entityType),
+            })}
+        </Typography>
+        <Typography className="mb-2">
+          <Trans
+            i18nKey="label.type-to-confirm"
+            values={{ text: t('label.delete-uppercase') }}>
+            <strong />
+          </Trans>
+        </Typography>
+        <Input
+          autoComplete="off"
+          data-testid="confirmation-text-input"
+          disabled={loadingState === 'waiting'}
+          name="entityName"
+          placeholder={t('label.delete-uppercase')}
+          type="text"
+          value={name}
+          onChange={handleOnChange}
+        />
       </div>
-    </dialog>
+    </Modal>
   );
 };
 
