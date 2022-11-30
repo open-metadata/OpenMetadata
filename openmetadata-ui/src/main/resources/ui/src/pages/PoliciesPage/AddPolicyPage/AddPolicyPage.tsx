@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { trim } from 'lodash';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
@@ -79,9 +80,9 @@ const AddPolicyPage = () => {
   };
 
   const handleSumbit = async () => {
-    const { condition, ...rest } = ruleData;
+    const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
     const data: CreatePolicy = {
-      name,
+      name: trim(name),
       description,
       rules: [condition ? { ...rest, condition } : rest],
     };
