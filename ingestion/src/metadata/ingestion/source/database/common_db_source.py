@@ -14,7 +14,6 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from logging.config import DictConfigurator
 from typing import Iterable, Optional, Tuple
 
 from sqlalchemy.engine import Connection
@@ -40,8 +39,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
-    clean_raw_query,
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
@@ -399,20 +398,10 @@ class CommonDbSourceService(
                 schema_name=schema_name,
                 inspector=self.inspector,
             )
-            # Prevent sqllineage from modifying the logger config
-            # Disable the DictConfigurator.configure method while importing LineageRunner
-            configure = DictConfigurator.configure
-            DictConfigurator.configure = lambda _: None
-            from sqllineage.runner import (  # pylint: disable=import-outside-toplevel
-                LineageRunner,
-            )
-
-            # Reverting changes after import is done
-            DictConfigurator.configure = configure
 
             try:
-                result = LineageRunner(clean_raw_query(view_definition))
-                if result.source_tables and result.target_tables:
+                lineage_parser = LineageParser(view_definition)
+                if lineage_parser.source_tables and lineage_parser.target_tables:
                     yield from get_lineage_by_query(
                         self.metadata,
                         query=view_definition,
