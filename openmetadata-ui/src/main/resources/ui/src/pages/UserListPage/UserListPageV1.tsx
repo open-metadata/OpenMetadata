@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { FormattedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
@@ -30,6 +29,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { SearchResponse } from '../../interface/search.interface';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -107,7 +107,7 @@ const UserListPageV1 = () => {
       filters = '(isAdmin:true)';
     }
 
-    return new Promise<Array<FormattedUsersData>>((resolve) => {
+    return new Promise<Array<User>>((resolve) => {
       searchData(
         text,
         currentPage,
@@ -118,8 +118,10 @@ const UserListPageV1 = () => {
         SearchIndex.USER,
         isDeleted
       )
-        .then((res: SearchResponse) => {
-          const data = formatUsersResponse(res.data.hits.hits);
+        .then((res) => {
+          const data = formatUsersResponse(
+            (res.data as SearchResponse<SearchIndex.USER>).hits.hits
+          );
           setPaging({
             total: res.data.hits.total.value,
           });

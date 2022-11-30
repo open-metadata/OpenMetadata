@@ -51,7 +51,7 @@ const GlobalSearchSuggestions = ({
   selectRef,
 }: GlobalSearchSuggestionsProp) => {
   const history = useHistory();
-  const [options, setOptions] = useState<Array<Option>>([]);
+  const [options, setOptions] = useState<Option[]>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
@@ -115,8 +115,7 @@ const GlobalSearchSuggestions = ({
         break;
       case SearchIndex.MLMODEL:
         label = 'ML Models';
-        // TODO: Change this to mlmodel icon
-        icon = Icons.SERVICE;
+        icon = Icons.MLMODAL;
 
         break;
       case SearchIndex.TABLE:
@@ -268,14 +267,13 @@ const GlobalSearchSuggestions = ({
       getSuggestions(searchText)
         .then((res) => {
           if (res.data) {
-            // TODO: improve suggest api types
             setOptions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
             );
             setSuggestions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
             );
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];

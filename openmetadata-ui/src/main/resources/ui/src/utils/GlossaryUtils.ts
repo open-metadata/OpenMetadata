@@ -13,11 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
-import {
-  FormattedGlossarySuggestion,
-  FormattedGlossaryTermData,
-  SearchResponse,
-} from 'Models';
+import { FormattedGlossarySuggestion } from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
 import {
   getGlossaries,
@@ -31,7 +27,10 @@ import {
 } from '../constants/char.constants';
 import { PRIMERY_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../generated/type/entityReference';
+import { SearchResponse } from '../interface/search.interface';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
@@ -47,12 +46,12 @@ export interface GlossaryTermTreeNode {
  * To get all glossary terms
  * @returns promise of list of formatted glossary terms
  */
-export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
-  return new Promise<FormattedGlossaryTermData[]>((resolve, reject) => {
+export const fetchGlossaryTerms = (): Promise<GlossaryTerm[]> => {
+  return new Promise<GlossaryTerm[]>((resolve, reject) => {
     searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
+      .then((res) => {
         const data = formatSearchGlossaryTermResponse(
-          res?.data?.hits?.hits || []
+          (res?.data as SearchResponse<SearchIndex.GLOSSARY>)?.hits?.hits || []
         );
         resolve(data);
       })
@@ -66,9 +65,9 @@ export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
  * @returns list of term fqns
  */
 export const getGlossaryTermlist = (
-  terms: Array<FormattedGlossaryTermData> = []
+  terms: Array<GlossaryTerm> = []
 ): Array<string> => {
-  return terms.map((term: FormattedGlossaryTermData) => term.fqdn || '');
+  return terms.map((term: GlossaryTerm) => term.fullyQualifiedName || '');
 };
 
 /**
@@ -387,4 +386,19 @@ export const getGlossariesWithRootTerms = (
         reject(err);
       });
   });
+};
+
+export const getEntityReferenceFromGlossary = (
+  glossary: Glossary
+): EntityReference => {
+  return {
+    deleted: glossary.deleted,
+    href: glossary.href,
+    fullyQualifiedName: glossary.fullyQualifiedName ?? '',
+    id: glossary.id,
+    type: 'glossary',
+    description: glossary.description,
+    displayName: glossary.displayName,
+    name: glossary.name,
+  };
 };

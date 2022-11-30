@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { restoreDashboard } from '../../axiosAPIs/dashboardAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';

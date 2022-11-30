@@ -16,7 +16,6 @@ import {
     editOwnerforCreatedService,
     goToAddNewServicePage,
     interceptURL,
-    login,
     testServiceCreationAndIngestion,
     updateDescriptionForIngestedTables,
     verifyResponseStatusCode,
@@ -24,15 +23,13 @@ import {
 } from '../../common/common';
 import {
     API_SERVICE, DBT, HTTP_CONFIG_SOURCE,
-    LOGIN,
     SERVICE_TYPE
 } from '../../constants/constants';
 import { REDSHIFT } from '../../constants/service.constants';
 
 describe('RedShift Ingestion', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);

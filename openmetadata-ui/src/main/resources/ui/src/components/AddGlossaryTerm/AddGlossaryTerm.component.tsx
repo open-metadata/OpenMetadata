@@ -16,16 +16,15 @@ import { Space } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import {
-  EditorContentRef,
-  EntityTags,
-  FormattedGlossaryTermData,
-  FormattedUsersData,
-} from 'Models';
+import { EditorContentRef, EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
-import { TermReference } from '../../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  TermReference,
+} from '../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../generated/type/entityReference';
 import {
   errorMsg,
   isUrlFriendlyName,
@@ -76,17 +75,15 @@ const AddGlossaryTerm = ({
   const [description] = useState<string>('');
   const [showReviewerModal, setShowReviewerModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
-  const [relatedTerms, setRelatedTerms] = useState<
-    Array<FormattedGlossaryTermData>
-  >([]);
+  const [relatedTerms, setRelatedTerms] = useState<GlossaryTerm[]>([]);
   const [synonyms, setSynonyms] = useState('');
   const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
-      setReviewer(glossaryData?.reviewers as FormattedUsersData[]);
+      setReviewer(glossaryData?.reviewers);
     }
   }, [glossaryData]);
 
@@ -98,7 +95,7 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
+  const handleRelatedTermsSave = (terms: GlossaryTerm[]) => {
     setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };
@@ -107,7 +104,7 @@ const AddGlossaryTerm = ({
     setShowReviewerModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
@@ -216,7 +213,7 @@ const AddGlossaryTerm = ({
 
     const updatedTerms = relatedTerms.map((term) => ({
       id: term.id,
-      type: term.type,
+      type: 'tag',
     }));
 
     if (validateForm(updatedReference)) {
@@ -299,7 +296,6 @@ const AddGlossaryTerm = ({
           can be added or updated to the Glossary. The glossary terms can be
           reviewed by certain users, who can accept or reject the terms.
         </div>
-        {/* {getDocButton('Read Glossary Term Doc', '', 'glossary-term-doc')} */}
       </>
     );
   };
@@ -467,7 +463,7 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleTermRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );
@@ -497,7 +493,7 @@ const AddGlossaryTerm = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleReviewerRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );

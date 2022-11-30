@@ -16,7 +16,7 @@ import React, { FC, Fragment } from 'react';
 import {
   ANNOUNCEMENT_BG,
   ANNOUNCEMENT_BORDER,
-} from '../../../constants/feed.constants';
+} from '../../../constants/Feeds.constants';
 import {
   Post,
   Thread,

@@ -13,8 +13,8 @@
 
 import { Button, Modal, Typography } from 'antd';
 import { t } from 'i18next';
-import { Team } from 'Models';
 import React, { useRef, useState } from 'react';
+import { Team } from '../../../generated/entity/teams/team';
 import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { FormData, FormModalProp, FormRef } from './FormModal.interface';
 

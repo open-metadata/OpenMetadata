@@ -284,7 +284,7 @@ const TagsPage = () => {
   const handleDeleteTag = (categoryName: string, tagId: string) => {
     deleteTag(categoryName, tagId)
       .then((res) => {
-        if (res.data) {
+        if (res) {
           if (currentCategory) {
             const updatedTags = (currentCategory.children as TagClass[]).filter(
               (data) => data.id !== tagId

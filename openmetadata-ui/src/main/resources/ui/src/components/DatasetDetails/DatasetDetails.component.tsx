@@ -22,7 +22,7 @@ import { useHistory } from 'react-router-dom';
 import { restoreTable } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';

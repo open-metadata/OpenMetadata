@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import React, { FC } from 'react';
-import {
-  confirmationBodyText,
-  confirmHeadertext,
-} from '../../../constants/feed.constants';
+import { useTranslation } from 'react-i18next';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { DeleteConfirmationModalProp } from './DeleteConfirmationModal.interface';
 
@@ -25,12 +21,15 @@ const DeleteConfirmationModal: FC<DeleteConfirmationModalProp> = ({
   onDelete,
   visible,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <ConfirmationModal
-      bodyText={confirmationBodyText}
+      bodyText={t('message.confirm-delete-message')}
       cancelText={t('label.cancel')}
+      className="tw-w-auto tw-h-screen"
       confirmText={t('label.delete')}
-      header={confirmHeadertext}
+      header={t('label.delete-message-question-mark')}
       visible={visible}
       onCancel={onDiscard}
       onConfirm={onDelete}

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { withLoader } from '../../../hoc/withLoader';

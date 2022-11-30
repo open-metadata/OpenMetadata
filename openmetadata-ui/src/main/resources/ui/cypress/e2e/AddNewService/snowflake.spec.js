@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, login, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
-import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import { deleteCreatedService, editOwnerforCreatedService, goToAddNewServicePage, testServiceCreationAndIngestion, updateDescriptionForIngestedTables, uuid } from '../../common/common';
+import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Snowflake';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -22,8 +22,7 @@ const description = `This is ${serviceName} description`;
 
 describe('Snowflake Ingestion', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);

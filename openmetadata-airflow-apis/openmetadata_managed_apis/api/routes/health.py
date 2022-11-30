@@ -50,11 +50,11 @@ def get_fn(blueprint: Blueprint) -> Callable:
                 {"status": "healthy", "version": version("openmetadata-ingestion")}
             )
         except Exception as exc:
-            msg = f"Internal error obtaining REST status due to [{exc}] "
+            msg = f"Error obtaining Airflow REST status due to [{exc}] "
             logger.debug(traceback.format_exc())
             logger.error(msg)
             return ApiResponse.error(
-                status=ApiResponse.STATUS_SERVER_ERROR,
+                status=ApiResponse.STATUS_BAD_REQUEST,
                 error=msg,
             )
 

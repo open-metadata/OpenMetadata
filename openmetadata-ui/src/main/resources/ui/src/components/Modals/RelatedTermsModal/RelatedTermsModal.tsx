@@ -14,11 +14,11 @@
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import { isUndefined, uniqueId } from 'lodash';
-import { FormattedGlossaryTermData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
@@ -35,17 +35,17 @@ const RelatedTermsModal = ({
 }: RelatedTermsModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [options, setOptions] = useState<FormattedGlossaryTermData[]>([]);
-  const [selectedOption, setSelectedOption] = useState<
-    FormattedGlossaryTermData[]
-  >(relatedTerms ?? []);
+  const [options, setOptions] = useState<GlossaryTerm[]>([]);
+  const [selectedOption, setSelectedOption] = useState<GlossaryTerm[]>(
+    relatedTerms ?? []
+  );
 
-  const getSearchedTerms = (searchedData: FormattedGlossaryTermData[]) => {
+  const getSearchedTerms = (searchedData: GlossaryTerm[]) => {
     const currOptions = selectedOption.map(
       (item) => item.fullyQualifiedName || item.name
     );
-    const data = searchedData.filter((item: FormattedGlossaryTermData) => {
-      return !currOptions.includes(item.fullyQualifiedName);
+    const data = searchedData.filter((item) => {
+      return !currOptions.includes(item.fullyQualifiedName || item.name);
     });
 
     return [...selectedOption, ...data];
@@ -54,11 +54,9 @@ const RelatedTermsModal = ({
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
     searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-      .then((res: SearchResponse) => {
-        const termResult = (
-          formatSearchGlossaryTermResponse(
-            res?.data?.hits?.hits || []
-          ) as FormattedGlossaryTermData[]
+      .then((res) => {
+        const termResult = formatSearchGlossaryTermResponse(
+          res.data.hits.hits
         ).filter((item) => {
           const isTermExist = relatedTerms?.some(
             (term) => term.fullyQualifiedName === item.fullyQualifiedName
@@ -88,8 +86,8 @@ const RelatedTermsModal = ({
     if (!isChecked) {
       setSelectedOption((pre) => pre.filter((option) => option.id !== id));
     } else {
-      const newOption: FormattedGlossaryTermData =
-        options.find((d) => d.id === id) || ({} as FormattedGlossaryTermData);
+      const newOption: GlossaryTerm =
+        options.find((d) => d.id === id) || ({} as GlossaryTerm);
       setSelectedOption([...selectedOption, newOption]);
     }
   };
@@ -153,8 +151,8 @@ const RelatedTermsModal = ({
                     name: '',
                     displayName: d.displayName || d.name,
                     id: d.id,
+                    type: 'tag',
                     isChecked: isIncludeInOptions(d.id),
-                    type: d.type,
                   }}
                   key={d.id}
                   onSelect={selectionHandler}

@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
-import { EntityTags, FormattedUsersData } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
@@ -70,13 +70,13 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   const [listVisible, setListVisible] = useState(false);
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (data: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (data: Array<EntityReference>) => {
     if (!isEqual(data, reviewer)) {
       let updatedGlossary = cloneDeep(glossary);
       const oldReviewer = data.filter((d) => includes(reviewer, d));
@@ -270,7 +270,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     if (glossary.reviewers && glossary.reviewers.length) {
       setReviewer(
         glossary.reviewers.map((d) => ({
-          ...(d as FormattedUsersData),
+          ...d,
           type: 'user',
         }))
       );

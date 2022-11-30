@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { ServiceTypes, StepperStepType } from 'Models';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
@@ -190,18 +191,30 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
-  databaseServices: 'Database Service',
-  messagingServices: 'Messaging Service',
-  dashboardServices: 'Dashboard Service',
-  pipelineServices: 'Pipeline Service',
-  mlmodelServices: 'ML Model Service',
-  metadataServices: 'Metadata Service',
+  databaseServices: i18next.t('label.entity-service', {
+    entity: i18next.t('label.database'),
+  }),
+  messagingServices: i18next.t('label.entity-service', {
+    entity: i18next.t('label.messaging'),
+  }),
+  dashboardServices: i18next.t('label.entity-service', {
+    entity: i18next.t('label.dashboard'),
+  }),
+  pipelineServices: i18next.t('label.entity-service', {
+    entity: i18next.t('label.pipeline'),
+  }),
+  mlmodelServices: i18next.t('label.entity-service', {
+    entity: i18next.t('label.ml-model'),
+  }),
+  metadataServices: i18next.t('label.entity-service', {
+    entity: i18next.t('label.metadata'),
+  }),
 };
 
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
-  { name: 'Select Service Type', step: 1 },
-  { name: 'Configure Service', step: 2 },
-  { name: 'Connection Details', step: 3 },
+  { name: i18next.t('label.select-service-type'), step: 1 },
+  { name: i18next.t('label.configure-service'), step: 2 },
+  { name: i18next.t('label.connection-details'), step: 3 },
 ];
 
 export const DEF_UI_SCHEMA = {

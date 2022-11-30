@@ -34,7 +34,7 @@ import {
   getDashboardDetailsPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';

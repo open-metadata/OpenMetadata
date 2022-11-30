@@ -16,11 +16,12 @@ import { Space } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep } from 'lodash';
-import { EditorContentRef, EntityTags, FormattedUsersData } from 'Models';
+import { EditorContentRef, EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
+import { EntityReference } from '../../generated/type/entityReference';
 import {
   errorMsg,
   getCurrentUserId,
@@ -60,7 +61,7 @@ const AddGlossary = ({
   const [description] = useState<string>('');
   const [showReviewerModal, setShowReviewerModal] = useState(false);
   const [tags, setTags] = useState<EntityTags[]>([]);
-  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
   const getDescription = () => {
     return markdownRef.current?.getEditorContent() || '';
@@ -70,7 +71,7 @@ const AddGlossary = ({
     setShowReviewerModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
@@ -269,7 +270,7 @@ const AddGlossary = ({
                       className="tw-bg-gray-200"
                       key={index}
                       removeTag={handleReviewerRemove}
-                      tag={d.name}
+                      tag={d.name ?? ''}
                       type="contained"
                     />
                   );

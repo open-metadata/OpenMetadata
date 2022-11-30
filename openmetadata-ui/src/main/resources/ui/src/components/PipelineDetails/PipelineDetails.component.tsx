@@ -41,7 +41,7 @@ import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
   PIPELINE_DETAILS_TABS,

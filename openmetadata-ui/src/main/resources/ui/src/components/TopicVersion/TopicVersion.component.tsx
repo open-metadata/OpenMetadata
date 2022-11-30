@@ -16,7 +16,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
