@@ -30,7 +30,6 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
@@ -92,6 +91,7 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.MicrometerBundleSingleton;
 
 /** Main catalog application */
 @Slf4j
@@ -218,7 +218,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return configuration.getHealthConfiguration();
           }
         });
-    bootstrap.addBundle(new MicrometerBundle());
+    bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
     super.initialize(bootstrap);
   }
 
