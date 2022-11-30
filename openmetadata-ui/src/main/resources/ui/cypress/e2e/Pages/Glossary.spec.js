@@ -77,7 +77,7 @@ const deleteGlossary = ({ name }) => {
     .should('be.visible')
     .click();
 
-  cy.get('[data-testid="delete-confirmation-modal"]').should('be.visible');
+  cy.get('[data-testid="delete-confirmation-modal"]').should('exist');
   cy.get('[data-testid="modal-header"]').should('be.visible').should('contain', `Delete ${name}`);
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
@@ -183,7 +183,7 @@ describe('Glossary page should work properly', () => {
 
   it('Verify added glossary details', () => {
     cy.get('[data-testid="glossary-left-panel"]').should('exist').contains(NEW_GLOSSARY.name);
-    cy.get('[data-testid="confirmation-modal"]').invoke('text').then((text) => {
+    cy.get('[data-testid="glossary-entity-name"]').invoke('text').then((text) => {
       expect(text).to.contain(NEW_GLOSSARY.name)
     })
     cy.get('[data-testid="viewer-container"]').invoke('text').then((text) => {
@@ -404,10 +404,11 @@ describe('Glossary page should work properly', () => {
       .contains(term);
 
     //Add tag to schema table
-    cy.get('[data-row-key="comments"] [data-testid="tags-wrapper"]')
-      .should('be.visible')
+    cy.get('[data-testid="tags-wrapper"]')
+      .should('exist')
+      .first()
       .click();
-    cy.get('[class*="-control"]').should('be.visible').type(term);
+    cy.get('[class*="-control"]').should('exist').type(term);
     cy.get('[id*="-option-0"]').should('contain', term);
     cy.get('[id*="-option-0"]').should('be.visible').click();
     cy.get(
@@ -503,8 +504,8 @@ describe('Glossary page should work properly', () => {
 
   it('Delete glossary should work properly', () => {
     verifyResponseStatusCode('@getGlossaryTerms', 200);
-    cy.get('[data-testid="confirmation-modal"]')
-      .should('be.visible')
+    cy.get('[data-testid="glossary-entity-name"]')
+      .should('exist')
       .contains(NEW_GLOSSARY.name)
       .should('exist');
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
@@ -513,7 +514,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="delete-confirmation-modal"]').should('be.visible');
+    cy.get('[data-testid="delete-confirmation-modal"]').should('exist');
     cy.get('[data-testid="modal-header"]').should('be.visible').should('contain', `Delete ${NEW_GLOSSARY.name}`);
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
