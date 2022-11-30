@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { isEqual, isUndefined } from 'lodash';
-import { SearchedUsersAndTeams, SearchResponse } from 'Models';
+import { SearchedUsersAndTeams } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
 import {
@@ -25,7 +25,12 @@ import {
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { User } from '../generated/entity/teams/user';
+import {
+  RawSuggestResponse,
+  SearchResponse,
+} from '../interface/search.interface';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
 
@@ -152,27 +157,31 @@ export const searchFormattedUsersAndTeams = (
       getSearchedTeams(teamQuery, from),
     ];
     Promise.allSettled(promises)
-      .then(
-        ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
-          const users =
-            resUsers.status === SettledStatus.FULFILLED
-              ? formatUsersResponse(resUsers.value.data.hits.hits)
-              : [];
-          const teams =
-            resTeams.status === SettledStatus.FULFILLED
-              ? formatTeamsResponse(resTeams.value.data.hits.hits)
-              : [];
-          const usersTotal =
-            resUsers.status === SettledStatus.FULFILLED
-              ? resUsers.value.data.hits.total.value
-              : 0;
-          const teamsTotal =
-            resTeams.status === SettledStatus.FULFILLED
-              ? resTeams.value.data.hits.total.value
-              : 0;
-          resolve({ users, teams, usersTotal, teamsTotal });
-        }
-      )
+      .then(([resUsers, resTeams]) => {
+        const users =
+          resUsers.status === SettledStatus.FULFILLED
+            ? formatUsersResponse(
+                (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits
+                  .hits
+              )
+            : [];
+        const teams =
+          resTeams.status === SettledStatus.FULFILLED
+            ? formatTeamsResponse(
+                (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits
+                  .hits
+              )
+            : [];
+        const usersTotal =
+          resUsers.status === SettledStatus.FULFILLED
+            ? resUsers.value.data.hits.total.value
+            : 0;
+        const teamsTotal =
+          resTeams.status === SettledStatus.FULFILLED
+            ? resTeams.value.data.hits.total.value
+            : 0;
+        resolve({ users, teams, usersTotal, teamsTotal });
+      })
       .catch((err: AxiosError) => {
         reject(err);
       });
@@ -193,19 +202,15 @@ export const suggestFormattedUsersAndTeams = (
         const users =
           resUsers.status === SettledStatus.FULFILLED
             ? formatUsersResponse(
-                // TODO: fix type errors below
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (resUsers.value.data as any).suggest['metadata-suggest'][0]
-                  .options
+                (resUsers.value.data as RawSuggestResponse<SearchIndex.USER>)
+                  .suggest['metadata-suggest'][0].options
               )
             : [];
         const teams =
           resTeams.status === SettledStatus.FULFILLED
             ? formatTeamsResponse(
-                // TODO: fix type errors below
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (resTeams.value.data as any).suggest['metadata-suggest'][0]
-                  .options
+                (resTeams.value.data as RawSuggestResponse<SearchIndex.TEAM>)
+                  .suggest['metadata-suggest'][0].options
               )
             : [];
         resolve({ users, teams });

@@ -21,9 +21,10 @@ import {
   screen,
 } from '@testing-library/react';
 import { flatten } from 'lodash';
-import { FormattedGlossaryTermData, TagOption } from 'Models';
+import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
   TagCategory,
   TagClass,
@@ -183,9 +184,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
 jest.mock('../../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map(
-      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
-    );
+    return terms.map((term: GlossaryTerm) => term?.fullyQualifiedName);
   }),
 }));
 

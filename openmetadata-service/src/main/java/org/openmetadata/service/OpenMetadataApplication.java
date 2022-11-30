@@ -30,7 +30,6 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
@@ -73,6 +72,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.monitoring.EventMonitor;
+import org.openmetadata.service.monitoring.EventMonitorFactory;
+import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -89,6 +91,7 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.MicrometerBundleSingleton;
 
 /** Main catalog application */
 @Slf4j
@@ -215,7 +218,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return configuration.getHealthConfiguration();
           }
         });
-    bootstrap.addBundle(new MicrometerBundle());
+    bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
     super.initialize(bootstrap);
   }
 
@@ -302,6 +305,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           new ElasticSearchEventPublisher(
               openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
+    }
+
+    if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
+      final EventMonitor eventMonitor =
+          EventMonitorFactory.createEventMonitor(
+              openMetadataApplicationConfig.getEventMonitorConfiguration(),
+              openMetadataApplicationConfig.getClusterName());
+      EventMonitorPublisher eventMonitorPublisher =
+          new EventMonitorPublisher(openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
+      EventPubSub.addEventHandler(eventMonitorPublisher);
     }
   }
 

@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityReference, SearchDataFunctionType } from 'Models';
+import { SearchDataFunctionType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 

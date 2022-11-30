@@ -26,7 +26,7 @@ import Loader from '../../components/Loader/Loader';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { addServiceGuide } from '../../constants/service-guide.constant';
-import { OPENMETADATA } from '../../constants/services.const';
+import { OPENMETADATA } from '../../constants/Services.constant';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServicesType } from '../../interface/service.interface';

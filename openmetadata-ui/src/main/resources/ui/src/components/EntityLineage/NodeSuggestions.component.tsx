@@ -26,13 +26,13 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -62,14 +62,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   const getSearchResults = async (value: string) => {
     try {
-      const data = await searchData(
+      const data = await searchData<ExploreSearchIndex>(
         value,
         1,
         PAGE_SIZE,
         '',
         '',
         '',
-        SearchIndex[entityType as keyof typeof SearchIndex]
+        entityType as ExploreSearchIndex
       );
       setData(formatDataResponse(data.data.hits.hits));
     } catch (error) {
