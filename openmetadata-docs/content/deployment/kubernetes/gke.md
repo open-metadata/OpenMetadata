@@ -249,7 +249,7 @@ kubectl create -f permissions_pod.yml
 Once the permissions pod is up and running, execute the below commands within the container.
 
 ```commandline
-kubectl exec --tty my-permission-pod --container my-permission-pod -- chown -R 50000 /airflow-dags /airflow-log
+kubectl exec --tty my-permission-pod --container my-permission-pod -- chown -R 50000 /airflow-dags /airflow-logs
 # If needed
 kubectl exec --tty my-permission-pod --container my-permission-pod -- chmod -R a+rwx /airflow-dags
 ```
