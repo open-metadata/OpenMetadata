@@ -55,7 +55,7 @@ class OMetaIngestionPipelineMixin:
 
     def get_pipeline_status(
         self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str
-    ) -> None:
+    ) -> Optional[PipelineStatus]:
         """
         GET pipeline status
 
