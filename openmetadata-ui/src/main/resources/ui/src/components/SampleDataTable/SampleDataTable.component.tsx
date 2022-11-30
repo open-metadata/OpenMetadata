@@ -35,6 +35,7 @@ import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
 import './SampleDataTable.style.less';
 
@@ -49,10 +50,10 @@ type SampleData = {
 };
 
 interface Props {
-  tableFqn: string;
+  tableId: string;
 }
 
-const SampleDataTable: FunctionComponent<Props> = ({ tableFqn }: Props) => {
+const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const [sampleData, setSampleData] = useState<SampleData>();
   const [scrollOffset, setScrollOffSet] = useState<number>(0);
@@ -61,6 +62,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableFqn }: Props) => {
     left: boolean;
     right: boolean;
   }>({ left: true, right: true });
+  const [isLoading, setIsLoading] = useState(true);
 
   const scrollHandler = (scrollOffset: number) => {
     if (tableRef.current) {
@@ -102,10 +104,12 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableFqn }: Props) => {
 
   const fetchSampleData = async () => {
     try {
-      const tableData = await getSampleDataByTableId(tableFqn);
+      const tableData = await getSampleDataByTableId(tableId);
       setSampleData(getSampleDataWithType(tableData));
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -116,10 +120,17 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableFqn }: Props) => {
   }, [scrollOffset, containerWidth]);
 
   useEffect(() => {
-    if (tableFqn) {
+    setIsLoading(true);
+    if (tableId) {
       fetchSampleData();
+    } else {
+      setIsLoading(false);
     }
-  }, [tableFqn]);
+  }, [tableId]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div
