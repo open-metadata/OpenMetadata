@@ -162,12 +162,11 @@ def _(
     if not entity and database_name and schema_name:
         fqn = _build(service_name, database_name, schema_name, table_name)
         return [fqn] if fetch_multiple_entities else fqn
-    elif entity and fetch_multiple_entities:
+    if entity and fetch_multiple_entities:
         return [str(table.fullyQualifiedName.__root__) for table in entity]
-    elif entity:
+    if entity:
         return str(entity.fullyQualifiedName.__root__)
-    else:
-        return None
+    return None
 
 
 @fqn_build_registry.add(DatabaseSchema)
