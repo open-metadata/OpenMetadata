@@ -254,11 +254,8 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const isDataSightIngestionExists = useMemo(
     () =>
-      !isEmpty(
-        !isEmpty(ingestionData) &&
-          ingestionData.filter(
-            (ingestion) => ingestion.pipelineType === PipelineType.DataInsight
-          )
+      ingestionData.some(
+        (ingestion) => ingestion.pipelineType === PipelineType.DataInsight
       ),
     [ingestionData]
   );
