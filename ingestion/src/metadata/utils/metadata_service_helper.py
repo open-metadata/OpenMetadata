@@ -37,6 +37,15 @@ SERVICE_TYPE_MAPPER = {
             }
         },
     },
+    "kafka": {
+        "service_name": "Kafka",
+        "connection": {
+            "config": {
+                "bootstrapServers": "localhost:9092",
+                "schemaRegistryURL": "http://localhost:8081",
+            }
+        },
+    },
     "bigquery": {
         "service_name": "BigQuery",
         "connection": {"config": {"credentials": "credentials"}},

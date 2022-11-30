@@ -427,11 +427,11 @@ def metadata(args=None):
 
             def do_POST(self):  # pylint: disable=invalid-name
                 content_len = int(self.headers.get("Content-Length"))
-                self.rfile.read(content_len)
+                post_body = self.rfile.read(content_len)
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
-                logger.info(self.rfile.read(content_len))
+                logger.info(post_body)
 
         logger.info(
             f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}"

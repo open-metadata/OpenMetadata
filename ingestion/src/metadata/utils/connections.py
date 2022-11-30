@@ -29,6 +29,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session
 from sqlalchemy.pool import QueuePool
 
+from metadata.clients.atlas_client import AtlasClient
 from metadata.clients.connection_clients import (
     AirByteClient,
     AmundsenClient,
@@ -126,6 +127,9 @@ from metadata.generated.schema.entity.services.connections.messaging.redpandaCon
 )
 from metadata.generated.schema.entity.services.connections.metadata.amundsenConnection import (
     AmundsenConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
+    AtlasConnection,
 )
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
@@ -1267,6 +1271,22 @@ def _(connection: AmundsenConnection) -> AmundsenClient:
 def _(connection: AmundsenClient) -> None:
     try:
         connection.client.execute_query(query=NEO4J_AMUNDSEN_USER_QUERY)
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: AtlasConnection) -> AtlasClient:
+
+    connection_client = AtlasClient(connection)
+    return connection_client
+
+
+@test_connection.register
+def _(connection: AtlasClient) -> None:
+    try:
+        connection.list_entities()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)

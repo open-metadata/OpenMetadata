@@ -126,6 +126,10 @@ jobs:
           CYPRESS_MYSQL_PASSWORD: ${{ secrets.CYPRESS_MYSQL_PASSWORD }}
           CYPRESS_MYSQL_HOST_PORT: ${{ secrets.CYPRESS_MYSQL_HOST_PORT }}
           CYPRESS_MYSQL_DATABASE_SCHEMA: ${{ secrets.CYPRESS_MYSQL_DATABASE_SCHEMA }}
+          CYPRESS_POSTGRES_USERNAME: ${{ secrets.CYPRESS_POSTGRES_USERNAME }}
+          CYPRESS_POSTGRES_PASSWORD: ${{ secrets.CYPRESS_POSTGRES_PASSWORD }}
+          CYPRESS_POSTGRES_HOST_PORT: ${{ secrets.CYPRESS_POSTGRES_HOST_PORT }}
+          CYPRESS_POSTGRES_DATABASE: ${{ secrets.CYPRESS_POSTGRES_DATABASE }}
 
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
