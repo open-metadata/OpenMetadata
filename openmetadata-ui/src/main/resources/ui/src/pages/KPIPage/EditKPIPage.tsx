@@ -233,14 +233,14 @@ const AddKPIPage = () => {
     <>
       {kpiData ? (
         <Row
-          className="tw-bg-body-main tw-h-full"
+          className="bg-body-main h-full"
           data-testid="add-kpi-container"
           gutter={[16, 16]}>
           <Col offset={4} span={12}>
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <Card>
               <Typography.Paragraph
-                className="tw-text-base"
+                className="text-base"
                 data-testid="form-title">
                 {t('label.add-new-kpi')}
               </Typography.Paragraph>
@@ -400,7 +400,7 @@ const AddKPIPage = () => {
                   />
                 </Form.Item>
 
-                <Space align="center" className="tw-w-full tw-justify-end">
+                <Space align="center" className="w-full justify-end">
                   <Button
                     data-testid="cancel-btn"
                     type="link"
@@ -425,8 +425,8 @@ const AddKPIPage = () => {
               </Form>
             </Card>
           </Col>
-          <Col className="tw-mt-4" span={4}>
-            <Typography.Paragraph className="tw-text-base tw-font-medium">
+          <Col className="m-t-md" span={4}>
+            <Typography.Paragraph className="text-base font-medium">
               {t('label.edit-kpi')}
             </Typography.Paragraph>
             <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>

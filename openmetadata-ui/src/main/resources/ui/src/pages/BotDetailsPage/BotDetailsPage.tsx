@@ -139,10 +139,10 @@ const BotDetailsPage = () => {
       return (
         <ErrorPlaceHolder>
           <Typography.Paragraph
-            className="tw-text-base"
+            className="text-base"
             data-testid="error-message">
             No bots available with name{' '}
-            <span className="tw-font-medium" data-testid="username">
+            <span className="font-medium" data-testid="username">
               {botsName}
             </span>{' '}
           </Typography.Paragraph>
@@ -174,7 +174,7 @@ const BotDetailsPage = () => {
   }, [botsName]);
 
   return (
-    <PageContainerV1 className="tw-py-4">
+    <PageContainerV1 className="p-y-md">
       {isLoading ? (
         <Loader />
       ) : (
