@@ -16,6 +16,7 @@ import { BaseSelectRef } from 'rc-select';
 export interface GlobalSearchSuggestionsProp {
   isSuggestionsLoading: boolean;
   handleIsSuggestionsLoading: (value: boolean) => void;
+
   value: string;
   searchText: string;
   onOptionSelection: () => void;
@@ -57,6 +58,7 @@ export interface MlModelSource extends CommonSource {
 
 export interface Option {
   _index: string;
+  _id: string;
   _source: TableSource &
     DashboardSource &
     TopicSource &

@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import customMlModelConnection from '../jsons/connectionSchemas/connections/mlmodel/customMlModelConnection.json';
 import mlflowConnection from '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';

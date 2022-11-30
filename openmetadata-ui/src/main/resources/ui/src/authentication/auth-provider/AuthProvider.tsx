@@ -178,9 +178,7 @@ export const AuthProvider = ({
       })
       .catch((err: AxiosError) => {
         resetUserDetails();
-        // TODO: verify type for this one
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ((err.response?.data as any).code !== 404) {
+        if (err.response?.status !== 404) {
           showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-logged-in-user-error']

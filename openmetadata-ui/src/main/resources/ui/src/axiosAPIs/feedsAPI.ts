@@ -16,7 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreadCount } from 'Models';
 import { configOptions } from '../constants/constants';
-import { TaskOperation } from '../constants/feed.constants';
+import { TaskOperation } from '../constants/Feeds.constants';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
 import {

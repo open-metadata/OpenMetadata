@@ -15,8 +15,10 @@ ColumnValuesToBeNotNull validation implementation
 # pylint: disable=duplicate-code
 import traceback
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import inspect
+from sqlalchemy.exc import CompileError
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -31,6 +33,34 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+
+def _get_not_match_count(not_like_count, not_regex_count, runner, col) -> Optional[int]:
+    """Not all database engine support REGEXP (e.g. MSSQL) so we'll fallback to LIKE.
+
+    `regexp_match` will fall back to REGEXP. If a database implements a different regex syntax
+    and has not implemented the sqlalchemy logic we should also fall back.
+
+    Args:
+        not_like_count: NOT LIKE metric
+        not_regex_count: NOT REGEXP metric (might differ for specific dbapi)
+        runner: OM Runner object
+        col: SQA column
+
+    Returns:
+        int
+    """
+    try:
+        not_regex_count_dict = dict(
+            runner.dispatch_query_select_first(not_regex_count(col).fn())
+        )
+        return not_regex_count_dict.get(Metrics.NOT_REGEX_COUNT.name)
+    except CompileError as err:
+        logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
+        not_like_count_dict = dict(
+            runner.dispatch_query_select_first(not_like_count(col).fn())
+        )
+        return not_like_count_dict.get(Metrics.NOT_LIKE_COUNT.name)
 
 
 def column_values_to_not_match_regex(
@@ -57,6 +87,9 @@ def column_values_to_not_match_regex(
         )
     )
     not_like_count = add_props(expression=forbidden_regex)(Metrics.NOT_LIKE_COUNT.value)
+    not_regex_count = add_props(expression=forbidden_regex)(
+        Metrics.NOT_REGEX_COUNT.value
+    )
 
     try:
         column_name = get_decoded_column(test_case.entityLink.__root__)
@@ -69,12 +102,12 @@ def column_values_to_not_match_regex(
                 f"Cannot find the configured column {column_name} for test case {test_case.name}"
             )
 
-        not_like_count_dict = dict(
-            runner.dispatch_query_select_first(
-                not_like_count(col).fn()  # pylint: disable=abstract-class-instantiated
-            )
+        not_match_count_value_res = _get_not_match_count(
+            not_like_count,
+            not_regex_count,
+            runner,
+            col,
         )
-        not_like_count_res = not_like_count_dict.get(Metrics.NOT_LIKE_COUNT.name)
 
     except Exception as exc:
         msg = (
@@ -90,17 +123,17 @@ def column_values_to_not_match_regex(
         )
 
     status = (
-        TestCaseStatus.Success if not_like_count_res == 0 else TestCaseStatus.Failed
+        TestCaseStatus.Success
+        if not_match_count_value_res == 0
+        else TestCaseStatus.Failed
     )
-    result = (
-        f"Found {not_like_count_res} matching the forbidden regex pattern. Expected 0."
-    )
+    result = f"Found {not_match_count_value_res} matching the forbidden regex pattern. Expected 0."
 
     return TestCaseResult(
         timestamp=execution_date,
         testCaseStatus=status,
         result=result,
         testResultValue=[
-            TestResultValue(name="notLikeCount", value=str(not_like_count_res))
+            TestResultValue(name="notLikeCount", value=str(not_match_count_value_res))
         ],
     )
