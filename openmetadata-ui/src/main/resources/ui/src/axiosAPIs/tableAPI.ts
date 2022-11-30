@@ -204,3 +204,9 @@ export const getSampleDataByTableId = async (id: string) => {
 
   return response.data;
 };
+
+export const getTableQueryByTableId = async (id: string) => {
+  const response = await APIClient.get<Table>(`/tables/${id}/tableQuery`);
+
+  return response.data;
+};
