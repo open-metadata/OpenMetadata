@@ -19,6 +19,7 @@ import {
 } from '../generated/entity/services/messagingService';
 import customMessagingConnection from '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json';
 import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
+import kinesisConnection from '../jsons/connectionSchemas/connections/messaging/kinesisConnection.json';
 import redpandaConnection from '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
@@ -49,6 +50,11 @@ export const getMessagingConfig = (type: MessagingServiceType) => {
 
     case MessagingServiceType.CustomMessaging:
       schema = customMessagingConnection;
+
+      break;
+
+    case MessagingServiceType.Kinesis:
+      schema = kinesisConnection;
 
       break;
 
