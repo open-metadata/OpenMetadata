@@ -56,9 +56,8 @@ services:
 ### 5. Stop, Remove and Start your Containers
 Stop and remove (without deleting volumes) the already running containers. Then run the `docker compose up -d` command on the new compose file.
 
-
-
 ### Troubleshooting
+
 #### Permission Denied when running `metadata openmetadata-imports-migration`
 If you have a `Permission Denied` error thrown when running `metadata openmetadata-imports-migration --change-config-file-path` you might need to change the permission on the `/opt/airflow/dags` folder. SSH into the ingestion container and check the permission on the folder running the below commands
 ```
