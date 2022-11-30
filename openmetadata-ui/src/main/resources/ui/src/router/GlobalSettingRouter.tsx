@@ -18,7 +18,7 @@ import { ResourceEntity } from '../components/PermissionProvider/PermissionProvi
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../constants/globalSettings.constants';
+} from '../constants/GlobalSettings.constants';
 import { TeamType } from '../generated/entity/teams/team';
 import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';

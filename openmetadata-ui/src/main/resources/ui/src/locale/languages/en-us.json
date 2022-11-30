@@ -340,7 +340,11 @@
     "select-service-type": "Select Service Type",
     "configure-service": "Configure Service",
     "connection-details": "Connection Details",
-    "markdown-editor-placeholder": "Use @mention to tag a user or a team.\nUse #mention to tag a data asset."
+    "markdown-editor-placeholder": "Use @mention to tag a user or a team.\nUse #mention to tag a data asset.",
+    "tag": "Tag",
+    "service": "Service",
+    "chart": "Chart",
+    "task": "Task"
   },
   "message": {
     "service-email-required": "Service account Email is required",

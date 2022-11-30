@@ -66,7 +66,7 @@ import {
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -570,7 +570,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           text?.trim() ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">No description</span>
+            <span className="text-grey-muted">No description</span>
           ),
       },
     ],
@@ -706,22 +706,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   />
                 </Col>
                 <Col span={24}>
-                  <Row className="tw-mt-4">
+                  <Row className="m-t-xss">
                     <Col span={24}>
                       <TabsPane
                         activeTab={activeTab}
-                        className="tw-flex-initial"
+                        className="flex-initial"
                         setActiveTab={activeTabHandler}
                         tabs={tabs}
                       />
                     </Col>
-                    <Col className="tw-py-4" span={24}>
+                    <Col className="p-y-md" span={24}>
                       {activeTab === 1 && (
                         <Fragment>{getSchemaTableList()}</Fragment>
                       )}
                       {activeTab === 2 && (
                         <Row
-                          className="tw-py-4 entity-feed-list tw-bg-white tw-border tw-rounded tw-shadow tw-h-full"
+                          className="p-t-xss entity-feed-list bg-white border-1 rounded-4 shadow-base h-full"
                           id="activityfeed">
                           <Col offset={4} span={16}>
                             <ActivityFeedList

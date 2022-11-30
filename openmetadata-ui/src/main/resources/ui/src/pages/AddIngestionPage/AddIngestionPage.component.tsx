@@ -37,7 +37,7 @@ import {
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -251,9 +251,9 @@ const AddIngestionPage = () => {
       );
     } else {
       return (
-        <div className="tw-self-center">
+        <div className="self-center">
           <PageLayout
-            classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+            classes="w-max-1080 h-full p-t-md"
             header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
             layout={PageLayoutType['2ColRTL']}
             rightPanel={getServiceIngestionStepGuide(
@@ -266,7 +266,7 @@ const AddIngestionPage = () => {
               false,
               isAirflowRunning
             )}>
-            <div className="tw-form-container">
+            <div className="form-container">
               <AddIngestion
                 activeIngestionStep={activeIngestionStep}
                 handleCancelClick={goToService}
