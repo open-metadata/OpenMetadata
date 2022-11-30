@@ -11,7 +11,6 @@
 """Mode source module"""
 
 import traceback
-from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
 from metadata.clients import mode_client
@@ -33,23 +32,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import (
-    clean_raw_query,
-    search_table_entities,
-)
+from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
-
-# Prevent sqllineage from modifying the logger config
-# Disable the DictConfigurator.configure method while importing LineageRunner
-configure = DictConfigurator.configure
-DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner  # pylint: disable=C0413
-
-# Reverting changes after import is done
-DictConfigurator.configure = configure
 
 logger = ingestion_logger()
 
@@ -140,8 +128,8 @@ class ModeSource(DashboardServiceSource):
                 data_source = self.data_sources.get(query.get("data_source_id"))
                 if not data_source:
                     continue
-                table_list = LineageRunner(clean_raw_query(query.get("raw_query")))
-                for table in table_list.source_tables:
+                lineage_parser = LineageParser(query.get("raw_query"))
+                for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
                     database_schema_name = (
                         None
