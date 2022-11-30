@@ -28,7 +28,7 @@ import { useHistory } from 'react-router-dom';
 import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { ADD_POLICY_TEXT } from '../../../constants/HelperTextUtil';
 import {
   CreatePolicy,

@@ -68,7 +68,7 @@ jobs:
         run: yarn install
       - name: Run Coverage
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn test:cov-summary
+        run: yarn test:coverage
         id: yarn_coverage
       - name: Jest Coverage Comment
         uses: MishaKav/jest-coverage-comment@main
