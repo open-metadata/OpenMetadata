@@ -44,6 +44,9 @@ logger = ingestion_logger()
 
 
 class LineageParser:
+    """
+    Class that acts like a wrapper for the LineageRunner library usage
+    """
 
     parser: LineageRunner
     query: str
