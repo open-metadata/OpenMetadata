@@ -158,16 +158,16 @@ const ElasticSearchIndexPage = () => {
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Space wrap direction="horizontal" size={0}>
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Mode</span> :
-                    <span className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Mode</span> :
+                    <span className="m-l-xs">
                       {startCase(batchJobData?.runMode) || '--'}
                     </span>
                   </div>
                   <Divider type="vertical" />
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Status</span> :
-                    <span className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Status</span> :
+                    <span className="m-l-xs">
                       <Space size={8}>
                         {batchJobData?.status && (
                           <SVGIcons
@@ -186,9 +186,9 @@ const ElasticSearchIndexPage = () => {
                     </span>
                   </div>
                   <Divider type="vertical" />
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Index stats</span> :
-                    <span className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Index stats</span> :
+                    <span className="m-l-xs">
                       {!isEmpty(batchJobData) ? (
                         <Space size={8}>
                           <Badge
@@ -219,9 +219,9 @@ const ElasticSearchIndexPage = () => {
                     </span>
                   </div>
                   <Divider type="vertical" />
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Last Updated</span> :
-                    <span className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Last Updated</span> :
+                    <span className="m-l-xs">
                       {batchJobData?.timestamp
                         ? getDateTimeByTimeStampWithZone(
                             batchJobData?.timestamp
@@ -230,9 +230,9 @@ const ElasticSearchIndexPage = () => {
                     </span>
                   </div>
                   <Divider type="vertical" />
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Last Failed At:</span>
-                    <p className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Last Failed At:</span>
+                    <p className="m-l-xs">
                       {batchJobData?.failureDetails?.lastFailedAt
                         ? getDateTimeByTimeStampWithZone(
                             batchJobData?.failureDetails?.lastFailedAt
@@ -243,8 +243,8 @@ const ElasticSearchIndexPage = () => {
                 </Space>
               </Col>
               <Col span={24}>
-                <span className="tw-text-grey-muted">Failure Context:</span>
-                <span className="tw-ml-2">
+                <span className="text-grey-muted">Failure Context:</span>
+                <span className="m-l-xs">
                   {batchJobData?.failureDetails?.context ? (
                     <RichTextEditorPreviewer
                       enableSeeMoreVariant={Boolean(batchJobData)}
@@ -256,8 +256,8 @@ const ElasticSearchIndexPage = () => {
                 </span>
               </Col>
               <Col span={24}>
-                <span className="tw-text-grey-muted">Last error:</span>
-                <span className="tw-ml-2">
+                <span className="text-grey-muted">Last error:</span>
+                <span className="m-l-xs">
                   {batchJobData?.failureDetails?.lastFailedReason ? (
                     <RichTextEditorPreviewer
                       enableSeeMoreVariant={Boolean(batchJobData)}
@@ -289,15 +289,15 @@ const ElasticSearchIndexPage = () => {
             <Row gutter={[16, 8]}>
               <Col span={24}>
                 <Space direction="horizontal" size={16}>
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Mode</span> :
-                    <span className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Mode</span> :
+                    <span className="m-l-xs">
                       {startCase(streamJobData?.runMode) || '--'}
                     </span>
                   </div>
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Status</span> :
-                    <span className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Status</span> :
+                    <span className="m-l-xs">
                       <Space size={8}>
                         {streamJobData?.status && (
                           <SVGIcons
@@ -316,9 +316,9 @@ const ElasticSearchIndexPage = () => {
                     </span>
                   </div>
 
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Last Updated</span> :
-                    <span className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Last Updated</span> :
+                    <span className="m-l-xs">
                       {streamJobData?.timestamp
                         ? getDateTimeByTimeStampWithZone(
                             streamJobData?.timestamp
@@ -326,9 +326,9 @@ const ElasticSearchIndexPage = () => {
                         : '--'}
                     </span>
                   </div>
-                  <div className="tw-flex">
-                    <span className="tw-text-grey-muted">Last Failed At:</span>
-                    <p className="tw-ml-2">
+                  <div className="flex">
+                    <span className="text-grey-muted">Last Failed At:</span>
+                    <p className="m-l-xs">
                       {streamJobData?.failureDetails?.lastFailedAt
                         ? getDateTimeByTimeStampWithZone(
                             streamJobData?.failureDetails?.lastFailedAt
@@ -339,8 +339,8 @@ const ElasticSearchIndexPage = () => {
                 </Space>
               </Col>
               <Col span={24}>
-                <span className="tw-text-grey-muted">Failure Context:</span>
-                <span className="tw-ml-2">
+                <span className="text-grey-muted">Failure Context:</span>
+                <span className="m-l-xs">
                   {streamJobData?.failureDetails?.context ? (
                     <RichTextEditorPreviewer
                       enableSeeMoreVariant={Boolean(streamJobData)}
@@ -352,8 +352,8 @@ const ElasticSearchIndexPage = () => {
                 </span>
               </Col>
               <Col span={24}>
-                <span className="tw-text-grey-muted">Last error:</span>
-                <span className="tw-ml-2">
+                <span className="text-grey-muted">Last error:</span>
+                <span className="m-l-xs">
                   {streamJobData?.failureDetails?.lastFailedReason ? (
                     <RichTextEditorPreviewer
                       enableSeeMoreVariant={Boolean(streamJobData)}

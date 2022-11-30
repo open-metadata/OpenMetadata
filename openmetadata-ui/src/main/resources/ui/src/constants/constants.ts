@@ -19,7 +19,7 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from './globalSettings.constants';
+} from './GlobalSettings.constants';
 
 export const PRIMERY_COLOR = '#7147E8';
 export const SECONDARY_COLOR = '#B02AAC';

@@ -35,7 +35,7 @@ import {
   urlGitbookDocs,
   urlGithubRepo,
   urlJoinSlack,
-} from '../../constants/url.const';
+} from '../../constants/URL.constants';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {

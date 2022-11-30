@@ -1,7 +1,7 @@
 import { findAllByTestId, findByTestId, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { LOGIN_SLIDE } from '../../constants/login.const';
+import { LOGIN_SLIDE } from '../../constants/Login.constants';
 import LoginCarousel from './LoginCarousel';
 
 jest.mock('react-slick', () => {

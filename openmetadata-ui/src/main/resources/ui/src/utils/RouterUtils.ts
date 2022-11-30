@@ -43,7 +43,7 @@ import {
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../constants/globalSettings.constants';
+} from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';

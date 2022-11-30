@@ -40,7 +40,7 @@ jest.mock('../../../components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('../../../constants/globalSettings.constants', () => ({
+jest.mock('../../../constants/GlobalSettings.constants', () => ({
   GlobalSettingOptions: {
     POLICIES: 'policies',
   },
