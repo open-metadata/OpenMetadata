@@ -35,7 +35,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="h-full tw-py-24 forgot-password-container ">
+    <div className="h-full py-24 forgot-password-container ">
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"
@@ -45,7 +45,7 @@ const ForgotPassword = () => {
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
-            <Typography.Text className="tw-text-xl text-semi-bold tw-text-grey-muted">
+            <Typography.Text className="text-xl text-semi-bold text-grey-muted">
               Enter your registered email to receive password reset link
             </Typography.Text>
           </Col>
@@ -78,13 +78,13 @@ const ForgotPassword = () => {
           {showResetLinkSentAlert && (
             <Col span={24}>
               <div
-                className="tw-flex tw-flex-col "
+                className="flex flex-col"
                 data-testid="success-screen-container">
-                <div className="tw-flex tw-border tw-border-main tw-rounded tw-p-3 success-alert">
-                  <div className="tw-mr-2">
+                <div className="flex border-1 border-main rounded-4 p-sm success-alert">
+                  <div className="m-r-xs">
                     <SVGIcons
                       alt="success"
-                      className="tw-w-5"
+                      className="w-5"
                       data-testid="success-icon"
                       icon={Icons.SUCCESS_BADGE}
                     />

@@ -26,7 +26,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../components/PermissionProvider/PermissionProvider.interface';
-import { GlobalSettingOptions } from '../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   addLineageIngestionGuide,
   addMetadataIngestionGuide,

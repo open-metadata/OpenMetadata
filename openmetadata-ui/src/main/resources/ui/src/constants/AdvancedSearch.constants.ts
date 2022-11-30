@@ -21,12 +21,64 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { suggestQuery } from '../../axiosAPIs/searchAPI';
-import { SuggestionField } from '../../enums/AdvancedSearch.enum';
-import { SearchIndex } from '../../enums/search.enum';
-import { renderAdvanceSearchButtons } from '../../utils/AdvancedSearchUtils';
+import { suggestQuery } from '../axiosAPIs/searchAPI';
+import { SuggestionField } from '../enums/AdvancedSearch.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
 
 const BaseConfig = AntdConfig as BasicConfig;
+
+export const COMMON_DROPDOWN_ITEMS = [
+  {
+    label: i18next.t('label.owner'),
+    key: 'owner.name',
+  },
+  {
+    label: i18next.t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: i18next.t('label.service'),
+    key: 'service.name',
+  },
+];
+
+export const TABLE_DROPDOWN_ITEMS = [
+  {
+    label: i18next.t('label.column'),
+    key: 'columns.name',
+  },
+
+  {
+    label: i18next.t('label.schema'),
+    key: 'databaseSchema.name',
+  },
+  {
+    label: i18next.t('label.database'),
+    key: 'database.name',
+  },
+];
+
+export const DASHBOARD_DROPDOWN_ITEMS = [
+  {
+    label: i18next.t('label.chart'),
+    key: 'charts.displayName',
+  },
+];
+
+export const PIPELINE_DROPDOWN_ITEMS = [
+  {
+    label: i18next.t('label.task'),
+    key: 'tasks.displayName',
+  },
+];
+
+export const ALL_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
+  ...TABLE_DROPDOWN_ITEMS,
+  ...DASHBOARD_DROPDOWN_ITEMS,
+  ...PIPELINE_DROPDOWN_ITEMS,
+];
 
 /**
  * Generates a query builder tree with a group containing an empty rule
@@ -389,3 +441,5 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       };
   }
 };
+
+export const MISC_FIELDS = ['owner.name', 'tags.tagFQN'];

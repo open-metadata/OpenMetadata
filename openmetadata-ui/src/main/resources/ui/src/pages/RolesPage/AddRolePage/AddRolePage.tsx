@@ -23,12 +23,13 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { ADD_ROLE_TEXT } from '../../../constants/HelperTextUtil';
 import { Policy } from '../../../generated/entity/policies/policy';
 import {
@@ -83,7 +84,7 @@ const AddRolePage = () => {
 
   const handleSumbit = async () => {
     const data = {
-      name,
+      name: trim(name),
       description,
       policies: selectedPolicies.map((policy) => ({
         id: policy,

@@ -228,6 +228,8 @@ site_menu:
     url: /connectors/database/postgres/airflow
   - category: Connectors / Database / Postgres / CLI
     url: /connectors/database/postgres/cli
+  - category: Connectors / Database / Postgres / Troubleshooting
+    url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Airflow
