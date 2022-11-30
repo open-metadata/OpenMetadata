@@ -27,13 +27,17 @@ jest.mock('../../Modals/ConfirmationModal/ConfirmationModal', () => {
 const mockProp = {
   onDiscard: jest.fn(),
   onDelete: jest.fn(),
+  visible: false,
 };
 
 describe('Test Delete Confirmation Modal Component', () => {
   it('Should render confirmation component', async () => {
-    const { container } = render(<DeleteConfirmationModal {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <DeleteConfirmationModal {...mockProp} visible />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const conFirmationModal = await findByTestId(
       container,
