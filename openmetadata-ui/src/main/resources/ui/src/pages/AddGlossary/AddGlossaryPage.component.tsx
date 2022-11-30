@@ -106,7 +106,7 @@ const AddGlossaryPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      <div className="tw-self-center">
+      <div className="self-center">
         <AddGlossary
           allowAccess={createPermission}
           fetchTags={fetchTags}

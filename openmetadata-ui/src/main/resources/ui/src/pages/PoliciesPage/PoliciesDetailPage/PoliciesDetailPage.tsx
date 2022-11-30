@@ -53,7 +53,7 @@ import {
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../../constants/globalSettings.constants';
+} from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,

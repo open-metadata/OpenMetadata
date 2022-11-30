@@ -28,7 +28,7 @@ import { ResourceEntity } from '../../components/PermissionProvider/PermissionPr
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+} from '../../constants/GlobalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
@@ -153,7 +153,7 @@ const EditWebhookPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      <div className="tw-self-center">
+      <div className="self-center">
         {!isLoading ? (
           <AddWebhook
             allowAccess={createPermission || editPermission}

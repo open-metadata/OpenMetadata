@@ -16,7 +16,7 @@ import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/Services.constant';
 import { FormSubmitType } from '../../enums/form.enum';
