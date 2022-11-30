@@ -363,7 +363,7 @@ class AtlasSource(Source):
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
-                displayName=self.config.serviceName + "_database",
+                displayName=f"{self.config.serviceName}_database",
                 serviceType=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
                 connection=SERVICE_TYPE_MAPPER["hive"]["connection"],
             )
@@ -377,7 +377,7 @@ class AtlasSource(Source):
         service = self.metadata.create_or_update(
             CreateMessagingServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
-                displayName=self.config.serviceName + "_messaging",
+                displayName=f"{self.config.serviceName}_messaging",
                 serviceType=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
                 connection=SERVICE_TYPE_MAPPER.get("kafka")["connection"],
             )
