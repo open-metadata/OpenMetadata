@@ -1055,3 +1055,9 @@ export const getTrimmedContent = (content: string, limit: number) => {
 
   return refinedContent.join(' ');
 };
+
+export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
+  return tags.sort((tag1, tag2) =>
+    tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
+  );
+};
