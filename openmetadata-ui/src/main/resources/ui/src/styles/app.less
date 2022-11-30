@@ -41,6 +41,10 @@
   font-size: 1rem /* 16px */;
   line-height: 1.5rem /* 24px */;
 }
+.text-xl {
+  font-size: 1.25rem /* 20px */;
+  line-height: 1.75rem /* 28px */;
+}
 
 .text-2xl {
   font-size: 1.5rem /* 24px */;
@@ -93,6 +97,9 @@
 .w-4 {
   width: 16px;
 }
+.w-5 {
+  width: 20px;
+}
 .w-8 {
   width: 32px;
 }
@@ -131,6 +138,9 @@
 }
 .w-max-500 {
   max-width: 500px;
+}
+.w-max-1080 {
+  max-width: 1080px;
 }
 .w-500 {
   width: 500px;
@@ -224,6 +234,9 @@
 .flex-col {
   flex-direction: column;
 }
+.flex-initial {
+  flex: 0 1 auto;
+}
 .flex-center {
   display: flex;
   align-items: center;
@@ -248,6 +261,10 @@
   font-weight: 500;
 }
 
+.border-1 {
+  border-width: 1px;
+}
+
 .border-l-2 {
   border-left: 2px;
 }
@@ -258,7 +275,13 @@
 .border-gray {
   border-color: @gray;
 }
+.border-main {
+  border-color: @border-color;
+}
 
+.bg-body-main {
+  background: @body-bg-color;
+}
 .bg-primary-lite {
   background: @primary-light;
 }
@@ -280,6 +303,9 @@
 }
 .card-box-shadow {
   box-shadow: rgba(0, 0, 0, 0.06) 1px 1px 8px;
+}
+.shadow-base {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
 .opacity-60 {
   opacity: 0.6;

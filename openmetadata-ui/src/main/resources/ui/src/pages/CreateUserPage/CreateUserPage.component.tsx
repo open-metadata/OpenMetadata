@@ -183,7 +183,7 @@ const CreateUserPage = () => {
 
   return (
     <PageContainerV1>
-      <div className="tw-self-center">
+      <div className="self-center">
         <CreateUserComponent
           forceBot={Boolean(bot)}
           roles={roles}
