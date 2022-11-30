@@ -76,7 +76,7 @@ export interface ExploreQuickFilterField {
 }
 
 export interface ExploreQuickFilterProps {
-  index: string;
+  index: SearchIndex;
   field: ExploreQuickFilterField;
   onFieldRemove: (value: string) => void;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;

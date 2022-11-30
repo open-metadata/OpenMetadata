@@ -38,7 +38,9 @@ from metadata.orm_profiler.metrics.static.mean import Mean
 from metadata.orm_profiler.metrics.static.min import Min
 from metadata.orm_profiler.metrics.static.min_length import MinLength
 from metadata.orm_profiler.metrics.static.not_like_count import NotLikeCount
+from metadata.orm_profiler.metrics.static.not_regexp_match_count import NotRegexCount
 from metadata.orm_profiler.metrics.static.null_count import NullCount
+from metadata.orm_profiler.metrics.static.regexp_match_count import RegexCount
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
@@ -66,6 +68,8 @@ class Metrics(MetricRegistry):
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount
     NOT_LIKE_COUNT = NotLikeCount
+    REGEX_COUNT = RegexCount
+    NOT_REGEX_COUNT = NotRegexCount
     MAX = Max
     MAX_LENGTH = MaxLength
     MIN = Min

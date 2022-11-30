@@ -24,6 +24,7 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { Option } from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 
 type SuggestionProp = {
   searchText: string;
@@ -61,15 +62,6 @@ type MlModelSource = {
   ml_model_id: string;
   mlmodel_name: string;
 } & CommonSource;
-
-type Option = {
-  _index: string;
-  _source: TableSource &
-    DashboardSource &
-    TopicSource &
-    PipelineSource &
-    MlModelSource;
-};
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [options, setOptions] = useState<Array<Option>>([]);
@@ -136,8 +128,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         break;
       case SearchIndex.MLMODEL:
         label = 'ML Models';
-        // TODO: Change this to mlmodel icon
-        icon = Icons.SERVICE;
+        icon = Icons.MLMODAL;
 
         break;
       case SearchIndex.TABLE:
@@ -289,14 +280,13 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
       getSuggestions(searchText)
         .then((res) => {
           if (res.data) {
-            // TODO: Fix type issues below
             setOptions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
             );
             setSuggestions(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (res.data as any).suggest['metadata-suggest'][0].options
+              res.data.suggest['metadata-suggest'][0]
+                .options as unknown as Option[]
             );
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];

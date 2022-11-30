@@ -16,7 +16,6 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityReference } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -44,6 +43,7 @@ import {
 } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
