@@ -1012,7 +1012,7 @@ const PipelineDetails = ({
 
       {editTask && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-task')}: "${
+          header={`${t('label.edit-task-task-name')}: "${
             editTask.task.displayName || editTask.task.name
           }"`}
           placeholder={t('label.type-field-name', {

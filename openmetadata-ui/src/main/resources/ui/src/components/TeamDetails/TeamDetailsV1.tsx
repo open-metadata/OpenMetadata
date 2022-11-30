@@ -273,7 +273,7 @@ const TeamDetailsV1 = ({
               placement="bottomRight"
               title={
                 entityPermissions.EditAll
-                  ? t('label.remove')
+                  ? t('label.remove-entity')
                   : NO_PERMISSION_FOR_ACTION
               }>
               <ButtonAntd
@@ -605,11 +605,11 @@ const TeamDetailsV1 = ({
 
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
-      ? t('label.leave-the-team', {
+      ? t('label.leave-the-team-team-name', {
           teamName: currentTeam?.displayName ?? currentTeam?.name,
         })
-      : t('label.remove', {
-          userName: deletingUser.user?.displayName ?? deletingUser.user?.name,
+      : t('label.remove-entity', {
+          entity: deletingUser.user?.displayName ?? deletingUser.user?.name,
         });
 
     return t('message.are-you-sure-want-to', { text });
@@ -1282,7 +1282,7 @@ const TeamDetailsV1 = ({
           closable={false}
           confirmLoading={isModalLoading}
           okText={t('label.confirm')}
-          title={`${t('label.remove')} ${getEntityName(
+          title={`${t('label.remove-entity')} ${getEntityName(
             selectedEntity.record
           )} from ${getEntityName(currentTeam)}`}
           visible={!isUndefined(selectedEntity.record)}

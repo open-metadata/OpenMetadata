@@ -457,7 +457,7 @@ const RolesDetailPage = () => {
           closable={false}
           confirmLoading={isLoadingOnSave}
           okText={t('label.confirm')}
-          title={`${t('label.remove')} ${getEntityName(
+          title={`${t('label.remove-entity')} ${getEntityName(
             selectedEntity.record
           )} ${t('label.from')} ${getEntityName(role)}`}
           visible={!isUndefined(selectedEntity.record)}

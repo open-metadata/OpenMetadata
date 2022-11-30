@@ -702,7 +702,9 @@ const EntityTable = ({
       />
       {editColumn && (
         <ModalWithMarkdownEditor
-          header={`${t('label:edit-column')}: "${editColumn.column.name}"`}
+          header={`${t('label:edit-column-column-name')}: "${
+            editColumn.column.name
+          }"`}
           placeholder={t('label.enter-column-description')}
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}
