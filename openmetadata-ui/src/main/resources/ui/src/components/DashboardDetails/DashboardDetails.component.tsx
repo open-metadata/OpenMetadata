@@ -586,7 +586,7 @@ const DashboardDetails = ({
               <Tooltip
                 title={
                   dashboardPermissions.EditAll
-                    ? t('label.edit-entity', { entity: 'Description' })
+                    ? t('label.edit-entity', { entity: t('label.description') })
                     : t('message.no-permission-for-action')
                 }>
                 <button
@@ -606,7 +606,7 @@ const DashboardDetails = ({
         ),
       },
       {
-        title: t('label.tags'),
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         width: 300,

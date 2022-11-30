@@ -222,7 +222,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <Divider className="border-gray" type="vertical" />
                       <Space align="start">
                         <Typography.Text className="text-grey-muted">
-                          {t('label.tags')}:
+                          {t('label.tag-plural')}:
                         </Typography.Text>{' '}
                         <div
                           data-testid="feature-tags-wrapper"
@@ -248,7 +248,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                               <Tooltip
                                 title={
                                   permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-entity', { entity: 'Tags' })
+                                    ? t('label.edit-entity', {
+                                        entity: t('label.tag-plural'),
+                                      })
                                     : t('message.no-permission-for-action')
                                 }>
                                 <Button
@@ -272,7 +274,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                               <Tooltip
                                 title={
                                   permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-entity', { entity: 'Tags' })
+                                    ? t('label.edit-entity', {
+                                        entity: t('label.tag-plural'),
+                                      })
                                     : t('message.no-permission-for-action')
                                 }>
                                 <Button
@@ -351,9 +355,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         </Row>
         {!isEmpty(selectedFeature) && editDescription && (
           <ModalWithMarkdownEditor
-            header={`${t('label.edit-entity', { entity: 'Feature' })}: "${
-              selectedFeature.name
-            }"`}
+            header={`${t('label.edit-entity', {
+              entity: t('label.feature'),
+            })}: "${selectedFeature.name}"`}
             placeholder={t('message.enter-feature-description')}
             value={selectedFeature.description as string}
             onCancel={handleCancelEditDescription}
