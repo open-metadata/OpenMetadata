@@ -341,6 +341,8 @@
     "configure-service": "Configure Service",
     "connection-details": "Connection Details",
     "markdown-editor-placeholder": "Use @mention to tag a user or a team.\nUse #mention to tag a data asset.",
+    "add-related-terms": "Add Related Terms",
+    "change-logs": "Change Logs",
     "tag": "Tag",
     "service": "Service",
     "chart": "Chart",
