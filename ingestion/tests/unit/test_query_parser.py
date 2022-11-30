@@ -13,26 +13,10 @@
 Validate query parser logic
 """
 
-# Prevent sqllineage from modifying the logger config
-# Disable the DictConfigurator.configure method while importing LineageRunner
-from logging.config import DictConfigurator
 from unittest import TestCase
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
-from metadata.ingestion.lineage.parser import (
-    get_clean_parser_table_list,
-    get_involved_tables_from_parser,
-    get_parser_table_aliases,
-    get_table_joins,
-)
-from metadata.ingestion.lineage.sql_lineage import clean_raw_query
-
-configure = DictConfigurator.configure
-DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner
-
-# Reverting changes after import is done
-DictConfigurator.configure = configure
+from metadata.ingestion.lineage.parser import LineageParser
 
 
 class QueryParserTests(TestCase):
@@ -58,22 +42,20 @@ class QueryParserTests(TestCase):
         WHERE a.col3 = 'abc'
     """
 
-    parser = LineageRunner(col_lineage)
+    parser = LineageParser(col_lineage)
 
     def test_involved_tables(self):
-        tables = {str(table) for table in get_involved_tables_from_parser(self.parser)}
+        tables = {str(table) for table in self.parser.involved_tables}
         self.assertEqual(
             tables, {"db.grault", "db.holis", "<default>.foo", "db.random"}
         )
 
     def test_clean_parser_table_list(self):
-        tables = get_involved_tables_from_parser(self.parser)
-        clean_tables = set(get_clean_parser_table_list(tables))
+        clean_tables = set(self.parser.clean_table_list)
         self.assertEqual(clean_tables, {"db.grault", "db.holis", "foo", "db.random"})
 
     def test_parser_table_aliases(self):
-        tables = get_involved_tables_from_parser(self.parser)
-        aliases = get_parser_table_aliases(tables)
+        aliases = self.parser.table_aliases
         self.assertEqual(
             aliases, {"b": "db.grault", "c": "db.holis", "a": "foo", "d": "db.random"}
         )
@@ -82,14 +64,7 @@ class QueryParserTests(TestCase):
         """
         main logic point
         """
-        tables = get_involved_tables_from_parser(self.parser)
-
-        clean_tables = get_clean_parser_table_list(tables)
-        aliases = get_parser_table_aliases(tables)
-
-        joins = get_table_joins(
-            parser=self.parser, tables=clean_tables, aliases=aliases
-        )
+        joins = self.parser.table_joins
 
         self.assertEqual(
             joins["foo"],
@@ -126,14 +101,9 @@ class QueryParserTests(TestCase):
         ;
         """
 
-        parser = LineageRunner(query)
+        parser = LineageParser(query)
 
-        tables = get_involved_tables_from_parser(parser)
-
-        clean_tables = get_clean_parser_table_list(tables)
-        aliases = get_parser_table_aliases(tables)
-
-        joins = get_table_joins(parser=parser, tables=clean_tables, aliases=aliases)
+        joins = parser.table_joins
 
         self.assertEqual(
             joins["testdb.public.users"],
@@ -153,23 +123,33 @@ class QueryParserTests(TestCase):
 
     def test_clean_raw_query_copy_grants(self):
         """
-        Validate query cleaning logic
+        Validate COPY GRANT query cleaning logic
         """
         query = "create or replace view my_view copy grants as select * from my_table"
         self.assertEqual(
-            clean_raw_query(query),
+            LineageParser.clean_raw_query(query),
             "create or replace view my_view as select * from my_table",
         )
 
     def test_clean_raw_query_merge_into(self):
         """
-        Validate query cleaning logic
+        Validate MERGE INTO query cleaning logic
         """
         query = """
             /* comment */ merge into table_1 using (select a, b from table_2) when matched update set t.a = 'value' 
             when not matched then insert (table_1.a, table_2.b) values ('value1', 'value2')
         """
         self.assertEqual(
-            clean_raw_query(query),
+            LineageParser.clean_raw_query(query),
             "/* comment */ merge into table_1 using (select a, b from table_2)",
+        )
+
+    def test_clean_raw_query_copy_from(self):
+        """
+        Validate COPY FROM query cleaning logic
+        """
+        query = "COPY my_schema.my_table FROM 's3://bucket/path/object.csv';"
+        self.assertEqual(
+            LineageParser.clean_raw_query(query),
+            None,
         )
