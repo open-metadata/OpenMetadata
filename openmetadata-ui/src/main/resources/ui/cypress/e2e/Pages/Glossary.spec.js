@@ -113,7 +113,6 @@ describe('Glossary page should work properly', () => {
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
-      .should('be.visible')
       .click({ force: true });
 
     // Todo: need to remove below uncaught exception once tree-view error resolves
