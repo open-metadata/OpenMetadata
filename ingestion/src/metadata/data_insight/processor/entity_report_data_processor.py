@@ -146,7 +146,8 @@ class EntityReportDataProcessor(DataProcessor):
             try:
                 yield from self.metadata.list_all_entities(
                     entity,
-                    fields="*",  # type: ignore
+                    fields="*",  # type: ignore,
+                    limit=100,
                 )
             except Exception as err:
                 logger.error(f"Error trying to fetch entity -- {err}")

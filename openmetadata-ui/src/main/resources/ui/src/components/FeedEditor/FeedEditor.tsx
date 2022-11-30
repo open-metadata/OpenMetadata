@@ -23,13 +23,13 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill';
 import {
-  EditorPlaceHolder,
   MENTION_ALLOWED_CHARS,
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
-} from '../../constants/feed.constants';
+} from '../../constants/Feeds.constants';
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
@@ -66,6 +66,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
+    const { t } = useTranslation();
 
     /**
      * Prepare modules for editor
@@ -169,7 +170,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
-          placeholder={EditorPlaceHolder}
+          placeholder={t('label.markdown-editor-placeholder')}
           style={getEditorStyles()}
           theme="snow"
           value={value}

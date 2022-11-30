@@ -71,7 +71,6 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
 import jsonData from '../../jsons/en';
-import { formatDataResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
@@ -128,6 +127,7 @@ import {
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 import NodeSuggestions from './NodeSuggestions.component';
 
+import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import './entityLineage.style.less';
 import LineageNodeLabel from './LineageNodeLabel';
@@ -1183,7 +1183,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         '',
         SearchIndex.PIPELINE
       );
-      setPipelineOptions(formatDataResponse(data.data.hits.hits));
+      setPipelineOptions(
+        data.data.hits.hits.map((hit) =>
+          getEntityReferenceFromPipeline(hit._source)
+        )
+      );
     } catch (error) {
       showErrorToast(
         error as AxiosError,

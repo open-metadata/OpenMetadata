@@ -19,7 +19,6 @@ import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityReference } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -44,11 +43,12 @@ import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePic
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { PanelTab, TaskOperation } from '../../../constants/feed.constants';
+import { PanelTab, TaskOperation } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Table } from '../../../generated/entity/data/table';
 import {
+  EntityReference,
   Post,
   TaskDetails,
   TaskType,

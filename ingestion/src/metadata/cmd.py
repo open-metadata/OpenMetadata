@@ -109,23 +109,23 @@ def docker_args(parser: argparse.ArgumentParser):
     Addtional Parser Arguments for Docker
     """
     parser.add_argument(
-        "--start", help="Start release docker containers", action="store_false"
+        "--start", help="Start release docker containers", action="store_true"
     )
     parser.add_argument(
-        "--stop", help="Stops openmetadata docker containers", action="store_false"
+        "--stop", help="Stops openmetadata docker containers", action="store_true"
     )
     parser.add_argument(
-        "--pause", help="Pause openmetadata docker containers", action="store_false"
+        "--pause", help="Pause openmetadata docker containers", action="store_true"
     )
     parser.add_argument(
         "--resume",
         help="Resume/Unpause openmetadata docker containers",
-        action="store_false",
+        action="store_true",
     )
     parser.add_argument(
         "--clean",
         help="Stops and remove openmetadata docker containers along with images, volumes, networks associated",
-        action="store_false",
+        action="store_true",
     )
     parser.add_argument(
         "-f",
@@ -142,12 +142,12 @@ def docker_args(parser: argparse.ArgumentParser):
         required=False,
     )
     parser.add_argument(
-        "--reset-db", help="Reset OpenMetadata Data", action="store_false"
+        "--reset-db", help="Reset OpenMetadata Data", action="store_true"
     )
     parser.add_argument(
         "--ingest-sample-data",
         help="Enable the sample metadata ingestion",
-        action="store_false",
+        action="store_true",
     )
     parser.add_argument(
         "-db",
@@ -318,7 +318,6 @@ def get_parser(args=None):
             MetadataCommands.TEST.value, help="Workflow for running test suites"
         )
     )
-
     create_openmetadata_imports_migration_args(
         sub_parser.add_parser(
             MetadataCommands.OPENMETADATA_IMPORTS_MIGRATION.value,
@@ -403,7 +402,6 @@ def metadata(args=None):
             sql_file=contains_args.get("input"),
         )
     if metadata_workflow == MetadataCommands.DOCKER.value:
-
         run_docker(
             docker_obj_instance=DockerActions(
                 start=contains_args.get("start"),
@@ -429,11 +427,11 @@ def metadata(args=None):
 
             def do_POST(self):  # pylint: disable=invalid-name
                 content_len = int(self.headers.get("Content-Length"))
-                self.rfile.read(content_len)
+                post_body = self.rfile.read(content_len)
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
-                logger.info(self.rfile.read(content_len))
+                logger.info(post_body)
 
         logger.info(
             f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}"

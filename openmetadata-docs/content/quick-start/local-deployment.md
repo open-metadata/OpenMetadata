@@ -220,7 +220,9 @@ experiment with. This might take several minutes, depending on your system.
 <Note>
 
 - `metadata docker --stop` will stop the Docker containers.
-- `metadata docker --clean` will clean/prune the containers, volumes, and networks.
+- `metadata docker --clean` will clean/prune the containers, volumes, and networks. You will need to run this if
+    you are updating the OpenMetadata version. Note that it will get rid of the data. If you want to keep it,
+    you will need to [Backup your data](/deployment/backup-restore-metadata).
 
 </Note>
 
@@ -356,3 +358,14 @@ So be careful if you want to keep up some (unused) networks from your laptop.
 ### Connect to a Container from the Host
 
 Do you want to connect to a container from the host [Refer](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)
+
+### After upgrading OpenMetadata version
+
+If you're running the `metadata docker --start` after updating the `openmetadata-ingestion` package to a newer
+OpenMetadata release, you might encounter issues. For example, 
+`java.lang.ClassNotFoundException: org.openmetadata.service.security.NoopAuthorizer` when updating from 0.11.
+
+Then, you'll need to first run `metadata docker --clean`. It will clean/prune the containers, volumes, and networks,
+and download the newest docker compose file from the release. **Note that this will get rid of the data**. If you want to keep it,
+you will need to [Backup your data](/deployment/backup-restore-metadata). This command is required after each time you
+want to update your quickstart deployment of OpenMetadata with a new release to pick up the new compose file.

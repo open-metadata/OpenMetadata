@@ -11,23 +11,29 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { Button } from 'antd';
 import { isUndefined } from 'lodash';
-import { FormattedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
+import { useTranslation } from 'react-i18next';
+import { getSuggestedUsers, searchData } from '../../../axiosAPIs/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { User } from '../../../generated/entity/teams/user';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { SearchResponse } from '../../../interface/search.interface';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
+import {
+  getEntityReferenceFromUser,
+  getUserFromEntityReference,
+} from '../../Users/Users.util';
 
 type ReviewerModalProp = {
-  reviewer?: Array<FormattedUsersData>;
+  reviewer?: Array<EntityReference>;
   onCancel: () => void;
-  onSave: (reviewer: Array<FormattedUsersData>) => void;
+  onSave: (reviewer: Array<EntityReference>) => void;
   header: string;
 };
 
@@ -39,14 +45,15 @@ const ReviewerModal = ({
 }: ReviewerModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [options, setOptions] = useState<FormattedUsersData[]>([]);
-  const [selectedOption, setSelectedOption] = useState<FormattedUsersData[]>(
-    reviewer ?? []
+  const [options, setOptions] = useState<User[]>([]);
+  const [selectedOption, setSelectedOption] = useState<User[]>(
+    reviewer?.map(getUserFromEntityReference) ?? []
   );
+  const { t } = useTranslation();
 
-  const getSearchedReviewers = (searchedData: FormattedUsersData[]) => {
+  const getSearchedReviewers = (searchedData: User[]) => {
     const currOptions = selectedOption.map((item) => item.name);
-    const data = searchedData.filter((item: FormattedUsersData) => {
+    const data = searchedData.filter((item) => {
       return !currOptions.includes(item.name);
     });
 
@@ -56,9 +63,11 @@ const ReviewerModal = ({
   const querySearch = () => {
     setIsLoading(true);
     searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER)
-      .then((res: SearchResponse) => {
+      .then((res) => {
         const data = getSearchedReviewers(
-          formatUsersResponse(res.data.hits.hits)
+          formatUsersResponse(
+            (res.data as SearchResponse<SearchIndex.USER>).hits.hits
+          )
         );
         setOptions(data);
       })
@@ -72,10 +81,8 @@ const ReviewerModal = ({
 
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
-    getSuggestions(searchText, SearchIndex.USER)
-      // TODO: fix types for below suggest api
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then((res: AxiosResponse<any>) => {
+    getSuggestedUsers(searchText)
+      .then((res) => {
         const data = formatUsersResponse(
           res.data.suggest['metadata-suggest'][0].options
         );
@@ -104,9 +111,8 @@ const ReviewerModal = ({
     if (!isChecked) {
       setSelectedOption((pre) => pre.filter((option) => option.id !== id));
     } else {
-      const newOption: FormattedUsersData =
-        options.find((d) => d.id === id) || ({} as FormattedUsersData);
-      setSelectedOption([...selectedOption, newOption]);
+      const newOption = options.find((d) => d.id === id);
+      newOption && setSelectedOption([...selectedOption, newOption]);
     }
   };
 
@@ -122,7 +128,7 @@ const ReviewerModal = ({
           email: d.email,
           id: d.id,
           isChecked: isIncludeInOptions(d.id),
-          type: d.type,
+          type: 'user',
         }}
         key={d.id}
         onSelect={selectionHandler}
@@ -132,7 +138,7 @@ const ReviewerModal = ({
 
   useEffect(() => {
     if (!isUndefined(reviewer) && reviewer.length) {
-      setOptions(reviewer);
+      setOptions(reviewer.map(getUserFromEntityReference));
     }
     querySearch();
   }, []);
@@ -168,21 +174,14 @@ const ReviewerModal = ({
           </div>
         </div>
         <div className="tw-modal-footer" data-testid="cta-container">
-          <Button
-            size="regular"
-            theme="primary"
-            variant="link"
-            onClick={onCancel}>
-            Cancel
-          </Button>
+          <Button onClick={onCancel}>{t('label.cancel')}</Button>
           <Button
             data-testid="saveButton"
-            size="regular"
-            theme="primary"
-            type="submit"
-            variant="contained"
-            onClick={() => onSave(selectedOption)}>
-            Save
+            type="primary"
+            onClick={() =>
+              onSave(selectedOption.map(getEntityReferenceFromUser))
+            }>
+            {t('label.save')}
           </Button>
         </div>
       </div>

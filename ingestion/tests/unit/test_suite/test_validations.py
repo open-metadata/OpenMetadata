@@ -599,7 +599,7 @@ class testSuiteValidation(unittest.TestCase):
             testSuite=EntityReference(id=uuid4(), type="TestSuite"),
             testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),
             parameterValues=[
-                TestCaseParameterValue(name="regex", value="J%"),
+                TestCaseParameterValue(name="regex", value="J.*"),
             ],
         )
 

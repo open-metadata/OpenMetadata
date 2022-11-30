@@ -12,7 +12,7 @@
  */
 
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import {
   DashboardConnection,
   DashboardServiceType,

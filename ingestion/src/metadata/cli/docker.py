@@ -23,7 +23,6 @@ from base64 import b64encode
 from datetime import timedelta
 from typing import Optional
 
-import click
 import requests
 from requests._internal_utils import to_native_string
 
@@ -208,7 +207,7 @@ def file_path_check(file_path, database: str):
     return docker_compose_file_path
 
 
-def run_docker(  # pylint: disable=too-many-branches
+def run_docker(  # pylint: disable=too-many-branches too-many-statements
     docker_obj_instance: DockerActions,
     file_path: str,
     env_file_path: str,
@@ -249,6 +248,7 @@ def run_docker(  # pylint: disable=too-many-branches
             compose_files=[docker_compose_file_path],
             compose_env_file=env_file,
         )
+
         if docker_obj_instance.start:
             start_docker(
                 docker=docker,
@@ -274,10 +274,15 @@ def run_docker(  # pylint: disable=too-many-branches
             logger.info(
                 "Stopping docker compose for OpenMetadata and removing images, networks, volumes..."
             )
-            logger.info("Do you want to Delete the docker mounted volumes from host")
-            user_response = click.prompt("Please enter [y/N]", type=str)
+            logger.info(
+                "Do you want to delete the MySQL docker volume with the OpenMetadata data?"
+            )
+            user_response = input("Please enter [y/N]\n")
             if user_response == "y":
-                shutil.rmtree(MAIN_DIR)
+                try:
+                    shutil.rmtree(MAIN_DIR)
+                except FileNotFoundError:
+                    pass
             docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
             logger.info(
                 "Stopped docker compose for OpenMetadata and removing images, networks, volumes."

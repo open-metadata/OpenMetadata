@@ -147,7 +147,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   private ChangeDescription addPipelineStatusChangeDescription(Double version, Object newValue, Object oldValue) {
     FieldChange fieldChange =
-        new FieldChange().withName("testCaseResult").withNewValue(newValue).withOldValue(oldValue);
+        new FieldChange().withName("pipelineStatus").withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsUpdated().add(fieldChange);
     return change;

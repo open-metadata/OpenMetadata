@@ -63,6 +63,21 @@ AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID of Azure Appli
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
+### 1.3 After 0.13.0
+
+```shell
+# OpenMetadata Server Authentication Configuration
+AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+
+AUTHENTICATION_PROVIDER=azure
+AUTHENTICATION_PUBLIC_KEYS=[https://login.microsoftonline.com/common/discovery/keys]
+AUTHENTICATION_AUTHORITY=https://login.microsoftonline.com/{Tenant ID} # Update with your Tenant ID
+AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID of Azure Application
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+
 <Note>
 
 Follow [this](/deployment/security/azure#step-10-update-ingestion-bot-with-azure-sso-service-application) guide to configure the `ingestion-bot` credentials for ingesting data from Airflow.
