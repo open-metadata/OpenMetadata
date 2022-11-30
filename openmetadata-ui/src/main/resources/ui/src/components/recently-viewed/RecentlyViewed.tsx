@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityReference } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import { EntityReference } from '../../generated/type/entityReference';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';

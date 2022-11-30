@@ -100,8 +100,8 @@ def get_static_metrics(
                     )
                 )
         row_dict = {}
-        for index, table_metric in enumerate(metrics):
-            row_dict[table_metric.name()] = row[index]
+        for index, column_metric in enumerate(metrics):
+            row_dict[column_metric.name()] = row[index]
         return row_dict
     except Exception as exc:
         logger.debug(
@@ -142,7 +142,7 @@ def get_window_metrics(*args, **kwargs):
 
 
 compute_metrics_registry = enum_register()
-compute_metrics_registry.add("Table")(get_table_metrics)
 compute_metrics_registry.add("Static")(get_static_metrics)
+compute_metrics_registry.add("Table")(get_table_metrics)
 compute_metrics_registry.add("Query")(get_query_metrics)
 compute_metrics_registry.add("Window")(get_window_metrics)

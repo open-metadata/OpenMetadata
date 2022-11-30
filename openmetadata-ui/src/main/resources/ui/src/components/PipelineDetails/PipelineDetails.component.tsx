@@ -41,7 +41,7 @@ import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { restorePipeline } from '../../axiosAPIs/pipelineAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import {
   PIPELINE_DETAILS_TABS,
@@ -623,7 +623,7 @@ const PipelineDetails = ({
               <Tooltip
                 title={
                   pipelinePermissions.EditAll
-                    ? t('label.edit-description')
+                    ? t('label.edit-entity', { entity: t('label.description') })
                     : t('message.no-permission-for-action')
                 }>
                 <button
@@ -643,9 +643,9 @@ const PipelineDetails = ({
         ),
       },
       {
-        key: t('label.tags'),
+        key: t('label.tag-plural'),
         dataIndex: 'tags',
-        title: t('label.tags'),
+        title: t('label.tag-plural'),
         width: 350,
         render: renderTags,
       },
@@ -1012,7 +1012,7 @@ const PipelineDetails = ({
 
       {editTask && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-task')}: "${
+          header={`${t('label.edit-entity', { entity: t('label.task') })}: "${
             editTask.task.displayName || editTask.task.name
           }"`}
           placeholder={t('label.type-field-name', {

@@ -14,7 +14,6 @@ Query parser implementation
 
 import datetime
 import traceback
-from logging.config import DictConfigurator
 from typing import Optional
 
 from metadata.config.common import ConfigModel
@@ -24,21 +23,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
-from metadata.ingestion.lineage.parser import (
-    get_clean_parser_table_list,
-    get_involved_tables_from_parser,
-    get_parser_table_aliases,
-    get_table_joins,
-)
-from metadata.ingestion.lineage.sql_lineage import clean_raw_query
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
-
-configure = DictConfigurator.configure
-DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner  # pylint: disable=wrong-import-position
-
-# Reverting changes after import is done
-DictConfigurator.configure = configure
 
 logger = ingestion_logger()
 
@@ -58,19 +44,14 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
             str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
         ).date()
 
-    parser = LineageRunner(clean_raw_query(record.query))
+    lineage_parser = LineageParser(record.query)
 
-    tables = get_involved_tables_from_parser(parser)
-
-    if not tables:
+    if not lineage_parser.involved_tables:
         return None
 
-    clean_tables = get_clean_parser_table_list(tables)
-    aliases = get_parser_table_aliases(tables)
-
     return ParsedData(
-        tables=clean_tables,
-        joins=get_table_joins(parser=parser, tables=clean_tables, aliases=aliases),
+        tables=lineage_parser.clean_table_list,
+        joins=lineage_parser.table_joins,
         databaseName=record.databaseName,
         databaseSchema=record.databaseSchema,
         sql=record.query,

@@ -24,7 +24,7 @@ import { postThread } from '../../../axiosAPIs/feedsAPI';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { EntityField } from '../../../constants/feed.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,

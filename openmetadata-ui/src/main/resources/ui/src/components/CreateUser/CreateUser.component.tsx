@@ -24,13 +24,13 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, trim } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
-import { passwordErrorMessage } from '../../constants/error-message';
+import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
   passwordRegex,
   validEmailRegEx,
@@ -311,7 +311,7 @@ const CreateUser = ({
     const userProfile: CreateUserSchema = {
       description: markdownRef.current?.getEditorContent() || undefined,
       name: email.split('@')[0],
-      displayName,
+      displayName: trim(displayName),
       roles: validRole.length ? validRole : undefined,
       teams: validTeam.length ? validTeam : undefined,
       email: email,

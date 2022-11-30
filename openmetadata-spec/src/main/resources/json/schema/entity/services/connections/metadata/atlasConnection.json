@@ -29,35 +29,11 @@
       "format": "password"
     },
     "hostPort": {
-      "description": "Host and port of the data source.",
+      "description": "Host and port of the Atlas service.",
       "title": "Host and Port",
       "type": "string",
       "format": "uri",
       "expose": true
-    },
-    "entityTypes": {
-      "description": "entity types of the data source.",
-      "type": "string"
-    },
-    "serviceType": {
-      "description": "service type of the data source.",
-      "type": "string"
-    },
-    "atlasHost": {
-      "description": "Atlas Host of the data source.",
-      "type": "string"
-    },
-    "dbService": {
-      "description": "source database of the data source.",
-      "type": "string"
-    },
-    "messagingService": {
-      "description": "messaging service source of the data source.",
-      "type": "string"
-    },
-    "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Atlas.",
-      "type": "string"
     },
     "connectionOptions": {
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

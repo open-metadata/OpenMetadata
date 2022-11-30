@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { FormErrorData, Team } from 'Models';
+import { FormErrorData } from 'Models';
 import React, { useRef, useState } from 'react';
+import { Team } from '../../../generated/entity/teams/team';
 import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { Button } from '../../buttons/Button/Button';
+
 type FormData = TagsCategory | Team;
+
 type FormModalProp = {
   onCancel: () => void;
   onChange?: (data: TagsCategory | Team) => void;
