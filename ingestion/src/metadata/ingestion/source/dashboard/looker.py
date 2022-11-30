@@ -13,6 +13,7 @@ Looker source module.
 Supports:
 - owner
 - lineage
+- usage
 """
 
 import traceback
