@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
@@ -49,13 +50,12 @@ public class TableIndex implements ElasticSearchIndex {
       }
     }
     tags.addAll(ElasticSearchIndexUtils.parseTags(table.getTags()));
-    suggest.add(ElasticSearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(table.getName()).weight(10).build());
+    parseTableSuggest(suggest);
     serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
     databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
     schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
-
     ParseTags parseTags = new ParseTags(tags);
+
     doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);
@@ -68,6 +68,20 @@ public class TableIndex implements ElasticSearchIndex {
     doc.put("entityType", Entity.TABLE);
     doc.put("serviceType", table.getServiceType());
     return doc;
+  }
+
+  private void parseTableSuggest(List<ElasticSearchSuggest> suggest) {
+    suggest.add(ElasticSearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
+    suggest.add(ElasticSearchSuggest.builder().input(table.getName()).weight(10).build());
+    // Table FQN has 4 parts
+    String[] fqnPartsWithoutService = table.getFullyQualifiedName().split(Pattern.quote(Entity.SEPARATOR), 2);
+    if (fqnPartsWithoutService.length == 2) {
+      suggest.add(ElasticSearchSuggest.builder().input(fqnPartsWithoutService[1]).weight(5).build());
+      String[] fqnPartsWithoutDB = fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
+      if (fqnPartsWithoutDB.length == 2) {
+        suggest.add(ElasticSearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
+      }
+    }
   }
 
   private void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
