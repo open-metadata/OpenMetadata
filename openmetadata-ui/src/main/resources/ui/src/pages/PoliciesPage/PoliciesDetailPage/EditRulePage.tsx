@@ -14,6 +14,7 @@
 import { Button, Card, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
@@ -98,7 +99,10 @@ const EditRulePage = () => {
     const existingRules = policy.rules;
     const updatedRules = existingRules.map((rule) => {
       if (rule.name === ruleName) {
-        const { condition, ...rest } = ruleData;
+        const { condition, ...rest } = {
+          ...ruleData,
+          name: trim(ruleData.name),
+        };
 
         return condition ? { ...rest, condition } : rest;
       } else {

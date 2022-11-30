@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, trim } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
 import {
@@ -582,8 +582,8 @@ const AddIngestion = ({
           : repeatFrequency,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
-      name: ingestionName,
-      displayName: ingestionName,
+      name: trim(ingestionName),
+      displayName: trim(ingestionName),
       owner: {
         id: getCurrentUserId(),
         type: 'user',
