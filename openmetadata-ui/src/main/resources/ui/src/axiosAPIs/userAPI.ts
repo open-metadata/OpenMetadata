@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
+import { PagingResponse } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import {
   AuthenticationMechanism,
@@ -23,7 +24,6 @@ import { JwtAuth } from '../generated/auth/jwtAuth';
 import { Bot } from '../generated/entity/bot';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
-import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -55,7 +55,7 @@ export const getUsers = async (
       ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
       : '');
 
-  const response = await APIClient.get<{ data: User[]; paging: Paging }>(url);
+  const response = await APIClient.get<PagingResponse<User[]>>(url);
 
   return response.data;
 };

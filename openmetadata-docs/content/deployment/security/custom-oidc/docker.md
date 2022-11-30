@@ -34,7 +34,7 @@ AIRFLOW_AUTH_PROVIDER=custom-oidc
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID={Client Id} # Update with your Client ID
 # Make sure to add the path where the file is saved in the Airflow Volume
 # It needs to be reachable locally by the container
-OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH={Secret Key Path} # Update with your Secret Key Path
+OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY={Secret Key Path} # Update with your Secret Key Path
 OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL={endpoint} 
 ```
 

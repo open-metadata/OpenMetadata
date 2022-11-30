@@ -27,27 +27,12 @@ export const entityUrlMap = {
   user: 'users',
 };
 
-export const EditorPlaceHolder = `Use @mention to tag a user or a team.
-Use #mention to tag a data asset.`;
-
 export const confirmStateInitialValue = {
   state: false,
   threadId: undefined,
   postId: undefined,
   isThread: false,
 };
-
-export const confirmationBodyText =
-  'Are you sure you want to permanently delete this message?';
-
-export const confirmHeadertext = 'Delete message?';
-
-export const onConfirmText = 'Message deleted successfully';
-
-export const onErrorText = 'Error while deleting message';
-
-export const onUpdatedConversastionError =
-  'Error while getting updated conversation';
 
 export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_]*$/;
 export const MENTION_DENOTATION_CHARS = ['@', '#'];

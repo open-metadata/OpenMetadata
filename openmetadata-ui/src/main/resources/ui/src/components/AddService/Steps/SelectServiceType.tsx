@@ -17,7 +17,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   excludedService,
   serviceTypes,
-} from '../../../constants/services.const';
+} from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';

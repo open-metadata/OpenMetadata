@@ -14,13 +14,14 @@
 import { Badge, Divider, Dropdown, Menu, Space } from 'antd';
 import { isEmpty, isNil, uniqueId } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo } from 'react';
+import { SearchIndex } from '../../enums/search.enum';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { ExploreQuickFilterField } from './explore.interface';
 import AdvancedField from './ExploreQuickFilter';
 
 interface Props {
-  index: string;
+  index: SearchIndex;
   fields: Array<ExploreQuickFilterField>;
   onFieldRemove: (value: string) => void;
   onClear: () => void;

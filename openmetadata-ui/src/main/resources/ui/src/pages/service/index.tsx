@@ -67,7 +67,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.const
 import {
   OPENMETADATA,
   servicesDisplayName,
-} from '../../constants/services.const';
+} from '../../constants/Services.constant';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';

@@ -69,7 +69,7 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/globalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';

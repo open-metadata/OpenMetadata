@@ -19,7 +19,7 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getServiceDetailsPath, PAGE_SIZE } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { servicesDisplayName } from '../../constants/services.const';
+import { servicesDisplayName } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { PanelTab } from '../../../constants/feed.constants';
+import { PanelTab } from '../../../constants/Feeds.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
