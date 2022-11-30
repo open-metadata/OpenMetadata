@@ -8,7 +8,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Looker source module"""
+"""
+Looker source module.
+Supports:
+- owner
+- lineage
+"""
 
 import traceback
 from datetime import datetime
@@ -16,6 +21,7 @@ from typing import Iterable, List, Optional, Set, cast
 
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Query
+from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
     DashboardBase,
@@ -56,11 +62,14 @@ logger = ingestion_logger()
 
 class LookerSource(DashboardServiceSource):
     """
-    Looker Source Class
+    Looker Source Class.
+
+    Its client uses Looker 40 from the SDK: client = looker_sdk.init40()
     """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
+    client: Looker40SDK
 
     def __init__(
         self,
@@ -69,6 +78,9 @@ class LookerSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata_config)
         self.today = datetime.now().strftime("%Y-%m-%d")
+
+        # Owners cache. The key will be the user_id and the value its OM user EntityRef
+        self._owners_ref = {}
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -96,6 +108,8 @@ class LookerSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
+        # Here we can update the fields to get further information, such as:
+        # created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
         fields = [
             "id",
             "title",
@@ -104,8 +118,38 @@ class LookerSource(DashboardServiceSource):
             "view_count",
             "description",
             "folder",
+            "user_id",  # Use as owner
         ]
         return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
+
+    def get_owner_details(self, dashboard_details: LookerDashboard) -> Optional[EntityReference]:
+        """Get dashboard owner
+
+        Store the visited users in the _owners_ref cache, even if we found them
+        in OM or not.
+
+        If the user has not yet been visited, store it and return from cache.
+
+        Args:
+            dashboard_details: LookerDashboard
+        Returns:
+            Optional[EntityReference]
+        """
+
+        try:
+            if dashboard_details.user_id not in self._owners_ref.keys():
+                dashboard_owner = self.client.user(dashboard_details.user_id)
+                user = self.metadata.get_user_by_email(dashboard_owner.email)
+                if user:  # Save the EntityRef
+                    self._owners_ref[dashboard_details.user_id] = EntityReference(id=user.id, type="user")
+                else:  # Otherwise, flag the user as missing in OM
+                    self._owners_ref[dashboard_details.user_id] = None
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
+
+        return self._owners_ref.get(dashboard_details.user_id)
 
     def yield_dashboard(
         self, dashboard_details: LookerDashboard
@@ -126,6 +170,7 @@ class LookerSource(DashboardServiceSource):
             service=EntityReference(
                 id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
+            owner=self.get_owner_details(dashboard_details)
         )
 
     @staticmethod

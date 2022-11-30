@@ -281,7 +281,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_dashboard(self) -> Any:
         """
-        Method to iterate through dashboard lists filter dashbaords & yield dashboard details
+        Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for dashboard in self.get_dashboards_list():
 
@@ -301,7 +301,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             ):
                 self.status.filter(
                     dashboard_name,
-                    "Dashboard Fltered Out",
+                    "Dashboard Filtered Out",
                 )
                 continue
             yield dashboard_details
