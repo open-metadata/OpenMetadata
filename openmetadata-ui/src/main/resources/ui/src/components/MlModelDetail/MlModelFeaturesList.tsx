@@ -290,7 +290,9 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                   type="text">
                                   <Tags
                                     startWith="+ "
-                                    tag="Add tag"
+                                    tag={t('label.add-entity', {
+                                      entity: t('label.tag-lowercase'),
+                                    })}
                                     type="outlined"
                                   />
                                 </Button>

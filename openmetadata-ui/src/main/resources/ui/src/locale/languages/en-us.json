@@ -227,7 +227,6 @@
     "target-column": "Target Column",
     "function": "Function",
     "edge-information": "Edge Information",
-    "task": "Task",
     "tasks": "Tasks",
     "activity-feed-and-task-plural": "Activity Feeds & Tasks",
     "executions": "Executions",
@@ -343,9 +342,11 @@
     "connection-details": "Connection Details",
     "markdown-editor-placeholder": "Use @mention to tag a user or a team.\nUse #mention to tag a data asset.",
     "tag": "Tag",
+    "tag-lowercase": "tag",
     "service": "Service",
     "chart": "Chart",
-    "task": "Task"
+    "task": "Task",
+    "add-entity": "Add {{entity}}"
   },
   "message": {
     "service-email-required": "Service account Email is required",
