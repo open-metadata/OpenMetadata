@@ -182,7 +182,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
             ) : (
               <Typography.Text className="text-xs text-grey-muted">
                 {t('label.no-entity', {
-                  entity: 'Owner',
+                  entity: t('label.owner'),
                 })}
               </Typography.Text>
             )}
@@ -194,7 +194,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
             {entityTier
               ? entityTier
               : t('label.no-entity', {
-                  entity: 'Tier',
+                  entity: t('label.tier'),
                 })}
           </Typography.Text>
         </Space>
@@ -208,7 +208,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
           ) : (
             <Typography.Text className="text-xs text-grey-muted">
               {t('label.no-entity', {
-                entity: 'Description',
+                entity: t('label.description'),
               })}
             </Typography.Text>
           )}
