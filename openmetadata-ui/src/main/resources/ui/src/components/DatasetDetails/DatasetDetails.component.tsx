@@ -74,9 +74,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import SampleDataTable, {
-  SampleColumns,
-} from '../SampleDataTable/SampleDataTable.component';
+import SampleDataTable from '../SampleDataTable/SampleDataTable.component';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
@@ -94,7 +92,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableProfile,
   columns,
   tier,
-  sampleData,
   entityLineage,
   followTableHandler,
   unfollowTableHandler,
@@ -120,7 +117,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   removeLineageHandler,
   entityLineageHandler,
   isLineageLoading,
-  isSampleDataLoading,
   isQueriesLoading,
   tableQueries,
   entityThread,
@@ -555,29 +551,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
-  const getSampleDataWithType = () => {
-    const updatedColumns = sampleData?.columns?.map((column) => {
-      const matchedColumn = columns.find((col) => col.name === column);
-
-      if (matchedColumn) {
-        return {
-          name: matchedColumn.name,
-          dataType: matchedColumn.dataType,
-        };
-      } else {
-        return {
-          name: column,
-          dataType: '',
-        };
-      }
-    });
-
-    return {
-      columns: updatedColumns as SampleColumns[] | undefined,
-      rows: sampleData?.rows,
-    };
-  };
-
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -757,7 +730,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       }
                       isReadOnly={deleted}
                       joins={tableJoinData.columnJoins as ColumnJoins[]}
-                      sampleData={sampleData}
                       tableConstraints={tableDetails.tableConstraints}
                       onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
@@ -787,10 +759,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 3 && (
                 <div id="sampleDataDetails">
-                  <SampleDataTable
-                    isLoading={isSampleDataLoading}
-                    sampleData={getSampleDataWithType()}
-                  />
+                  <SampleDataTable tableFqn={tableDetails.id} />
                 </div>
               )}
               {activeTab === 4 && (
