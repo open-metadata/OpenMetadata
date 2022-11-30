@@ -64,7 +64,7 @@ class QueryParserTests(TestCase):
         """
         main logic point
         """
-        joins = self.parser.get_table_joins()
+        joins = self.parser.table_joins
 
         self.assertEqual(
             joins["foo"],
@@ -103,7 +103,7 @@ class QueryParserTests(TestCase):
 
         parser = LineageParser(query)
 
-        joins = parser.get_table_joins()
+        joins = parser.table_joins
 
         self.assertEqual(
             joins["testdb.public.users"],

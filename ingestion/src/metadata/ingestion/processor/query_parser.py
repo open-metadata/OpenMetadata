@@ -51,7 +51,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
 
     return ParsedData(
         tables=lineage_parser.clean_table_list,
-        joins=lineage_parser.get_table_joins,
+        joins=lineage_parser.table_joins,
         databaseName=record.databaseName,
         databaseSchema=record.databaseSchema,
         sql=record.query,

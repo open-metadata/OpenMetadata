@@ -278,7 +278,8 @@ class LineageParser:
                 join_data, left_table_column, right_table_column
             )
 
-    def get_table_joins(self) -> Dict[str, List[TableColumnJoin]]:
+    @cached_property
+    def table_joins(self) -> Dict[str, List[TableColumnJoin]]:
         """
         For each table involved in the query, find its joins against any
         other table.
