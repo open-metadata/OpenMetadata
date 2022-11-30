@@ -85,7 +85,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
           ),
       },
       {
-        title: t('label.tags'),
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
