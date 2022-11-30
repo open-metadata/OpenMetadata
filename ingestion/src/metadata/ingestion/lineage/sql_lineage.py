@@ -32,22 +32,6 @@ logger = utils_logger()
 LRU_CACHE_SIZE = 4096
 
 
-def split_raw_table_name(database: str, raw_name: str) -> dict:
-    database_schema = None
-    if "." in raw_name:
-        database_schema, table = fqn.split(raw_name)[
-            -2:
-        ]  # pylint: disable=unbalanced-tuple-unpacking
-        if database_schema == "<default>":
-            database_schema = None
-        return {
-            "database": database,
-            "database_schema": database_schema,
-            "table": table,
-        }
-    return {"database": database, "database_schema": database_schema, "table": None}
-
-
 def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     """
     Get fqn of column if exist in table entity

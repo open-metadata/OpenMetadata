@@ -13,10 +13,10 @@ Lineage Parser configuration
 """
 import traceback
 from collections import defaultdict
-from functools import cached_property
 from logging.config import DictConfigurator
 from typing import Any, Dict, List, Optional, Tuple
 
+from cached_property import cached_property
 from sqlparse.sql import Comparison, Identifier, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
@@ -319,6 +319,8 @@ class LineageParser:
                 replace_by="",  # remove it as LineageRunner is not able to perform the lineage
             )
 
+        # We remove queries of the type 'COPY table FROM path' since they are data manipulation statement and do not
+        # provide value for user
         if insensitive_match(clean_query, "^COPY.*"):
             return None
 
