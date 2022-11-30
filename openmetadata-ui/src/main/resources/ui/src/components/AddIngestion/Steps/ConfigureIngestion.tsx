@@ -237,7 +237,7 @@ const ConfigureIngestion = ({
           {!isNil(markAllDeletedTables) && (
             <Field>
               <div className="tw-flex tw-gap-1">
-                <label>Mark Deleted Tables from Filter Only</label>
+                <label>Mark All Deleted Tables</label>
                 <ToggleSwitchV1
                   checked={markAllDeletedTables}
                   handleCheck={() => {
