@@ -76,7 +76,9 @@ def build_google_credentials_dict(gcs_values: GCSValues) -> Dict[str, str]:
     :param gcs_values: GCS credentials
     :return: Dictionary with credentials
     """
-    private_key_str = gcs_values.privateKey.get_secret_value().replace("\\n", "\n")
+    private_key_str = gcs_values.privateKey.get_secret_value()
+    # adding the replace string here to escape line break if passed from env
+    private_key_str = private_key_str.replace("\\n", "\n")
     validate_private_key(private_key_str)
 
     return {
