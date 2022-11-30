@@ -27,6 +27,7 @@ import org.slf4j.MarkerFactory;
 @Slf4j
 public class AuditEventHandler implements EventHandler {
   private final Marker auditMarker = MarkerFactory.getMarker("AUDIT");
+  private final String ANONYMOUS_USER = "anonymous";
 
   public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     // Nothing to do
@@ -37,7 +38,10 @@ public class AuditEventHandler implements EventHandler {
     String method = requestContext.getMethod();
     if (responseContext.getEntity() != null) {
       String path = requestContext.getUriInfo().getPath();
-      String username = requestContext.getSecurityContext().getUserPrincipal().getName();
+      String username = ANONYMOUS_USER;
+      if (requestContext.getSecurityContext().getUserPrincipal() != null) {
+        username = requestContext.getSecurityContext().getUserPrincipal().getName();
+      }
       try {
         EntityReference entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
         AuditLog auditLog =
