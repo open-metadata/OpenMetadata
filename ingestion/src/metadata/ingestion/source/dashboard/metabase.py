@@ -95,7 +95,6 @@ class MetabaseSource(DashboardServiceSource):
     def get_dashboard_name(self, dashboard: dict) -> str:
         """
         Get Dashboard Name
-        TODO: TEST ME OUT
         """
         return dashboard["name"]
 

@@ -78,7 +78,6 @@ class RedashSource(DashboardServiceSource):
     def get_dashboard_name(self, dashboard: dict) -> str:
         """
         Get Dashboard Name
-        TODO: TEST ME
         """
         return dashboard["name"]
 
