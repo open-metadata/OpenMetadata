@@ -346,7 +346,14 @@
     "service": "Service",
     "chart": "Chart",
     "task": "Task",
-    "add-entity": "Add {{entity}}"
+    "add-entity": "Add {{entity}}",
+    "add-reviewer": "Add Reviewer",
+    "add-reviewers": "Add Reviewers",
+    "search-for-user": "Search for user",
+    "no-user-available": "No user available",
+    "no-terms-found": "No terms found",
+    "no-terms-found-for-searchText": "No terms found for {{searchText}}",
+    "add-related-terms": "Add Related Terms"
   },
   "message": {
     "service-email-required": "Service account Email is required",
