@@ -265,7 +265,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
-    def _get_add_lineage_request(self, to_entity: Dashboard, from_entity: Table):
+    @staticmethod
+    def _get_add_lineage_request(to_entity: Dashboard, from_entity: Table):
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
