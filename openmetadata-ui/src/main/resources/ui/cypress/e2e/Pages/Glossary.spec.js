@@ -109,9 +109,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
-      .click();
-    // adding manual wait to open dropdown in UI
-    cy.wait(500);
+      .click({ animationDistanceThreshold: 10 });
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
