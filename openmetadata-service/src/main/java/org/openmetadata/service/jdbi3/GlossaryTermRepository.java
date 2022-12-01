@@ -102,6 +102,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity) throws IOException {
+    // Validate parent term
+    EntityReference parentTerm = Entity.getEntityReference(entity.getParent());
+    entity.setParent(parentTerm);
+
     validateHierarchy(entity);
 
     // Validate glossary
@@ -110,10 +114,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // If reviewers is not set in the glossary term, then carry it from the glossary
     entity.setReviewers(entity.getReviewers() == null ? glossary.getReviewers() : entity.getReviewers());
-
-    // Validate parent term
-    EntityReference parentTerm = Entity.getEntityReference(entity.getParent());
-    entity.setParent(parentTerm);
 
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
