@@ -42,7 +42,7 @@ const ConfigureIngestion = ({
   includeView,
   includeTags,
   markDeletedTables,
-  markDeletedTablesFromFilterOnly,
+  markAllDeletedTables,
   serviceCategory,
   pipelineType,
   showDatabaseFilter,
@@ -70,7 +70,7 @@ const ConfigureIngestion = ({
   handleIncludeView,
   handleIncludeTags,
   handleMarkDeletedTables,
-  handleMarkDeletedTablesFromFilterOnly,
+  handleMarkAllDeletedTables,
   handleIngestSampleData,
   handleDatasetServiceName,
   handleQueryLogDuration,
@@ -234,15 +234,15 @@ const ConfigureIngestion = ({
               {getSeparator('')}
             </Field>
           )}
-          {!isNil(markDeletedTablesFromFilterOnly) && (
+          {!isNil(markAllDeletedTables) && (
             <Field>
               <div className="tw-flex tw-gap-1">
-                <label>Mark Deleted Tables from Filter Only</label>
+                <label>Mark All Deleted Tables</label>
                 <ToggleSwitchV1
-                  checked={markDeletedTablesFromFilterOnly}
+                  checked={markAllDeletedTables}
                   handleCheck={() => {
-                    if (handleMarkDeletedTablesFromFilterOnly) {
-                      handleMarkDeletedTablesFromFilterOnly();
+                    if (handleMarkAllDeletedTables) {
+                      handleMarkAllDeletedTables();
                     }
                   }}
                   testId="mark-deleted-filter-only"
