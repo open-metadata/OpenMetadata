@@ -482,6 +482,22 @@ const GlossaryPageV1 = () => {
     return patchGlossaries(selectedData?.id as string, jsonPatch);
   };
 
+  const handleRedirection = (fqn?: string) => {
+    const redirectFqn = fqn
+      ? fqn
+      : selectedKey.split('.').slice(0, -1).join('.');
+
+    if (isEmpty(redirectFqn)) {
+      setGlossariesList([]);
+      setIsLoading(true);
+      history.push(getGlossaryPath());
+      fetchGlossaryList();
+    } else {
+      history.push(getGlossaryPath(redirectFqn));
+      fetchGlossaryList(redirectFqn);
+    }
+  };
+
   /**
    * To update glossary
    * @param updatedData glossary with new values
@@ -514,6 +530,9 @@ const GlossaryPageV1 = () => {
             }
           });
         });
+        if (selectedData?.name !== updatedData.name) {
+          handleRedirection(response.fullyQualifiedName);
+        }
       } else {
         throw jsonData['api-error-messages']['update-description-error'];
       }
@@ -544,25 +563,14 @@ const GlossaryPageV1 = () => {
       const response = await saveUpdatedGlossaryTermData(updatedData);
       if (response) {
         setSelectedData(response);
+        if (selectedData?.name !== updatedData.name) {
+          handleRedirection(response.fullyQualifiedName);
+        }
       } else {
         throw jsonData['api-error-messages']['update-glossary-term-error'];
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
-    }
-  };
-
-  const afterDeleteAction = () => {
-    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
-
-    if (isEmpty(redirectFqn)) {
-      setGlossariesList([]);
-      setIsLoading(true);
-      history.push(getGlossaryPath());
-      fetchGlossaryList();
-    } else {
-      history.push(getGlossaryPath(redirectFqn));
-      fetchGlossaryList(redirectFqn);
     }
   };
 
@@ -578,7 +586,7 @@ const GlossaryPageV1 = () => {
         showSuccessToast(
           jsonData['api-success-messages']['delete-glossary-success']
         );
-        afterDeleteAction();
+        handleRedirection();
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -601,7 +609,7 @@ const GlossaryPageV1 = () => {
         showSuccessToast(
           jsonData['api-success-messages']['delete-glossary-term-success']
         );
-        afterDeleteAction();
+        handleRedirection();
       })
       .catch((err: AxiosError) => {
         showErrorToast(
