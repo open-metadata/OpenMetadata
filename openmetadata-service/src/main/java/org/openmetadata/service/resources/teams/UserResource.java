@@ -177,9 +177,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
+    SubjectCache.initialize();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.dao.initializeUsers(config);
-    SubjectCache.initialize();
   }
 
   public static class UserList extends ResultList<User> {

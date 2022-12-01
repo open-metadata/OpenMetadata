@@ -105,11 +105,11 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               policy.setId(ref.getId());
             }
             dao.initSeedData(role);
-            RoleCache.initialize();
           } catch (Exception e) {
             LOG.warn("Failed to initialize the {} from file {}", Entity.ROLE, jsonFile, e);
           }
         });
+    RoleCache.initialize();
   }
 
   public static class RoleList extends ResultList<Role> {
