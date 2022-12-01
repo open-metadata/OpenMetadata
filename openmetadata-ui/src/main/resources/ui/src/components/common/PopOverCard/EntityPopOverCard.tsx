@@ -171,7 +171,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
               <Space align="center" size="small">
                 <ProfilePicture
                   displayName={getEntityName(entityData.owner)}
-                  id=""
+                  id={entityData.name}
                   name={getEntityName(entityData.owner)}
                   width="20"
                 />
