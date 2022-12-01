@@ -656,17 +656,17 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
-  const SOFT_DELETED_ITEM = [
+  const DELETED_TEAMS_ITEM = [
     {
       label: (
         <Space className="cursor-pointer manage-button" size={8}>
           {deletedTeamIcon}
-          <div className="text-left" data-testid="soft-deleted-team">
+          <div className="text-left" data-testid="deleted-team">
             <Row className="m-b-xss" justify="space-between">
               <Col>
-                <p className="font-medium" data-testid="soft-deleted-label">
-                  {t('label.soft-deleted-team', {
-                    action: 'Show',
+                <p className="font-medium" data-testid="deleted-label">
+                  {t('label.deleted-team-action', {
+                    action: showDeletedTeam ? t('label.hide') : t('label.show'),
                   })}
                 </p>
               </Col>
@@ -682,16 +682,16 @@ const TeamDetailsV1 = ({
               </Col>
             </Row>
             <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-              {t('label.access-to-collaborate')}
+              {t('label.view-deleted-teams')}
             </Typography.Paragraph>
           </div>
         </Space>
       ),
-      key: 'soft-deleted-team-dropdown',
+      key: 'deleted-team-dropdown',
     },
   ];
 
-  const organizationDropdownContent = <Menu items={[...SOFT_DELETED_ITEM]} />;
+  const organizationDropdownContent = <Menu items={[...DELETED_TEAMS_ITEM]} />;
 
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
@@ -758,7 +758,7 @@ const TeamDetailsV1 = ({
         key: 'open-group-dropdown',
       },
       ...(currentTeam.teamType === TeamType.BusinessUnit
-        ? SOFT_DELETED_ITEM
+        ? DELETED_TEAMS_ITEM
         : []),
     ],
     [entityPermissions, currentTeam, childTeams, showDeletedTeam]

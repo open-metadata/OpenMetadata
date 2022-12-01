@@ -347,7 +347,10 @@
     "chart": "Chart",
     "task": "Task",
     "add-entity": "Add {{entity}}",
-    "soft-deleted-team": "{{action}} Deleted Team"
+    "deleted-team-action": "{{action}} Deleted Team",
+    "show": "Show",
+    "hide": "Hide",
+    "view-deleted-teams": "Will be able to see Deleted Teams comes under this Team"
   },
   "message": {
     "service-email-required": "Service account Email is required",
