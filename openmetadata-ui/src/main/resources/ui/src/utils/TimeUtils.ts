@@ -17,8 +17,15 @@ import { DateTime, Duration } from 'luxon';
 export const getTimeByTimeStamp = (timeStamp: number): string =>
   DateTime.fromMillis(timeStamp).toFormat('hh:mm a');
 
-export const getRelativeDateByTimeStamp = (timeStamp: number): string => {
-  return capitalize(DateTime.fromMillis(timeStamp).toRelativeCalendar() || '');
+export const getRelativeDateByTimeStamp = (
+  timeStamp: number,
+  baseTimeStamp?: number
+): string => {
+  return capitalize(
+    DateTime.fromMillis(timeStamp).toRelativeCalendar({
+      base: baseTimeStamp ? DateTime.fromMillis(baseTimeStamp) : DateTime.now(),
+    }) || ''
+  );
 };
 
 export const getDayTimeByTimeStamp = (timeStamp: number): string => {
