@@ -346,7 +346,8 @@
     "service": "Service",
     "chart": "Chart",
     "task": "Task",
-    "add-entity": "Add {{entity}}"
+    "add-entity": "Add {{entity}}",
+    "soft-deleted-team": "{{action}} Deleted Team"
   },
   "message": {
     "service-email-required": "Service account Email is required",

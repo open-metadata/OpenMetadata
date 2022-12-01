@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 interface TeamHierarchyProps {
   data: Team[];
@@ -76,7 +77,30 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
       className="teams-list-table"
       columns={columns}
       dataSource={data}
+      expandable={{
+        expandIcon: ({ expanded, onExpand, expandable, record }) =>
+          expandable ? (
+            <span
+              className="m-r-xs cursor-pointer"
+              onClick={(e) =>
+                onExpand(
+                  record,
+                  e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
+                )
+              }>
+              <SVGIcons
+                alt="icon"
+                icon={
+                  expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT
+                }
+              />
+            </span>
+          ) : (
+            <div className="expand-cell-icon-container" />
+          ),
+      }}
       pagination={false}
+      rowKey="id"
       size="small"
       onExpand={(isOpen, record) => {
         if (isOpen && isEmpty(record.children)) {

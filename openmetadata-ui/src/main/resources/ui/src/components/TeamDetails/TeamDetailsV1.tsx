@@ -15,6 +15,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
+  Dropdown,
+  Menu,
   Modal,
   Row,
   Space,
@@ -143,6 +145,7 @@ const TeamDetailsV1 = ({
   removeUserFromTeam,
   afterDeleteAction,
   onAssetsPaginate,
+  parentTeams,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const isOrganization = currentTeam.name === TeamType.Organization;
@@ -178,6 +181,7 @@ const TeamDetailsV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState<boolean>(false);
 
   const teamCount = useMemo(
     () =>
@@ -577,9 +581,9 @@ const TeamDetailsV1 = ({
 
   useEffect(() => {
     if (currentTeam) {
-      const perents =
-        currentTeam?.parents && !isOrganization
-          ? currentTeam?.parents.map((parent) => ({
+      const parents =
+        parentTeams && !isOrganization
+          ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
                 parent.name || parent.fullyQualifiedName || ''
@@ -587,7 +591,7 @@ const TeamDetailsV1 = ({
             }))
           : [];
       const breadcrumb = [
-        ...perents,
+        ...parents,
         {
           name: getEntityName(currentTeam),
           url: '',
@@ -596,7 +600,7 @@ const TeamDetailsV1 = ({
       setSlashedDatabaseName(breadcrumb);
       setHeading(currentTeam.displayName || currentTeam.name);
     }
-  }, [currentTeam]);
+  }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
     setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
@@ -627,6 +631,16 @@ const TeamDetailsV1 = ({
     return `${t('label.sure-want-to')} ${text}`;
   };
 
+  const deletedTeamIcon = useMemo(
+    () => (
+      <SVGIcons
+        alt={t('label.delete')}
+        icon={showDeletedTeam ? Icons.HIDE_PASSWORD : Icons.SHOW_PASSWORD}
+      />
+    ),
+    [showDeletedTeam]
+  );
+
   const openGroupIcon = useMemo(
     () => (
       <SVGIcons
@@ -641,6 +655,43 @@ const TeamDetailsV1 = ({
     () => <SVGIcons alt="Restore" icon={Icons.RESTORE} width="16px" />,
     [currentTeam.isJoinable]
   );
+
+  const SOFT_DELETED_ITEM = [
+    {
+      label: (
+        <Space className="cursor-pointer manage-button" size={8}>
+          {deletedTeamIcon}
+          <div className="text-left" data-testid="soft-deleted-team">
+            <Row className="m-b-xss" justify="space-between">
+              <Col>
+                <p className="font-medium" data-testid="soft-deleted-label">
+                  {t('label.soft-deleted-team', {
+                    action: 'Show',
+                  })}
+                </p>
+              </Col>
+
+              <Col>
+                <Switch
+                  checked={showDeletedTeam}
+                  className="m-r-xs"
+                  data-testid="show-deleted-switch"
+                  size="small"
+                  onChange={onShowDeletedTeamChange}
+                />
+              </Col>
+            </Row>
+            <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+              {t('label.access-to-collaborate')}
+            </Typography.Paragraph>
+          </div>
+        </Space>
+      ),
+      key: 'soft-deleted-team-dropdown',
+    },
+  ];
+
+  const organizationDropdownContent = <Menu items={[...SOFT_DELETED_ITEM]} />;
 
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
@@ -706,8 +757,11 @@ const TeamDetailsV1 = ({
         ),
         key: 'open-group-dropdown',
       },
+      ...(currentTeam.teamType === TeamType.BusinessUnit
+        ? SOFT_DELETED_ITEM
+        : []),
     ],
-    [entityPermissions, currentTeam, childTeams]
+    [entityPermissions, currentTeam, childTeams, showDeletedTeam]
   );
 
   /**
@@ -997,7 +1051,7 @@ const TeamDetailsV1 = ({
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
             {getTeamHeading()}
-            {!isOrganization && (
+            {!isOrganization ? (
               <Space align="center">
                 {!isUndefined(currentUser) &&
                   teamActionButton(
@@ -1028,6 +1082,25 @@ const TeamDetailsV1 = ({
                   />
                 )}
               </Space>
+            ) : (
+              <Dropdown
+                align={{ targetOffset: [-12, 0] }}
+                overlay={organizationDropdownContent}
+                overlayStyle={{ width: '350px' }}
+                placement="bottomRight"
+                trigger={['click']}
+                visible={showActions}
+                onVisibleChange={setShowActions}>
+                <ButtonAntd
+                  className="rounded-4 w-6 manage-dropdown-button"
+                  data-testid="organization-dropdown"
+                  size="small">
+                  <FontAwesomeIcon
+                    className="text-primary self-center manage-dropdown-icon"
+                    icon="ellipsis-vertical"
+                  />
+                </ButtonAntd>
+              </Dropdown>
             )}
           </div>
           <Space size={0}>
@@ -1111,12 +1184,6 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
-                        <Switch
-                          checked={showDeletedTeam}
-                          data-testid="show-deleted-switch"
-                          onChange={onShowDeletedTeamChange}
-                        />
-                        <span>{t('label.deleted-teams')} </span>
                         <ButtonAntd
                           data-testid="add-team"
                           disabled={!createTeamPermission}
