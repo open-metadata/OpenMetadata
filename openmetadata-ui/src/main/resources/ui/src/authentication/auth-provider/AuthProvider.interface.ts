@@ -37,3 +37,8 @@ export interface AuthenticatorRef {
   invokeLogout: () => void;
   renewIdToken: () => Promise<string>;
 }
+
+export enum JWT_PRINCIPAL_CLAIMS {
+  EMAIL = 'email',
+  PREFERRED_USERNAME = 'preferred_username',
+}

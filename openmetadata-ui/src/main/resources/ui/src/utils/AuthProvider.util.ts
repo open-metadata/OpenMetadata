@@ -19,9 +19,12 @@ import {
   PublicClientApplication,
 } from '@azure/msal-browser';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { isNil } from 'lodash';
+import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import { UserProfile } from '../authentication/auth-provider/AuthProvider.interface';
+import {
+  JWT_PRINCIPAL_CLAIMS,
+  UserProfile,
+} from '../authentication/auth-provider/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
@@ -209,8 +212,22 @@ export const getNameFromEmail = (email: string) => {
   }
 };
 
-export const getNameFromUserData = (user: UserProfile) => {
-  return user.preferred_username ?? getNameFromEmail(user.email);
+export const getNameFromUserData = (
+  user: UserProfile,
+  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = []
+) => {
+  // get the first claim from claim list
+  const firstClaim = first(jwtPrincipalClaims);
+  const nameFromEmail = getNameFromEmail(user.email);
+
+  /* if first claim is preferred_username then return preferred_username
+   * for fallback if preferred_username is not present then return the name from email
+   */
+  if (firstClaim === JWT_PRINCIPAL_CLAIMS.PREFERRED_USERNAME) {
+    return user.preferred_username ?? nameFromEmail;
+  }
+
+  return nameFromEmail;
 };
 
 export const isProtectedRoute = (pathname: string) => {

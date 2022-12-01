@@ -34,14 +34,18 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const cookieStorage = new CookieStorage();
 
 const Signup = () => {
+  const { setIsSigningIn, jwtPrincipalClaims = [] } = useAuthContext();
+
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [details, setDetails] = useState({
     displayName: appState.newUser.name || '',
-    name: getNameFromUserData(appState.newUser as UserProfile),
+    name: getNameFromUserData(
+      appState.newUser as UserProfile,
+      jwtPrincipalClaims
+    ),
     email: appState.newUser.email || '',
   });
-  const { setIsSigningIn } = useAuthContext();
 
   const history = useHistory();
 
