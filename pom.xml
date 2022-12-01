@@ -99,7 +99,7 @@
     <redshift-jdbc.version>2.1.0.9</redshift-jdbc.version>
     <gson.version>2.9.1</gson.version>
     <mysql.connector.version>8.0.30</mysql.connector.version>
-    <postgres.connector.version>42.5.0</postgres.connector.version>
+    <postgres.connector.version>42.5.1</postgres.connector.version>
     <jsonschema2pojo.version>1.1.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
