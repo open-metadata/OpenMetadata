@@ -253,7 +253,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             return (
               <div data-testid={`feed${i}`} key={i}>
                 <FeedListSeparator
-                  className="tw-relative tw-mt-3 tw-mb-3.5"
+                  className="relative m-y-xs"
                   relativeDay={d}
                 />
                 <FeedListBody
