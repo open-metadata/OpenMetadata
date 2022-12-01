@@ -24,7 +24,7 @@ export type UserProfile = {
   name: string;
   picture: string;
   locale?: string;
-} & Profile;
+} & Pick<Profile, 'preferred_username'>;
 
 export type OidcUser = {
   id_token: string;
