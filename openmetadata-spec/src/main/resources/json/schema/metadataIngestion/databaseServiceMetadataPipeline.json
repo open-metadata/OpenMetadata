@@ -23,8 +23,8 @@
       "type": "boolean",
       "default": true
     },
-    "markDeletedTablesFromFilterOnly": {
-      "description": "Optional configuration to mark deleted tables only to the filtered schema",
+    "markAllDeletedTables": {
+      "description": "Optional configuration to mark all deleted tables to the filtered schema",
       "type": "boolean",
       "default": false
     },
