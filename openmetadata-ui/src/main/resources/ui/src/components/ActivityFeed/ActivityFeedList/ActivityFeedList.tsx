@@ -37,6 +37,7 @@ import {
   threadFilterList,
 } from './ActivityFeedList.util';
 import FeedListBody from './FeedListBody';
+import FeedListSeparator from './FeedListSeparator';
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
@@ -251,6 +252,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           {relativeDays.map((d, i) => {
             return (
               <div data-testid={`feed${i}`} key={i}>
+                <FeedListSeparator
+                  className="tw-relative tw-mt-3 tw-mb-3.5"
+                  relativeDay={d}
+                />
                 <FeedListBody
                   deletePostHandler={deletePostHandler}
                   isEntityFeed={isEntityFeed}
