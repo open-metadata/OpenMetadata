@@ -16,8 +16,20 @@
  * @type {Cypress.PluginConfig}
  */
 
+const postgreSQL = require('cypress-postgresql');
+const pg = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, './.env') });
+
+
+const hostPort = process.env.CYPRESS_POSTGRES_HOST_PORT;
+
+const dbConfig = {
+  user: process.env.CYPRESS_POSTGRES_USERNAME,
+  password: process.env.CYPRESS_POSTGRES_PASSWORD,
+  host: hostPort ? hostPort.split(":")[0] : undefined,
+  database: process.env.CYPRESS_POSTGRES_DATABASE,
+ }
 
 // eslint-disable-next-line no-unused-vars
 module.exports = (on, config) => {
@@ -79,6 +91,17 @@ module.exports = (on, config) => {
   config.env.mysqlPassword = process.env.CYPRESS_MYSQL_PASSWORD;
   config.env.mysqlHostPort = process.env.CYPRESS_MYSQL_HOST_PORT;
   config.env.mysqlDatabaseSchema = process.env.CYPRESS_MYSQL_DATABASE_SCHEMA;
+
+  // Postgres
+  config.env.postgresUsername = process.env.CYPRESS_POSTGRES_USERNAME;
+  config.env.postgresPassword = process.env.CYPRESS_POSTGRES_PASSWORD;
+  config.env.postgresHostPort = process.env.CYPRESS_POSTGRES_HOST_PORT;
+  config.env.postgresDatabase = process.env.CYPRESS_POSTGRES_DATABASE;
+
+  
+  const pool = new pg.Pool(dbConfig);
+  const tasks = postgreSQL.loadDBPlugin( pool );
+  on('task', tasks);
 
   return config;
 };

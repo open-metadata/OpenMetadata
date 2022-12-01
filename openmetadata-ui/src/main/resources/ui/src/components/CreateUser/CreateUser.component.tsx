@@ -24,7 +24,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, trim } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -311,7 +311,7 @@ const CreateUser = ({
     const userProfile: CreateUserSchema = {
       description: markdownRef.current?.getEditorContent() || undefined,
       name: email.split('@')[0],
-      displayName,
+      displayName: trim(displayName),
       roles: validRole.length ? validRole : undefined,
       teams: validTeam.length ? validTeam : undefined,
       email: email,

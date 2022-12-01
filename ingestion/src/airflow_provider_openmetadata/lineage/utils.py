@@ -271,17 +271,17 @@ def add_status(
 
     # Check if we already have a pipelineStatus for
     # our execution_date that we should update
-    pipeline_status: List[PipelineStatus] = metadata.get_by_id(
+    pipeline_status: PipelineStatus = metadata.get_by_id(
         entity=Pipeline, entity_id=pipeline.id, fields=["pipelineStatus"]
     ).pipelineStatus
 
     task_status = []
     # We will append based on the current registered status
-    if pipeline_status and pipeline_status[0].executionDate.__root__ == execution_date:
+    if pipeline_status and pipeline_status.timestamp.__root__ == execution_date:
         # If we are clearing a task, use the status of the new execution
         task_status = [
             task
-            for task in pipeline_status[0].taskStatus
+            for task in pipeline_status.taskStatus
             if task.name != task_instance.task_id
         ]
 
