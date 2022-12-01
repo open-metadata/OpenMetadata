@@ -427,7 +427,7 @@ const AddKPIPage = () => {
           </Col>
           <Col className="m-t-md" span={4}>
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.edit-kpi')}
+              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
             </Typography.Paragraph>
             <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
           </Col>
