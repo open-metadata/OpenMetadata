@@ -38,6 +38,8 @@ const TableDataCardTitle = ({
   source,
   handleLinkClick,
 }: TableDataCardTitleProps) => {
+  const isTourRoute = location.pathname.includes(ROUTES.TOUR);
+
   const title = (
     <Button
       className="tw-text-grey-body tw-font-semibold"
@@ -47,12 +49,12 @@ const TableDataCardTitle = ({
       )}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`}
       id={`${id}Title`}
       type="link"
-      onClick={handleLinkClick}>
+      onClick={isTourRoute ? handleLinkClick : undefined}>
       <Typography.Title level={5}>{stringToHTML(source.name)}</Typography.Title>
     </Button>
   );
 
-  if (location.pathname.includes(ROUTES.TOUR)) {
+  if (isTourRoute) {
     return title;
   }
 
