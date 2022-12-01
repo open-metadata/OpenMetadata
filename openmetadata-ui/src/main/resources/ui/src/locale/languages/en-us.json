@@ -378,7 +378,8 @@
     "service": "Service",
     "chart": "Chart",
     "task": "Task",
-    "add-entity": "Add {{entity}}"
+    "add-entity": "Add {{entity}}",
+    "remove": "Remove"
   },
   "message": {
     "service-email-required": "Service account Email is required",

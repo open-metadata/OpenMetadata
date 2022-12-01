@@ -21,7 +21,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="governance"]')
       .should('exist')
-      .should('be.visible')
+      .and('be.visible')
       .click();
 
     // adding manual wait to open dropdown in UI
@@ -162,7 +162,7 @@ describe('Tags page should work', () => {
   it('Delete Tag flow should work properly', () => {
     interceptURL("GET", "/api/v1/tags?*", "tags");
 
-    cy.get('[data-testid="side-panel-category"]')
+       cy.get('[data-testid="side-panel-category"]')
         .contains(NEW_TAG_CATEGORY.name)
         .should('be.visible')
         .as('newCategory');
@@ -175,7 +175,11 @@ describe('Tags page should work', () => {
         cy.get('[data-testid="delete-tag-category-button"]')
         .should('be.visible')
         .click();
-        cy.get('[data-testid="confirmation-modal"]').should('be.visible');
+
+        cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
+        cy.get('[data-testid="confirmation-modal"]').within(() => {
+            cy.get("[role='dialog']").should("be.visible");
+        });
         cy.contains(
         `Are you sure you want to delete the tag category "${NEW_TAG_CATEGORY.name}"?`
         ).should('be.visible');

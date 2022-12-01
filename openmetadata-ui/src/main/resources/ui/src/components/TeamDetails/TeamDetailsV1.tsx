@@ -273,7 +273,7 @@ const TeamDetailsV1 = ({
               placement="bottomRight"
               title={
                 entityPermissions.EditAll
-                  ? t('label.remove-entity')
+                  ? t('label.remove')
                   : NO_PERMISSION_FOR_ACTION
               }>
               <ButtonAntd
@@ -612,7 +612,7 @@ const TeamDetailsV1 = ({
           entity: deletingUser.user?.displayName ?? deletingUser.user?.name,
         });
 
-    return t('message.are-you-sure-want-to', { text });
+    return t('message.are-you-sure-want-to-text', { text });
   };
 
   const openGroupIcon = useMemo(
@@ -1284,9 +1284,9 @@ const TeamDetailsV1 = ({
           closable={false}
           confirmLoading={isModalLoading}
           okText={t('label.confirm')}
-          title={`${t('label.remove-entity')} ${getEntityName(
-            selectedEntity.record
-          )} from ${getEntityName(currentTeam)}`}
+          title={`${t('label.remove-entity', {
+            entity: getEntityName(selectedEntity?.record),
+          })} ${t('label.from')} ${getEntityName(currentTeam)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
