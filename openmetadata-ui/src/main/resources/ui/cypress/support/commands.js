@@ -69,8 +69,8 @@ Cypress.Commands.add('goToHomePage', () => {
   interceptURL('GET', '/api/v1/util/entities/count', 'count');
   interceptURL('GET', '/api/v1/feed', 'feed');
   interceptURL('GET', '/api/v1/users/name/*?fields=profile', 'userProfile');
-  cy.get('[data-testid="whats-new-dialog"]').should('exist');
-  cy.get('[data-testid="closeWhatsNew"]').click({ force: true });
+  cy.get('[data-testid="whats-new-dialog"]').should('be.visible');
+  cy.get('[data-testid="closeWhatsNew"]').click();
   cy.get('[data-testid="whats-new-dialog"]').should('not.exist');
   verifyResponseStatusCode('@count', 200);
   verifyResponseStatusCode('@feed', 200);
