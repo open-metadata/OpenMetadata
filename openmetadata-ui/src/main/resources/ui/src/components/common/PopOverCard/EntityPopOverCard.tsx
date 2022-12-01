@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Divider, Popover, Space, Typography } from 'antd';
+import { Button, Divider, Popover, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { EntityTags } from 'Models';
@@ -139,12 +139,13 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   const PopoverTitle = () => {
     return (
       <Link data-testid="entitylink" to={getEntityLink(entityType, entityFQN)}>
-        <button
-          className="text-primary"
+        <Button
+          className="p-0"
           disabled={AppState.isTourOpen}
+          type="link"
           onClick={(e) => e.stopPropagation()}>
           <span>{entityFQN}</span>
-        </button>
+        </Button>
       </Link>
     );
   };
