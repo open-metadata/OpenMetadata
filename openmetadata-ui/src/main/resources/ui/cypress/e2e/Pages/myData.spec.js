@@ -13,17 +13,31 @@
 
 /// <reference types="cypress" />
 
-import { interceptURL, searchEntity, verifyResponseStatusCode, visitEntityDetailsPage } from '../../common/common';
-import { ENTITIES, FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import {
+    interceptURL,
+    searchEntity,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
+} from '../../common/common';
+import {
+    ENTITIES,
+    FOLLOWING_TITLE,
+    MYDATA_SUMMARY_OPTIONS,
+    MY_DATA_TITLE,
+    NO_SEARCHED_TERMS,
+    RECENT_SEARCH_TITLE,
+    RECENT_VIEW_TITLE,
+    SEARCH_ENTITY_DASHBOARD,
+    SEARCH_ENTITY_PIPELINE,
+    SEARCH_ENTITY_TABLE,
+    SEARCH_ENTITY_TOPIC
+} from '../../constants/constants';
 
-const tables = Object.values(SEARCH_ENTITY_TABLE);
-const topics = Object.values(SEARCH_ENTITY_TOPIC);
-const dashboards = Object.values(SEARCH_ENTITY_DASHBOARD);
-const pipelines = Object.values(SEARCH_ENTITY_PIPELINE);
+const FOLLOWING_MYDATA_COUNT = 3;
 
 describe('MyData page should work', () => {
   beforeEach(() => {
-    cy.login()
+    cy.login();
     interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
     interceptURL('GET', '/api/v1/search/*', 'explorePageSearch');
   });
@@ -121,7 +135,7 @@ describe('MyData page should work', () => {
   });
 
   Object.values(ENTITIES).map((entity) => {
-    const text = entity.entityObj.displayName ?? entity.entityObj.term
+    const text = entity.entityObj.displayName ?? entity.entityObj.term;
     it(`Recent view section and redirection should work for ${entity.name} entity`, () => {
       visitEntityDetailsPage(
         entity.entityObj.term,
@@ -173,35 +187,15 @@ describe('MyData page should work', () => {
   });
 
   it.skip('My data and following section, CTA should work properly', () => {
-    const totalCount =
-      tables.length + pipelines.length + dashboards.length + topics.length;
-
-    cy.get('[data-testid="my-data-container"] > .ant-card > .ant-card-body')
-      .children()
-      .should('have.length', 8);
-    cy.get(
-      '[data-testid="following-data-container"] > .ant-card > .ant-card-body'
-    )
-      .children()
-      .should('have.length', 8);
-
-    cy.get('[data-testid="my-data-total-count"]')
-      .invoke('text')
-      .then((text) => {
-        expect(text).equal(`(${totalCount})`);
-      });
-    cy.get('[data-testid="following-data-total-count"]')
-      .invoke('text')
-      .then((text) => {
-        expect(text).equal(`(${totalCount})`);
-      });
+    cy.get('[data-testid="my-data-container"]')
+      .find('[data-testid*="My data"]')
+      .should('have.length', FOLLOWING_MYDATA_COUNT);
+    cy.get('[data-testid="following-data-container"]')
+      .find('[data-testid*="Following data"]')
+      .should('have.length', FOLLOWING_MYDATA_COUNT);
 
     cy.get('[data-testid="my-data-total-count"]').should('be.visible').click();
 
-    cy.intercept(
-      '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
-    ).as('searchApi');
-    cy.wait('@searchApi');
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
 
@@ -209,7 +203,6 @@ describe('MyData page should work', () => {
       .should('be.visible')
       .click();
 
-    cy.wait('@searchApi');
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
   });
