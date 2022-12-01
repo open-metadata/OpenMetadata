@@ -170,15 +170,14 @@ const AddIngestion = ({
         )
       : undefined
   );
-  const [markDeletedTablesFromFilterOnly, setMarkDeletedTablesFromFilterOnly] =
-    useState(
-      isDatabaseService
-        ? Boolean(
-            (data?.sourceConfig.config as ConfigClass)
-              ?.markDeletedTablesFromFilterOnly ?? false
-          )
-        : undefined
-    );
+  const [markAllDeletedTables, setMarkAllDeletedTables] = useState(
+    isDatabaseService
+      ? Boolean(
+          (data?.sourceConfig.config as ConfigClass)?.markAllDeletedTables ??
+            false
+        )
+      : undefined
+  );
   const [includeView, setIncludeView] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
   );
@@ -466,7 +465,7 @@ const AddIngestion = ({
             showTableFilter
           ),
           markDeletedTables,
-          markDeletedTablesFromFilterOnly,
+          markAllDeletedTables,
           ...DatabaseConfigData,
           type: ConfigType.DatabaseMetadata,
         };
@@ -734,10 +733,10 @@ const AddIngestion = ({
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
-            handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
-            handleMarkDeletedTablesFromFilterOnly={() =>
-              setMarkDeletedTablesFromFilterOnly((pre) => !pre)
+            handleMarkAllDeletedTables={() =>
+              setMarkAllDeletedTables((pre) => !pre)
             }
+            handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleProfileSample={(val) => setProfileSample(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={setResultLimit}
@@ -749,8 +748,8 @@ const AddIngestion = ({
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
+            markAllDeletedTables={markAllDeletedTables}
             markDeletedTables={markDeletedTables}
-            markDeletedTablesFromFilterOnly={markDeletedTablesFromFilterOnly}
             mlModelFilterPattern={mlModelFilterPattern}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
