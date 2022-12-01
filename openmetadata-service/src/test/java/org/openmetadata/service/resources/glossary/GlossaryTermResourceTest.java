@@ -32,7 +32,6 @@ import static org.openmetadata.service.resources.databases.TableResourceTest.get
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -366,7 +365,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public GlossaryTerm createTerm(
       Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers) throws IOException {
     EntityReference glossaryRef = glossary.getEntityReference();
-    //sending required fields only for entity reference
+    // sending required fields only for entity reference
     EntityReference parentRef = null;
     if (parent != null) {
       parentRef = new EntityReference().withId(parent.getId()).withType(GLOSSARY_TERM);
