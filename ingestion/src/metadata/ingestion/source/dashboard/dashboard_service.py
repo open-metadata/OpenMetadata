@@ -183,9 +183,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_dashboard_name(self, dashboard_details: Any) -> str:
+    def get_dashboard_name(self, dashboard: Any) -> str:
         """
-        Get Dashboard Name
+        Get Dashboard Name from each element coming from `get_dashboards_list`
         """
 
     @abstractmethod
@@ -285,16 +285,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         for dashboard in self.get_dashboards_list():
 
-            try:
-                dashboard_details = self.get_dashboard_details(dashboard)
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Cannot extract dashboard details from {dashboard}: {exc}"
-                )
-                continue
-            dashboard_name = self.get_dashboard_name(dashboard_details)
-
+            dashboard_name = self.get_dashboard_name(dashboard)
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
                 dashboard_name,
@@ -304,6 +295,16 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     "Dashboard Filtered Out",
                 )
                 continue
+
+            try:
+                dashboard_details = self.get_dashboard_details(dashboard)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Cannot extract dashboard details from {dashboard}: {exc}"
+                )
+                continue
+
             yield dashboard_details
 
     def test_connection(self) -> None:

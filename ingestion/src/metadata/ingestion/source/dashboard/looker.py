@@ -14,6 +14,9 @@ Supports:
 - owner
 - lineage
 - usage
+
+Notes:
+- Filtering is applied on the Dashboard title or ID, if the title is missing
 """
 
 import traceback
@@ -61,6 +64,22 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+LIST_DASHBOARD_FIELDS = ["id", "title"]
+
+# Here we can update the fields to get further information, such as:
+# created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
+GET_DASHBOARD_FIELDS = [
+    "id",
+    "title",
+    "dashboard_elements",
+    "dashboard_filters",
+    "view_count",
+    "description",
+    "folder",
+    "user_id",  # Use as owner
+]
+
+
 class LookerSource(DashboardServiceSource):
     """
     Looker Source Class.
@@ -93,37 +112,38 @@ class LookerSource(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_dashboards_list(self) -> Optional[List[DashboardBase]]:
+    def get_dashboards_list(self) -> List[DashboardBase]:
         """
         Get List of all dashboards
         """
-        return self.client.all_dashboards(fields="id")
+        try:
+            return list(
+                self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS))
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Wild error trying to obtain dashboard list {err}")
+            # If we cannot list the dashboards, let's blow up
+            raise err
 
-    def get_dashboard_name(self, dashboard_details: DashboardBase) -> str:
+    def get_dashboard_name(self, dashboard: DashboardBase) -> str:
         """
-        Get Dashboard Name
+        Get Dashboard Title. This will be used for filtering.
+        If the title is not present, we'll send the ID
         """
-        return dashboard_details.id
+        return dashboard.title or dashboard.id
 
     def get_dashboard_details(self, dashboard: DashboardBase) -> LookerDashboard:
         """
         Get Dashboard Details
         """
-        # Here we can update the fields to get further information, such as:
-        # created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
-        fields = [
-            "id",
-            "title",
-            "dashboard_elements",
-            "dashboard_filters",
-            "view_count",
-            "description",
-            "folder",
-            "user_id",  # Use as owner
-        ]
-        return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
+        return self.client.dashboard(
+            dashboard_id=dashboard.id, fields=",".join(GET_DASHBOARD_FIELDS)
+        )
 
-    def get_owner_details(self, dashboard_details: LookerDashboard) -> Optional[EntityReference]:
+    def get_owner_details(
+        self, dashboard_details: LookerDashboard
+    ) -> Optional[EntityReference]:
         """Get dashboard owner
 
         Store the visited users in the _owners_ref cache, even if we found them
@@ -138,11 +158,16 @@ class LookerSource(DashboardServiceSource):
         """
 
         try:
-            if dashboard_details.user_id not in self._owners_ref.keys():
+            if (
+                dashboard_details.user_id is not None
+                and dashboard_details.user_id not in self._owners_ref.keys()
+            ):
                 dashboard_owner = self.client.user(dashboard_details.user_id)
                 user = self.metadata.get_user_by_email(dashboard_owner.email)
                 if user:  # Save the EntityRef
-                    self._owners_ref[dashboard_details.user_id] = EntityReference(id=user.id, type="user")
+                    self._owners_ref[dashboard_details.user_id] = EntityReference(
+                        id=user.id, type="user"
+                    )
                 else:  # Otherwise, flag the user as missing in OM
                     self._owners_ref[dashboard_details.user_id] = None
 
@@ -162,7 +187,7 @@ class LookerSource(DashboardServiceSource):
         yield CreateDashboardRequest(
             name=dashboard_details.id.replace("::", "_"),
             displayName=dashboard_details.title,
-            description=dashboard_details.description or "",
+            description=dashboard_details.description or None,
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts
@@ -171,7 +196,7 @@ class LookerSource(DashboardServiceSource):
             service=EntityReference(
                 id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
-            owner=self.get_owner_details(dashboard_details)
+            owner=self.get_owner_details(dashboard_details),
         )
 
     @staticmethod
@@ -287,9 +312,7 @@ class LookerSource(DashboardServiceSource):
         """
         Method to fetch charts linked to dashboard
         """
-        for chart in cast(
-            Iterable[DashboardElement], dashboard_details.dashboard_elements
-        ):
+        for chart in dashboard_details.dashboard_elements:
             try:
                 if filter_by_chart(
                     chart_filter_pattern=self.source_config.chartFilterPattern,
@@ -305,7 +328,7 @@ class LookerSource(DashboardServiceSource):
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart.title or chart.id,
-                    description="",
+                    description=chart.note_text or None,
                     chartType=get_standard_chart_type(chart.type).value,
                     chartUrl=f"/dashboard_elements/{chart.id}",
                     service=EntityReference(

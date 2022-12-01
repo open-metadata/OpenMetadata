@@ -75,11 +75,12 @@ class RedashSource(DashboardServiceSource):
         dashboard_info = self.client.dashboards()
         return dashboard_info["results"]
 
-    def get_dashboard_name(self, dashboard_details: dict) -> str:
+    def get_dashboard_name(self, dashboard: dict) -> str:
         """
         Get Dashboard Name
+        TODO: TEST ME
         """
-        return dashboard_details["name"]
+        return dashboard["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         """
