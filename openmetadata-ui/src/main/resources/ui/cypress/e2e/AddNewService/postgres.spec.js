@@ -124,8 +124,8 @@ it('Add Usage ingestion', () => {
 
   cy.get('[data-testid="view-service-button"]')
     .scrollIntoView()
-    .should('be.visible')
-    .click();
+    .should('exist')
+    .click({ force: true });
 
   handleIngestionRetry('database', true, 0, 'usage');
 });
