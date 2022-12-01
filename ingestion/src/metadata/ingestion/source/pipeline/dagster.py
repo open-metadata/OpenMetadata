@@ -212,7 +212,7 @@ class DagsterSource(PipelineServiceSource):
             runs = self.get_task_runs(
                 task.name, pipeline_name=pipeline_details.get("name")
             )
-            for run in runs["solidHandle"]["stepStats"]["nodes"]:
+            for run in runs["solidHandle"]["stepStats"].get("nodes") or []:
                 task_status = TaskStatus(
                     name=task.name,
                     executionStatus=STATUS_MAP.get(
@@ -247,7 +247,7 @@ class DagsterSource(PipelineServiceSource):
         for result in results:
             self.context.repository_location = result.get("location")["name"]
             self.context.repository_name = result["name"]
-            for job in result["pipelines"]:
+            for job in result.get("pipelines") or []:
                 yield job
 
     def get_pipeline_name(self, pipeline_details) -> str:
