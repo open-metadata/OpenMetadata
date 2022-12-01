@@ -81,7 +81,6 @@ source:
       maxConnectionLifeTime: <time in secs.>
       validateSSL: <true or false>
       encrypted: <true or false>
-      modelClass: <modelclass>
   sourceConfig:
     config: {}
 
@@ -104,7 +103,6 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 - `maxConnectionLifeTime` (optional): Maximum connection lifetime for the Amundsen Neo4j Connection 
 - `validateSSL` (optional): Enable SSL validation for the Amundsen Neo4j Connection. 
 - `encrypted` (Optional): Enable encryption for the Amundsen Neo4j Connection. 
-- `modelClass` (Optional): Model Class for the Amundsen Neo4j Connection.
 
 ### Sink Configuration
 
