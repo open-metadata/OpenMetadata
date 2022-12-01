@@ -39,6 +39,12 @@ const TableDataCardTitle = ({
   handleLinkClick,
 }: TableDataCardTitleProps) => {
   const title = (
+    <Typography.Title level={5}>{stringToHTML(source.name)}</Typography.Title>
+  );
+
+  const isTourRoute = location.pathname.includes(ROUTES.TOUR);
+
+  return isTourRoute ? (
     <Button
       className="tw-text-grey-body tw-font-semibold"
       data-testid={`${getPartialNameFromTableFQN(
@@ -48,15 +54,9 @@ const TableDataCardTitle = ({
       id={`${id}Title`}
       type="link"
       onClick={handleLinkClick}>
-      <Typography.Title level={5}>{stringToHTML(source.name)}</Typography.Title>
+      {title}
     </Button>
-  );
-
-  if (location.pathname.includes(ROUTES.TOUR)) {
-    return title;
-  }
-
-  return (
+  ) : (
     <Link
       className="table-data-card-title-container"
       to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
