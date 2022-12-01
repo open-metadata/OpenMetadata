@@ -762,7 +762,7 @@ const TagsPage = () => {
               })}
               cancelText={t('label.cancel')}
               confirmText={t('label.confirm')}
-              header={t('label.delete-tag', {
+              header={t('label.delete-tag-category', {
                 isCategory: deleteTags.data?.isCategory ? 'Category' : '',
               })}
               visible={deleteTags.state}

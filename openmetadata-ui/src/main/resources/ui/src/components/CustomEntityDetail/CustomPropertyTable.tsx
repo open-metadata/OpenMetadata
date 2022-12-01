@@ -159,7 +159,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         })}
         cancelText={t('label.cancel')}
         confirmText={t('label.confirm')}
-        header={t('label.delete-property', {
+        header={t('label.delete-property-name', {
           propertyName: selectedProperty.name,
         })}
         visible={deleteCheck}
