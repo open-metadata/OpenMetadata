@@ -54,6 +54,7 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
       setVisible(true);
       selectRef.current?.focus();
+      event.preventDefault();
     } else if (event.key === Keys.ESC) {
       handleCancel();
     }
