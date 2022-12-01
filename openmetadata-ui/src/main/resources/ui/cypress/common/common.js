@@ -36,8 +36,8 @@ const checkTeamTypeOptions = () => {
 };
 
 //intercepting URL with cy.intercept
-export const interceptURL = (method, url, alias) => {
-    cy.intercept({ method: method, url: url }).as(alias);
+export const interceptURL = (method, url, alias, callback) => {
+    cy.intercept({ method: method, url: url }, callback).as(alias);
 };
 
 //waiting for response and validating the response status code
