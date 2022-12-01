@@ -21,6 +21,7 @@ import {
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
+import { UserProfile } from '../authentication/auth-provider/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
@@ -206,6 +207,10 @@ export const getNameFromEmail = (email: string) => {
     // if the string does not conform to email format return the string
     return email;
   }
+};
+
+export const getNameFromUserData = (user: UserProfile) => {
+  return user.preferred_username ?? getNameFromEmail(user.email);
 };
 
 export const isProtectedRoute = (pathname: string) => {

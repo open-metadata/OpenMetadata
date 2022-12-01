@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Profile } from 'oidc-client';
 import { ComponentType, ReactNode } from 'react';
 
 export interface AuthProviderProps {
@@ -23,7 +24,7 @@ export type UserProfile = {
   name: string;
   picture: string;
   locale?: string;
-};
+} & Profile;
 
 export type OidcUser = {
   id_token: string;
