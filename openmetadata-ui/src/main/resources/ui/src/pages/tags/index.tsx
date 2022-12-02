@@ -678,9 +678,7 @@ const TagsPage = () => {
                 </div>
               </div>
             )}
-            <div
-              className="tw-mb-3 tw--ml-5"
-              data-testid="description-container">
+            <div className="m-b-sm" data-testid="description-container">
               <Description
                 description={currentCategory?.description || ''}
                 entityName={
