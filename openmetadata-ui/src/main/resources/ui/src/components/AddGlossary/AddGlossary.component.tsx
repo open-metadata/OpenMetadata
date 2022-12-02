@@ -12,20 +12,18 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { EntityReference } from '../../generated/type/entityReference';
-import {
-  errorMsg,
-  getCurrentUserId,
-  requiredField,
-} from '../../utils/CommonUtils';
+import { getCurrentUserId, requiredField } from '../../utils/CommonUtils';
+import { getAddGlossaryError } from '../../utils/GlossaryUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
@@ -34,7 +32,7 @@ import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import Tags from '../tags/tags';
-import { AddGlossaryProps } from './AddGlossary.interface';
+import { AddGlossaryError, AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -49,6 +47,7 @@ const AddGlossary = ({
   onSave,
 }: AddGlossaryProps) => {
   const markdownRef = useRef<EditorContentRef>();
+  const { t } = useTranslation();
 
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
@@ -166,7 +165,7 @@ const AddGlossary = ({
             theme="primary"
             variant="contained"
             onClick={handleSave}>
-            Save
+            {t('label.save')}
           </Button>
         )}
       </>
@@ -176,16 +175,12 @@ const AddGlossary = ({
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Glossary</h6>
-        <div className="tw-mb-5">
-          A Glossary is a controlled vocabulary used to define the concepts and
-          terminology in an organization. Glossaries can be specific to a
-          certain domain (for e.g., Business Glossary, Technical Glossary). In
-          the glossary, the standard terms and concepts can be defined along
-          with the synonyms, and related terms. Control can be established over
-          how and who can add the terms in the glossary.
-        </div>
-        {/* {getDocButton('Read Glossary Doc', '', 'glossary-doc')} */}
+        <Typography.Title level={5}>
+          {t('label.configure-entity', {
+            entity: t('label.glossary'),
+          })}
+        </Typography.Title>
+        <div className="mb-5">{t('message.create-new-glossary-guide')}</div>
       </>
     );
   };
@@ -197,11 +192,11 @@ const AddGlossary = ({
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
-        <h6 className="tw-heading tw-text-base">{header}</h6>
+        <Typography.Title level={5}>{header}</Typography.Title>
         <div className="tw-pb-3" data-testid="add-glossary">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="name">
-              {requiredField('Name:')}
+              {requiredField(`${t('label.name')}:`)}
             </label>
 
             <input
@@ -209,23 +204,23 @@ const AddGlossary = ({
               data-testid="name"
               id="name"
               name="name"
-              placeholder="Name"
+              placeholder={t('label.name')}
               type="text"
               value={name}
               onChange={handleValidation}
             />
 
             {showErrorMsg.name
-              ? errorMsg('Glossary name is required.')
+              ? getAddGlossaryError(AddGlossaryError.NAME_REQUIRED)
               : showErrorMsg.invalidName
-              ? errorMsg('Glossary name is invalid.')
+              ? getAddGlossaryError(AddGlossaryError.NAME_INVALID)
               : null}
           </Field>
           <Field>
             <label
               className="tw-block tw-form-label tw-mb-0"
               htmlFor="description">
-              {requiredField('Description:')}
+              {requiredField(`${t('label.description')}:`)}
             </label>
             <RichTextEditor
               data-testid="description"
@@ -233,12 +228,13 @@ const AddGlossary = ({
               readonly={!allowAccess}
               ref={markdownRef}
             />
-            {showErrorMsg.description && errorMsg('Description is required.')}
+            {showErrorMsg.description &&
+              getAddGlossaryError(AddGlossaryError.DESCRIPTION_REQUIRED)}
           </Field>
 
           <Field>
             <Space className="w-full" direction="vertical">
-              <label htmlFor="tags">Tags:</label>
+              <label htmlFor="tags">{t('label.tag-plural')}:</label>
               <AddTags
                 data-testid="tags"
                 setTags={(tag: EntityTags[]) => setTags(tag)}
@@ -248,7 +244,9 @@ const AddGlossary = ({
 
           <div>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <span className="w-form-label tw-mr-3">Reviewers: </span>
+              <span className="w-form-label tw-mr-3">
+                {t('label.reviewer-plural')}:
+              </span>
               <Button
                 className="tw-h-5 tw-px-2"
                 data-testid="add-reviewers"
@@ -277,14 +275,14 @@ const AddGlossary = ({
             </div>
           </div>
 
-          <div className="tw-flex tw-justify-end">
+          <div className="flex justify-end">
             <Button
               data-testid="cancel-glossary"
               size="regular"
               theme="primary"
               variant="text"
               onClick={onCancel}>
-              Cancel
+              {t('label.cancel')}
             </Button>
             {getSaveButton()}
           </div>
@@ -292,7 +290,7 @@ const AddGlossary = ({
 
         {showRevieweModal && (
           <ReviewerModal
-            header="Add Reviewer"
+            header={t('label.add-reviewer')}
             reviewer={reviewer}
             onCancel={onReviewerModalCancel}
             onSave={handleReviewerSave}

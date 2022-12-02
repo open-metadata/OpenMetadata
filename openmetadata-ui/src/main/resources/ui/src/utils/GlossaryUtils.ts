@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
 import { FormattedGlossarySuggestion } from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
@@ -21,6 +22,7 @@ import {
   getGlossaryTerms,
 } from '../axiosAPIs/glossaryAPI';
 import { searchData } from '../axiosAPIs/miscAPI';
+import { AddGlossaryError } from '../components/AddGlossary/AddGlossary.interface';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
@@ -34,7 +36,7 @@ import { SearchResponse } from '../interface/search.interface';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
-import { getEntityName } from './CommonUtils';
+import { errorMsg, getEntityName } from './CommonUtils';
 
 export interface GlossaryTermTreeNode {
   children?: GlossaryTermTreeNode[];
@@ -401,4 +403,32 @@ export const getEntityReferenceFromGlossary = (
     displayName: glossary.displayName,
     name: glossary.name,
   };
+};
+
+export const getAddGlossaryError = (key: AddGlossaryError) => {
+  switch (key) {
+    case AddGlossaryError.NAME_REQUIRED:
+      return errorMsg(
+        t('label.field-required', {
+          field: `${t('label.glossary')} ${t('label.name-lowercase')}`,
+        }) + '.'
+      );
+
+    case AddGlossaryError.NAME_INVALID:
+      return errorMsg(
+        t('label.field-invalid', {
+          field: `${t('label.glossary')} ${t('label.name-lowercase')}`,
+        }) + '.'
+      );
+
+    case AddGlossaryError.DESCRIPTION_REQUIRED:
+      return errorMsg(
+        t('label.field-required', {
+          field: t('label.description'),
+        }) + '.'
+      );
+
+    default:
+      return;
+  }
 };
