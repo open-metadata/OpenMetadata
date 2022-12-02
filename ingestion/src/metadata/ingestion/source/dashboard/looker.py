@@ -36,7 +36,6 @@ from looker_sdk.sdk.api40.models import (
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as MetadataDashboard,
 )
@@ -161,7 +160,7 @@ class LookerSource(DashboardServiceSource):
         try:
             if (
                 dashboard_details.user_id is not None
-                and dashboard_details.user_id not in self._owners_ref.keys()
+                and dashboard_details.user_id not in self._owners_ref
             ):
                 dashboard_owner = self.client.user(dashboard_details.user_id)
                 user = self.metadata.get_user_by_email(dashboard_owner.email)
@@ -299,7 +298,7 @@ class LookerSource(DashboardServiceSource):
                 )
 
     def build_lineage_request(
-        self, source: str, db_service_name: str, to_entity: Dashboard
+        self, source: str, db_service_name: str, to_entity: MetadataDashboard
     ) -> Optional[AddLineageRequest]:
         """
         Once we have a list of origin data sources, check their components
