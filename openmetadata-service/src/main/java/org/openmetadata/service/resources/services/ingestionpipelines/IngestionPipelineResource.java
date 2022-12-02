@@ -95,21 +95,21 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private static final String INGESTION_PIPELINE_TAG_CATEGORY = "IngestionPipeline";
   private static final Map<String, String> TYPE_TO_TAG_MAP =
-          Map.of(
-                  PipelineType.METADATA.toString(),
-                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Metadata",
-                  PipelineType.PROFILER.toString(),
-                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Profiler",
-                  PipelineType.LINEAGE.toString(),
-                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Lineage",
-                  PipelineType.USAGE.toString(),
-                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Usage",
-                  PipelineType.TEST_SUITE.toString(),
-                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "TestSuite",
-                  PipelineType.DATA_INSIGHT.toString(),
-                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "DataInsights",
-                  PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
-                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "ElasticSearchReindex");
+      Map.of(
+          PipelineType.METADATA.toString(),
+          INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Metadata",
+          PipelineType.PROFILER.toString(),
+          INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Profiler",
+          PipelineType.LINEAGE.toString(),
+          INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Lineage",
+          PipelineType.USAGE.toString(),
+          INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Usage",
+          PipelineType.TEST_SUITE.toString(),
+          INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "TestSuite",
+          PipelineType.DATA_INSIGHT.toString(),
+          INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "DataInsights",
+          PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
+          INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "ElasticSearchReindex");
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -729,13 +729,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
         .withService(create.getService())
-        .withTags(List.of(
-            new TagLabel()
-                .withState(TagLabel.State.CONFIRMED)
-                .withLabelType(TagLabel.LabelType.AUTOMATED)
-                .withSource(TagLabel.TagSource.TAG)
-                .withTagFQN(TYPE_TO_TAG_MAP.get(create.getPipelineType().toString())))
-        );
+        .withTags(
+            List.of(
+                new TagLabel()
+                    .withState(TagLabel.State.CONFIRMED)
+                    .withLabelType(TagLabel.LabelType.AUTOMATED)
+                    .withSource(TagLabel.TagSource.TAG)
+                    .withTagFQN(TYPE_TO_TAG_MAP.get(create.getPipelineType().toString()))));
   }
 
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
