@@ -975,3 +975,70 @@ export const updateDescriptionForIngestedTables = (
         .invoke('text')
         .should('contain', description);
 };
+
+export const followAndOwnTheEntity = (termObj) => {
+    // search for the term and redirect to the respective entity tab
+  
+    visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
+  
+    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
+    cy.get('[data-testid="follow-button"]').should('be.visible').click();
+  
+    verifyResponseStatusCode('@waitAfterFollow', 200);
+    // go to manage tab and search for logged in user and set the owner
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      'getTeams'
+    );
+    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+  
+    verifyResponseStatusCode('@getTeams', 200);
+    //Clicking on users tab
+    cy.get('[data-testid="dropdown-tab"]')
+      .contains('Users')
+      .should('exist')
+      .should('be.visible')
+      .click();
+  
+    //Selecting the user
+    cy.get('[data-testid="list-item"]')
+      .first()
+      .should('exist')
+      .should('be.visible')
+      .click();
+  
+    cy.get(':nth-child(2) > [data-testid="owner-link"]')
+      .scrollIntoView()
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal('admin');
+      });
+  
+    cy.clickOnLogo();
+  
+    // checks newly generated feed for follow and setting owner
+    cy.get('[data-testid="message-container"]')
+      .first()
+      .contains('Added owner: admin')
+      .should('be.visible');
+  
+    cy.get('[data-testid="message-container"]')
+      .eq(1)
+      .scrollIntoView()
+      .contains(`Followed ${termObj.entity.slice(0, -1)}`)
+      .should('be.visible');
+  
+    //Check followed entity on mydata page
+    cy.get('[data-testid="following-data-container"]')
+    .find(`[data-testid="Following data-${termObj.displayName}"]`)
+    .should('be.visible');
+
+    //Check owned entity
+    cy.get('[data-testid="my-data-container"]')
+    .find(`[data-testid="My data-${termObj.displayName}"]`)
+    .should('be.visible')
+
+    cy.clickOnLogo();
+
+  };
