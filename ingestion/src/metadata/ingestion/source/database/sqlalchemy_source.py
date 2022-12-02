@@ -67,13 +67,13 @@ class SqlAlchemySource(ABC):
         Method returns the table level comment
         """
 
-    @abstractmethod
-    def get_data_model(
-        self, database: str, schema_name: str, table_name: str
-    ) -> DataModel:
-        """
-        Method to fetch data models
-        """
+    # @abstractmethod
+    # def get_data_model(
+    #     self, database: str, schema_name: str, table_name: str
+    # ) -> DataModel:
+    #     """
+    #     Method to fetch data models
+    #     """
 
     @abstractmethod
     def get_columns_and_constraints(

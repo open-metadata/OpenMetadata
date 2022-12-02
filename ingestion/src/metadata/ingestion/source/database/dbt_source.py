@@ -11,6 +11,7 @@
 """
 DBT source methods.
 """
+from abc import ABC
 import traceback
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Union
@@ -56,17 +57,45 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
-
+from metadata.ingestion.source.database.dbt_service import DbtServiceSource
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import SourceStatus
+from metadata.utils.connections import get_connection, test_connection
 logger = ingestion_logger()
 
 
-class DBTMixin:
+class DbtSource(DbtServiceSource, ABC):
 
     """
     Class defines method to extract metadata from DBT
     """
 
-    metadata: OpenMetadata
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        self.config = config
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+        self.connection = self.config.serviceConnection.__root__.config
+        self.source_config = self.config.sourceConfig.config
+        self.report = SQLSourceStatus()
+    
+
+    def get_status(self) -> SourceStatus:
+        return self.report
+
+    def test_connection(self) -> None:
+        test_connection(self.engine)
+    
+    def prepare(self):
+        """
+        By default, there's nothing to prepare
+        """
 
     def get_data_model(self, table_fqn: str) -> Optional[DataModel]:
         return self.data_models.get(table_fqn.lower())
