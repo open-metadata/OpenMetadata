@@ -28,7 +28,7 @@ import {
   DESCRIPTIONLENGTH,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
-import { EntityField } from '../constants/feed.constants';
+import { EntityField } from '../constants/Feeds.constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
 import {
@@ -511,8 +511,8 @@ export const getSummary = (
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
-                ? 'Entity has been deleted'
-                : 'Entity has been restored';
+                ? 'Data asset has been deleted'
+                : 'Data asset has been restored';
             })
             .join(', ')}
         </p>

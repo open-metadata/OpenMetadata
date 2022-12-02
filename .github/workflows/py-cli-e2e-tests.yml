@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         py-version: ['3.9']
-        e2e-test: ['mysql']
+        e2e-test: ['mysql', 'bigquery']
 
     steps:
     - name: Checkout
@@ -63,8 +63,11 @@ jobs:
 
     - name: Run Python Tests
       id: e2e-test
+      continue-on-error: true
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
+        E2E_BQ_PROJECT_ID: ${{ secrets.E2E_BQ_PROJECT_ID }}
+        E2E_BQ_PRIVATE_KEY: ${{ secrets.E2E_BQ_PRIVATE_KEY }}
       run: |
         source env/bin/activate
         python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
@@ -75,8 +78,13 @@ jobs:
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for $E2E_TEST 🔥"
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
           }
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+    - name: Force failure
+      if: steps.e2e-test.outcome != 'success'
+      run: |
+        exit 1

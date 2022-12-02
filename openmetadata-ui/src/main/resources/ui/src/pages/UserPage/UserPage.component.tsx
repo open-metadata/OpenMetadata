@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
-import { AssetsDataType, FormattedTableData, SearchResponse } from 'Models';
+import { AssetsDataType, FormattedTableData } from 'Models';
 import React, {
   Dispatch,
   SetStateAction,
@@ -48,7 +48,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { formatDataResponse } from '../../utils/APIUtils';
+import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -104,7 +104,7 @@ const UserPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('message.entity-fetch-error', {
+          t('server.entity-fetch-error', {
             entity: 'User Details',
           })
         );
@@ -129,8 +129,8 @@ const UserPage = () => {
       '',
       myDataSearchIndex
     )
-      .then((res: SearchResponse) => {
-        const hits = res?.data?.hits?.hits;
+      .then((res) => {
+        const hits = res?.data?.hits?.hits as SearchEntityHits;
         if (hits?.length > 0) {
           const data = formatDataResponse(hits);
           const total = res.data.hits.total.value;
@@ -152,7 +152,7 @@ const UserPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('message.entity-fetch-error', {
+          t('server.entity-fetch-error', {
             entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
           })
         );
@@ -207,7 +207,7 @@ const UserPage = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            t('message.entity-fetch-error', {
+            t('server.entity-fetch-error', {
               entity: 'Activity Feeds',
             })
           );

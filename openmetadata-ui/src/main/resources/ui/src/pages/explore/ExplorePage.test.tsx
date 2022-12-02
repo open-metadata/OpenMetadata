@@ -168,6 +168,7 @@ const mockData: SearchResponse<ExploreSearchIndex> = {
         },
         highlight: {
           name: ['<span class="text-highlighter">dim_address</span>'],
+          description: ['<span>testDescription</span>'],
         },
         sort: [1659023655062000],
       },
@@ -283,6 +284,9 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ searchQuery: '' })),
   useHistory: () => ({
     push: jest.fn(),
+    location: {
+      pathname: '',
+    },
   }),
   useLocation: jest
     .fn()

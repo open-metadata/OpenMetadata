@@ -27,7 +27,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, toNumber } from 'lodash';
+import { isUndefined, toInteger, toNumber } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -58,6 +58,7 @@ import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import {
   getDisabledDates,
   getKpiDateFormatByTimeStamp,
+  getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -166,6 +167,11 @@ const AddKPIPage = () => {
       const startDate = getTimeStampByDateTime(kpiDates.startDate);
       const endDate = getTimeStampByDateTime(kpiDates.endDate);
 
+      const targetValue = getKpiTargetValueByMetricType(
+        kpiData.metricType,
+        metricValue
+      );
+
       const updatedData = {
         ...kpiData,
         description,
@@ -175,7 +181,7 @@ const AddKPIPage = () => {
         targetDefinition: [
           {
             ...metricData,
-            value: metricValue + '',
+            value: targetValue + '',
           },
         ],
       };
@@ -209,11 +215,15 @@ const AddKPIPage = () => {
   }, [kpiData]);
 
   useEffect(() => {
-    const value = metricData?.value;
-    if (value) {
-      setMetricValue(toNumber(value));
-    }
-  }, [metricData]);
+    const value = toNumber(metricData?.value ?? '0');
+    const metricType = kpiData?.metricType;
+
+    // for percentage metric convert the fraction to percentage
+    const metricValue =
+      metricType === KpiTargetType.Percentage ? value * 100 : value;
+
+    setMetricValue(toInteger(metricValue));
+  }, [metricData, kpiData]);
 
   if (isLoading) {
     return <Loader />;
@@ -223,14 +233,14 @@ const AddKPIPage = () => {
     <>
       {kpiData ? (
         <Row
-          className="tw-bg-body-main tw-h-full"
+          className="bg-body-main h-full"
           data-testid="add-kpi-container"
           gutter={[16, 16]}>
           <Col offset={4} span={12}>
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <Card>
               <Typography.Paragraph
-                className="tw-text-base"
+                className="text-base"
                 data-testid="form-title">
                 {t('label.add-new-kpi')}
               </Typography.Paragraph>
@@ -390,7 +400,7 @@ const AddKPIPage = () => {
                   />
                 </Form.Item>
 
-                <Space align="center" className="tw-w-full tw-justify-end">
+                <Space align="center" className="w-full justify-end">
                   <Button
                     data-testid="cancel-btn"
                     type="link"
@@ -415,9 +425,9 @@ const AddKPIPage = () => {
               </Form>
             </Card>
           </Col>
-          <Col className="tw-mt-4" span={4}>
-            <Typography.Paragraph className="tw-text-base tw-font-medium">
-              {t('label.edit-kpi')}
+          <Col className="m-t-md" span={4}>
+            <Typography.Paragraph className="text-base font-medium">
+              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
             </Typography.Paragraph>
             <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
           </Col>

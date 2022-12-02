@@ -13,32 +13,6 @@
 
 @import '../../styles/variables.less';
 
-@primary-color-lite: #7147e833;
-
-.data-insight-switch {
-  .ant-radio-button-wrapper,
-  .ant-radio-button-wrapper-checked:not([class*=' ant-radio-button-wrapper-disabled']).ant-radio-button-wrapper:first-child {
-    border-color: @primary-color-lite;
-  }
-
-  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
-    background-color: @primary-color-lite;
-  }
-
-  .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
-    background-color: @primary-color-lite;
-    color: @primary-color;
-    border-color: @primary-color-lite;
-    z-index: 0;
-
-    &:hover {
-      background-color: @primary-color-lite;
-      color: @primary-color;
-      border-color: @primary-color-lite;
-    }
-  }
-}
-
 .data-insight-select-dropdown {
   min-width: 136px;
   .ant-select-arrow {

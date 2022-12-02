@@ -11,13 +11,6 @@
       "type": "string",
       "enum": ["OpenMetadata"],
       "default": "OpenMetadata"
-    },
-    "componentConfig": {
-      "description": "key/value pairs to pass to sink component.",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
     }
   },
   "properties": {
@@ -93,7 +86,8 @@
       ]
     },
     "secretsManagerProvider": {
-      "$ref": "./secretsManagerProvider.json"
+      "$ref": "./../../../../security/secrets/secretsManagerProvider.json",
+      "default": "noop"
     },
     "secretsManagerCredentials": {
       "description": "OpenMetadata Secrets Manager Client credentials",
@@ -197,7 +191,7 @@
           "type": "string"
         },
         "config": {
-          "$ref": "#/definitions/componentConfig"
+          "$ref": "../../../../type/basic.json#/definitions/componentConfig"
         }
       },
       "additionalProperties": false,

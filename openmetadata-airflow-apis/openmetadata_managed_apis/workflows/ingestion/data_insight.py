@@ -11,22 +11,21 @@
 """
 Data Insights DAG function builder
 """
-
+import json
 from typing import cast
 
 from airflow import DAG
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
     build_dag,
-    data_insight_workflow,
 )
 
+from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.metadataIngestion.workflow import (
-    ComponentConfig1,
     LogLevels,
     OpenMetadataWorkflowConfig,
     Processor,
@@ -36,8 +35,33 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.generated.schema.type.basic import ComponentConfig
+from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
+from metadata.utils.logger import set_loggers_level
+
+
+def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
+    """Task that creates and runs the data insight workflow.
+
+    The workflow_config gets created form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+
+    Args:
+        workflow_config (OpenMetadataWorkflowConfig): _description_
+    """
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    workflow = DataInsightWorkflow.create(config)
+
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
 
 
 def build_data_insight_workflow_config(
@@ -73,7 +97,7 @@ def build_data_insight_workflow_config(
 
     sink = Sink(
         type="elasticsearch",
-        config=ComponentConfig1(
+        config=ComponentConfig(
             **elasticsearch_service_config_dict,
             **elasticsearch_source_config_dict,
         ),

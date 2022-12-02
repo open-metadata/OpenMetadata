@@ -63,7 +63,7 @@ describe('Login flow should work properly', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     //Verify user profile
-    cy.get('[data-testid="avatar"]').should('be.visible').click();
+    cy.get('[data-testid="avatar"]').first().should('be.visible').trigger('mouseover').click();
 
     cy.get('[data-testid="user-name"]')
       .should('be.visible')

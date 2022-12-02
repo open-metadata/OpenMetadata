@@ -50,8 +50,14 @@ base_requirements = {
     "croniter~=1.3.0",
     "requests-aws4auth==1.1.2",
     "pymysql>=1.0.2",
+    "cached-property==1.5.2",
 }
 
+
+datalake_common = {
+    "pandas==1.3.5",
+    "pyarrow==6.0.1",
+}
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
@@ -63,6 +69,7 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {"pyodbc"},
     "bigquery": {
+        "grpcio==1.50.0",
         "sqlalchemy-bigquery>=1.2.2",
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",
@@ -71,13 +78,15 @@ plugins: Dict[str, Set[str]] = {
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12", "azure-identity", "azure-storage-blob"},
     "dagster": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2", "dagster_graphql"},
-    "datalake": {
-        "google-cloud-storage==1.43.0",
-        "pandas==1.3.5",
-        "gcsfs==2022.5.0",
+    "datalake-s3": {
         "s3fs==0.4.2",
-        "pyarrow==6.0.1",
         "boto3~=1.19.12",
+        *datalake_common,
+    },
+    "datalake-gcs": {
+        "google-cloud-storage==1.43.0",
+        "gcsfs==2022.5.0",
+        *datalake_common,
     },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
@@ -110,7 +119,7 @@ plugins: Dict[str, Set[str]] = {
         "protobuf",
     },
     "ldap-users": {"ldap3==2.9.1"},
-    "looker": {"looker-sdk>=22.4.0"},
+    "looker": {"looker-sdk>=22.20.0"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
     "pymssql": {"pymssql==2.2.5"},
     "mssql-odbc": {"pyodbc"},

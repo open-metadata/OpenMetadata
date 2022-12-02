@@ -18,7 +18,7 @@ import React from 'react';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
-import { NoDataFoundPlaceHolder } from '../../../constants/services.const';
+import { NoDataFoundPlaceHolder } from '../../../constants/Services.constant';
 
 type Props = {
   type: 'error' | 'noData';
@@ -31,7 +31,7 @@ const stepsData = [
     step: 1,
     title: 'Ingest Sample Data',
     description:
-      'Run sample data to ingest sample entities into your OpenMetadata.',
+      'Run sample data to ingest sample data assets into your OpenMetadata.',
     link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
   },
   {

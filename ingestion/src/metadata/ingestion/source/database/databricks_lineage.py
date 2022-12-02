@@ -63,15 +63,16 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
                 )
                 for row in data:
                     try:
-                        yield TableQuery(
-                            query=row.get("query_text"),
-                            userName=row.get("user_name"),
-                            startTime=row.get("query_start_time_ms"),
-                            endTime=row.get("execution_end_time_ms"),
-                            analysisDate=datetime.now(),
-                            databaseName="default",  # In databricks databaseName is always default
-                            serviceName=self.config.serviceName,
-                        )
+                        if self.client.is_query_valid(row):
+                            yield TableQuery(
+                                query=row.get("query_text"),
+                                userName=row.get("user_name"),
+                                startTime=row.get("query_start_time_ms"),
+                                endTime=row.get("execution_end_time_ms"),
+                                analysisDate=datetime.now(),
+                                databaseName="default",  # In databricks databaseName is always default
+                                serviceName=self.config.serviceName,
+                            )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
                         logger.warning(f"Error processing query_dict {row}: {exc}")

@@ -147,26 +147,26 @@ def _(
             f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
         )
 
-    if not database_name or not schema_name:
+    fqn_search_string = _build(
+        service_name, database_name or "*", schema_name or "*", table_name
+    )
 
-        fqn_search_string = _build(
-            service_name, database_name or "*", schema_name or "*", table_name
-        )
-
-        es_result = metadata.es_search_from_fqn(
-            entity_type=Table,
-            fqn_search_string=fqn_search_string,
-        )
-        entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
-            entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
-        )
-        if not entity:
-            return None
-        if fetch_multiple_entities:
-            return [str(table.fullyQualifiedName.__root__) for table in entity]
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Table,
+        fqn_search_string=fqn_search_string,
+    )
+    entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+    # if entity not found in ES proceed to build FQN with database_name and schema_name
+    if not entity and database_name and schema_name:
+        fqn = _build(service_name, database_name, schema_name, table_name)
+        return [fqn] if fetch_multiple_entities else fqn
+    if entity and fetch_multiple_entities:
+        return [str(table.fullyQualifiedName.__root__) for table in entity]
+    if entity:
         return str(entity.fullyQualifiedName.__root__)
-    fqn = _build(service_name, database_name, schema_name, table_name)
-    return [fqn] if fetch_multiple_entities else fqn
+    return None
 
 
 @fqn_build_registry.add(DatabaseSchema)
@@ -410,8 +410,9 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     :param table_name: raw table name
     :return: dict with data
     """
-
-    details: List[str] = split(table_name)
+    # Revisit: Check the antlr grammer for issue when string has double quotes
+    # Issue Link: https://github.com/open-metadata/OpenMetadata/issues/8874
+    details: List[str] = split(table_name.replace('"', ""))
     # Pad None to the left until size of list is 3
     full_details: List[Optional[str]] = ([None] * (3 - len(details))) + details
 

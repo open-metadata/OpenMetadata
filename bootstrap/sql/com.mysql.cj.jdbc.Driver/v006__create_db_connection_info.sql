@@ -1,6 +1,9 @@
 --
 -- Upgrade changes for 0.13
 --
+ALTER TABLE `entity_extension_time_series` modify entityFQN varchar(768);
+ALTER TABLE `entity_extension_time_series` ADD INDEX `entity_fqn_index` (`entityFQN`);
+
 CREATE TABLE IF NOT EXISTS web_analytic_event (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
@@ -117,3 +120,7 @@ SET json = JSON_REMOVE(json ,'$.deployed');
 
 UPDATE ingestion_pipeline_entity
 SET json = JSON_INSERT(json ,'$.deployed', 'true');
+
+-- We removed the supportsMetadataExtraction field in the `OpenMetadataConnection` object being used in IngestionPipelines
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json ,'$.openMetadataServerConnection.supportsMetadataExtraction');

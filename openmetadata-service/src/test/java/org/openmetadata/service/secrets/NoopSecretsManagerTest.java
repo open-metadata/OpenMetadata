@@ -26,8 +26,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.service.fernet.Fernet;
 

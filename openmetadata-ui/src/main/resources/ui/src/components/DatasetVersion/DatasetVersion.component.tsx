@@ -16,7 +16,7 @@ import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
@@ -414,7 +414,6 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                       )}
                       columns={updatedColumns()}
                       joins={
-                        // TODO: Below we should have separate type for Dataset instead casting it to `Table`
                         (currentVersionData as Table).joins as ColumnJoins[]
                       }
                     />

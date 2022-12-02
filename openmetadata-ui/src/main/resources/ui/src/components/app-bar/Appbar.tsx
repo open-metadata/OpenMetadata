@@ -35,7 +35,7 @@ import {
   urlGitbookDocs,
   urlGithubRepo,
   urlJoinSlack,
-} from '../../constants/url.const';
+} from '../../constants/URL.constants';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
@@ -282,7 +282,7 @@ const Appbar: React.FC = (): JSX.Element => {
     addToRecentSearched(value);
     history.push({
       pathname: getExplorePathWithSearch(
-        value,
+        encodeURIComponent(value),
         // this is for if user is searching from another page
         location.pathname.startsWith(ROUTES.EXPLORE)
           ? appState.explorePageTab
@@ -317,7 +317,7 @@ const Appbar: React.FC = (): JSX.Element => {
   };
 
   useEffect(() => {
-    setSearchValue(searchQuery);
+    setSearchValue(decodeURIComponent(searchQuery || ''));
   }, [searchQuery]);
 
   useEffect(() => {

@@ -20,7 +20,6 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
@@ -108,12 +107,6 @@ class DashboardServiceTopology(ServiceTopology):
                 clear_cache=True,
             ),
             NodeStage(
-                type_=CreateUserRequest,
-                context="owner",
-                processor="yield_owner",
-                nullable=True,
-            ),
-            NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
@@ -190,9 +183,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_dashboard_name(self, dashboard_details: Any) -> str:
+    def get_dashboard_name(self, dashboard: Any) -> str:
         """
-        Get Dashboard Name
+        Get Dashboard Name from each element coming from `get_dashboards_list`
         """
 
     @abstractmethod
@@ -205,7 +198,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self, dashboard_details: Any
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
-        Yields lineage if config is enabled
+        Yields lineage if config is enabled.
+
+        We will look for the data in all the services
+        we have informed.
         """
         for db_service_name in self.source_config.dbServiceNames or []:
             yield from self.yield_dashboard_lineage_details(
@@ -219,14 +215,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to fetch dashboard tags
         """
         return  # Dashboard does not support fetching tags except Tableau
-
-    def yield_owner(
-        self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[CreateUserRequest]]:
-        """
-        Method to fetch dashboard owner
-        """
-        return  # Dashboard does not support fetching owner details except Tableau
 
     def yield_dashboard_usage(
         self, *args, **kwargs  # pylint: disable=W0613
@@ -280,7 +268,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
-    def _get_add_lineage_request(self, to_entity: Dashboard, from_entity: Table):
+    @staticmethod
+    def _get_add_lineage_request(
+        to_entity: Dashboard, from_entity: Table
+    ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
@@ -296,9 +287,20 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_dashboard(self) -> Any:
         """
-        Method to iterate through dashboard lists filter dashbaords & yield dashboard details
+        Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for dashboard in self.get_dashboards_list():
+
+            dashboard_name = self.get_dashboard_name(dashboard)
+            if filter_by_dashboard(
+                self.source_config.dashboardFilterPattern,
+                dashboard_name,
+            ):
+                self.status.filter(
+                    dashboard_name,
+                    "Dashboard Filtered Out",
+                )
+                continue
 
             try:
                 dashboard_details = self.get_dashboard_details(dashboard)
@@ -308,17 +310,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     f"Cannot extract dashboard details from {dashboard}: {exc}"
                 )
                 continue
-            dashboard_name = self.get_dashboard_name(dashboard_details)
 
-            if filter_by_dashboard(
-                self.source_config.dashboardFilterPattern,
-                dashboard_name,
-            ):
-                self.status.filter(
-                    dashboard_name,
-                    "Dashboard Fltered Out",
-                )
-                continue
             yield dashboard_details
 
     def test_connection(self) -> None:

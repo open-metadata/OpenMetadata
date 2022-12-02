@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -171,7 +171,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         )}
         ref={containerRef}>
         <Popover
-          align={{ targetOffset: [0, -14] }}
+          align={{ targetOffset: [0, -16] }}
           content={
             <PopoverContent
               isAnnouncement={!isUndefined(announcementDetails)}
@@ -194,9 +194,8 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           placement="topRight"
           trigger="hover"
           visible={visible && !isEditPost}
-          zIndex={9999}
           onVisibleChange={handleVisibleChange}>
-          <div className="tw-flex tw-flex-1">
+          <Space align="start" className="w-full">
             <UserPopOverCard userName={feedDetail.from}>
               <span className="tw-cursor-pointer" data-testid="authorAvatar">
                 <ProfilePicture id="" name={feedDetail.from} width="32" />
@@ -226,7 +225,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
                 onReactionSelect={onReactionSelect}
               />
             </div>
-          </div>
+          </Space>
           {isFooterVisible && (
             <FeedCardFooter
               className="tw-mt-2"

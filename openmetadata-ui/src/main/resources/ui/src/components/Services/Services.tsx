@@ -19,7 +19,7 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getServiceDetailsPath, PAGE_SIZE } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { servicesDisplayName } from '../../constants/services.const';
+import { servicesDisplayName } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
@@ -91,7 +91,7 @@ const Services = ({
                 }>
                 <Button
                   className="tw-h-8 tw-rounded tw-mb-2"
-                  data-testid="add-new-service-button"
+                  data-testid="add-service-button"
                   disabled={!addServicePermission && !isAuthDisabled}
                   size="small"
                   theme="primary"
@@ -157,7 +157,7 @@ const Services = ({
                         <div
                           className="tw-flex tw-justify-end"
                           data-testid="service-icon">
-                          {getServiceLogo(service.serviceType || '', 'tw-h-8')}
+                          {getServiceLogo(service.serviceType || '', 'h-7')}
                         </div>
                       </div>
                     </div>

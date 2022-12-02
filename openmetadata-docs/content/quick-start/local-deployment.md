@@ -12,7 +12,7 @@ content below 👇
 
 <YouTube videoId="ld43_jafL9w" start="0:00" end="6:47"/>
 
-## Requirements (OSX and Linux)
+## Requirements (OSX, Linux and Windows)
 
 Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing
 OpenMetadata.
@@ -21,7 +21,7 @@ OpenMetadata.
 
 ### Python (version 3.7 or greater)
 
-To check what version of Python you have, you can use the following command:
+To check the version of Python you have, use the following command:
 
 ```bash
 python3 --version
@@ -33,7 +33,7 @@ python3 --version
 applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps
 deliver software in packages called Containers.
 
-To check what version of Docker you have, please use the following command.
+To check the version of Docker you have, use the following command.
 
 ```commandline
 docker --version
@@ -107,6 +107,9 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
 - Install [WSL2](https://ubuntu.com/wsl)
 - Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts/9n6svws3rx71)
 - Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
+  - Once installed, please follow the steps [here](https://docs.docker.com/desktop/windows/wsl/) and complete all the pre-requisites for a seamless installation and deployment.
+  - After completion of the pre-requisites, please install `python3-pip` and `python3-venv` on your Ubuntu system.
+    - Command: `apt install python3-pip  python3-venv` (Ensure that you have the priviledge to install packages, if not, please use Super User.)
 
 </Collapse>
 
@@ -217,7 +220,9 @@ experiment with. This might take several minutes, depending on your system.
 <Note>
 
 - `metadata docker --stop` will stop the Docker containers.
-- `metadata docker --clean` will clean/prune the containers, volumes, and networks.
+- `metadata docker --clean` will clean/prune the containers, volumes, and networks. You will need to run this if
+    you are updating the OpenMetadata version. Note that it will get rid of the data. If you want to keep it,
+    you will need to [Backup your data](/deployment/backup-restore-metadata).
 
 </Note>
 
@@ -353,3 +358,14 @@ So be careful if you want to keep up some (unused) networks from your laptop.
 ### Connect to a Container from the Host
 
 Do you want to connect to a container from the host [Refer](https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)
+
+### After upgrading OpenMetadata version
+
+If you're running the `metadata docker --start` after updating the `openmetadata-ingestion` package to a newer
+OpenMetadata release, you might encounter issues. For example, 
+`java.lang.ClassNotFoundException: org.openmetadata.service.security.NoopAuthorizer` when updating from 0.11.
+
+Then, you'll need to first run `metadata docker --clean`. It will clean/prune the containers, volumes, and networks,
+and download the newest docker compose file from the release. **Note that this will get rid of the data**. If you want to keep it,
+you will need to [Backup your data](/deployment/backup-restore-metadata). This command is required after each time you
+want to update your quickstart deployment of OpenMetadata with a new release to pick up the new compose file.

@@ -14,7 +14,6 @@
       ],
       "default": "Datalake"
     },
-
     "GCSConfig": {
       "title": "DataLake GCS Config Source",
       "description": "DataLake Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",

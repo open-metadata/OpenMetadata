@@ -15,6 +15,7 @@ import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef, useState } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
+import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
@@ -41,7 +42,7 @@ const ConfigureIngestion = ({
   includeView,
   includeTags,
   markDeletedTables,
-  markDeletedTablesFromFilterOnly,
+  markAllDeletedTables,
   serviceCategory,
   pipelineType,
   showDatabaseFilter,
@@ -69,7 +70,7 @@ const ConfigureIngestion = ({
   handleIncludeView,
   handleIncludeTags,
   handleMarkDeletedTables,
-  handleMarkDeletedTablesFromFilterOnly,
+  handleMarkAllDeletedTables,
   handleIngestSampleData,
   handleDatasetServiceName,
   handleQueryLogDuration,
@@ -81,6 +82,7 @@ const ConfigureIngestion = ({
   onUseFqnFilterClick,
   onCancel,
   onNext,
+  formType,
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
@@ -232,15 +234,15 @@ const ConfigureIngestion = ({
               {getSeparator('')}
             </Field>
           )}
-          {!isNil(markDeletedTablesFromFilterOnly) && (
+          {!isNil(markAllDeletedTables) && (
             <Field>
               <div className="tw-flex tw-gap-1">
-                <label>Mark Deleted Tables from Filter Only</label>
+                <label>Mark All Deleted Tables</label>
                 <ToggleSwitchV1
-                  checked={markDeletedTablesFromFilterOnly}
+                  checked={markAllDeletedTables}
                   handleCheck={() => {
-                    if (handleMarkDeletedTablesFromFilterOnly) {
-                      handleMarkDeletedTablesFromFilterOnly();
+                    if (handleMarkAllDeletedTables) {
+                      handleMarkAllDeletedTables();
                     }
                   }}
                   testId="mark-deleted-filter-only"
@@ -496,6 +498,7 @@ const ConfigureIngestion = ({
           <input
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="name"
+            disabled={formType === FormSubmitType.EDIT}
             id="name"
             name="name"
             type="text"

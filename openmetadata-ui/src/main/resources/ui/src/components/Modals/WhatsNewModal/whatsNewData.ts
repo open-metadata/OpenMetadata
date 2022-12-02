@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 9;
+export const LATEST_VERSION_ID = 10;
 
-export const COOKIE_VERSION = 'VERSION_0_12_1'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_13_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -546,6 +546,75 @@ export const WHATS_NEW = [
       'DBT Metadata - Tag': `- We support ingesting DBT tags into OpenMetadata.`,
       'Bots Integration': `- Admins can create bots and their security mechanism from UI.`,
       'Bug Fixes': `- Around 136 Features/Bug fixes/improvements/Tests made it into 0.12.1 release.`,
+    },
+  },
+  {
+    id: 10,
+    version: 'v0.13.0',
+    description: 'Released on 22 November 2022.',
+    features: [
+      {
+        title: 'Data Insights and KPIs',
+        description:
+          'Data Insights has been introduced that transforms the passive approach to data to a collaborative project towards improved data culture. Data Insights aims to provide a single pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/pCR0y5jyHCA',
+      },
+      {
+        title: 'Lineage Traceability',
+        description:
+          'The lineage UI has been transformed to enhance user experience. Users can get a holistic view of an entity from the Lineage tab. When an entity is selected, the UI displays end-to-end lineage traceability for the table and column levels. Just search for an entity and expand the graph to unfold lineage. It’ll display the upstream and downstream for each node.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/j_elWRYSelU',
+      },
+      {
+        title: 'Advanced Search',
+        description:
+          'An advanced search feature has been introduced in the 0.13.0 release, which helps users discover assets quickly with a Syntax Editor based on And/Or conditions.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/4EYUdBm5-K4',
+      },
+      {
+        title: 'Data Lake Profiler',
+        description:
+          'With the OpenMetadata UI, users can now create and deploy profiling workflows for the Data Lake connector, which supports AWS S3 and GCS.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/KJ0vHGRIcG4',
+      },
+    ],
+    changeLogs: {
+      'Data Insights and KPIs': `-   Provides a single pane view of all the key data metrics.
+-   Analytics are provided based on the metadata metrics, the entities created, the types of entities, and the data evolution over a period of time.
+-   Admins can define the **Key Performance Indicators** (KPIs) and set goals.
+-   Goals can be set towards better documentation, ownership, and tiering.
+-   Goals are based on entities and driven to achieve targets within a specified time.
+-   **Data insights dashboard** provides a quick glance at aspects like data ownership, description coverage, data tiering, and so on.
+-   A timeseries report is provided to track progress and monitor the health of your data.
+-   Admins can view the **aggregated user activity** and get insights into user engagement and user growth.
+-   Admins can check for Daily active users and know how OpenMetadata is being used.
+-   The **Data Insights Report** is emailed weekly to assess team performance.`,
+      Lineage: `-   The UI displays end-to-end **lineage** **traceability** for the table and column levels.
+-   Users can search for an entity and expand the graph to unfold lineage.
+-   Displays the upstream and downstream for each node.
+-   Lineage Tab UI supports two-finger scrolling to zoom in or zoom out.
+`,
+      'Data Quality': `-   We support **profiling** for **Data lakes** like Amazon S3.`,
+      Security: `-   **LDAP SSO** has been introduced.
+-   In the 0.12.1 release, support was added for **basic authentication** to sign up using a Username/Password.
+-   Created multiple **bots to serve different scenarios**. For example, Ingestion Bot, Lineage Bot, Data Quality and Profiler Bot.
+-   The **policies and access control for bots** has been redefined.
+-   Bots can have their own policies. For example, the Ingestion Bot can create and update entities.`,
+      'Advanced Search Improvements': `-   Apart from OpenMetadata's advanced search syntax which is syntax-driven, a **Syntax Editor** has been introduced.
+-   The Syntax Editor is based on And/Or conditions to discover assets quickly.
+`,
+      Connectors: `-   [**Domo**](https://docs.open-metadata.org/connectors/dashboard/domo-dashboard) connector has been introduced. It's a cloud-based dashboard service.
+-   Ingestion framework has been improved.
+-   Adding a [**custom service type**](https://docs.open-metadata.org/connectors/custom-connectors) supported from the 0.12.1 release.`,
+      'Messaging Service Schemas': `-   We now parse **Avro** and **Protobuf Schemas** to extract the fields from **Kafka** and **Redpanda** Messaging services. Previously, the schemas were taken as one payload and just published to OpenMetadata.
+-   Users can **document** each of these fields within a schema by adding description and tags.
+-   Users can **search** based on the fields in the Schema of a Topic.`,
+      'Other Changes': `-   **Soft deleted entities** can be restored. Currently, only the ML Models are not supported.
+-   **Soft deleted teams** can be restored. When restoring a soft deleted parent team, the child teams will not be restored by default.`,
     },
   },
 ];

@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, {
   Fragment,
@@ -28,7 +28,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/feed.constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
@@ -428,12 +428,16 @@ const EntityTable = ({
       <>
         {dataTypeDisplay ? (
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            lowerCase(dataTypeDisplay)
+            toLower(dataTypeDisplay)
           ) : (
             <Popover
               destroyTooltipOnHide
-              content={lowerCase(dataTypeDisplay)}
-              overlayInnerStyle={{ maxWidth: '420px' }}
+              content={toLower(dataTypeDisplay)}
+              overlayInnerStyle={{
+                maxWidth: '420px',
+                overflowWrap: 'break-word',
+                textAlign: 'center',
+              }}
               trigger="hover">
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay}
@@ -648,7 +652,7 @@ const EntityTable = ({
         render: renderDescription,
       },
       {
-        title: t('label.tags'),
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
@@ -676,27 +680,31 @@ const EntityTable = ({
         data-testid="entity-table"
         dataSource={data}
         expandable={{
-          defaultExpandedRowKeys: [],
-          expandIcon: ({ expanded, onExpand, record }) =>
-            record.children ? (
-              <FontAwesomeIcon
-                className="tw-mr-2 tw-cursor-pointer"
-                icon={expanded ? faCaretDown : faCaretRight}
+          rowExpandable: (record) => {
+            return (record.children && record.children.length > 0) || false;
+          },
+          expandIcon: ({ expanded, onExpand, expandable, record }) =>
+            expandable && (
+              <span
+                className="m-r-xs cursor-pointer"
                 onClick={(e) =>
                   onExpand(
                     record,
                     e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
                   )
-                }
-              />
-            ) : null,
+                }>
+                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+              </span>
+            ),
         }}
         pagination={false}
         size="small"
       />
       {editColumn && (
         <ModalWithMarkdownEditor
-          header={`${t('label:edit-column')}: "${editColumn.column.name}"`}
+          header={`${t('label.edit-entity', { entity: t('label.column') })}: "${
+            editColumn.column.name
+          }"`}
           placeholder={t('label.enter-column-description')}
           value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}

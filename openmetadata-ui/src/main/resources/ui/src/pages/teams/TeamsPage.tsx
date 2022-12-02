@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { AssetsDataType, FormattedTableData, SearchResponse } from 'Models';
+import { AssetsDataType, FormattedTableData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -51,7 +51,12 @@ import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { formatDataResponse, formatUsersResponse } from '../../utils/APIUtils';
+import { SearchResponse } from '../../interface/search.interface';
+import {
+  formatDataResponse,
+  formatUsersResponse,
+  SearchEntityHits,
+} from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
@@ -86,6 +91,7 @@ const TeamsPage = () => {
     total: 0,
     currPage: 1,
   });
+  const [parentTeams, setParentTeams] = useState<Team[]>([]);
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -142,7 +148,7 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams(
-        ['defaultRoles', 'userCount', 'childrenCount'],
+        ['defaultRoles', 'userCount', 'childrenCount', 'owns'],
         {
           parentTeam: parentTeam ?? 'organization',
           include: 'all',
@@ -190,6 +196,23 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
+  const getParentTeam = async (name: string, newTeam = false) => {
+    setIsPageLoading(true);
+    try {
+      const data = await getTeamByName(name, ['parents'], 'all');
+      if (data) {
+        setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
+        if (!isEmpty(data.parents) && data.parents?.[0].name) {
+          await getParentTeam(data.parents[0].name, false);
+        }
+      } else {
+        throw t('server.unexpected-response');
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    }
+  };
+
   const fetchTeamByFqn = async (name: string) => {
     setIsPageLoading(true);
     try {
@@ -210,6 +233,9 @@ const TeamsPage = () => {
       if (data) {
         getCurrentTeamUsers(data.name);
         setSelectedTeam(data);
+        if (!isEmpty(data.parents) && data.parents?.[0].name) {
+          await getParentTeam(data.parents[0].name, true);
+        }
       } else {
         throw t('server.unexpected-response');
       }
@@ -264,8 +290,10 @@ const TeamsPage = () => {
       '',
       SearchIndex.USER
     )
-      .then((res: SearchResponse) => {
-        const data = formatUsersResponse(res.data.hits.hits);
+      .then((res) => {
+        const data = formatUsersResponse(
+          (res.data as SearchResponse<SearchIndex.USER>).hits.hits
+        );
         setUsers(data);
         setUserPaging({
           total: res.data.hits.total.value,
@@ -480,8 +508,8 @@ const TeamsPage = () => {
       '',
       myDataSearchIndex
     )
-      .then((res: SearchResponse) => {
-        const hits = res?.data?.hits?.hits;
+      .then((res) => {
+        const hits = res?.data?.hits?.hits as SearchEntityHits;
         if (hits?.length > 0) {
           const data = formatDataResponse(hits);
           const total = res.data.hits.total.value;
@@ -503,7 +531,7 @@ const TeamsPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          t('message.entity-fetch-error', {
+          t('server.entity-fetch-error', {
             entity: 'Team Assets',
           })
         );
@@ -567,6 +595,7 @@ const TeamsPage = () => {
           hasAccess={isAuthDisabled || isAdminUser}
           isDescriptionEditable={isDescriptionEditable}
           isTeamMemberLoading={isDataLoading}
+          parentTeams={parentTeams}
           removeUserFromTeam={removeUserFromTeam}
           showDeletedTeam={showDeletedTeam}
           teamUserPagin={userPaging}

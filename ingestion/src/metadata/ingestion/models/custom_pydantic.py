@@ -75,9 +75,10 @@ class CustomSecretStr(SecretStr):
         )
         return str(self)
 
-    def get_secret_value(self) -> str:
+    def get_secret_value(self, skip_secret_manager: bool = False) -> str:
         if (
-            self._secret_value.startswith("secret:")
+            not skip_secret_manager
+            and self._secret_value.startswith("secret:")
             and SecretsManagerFactory().get_secrets_manager()
         ):
             secret_id = self._secret_value.replace("secret:", "")

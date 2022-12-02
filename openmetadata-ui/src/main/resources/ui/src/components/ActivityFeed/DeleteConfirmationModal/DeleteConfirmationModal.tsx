@@ -12,29 +12,25 @@
  */
 
 import React, { FC } from 'react';
-import {
-  confirmationBodyText,
-  confirmHeadertext,
-} from '../../../constants/feed.constants';
+import { useTranslation } from 'react-i18next';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
-
-interface DeleteConfirmationModalProp {
-  onDiscard: () => void;
-  onDelete: () => void;
-}
+import { DeleteConfirmationModalProp } from './DeleteConfirmationModal.interface';
 
 const DeleteConfirmationModal: FC<DeleteConfirmationModalProp> = ({
   onDiscard,
   onDelete,
+  visible,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <ConfirmationModal
-      bodyClassName="tw-h-18"
-      bodyText={confirmationBodyText}
-      cancelText="Cancel"
+      bodyText={t('message.confirm-delete-message')}
+      cancelText={t('label.cancel')}
       className="tw-w-auto tw-h-screen"
-      confirmText="Delete"
-      header={confirmHeadertext}
+      confirmText={t('label.delete')}
+      header={t('label.delete-message-question-mark')}
+      visible={visible}
       onCancel={onDiscard}
       onConfirm={onDelete}
     />

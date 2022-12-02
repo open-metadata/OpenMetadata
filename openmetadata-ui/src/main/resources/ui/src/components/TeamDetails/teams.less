@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 .team-list-container {
   .ant-btn {
     border-radius: 4px;
@@ -35,5 +37,48 @@
 .roles-and-policy {
   > .ant-space-item:first-child {
     align-self: flex-end;
+  }
+}
+
+.teams-list-table {
+  .ant-table-thead {
+    tr > th {
+      background: @white;
+      border-right: 0px !important;
+      border-bottom: 1px solid @border-gray-color;
+    }
+  }
+  .ant-table-bordered {
+    .ant-table-container .ant-table-content table tbody {
+      tr {
+        td {
+          border-right: none;
+          background: @white;
+          margin-right: 10px;
+
+          .expand-cell-icon-container {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+          }
+        }
+        .ant-table-cell-row-hover {
+          background: @body-dark-bg-color;
+        }
+      }
+    }
+
+    .ant-table-container .ant-table-content table tbody {
+      .ant-table-row-level-1,
+      .ant-table-row-level-2,
+      .ant-table-row-level-3 {
+        td {
+          background: @body-bg-color;
+        }
+        .ant-table-cell-row-hover {
+          background: @body-dark-bg-color;
+        }
+      }
+    }
   }
 }

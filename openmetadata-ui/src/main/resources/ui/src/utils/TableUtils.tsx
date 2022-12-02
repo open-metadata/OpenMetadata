@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import i18n from 'i18next';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
@@ -33,7 +34,7 @@ import {
   getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
-import { GlobalSettingsMenuCategory } from '../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
@@ -43,6 +44,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
+  sortTagsCaseInsensitive,
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
@@ -73,8 +75,8 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
   const usagePercentile = `${
-    isLiteral ? 'Usage' : ''
-  } - ${ordinalPercentile} pctile`;
+    isLiteral ? i18n.t('label.usage') : ''
+  } - ${ordinalPercentile} ${i18n.t('label.pctile-lowercase')}`;
 
   return usagePercentile;
 };
@@ -261,7 +263,10 @@ export const getEntityIcon = (indexType: string) => {
 export const makeRow = (column: Column) => {
   return {
     description: column.description || '',
-    tags: column?.tags || [],
+    // Sorting tags as the response of PATCH request does not return the sorted order
+    // of tags, but is stored in sorted manner in the database
+    // which leads to wrong PATCH payload sent after further tags removal
+    tags: sortTagsCaseInsensitive(column.tags || []),
     key: column?.name,
     ...column,
   };

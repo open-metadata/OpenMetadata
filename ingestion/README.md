@@ -11,4 +11,4 @@ OpenMetadata Ingestion is a simple framework to build connectors and ingest meta
 
 ### Docs
 
-Please refer to the documentation here https://docs.open-metadata.org/openmetadata/connectors
+Please refer to the documentation here https://docs.open-metadata.org/connectors

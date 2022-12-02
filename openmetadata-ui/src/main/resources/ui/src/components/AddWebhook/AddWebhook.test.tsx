@@ -13,18 +13,19 @@
 
 import {
   act,
-  findAllByText,
   findByTestId,
   findByText,
   fireEvent,
   queryByTestId,
   queryByText,
   render,
+  screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { FormSubmitType } from '../../enums/form.enum';
 import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import AddWebhook from './AddWebhook';
 import { AddWebhookProps } from './AddWebhook.interface';
 
@@ -46,17 +47,11 @@ jest.mock(
       )
 );
 
-const mockDropdownFunction = jest.fn().mockImplementation((fn) => {
-  fn('event', 'test');
-});
-
-jest.mock('../dropdown/DropDown', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onSelect }) => (
-      <p onClick={() => mockDropdownFunction(onSelect)}>DropDown.component</p>
-    ));
-});
+jest.mock('../PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    permissions: { ...DEFAULT_ENTITY_PERMISSION, all: true },
+  })),
+}));
 
 jest.mock('../buttons/CopyToClipboardButton/CopyToClipboardButton', () => {
   return jest
@@ -70,15 +65,13 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
     .mockImplementation(() => <p>MarkdownWithPreview.component</p>);
 });
 
-jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () => {
-  return jest.fn().mockImplementation(({ onCancel, onConfirm }) => (
-    <div>
-      <p>ConfirmationModal.component</p>
-      <button onClick={onCancel}>cancelModal</button>
-      <button onClick={onConfirm}>confirmDelete</button>
-    </div>
-  ));
+jest.mock('./EventFilterTree.component', () => {
+  return jest.fn().mockImplementation(() => <p>EventFilterTree</p>);
 });
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockImplementation(() => true),
+}));
 
 const mockData = {
   id: 'c0a00c5a-4687-4508-b23d-ab9a2996a8e0',
@@ -134,9 +127,7 @@ const addWebhookProps: AddWebhookProps = {
   allowAccess: true,
 };
 
-// TODO: improve API unit tests as per standards
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip('Test AddWebhook component', () => {
+describe('Test AddWebhook component', () => {
   it('Component should render properly', async () => {
     const { container } = render(<AddWebhook {...addWebhookProps} />, {
       wrapper: MemoryRouter,
@@ -153,22 +144,10 @@ describe.skip('Test AddWebhook component', () => {
     );
     const endpointUrl = await findByTestId(container, 'endpoint-url');
     const active = await findByTestId(container, 'active');
-    const entityCreatedCheckbox = await findByTestId(
-      container,
-      'entity-created-checkbox'
-    );
-    const entityUpdatedCheckbox = await findByTestId(
-      container,
-      'entity-updated-checkbox'
-    );
-    const entityDeletedCheckbox = await findByTestId(
-      container,
-      'entity-deleted-checkbox'
-    );
+
     const showAdvancedButton = await findByTestId(container, 'show-advanced');
     const cancelWebhook = await findByTestId(container, 'cancel-webhook');
     const saveWebhook = await findByTestId(container, 'save-webhook');
-    const dropdown = await findAllByText(container, /DropDown.component/i);
 
     expect(pageLayout).toBeInTheDocument();
     expect(rightPanel).toBeInTheDocument();
@@ -181,13 +160,10 @@ describe.skip('Test AddWebhook component', () => {
     expect(markdownWithPreview).toBeInTheDocument();
     expect(endpointUrl).toBeInTheDocument();
     expect(active).toBeInTheDocument();
-    expect(entityCreatedCheckbox).toBeInTheDocument();
-    expect(entityUpdatedCheckbox).toBeInTheDocument();
-    expect(entityDeletedCheckbox).toBeInTheDocument();
+
     expect(showAdvancedButton).toBeInTheDocument();
     expect(cancelWebhook).toBeInTheDocument();
     expect(saveWebhook).toBeInTheDocument();
-    expect(dropdown.length).toBe(3);
   });
 
   it('Input fields should work properly', async () => {
@@ -198,23 +174,13 @@ describe.skip('Test AddWebhook component', () => {
     const endpointUrl = await findByTestId(container, 'endpoint-url');
     const nameField = await findByTestId(container, 'name');
     const active = await findByTestId(container, 'active');
-    const entityCreatedCheckbox = await findByTestId(
-      container,
-      'entity-created-checkbox'
-    );
-    const entityUpdatedCheckbox = await findByTestId(
-      container,
-      'entity-updated-checkbox'
-    );
-    const entityDeletedCheckbox = await findByTestId(
-      container,
-      'entity-deleted-checkbox'
-    );
-    const dropdown = await findAllByText(container, /DropDown.component/i);
+
     const saveWebhook = await findByTestId(container, 'save-webhook');
     const cancelWebhook = await findByTestId(container, 'cancel-webhook');
 
-    fireEvent.click(saveWebhook);
+    await act(async () => {
+      fireEvent.click(saveWebhook);
+    });
 
     expect(
       await findByText(container, 'Webhook name is required.')
@@ -222,15 +188,7 @@ describe.skip('Test AddWebhook component', () => {
     expect(
       await findByText(container, 'Webhook endpoint is required.')
     ).toBeInTheDocument();
-    // default value is prefilled , use  below condition when value is empty
-    // expect(
-    //   await findByText(container, 'Webhook event filters are required.')
-    // ).toBeInTheDocument();
     expect(active).toHaveClass('open');
-    // default value is prefilled , use  below condition when value is empty
-    // expect(entityCreatedCheckbox).not.toBeChecked();
-    // expect(entityUpdatedCheckbox).not.toBeChecked();
-    // expect(entityDeletedCheckbox).not.toBeChecked();
 
     fireEvent.change(nameField, {
       target: {
@@ -243,20 +201,10 @@ describe.skip('Test AddWebhook component', () => {
       },
     });
     fireEvent.click(active);
-    fireEvent.click(entityCreatedCheckbox);
-    fireEvent.click(entityUpdatedCheckbox);
-    fireEvent.click(entityDeletedCheckbox);
-    fireEvent.click(dropdown[0]);
-    fireEvent.click(dropdown[1]);
-    fireEvent.click(dropdown[2]);
 
     expect(nameField).toHaveValue('name field');
     expect(endpointUrl).toHaveValue('http://test.com');
     expect(active).not.toHaveClass('open');
-    expect(entityCreatedCheckbox).toBeChecked();
-    expect(entityUpdatedCheckbox).toBeChecked();
-    expect(entityDeletedCheckbox).toBeChecked();
-    expect(mockDropdownFunction).toBeCalledTimes(3);
 
     fireEvent.click(saveWebhook);
     fireEvent.click(cancelWebhook);
@@ -307,7 +255,7 @@ describe.skip('Test AddWebhook component', () => {
         },
       });
 
-      // string should not added as its number feild
+      // string should not added as its number field
       expect(batchSize).not.toHaveValue('batchSize');
       expect(connectionTimeout).not.toHaveValue('connectionTimeout');
 
@@ -341,7 +289,7 @@ describe.skip('Test AddWebhook component', () => {
       fireEvent.click(showAdvancedButton);
 
       const secretKey = await findByTestId(container, 'secret-key');
-      const generateSecretButtom = await findByTestId(
+      const generateSecretButton = await findByTestId(
         container,
         'generate-secret'
       );
@@ -352,7 +300,7 @@ describe.skip('Test AddWebhook component', () => {
       ).not.toBeInTheDocument();
       expect(queryByTestId(container, 'clear-secret')).not.toBeInTheDocument();
 
-      fireEvent.click(generateSecretButtom);
+      fireEvent.click(generateSecretButton);
       jest.runAllTimers();
 
       expect(secretKey).toHaveValue();
@@ -374,7 +322,7 @@ describe.skip('Test AddWebhook component', () => {
 
   it('If data is provided, it should work accordingly', async () => {
     await act(async () => {
-      const { container } = render(
+      render(
         <AddWebhook
           {...addWebhookProps}
           data={mockData as Webhook}
@@ -386,41 +334,29 @@ describe.skip('Test AddWebhook component', () => {
           wrapper: MemoryRouter,
         }
       );
-
-      const header = await findByTestId(container, 'header');
-      const deleteWebhook = await findByTestId(container, 'delete-webhook');
-
-      expect(header).toBeInTheDocument();
-      expect(await findByText(container, 'Edit Webhook')).toBeInTheDocument();
-      expect(deleteWebhook).toBeInTheDocument();
-      expect(
-        queryByText(container, 'ConfirmationModal.component')
-      ).not.toBeInTheDocument();
-
-      fireEvent.click(deleteWebhook);
-
-      // on click of delete button confirmation modal should open
-      expect(
-        queryByText(container, 'ConfirmationModal.component')
-      ).toBeInTheDocument();
-
-      // on click of cancelModal confirmation modal should close
-      fireEvent.click(await findByText(container, 'cancelModal'));
-
-      expect(
-        queryByText(container, 'ConfirmationModal.component')
-      ).not.toBeInTheDocument();
-
-      fireEvent.click(deleteWebhook);
-
-      expect(
-        queryByText(container, 'ConfirmationModal.component')
-      ).toBeInTheDocument();
-
-      // on click of confirmDelete delete function should call
-      fireEvent.click(await findByText(container, 'confirmDelete'));
-
-      expect(addWebhookProps.onDelete).toBeCalled();
     });
+
+    const header = await screen.findByTestId('header');
+    const deleteWebhook = await screen.findByTestId('delete-webhook');
+
+    expect(header).toBeInTheDocument();
+    expect(await screen.findByText('Edit Webhook')).toBeInTheDocument();
+    expect(deleteWebhook).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(deleteWebhook);
+    });
+
+    // on click of cancelModal confirmation modal should close
+    fireEvent.click(await screen.findByTestId('cancel'));
+
+    fireEvent.click(deleteWebhook);
+
+    expect(await screen.findByTestId('confirmation-modal')).toBeInTheDocument();
+
+    // on click of confirmDelete delete function should call
+    fireEvent.click(await screen.findByTestId('save-button'));
+
+    expect(addWebhookProps.onDelete).toBeCalled();
   });
 });

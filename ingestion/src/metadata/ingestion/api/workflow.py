@@ -37,21 +37,22 @@ from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
 from metadata.utils.logger import ingestion_logger, set_loggers_level
-from metadata.utils.workflow_helper import (
-    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
-)
 from metadata.utils.workflow_output_handler import print_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
 
 T = TypeVar("T")
 
 SUCCESS_THRESHOLD_VALUE = 90
+REPORTS_INTERVAL_SECONDS = 30
 
 
 class InvalidWorkflowJSONException(Exception):
@@ -60,7 +61,7 @@ class InvalidWorkflowJSONException(Exception):
     """
 
 
-class Workflow:
+class Workflow(WorkflowStatusMixin):
     """
     Ingestion workflow implementation.
 
@@ -83,6 +84,7 @@ class Workflow:
         Disabling pylint to wait for workflow reimplementation as a topology
         """
         self.config = config
+        self._timer: Optional[RepeatedTimer] = None
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 
@@ -177,6 +179,16 @@ class Workflow:
                 f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured"
             )
 
+    @property
+    def timer(self) -> RepeatedTimer:
+        """Status timer"""
+        if not self._timer:
+            self._timer = get_ingestion_status_timer(
+                interval=REPORTS_INTERVAL_SECONDS, logger=logger, workflow=self
+            )
+
+        return self._timer
+
     def type_class_fetch(self, type_: str, is_file: bool):
         if is_file:
             return type_.replace("-", "_")
@@ -199,22 +211,42 @@ class Workflow:
         return cls(config)
 
     def execute(self):
-        for record in self.source.next_record():
-            self.report["Source"] = self.source.get_status().as_obj()
-            if hasattr(self, "processor"):
-                processed_record = self.processor.process(record)
-            else:
-                processed_record = record
-            if hasattr(self, "stage"):
-                self.stage.stage_record(processed_record)
-                self.report["Stage"] = self.stage.get_status().as_obj()
-            if hasattr(self, "sink"):
-                self.sink.write_record(processed_record)
-                self.report["sink"] = self.sink.get_status().as_obj()
-        if hasattr(self, "bulk_sink"):
-            self.stage.close()
-            self.bulk_sink.write_records()
-            self.report["Bulk_Sink"] = self.bulk_sink.get_status().as_obj()
+        """
+        Pass each record from the source down the pipeline:
+        Source -> (Processor) -> Sink
+        or Source -> (Processor) -> Stage -> BulkSink
+        """
+        self.timer.trigger()
+
+        try:
+            for record in self.source.next_record():
+                self.report["Source"] = self.source.get_status().as_obj()
+                if hasattr(self, "processor"):
+                    processed_record = self.processor.process(record)
+                else:
+                    processed_record = record
+                if hasattr(self, "stage"):
+                    self.stage.stage_record(processed_record)
+                    self.report["Stage"] = self.stage.get_status().as_obj()
+                if hasattr(self, "sink"):
+                    self.sink.write_record(processed_record)
+                    self.report["sink"] = self.sink.get_status().as_obj()
+            if hasattr(self, "bulk_sink"):
+                self.stage.close()
+                self.bulk_sink.write_records()
+                self.report["Bulk_Sink"] = self.bulk_sink.get_status().as_obj()
+
+            # If we reach this point, compute the success % and update the associated Ingestion Pipeline status
+            self.update_ingestion_status_at_end()
+
+        # Any unhandled exception breaking the workflow should update the status
+        except Exception as err:
+            self.set_ingestion_pipeline_status(PipelineState.failed)
+            raise err
+
+        # Force resource closing. Required for killing the threading
+        finally:
+            self.stop()
 
     def stop(self):
         if hasattr(self, "processor"):
@@ -224,6 +256,17 @@ class Workflow:
         if hasattr(self, "sink"):
             self.sink.close()
 
+        self.source.close()
+        self.timer.stop()
+
+    def _get_source_success(self):
+        return self.source.get_status().calculate_success()
+
+    def update_ingestion_status_at_end(self):
+        """
+        Once the execute method is done, update the status
+        as OK or KO depending on the success rate.
+        """
         pipeline_state = PipelineState.success
         if (
             self._get_source_success() >= SUCCESS_THRESHOLD_VALUE
@@ -231,12 +274,8 @@ class Workflow:
         ):
             pipeline_state = PipelineState.partialSuccess
         self.set_ingestion_pipeline_status(pipeline_state)
-        self.source.close()
 
-    def _get_source_success(self):
-        return self.source.get_status().calculate_success()
-
-    def raise_from_status(self, raise_warnings=False):
+    def _raise_from_status_internal(self, raise_warnings=False):
         """
         Method to raise error if failed execution
         """
@@ -280,18 +319,6 @@ class Workflow:
             return 1
 
         return 0
-
-    def set_ingestion_pipeline_status(self, state: PipelineState):
-        """
-        Method to set the pipeline status of current ingestion pipeline
-        """
-        pipeline_run_id = set_ingestion_pipeline_status_helper(
-            state=state,
-            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
-            pipeline_run_id=self.config.pipelineRunId,
-            metadata=self.metadata,
-        )
-        self.config.pipelineRunId = pipeline_run_id
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """

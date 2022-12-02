@@ -23,8 +23,6 @@ having the verbosely pass .value all the time...
 import traceback
 from typing import Dict, List, Optional, Union
 
-import pandas as pd
-
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.utils.dispatch import enum_register
@@ -47,6 +45,8 @@ def get_table_metrics(
     Returns:
         dictionnary of results
     """
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     try:
         row = []
         for metric in metrics:
@@ -88,6 +88,8 @@ def get_static_metrics(
     Returns:
         dictionnary of results
     """
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     try:
         row = []
         for metric in metrics:
@@ -98,8 +100,8 @@ def get_static_metrics(
                     )
                 )
         row_dict = {}
-        for index, table_metric in enumerate(metrics):
-            row_dict[table_metric.name()] = row[index]
+        for index, column_metric in enumerate(metrics):
+            row_dict[column_metric.name()] = row[index]
         return row_dict
     except Exception as exc:
         logger.debug(
@@ -140,7 +142,7 @@ def get_window_metrics(*args, **kwargs):
 
 
 compute_metrics_registry = enum_register()
-compute_metrics_registry.add("Table")(get_table_metrics)
 compute_metrics_registry.add("Static")(get_static_metrics)
+compute_metrics_registry.add("Table")(get_table_metrics)
 compute_metrics_registry.add("Query")(get_query_metrics)
 compute_metrics_registry.add("Window")(get_window_metrics)

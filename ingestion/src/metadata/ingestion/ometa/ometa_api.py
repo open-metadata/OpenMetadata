@@ -50,6 +50,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -85,6 +88,7 @@ from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
+from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
@@ -155,6 +159,7 @@ class OpenMetadata(
     OMetaTestsMixin,
     DataInisghtMixin,
     OMetaIngestionPipelineMixin,
+    OMetaUserMixin,
     Generic[T, C],
 ):
     """
@@ -383,6 +388,12 @@ class OpenMetadata(
             ),
         ):
             return "/services/metadataServices"
+
+        if issubclass(
+            entity,
+            IngestionPipeline,
+        ):
+            return "/services/ingestionPipelines"
 
         if issubclass(
             entity,

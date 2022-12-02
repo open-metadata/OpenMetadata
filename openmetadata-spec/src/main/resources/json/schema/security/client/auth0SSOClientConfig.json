@@ -12,7 +12,8 @@
     },
     "secretKey": {
       "description": "Auth0 Client Secret Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "domain": {
       "description": "Auth0 Domain.",

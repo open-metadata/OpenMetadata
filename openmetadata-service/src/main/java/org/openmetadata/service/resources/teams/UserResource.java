@@ -110,6 +110,7 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -124,7 +125,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "users", order = 7) // Initialize user resource before bot resource (at default order 9)
+@Collection(name = "users", order = 3) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
@@ -157,6 +158,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
+    this.dao.initializeUsers(config);
+    SubjectCache.initialize();
   }
 
   public static class UserList extends ResultList<User> {
@@ -564,7 +567,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    User user = dao.get(uriInfo, id, dao.getFieldsWithUserAuth("*"));
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
@@ -595,7 +598,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RevokeTokenRequest revokeTokenRequest)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    User user = dao.get(uriInfo, revokeTokenRequest.getId(), Fields.EMPTY_FIELDS);
+    User user = dao.get(uriInfo, revokeTokenRequest.getId(), dao.getFieldsWithUserAuth("*"));
     if (!user.getIsBot()) {
       throw new IllegalStateException(CatalogExceptionMessage.invalidBotUser());
     }
@@ -993,9 +996,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response refreshToken(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest)
       throws IOException {
-    return Response.status(Response.Status.OK)
-        .entity(authHandler.getNewAccessToken(securityContext.getUserPrincipal().getName(), refreshRequest))
-        .build();
+    return Response.status(Response.Status.OK).entity(authHandler.getNewAccessToken(refreshRequest)).build();
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) {

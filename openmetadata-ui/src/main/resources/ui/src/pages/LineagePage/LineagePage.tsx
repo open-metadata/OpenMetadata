@@ -49,10 +49,8 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
-import {
-  EntityLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
 import {
   getEntityName,
@@ -203,10 +201,7 @@ const LineagePage = () => {
             const pipelineRes = await getPipelineByFqn(entityFQN, '');
             updateBreadcrumb(
               pipelineRes,
-              getPipelineDetailsPath(
-                entityFQN,
-                PIPELINE_DETAILS_TABS.EntityLineage
-              )
+              getPipelineDetailsPath(entityFQN, PIPELINE_DETAILS_TABS.Lineage)
             );
           }
 

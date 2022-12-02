@@ -15,12 +15,11 @@ import {
     deleteCreatedService,
     editOwnerforCreatedService,
     goToAddNewServicePage,
-    login,
     testServiceCreationAndIngestion,
     updateDescriptionForIngestedTables,
     uuid
 } from '../../common/common';
-import { API_SERVICE, LOGIN, SERVICE_TYPE } from '../../constants/constants';
+import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Superset';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
@@ -29,8 +28,7 @@ const description = `This is ${serviceName} description`;
 
 describe('Superset Ingestion', () => {
   beforeEach(() => {
-    login(LOGIN.username, LOGIN.password);
-    cy.goToHomePage();
+    cy.login();
   });
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Dashboard);
@@ -51,7 +49,12 @@ describe('Superset Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      // no filters
+      cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
+      .should('be.visible')
+      .check();
+      cy.get('[data-testid="filter-pattern-includes-dashboard"]')
+      .should('be.visible')
+      .type(tableName);
     };
 
     testServiceCreationAndIngestion(

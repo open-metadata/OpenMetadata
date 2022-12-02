@@ -19,11 +19,11 @@ We also assume that your helm chart release names are `openmetadata` and `openme
 
 <Warning>
 
-It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0121-release) before starting the upgrade process. We have introduced major stability and security changes as part of 0.12.1 OpenMetadata Release.
+It is adviced to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release)
 
 </Warning>
 
-Below document is valid for upgrading Helm Charts from **0.11.5 to 0.12.X**.
+Below document is valid for upgrading Helm Charts from **0.12.x to 0.13.0**.
 
 ### Back up metadata
 
@@ -84,16 +84,7 @@ open-metadata/openmetadata-dependencies	0.0.34       	0.11.4     	Helm Dependenc
 ```
 
 ## Upgrade OpenMetadata Dependencies
-
-
-### Step 1: Upgrade Airfow
-
-We have **upgraded the Airflow version from 2.1.4 to 2.3.3** with OpenMetadata `0.12.X` releases. 
-
-Before you start upgrading OpenMetadata Dependencies, you must follow airflow migration docs [here](/deployment/upgrade/bare-metal#upgrade-ingestion-container) to upgrade Airflow.
-
-
-### Step 2: Upgrade OpenMetadata Dependencies with the below command
+### Step 1: Upgrade OpenMetadata Dependencies with the below command
 
 ```commandline
 helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
@@ -104,14 +95,14 @@ The above command uses configurations defined [here](https://raw.githubuserconte
 You can modify any configuration and deploy by passing your own `values.yaml`.
 
 
-### Step 3: Troubleshooting
+### Step 2: Troubleshooting
 
 If your helm upgrade fails with the below command result -
 ```
 Error: UPGRADE FAILED: cannot patch "mysql" with kind StatefulSet: StatefulSet.apps "mysql" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden
 ```
 
-This is probably because with `0.12.1`, we have **default size of mysql persistence set to 50Gi**.
+This is probably because with `0.13.0`, we have **default size of mysql persistence set to 50Gi**.
 
 Kubernetes does not allow changes to Persistent volume with helm upgrades.
 
@@ -141,20 +132,13 @@ helm upgrade openmetadata open-metadata/openmetadata
 
 You might need to pass your own `values.yaml` with the `--values` flag
 
-## Reindex ElasticSearch
-
-We have added a conditional suggestion mapping for all of the elasticsearch indexes. This may require re-indexing. With 0.12.1 its never been easier to index your metadata
-
-### Go to Settings -> Event Publishers -> ElasticSearch
-
+### Re-index all your metadata
+ Go to Settings -> Elasticsearch
 <Image src="/images/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project"/>
 
-### Make sure you select "Recreate Indexes"
-
-Click on the "Recreate Indexes" lable and click "Re Index All"
-
-
-
+ Click on reindex all
+ in the dialog box choose Recreate Indexes to All
+ <Image src="/images/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex"/>
 
 ## Troubleshooting for 0.12 Release
 

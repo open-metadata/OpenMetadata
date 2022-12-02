@@ -28,7 +28,7 @@ You can find further information about specific version upgrades in the followin
     color="violet-70"
     icon="10k"
     bold="Upgrade 0.12"
-    href="/deployment/upgrade/versions/010-to-011"
+    href="/deployment/upgrade/versions/011-to-012"
   >
     Upgrade from 0.11 to 0.12 inplace.
   </InlineCallout>
@@ -36,7 +36,7 @@ You can find further information about specific version upgrades in the followin
     color="violet-70"
     icon="10k"
     bold="Upgrade 0.13"
-    href="/deployment/upgrade/versions/010-to-011"
+    href="/deployment/upgrade/versions/012-to-013"
   >
     Upgrade from 0.12 to 0.13 inplace.
   </InlineCallout>

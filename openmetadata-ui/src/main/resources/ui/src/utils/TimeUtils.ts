@@ -11,147 +11,25 @@
  *  limitations under the License.
  */
 
-import { isNil, toNumber } from 'lodash';
+import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
-
-const msPerSecond = 1000;
-const msPerMinute = 60 * msPerSecond;
-const msPerHour = msPerMinute * 60;
-const msPerDay = msPerHour * 24;
-const msPerMonth = msPerDay * 30;
-const msPerYear = msPerDay * 365;
-
-const formattingObj = {
-  sameDay: "'Today'",
-  lastDay: "'Yesterday'",
-  lastWeek: 'dd MMMM yyyy',
-  sameElse: 'dd MMMM yyyy',
-};
-
-const activityFeedTimeFormat = {
-  sameDay: "'Today at' t a",
-  lastDay: "'Yesterday at' t a",
-  lastWeek: "'Last' EEEE 'at' t a",
-  sameElse: 'dd/MM/yyyy',
-};
-
-/**
- * If the difference between the two dates is less than -1, return 'lastWeek'. If the difference is
- * less than 0, return 'lastDay'. If the difference is less than 1, return 'sameDay'. Otherwise, return
- * 'sameElse'.
- * @param {DateTime} myDateTime - The date you want to format.
- * @param {DateTime} now - The current date and time.
- * @returns A string
- */
-const getCalendarFormat = (myDateTime: DateTime, now: DateTime): string => {
-  const diff = myDateTime.diff(now.startOf('day'), 'days').as('days');
-
-  if (diff < -1) return 'lastWeek';
-
-  if (diff < 0) return 'lastDay';
-
-  if (diff < 1) return 'sameDay';
-
-  return 'sameElse';
-};
-
-export const getRelativeTimeDifference = (
-  current: number,
-  previous: number
-): string => {
-  const elapsed = current - previous;
-
-  if (elapsed <= msPerSecond) {
-    return 'now';
-  } else if (elapsed < msPerMinute / 5) {
-    return 'a few seconds ago';
-  } else if (elapsed < msPerMinute) {
-    const relativeTime = Math.round(elapsed / msPerSecond);
-
-    return `${relativeTime} second${relativeTime > 1 ? 's' : ''} ago`;
-  } else if (elapsed < msPerHour) {
-    const relativeTime = Math.round(elapsed / msPerMinute);
-
-    return `${relativeTime} minute${relativeTime > 1 ? 's' : ''} ago`;
-  } else if (elapsed < msPerDay) {
-    const relativeTime = Math.round(elapsed / msPerHour);
-
-    return `${relativeTime} hour${relativeTime > 1 ? 's' : ''} ago`;
-  } else if (elapsed < msPerMonth) {
-    const relativeTime = Math.round(elapsed / msPerDay);
-
-    return `${relativeTime} day${relativeTime > 1 ? 's' : ''} ago`;
-  } else if (elapsed < msPerYear) {
-    const relativeTime = Math.round(elapsed / msPerMonth);
-
-    return `${relativeTime} month${relativeTime > 1 ? 's' : ''} ago`;
-  } else {
-    const relativeTime = Math.round(elapsed / msPerYear);
-
-    return `${relativeTime} year${relativeTime > 1 ? 's' : ''} ago`;
-  }
-};
-
-export const getRelativeDayDifference = (
-  current: number,
-  previous: number
-): string => {
-  const elapsed = current - previous;
-
-  if (elapsed < msPerDay / 6) {
-    return 'in last few hours';
-  } else if (elapsed < msPerDay) {
-    return 'today';
-  } else if (elapsed < msPerMonth) {
-    const relativeTime = Math.round(elapsed / msPerDay);
-
-    return `in last ${relativeTime} day${relativeTime > 1 ? 's' : ''}`;
-  } else if (elapsed < msPerYear) {
-    const relativeTime = Math.round(elapsed / msPerMonth);
-
-    return `${relativeTime} month${relativeTime > 1 ? 's' : ''} ago`;
-  } else {
-    const relativeTime = Math.round(elapsed / msPerYear);
-
-    return `${relativeTime} year${relativeTime > 1 ? 's' : ''} ago`;
-  }
-};
-
-export const getRelativeTime = (timestamp: number): string => {
-  return getRelativeTimeDifference(Date.now(), timestamp);
-};
-
-const getFormattedDateTime = (
-  dt1: DateTime,
-  dt2: DateTime,
-  formattingRulesObj: Record<string, string>
-) => {
-  const format = getCalendarFormat(dt1, dt2) || 'sameElse';
-
-  return dt1.toFormat(formattingRulesObj[format]);
-};
-
-export const getRelativeDay = (timestamp: number): string => {
-  return getRelativeDayDifference(Date.now(), timestamp);
-};
-
-export const getRelativeDateByTimeStamp = (timeStamp: number): string => {
-  return getFormattedDateTime(
-    DateTime.fromMillis(timeStamp),
-    DateTime.now(),
-    formattingObj
-  );
-};
 
 export const getTimeByTimeStamp = (timeStamp: number): string =>
   DateTime.fromMillis(timeStamp).toFormat('hh:mm a');
 
-export const getDayTimeByTimeStamp = (timeStamp: number): string => {
-  return getFormattedDateTime(
-    DateTime.fromMillis(timeStamp),
-    DateTime.now(),
-    activityFeedTimeFormat
+export const getRelativeDateByTimeStamp = (
+  timeStamp: number,
+  baseTimeStamp?: number
+): string => {
+  return capitalize(
+    DateTime.fromMillis(timeStamp).toRelativeCalendar({
+      base: baseTimeStamp ? DateTime.fromMillis(baseTimeStamp) : DateTime.now(),
+    }) || ''
   );
+};
+
+export const getDayTimeByTimeStamp = (timeStamp: number): string => {
+  return DateTime.fromMillis(timeStamp).toRelative() || '';
 };
 
 export const getUTCDateTime = (dateTime: string) => {
@@ -199,8 +77,8 @@ export const getDateByTimeStamp = (
  * It takes a timestamp and returns a relative date time string
  * @param {number} timestamp - number - The timestamp to convert to a relative date time.
  */
-export const getRelativeDateTimeByTimeStamp = (timestamp: number) =>
-  DateTime.fromMillis(timestamp as number).toRelative();
+export const getRelativeDateTimeByTimeStamp = (timestamp: number): string =>
+  DateTime.fromMillis(timestamp as number).toRelative() || '';
 
 export const getLocaleDateFromTimeStamp = (timeStamp: number): string => {
   return DateTime.fromMillis(timeStamp).toISO({ includeOffset: false });
@@ -331,11 +209,12 @@ export const getFormattedDateFromMilliSeconds = (
 
 /**
  * It takes a timestamp in milliseconds and returns a formatted date like 'Oct 14, 1983, 9:30 AM'.
+ * reference: https://moment.github.io/luxon/#/formatting?id=table-of-tokens
  * @param timeStamp The timeStamp in milliseconds.
  * @returns formatted date like 'Oct 14, 1983, 9:30 AM'.
  */
 export const getDateTimeFromMilliSeconds = (timeStamp: number) =>
-  DateTime.fromMillis(timeStamp).toLocaleString(DateTime.DATETIME_MED);
+  DateTime.fromMillis(timeStamp).toFormat("DDD 'at' hh:mm a");
 
 /**
  * @param seconds EPOCH seconds
@@ -406,3 +285,13 @@ export const formatDateTimeFromSeconds = (date: number) => {
 
 export const getTimeStampByDateTime = (dateTime: string) =>
   DateTime.fromSQL(dateTime).toMillis();
+
+/**
+ *
+ * @param timeStamp timestamp in milliSeconds
+ * @returns days count
+ */
+export const getNumberOfDaysForTimestamp = (timeStamp: number) =>
+  toInteger(
+    -DateTime.now().diff(DateTime.fromMillis(timeStamp), ['days']).days
+  );

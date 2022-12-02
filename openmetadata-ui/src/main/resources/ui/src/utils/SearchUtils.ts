@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/camelcase */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,19 +12,21 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { SearchIndex } from '../enums/search.enum';
 
-export const getSearchAPIQuery = (
+export const getSearchAPIQueryParams = (
   queryString: string,
   from: number,
   size: number,
   filters: string,
   sortField: string,
   sortOrder: string,
-  searchIndex: string,
+  searchIndex: SearchIndex | SearchIndex[],
   onlyDeleted = false,
   trackTotalHits = false
-): string => {
+): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
   const query = queryString
     ? queryString.includes(':')
@@ -31,11 +34,32 @@ export const getSearchAPIQuery = (
       : `*${queryString}*`
     : WILD_CARD_CHAR;
 
-  return `q=${query}${
-    filters ? ` AND ${filters}` : ''
-  }&from=${start}&size=${size}${onlyDeleted ? '&deleted=true' : ''}${
-    sortField ? `&sort_field=${sortField}` : ''
-  }${sortOrder && sortField ? `&sort_order=${sortOrder}` : ''}${
-    searchIndex ? `&index=${searchIndex}` : ''
-  }${trackTotalHits ? '&track_total_hits=true' : ''}`;
+  const params: Record<string, string | boolean | number | string[]> = {
+    q: query + (filters ? ` AND ${filters}` : ''),
+    from: start,
+    size,
+    index: searchIndex,
+  };
+
+  if (onlyDeleted) {
+    params.deleted = onlyDeleted;
+  }
+
+  if (!isEmpty(sortField)) {
+    params.sort_field = sortField;
+  }
+
+  if (!isEmpty(sortOrder)) {
+    params.sort_order = sortOrder;
+  }
+
+  if (trackTotalHits) {
+    params.track_total_hits = trackTotalHits;
+  }
+
+  return params;
 };
+
+// will add back slash "\" before quote in string if present
+export const getQueryWithSlash = (query: string): string =>
+  query.replace(/["']/g, '\\$&');

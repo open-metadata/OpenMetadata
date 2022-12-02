@@ -53,7 +53,7 @@ import {
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../../constants/globalSettings.constants';
+} from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -458,21 +458,20 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <div className="tw--ml-5">
-                <Description
-                  description={policy.description || ''}
-                  entityFqn={policy.fullyQualifiedName}
-                  entityName={getEntityName(policy)}
-                  entityType={EntityType.POLICY}
-                  hasEditAccess={
-                    policyPermission.EditAll || policyPermission.EditDescription
-                  }
-                  isEdit={editDescription}
-                  onCancel={() => setEditDescription(false)}
-                  onDescriptionEdit={() => setEditDescription(true)}
-                  onDescriptionUpdate={handleDescriptionUpdate}
-                />
-              </div>
+              <Description
+                description={policy.description || ''}
+                entityFqn={policy.fullyQualifiedName}
+                entityName={getEntityName(policy)}
+                entityType={EntityType.POLICY}
+                hasEditAccess={
+                  policyPermission.EditAll || policyPermission.EditDescription
+                }
+                isEdit={editDescription}
+                onCancel={() => setEditDescription(false)}
+                onDescriptionEdit={() => setEditDescription(true)}
+                onDescriptionUpdate={handleDescriptionUpdate}
+              />
+
               <Tabs defaultActiveKey="rules">
                 <TabPane key="rules" tab="Rules">
                   {isEmpty(policy.rules) ? (
@@ -630,9 +629,9 @@ const PoliciesDetailPage = () => {
           closable={false}
           confirmLoading={isloadingOnSave}
           okText={t('label.confirm')}
-          title={`${t('label.remove')} ${getEntityName(
-            selectedEntity.record
-          )} ${t('label.from')} ${getEntityName(policy)}`}
+          title={`${t('label.remove-entity', {
+            entity: getEntityName(selectedEntity.record),
+          })} ${t('label.from')} ${getEntityName(policy)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {

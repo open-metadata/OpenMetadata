@@ -93,17 +93,18 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
             )
             for row in data:
                 try:
-                    queries.append(
-                        TableQuery(
-                            query=row.get("query_text"),
-                            userName=row.get("user_name"),
-                            startTime=row.get("query_start_time_ms"),
-                            endTime=row.get("execution_end_time_ms"),
-                            analysisDate=datetime.now(),
-                            serviceName=self.config.serviceName,
-                            databaseName="default",  # In databricks databaseName is always default
+                    if self.client.is_query_valid(row):
+                        queries.append(
+                            TableQuery(
+                                query=row.get("query_text"),
+                                userName=row.get("user_name"),
+                                startTime=row.get("query_start_time_ms"),
+                                endTime=row.get("execution_end_time_ms"),
+                                analysisDate=datetime.now(),
+                                serviceName=self.config.serviceName,
+                                databaseName="default",  # In databricks databaseName is always default
+                            )
                         )
-                    )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(str(err))

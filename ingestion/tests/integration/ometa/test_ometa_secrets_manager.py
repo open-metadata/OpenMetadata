@@ -15,13 +15,13 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     AuthProvider,
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.secretsManagerProvider import (
-    SecretsManagerProvider,
-)
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
     GoogleSSOClientConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
+    SecretsManagerProvider,
+)
 from metadata.ingestion.ometa.auth_provider import (
     GoogleAuthenticationProvider,
     NoOpAuthenticationProvider,

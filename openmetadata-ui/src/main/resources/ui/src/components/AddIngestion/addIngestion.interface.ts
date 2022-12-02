@@ -55,6 +55,7 @@ export interface AddIngestionProps {
 }
 
 export interface ConfigureIngestionProps {
+  formType: FormSubmitType;
   ingestionName: string;
   description?: string;
   databaseServiceNames: string[];
@@ -71,7 +72,7 @@ export interface ConfigureIngestionProps {
   includeView: boolean;
   includeTags: boolean;
   markDeletedTables?: boolean;
-  markDeletedTablesFromFilterOnly?: boolean;
+  markAllDeletedTables?: boolean;
   enableDebugLog: boolean;
   profileSample?: number;
   ingestSampleData: boolean;
@@ -97,7 +98,7 @@ export interface ConfigureIngestionProps {
   handleIncludeView: () => void;
   handleIncludeTags: () => void;
   handleMarkDeletedTables?: () => void;
-  handleMarkDeletedTablesFromFilterOnly?: () => void;
+  handleMarkAllDeletedTables?: () => void;
   handleEnableDebugLog: () => void;
   handleIngestSampleData: () => void;
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.services.connections.metadata.SecretsManagerProvider;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class SecretsManagerFactoryTest {
 

@@ -18,7 +18,8 @@ import { DELETE_TERM, SEARCH_INDEX } from '../constants/constants';
 export const descriptionBox =
     '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 export const uuid = () => Cypress._.random(0, 1e6);
-const RETRY_TIMES = 30;
+const RETRY_TIMES = 4; 
+const BASE_WAIT_TIME = 20000;
 
 const ADMIN = 'admin';
 
@@ -35,8 +36,8 @@ const checkTeamTypeOptions = () => {
 };
 
 //intercepting URL with cy.intercept
-export const interceptURL = (method, url, alias) => {
-    cy.intercept({ method: method, url: url }).as(alias);
+export const interceptURL = (method, url, alias, callback) => {
+    cy.intercept({ method: method, url: url }, callback).as(alias);
 };
 
 //waiting for response and validating the response status code
@@ -50,9 +51,11 @@ export const handleIngestionRetry = (
     count = 0,
     ingestionType = 'metadata'
 ) => {
+    let timer = BASE_WAIT_TIME;
     const rowIndex = ingestionType === 'metadata' ? 1 : 2;
 
     interceptURL('GET', '/api/v1/services/ingestionPipelines/*/pipelineStatus?*', 'pipelineStatuses')
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails')
 
     // ingestions page
     let retryCount = count;
@@ -74,28 +77,35 @@ export const handleIngestionRetry = (
         }
     };
     const checkSuccessState = () => {
-        testIngestionsTab();
-        retryCount++;
-        // the latest run should be success
-        cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
-            ($ingestionStatus) => {
-                if (
-                    ($ingestionStatus.text() === 'Running' ||
-                        $ingestionStatus.text() === 'Queued' || $ingestionStatus.text() === '--') &&
-                    retryCount <= RETRY_TIMES
-                ) {
-                    // retry after waiting for 20 seconds
-                    cy.wait(20000);
-                    cy.reload();
-                    checkSuccessState();
-                } else {
-                    cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).should(
-                        'have.text',
-                        'Success'
-                    );
-                }
-            }
-        );
+      testIngestionsTab();
+      retryCount++;
+      cy.get('body').then(($body) => {
+        if ($body.find('.ant-skeleton-input').length) {
+          cy.wait(1000);
+        }
+      });
+
+      // the latest run should be success
+      cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+        ($ingestionStatus) => {
+          
+          if (
+            $ingestionStatus.text() !== 'Success' &&
+            retryCount <= RETRY_TIMES
+          ) {
+            // retry after waiting with log1 method [20s,40s,80s,160s,320s]
+            cy.wait(timer);
+            timer *= 2;
+            cy.reload();
+            verifyResponseStatusCode('@serviceDetails', 200)
+            checkSuccessState();
+          } else {
+            cy.get(
+              `.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`
+            ).should('have.text', 'Success');
+          }
+        }
+      );
     };
 
     checkSuccessState();
@@ -374,22 +384,15 @@ export const goToAddNewServicePage = (service_type) => {
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     verifyResponseStatusCode('@getSettingsPage', 200);
     // Services page
-    cy.get('.ant-menu-title-content')
+    interceptURL('GET', '/api/v1/services/*', 'getServiceList')
+    cy.get('[data-testid="global-setting-left-panel"]')
         .contains(service_type)
         .should('be.visible')
         .click();
 
-    cy.wait(500);
+    verifyResponseStatusCode('@getServiceList', 200)
 
-    cy.get('.ant-card').then(($serviceCount) => {
-        if ($serviceCount.length > 0) {
-            cy.get('[data-testid="add-new-service-button"]')
-                .should('be.visible')
-                .click();
-        } else {
-            cy.get('[data-testid="add-service-button"]').should('be.visible').click();
-        }
-    });
+    cy.get('[data-testid="add-service-button"]').should('be.visible').click();
 
     // Add new service page
     cy.url().should('include', '/add-service');
@@ -398,33 +401,6 @@ export const goToAddNewServicePage = (service_type) => {
     cy.get('[data-testid="service-category"]').should('be.visible');
 };
 
-export const testServiceSampleData = (database, schema, table) => {
-    cy.get('[data-testid="Databases"]').click();
-    cy.get('[data-testid="column"] > :nth-child(1)')
-        .should('be.visible')
-        .contains(database);
-
-    cy.get('[data-testid="column"] > :nth-child(1) > a').click();
-    cy.get('[data-testid="table-column"] > :nth-child(1)')
-        .should('be.visible')
-        .contains(schema);
-
-    cy.get('[data-testid="table-column"] > :nth-child(1) > a').click();
-    cy.get('.odd-row > :nth-child(1) > a').should('be.visible').contains(table);
-
-    cy.get('.odd-row > :nth-child(1) > a').click();
-    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(table);
-    cy.get('[data-testid="Schema"]').should('be.visible');
-};
-
-/**
- * visit any of the entity tab from home page
- * @param {string} id -> data-testid is required
- */
-export const visitEntityTab = (id) => {
-    cy.get(`[data-testid="${id}"]`).click();
-    cy.get(`[data-testid="${id}-tab"]`).should('be.visible');
-};
 /**
  * Search for entities through the search bar
  * @param {string} term Entity name
@@ -505,6 +481,7 @@ export const addNewTagToEntity = (entityObj, term) => {
         .scrollIntoView()
         .click();
 
+    cy.wait(500);
     cy.get('[class*="-control"]').should('be.visible').type(term);
     cy.wait(500);
     cy.get('[id*="-option-0"]').should('be.visible').click();
@@ -781,7 +758,7 @@ export const deleteCreatedProperty = (propertyName) => {
     cy.get('@deletebutton').click();
 
     //Checking property name is present on the delete pop-up
-    cy.get('[data-testid="body-text"] > p').should('contain', propertyName);
+    cy.get('[data-testid="body-text"]').should('contain', propertyName);
 
     cy.get('[data-testid="save-button"]').should('be.visible').click();
 
@@ -888,8 +865,9 @@ export const addTeam = (TEAM_DETAILS) => {
 };
 
 export const retryIngestionRun = () => {
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails')
+    let timer = BASE_WAIT_TIME;
     let retryCount = 0;
-
     const testIngestionsTab = () => {
         cy.get('[data-testid="Ingestions"]').should('be.visible');
         cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
@@ -903,28 +881,33 @@ export const retryIngestionRun = () => {
     };
 
     const checkSuccessState = () => {
-        testIngestionsTab();
-        retryCount++;
-        // the latest run should be success
-        cy.get('[data-testid="pipeline-status"]').then(
-            ($ingestionStatus) => {
-                if (
-                    ($ingestionStatus.text() === 'Running' ||
-                        $ingestionStatus.text() === 'Queued' || $ingestionStatus.text() === '--') &&
-                    retryCount <= RETRY_TIMES
-                ) {
-                    // retry after waiting for 20 seconds
-                    cy.wait(20000);
-                    cy.reload();
-                    checkSuccessState();
-                } else {
-                    cy.get('[data-testid="pipeline-status"]').should(
-                        'have.text',
-                        'Success'
-                    );
-                }
-            }
-        );
+      testIngestionsTab();
+      retryCount++;
+      cy.get('body').then(($body) => {
+        if ($body.find('.ant-skeleton-input').length) {
+          cy.wait(1000);
+        }
+      });
+      
+      // the latest run should be success
+      cy.get('[data-testid="pipeline-status"]').then(($ingestionStatus) => {
+        if (
+          $ingestionStatus.text() !== 'Success' &&
+          retryCount <= RETRY_TIMES
+        ) {
+          // retry after waiting with log1 method [20s,40s,80s,160s,320s]
+          cy.wait(timer);
+          timer *= 2;
+          cy.reload();
+          verifyResponseStatusCode('@serviceDetails', 200);
+          checkSuccessState();
+        } else {
+          cy.get('[data-testid="pipeline-status"]').should(
+            'have.text',
+            'Success'
+          );
+        }
+      });
     };
 
     checkSuccessState();
@@ -993,3 +976,70 @@ export const updateDescriptionForIngestedTables = (
         .invoke('text')
         .should('contain', description);
 };
+
+export const followAndOwnTheEntity = (termObj) => {
+    // search for the term and redirect to the respective entity tab
+  
+    visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
+  
+    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
+    cy.get('[data-testid="follow-button"]').should('be.visible').click();
+  
+    verifyResponseStatusCode('@waitAfterFollow', 200);
+    // go to manage tab and search for logged in user and set the owner
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      'getTeams'
+    );
+    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+  
+    verifyResponseStatusCode('@getTeams', 200);
+    //Clicking on users tab
+    cy.get('[data-testid="dropdown-tab"]')
+      .contains('Users')
+      .should('exist')
+      .should('be.visible')
+      .click();
+  
+    //Selecting the user
+    cy.get('[data-testid="list-item"]')
+      .first()
+      .should('exist')
+      .should('be.visible')
+      .click();
+  
+    cy.get(':nth-child(2) > [data-testid="owner-link"]')
+      .scrollIntoView()
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal('admin');
+      });
+  
+    cy.clickOnLogo();
+  
+    // checks newly generated feed for follow and setting owner
+    cy.get('[data-testid="message-container"]')
+      .first()
+      .contains('Added owner: admin')
+      .should('be.visible');
+  
+    cy.get('[data-testid="message-container"]')
+      .eq(1)
+      .scrollIntoView()
+      .contains(`Followed ${termObj.entity.slice(0, -1)}`)
+      .should('be.visible');
+  
+    //Check followed entity on mydata page
+    cy.get('[data-testid="following-data-container"]')
+    .find(`[data-testid="Following data-${termObj.displayName}"]`)
+    .should('be.visible');
+
+    //Check owned entity
+    cy.get('[data-testid="my-data-container"]')
+    .find(`[data-testid="My data-${termObj.displayName}"]`)
+    .should('be.visible')
+
+    cy.clickOnLogo();
+
+  };

@@ -52,6 +52,8 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
+  - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
+    url: /deployment/kubernetes/gke-troubleshooting
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -133,6 +135,19 @@ site_menu:
     url: /deployment/security/enable-ssl/openmetadata-server
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
+  - category: Deployment / Enable Security / JWT Troubleshooting
+    url: /deployment/security/jwt-troubleshooting
+
+  - category: Deployment / Enable Secrets Manager
+    url: /deployment/secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations
+    url: /deployment/secrets-manager/supported-implementations
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS Secrets Manager
+    url: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS SSM Parameter Store
+    url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+  - category: Deployment / Enable Secrets Manager / How to add a new implementation
+    url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
@@ -213,6 +228,8 @@ site_menu:
     url: /connectors/database/postgres/airflow
   - category: Connectors / Database / Postgres / CLI
     url: /connectors/database/postgres/cli
+  - category: Connectors / Database / Postgres / Troubleshooting
+    url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Airflow
@@ -329,6 +346,8 @@ site_menu:
     url: /connectors/database/domo-database/airflow
   - category: Connectors / Database / Domo Database / CLI
     url: /connectors/database/domo-database/cli
+  - category: Connectors / Database / Domo Database / Troubleshoot
+    url: /connectors/database/domo-database/troubleshoot
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard
@@ -558,6 +577,9 @@ site_menu:
 
   - category: Features / Glossaries
     url: /openmetadata/glossaries
+
+  - category: Features / Data Insights
+    url: /openmetadata/data-insight
 
   - category: Main Concepts
     url: /main-concepts

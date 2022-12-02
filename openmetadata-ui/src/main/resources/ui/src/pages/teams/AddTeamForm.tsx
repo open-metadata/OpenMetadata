@@ -1,6 +1,6 @@
 import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined, toLower, trim } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +52,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const handleSubmit = (data: Team) => {
     data = {
       ...data,
+      name: trim(data.name),
+      displayName: trim(data.displayName),
       description,
     };
     onSave(data);
@@ -124,7 +126,9 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                     )
                   )
                 ) {
-                  return Promise.reject(t('label.name-already-exist'));
+                  return Promise.reject(
+                    t('label.entity-already-exists', { entity: 'Name' })
+                  );
                 }
 
                 return Promise.resolve();

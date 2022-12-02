@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.bots;
 
-import static org.openmetadata.service.security.DefaultAuthorizer.user;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -53,6 +52,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -65,17 +65,18 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/bots")
 @Api(value = "Bot collection", tags = "Bot collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots", order = 8) // initialize after user resource
+@Collection(name = "bots", order = 4) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
@@ -90,17 +91,33 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     String domain = SecurityUtil.getDomain(config);
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
-      User user = user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
+      User user = UserUtil.user(userName, domain, userName).withIsBot(true).withIsAdmin(false);
 
       // Add role corresponding to the bot to the user
-      user.setRoles(List.of(RoleResource.getRole(getRoleForBot(bot.getName()))));
-      user = DefaultAuthorizer.addOrUpdateBotUser(user, config);
+      // we need to set a mutable list here
+      user.setRoles(Arrays.asList(RoleResource.getRole(getRoleForBot(bot.getName()))));
+      user = UserUtil.addOrUpdateBotUser(user, config);
 
       bot.withId(UUID.randomUUID())
           .withBotUser(user.getEntityReference())
           .withUpdatedBy(userName)
           .withUpdatedAt(System.currentTimeMillis());
       dao.initializeEntity(bot);
+    }
+  }
+
+  @Override
+  protected void upgrade() throws IOException {
+    // This should be deleted once 0.13 is deprecated
+    // For all the existing bots, add ingestion bot role
+    ResultList<Bot> bots = dao.listAfter(null, Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED), 1000, null);
+    EntityReference ingestionBotRole = RoleResource.getRole(Entity.INGESTION_BOT_ROLE);
+    for (Bot bot : bots.getData()) {
+      User botUser = Entity.getEntity(bot.getBotUser(), "roles", Include.NON_DELETED);
+      if (botUser.getRoles() == null) {
+        botUser.setRoles(List.of(ingestionBotRole));
+        dao.addRelationship(botUser.getId(), ingestionBotRole.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
+      }
     }
   }
 

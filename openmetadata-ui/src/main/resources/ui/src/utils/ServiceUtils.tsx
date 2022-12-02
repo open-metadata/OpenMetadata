@@ -26,7 +26,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../components/PermissionProvider/PermissionProvider.interface';
-import { GlobalSettingOptions } from '../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   addLineageIngestionGuide,
   addMetadataIngestionGuide,
@@ -60,6 +60,7 @@ import {
   IBMDB2,
   KAFKA,
   KINESIS,
+  LOGO,
   LOOKER,
   MARIADB,
   METABASE,
@@ -91,7 +92,7 @@ import {
   TOPIC_DEFAULT,
   TRINO,
   VERTICA,
-} from '../constants/services.const';
+} from '../constants/Services.constant';
 import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
@@ -276,6 +277,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case MetadataServiceType.Atlas:
       return ATLAS;
+
+    case MetadataServiceType.OpenMetadata:
+      return LOGO;
 
     default: {
       let logo;

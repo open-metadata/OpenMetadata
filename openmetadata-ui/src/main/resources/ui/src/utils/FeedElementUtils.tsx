@@ -14,7 +14,7 @@
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
-import { entityUrlMap } from '../constants/feed.constants';
+import { entityUrlMap } from '../constants/Feeds.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/teams/user';
 import { getEntityFeedLink } from './EntityUtils';
@@ -58,7 +58,7 @@ export const getFieldThreadElement = (
       <SVGIcons
         alt="comments"
         className="tw-mt-0.5"
-        heigth="16px"
+        height="16px"
         icon={isTaskType ? Icons.TASK_ICON : Icons.COMMENT}
         width="16px"
       />
