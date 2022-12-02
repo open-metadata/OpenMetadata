@@ -14,6 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { cloneDeep } from 'lodash';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
@@ -58,7 +59,7 @@ const AddGlossary = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showRevieweModal, setShowRevieweModal] = useState(false);
+  const [showReviewerModal, setShowReviewerModal] = useState(false);
   const [tags, setTags] = useState<EntityTags[]>([]);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
@@ -67,7 +68,7 @@ const AddGlossary = ({
   };
 
   const onReviewerModalCancel = () => {
-    setShowRevieweModal(false);
+    setShowReviewerModal(false);
   };
 
   const handleReviewerSave = (reviewer: Array<EntityReference>) => {
@@ -255,7 +256,7 @@ const AddGlossary = ({
                 size="x-small"
                 theme="primary"
                 variant="contained"
-                onClick={() => setShowRevieweModal(true)}>
+                onClick={() => setShowReviewerModal(true)}>
                 <FontAwesomeIcon icon="plus" />
               </Button>
             </div>
@@ -289,15 +290,13 @@ const AddGlossary = ({
             {getSaveButton()}
           </div>
         </div>
-
-        {showRevieweModal && (
-          <ReviewerModal
-            header="Add Reviewer"
-            reviewer={reviewer}
-            onCancel={onReviewerModalCancel}
-            onSave={handleReviewerSave}
-          />
-        )}
+        <ReviewerModal
+          header={t('label.add-reviewer')}
+          reviewer={reviewer}
+          visible={showReviewerModal}
+          onCancel={onReviewerModalCancel}
+          onSave={handleReviewerSave}
+        />
       </div>
     </PageLayout>
   );
