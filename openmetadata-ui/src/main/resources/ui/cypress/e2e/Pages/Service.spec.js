@@ -47,14 +47,14 @@ describe('Services page should work properly', () => {
     cy.get('.toastui-editor-contents > p').contains(service.newDescription);
   });
 
-  it.skip('Update owner and check description', () => {
+  it('Update owner and check description', () => {
     interceptURL('GET', '/api/v1/config/airflow', 'getService');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
 
     verifyResponseStatusCode('@getService', 200);
-    interceptURL('GET', '/api/v1/users/loggedInUser/groupTeams', 'editOwner');
+    interceptURL('GET', '/api/v1//search/query?q=*&from=0&size=10&index=*', 'editOwner');
     cy.get('[data-testid="edit-Owner-icon"]')
       .should('exist')
       .should('be.visible')
@@ -69,6 +69,7 @@ describe('Services page should work properly', () => {
 
     cy.get('[data-testid="list-item"]')
       .contains(service.Owner)
+      .scrollIntoView()
       .should('be.visible')
       .click();
 

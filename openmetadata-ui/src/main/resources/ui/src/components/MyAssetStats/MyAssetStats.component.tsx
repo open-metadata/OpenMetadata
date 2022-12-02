@@ -19,7 +19,7 @@ import { getExplorePathWithSearch, ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../constants/globalSettings.constants';
+} from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';

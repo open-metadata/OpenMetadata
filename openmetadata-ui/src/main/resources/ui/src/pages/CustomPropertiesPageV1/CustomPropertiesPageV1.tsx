@@ -167,7 +167,7 @@ const CustomEntityDetailV1 = () => {
 
   return viewPermission ? (
     <Row
-      className="tw-my-2"
+      className="m-y-xs"
       data-testid="custom-entity-container"
       gutter={[16, 16]}>
       <Col className="global-settings-tabs" span={24}>
@@ -181,7 +181,7 @@ const CustomEntityDetailV1 = () => {
         {activeTab === 2 && (
           <div data-testid="entity-schema">
             <SchemaEditor
-              className="tw-border tw-border-main tw-rounded-md tw-py-4"
+              className="custom-properties-schemaEditor p-y-md"
               editorClass="custom-entity-schema"
               value={JSON.parse(selectedEntityTypeDetail.schema ?? '{}')}
             />
@@ -211,11 +211,11 @@ const CustomEntityDetailV1 = () => {
             </div>
           ) : (
             <div data-testid="entity-custom-fields">
-              <div className="tw-flex tw-justify-end">
+              <div className="flex justify-end">
                 <Tooltip
                   title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
                   <Button
-                    className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
+                    className="m-b-md p-y-xss p-x-xs rounded-4"
                     data-testid="add-field-button"
                     disabled={!editPermission}
                     size="custom"

@@ -71,6 +71,11 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: { suggest: mockData } })),
 }));
 
+jest.mock('../../utils/AdvancedSearchUtils', () => ({
+  getItemLabel: jest.fn().mockImplementation(() => 'owner'),
+  getAdvancedField: jest.fn(),
+}));
+
 const index = SearchIndex.TABLE;
 const field = {
   key: 'owner.name',

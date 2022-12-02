@@ -18,7 +18,7 @@ import { ResourceEntity } from '../components/PermissionProvider/PermissionProvi
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../constants/globalSettings.constants';
+} from '../constants/GlobalSettings.constants';
 import { TeamType } from '../generated/entity/teams/team';
 import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
@@ -234,10 +234,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={ElasticSearchIndexPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.ALL,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
           GlobalSettingOptions.ELASTIC_SEARCH

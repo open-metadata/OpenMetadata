@@ -34,7 +34,7 @@ import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearch
 import PermissionProvider from './components/PermissionProvider/PermissionProvider';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
-import { toastOptions } from './constants/toast.constants';
+import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
 import AppRouter from './router/AppRouter';
 
@@ -71,7 +71,7 @@ const App: FunctionComponent = () => {
             </AuthProvider>
           </ErrorBoundry>
         </Router>
-        <ToastContainer {...toastOptions} newestOnTop />
+        <ToastContainer {...TOAST_OPTIONS} newestOnTop />
       </div>
     </div>
   );

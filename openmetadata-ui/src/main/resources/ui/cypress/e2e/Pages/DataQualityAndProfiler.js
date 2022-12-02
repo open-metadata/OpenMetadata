@@ -75,6 +75,8 @@ describe('Data Quality and Profiler should work properly', () => {
   });
   
   it('Add Profiler ingestion', () => {
+    interceptURL("POST", "/api/v1/services/ingestionPipelines/deploy/*", "deployIngestion");
+
     goToProfilerTab();
 
     cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
@@ -114,12 +116,15 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.clock();
     cy.wait(10000);
 
-    cy.get('[data-testid="view-service-button"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.wait("@deployIngestion").then(() => {
+        cy.get('[data-testid="view-service-button"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();  
 
-    handleIngestionRetry('database', true, 0, 'profiler');
+        handleIngestionRetry('database', true, 0, 'profiler');
+    })
+    
   });
   
   it('Check if profiler is ingested properly or not', () => {

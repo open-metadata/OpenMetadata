@@ -53,7 +53,7 @@ import {
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../../constants/globalSettings.constants';
+} from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -629,9 +629,9 @@ const PoliciesDetailPage = () => {
           closable={false}
           confirmLoading={isloadingOnSave}
           okText={t('label.confirm')}
-          title={`${t('label.remove')} ${getEntityName(
-            selectedEntity.record
-          )} ${t('label.from')} ${getEntityName(policy)}`}
+          title={`${t('label.remove-entity', {
+            entity: getEntityName(selectedEntity.record),
+          })} ${t('label.from')} ${getEntityName(policy)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
