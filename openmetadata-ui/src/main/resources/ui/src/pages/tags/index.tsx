@@ -48,6 +48,7 @@ import { TIER_CATEGORY } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
 import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
+import { ProviderType } from '../../generated/entity/bot';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -68,7 +69,7 @@ import {
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTagCategories, isSystemTierTags } from '../../utils/TagsUtils';
+import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
@@ -594,7 +595,7 @@ const TagsPage = () => {
             className="link-text"
             data-testid="delete-tag"
             disabled={
-              isSystemTierTags(record.fullyQualifiedName || '') ||
+              record.provider === ProviderType.System ||
               !categoryPermissions.EditAll
             }
             onClick={() => handleActionDeleteTag(record)}>
@@ -666,7 +667,7 @@ const TagsPage = () => {
                     className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
                     disabled={
-                      isSystemTierTags(currentCategory.name || '') ||
+                      currentCategory.provider === ProviderType.System ||
                       !categoryPermissions.Delete
                     }
                     size="small"
