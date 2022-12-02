@@ -421,8 +421,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             raise ValueError(
                 "databaseFilterPattern returned 0 result. At least 1 database must be returned by the filter pattern."
                 f"\n\t- includes: {self.source_config.databaseFilterPattern.includes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
-                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"
-                # pylint: disable=line-too-long
+                f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
         for database in databases:

@@ -22,7 +22,7 @@ from unittest import TestCase
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -34,6 +34,10 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.connections import create_and_bind_session
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 
@@ -205,6 +209,21 @@ class ProfilerWorkflowTest(TestCase):
             fqn="test_sqlite.main.main.users",
             fields=["tableProfilerConfig", "profile"],
         )
+
+        table_profile = self.metadata.get_profile_data(
+            "test_sqlite.main.main.users",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+        )
+        column_profile = self.metadata.get_profile_data(
+            "test_sqlite.main.main.users.id",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        )
+
+        assert table_profile.data
+        assert column_profile.data
         assert table.profile.profileSample == 75.0
 
     def test_worflow_sample_profile(self):

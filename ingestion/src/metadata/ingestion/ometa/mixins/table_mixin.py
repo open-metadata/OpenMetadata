@@ -15,18 +15,21 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from typing import List, Optional
+from collections import namedtuple
+from typing import List, Optional, Type, Union
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
     DataModel,
     SqlQuery,
     Table,
     TableData,
     TableJoins,
+    TableProfile,
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -215,3 +218,58 @@ class OMetaTableMixin:
             )
 
         return None
+
+    def get_profile_data(
+        self,
+        fqn: str,
+        start_ts: int,
+        end_ts: int,
+        limit=100,
+        after=None,
+        profile_type: Union[Type[TableProfile], Type[ColumnProfile]] = TableProfile,
+    ):
+        """Get profile data
+
+        Args:
+            fqn (str): fullyQualifiedName
+            start_ts (int): start timestamp
+            end_ts (int): end timestamp
+            limit (int, optional): limit of record to return. Defaults to 100.
+            after (_type_, optional): use for API pagination. Defaults to None.
+            profile_type (Union[Type[TableProfile], Type[ColumnProfile]], optional):
+                Profile type to retrieve. Defaults to TableProfile.
+
+        Raises:
+            ValueError: _description_
+            TypeError: _description_
+
+        Returns:
+            _type_: Profile object with data, after and total attributs
+        """
+        Profile = namedtuple("Profile", "data,after,total")
+        url_after = f"&after={after}" if after else ""
+        profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
+        resp = self.client.get(
+            f"{self.get_suffix(Table)}/{fqn}/{profile_type_url}?limit={limit}{url_after}",
+            data={"startTs": start_ts // 1000, "endTs": end_ts // 1000},
+        )
+
+        if not resp or not resp["data"]:
+            return Profile(None, None, None)
+
+        if profile_type is TableProfile:
+            data = [TableProfile(**datum) for datum in resp["data"]]
+        elif profile_type is ColumnProfile:
+            split_fqn = fqn.split(".")
+            if len(split_fqn) < 5:
+                raise ValueError(f"{fqn} is not a column fqn")
+            data = [ColumnProfile(**datum) for datum in resp["data"]]
+        else:
+            raise TypeError(
+                f"{profile_type} is not an accepeted type."
+                "Type must be `TableProfile` or `ColumnProfile`"
+            )
+        total = resp["paging"]["total"]
+        after = resp["paging"]["after"] if "after" in resp["paging"] else None
+
+        return Profile(data, total, after)

@@ -88,6 +88,7 @@ class MetricsTest(TestCase):
                     service_connection_config=cls.sqlite_conn,
                     table_entity=cls.table_entity,
                     ometa_client=None,
+                    thread_count=1,
                 )
             )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
