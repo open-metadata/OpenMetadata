@@ -367,7 +367,9 @@ class OMetaModelTest(TestCase):
         # Lineage will be created just by ingesting the model.
         # Alternatively, we could manually send lineage via `add_mlmodel_lineage`
         # E.g., lineage = self.metadata.add_mlmodel_lineage(model=res)
-        lineage = self.metadata.get_lineage_by_id(entity=MlModel, entity_id=str(res.id.__root__))
+        lineage = self.metadata.get_lineage_by_id(
+            entity=MlModel, entity_id=str(res.id.__root__)
+        )
 
         nodes = {node["id"] for node in lineage["nodes"]}
         assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
