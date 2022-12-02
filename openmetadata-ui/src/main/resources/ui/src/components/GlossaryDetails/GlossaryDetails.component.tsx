@@ -15,6 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button as ButtonAntd, Card as AntdCard, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -523,14 +524,13 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         </div>
       </div>
 
-      {showRevieweModal && (
-        <ReviewerModal
-          header="Add Reviewer"
-          reviewer={reviewer}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
-        />
-      )}
+      <ReviewerModal
+        header={t('label.add-reviewer')}
+        reviewer={reviewer}
+        visible={showRevieweModal}
+        onCancel={onReviewerModalCancel}
+        onSave={handleReviewerSave}
+      />
     </div>
   );
 };

@@ -19,9 +19,9 @@ describe("Logout User", () => {
     cy.login();
   });
 
-  it.skip("After login logout the user and invalidate the token", () => {
+  it("After login logout the user and invalidate the token", () => {
     
-    cy.get('[data-testid="avatar"]').should("be.visible").click()
+    cy.get('[data-testid="avatar"]').first().should("be.visible").trigger('mouseover').click()
 
     interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
     

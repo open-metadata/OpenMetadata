@@ -37,6 +37,7 @@ import {
   threadFilterList,
 } from './ActivityFeedList.util';
 import FeedListBody from './FeedListBody';
+import FeedListSeparator from './FeedListSeparator';
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
@@ -251,6 +252,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           {relativeDays.map((d, i) => {
             return (
               <div data-testid={`feed${i}`} key={i}>
+                <FeedListSeparator
+                  className="relative m-y-xs"
+                  relativeDay={d}
+                />
                 <FeedListBody
                   deletePostHandler={deletePostHandler}
                   isEntityFeed={isEntityFeed}
@@ -293,12 +298,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </>
       )}
-      {confirmationState.state && (
-        <DeleteConfirmationModal
-          onDelete={onPostDelete}
-          onDiscard={onDiscard}
-        />
-      )}
+      <DeleteConfirmationModal
+        visible={confirmationState.state}
+        onDelete={onPostDelete}
+        onDiscard={onDiscard}
+      />
     </div>
   );
 };
