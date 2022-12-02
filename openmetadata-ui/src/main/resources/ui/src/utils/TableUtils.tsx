@@ -34,7 +34,7 @@ import {
   getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
-import { GlobalSettingsMenuCategory } from '../constants/globalSettings.constants';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
@@ -44,6 +44,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
+  sortTagsCaseInsensitive,
 } from './CommonUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
@@ -262,7 +263,10 @@ export const getEntityIcon = (indexType: string) => {
 export const makeRow = (column: Column) => {
   return {
     description: column.description || '',
-    tags: column?.tags || [],
+    // Sorting tags as the response of PATCH request does not return the sorted order
+    // of tags, but is stored in sorted manner in the database
+    // which leads to wrong PATCH payload sent after further tags removal
+    tags: sortTagsCaseInsensitive(column.tags || []),
     key: column?.name,
     ...column,
   };

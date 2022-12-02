@@ -55,15 +55,13 @@ from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.partition import get_partition_details
-from metadata.utils.workflow_helper import (
-    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
-)
 from metadata.utils.workflow_output_handler import print_test_suite_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger: Logger = test_suite_logger()
 
 
-class TestSuiteWorkflow:
+class TestSuiteWorkflow(WorkflowStatusMixin):
     """workflow to run the test suite"""
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
@@ -383,8 +381,10 @@ class TestSuiteWorkflow:
             return runtime_created_test_cases
         return []
 
-    def execute(self):
-        """Execute test suite workflow"""
+    def run_test_suite(self):
+        """
+        Main running logic
+        """
         test_suites = (
             self.get_test_suite_entity_for_ui_workflow()
             or self.get_or_create_test_suite_entity_for_cli_workflow()
@@ -417,7 +417,7 @@ class TestSuiteWorkflow:
                         if hasattr(self, "sink"):
                             self.sink.write_record(test_result)
                         logger.info(
-                            f"Successfuly ran test case {test_case.name.__root__}"
+                            f"Successfully ran test case {test_case.name.__root__}"
                         )
                         self.status.processed(test_case.fullyQualifiedName.__root__)
                     except Exception as exc:
@@ -430,6 +430,18 @@ class TestSuiteWorkflow:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Could not run test case for table {entity_fqn}: {exc}")
                 self.status.failure(entity_fqn)
+
+    def execute(self):
+        """Execute test suite workflow"""
+        try:
+            self.run_test_suite()
+            # At the end of the `execute`, update the associated Ingestion Pipeline status as success
+            self.set_ingestion_pipeline_status(PipelineState.success)
+
+        # Any unhandled exception breaking the workflow should update the status
+        except Exception as err:
+            self.set_ingestion_pipeline_status(PipelineState.failed)
+            raise err
 
     def print_status(self) -> None:
         """
@@ -447,7 +459,7 @@ class TestSuiteWorkflow:
             return 1
         return 0
 
-    def raise_from_status(self, raise_warnings=False):
+    def _raise_from_status_internal(self, raise_warnings=False):
         """
         Check source, processor and sink status and raise if needed
 
@@ -472,17 +484,4 @@ class TestSuiteWorkflow:
         """
         Close all connections
         """
-        self.set_ingestion_pipeline_status(PipelineState.success)
         self.metadata.close()
-
-    def set_ingestion_pipeline_status(self, state: PipelineState):
-        """
-        Method to set the pipeline status of current ingestion pipeline
-        """
-        pipeline_run_id = set_ingestion_pipeline_status_helper(
-            state=state,
-            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
-            pipeline_run_id=self.config.pipelineRunId,
-            metadata=self.metadata,
-        )
-        self.config.pipelineRunId = pipeline_run_id

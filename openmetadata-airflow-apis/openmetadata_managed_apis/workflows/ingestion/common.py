@@ -12,7 +12,9 @@
 Metadata DAG common functions
 """
 import json
+import uuid
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Callable, Optional
 
 import airflow
@@ -21,7 +23,6 @@ from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
 
-from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -32,8 +33,6 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import set_loggers_level
 
 try:
@@ -201,88 +200,11 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = Workflow.create(config)
-    try:
-        workflow.execute()
-        workflow.raise_from_status()
-        workflow.print_status()
-        workflow.stop()
-    except Exception as err:
-        workflow.set_ingestion_pipeline_status(PipelineState.failed)
-        raise err
 
-
-def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
-    """
-    Task that creates and runs the profiler workflow.
-
-    The workflow_config gets cooked form the incoming
-    ingestionPipeline.
-
-    This is the callable used to create the PythonOperator
-    """
-
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
-
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-    workflow = ProfilerWorkflow.create(config)
-    try:
-        workflow.execute()
-        workflow.raise_from_status()
-        workflow.print_status()
-        workflow.stop()
-    except Exception as err:
-        workflow.set_ingestion_pipeline_status(PipelineState.failed)
-        raise err
-
-
-def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
-    """
-    Task that creates and runs the test suite workflow.
-
-    The workflow_config gets cooked form the incoming
-    ingestionPipeline.
-
-    This is the callable used to create the PythonOperator
-    """
-
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
-
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-    workflow = TestSuiteWorkflow.create(config)
-
-    try:
-        workflow.execute()
-        workflow.raise_from_status()
-        workflow.print_status()
-        workflow.stop()
-    except Exception as err:
-        workflow.set_ingestion_pipeline_status(PipelineState.failed)
-        raise err
-
-
-def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
-    """Task that creates and runs the data insight workflow.
-
-    The workflow_config gets created form the incoming
-    ingestionPipeline.
-
-    This is the callable used to create the PythonOperator
-
-    Args:
-        workflow_config (OpenMetadataWorkflowConfig): _description_
-    """
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
-
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-    workflow = DataInsightWorkflow.create(config)
-    try:
-        workflow.execute()
-        workflow.raise_from_status()
-        workflow.print_status()
-        workflow.stop()
-    except Exception as err:
-        workflow.set_ingestion_pipeline_status(PipelineState.failed)
-        raise err
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
 
 
 def date_to_datetime(
@@ -340,6 +262,17 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     }
 
 
+def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, context):
+    """
+    Airflow on_failure_callback to update workflow status if something unexpected
+    happens or if the DAG is externally killed.
+    """
+    logger.info("Sending failed status from callback...")
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    workflow = Workflow.create(config)
+    workflow.set_ingestion_pipeline_status(PipelineState.failed)
+
+
 def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
@@ -352,12 +285,18 @@ def build_dag(
 
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
 
+        # Initialize with random UUID4. Will be used by the callback instead of
+        # generating it inside the Workflow itself.
+        workflow_config.pipelineRunId = str(uuid.uuid4())
+
         PythonOperator(
             task_id=task_name,
             python_callable=workflow_fn,
             op_kwargs={"workflow_config": workflow_config},
-            retries=ingestion_pipeline.airflowConfig.retries,
-            retry_delay=ingestion_pipeline.airflowConfig.retryDelay,
+            # There's no need to retry if we have had an error. Wait until the next schedule or manual rerun.
+            retries=0,
+            # each DAG will call its own OpenMetadataWorkflowConfig
+            on_failure_callback=partial(send_failed_status_callback, workflow_config),
         )
 
         return dag

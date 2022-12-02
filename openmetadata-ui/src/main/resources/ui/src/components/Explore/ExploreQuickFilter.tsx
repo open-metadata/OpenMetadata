@@ -22,7 +22,7 @@ import {
   getTagSuggestions,
   getUserSuggestions,
 } from '../../axiosAPIs/miscAPI';
-import { MISC_FIELDS } from '../../constants/advanced-search.constants';
+import { MISC_FIELDS } from '../../constants/AdvancedSearch.constants';
 import {
   getAdvancedField,
   getItemLabel,

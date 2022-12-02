@@ -50,6 +50,7 @@ base_requirements = {
     "croniter~=1.3.0",
     "requests-aws4auth==1.1.2",
     "pymysql>=1.0.2",
+    "cached-property==1.5.2",
 }
 
 

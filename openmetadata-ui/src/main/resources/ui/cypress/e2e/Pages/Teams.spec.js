@@ -77,8 +77,8 @@ describe('Teams flow should work properly', () => {
     updateOwner();
   });
 
-  // Todo:- flaky test, need to fix, ref:- https://cloud.cypress.io/projects/a9yxci/runs/9138/test-results/c8083392-4aea-46d5-b937-8c7ce231f241
-  it.skip('Add user to created team', () => {
+
+  it('Add user to created team', () => {
     interceptURL('GET', '/api/v1/users*', 'getUsers');
 
     //Click on created team
@@ -86,15 +86,15 @@ describe('Teams flow should work properly', () => {
       .contains(TEAM_DETAILS.name)
       .click();
 
-    verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.name);
+
+    verifyResponseStatusCode('@getUsers', 200);
     //Clicking on users tab
     cy.get('[data-testid="Users"]')
       .should('exist')
-      .should('be.visible')
-      .click();
+      .should('be.visible').trigger('click');
 
     interceptURL('GET', '/api/v1/users?limit=15', 'addUser');
     interceptURL('GET', '/api/v1/users/*', 'getUsers');
@@ -254,64 +254,6 @@ describe('Teams flow should work properly', () => {
       'contain',
       updateddescription
     );
-  });
-
-  it.skip('Asset tab should work properly', () => {
-    //Click on created team name
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
-
-    cy.wait(500);
-
-    //Click on Asset tab
-    cy.get('[data-testid="Assets"]').should('be.visible').click();
-
-    //Click on explore tab
-    cy.get('.button-comp').contains('Explore').should('be.visible').click();
-
-    cy.wait(1000);
-
-    //Navigate to the asset name
-    cy.get('[data-testid="searchBox"]')
-      .should('exist')
-      .type(TEAM_DETAILS.assetname);
-
-    cy.get('[data-testid="data-name"]')
-      .contains(TEAM_DETAILS.assetname)
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    //Click on owner icon
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
-
-    cy.wait(1000);
-
-    //Select the created team
-    cy.get('[data-testid="list-item"]')
-      .contains(TEAM_DETAILS.updatedname)
-      .should('be.visible')
-      .click();
-
-    cy.wait(1000);
-
-    cy.reload();
-
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    //Clicking on teams
-    cy.get('[data-menu-id*="teams"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    //Click on created table
-    cy.get('table').find('.ant-table-row').contains(TEAM_DETAILS.name).click();
-    //Click on asset tab
-    cy.get('[data-testid="Assets"]').should('be.visible').click();
-
-    //Verify the added asset
-    cy.get('[data-testid="user-card-container"]')
-      .find('[data-testid="dataset-link"]')
-      .should('contain', TEAM_DETAILS.assetname);
   });
 
   it('Leave team flow should work properly', () => {

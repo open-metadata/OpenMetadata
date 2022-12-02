@@ -79,6 +79,7 @@ import {
   dashboardDetailsTabs,
   defaultFields,
   getCurrentDashboardTab,
+  sortTagsForCharts,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
@@ -609,7 +610,10 @@ const DashboardDetailsPage = () => {
             const charts = [...prevCharts];
             charts[index] = res;
 
-            return charts;
+            // Sorting tags as the response of PATCH request does not return the sorted order
+            // of tags, but is stored in sorted manner in the database
+            // which leads to wrong PATCH payload sent after further tags removal
+            return sortTagsForCharts(charts);
           });
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];

@@ -11,7 +11,6 @@
 """Metabase source module"""
 
 import traceback
-from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
 
 import requests
@@ -34,22 +33,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import (
-    clean_raw_query,
-    search_table_entities,
-)
+from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
 from metadata.utils.logger import ingestion_logger
-
-# Prevent sqllineage from modifying the logger config
-# Disable the DictConfigurator.configure method while importing LineageRunner
-configure = DictConfigurator.configure
-DictConfigurator.configure = lambda _: None
-from sqllineage.runner import LineageRunner  # pylint: disable=C0413
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
@@ -241,10 +232,9 @@ class MetabaseSource(DashboardServiceSource):
         resp_database = self.req_get(f"/api/database/{chart_details['database_id']}")
         if resp_database.status_code == 200:
             database = resp_database.json()
-
             query = chart_details["dataset_query"]["native"]["query"]
-            table_list = LineageRunner(clean_raw_query(query))
-            for table in table_list.source_tables:
+            lineage_parser = LineageParser(query)
+            for table in lineage_parser.source_tables:
                 database_schema_name, table = fqn.split(str(table))[-2:]
                 database_schema_name = (
                     None

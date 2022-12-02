@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, toLower } from 'lodash';
+import { isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -215,7 +215,7 @@ const TagsPage = () => {
   const createCategory = (data: CreateTagCategory) => {
     const errData = onNewCategoryChange(data, true);
     if (!Object.values(errData).length) {
-      createTagCategory(data)
+      createTagCategory({ ...data, name: trim(data.name) })
         .then((res) => {
           if (res) {
             history.push(getTagPath(res.name));
@@ -374,7 +374,7 @@ const TagsPage = () => {
     const errData = onNewTagChange(data, true);
     if (!Object.values(errData).length) {
       createTag(currentCategory?.name ?? '', {
-        name: data.name,
+        name: trim(data.name),
         description: data.description,
       })
         .then((res) => {

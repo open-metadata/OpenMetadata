@@ -44,10 +44,8 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.logger import ingestion_logger, set_loggers_level
-from metadata.utils.workflow_helper import (
-    set_ingestion_pipeline_status as set_ingestion_pipeline_status_helper,
-)
 from metadata.utils.workflow_output_handler import print_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
 
@@ -63,7 +61,7 @@ class InvalidWorkflowJSONException(Exception):
     """
 
 
-class Workflow:
+class Workflow(WorkflowStatusMixin):
     """
     Ingestion workflow implementation.
 
@@ -237,6 +235,15 @@ class Workflow:
                 self.stage.close()
                 self.bulk_sink.write_records()
                 self.report["Bulk_Sink"] = self.bulk_sink.get_status().as_obj()
+
+            # If we reach this point, compute the success % and update the associated Ingestion Pipeline status
+            self.update_ingestion_status_at_end()
+
+        # Any unhandled exception breaking the workflow should update the status
+        except Exception as err:
+            self.set_ingestion_pipeline_status(PipelineState.failed)
+            raise err
+
         # Force resource closing. Required for killing the threading
         finally:
             self.stop()
@@ -249,6 +256,17 @@ class Workflow:
         if hasattr(self, "sink"):
             self.sink.close()
 
+        self.source.close()
+        self.timer.stop()
+
+    def _get_source_success(self):
+        return self.source.get_status().calculate_success()
+
+    def update_ingestion_status_at_end(self):
+        """
+        Once the execute method is done, update the status
+        as OK or KO depending on the success rate.
+        """
         pipeline_state = PipelineState.success
         if (
             self._get_source_success() >= SUCCESS_THRESHOLD_VALUE
@@ -256,13 +274,8 @@ class Workflow:
         ):
             pipeline_state = PipelineState.partialSuccess
         self.set_ingestion_pipeline_status(pipeline_state)
-        self.source.close()
-        self.timer.stop()
 
-    def _get_source_success(self):
-        return self.source.get_status().calculate_success()
-
-    def raise_from_status(self, raise_warnings=False):
+    def _raise_from_status_internal(self, raise_warnings=False):
         """
         Method to raise error if failed execution
         """
@@ -306,18 +319,6 @@ class Workflow:
             return 1
 
         return 0
-
-    def set_ingestion_pipeline_status(self, state: PipelineState):
-        """
-        Method to set the pipeline status of current ingestion pipeline
-        """
-        pipeline_run_id = set_ingestion_pipeline_status_helper(
-            state=state,
-            ingestion_pipeline_fqn=self.config.ingestionPipelineFQN,
-            pipeline_run_id=self.config.pipelineRunId,
-            metadata=self.metadata,
-        )
-        self.config.pipelineRunId = pipeline_run_id
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """

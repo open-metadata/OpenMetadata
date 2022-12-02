@@ -23,12 +23,13 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { trim } from 'lodash';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { GlobalSettingOptions } from '../../../constants/globalSettings.constants';
+import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { ADD_POLICY_TEXT } from '../../../constants/HelperTextUtil';
 import {
   CreatePolicy,
@@ -79,9 +80,9 @@ const AddPolicyPage = () => {
   };
 
   const handleSumbit = async () => {
-    const { condition, ...rest } = ruleData;
+    const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
     const data: CreatePolicy = {
-      name,
+      name: trim(name),
       description,
       rules: [condition ? { ...rest, condition } : rest],
     };
