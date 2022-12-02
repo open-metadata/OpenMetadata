@@ -13,25 +13,8 @@
 
 /// <reference types="cypress" />
 
-import {
-    interceptURL,
-    searchEntity,
-    verifyResponseStatusCode,
-    visitEntityDetailsPage
-} from '../../common/common';
-import {
-    ENTITIES,
-    FOLLOWING_TITLE,
-    MYDATA_SUMMARY_OPTIONS,
-    MY_DATA_TITLE,
-    NO_SEARCHED_TERMS,
-    RECENT_SEARCH_TITLE,
-    RECENT_VIEW_TITLE,
-    SEARCH_ENTITY_DASHBOARD,
-    SEARCH_ENTITY_PIPELINE,
-    SEARCH_ENTITY_TABLE,
-    SEARCH_ENTITY_TOPIC
-} from '../../constants/constants';
+import { followAndOwnTheEntity, interceptURL, searchEntity, visitEntityDetailsPage } from '../../common/common';
+import { ENTITIES, FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const FOLLOWING_MYDATA_COUNT = 3;
 
@@ -62,62 +45,6 @@ describe('MyData page should work', () => {
       .invoke('show')
       .click();
     cy.contains(NO_SEARCHED_TERMS).scrollIntoView().should('be.visible');
-  };
-
-  const followAndOwnTheEntity = (termObj) => {
-    // search for the term and redirect to the respective entity tab
-
-    visitEntityDetailsPage(termObj.term, termObj.serviceName, termObj.entity);
-
-    interceptURL('PUT', '/api/v1/*/*/followers', 'waitAfterFollow');
-    cy.get('[data-testid="follow-button"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@waitAfterFollow', 200);
-    // go to manage tab and search for logged in user and set the owner
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
-      'getTeams'
-    );
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@getTeams', 200);
-    //Clicking on users tab
-    cy.get('[data-testid="dropdown-tab"]')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    //Selecting the user
-    cy.get('[data-testid="list-item"]')
-      .first()
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get(':nth-child(2) > [data-testid="owner-link"]')
-      .scrollIntoView()
-      .invoke('text')
-      .then((text) => {
-        expect(text).equal('admin');
-      });
-
-    cy.clickOnLogo();
-
-    // checks newly generated feed for follow and setting owner
-    cy.get('[data-testid="message-container"]')
-      .first()
-      .contains('Added owner: admin')
-      .should('be.visible');
-
-    cy.get('[data-testid="message-container"]')
-      .eq(1)
-      .scrollIntoView()
-      .contains(`Followed ${termObj.entity.slice(0, -1)}`)
-      .should('be.visible');
-
-    cy.clickOnLogo();
   };
 
   it('MyData Page should render properly with all the required components', () => {
@@ -186,6 +113,7 @@ describe('MyData page should work', () => {
     followAndOwnTheEntity(SEARCH_ENTITY_PIPELINE.pipeline_1);
   });
 
+  
   it.skip('My data and following section, CTA should work properly', () => {
     cy.get('[data-testid="my-data-container"]')
       .find('[data-testid*="My data"]')
