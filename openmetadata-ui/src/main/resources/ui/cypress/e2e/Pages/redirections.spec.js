@@ -18,7 +18,7 @@ const validateURL = (url) => {
   cy.url().should('contain', url);
 };
 
-describe('Mydata page assertions should work properly', () => {
+describe('Redirection link should work properly', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -27,7 +27,7 @@ describe('Mydata page assertions should work properly', () => {
     Object.values(NAVBAR_DETAILS).map((navbar) => {
       cy.get(navbar.testid).should('be.visible').click({animationDistanceThreshold: 10});
       if(navbar.subMenu) {
-        cy.get(navbar.subMenu).should('be.visible').click();
+        cy.get(navbar.subMenu).should('be.visible').click({ force: true });
       }
       //
       cy.get('body').click();
