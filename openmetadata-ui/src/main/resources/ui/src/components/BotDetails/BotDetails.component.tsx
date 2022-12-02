@@ -326,21 +326,19 @@ const BotDetails: FC<BotsDetailProps> = ({
           />
         )}
       </Card>
-
-      {isRevokingToken ? (
-        <ConfirmationModal
-          bodyText="Are you sure you want to revoke access for JWT token?"
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Are you sure?"
-          onCancel={() => setIsRevokingToken(false)}
-          onConfirm={() => {
-            revokeTokenHandler();
-            setIsRevokingToken(false);
-            handleAuthMechanismEdit();
-          }}
-        />
-      ) : null}
+      <ConfirmationModal
+        bodyText={t('message.are-you-sure-to-revoke-access')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.confirm')}
+        header={t('label.are-you-sure')}
+        visible={isRevokingToken}
+        onCancel={() => setIsRevokingToken(false)}
+        onConfirm={() => {
+          revokeTokenHandler();
+          setIsRevokingToken(false);
+          handleAuthMechanismEdit();
+        }}
+      />
     </PageLayout>
   );
 };

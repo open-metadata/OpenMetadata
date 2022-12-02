@@ -80,16 +80,19 @@ describe('Teams flow should work properly', () => {
 
   it('Add user to created team', () => {
     interceptURL('GET', '/api/v1/users*', 'getUsers');
-
+    interceptURL('GET', `/api/v1/teams/name/${TEAM_DETAILS.name}?*`,'getSelectedTeam')
     //Click on created team
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
 
-    cy.get('[data-testid="team-heading"]')
-      .should('be.visible')
-      .contains(TEAM_DETAILS.name);
-
+    cy.wait("@getSelectedTeam").then(() =>{
+        cy.get('[data-testid="team-heading"]')
+        .should('be.visible')
+        .within(() => {
+          cy.contains(TEAM_DETAILS.name).should('be.visible');
+        })
+    });
     verifyResponseStatusCode('@getUsers', 200);
     //Clicking on users tab
     cy.get('[data-testid="Users"]')
