@@ -275,7 +275,6 @@ export const getGlobalSettingMenuItem = (
     label: string;
     isProtected: boolean;
     icon: React.ReactNode;
-    isAdmin?: boolean;
   }[],
   type?: string
 ): {
