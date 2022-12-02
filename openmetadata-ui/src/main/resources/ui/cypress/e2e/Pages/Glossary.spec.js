@@ -108,9 +108,8 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
     cy.get('[data-testid="governance"]')
       .should('exist')
-      .should('be.visible')
-      .click();
-
+      .and('be.visible')
+      .click({ animationDistanceThreshold: 10 });
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
