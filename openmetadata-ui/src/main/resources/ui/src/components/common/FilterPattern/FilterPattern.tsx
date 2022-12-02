@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { capitalize } from 'lodash';
+import { Checkbox, Col, Input, Row, Typography } from 'antd';
+import { t } from 'i18next';
+import { capitalize, toLower } from 'lodash';
 import React from 'react';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Field } from '../../Field/Field';
@@ -42,41 +44,66 @@ const FilterPattern = ({
   };
 
   return (
-    <div className="tw-mt-4" data-testid="filter-pattern-container">
-      <div className="tw-flex tw-items-center">
-        <input
-          checked={checked}
-          className="tw-mr-3 custom-checkbox"
-          data-testid={`${type}-filter-pattern-checkbox`}
-          id={`${type}FilterPatternCheckbox`}
-          name={`${type}FilterPatternCheckbox`}
-          type="checkbox"
-          onChange={(e) => handleChecked(e.target.checked)}
-        />
-
-        <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
-          type
-        )} Filter Pattern`}</label>
-      </div>
+    <div className="m-t-md" data-testid="filter-pattern-container">
+      <Row>
+        <Col>
+          <Checkbox
+            checked={checked}
+            className="m-r-sm"
+            data-testid={`${type}-filter-pattern-checkbox`}
+            id={`${type}FilterPatternCheckbox`}
+            name={`${type}FilterPatternCheckbox`}
+            onChange={(e) => handleChecked(e.target.checked)}
+          />
+        </Col>
+        <Col>
+          <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
+            type
+          )} Filter Pattern`}</label>
+          <Typography
+            className="text-grey-muted m-t-xss"
+            data-testid="filter-pattern-info">
+            {t('message.filter-pattern-info', {
+              filterPattern: type,
+            })}
+          </Typography>
+        </Col>
+      </Row>
       {checked && (
         <div data-testid="field-container">
           <Field>
-            <label className="tw-block tw-form-label">Include:</label>
-            <input
-              className="tw-form-inputs tw-relative tw-form-inputs-padding tw-py-2"
+            <label className="flex flex-col">{t('label.include')}:</label>
+            <Typography.Text
+              className="text-grey-muted m-t-xss m-b-xss"
+              data-testid="filter-pattern-include-info">
+              {t('message.filter-pattern-include-exclude-info', {
+                activity: toLower(t('label.include')),
+                filterPattern: type,
+              })}
+            </Typography.Text>
+            <Input
+              className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
-              placeholder="Enter a list of strings/regex patterns as a comma separated value"
+              placeholder={t('label.list-of-strings-regex-patterns-csv')}
               type="text"
               value={includePattern}
               onChange={includeFilterChangeHandler}
             />
           </Field>
           <Field>
-            <label className="tw-block tw-form-label">Exclude:</label>
-            <input
-              className="tw-form-inputs tw-relative tw-form-inputs-padding tw-py-2"
+            <label className="flex flex-col">{t('label.exclude')}:</label>
+            <Typography.Text
+              className="text-grey-muted m-t-xss m-b-xss"
+              data-testid="filter-pattern-exclude-info">
+              {t('message.filter-pattern-include-exclude-info', {
+                activity: toLower(t('label.exclude')),
+                filterPattern: type,
+              })}
+            </Typography.Text>
+            <Input
+              className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
-              placeholder="Enter a list of strings/regex patterns as a comma separated value"
+              placeholder={t('label.list-of-strings-regex-patterns-csv')}
               type="text"
               value={excludePattern}
               onChange={excludeFilterChangeHandler}
