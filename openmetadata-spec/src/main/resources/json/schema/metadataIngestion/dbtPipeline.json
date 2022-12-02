@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/dbtPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "dbtPipeline",
+  "description": "DBT Pipeline Configuration.",
+  "definitions": {
+    "dbtConfigType": {
+      "description": "DBT Config Pipeline type",
+      "type": "string",
+      "enum": ["DBT"],
+      "default": "DBT"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/dbtConfigType",
+      "default": "DBT"
+    },
+    "queryLogDuration": {
+      "description": "Configuration to tune how far we want to look back in query logs to process lineage data.",
+      "type": "integer",
+      "default": 1
+    }
+  },
+  "additionalProperties": false
+}

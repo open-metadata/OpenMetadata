@@ -71,7 +71,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.dbt_source import DBTMixin
 from metadata.utils import fqn
 from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.filters import filter_by_schema
@@ -216,7 +215,7 @@ class SQLSourceStatus(SourceStatus):
 
 
 class DatabaseServiceSource(
-    DBTMixin, TopologyRunnerMixin, Source, ABC
+    TopologyRunnerMixin, Source, ABC
 ):  # pylint: disable=too-many-public-methods
     """
     Base class for Database Services.
@@ -261,7 +260,8 @@ class DatabaseServiceSource(
                 self.data_models = {}
 
     def prepare(self):
-        self._parse_data_model()
+        # self._parse_data_model()
+        pass
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -391,8 +391,8 @@ class DatabaseServiceSource(
             table_name=table_name,
         )
 
-        datamodel = self.get_data_model(table_fqn)
-
+        # datamodel = self.get_data_model(table_fqn)
+        datamodel = None
         dbt_tag_labels = None
         if datamodel:
             logger.info("Processing DBT Tags")
