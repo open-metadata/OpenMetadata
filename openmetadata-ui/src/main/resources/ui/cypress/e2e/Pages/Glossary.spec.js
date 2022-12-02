@@ -108,11 +108,10 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
     cy.get('[data-testid="governance"]')
       .should('exist')
-      .should('be.visible')
+      .and('be.visible')
       .click({ animationDistanceThreshold: 10 });
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
-      .should('exist')
       .should('be.visible')
       .click();
 
@@ -393,7 +392,8 @@ describe('Glossary page should work properly', () => {
     ).contains(term);
 
     interceptURL('GET', '/api/v1/feed/count*', 'saveTag');
-
+    interceptURL('GET', '/api/v1/tags', 'tags');
+    
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
 
     verifyResponseStatusCode('@saveTag', 200);
@@ -403,16 +403,17 @@ describe('Glossary page should work properly', () => {
       .contains(term);
 
     //Add tag to schema table
-    cy.get('[data-row-key="comments"] [data-testid="tags-wrapper"]')
+    cy.get('[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]')
       .should('be.visible')
+      .first()
       .click();
-    cy.get('[class*="-control"]').should('be.visible').type(term);
-    cy.get('[id*="-option-0"]').should('contain', term);
-    cy.get('[id*="-option-0"]').should('be.visible').click();
-    cy.get(
-      '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
-    ).contains(term);
 
+      cy.get('[class*="-control"]').should('be.visible').type(term);
+      cy.get('[id*="-option-0"]').should('contain', term);
+      cy.get('[id*="-option-0"]').should('be.visible').click();
+      cy.get(
+        '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
+      ).contains(term);
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@saveTag', 200);
     cy.get(`[data-testid="tag-${glossary}.${term}"]`)
@@ -423,11 +424,11 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
 
     goToAssetsTab(term);
     cy.get(`[data-testid="${entity.serviceName}-${entity.term}"]`)
@@ -482,11 +483,11 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
 
     cy.wait(500);
     goToAssetsTab(term);
