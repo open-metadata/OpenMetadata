@@ -182,3 +182,27 @@ class FQNBuildTest(TestCase):
             str(context.exception),
             "Service Name and Table Name should be informed, but got service=`None`, table=`None`",
         )
+
+    def test_split_table_name(self):
+        """Different tables are properly partitioned"""
+
+        self.assertEqual(
+            {"database": "database", "database_schema": "schema", "table": "table"},
+            fqn.split_table_name(table_name="database.schema.table"),
+        )
+
+        self.assertEqual(
+            {"database": None, "database_schema": "schema", "table": "table"},
+            fqn.split_table_name(table_name="schema.table"),
+        )
+
+        self.assertEqual(
+            {"database": None, "database_schema": None, "table": "table"},
+            fqn.split_table_name(table_name="table"),
+        )
+
+        # We also clean quotes
+        self.assertEqual(
+            {"database": "database", "database_schema": "schema", "table": "table"},
+            fqn.split_table_name(table_name='database."schema".table'),
+        )

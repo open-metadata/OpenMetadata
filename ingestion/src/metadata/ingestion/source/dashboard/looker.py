@@ -8,7 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Looker source module"""
+"""
+Looker source module.
+Supports:
+- owner
+- lineage
+- usage
+
+Notes:
+- Filtering is applied on the Dashboard title or ID, if the title is missing
+"""
 
 import traceback
 from datetime import datetime
@@ -16,6 +25,7 @@ from typing import Iterable, List, Optional, Set, cast
 
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Query
+from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
     DashboardBase,
@@ -54,13 +64,32 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+LIST_DASHBOARD_FIELDS = ["id", "title"]
+
+# Here we can update the fields to get further information, such as:
+# created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
+GET_DASHBOARD_FIELDS = [
+    "id",
+    "title",
+    "dashboard_elements",
+    "dashboard_filters",
+    "view_count",
+    "description",
+    "folder",
+    "user_id",  # Use as owner
+]
+
+
 class LookerSource(DashboardServiceSource):
     """
-    Looker Source Class
+    Looker Source Class.
+
+    Its client uses Looker 40 from the SDK: client = looker_sdk.init40()
     """
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
+    client: Looker40SDK
 
     def __init__(
         self,
@@ -69,6 +98,9 @@ class LookerSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata_config)
         self.today = datetime.now().strftime("%Y-%m-%d")
+
+        # Owners cache. The key will be the user_id and the value its OM user EntityRef
+        self._owners_ref = {}
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -80,32 +112,73 @@ class LookerSource(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_dashboards_list(self) -> Optional[List[DashboardBase]]:
+    def get_dashboards_list(self) -> List[DashboardBase]:
         """
         Get List of all dashboards
         """
-        return self.client.all_dashboards(fields="id")
+        try:
+            return list(
+                self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS))
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Wild error trying to obtain dashboard list {err}")
+            # If we cannot list the dashboards, let's blow up
+            raise err
 
-    def get_dashboard_name(self, dashboard_details: DashboardBase) -> str:
+    def get_dashboard_name(self, dashboard: DashboardBase) -> str:
         """
-        Get Dashboard Name
+        Get Dashboard Title. This will be used for filtering.
+        If the title is not present, we'll send the ID
         """
-        return dashboard_details.id
+        return dashboard.title or dashboard.id
 
     def get_dashboard_details(self, dashboard: DashboardBase) -> LookerDashboard:
         """
         Get Dashboard Details
         """
-        fields = [
-            "id",
-            "title",
-            "dashboard_elements",
-            "dashboard_filters",
-            "view_count",
-            "description",
-            "folder",
-        ]
-        return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
+        return self.client.dashboard(
+            dashboard_id=dashboard.id, fields=",".join(GET_DASHBOARD_FIELDS)
+        )
+
+    def get_owner_details(
+        self, dashboard_details: LookerDashboard
+    ) -> Optional[EntityReference]:
+        """Get dashboard owner
+
+        Store the visited users in the _owners_ref cache, even if we found them
+        in OM or not.
+
+        If the user has not yet been visited, store it and return from cache.
+
+        Args:
+            dashboard_details: LookerDashboard
+        Returns:
+            Optional[EntityReference]
+        """
+
+        try:
+            if (
+                dashboard_details.user_id is not None
+                and dashboard_details.user_id not in self._owners_ref
+            ):
+                dashboard_owner = self.client.user(dashboard_details.user_id)
+                user = self.metadata.get_user_by_email(dashboard_owner.email)
+                if user:  # Save the EntityRef
+                    self._owners_ref[dashboard_details.user_id] = EntityReference(
+                        id=user.id, type="user"
+                    )
+                else:  # Otherwise, flag the user as missing in OM
+                    self._owners_ref[dashboard_details.user_id] = None
+                    logger.debug(
+                        f"User {dashboard_owner.email} not found in OpenMetadata."
+                    )
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
+
+        return self._owners_ref.get(dashboard_details.user_id)
 
     def yield_dashboard(
         self, dashboard_details: LookerDashboard
@@ -117,7 +190,7 @@ class LookerSource(DashboardServiceSource):
         yield CreateDashboardRequest(
             name=dashboard_details.id.replace("::", "_"),
             displayName=dashboard_details.title,
-            description=dashboard_details.description or "",
+            description=dashboard_details.description or None,
             charts=[
                 EntityReference(id=chart.id.__root__, type="chart")
                 for chart in self.context.charts
@@ -126,6 +199,7 @@ class LookerSource(DashboardServiceSource):
             service=EntityReference(
                 id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
+            owner=self.get_owner_details(dashboard_details),
         )
 
     @staticmethod
@@ -186,7 +260,7 @@ class LookerSource(DashboardServiceSource):
         return dashboard_sources
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: LookerDashboard, db_service_name
+        self, dashboard_details: LookerDashboard, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
@@ -211,22 +285,10 @@ class LookerSource(DashboardServiceSource):
 
         for source in datasource_list:
             try:
-                source_elements = fqn.split_table_name(table_name=source)
-
-                from_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
-                    database_name=source_elements["database"],
-                    schema_name=source_elements["database_schema"],
-                    table_name=source_elements["table"],
-                )
-                from_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=from_fqn,
-                )
-                yield self._get_add_lineage_request(
-                    to_entity=to_entity, from_entity=from_entity
+                yield self.build_lineage_request(
+                    source=source,
+                    db_service_name=db_service_name,
+                    to_entity=to_entity,
                 )
 
             except (Exception, IndexError) as err:
@@ -235,15 +297,53 @@ class LookerSource(DashboardServiceSource):
                     f"Error building lineage for database service [{db_service_name}]: {err}"
                 )
 
+    def build_lineage_request(
+        self, source: str, db_service_name: str, to_entity: MetadataDashboard
+    ) -> Optional[AddLineageRequest]:
+        """
+        Once we have a list of origin data sources, check their components
+        and build the lineage request.
+
+        We will try searching in ES with and without the `database`
+
+        Args:
+            source: table name from the source list
+            db_service_name: name of the service from the config
+            to_entity: Dashboard Entity being used
+        """
+
+        source_elements = fqn.split_table_name(table_name=source)
+
+        for database_name in [source_elements["database"], None]:
+
+            from_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_name,
+                database_name=database_name,
+                schema_name=source_elements["database_schema"],
+                table_name=source_elements["table"],
+            )
+
+            from_entity: Table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=from_fqn,
+            )
+
+            if from_entity:
+                return self._get_add_lineage_request(
+                    to_entity=to_entity, from_entity=from_entity
+                )
+
+        return None
+
     def yield_dashboard_chart(
         self, dashboard_details: LookerDashboard
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Method to fetch charts linked to dashboard
         """
-        for chart in cast(
-            Iterable[DashboardElement], dashboard_details.dashboard_elements
-        ):
+        for chart in dashboard_details.dashboard_elements:
             try:
                 if filter_by_chart(
                     chart_filter_pattern=self.source_config.chartFilterPattern,
@@ -259,7 +359,7 @@ class LookerSource(DashboardServiceSource):
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart.title or chart.id,
-                    description="",
+                    description=self.build_chart_description(chart) or None,
                     chartType=get_standard_chart_type(chart.type).value,
                     chartUrl=f"/dashboard_elements/{chart.id}",
                     service=EntityReference(
@@ -272,6 +372,28 @@ class LookerSource(DashboardServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
+
+    @staticmethod
+    def build_chart_description(chart: DashboardElement) -> Optional[str]:
+        """
+        Chart descriptions will be based on the subtitle + note_text, if exists.
+        If the chart is a text tile, we will add the text as the chart description as well.
+        This should keep the dashboard searchable without breaking the original metadata structure.
+        """
+
+        # If the string is None or empty, filter it out.
+        try:
+            return "; ".join(
+                filter(
+                    lambda string: string,
+                    [chart.subtitle_text, chart.body_text, chart.note_text],
+                )
+                or []
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error getting chart description: {err}")
+            return None
 
     def yield_dashboard_usage(  # pylint: disable=W0221
         self, dashboard_details: LookerDashboard

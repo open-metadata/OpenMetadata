@@ -69,8 +69,8 @@ class DomodashboardSource(DashboardServiceSource):
         dashboards = self.domo_client.page_list()
         return dashboards
 
-    def get_dashboard_name(self, dashboard_details: dict) -> str:
-        return dashboard_details["name"]
+    def get_dashboard_name(self, dashboard: dict) -> str:
+        return dashboard["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         return dashboard
