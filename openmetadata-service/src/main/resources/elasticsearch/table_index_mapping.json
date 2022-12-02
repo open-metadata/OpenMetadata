@@ -17,6 +17,16 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_analyzer_ja" : {
+          "tokenizer" : "kuromoji_tokenizer",
+          "type" : "custom",
+          "filter" : [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
+          ]
         }
       },
       "filter": {
@@ -51,9 +61,7 @@
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "om_analyzer",
-        "norms": false
+        "analyzer": "om_analyzer_ja"
       },
       "version": {
         "type": "float"
@@ -87,9 +95,7 @@
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "norms": false
+            "analyzer": "om_analyzer_ja"
           },
           "fullyQualifiedName": {
             "type": "text"
