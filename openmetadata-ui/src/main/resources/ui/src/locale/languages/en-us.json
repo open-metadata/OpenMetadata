@@ -379,6 +379,10 @@
     "chart": "Chart",
     "task": "Task",
     "add-entity": "Add {{entity}}",
+    "deleted-team-action": "{{action}} Deleted Team",
+    "show": "Show",
+    "hide": "Hide",
+    "restore-team": "Restore Team",
     "remove": "Remove"
   },
   "message": {
@@ -450,7 +454,9 @@
     "enter-feature-description": "Enter feature description",
     "no-features-data-available": "No features data available",
     "confirm-delete-message": "Are you sure you want to permanently delete this message?",
-    "delete-message-question-mark": "Delete Message?"
+    "delete-message-question-mark": "Delete Message?",
+    "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
+    "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata"
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

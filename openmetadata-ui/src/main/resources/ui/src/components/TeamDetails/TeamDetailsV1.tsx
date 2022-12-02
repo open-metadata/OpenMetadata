@@ -15,6 +15,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
+  Dropdown,
+  Menu,
   Modal,
   Row,
   Space,
@@ -131,6 +133,7 @@ const TeamDetailsV1 = ({
   removeUserFromTeam,
   afterDeleteAction,
   onAssetsPaginate,
+  parentTeams,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const isOrganization = currentTeam.name === TeamType.Organization;
@@ -166,6 +169,7 @@ const TeamDetailsV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState<boolean>(false);
 
   const teamCount = useMemo(
     () =>
@@ -565,9 +569,9 @@ const TeamDetailsV1 = ({
 
   useEffect(() => {
     if (currentTeam) {
-      const perents =
-        currentTeam?.parents && !isOrganization
-          ? currentTeam?.parents.map((parent) => ({
+      const parents =
+        parentTeams && !isOrganization
+          ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
                 parent.name || parent.fullyQualifiedName || ''
@@ -575,7 +579,7 @@ const TeamDetailsV1 = ({
             }))
           : [];
       const breadcrumb = [
-        ...perents,
+        ...parents,
         {
           name: getEntityName(currentTeam),
           url: '',
@@ -584,7 +588,7 @@ const TeamDetailsV1 = ({
       setSlashedDatabaseName(breadcrumb);
       setHeading(currentTeam.displayName || currentTeam.name);
     }
-  }, [currentTeam]);
+  }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
     setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
@@ -615,6 +619,16 @@ const TeamDetailsV1 = ({
     return t('message.are-you-sure-want-to-text', { text });
   };
 
+  const deletedTeamIcon = useMemo(
+    () => (
+      <SVGIcons
+        alt={t('label.delete')}
+        icon={showDeletedTeam ? Icons.HIDE_PASSWORD : Icons.SHOW_PASSWORD}
+      />
+    ),
+    [showDeletedTeam]
+  );
+
   const openGroupIcon = useMemo(
     () => (
       <SVGIcons
@@ -630,72 +644,122 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
+  const DELETED_TOGGLE_MENU_ITEM = {
+    label: (
+      <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
+        <Col span={3}>{deletedTeamIcon}</Col>
+        <Col span={21}>
+          <Row>
+            <Col span={21}>
+              <Typography.Text
+                className="font-medium"
+                data-testid="deleted-menu-item-label">
+                {t('label.deleted-team-action', {
+                  action: showDeletedTeam ? t('label.hide') : t('label.show'),
+                })}
+              </Typography.Text>
+            </Col>
+
+            <Col span={3}>
+              <Switch
+                checked={showDeletedTeam}
+                data-testid="deleted-menu-item-switch"
+                size="small"
+                onChange={onShowDeletedTeamChange}
+              />
+            </Col>
+
+            <Col className="p-t-xss">
+              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                {t('message.view-deleted-teams')}
+              </Typography.Paragraph>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    ),
+    key: 'deleted-team-dropdown',
+  };
+
+  const organizationDropdownContent = (
+    <Menu items={[DELETED_TOGGLE_MENU_ITEM]} />
+  );
+
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
       ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
         ? [
             {
               label: (
-                <Space
-                  className="cursor-pointer manage-button"
-                  size={8}
-                  onClick={handleReactiveTeam}>
-                  {restoreIcon}
-                  <div
-                    className="text-left open-group"
-                    data-testid="restore-team">
-                    <p className="font-medium" data-testid="restore-team-label">
-                      Restore Team
-                    </p>
-
-                    <p className="tw-text-grey-muted tw-text-xs">
-                      Restoring the Team will add all the metadata back to
-                      OpenMetadata
-                    </p>
-                  </div>
-                </Space>
+                <Row className="cursor-pointer" onClick={handleReactiveTeam}>
+                  <Col span={3}>{restoreIcon}</Col>
+                  <Col data-testid="restore-team" span={21}>
+                    <Row>
+                      <Col span={24}>
+                        <Typography.Text
+                          className="font-medium"
+                          data-testid="restore-team-label">
+                          {t('label.restore-team')}
+                        </Typography.Text>
+                      </Col>
+                      <Col className="p-t-xss" span={24}>
+                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                          {t('message.restore-deleted-team')}
+                        </Typography.Paragraph>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
               ),
               key: 'restore-team-dropdown',
             },
           ]
         : []),
-
       {
         label: (
-          <Space
-            className="tw-cursor-pointer manage-button"
-            size={8}
+          <Row
+            className="cursor-pointer"
+            data-testid="deleted-team-menu-item"
             onClick={handleOpenToJoinToggle}>
-            {openGroupIcon}
-            <div className="tw-text-left open-group" data-testid="open-group">
-              <Row className="tw-mb-1" justify="space-between">
-                <Col>
-                  <p className="tw-font-medium" data-testid="open-group-label">
+            <Col span={3}>{openGroupIcon}</Col>
+            <Col data-testid="open-group" span={21}>
+              <Row>
+                <Col span={21}>
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="open-group-label">
                     {`${
                       currentTeam.isJoinable
                         ? t('label.close')
                         : t('label.open')
                     } ${t('label.group')}`}
-                  </p>
+                  </Typography.Text>
                 </Col>
-                <Col>
+
+                <Col span={3}>
                   <Switch
                     checked={currentTeam.isJoinable}
                     className="tw-mr-2"
                     size="small"
                   />
                 </Col>
+
+                <Col className="p-t-xss">
+                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                    {t('label.access-to-collaborate')}
+                  </Typography.Paragraph>
+                </Col>
               </Row>
-              <p className="tw-text-grey-muted tw-text-xs">
-                {t('label.access-to-collaborate')}
-              </p>
-            </div>
-          </Space>
+            </Col>
+          </Row>
         ),
         key: 'open-group-dropdown',
       },
+      ...(currentTeam.teamType === TeamType.BusinessUnit
+        ? [DELETED_TOGGLE_MENU_ITEM]
+        : []),
     ],
-    [entityPermissions, currentTeam, childTeams]
+    [entityPermissions, currentTeam, childTeams, showDeletedTeam]
   );
 
   /**
@@ -985,7 +1049,7 @@ const TeamDetailsV1 = ({
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
             {getTeamHeading()}
-            {!isOrganization && (
+            {!isOrganization ? (
               <Space align="center">
                 {!isUndefined(currentUser) &&
                   teamActionButton(
@@ -1016,6 +1080,25 @@ const TeamDetailsV1 = ({
                   />
                 )}
               </Space>
+            ) : (
+              <Dropdown
+                align={{ targetOffset: [-12, 0] }}
+                overlay={organizationDropdownContent}
+                overlayStyle={{ width: '350px' }}
+                placement="bottomRight"
+                trigger={['click']}
+                visible={showActions}
+                onVisibleChange={setShowActions}>
+                <ButtonAntd
+                  className="rounded-4 w-6 manage-dropdown-button"
+                  data-testid="teams-dropdown"
+                  size="small">
+                  <FontAwesomeIcon
+                    className="text-primary self-center manage-dropdown-icon"
+                    icon="ellipsis-vertical"
+                  />
+                </ButtonAntd>
+              </Dropdown>
             )}
           </div>
           <Space size={0}>
@@ -1099,12 +1182,6 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
-                        <Switch
-                          checked={showDeletedTeam}
-                          data-testid="show-deleted-switch"
-                          onChange={onShowDeletedTeamChange}
-                        />
-                        <span>{t('label.deleted-teams')} </span>
                         <ButtonAntd
                           data-testid="add-team"
                           disabled={!createTeamPermission}
