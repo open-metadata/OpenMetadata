@@ -232,7 +232,7 @@
     "lineage": "Lineage",
     "custom-properties": "Custom Properties",
     "dag-view": "DAG view",
-    "read-more": "read more",
+    "read-more": "Read more",
     "read-less": "read less",
     "no-entity": "No {{entity}}",
     "page-views-by-entities": "Page views by data assets",
@@ -458,8 +458,8 @@
     "delete-message-question-mark": "Delete Message?",
     "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
     "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata",
-    "filter-pattern-info": "To control whether or not to include {{filterPattern}} as part of metadata ingestion",
-    "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex"
+    "filter-pattern-info": "To control whether or not to include {{filterPattern}} as part of metadata ingestion.",
+    "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

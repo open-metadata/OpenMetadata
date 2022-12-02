@@ -15,7 +15,11 @@ import { Checkbox, Col, Input, Row, Typography } from 'antd';
 import { t } from 'i18next';
 import { capitalize, toLower } from 'lodash';
 import React from 'react';
-import { getSeparator } from '../../../utils/CommonUtils';
+import {
+  getFilterPatternDocsLinks,
+  getSeparator,
+} from '../../../utils/CommonUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Field } from '../../Field/Field';
 import { FilterPatternProps } from './filterPattern.interface';
 
@@ -56,17 +60,28 @@ const FilterPattern = ({
             onChange={(e) => handleChecked(e.target.checked)}
           />
         </Col>
-        <Col>
+        <Col className="flex flex-col">
           <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
             type
           )} Filter Pattern`}</label>
-          <Typography
+          <Typography.Text
             className="text-grey-muted m-t-xss"
             data-testid="filter-pattern-info">
             {t('message.filter-pattern-info', {
               filterPattern: type,
-            })}
-          </Typography>
+            })}{' '}
+            <Typography.Link
+              href={getFilterPatternDocsLinks(type)}
+              target="_blank">
+              {t('label.read-more')}{' '}
+              <SVGIcons
+                alt="external-link"
+                className="m-l-xss"
+                icon={Icons.EXTERNAL_LINK}
+                width="14px"
+              />
+            </Typography.Link>
+          </Typography.Text>
         </Col>
       </Row>
       {checked && (

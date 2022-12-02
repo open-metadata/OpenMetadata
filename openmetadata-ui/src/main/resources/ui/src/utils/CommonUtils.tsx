@@ -61,6 +61,7 @@ import {
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
+import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -947,4 +948,34 @@ export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
   return tags.sort((tag1, tag2) =>
     tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
   );
+};
+
+/**
+ * It returns a link to the documentation for the given filter pattern type
+ * @param {FilterPatternEnum} type - The type of filter pattern.
+ * @returns A string
+ */
+export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
+  switch (type) {
+    case FilterPatternEnum.DATABASE:
+    case FilterPatternEnum.SCHEMA:
+    case FilterPatternEnum.TABLE:
+      return `https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/${FilterPatternEnum.DATABASE}#${type}-filter-pattern`;
+
+    case FilterPatternEnum.DASHBOARD:
+    case FilterPatternEnum.CHART:
+      return 'https://docs.open-metadata.org/connectors/dashboard/metabase#6-configure-metadata-ingestion';
+
+    case FilterPatternEnum.TOPIC:
+      return 'https://docs.open-metadata.org/connectors/messaging/kafka#6-configure-metadata-ingestion';
+
+    case FilterPatternEnum.PIPELINE:
+      return 'https://docs.open-metadata.org/connectors/pipeline/airflow#6-configure-metadata-ingestion';
+
+    case FilterPatternEnum.MLMODEL:
+      return 'https://docs.open-metadata.org/connectors/ml-model/mlflow';
+
+    default:
+      return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
+  }
 };
