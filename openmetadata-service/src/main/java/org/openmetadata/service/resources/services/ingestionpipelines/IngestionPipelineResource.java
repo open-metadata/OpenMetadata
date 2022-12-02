@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -57,10 +58,12 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.airflow.AirflowRESTClient;
@@ -89,6 +92,24 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+
+  private static final String INGESTION_PIPELINE_TAG_CATEGORY = "IngestionPipeline";
+  private static final Map<String, String> TYPE_TO_TAG_MAP =
+          Map.of(
+                  PipelineType.METADATA.toString(),
+                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Metadata",
+                  PipelineType.PROFILER.toString(),
+                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Profiler",
+                  PipelineType.LINEAGE.toString(),
+                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Lineage",
+                  PipelineType.USAGE.toString(),
+                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "Usage",
+                  PipelineType.TEST_SUITE.toString(),
+                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "TestSuite",
+                  PipelineType.DATA_INSIGHT.toString(),
+                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "DataInsights",
+                  PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
+                  INGESTION_PIPELINE_TAG_CATEGORY + SEPARATOR + "ElasticSearchReindex");
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -396,7 +417,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       })
   public IngestionPipeline deployIngestion(
       @Context UriInfo uriInfo, @PathParam("id") UUID id, @Context SecurityContext securityContext) throws IOException {
-    Fields fields = getFields(FIELD_OWNER);
+    Fields fields = getFields("owner,tags");
     IngestionPipeline ingestionPipeline = dao.get(uriInfo, id, fields);
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
@@ -707,7 +728,14 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
-        .withService(create.getService());
+        .withService(create.getService())
+        .withTags(List.of(
+            new TagLabel()
+                .withState(TagLabel.State.CONFIRMED)
+                .withLabelType(TagLabel.LabelType.AUTOMATED)
+                .withSource(TagLabel.TagSource.TAG)
+                .withTagFQN(TYPE_TO_TAG_MAP.get(create.getPipelineType().toString())))
+        );
   }
 
   private IngestionPipeline decryptOrNullify(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {

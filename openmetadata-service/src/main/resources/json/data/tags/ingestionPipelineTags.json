@@ -1,0 +1,43 @@
+{
+  "name": "IngestionPipeline",
+  "description": "Metadata Ingestion Pipelines have different types depending on the metadata being extracted or processed.",
+  "provider": "system",
+  "mutuallyExclusive": "true",
+  "children": [
+    {
+      "name": "Metadata",
+      "description": "Metadata Ingestion Workflow. This is the basic workflow used to get the assets from the source system such as Tables, Dashboards or Topics.",
+      "provider": "system"
+    },
+    {
+      "name": "Lineage",
+      "description": "For Database Services, Lineage Workflows parse the query history and identify lineage relationship between tables.",
+      "provider": "system"
+    },
+    {
+      "name": "Usage",
+      "description": "For Database Services, Usage Workflows parse the query history and bring in the queries being ran against each table.",
+      "provider": "system"
+    },
+    {
+      "name": "Profiler",
+      "description": "For Database Services, Profiler Workflows run metrics against the tables to compute statistics around the shape of their data.",
+      "provider": "system"
+    },
+    {
+      "name": "TestSuite",
+      "description": "A Test Suite Workflow will execute the tests configured in each Suite and send back the results to OpenMetadata.",
+      "provider": "system"
+    },
+    {
+      "name": "DataInsights",
+      "description": "From the OpenMetadata service, the Data Insights Workflow captures trends and statistics around the assets in OpenMetadata as well as how users interact with the platform. It will compute KPIs and show how teams are advancing toward their goals.",
+      "provider": "system"
+    },
+    {
+      "name": "ElasticSearchReindex",
+      "description": "From the OpenMetadata service, the ElasticSearchReindex Workflow can be configured to regularly update the Elasticsearch indexes, aside from the automated indexing happening already from the server.",
+      "provider": "system"
+    }
+  ]
+}

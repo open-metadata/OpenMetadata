@@ -194,6 +194,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "tags": {
+      "description": "Tags for this IngestionPipeline. Tags are linked to the Ingestion Pipeline type.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "changeDescription": {
       "description": "Change that led to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
