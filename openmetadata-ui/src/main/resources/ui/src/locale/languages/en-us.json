@@ -383,8 +383,8 @@
     "restore-team": "Restore Team",
     "remove": "Remove",
     "list-of-strings-regex-patterns-csv": "Enter a list of strings/regex patterns as a comma separated value",
-    "owned-lowercase": "Owned",
-    "followed-lowercase": "Followed"
+    "owned-lowercase": "owned",
+    "followed-lowercase": "followed"
   },
   "message": {
     "service-email-required": "Service account Email is required",
