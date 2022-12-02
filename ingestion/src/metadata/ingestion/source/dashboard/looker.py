@@ -36,6 +36,7 @@ from looker_sdk.sdk.api40.models import (
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as MetadataDashboard,
 )
@@ -170,6 +171,9 @@ class LookerSource(DashboardServiceSource):
                     )
                 else:  # Otherwise, flag the user as missing in OM
                     self._owners_ref[dashboard_details.user_id] = None
+                    logger.debug(
+                        f"User {dashboard_owner.email} not found in OpenMetadata."
+                    )
 
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -257,7 +261,7 @@ class LookerSource(DashboardServiceSource):
         return dashboard_sources
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: LookerDashboard, db_service_name
+        self, dashboard_details: LookerDashboard, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
@@ -282,22 +286,10 @@ class LookerSource(DashboardServiceSource):
 
         for source in datasource_list:
             try:
-                source_elements = fqn.split_table_name(table_name=source)
-
-                from_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
-                    database_name=source_elements["database"],
-                    schema_name=source_elements["database_schema"],
-                    table_name=source_elements["table"],
-                )
-                from_entity = self.metadata.get_by_name(
-                    entity=Table,
-                    fqn=from_fqn,
-                )
-                yield self._get_add_lineage_request(
-                    to_entity=to_entity, from_entity=from_entity
+                yield self.build_lineage_request(
+                    source=source,
+                    db_service_name=db_service_name,
+                    to_entity=to_entity,
                 )
 
             except (Exception, IndexError) as err:
@@ -305,6 +297,46 @@ class LookerSource(DashboardServiceSource):
                 logger.warning(
                     f"Error building lineage for database service [{db_service_name}]: {err}"
                 )
+
+    def build_lineage_request(
+        self, source: str, db_service_name: str, to_entity: Dashboard
+    ) -> Optional[AddLineageRequest]:
+        """
+        Once we have a list of origin data sources, check their components
+        and build the lineage request.
+
+        We will try searching in ES with and without the `database`
+
+        Args:
+            source: table name from the source list
+            db_service_name: name of the service from the config
+            to_entity: Dashboard Entity being used
+        """
+
+        source_elements = fqn.split_table_name(table_name=source)
+
+        for database_name in [source_elements["database"], None]:
+
+            from_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_name,
+                database_name=database_name,
+                schema_name=source_elements["database_schema"],
+                table_name=source_elements["table"],
+            )
+
+            from_entity: Table = self.metadata.get_by_name(
+                entity=Table,
+                fqn=from_fqn,
+            )
+
+            if from_entity:
+                return self._get_add_lineage_request(
+                    to_entity=to_entity, from_entity=from_entity
+                )
+
+        return None
 
     def yield_dashboard_chart(
         self, dashboard_details: LookerDashboard
@@ -328,7 +360,7 @@ class LookerSource(DashboardServiceSource):
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart.title or chart.id,
-                    description=chart.note_text or None,
+                    description=self.build_chart_description(chart) or None,
                     chartType=get_standard_chart_type(chart.type).value,
                     chartUrl=f"/dashboard_elements/{chart.id}",
                     service=EntityReference(
@@ -341,6 +373,28 @@ class LookerSource(DashboardServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error creating chart [{chart}]: {exc}")
+
+    @staticmethod
+    def build_chart_description(chart: DashboardElement) -> Optional[str]:
+        """
+        Chart descriptions will be based on the subtitle + note_text, if exists.
+        If the chart is a text tile, we will add the text as the chart description as well.
+        This should keep the dashboard searchable without breaking the original metadata structure.
+        """
+
+        # If the string is None or empty, filter it out.
+        try:
+            return "; ".join(
+                filter(
+                    lambda string: string,
+                    [chart.subtitle_text, chart.body_text, chart.note_text],
+                )
+                or []
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error getting chart description: {err}")
+            return None
 
     def yield_dashboard_usage(  # pylint: disable=W0221
         self, dashboard_details: LookerDashboard

@@ -198,7 +198,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self, dashboard_details: Any
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
-        Yields lineage if config is enabled
+        Yields lineage if config is enabled.
+
+        We will look for the data in all the services
+        we have informed.
         """
         for db_service_name in self.source_config.dbServiceNames or []:
             yield from self.yield_dashboard_lineage_details(
@@ -266,7 +269,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     @staticmethod
-    def _get_add_lineage_request(to_entity: Dashboard, from_entity: Table):
+    def _get_add_lineage_request(
+        to_entity: Dashboard, from_entity: Table
+    ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
