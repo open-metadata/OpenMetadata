@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Button, Divider, Popover, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getDashboardByFqn } from '../../../axiosAPIs/dashboardAPI';
@@ -38,6 +39,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/CommonUtils';
+import SVGIcons from '../../../utils/SvgUtils';
 import {
   getEntityLink,
   getTagsWithoutTier,
@@ -62,6 +64,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 }
 
 const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+  const { t } = useTranslation();
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
 
   const entityTier = useMemo(() => {
@@ -136,12 +139,13 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   const PopoverTitle = () => {
     return (
       <Link data-testid="entitylink" to={getEntityLink(entityType, entityFQN)}>
-        <button
-          className="tw-text-info"
+        <Button
+          className="p-0"
           disabled={AppState.isTourOpen}
+          type="link"
           onClick={(e) => e.stopPropagation()}>
           <span>{entityFQN}</span>
-        </button>
+        </Button>
       </Link>
     );
   };
@@ -161,65 +165,73 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     }, []);
 
     return (
-      <div className="tw-w-80">
-        <div className="tw-flex">
+      <div className="w-500">
+        <Space align="center" size="small">
           <div data-testid="owner">
-            <span>
-              {entityData.owner ? (
-                <span className="tw-flex">
-                  <span className="tw-text-grey-muted">Owner:</span>{' '}
-                  <span className="tw-flex tw-ml-1">
-                    <ProfilePicture
-                      displayName={getEntityName(entityData.owner)}
-                      id=""
-                      name={getEntityName(entityData.owner)}
-                      width="20"
-                    />
-                    <span className="tw-ml-1">
-                      {getEntityName(entityData.owner)}
-                    </span>
-                  </span>
-                </span>
-              ) : (
-                <span className="tw-text-grey-muted">No Owner</span>
-              )}
-            </span>
-          </div>
-          <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
-          <div data-testid="tier">
-            {entityTier ? (
-              entityTier
+            {entityData.owner ? (
+              <Space align="center" size="small">
+                <ProfilePicture
+                  displayName={getEntityName(entityData.owner)}
+                  id={entityData.name}
+                  name={getEntityName(entityData.owner)}
+                  width="20"
+                />
+                <Typography.Text className="text-xs">
+                  {getEntityName(entityData.owner)}
+                </Typography.Text>
+              </Space>
             ) : (
-              <span className="tw-text-grey-muted">No Tier</span>
+              <Typography.Text className="text-xs text-grey-muted">
+                {t('label.no-entity', {
+                  entity: t('label.owner'),
+                })}
+              </Typography.Text>
             )}
           </div>
-        </div>
+          <span className="text-grey-muted">|</span>
+          <Typography.Text
+            className="text-xs text-grey-muted"
+            data-testid="tier">
+            {entityTier
+              ? entityTier
+              : t('label.no-entity', {
+                  entity: t('label.tier'),
+                })}
+          </Typography.Text>
+        </Space>
 
-        <div
-          className="description-text tw-mt-1"
-          data-testid="description-text">
+        <div className="description-text m-t-sm" data-testid="description-text">
           {entityData.description ? (
             <RichTextEditorPreviewer
               enableSeeMoreVariant={false}
               markdown={entityData.description}
             />
           ) : (
-            <span className="tw-no-description">No description</span>
+            <Typography.Text className="text-xs text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </Typography.Text>
           )}
         </div>
 
         {entityTags.length ? (
-          <div
-            className="tw-mt-2 tw-flex tw-flex-wrap tw-gap-1"
-            data-testid="tags">
-            {entityTags.map((tag) => (
-              <span
-                className="tw-border tw-border-main tw-px-1 tw-rounded tw-text-xs"
-                key={uniqueId()}>
-                {tag}
+          <>
+            <Divider className="m-b-xs m-t-sm" />
+            <div className="flex flex-start">
+              <span className="w-5 m-r-xs">
+                <SVGIcons alt="icon-tag" icon="icon-tag-grey" width="14" />
               </span>
-            ))}
-          </div>
+
+              <Space wrap align="center" size={[16, 0]}>
+                {entityTags.map((tag) => (
+                  <span className="text-xs font-medium" key={uniqueId()}>
+                    {tag}
+                  </span>
+                ))}
+              </Space>
+            </div>
+          </>
         ) : null}
       </div>
     );
