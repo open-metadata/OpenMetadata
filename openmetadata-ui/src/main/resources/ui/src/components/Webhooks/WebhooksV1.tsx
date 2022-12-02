@@ -14,6 +14,7 @@
 import { Button as ButtonAntd, Col, Row, Select, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { deleteWebhook } from '../../axiosAPIs/webhookAPI';
@@ -187,11 +188,13 @@ const WebhooksV1: FC<WebhooksV1Props> = ({
       </Row>
       {selectedWebhook && (
         <ConfirmationModal
-          bodyText={`You want to delete webhook ${selectedWebhook.name} permanently? This action cannot be reverted.`}
-          cancelText="Cancel"
-          confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-          confirmText="Delete"
-          header="Are you sure?"
+          visible
+          bodyText={t('message.delete-webhook-permanently', {
+            webhookName: selectedWebhook.name,
+          })}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.delete')}
+          header={t('label.are-you-sure')}
           onCancel={() => setWebhook(undefined)}
           onConfirm={handleDelete}
         />

@@ -48,7 +48,8 @@ export interface MenuList {
 }
 
 export const getGlobalSettingsMenuWithPermission = (
-  permissions: UIPermission
+  permissions: UIPermission,
+  isAdminUser: boolean | undefined
 ) => {
   return [
     {
@@ -218,10 +219,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: 'Elasticsearch',
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.ALL,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           icon: (
             <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
           ),

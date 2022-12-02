@@ -234,10 +234,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={ElasticSearchIndexPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.ALL,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
           GlobalSettingOptions.ELASTIC_SEARCH

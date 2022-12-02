@@ -21,7 +21,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="governance"]')
       .should('exist')
-      .should('be.visible')
+      .and('be.visible')
       .click({ animationDistanceThreshold: 10 });
 
     // adding manual wait to open dropdown in UI
@@ -66,8 +66,11 @@ describe('Tags page should work', () => {
   });
 
   it('Add new tag category flow should work properly', () => {
+    interceptURL("GET", "/api/v1/tags?*", "tags");
+    interceptURL("POST", "/api/v1/tags?*", "postTags");
+        
     cy.get('[data-testid="add-category"]').should('be.visible').click();
-    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('[data-testid="modal-container"]').should('be.visible');
     cy.get('[data-testid="name"]')
       .should('be.visible')
       .type(NEW_TAG_CATEGORY.name);
@@ -79,27 +82,30 @@ describe('Tags page should work', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('.tw-modal-container').should('not.exist');
-    cy.get('[data-testid="category-name"]')
-      .should('be.visible')
-      .invoke('text')
-      .then((text) => {
-        expect(text).to.equal(NEW_TAG_CATEGORY.name);
-      });
+
+      cy.get('[data-testid="modal-container"]').should('not.exist');
+      cy.get('[data-testid="category-name"]')
+        .should('be.visible')
+        .invoke('text')
+        .then((text) => {
+          expect(text).to.equal(NEW_TAG_CATEGORY.name);
+        });
   });
 
   it('Add new tag flow should work properly', () => {
+    interceptURL("GET", "/api/v1/tags?*", "tags");
+    
     cy.get('[data-testid="side-panel-category"]')
-      .contains(NEW_TAG_CATEGORY.name)
-      .should('be.visible')
-      .as('newCategory');
+    .contains(NEW_TAG_CATEGORY.name)
+    .should('be.visible')
+    .as('newCategory');
 
     cy.get('@newCategory')
-      .click()
-      .parent()
-      .should('have.class', 'activeCategory');
+    .click()
+    .parent()
+    .should('have.class', 'activeCategory');
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible').click();
-    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('[data-testid="modal-container"]').should('be.visible');
     cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
@@ -154,28 +160,34 @@ describe('Tags page should work', () => {
   });
 
   it('Delete Tag flow should work properly', () => {
-    cy.get('[data-testid="side-panel-category"]')
-      .contains(NEW_TAG_CATEGORY.name)
-      .should('be.visible')
-      .as('newCategory');
+    interceptURL("GET", "/api/v1/tags?*", "tags");
 
-    cy.get('@newCategory')
-      .click()
-      .parent()
-      .should('have.class', 'activeCategory');
+       cy.get('[data-testid="side-panel-category"]')
+        .contains(NEW_TAG_CATEGORY.name)
+        .should('be.visible')
+        .as('newCategory');
 
-    cy.get('[data-testid="delete-tag-category-button"]')
-      .should('be.visible')
-      .click();
-    cy.get('.tw-modal-container').should('be.visible');
-    cy.contains(
-      `Are you sure you want to delete the tag category "${NEW_TAG_CATEGORY.name}"?`
-    ).should('be.visible');
+        cy.get('@newCategory')
+        .click()
+        .parent()
+        .should('have.class', 'activeCategory');
 
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
+        cy.get('[data-testid="delete-tag-category-button"]')
+        .should('be.visible')
+        .click();
 
-    cy.get('[data-testid="side-panel-category"]')
-      .contains(NEW_TAG_CATEGORY.name)
-      .should('not.be.exist');
+        cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
+        cy.get('[data-testid="confirmation-modal"]').within(() => {
+            cy.get("[role='dialog']").should("be.visible");
+        });
+        cy.contains(
+        `Are you sure you want to delete the tag category "${NEW_TAG_CATEGORY.name}"?`
+        ).should('be.visible');
+
+        cy.get('[data-testid="save-button"]').should('be.visible').click();
+
+        cy.get('[data-testid="side-panel-category"]')
+        .contains(NEW_TAG_CATEGORY.name)
+        .should('not.be.exist');
   });
 });

@@ -36,8 +36,8 @@ const checkTeamTypeOptions = () => {
 };
 
 //intercepting URL with cy.intercept
-export const interceptURL = (method, url, alias) => {
-    cy.intercept({ method: method, url: url }).as(alias);
+export const interceptURL = (method, url, alias, callback) => {
+    cy.intercept({ method: method, url: url }, callback).as(alias);
 };
 
 //waiting for response and validating the response status code
@@ -481,6 +481,7 @@ export const addNewTagToEntity = (entityObj, term) => {
         .scrollIntoView()
         .click();
 
+    cy.wait(500);
     cy.get('[class*="-control"]').should('be.visible').type(term);
     cy.wait(500);
     cy.get('[id*="-option-0"]').should('be.visible').click();
@@ -757,7 +758,7 @@ export const deleteCreatedProperty = (propertyName) => {
     cy.get('@deletebutton').click();
 
     //Checking property name is present on the delete pop-up
-    cy.get('[data-testid="body-text"] > p').should('contain', propertyName);
+    cy.get('[data-testid="body-text"]').should('contain', propertyName);
 
     cy.get('[data-testid="save-button"]').should('be.visible').click();
 

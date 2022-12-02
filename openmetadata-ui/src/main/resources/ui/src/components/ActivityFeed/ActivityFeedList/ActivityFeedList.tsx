@@ -298,12 +298,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </>
       )}
-      {confirmationState.state && (
-        <DeleteConfirmationModal
-          onDelete={onPostDelete}
-          onDiscard={onDiscard}
-        />
-      )}
+      <DeleteConfirmationModal
+        visible={confirmationState.state}
+        onDelete={onPostDelete}
+        onDiscard={onDiscard}
+      />
     </div>
   );
 };
