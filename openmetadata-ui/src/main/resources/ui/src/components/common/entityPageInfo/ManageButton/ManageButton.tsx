@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Dropdown, Menu, Space, Tooltip } from 'antd';
+import { Button, Col, Dropdown, Menu, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import React, { FC, useState } from 'react';
@@ -70,11 +70,10 @@ const ManageButton: FC<Props> = ({
         {
           label: (
             <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-              <Space
+              <Row
                 className={classNames('tw-cursor-pointer manage-button', {
                   'tw-cursor-not-allowed tw-opacity-50': !canDelete,
                 })}
-                size={8}
                 onClick={(e) => {
                   if (canDelete) {
                     e.stopPropagation();
@@ -82,20 +81,28 @@ const ManageButton: FC<Props> = ({
                     setShowActions(false);
                   }
                 }}>
-                <SVGIcons alt="Delete" icon={Icons.DELETE} />
-                <div className="tw-text-left" data-testid="delete-button">
-                  <p
-                    className="tw-font-medium"
-                    data-testid="delete-button-title">
-                    {t('label.delete')}
-                  </p>
-                  <p className="tw-text-grey-muted tw-text-xs">
-                    {t('message.delete-action-description', {
-                      entityType,
-                    })}
-                  </p>
-                </div>
-              </Space>
+                <Col span={3}>
+                  <SVGIcons alt="Delete" icon={Icons.DELETE} />
+                </Col>
+                <Col span={21}>
+                  <Row data-testid="delete-button">
+                    <Col span={21}>
+                      <Typography.Text
+                        className="font-medium"
+                        data-testid="delete-button-title">
+                        {t('label.delete')}
+                      </Typography.Text>
+                    </Col>
+                    <Col className="p-t-xss">
+                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                        {t('message.delete-action-description', {
+                          entityType,
+                        })}
+                      </Typography.Paragraph>
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
             </Tooltip>
           ),
           key: 'delete-button',
@@ -105,11 +112,10 @@ const ManageButton: FC<Props> = ({
               {
                 label: (
                   <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-                    <Space
+                    <Row
                       className={classNames('tw-cursor-pointer manage-button', {
                         'tw-cursor-not-allowed tw-opacity-50': !canDelete,
                       })}
-                      size={8}
                       onClick={(e) => {
                         if (canDelete) {
                           e.stopPropagation();
@@ -117,22 +123,29 @@ const ManageButton: FC<Props> = ({
                           onRestoreEntity && onRestoreEntity();
                         }
                       }}>
-                      <SVGIcons alt="Restore" icon={Icons.RESTORE} />
-                      <div
-                        className="tw-text-left"
-                        data-testid="restore-button">
-                        <p
-                          className="tw-font-medium"
-                          data-testid="delete-button-title">
-                          {t('label.restore')}
-                        </p>
-                        <p className="tw-text-grey-muted tw-text-xs">
-                          {t('message.restore-action-description', {
-                            entityType,
-                          })}
-                        </p>
-                      </div>
-                    </Space>
+                      <Col span={3}>
+                        {' '}
+                        <SVGIcons alt="Restore" icon={Icons.RESTORE} />
+                      </Col>
+                      <Col span={21}>
+                        <Row data-testid="restore-button">
+                          <Col span={21}>
+                            <Typography.Text
+                              className="font-medium"
+                              data-testid="delete-button-title">
+                              {t('label.restore')}
+                            </Typography.Text>
+                          </Col>
+                          <Col className="p-t-xss">
+                            <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                              {t('message.restore-action-description', {
+                                entityType,
+                              })}
+                            </Typography.Paragraph>
+                          </Col>
+                        </Row>
+                      </Col>
+                    </Row>
                   </Tooltip>
                 ),
                 key: 'restore-button',
@@ -144,29 +157,34 @@ const ManageButton: FC<Props> = ({
           ? [
               {
                 label: (
-                  <Space
+                  <Row
                     className="tw-cursor-pointer manage-button"
-                    size={8}
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowActions(false);
                       onAnnouncementClick && onAnnouncementClick();
                     }}>
-                    <SVGIcons
-                      alt="announcement"
-                      icon={Icons.ANNOUNCEMENT_BLACK}
-                    />
-                    <div
-                      className="tw-text-left"
-                      data-testid="announcement-button">
-                      <p className="tw-font-medium">
-                        {t('label.announcements')}
-                      </p>
-                      <p className="tw-text-grey-muted tw-text-xs">
-                        {t('message.announcement-action-description')}
-                      </p>
-                    </div>
-                  </Space>
+                    <Col span={3}>
+                      <SVGIcons
+                        alt="announcement"
+                        icon={Icons.ANNOUNCEMENT_BLACK}
+                      />
+                    </Col>
+                    <Col span={21}>
+                      <Row data-testid="announcement-button">
+                        <Col span={21}>
+                          <Typography.Text className="font-medium">
+                            {t('label.announcements')}
+                          </Typography.Text>
+                        </Col>
+                        <Col className="p-t-xss">
+                          <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                            {t('message.announcement-action-description')}
+                          </Typography.Paragraph>
+                        </Col>
+                      </Row>
+                    </Col>
+                  </Row>
                 ),
                 key: 'announcement-button',
               },

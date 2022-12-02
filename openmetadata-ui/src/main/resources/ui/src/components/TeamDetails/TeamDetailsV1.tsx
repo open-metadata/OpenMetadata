@@ -656,42 +656,46 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
-  const DELETED_TEAMS_ITEM = [
-    {
-      label: (
-        <Space className="cursor-pointer manage-button" size={8}>
-          {deletedTeamIcon}
-          <div className="text-left" data-testid="deleted-team">
-            <Row className="m-b-xss" justify="space-between">
-              <Col>
-                <p className="font-medium" data-testid="deleted-label">
-                  {t('label.deleted-team-action', {
-                    action: showDeletedTeam ? t('label.hide') : t('label.show'),
-                  })}
-                </p>
-              </Col>
+  const DELETED_TOGGLE_MENU_ITEM = {
+    label: (
+      <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
+        <Col span={3}>{deletedTeamIcon}</Col>
+        <Col span={21}>
+          <Row>
+            <Col span={21}>
+              <Typography.Text
+                className="font-medium"
+                data-testid="deleted-menu-item-label">
+                {t('label.deleted-team-action', {
+                  action: showDeletedTeam ? t('label.hide') : t('label.show'),
+                })}
+              </Typography.Text>
+            </Col>
 
-              <Col>
-                <Switch
-                  checked={showDeletedTeam}
-                  className="m-r-xs"
-                  data-testid="show-deleted-switch"
-                  size="small"
-                  onChange={onShowDeletedTeamChange}
-                />
-              </Col>
-            </Row>
-            <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-              {t('label.view-deleted-teams')}
-            </Typography.Paragraph>
-          </div>
-        </Space>
-      ),
-      key: 'deleted-team-dropdown',
-    },
-  ];
+            <Col span={3}>
+              <Switch
+                checked={showDeletedTeam}
+                data-testid="deleted-menu-item-switch"
+                size="small"
+                onChange={onShowDeletedTeamChange}
+              />
+            </Col>
 
-  const organizationDropdownContent = <Menu items={[...DELETED_TEAMS_ITEM]} />;
+            <Col className="p-t-xss">
+              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                {t('message.view-deleted-teams')}
+              </Typography.Paragraph>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    ),
+    key: 'deleted-team-dropdown',
+  };
+
+  const organizationDropdownContent = (
+    <Menu items={[DELETED_TOGGLE_MENU_ITEM]} />
+  );
 
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
@@ -699,66 +703,72 @@ const TeamDetailsV1 = ({
         ? [
             {
               label: (
-                <Space
-                  className="cursor-pointer manage-button"
-                  size={8}
-                  onClick={handleReactiveTeam}>
-                  {restoreIcon}
-                  <div
-                    className="text-left open-group"
-                    data-testid="restore-team">
-                    <p className="font-medium" data-testid="restore-team-label">
-                      Restore Team
-                    </p>
-
-                    <p className="tw-text-grey-muted tw-text-xs">
-                      Restoring the Team will add all the metadata back to
-                      OpenMetadata
-                    </p>
-                  </div>
-                </Space>
+                <Row className="cursor-pointer" onClick={handleReactiveTeam}>
+                  <Col span={3}>{restoreIcon}</Col>
+                  <Col data-testid="restore-team" span={21}>
+                    <Row>
+                      <Col span={24}>
+                        <Typography.Text
+                          className="font-medium"
+                          data-testid="restore-team-label">
+                          {t('label.restore-team')}
+                        </Typography.Text>
+                      </Col>
+                      <Col className="p-t-xss" span={24}>
+                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                          {t('message.restore-deleted-team')}
+                        </Typography.Paragraph>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
               ),
               key: 'restore-team-dropdown',
             },
           ]
         : []),
-
       {
         label: (
-          <Space
-            className="tw-cursor-pointer manage-button"
-            size={8}
+          <Row
+            className="cursor-pointer"
+            data-testid="deleted-team-menu-item"
             onClick={handleOpenToJoinToggle}>
-            {openGroupIcon}
-            <div className="tw-text-left open-group" data-testid="open-group">
-              <Row className="tw-mb-1" justify="space-between">
-                <Col>
-                  <p className="tw-font-medium" data-testid="open-group-label">
+            <Col span={3}>{openGroupIcon}</Col>
+            <Col data-testid="open-group" span={21}>
+              <Row>
+                <Col span={21}>
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="open-group-label">
                     {`${
                       currentTeam.isJoinable
                         ? t('label.close')
                         : t('label.open')
                     } ${t('label.group')}`}
-                  </p>
+                  </Typography.Text>
                 </Col>
-                <Col>
+
+                <Col span={3}>
                   <Switch
                     checked={currentTeam.isJoinable}
                     className="tw-mr-2"
                     size="small"
                   />
                 </Col>
+
+                <Col className="p-t-xss">
+                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                    {t('label.access-to-collaborate')}
+                  </Typography.Paragraph>
+                </Col>
               </Row>
-              <p className="tw-text-grey-muted tw-text-xs">
-                {t('label.access-to-collaborate')}
-              </p>
-            </div>
-          </Space>
+            </Col>
+          </Row>
         ),
         key: 'open-group-dropdown',
       },
       ...(currentTeam.teamType === TeamType.BusinessUnit
-        ? DELETED_TEAMS_ITEM
+        ? [DELETED_TOGGLE_MENU_ITEM]
         : []),
     ],
     [entityPermissions, currentTeam, childTeams, showDeletedTeam]
@@ -1093,7 +1103,7 @@ const TeamDetailsV1 = ({
                 onVisibleChange={setShowActions}>
                 <ButtonAntd
                   className="rounded-4 w-6 manage-dropdown-button"
-                  data-testid="organization-dropdown"
+                  data-testid="teams-dropdown"
                   size="small">
                   <FontAwesomeIcon
                     className="text-primary self-center manage-dropdown-icon"

@@ -350,7 +350,7 @@
     "deleted-team-action": "{{action}} Deleted Team",
     "show": "Show",
     "hide": "Hide",
-    "view-deleted-teams": "Will be able to see Deleted Teams comes under this Team"
+    "restore-team": "Restore Team"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -415,7 +415,9 @@
     "enter-feature-description": "Enter feature description",
     "no-features-data-available": "No features data available",
     "confirm-delete-message": "Are you sure you want to permanently delete this message?",
-    "delete-message-question-mark": "Delete Message?"
+    "delete-message-question-mark": "Delete Message?",
+    "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
+    "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata"
   },
   "server": {
     "no-user-entities": "You have not {{type}} anything yet.",

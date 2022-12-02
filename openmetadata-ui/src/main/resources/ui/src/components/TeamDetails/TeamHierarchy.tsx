@@ -20,6 +20,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import './teams.less';
 
 interface TeamHierarchyProps {
   data: Team[];
@@ -63,6 +64,12 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
         render: (userCount: number) => userCount ?? '--',
       },
       {
+        title: 'Asset Count',
+        dataIndex: 'owns',
+        key: 'owns',
+        render: (owns) => owns.length,
+      },
+      {
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
@@ -89,7 +96,6 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
                 )
               }>
               <SVGIcons
-                alt="icon"
                 icon={
                   expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT
                 }
@@ -100,7 +106,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
           ),
       }}
       pagination={false}
-      rowKey="id"
+      rowKey="name"
       size="small"
       onExpand={(isOpen, record) => {
         if (isOpen && isEmpty(record.children)) {
