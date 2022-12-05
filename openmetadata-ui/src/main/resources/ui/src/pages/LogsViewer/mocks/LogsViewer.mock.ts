@@ -23,7 +23,7 @@ export const mockIngestionPipeline = {
     config: {
       type: 'DatabaseMetadata',
       markDeletedTables: true,
-      markDeletedTablesFromFilterOnly: false,
+      markAllDeletedTables: false,
       includeTables: true,
       includeViews: true,
       includeTags: true,

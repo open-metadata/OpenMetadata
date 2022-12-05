@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, queryByText, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedPanel from './ActivityFeedPanel';
@@ -64,10 +64,6 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('../DeleteConfirmationModal/DeleteConfirmationModal', () => {
-  return jest.fn().mockReturnValue(<p>DeleteConfirmationModal</p>);
-});
-
 jest.mock('./FeedPanelBody', () => {
   return jest.fn().mockReturnValue(<p>FeedPanelBody</p>);
 });
@@ -91,23 +87,23 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 describe('Test FeedPanel Component', () => {
   it('Check if Feedpanel has all child elements', async () => {
-    const { container } = render(<ActivityFeedPanel {...mockFeedPanelProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container, queryByTestId } = render(
+      <ActivityFeedPanel {...mockFeedPanelProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const FeedPanelOverlay = await findByText(container, /FeedPanelOverlay/i);
     const FeedPanelHeader = await findByText(container, /FeedPanelHeader/i);
     const FeedPanelBody = await findByText(container, /FeedPanelBody/i);
     const FeedPanelEditor = await findByText(container, /ActivityFeedEditor/i);
-    const deleteConfirmationModal = queryByText(
-      container,
-      /DeleteConfirmationModal/i
-    );
+    const DeleteConfirmationModal = queryByTestId('confirmation-modal');
 
     expect(FeedPanelOverlay).toBeInTheDocument();
     expect(FeedPanelHeader).toBeInTheDocument();
     expect(FeedPanelBody).toBeInTheDocument();
     expect(FeedPanelEditor).toBeInTheDocument();
-    expect(deleteConfirmationModal).not.toBeInTheDocument();
+    expect(DeleteConfirmationModal).toBeFalsy();
   });
 });

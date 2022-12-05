@@ -533,7 +533,12 @@ class DatabaseServiceSource(
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            if self.source_config.markDeletedTablesFromFilterOnly:
+            # If markAllDeletedTables is True, all tables Which are not in FilterPattern will be deleted
+            if self.source_config.markAllDeletedTables:
+                yield from self.fetch_all_schema_and_delete_tables()
+
+            # If markAllDeletedTables is False (Default), Only delete tables which are deleted from the datasource
+            else:
                 schema_names_list = self.get_database_schema_names()
                 for schema_name in schema_names_list:
                     schema_fqn = fqn.build(
@@ -545,5 +550,3 @@ class DatabaseServiceSource(
                     )
 
                     yield from self.delete_schema_tables(schema_fqn)
-            else:
-                yield from self.fetch_all_schema_and_delete_tables()

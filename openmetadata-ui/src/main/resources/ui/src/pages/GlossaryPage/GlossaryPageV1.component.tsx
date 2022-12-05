@@ -21,6 +21,7 @@ import {
   LoadingState,
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   deleteGlossary,
@@ -62,6 +63,7 @@ export type ModifiedGlossaryData = Glossary & {
 
 const GlossaryPageV1 = () => {
   const { glossaryName } = useParams<Record<string, string>>();
+  const { t } = useTranslation();
 
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -483,6 +485,28 @@ const GlossaryPageV1 = () => {
   };
 
   /**
+   * Handle the redirection to glossary page via FQN.
+   * @param fqn for redirecting to glossary page
+   */
+  const handleRedirection = (fqn?: string) => {
+    // If no FQN provided it will redirect to previous parent of selected glossaryTerm.
+    // mainly use for after delete effect
+    const redirectFqn = fqn
+      ? fqn
+      : selectedKey.split('.').slice(0, -1).join('.');
+
+    if (isEmpty(redirectFqn)) {
+      setGlossariesList([]);
+      setIsLoading(true);
+      history.push(getGlossaryPath());
+      fetchGlossaryList();
+    } else {
+      history.push(getGlossaryPath(redirectFqn));
+      fetchGlossaryList(redirectFqn);
+    }
+  };
+
+  /**
    * To update glossary
    * @param updatedData glossary with new values
    */
@@ -514,8 +538,13 @@ const GlossaryPageV1 = () => {
             }
           });
         });
+        if (selectedData?.name !== updatedData.name) {
+          handleRedirection(response.fullyQualifiedName);
+        }
       } else {
-        throw jsonData['api-error-messages']['update-description-error'];
+        throw t('server.entity-updating-error', {
+          entity: updateGlossary.name,
+        });
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -544,25 +573,14 @@ const GlossaryPageV1 = () => {
       const response = await saveUpdatedGlossaryTermData(updatedData);
       if (response) {
         setSelectedData(response);
+        if (selectedData?.name !== updatedData.name) {
+          handleRedirection(response.fullyQualifiedName);
+        }
       } else {
         throw jsonData['api-error-messages']['update-glossary-term-error'];
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
-    }
-  };
-
-  const afterDeleteAction = () => {
-    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
-
-    if (isEmpty(redirectFqn)) {
-      setGlossariesList([]);
-      setIsLoading(true);
-      history.push(getGlossaryPath());
-      fetchGlossaryList();
-    } else {
-      history.push(getGlossaryPath(redirectFqn));
-      fetchGlossaryList(redirectFqn);
     }
   };
 
@@ -578,7 +596,7 @@ const GlossaryPageV1 = () => {
         showSuccessToast(
           jsonData['api-success-messages']['delete-glossary-success']
         );
-        afterDeleteAction();
+        handleRedirection();
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -601,7 +619,7 @@ const GlossaryPageV1 = () => {
         showSuccessToast(
           jsonData['api-success-messages']['delete-glossary-term-success']
         );
-        afterDeleteAction();
+        handleRedirection();
       })
       .catch((err: AxiosError) => {
         showErrorToast(

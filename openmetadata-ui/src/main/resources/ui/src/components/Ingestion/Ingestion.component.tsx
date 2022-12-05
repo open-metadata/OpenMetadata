@@ -252,6 +252,14 @@ const Ingestion: React.FC<IngestionProps> = ({
     }
   };
 
+  const isDataSightIngestionExists = useMemo(
+    () =>
+      ingestionData.some(
+        (ingestion) => ingestion.pipelineType === PipelineType.DataInsight
+      ),
+    [ingestionData]
+  );
+
   const getAddIngestionButton = (type: PipelineType) => {
     return (
       <Button
@@ -297,6 +305,10 @@ const Ingestion: React.FC<IngestionProps> = ({
           <DropDownList
             horzPosRight
             dropDownList={types.map((type) => ({
+              disabled:
+                type === PipelineType.DataInsight
+                  ? isDataSightIngestionExists
+                  : false,
               name: `${t('label.add')} ${startCase(type)} ${
                 type === PipelineType.ElasticSearchReindex
                   ? ''

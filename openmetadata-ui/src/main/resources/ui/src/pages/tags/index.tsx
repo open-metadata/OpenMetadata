@@ -15,6 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -47,6 +48,7 @@ import { TIER_CATEGORY } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
 import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
+import { ProviderType } from '../../generated/entity/bot';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -67,7 +69,7 @@ import {
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTagCategories, isSystemTierTags } from '../../utils/TagsUtils';
+import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
@@ -593,7 +595,7 @@ const TagsPage = () => {
             className="link-text"
             data-testid="delete-tag"
             disabled={
-              isSystemTierTags(record.fullyQualifiedName || '') ||
+              record.provider === ProviderType.System ||
               !categoryPermissions.EditAll
             }
             onClick={() => handleActionDeleteTag(record)}>
@@ -665,7 +667,7 @@ const TagsPage = () => {
                     className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
                     disabled={
-                      isSystemTierTags(currentCategory.name || '') ||
+                      currentCategory.provider === ProviderType.System ||
                       !categoryPermissions.Delete
                     }
                     size="small"
@@ -677,9 +679,7 @@ const TagsPage = () => {
                 </div>
               </div>
             )}
-            <div
-              className="tw-mb-3 tw--ml-5"
-              data-testid="description-container">
+            <div className="m-b-sm" data-testid="description-container">
               <Description
                 description={currentCategory?.description || ''}
                 entityName={
@@ -754,22 +754,20 @@ const TagsPage = () => {
                 onSave={(data) => createPrimaryTag(data as TagCategory)}
               />
             )}
-            {deleteTags.state && (
-              <ConfirmationModal
-                bodyText={`Are you sure you want to delete the tag ${
-                  deleteTags.data?.isCategory ? 'category' : ''
-                } "${deleteTags.data?.name}"?`}
-                cancelText="Cancel"
-                confirmText="Confirm"
-                header={`Delete Tag ${
-                  deleteTags.data?.isCategory ? 'Category' : ''
-                }`}
-                onCancel={() =>
-                  setDeleteTags({ data: undefined, state: false })
-                }
-                onConfirm={handleConfirmClick}
-              />
-            )}
+            <ConfirmationModal
+              bodyText={t('message.are-you-sure-delete-tag', {
+                isCategory: deleteTags.data?.isCategory ? 'category' : '',
+                tagName: deleteTags.data?.name,
+              })}
+              cancelText={t('label.cancel')}
+              confirmText={t('label.confirm')}
+              header={t('label.delete-tag-category', {
+                isCategory: deleteTags.data?.isCategory ? 'Category' : '',
+              })}
+              visible={deleteTags.state}
+              onCancel={() => setDeleteTags({ data: undefined, state: false })}
+              onConfirm={handleConfirmClick}
+            />
           </div>
         )}
       </PageLayoutV1>
