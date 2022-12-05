@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { cloneDeep, isEmpty, isNil, isUndefined, omit } from 'lodash';
+import { cloneDeep, isNil, isUndefined, omit } from 'lodash';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import {
   EntityReference,
@@ -49,10 +49,7 @@ const getEntityValue = (value: EntityReference[] | undefined) => {
   return undefined;
 };
 
-export const getRestoreTeamData = (
-  team: Team,
-  childTeams: Team[]
-): CreateTeam => {
+export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
   const userDetails = omit(cloneDeep(team), [
     'id',
     'fullyQualifiedName',
@@ -66,18 +63,20 @@ export const getRestoreTeamData = (
     'changeDescription',
     'deleted',
     'inheritedRoles',
+    'key',
   ]) as Team;
 
-  const { parents, policies, users, defaultRoles } = userDetails;
+  const { policies, users, defaultRoles, children } = userDetails;
 
   return {
     ...userDetails,
     teamType: userDetails.teamType as TeamType,
     defaultRoles: getEntityValue(defaultRoles),
-    children: isEmpty(childTeams)
-      ? undefined
-      : getEntityIdArray(childTeams as EntityReference[]),
-    parents: getEntityValue(parents),
+    children:
+      userDetails.teamType == TeamType.Group
+        ? undefined
+        : getEntityValue(children),
+    parents: parents,
     policies: getEntityValue(policies),
     users: getEntityValue(users),
   };

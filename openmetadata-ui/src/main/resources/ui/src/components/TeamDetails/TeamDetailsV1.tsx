@@ -36,7 +36,7 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { reactivateTeam } from '../../axiosAPIs/teamsAPI';
+import { restoreTeam } from '../../axiosAPIs/teamsAPI';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -80,7 +80,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
-  getRestoreTeamData,
 } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
@@ -518,9 +517,7 @@ const TeamDetailsV1 = ({
 
   const handleReactiveTeam = async () => {
     try {
-      const res = await reactivateTeam(
-        getRestoreTeamData(currentTeam, childTeams)
-      );
+      const res = await restoreTeam(currentTeam.id);
       if (res) {
         afterDeleteAction();
         showSuccessToast(
@@ -1198,6 +1195,7 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col span={24}>
                       <TeamHierarchy
+                        currentTeam={currentTeam}
                         data={table as Team[]}
                         onTeamExpand={onTeamExpand}
                       />

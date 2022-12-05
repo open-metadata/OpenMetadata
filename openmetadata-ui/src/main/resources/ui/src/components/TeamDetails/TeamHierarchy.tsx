@@ -11,27 +11,36 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Modal, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { AxiosError } from 'axios';
+import { isArray, isEmpty } from 'lodash';
+import React, { FC, useCallback, useMemo, useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { changeTeamParent, getTeamByName } from '../../axiosAPIs/teamsAPI';
 import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getMovedTeamData } from '../../utils/TeamUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import DraggableBodyRow from './DraggableBodyRow';
+import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
 
-interface TeamHierarchyProps {
-  data: Team[];
-  onTeamExpand: (
-    loading?: boolean,
-    parentTeam?: string,
-    updateChildNode?: boolean
-  ) => void;
-}
+const TeamHierarchy: FC<TeamHierarchyProps> = ({
+  currentTeam,
+  data,
+  onTeamExpand,
+}) => {
+  const { t } = useTranslation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
+  const [movedTeam, setMovedTeam] = useState<MovedTeamProps>();
 
-const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
   const columns: ColumnsType<Team> = useMemo(() => {
     return [
       {
@@ -78,42 +87,129 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({ data, onTeamExpand }) => {
     ];
   }, [data, onTeamExpand]);
 
-  return (
-    <Table
-      bordered
-      className="teams-list-table"
-      columns={columns}
-      dataSource={data}
-      expandable={{
-        expandIcon: ({ expanded, onExpand, expandable, record }) =>
-          expandable ? (
-            <span
-              className="m-r-xs cursor-pointer"
-              onClick={(e) =>
-                onExpand(
-                  record,
-                  e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
-                )
-              }>
-              <SVGIcons
-                icon={
-                  expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT
-                }
-              />
-            </span>
-          ) : (
-            <div className="expand-cell-icon-container" />
-          ),
-      }}
-      pagination={false}
-      rowKey="name"
-      size="small"
-      onExpand={(isOpen, record) => {
-        if (isOpen && isEmpty(record.children)) {
-          onTeamExpand(false, record.fullyQualifiedName, true);
+  const moveRow = useCallback(async (dragRecord: Team, dropRecord: Team) => {
+    let dropTeam: Team = dropRecord;
+    if (!isArray(dropTeam.children)) {
+      const res = await getTeamByName(dropTeam.name, ['parents'], 'all');
+      dropTeam = res.parents?.[0] as Team;
+    }
+    setMovedTeam({
+      from: dragRecord,
+      to: dropTeam,
+    });
+    setIsModalOpen(true);
+  }, []);
+
+  const handleOk = async () => {
+    if (movedTeam) {
+      setIsTableLoading(true);
+      try {
+        const data = await getTeamByName(
+          movedTeam.from.name,
+          ['users', 'defaultRoles', 'policies', 'owner', 'parents', 'children'],
+          'all'
+        );
+        if (data) {
+          const res = await changeTeamParent(
+            getMovedTeamData(data, [movedTeam.to.id])
+          );
+          if (res) {
+            onTeamExpand(true, currentTeam?.name);
+            showSuccessToast(t('message.team-moved-success'));
+          } else {
+            throw t('message.team-moved-error');
+          }
+        } else {
+          throw t('server.unexpected-response');
         }
-      }}
-    />
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      } finally {
+        setIsTableLoading(false);
+        setIsModalOpen(false);
+      }
+    }
+  };
+
+  const components = {
+    body: {
+      row: DraggableBodyRow,
+    },
+  };
+
+  return (
+    <>
+      <DndProvider backend={HTML5Backend}>
+        <Table
+          bordered
+          className="teams-list-table"
+          columns={columns}
+          components={components}
+          dataSource={data}
+          expandable={{
+            expandIcon: ({ expanded, onExpand, expandable, record }) =>
+              expandable ? (
+                <div
+                  className="expand-cell-icon-container"
+                  onClick={(e) =>
+                    onExpand(
+                      record,
+                      e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
+                    )
+                  }>
+                  <SVGIcons className="drag-icon" icon={Icons.DRAG} />
+                  <SVGIcons
+                    icon={
+                      expanded
+                        ? Icons.ARROW_DOWN_LIGHT
+                        : Icons.ARROW_RIGHT_LIGHT
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="expand-cell-empty-icon-container">
+                  <SVGIcons className="drag-icon" icon={Icons.DRAG} />
+                </div>
+              ),
+          }}
+          loading={isTableLoading}
+          pagination={false}
+          rowKey="name"
+          size="small"
+          onExpand={(isOpen, record) => {
+            if (isOpen && isEmpty(record.children)) {
+              onTeamExpand(false, record.fullyQualifiedName, true);
+            }
+          }}
+          onRow={(record, index) => {
+            const attr = {
+              index,
+              moveRow,
+              record,
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return attr as React.HTMLAttributes<any>;
+          }}
+        />
+      </DndProvider>
+
+      <Modal
+        centered
+        destroyOnClose
+        closable={false}
+        okText={t('label.confirm')}
+        title={t('label.move-the-team')}
+        visible={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onOk={handleOk}>
+        <Typography.Text>
+          Click on Confirm if you’d like to move
+          <strong> {movedTeam?.from?.name}</strong> team under{' '}
+          <strong>{movedTeam?.to?.name}</strong> team.
+        </Typography.Text>
+      </Modal>
+    </>
   );
 };
 

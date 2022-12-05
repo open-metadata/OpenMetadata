@@ -383,7 +383,8 @@
     "show": "Show",
     "hide": "Hide",
     "restore-team": "Restore Team",
-    "remove": "Remove"
+    "remove": "Remove",
+    "move-the-team": "Move the Team"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -456,7 +457,9 @@
     "confirm-delete-message": "Are you sure you want to permanently delete this message?",
     "delete-message-question-mark": "Delete Message?",
     "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
-    "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata"
+    "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata",
+    "team-moved-success": "Team moved successfully",
+    "team-moved-error": "Error while moving team"
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",

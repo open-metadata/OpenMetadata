@@ -525,3 +525,5 @@ export const ENTITY_PATH = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
 };
+
+export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';

@@ -54,16 +54,38 @@
         td {
           border-right: none;
           background: @white;
-          margin-right: 10px;
+
+          .drag-icon {
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            display: inline-flex;
+            visibility: hidden;
+          }
 
           .expand-cell-icon-container {
+            display: inline-flex;
+            margin-right: 8px;
+            cursor: pointer;
+          }
+
+          .expand-cell-empty-icon-container {
             width: 16px;
             height: 16px;
             display: inline-flex;
+            margin-left: 8px;
           }
+        }
+
+        .ant-table-cell-with-append {
+          display: flex;
+          align-items: center;
         }
         .ant-table-cell-row-hover {
           background: @body-dark-bg-color;
+          .drag-icon {
+            visibility: initial;
+          }
         }
       }
     }
