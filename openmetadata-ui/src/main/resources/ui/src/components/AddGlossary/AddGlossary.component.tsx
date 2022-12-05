@@ -192,7 +192,9 @@ const AddGlossary = ({
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
-        <Typography.Title level={5}>{header}</Typography.Title>
+        <Typography.Title data-testid="form-heading" level={5}>
+          {header}
+        </Typography.Title>
         <div className="tw-pb-3" data-testid="add-glossary">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="name">
