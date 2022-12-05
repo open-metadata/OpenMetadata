@@ -832,15 +832,14 @@ const AddIngestion = ({
           />
         )}
 
-        {showDeployModal && (
-          <DeployIngestionLoaderModal
-            action={ingestionAction}
-            ingestionName={ingestionName}
-            isDeployed={isIngestionDeployed}
-            isIngestionCreated={isIngestionCreated}
-            progress={ingestionProgress}
-          />
-        )}
+        <DeployIngestionLoaderModal
+          action={ingestionAction}
+          ingestionName={ingestionName}
+          isDeployed={isIngestionDeployed}
+          isIngestionCreated={isIngestionCreated}
+          progress={ingestionProgress}
+          visible={showDeployModal}
+        />
       </div>
     </div>
   );

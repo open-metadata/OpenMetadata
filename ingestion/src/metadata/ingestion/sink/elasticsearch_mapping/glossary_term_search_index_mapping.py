@@ -22,7 +22,7 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "type": "text"
       },
       "name": {
-        "type": "text",
+        "type": "keyword",
         "fields": {
           "keyword": {
             "type": "keyword",

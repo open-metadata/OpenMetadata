@@ -13,6 +13,7 @@ Mixin class containing User specific methods
 
 To be used by OpenMetadata class
 """
+from typing import Optional
 
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.client import REST
@@ -30,7 +31,7 @@ class OMetaUserMixin:
 
     client: REST
 
-    def get_user_by_email(self, email: str) -> None:
+    def get_user_by_email(self, email: str) -> Optional[User]:
         """
         GET user entity by name
 
@@ -40,8 +41,7 @@ class OMetaUserMixin:
 
             name = email.split("@")[0]
             users = self.es_search_from_fqn(entity_type=User, fqn_search_string=name)
-            if users:
-                for user in users:
-                    if user.email.__root__ == email:
-                        return user
+            for user in users or []:
+                if user.email.__root__ == email:
+                    return user
         return None
