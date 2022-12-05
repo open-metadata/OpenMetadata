@@ -15,6 +15,8 @@ import { Menu, MenuProps } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
+import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import { ROUTES } from '../../constants/constants';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
@@ -26,8 +28,16 @@ const DataInsightLeftPanel = () => {
   const { t } = useTranslation();
 
   const menuItems: MenuProps['items'] = [
-    { key: DataInsightTabs.DATA_ASSETS, label: t('label.data-assets') },
-    { key: DataInsightTabs.APP_ANALYTICS, label: t('label.app-analytics') },
+    {
+      key: DataInsightTabs.DATA_ASSETS,
+      label: t('label.data-assets'),
+      icon: <AppAnalyticsIcon className="side-panel-icons" />,
+    },
+    {
+      key: DataInsightTabs.APP_ANALYTICS,
+      label: t('label.app-analytics'),
+      icon: <DataAssetsIcon className="side-panel-icons" />,
+    },
     { key: DataInsightTabs.KPIS, label: `${t('label.kpi-uppercase')}s` },
   ];
 
