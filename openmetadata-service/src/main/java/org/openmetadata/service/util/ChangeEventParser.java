@@ -287,7 +287,7 @@ public final class ChangeEventParser {
               // Glossary term references have only "name" field
               labels.add(item.asJsonObject().getString(FIELD_NAME));
             } else if (keys.contains("constraintType")) {
-                labels.add(item.asJsonObject().getString("constraintType"));
+              labels.add(item.asJsonObject().getString("constraintType"));
             }
           } else if (item.getValueType() == ValueType.STRING) {
             // The string might be enclosed with double quotes
