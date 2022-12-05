@@ -141,19 +141,21 @@ const ConfigureIngestion = ({
         <label>Profile Sample</label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           This is an optional percentage used to compute the table profile.
-          Should be between 0 and 99.
+          Should be between 0 and 100.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding tw-w-24"
           data-testid="profileSample"
           id="profileSample"
+          max={100}
+          min={0}
           name="profileSample"
           placeholder="75"
           type="number"
           value={profileSample}
           onChange={(e) => handleProfileSampleValidation(+e.target.value)}
         />
-        {profileSampleError && errorMsg('Value must be between 0 and 99.')}
+        {profileSampleError && errorMsg('Value must be between 0 and 100.')}
       </div>
     );
   };
