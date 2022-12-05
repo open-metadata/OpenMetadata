@@ -22,6 +22,7 @@ jobs:
       matrix:
         py-version: ['3.9']
         e2e-test: ['mysql', 'bigquery']
+    environment: e2e
 
     steps:
     - name: Checkout
