@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-.schema-modal {
-  .ant-modal-close-x {
-    display: flex;
-    align-items: center;
-  }
+export interface CloseIconInterface {
+  handleCancel?: () => void;
+  dataTestId?: string;
 }
