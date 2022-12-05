@@ -567,7 +567,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    User user = dao.get(uriInfo, id, dao.getFieldsWithUserAuth("*"));
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
@@ -598,7 +598,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RevokeTokenRequest revokeTokenRequest)
       throws IOException {
     authorizer.authorizeAdmin(securityContext);
-    User user = dao.get(uriInfo, revokeTokenRequest.getId(), Fields.EMPTY_FIELDS);
+    User user = dao.get(uriInfo, revokeTokenRequest.getId(), dao.getFieldsWithUserAuth("*"));
     if (!user.getIsBot()) {
       throw new IllegalStateException(CatalogExceptionMessage.invalidBotUser());
     }

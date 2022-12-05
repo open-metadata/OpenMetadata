@@ -13,12 +13,14 @@
 
 import { Operation } from 'fast-json-patch';
 import { AssetsDataType, FormErrorData } from 'Models';
+import { EntityType } from '../enums/entity.enum';
 import { UserType } from '../enums/user.enum';
 import { Team } from '../generated/entity/teams/team';
 import {
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
+import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
 
 export type TeamDeleteType = {
@@ -117,9 +119,26 @@ export interface TeamDetailsProp {
   showDeletedTeam: boolean;
   onAssetsPaginate: (page: string | number) => void;
   onShowDeletedTeamChange: (checked: boolean) => void;
+  parentTeams: Team[];
   onTeamExpand: (
     loading?: boolean,
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;
+}
+
+export interface AddAttribute {
+  type: EntityType;
+  selectedData: EntityReference[];
+}
+
+export interface PlaceholderProps {
+  title?: string;
+  disabled?: boolean;
+  label?: string;
+  onClick?: () => void;
+  heading?: string;
+  description?: React.ReactNode;
+  button?: React.ReactNode;
+  datatestid?: string;
 }

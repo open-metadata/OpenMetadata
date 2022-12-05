@@ -629,9 +629,9 @@ const PoliciesDetailPage = () => {
           closable={false}
           confirmLoading={isloadingOnSave}
           okText={t('label.confirm')}
-          title={`${t('label.remove')} ${getEntityName(
-            selectedEntity.record
-          )} ${t('label.from')} ${getEntityName(policy)}`}
+          title={`${t('label.remove-entity', {
+            entity: getEntityName(selectedEntity.record),
+          })} ${t('label.from')} ${getEntityName(policy)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {

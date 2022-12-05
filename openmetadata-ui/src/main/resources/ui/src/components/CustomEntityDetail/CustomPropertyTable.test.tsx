@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
@@ -86,28 +92,24 @@ describe('Test CustomField Table Component', () => {
   });
 
   it('Test delete property flow', async () => {
-    const { container, findByText, findAllByRole } = render(
-      <CustomPropertyTable {...mockProp} />
-    );
-
-    const table = await findByTestId(
-      container,
-      'entity-custom-properties-table'
-    );
+    await act(async () => {
+      render(<CustomPropertyTable {...mockProp} />);
+    });
+    const table = await screen.findByTestId('entity-custom-properties-table');
 
     expect(table).toBeInTheDocument();
 
-    const tableCellName = await findByText('Name');
-    const tableCellType = await findByText('Type');
-    const tableCellDescription = await findByText('Description');
-    const tableCellActions = await findByText('Actions');
+    const tableCellName = await screen.findByText('Name');
+    const tableCellType = await screen.findByText('Type');
+    const tableCellDescription = await screen.findByText('Description');
+    const tableCellActions = await screen.findByText('Actions');
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
     expect(tableCellDescription).toBeInTheDocument();
     expect(tableCellActions).toBeInTheDocument();
 
-    const tableRow = await findAllByRole('row');
+    const tableRow = await screen.findAllByRole('row');
 
     expect(tableRow).toHaveLength(mockProperties.length + 1);
 
@@ -120,10 +122,7 @@ describe('Test CustomField Table Component', () => {
     fireEvent.click(deleteButton);
 
     // confirmation modal should be visible on click of delete button
-    const confirmationModal = await findByTestId(
-      container,
-      'confirmation-modal'
-    );
+    const confirmationModal = await screen.findByTestId('confirmation-modal');
 
     expect(confirmationModal).toBeInTheDocument();
 

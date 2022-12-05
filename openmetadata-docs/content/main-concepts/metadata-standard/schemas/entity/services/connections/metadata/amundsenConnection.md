@@ -16,7 +16,6 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`maxConnectionLifeTime`** *(integer)*: Maximum connection lifetime for the Amundsen Neo4j Connection. Default: `50`.
 - **`validateSSL`** *(boolean)*: Enable SSL validation for the Amundsen Neo4j Connection. Default: `false`.
 - **`encrypted`** *(boolean)*: Enable encryption for the Amundsen Neo4j Connection. Default: `false`.
-- **`modelClass`** *(string)*: Model Class for the Amundsen Neo4j Connection.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 

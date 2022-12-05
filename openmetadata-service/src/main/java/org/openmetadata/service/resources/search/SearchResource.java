@@ -60,6 +60,7 @@ import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import org.elasticsearch.search.SearchModule;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.BucketOrder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -351,6 +352,42 @@ public class SearchResource {
     Suggest suggest = searchResponse.getSuggest();
 
     return Response.status(OK).entity(suggest.toString()).build();
+  }
+
+  @GET
+  @Path("/aggregate")
+  @Operation(
+      operationId = "getAggregateFields",
+      summary = "Get Aggregated Fields",
+      tags = "search",
+      description = "Get Aggregated Fields from Entities.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Table Aggregate API",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Suggest.class)))
+      })
+  public Response aggregate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("table_search_index") @QueryParam("index") String index,
+      @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
+          @DefaultValue("10")
+          @QueryParam("size")
+          int size,
+      @DefaultValue("false") @QueryParam("deleted") String deleted)
+      throws IOException {
+
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder
+        .aggregation(
+            AggregationBuilders.terms(fieldName).field(fieldName).size(MAX_AGGREGATE_SIZE).order(BucketOrder.key(true)))
+        .size(0);
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    String response =
+        client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
+    return Response.status(OK).entity(response).build();
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {

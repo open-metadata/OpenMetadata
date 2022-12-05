@@ -183,9 +183,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_dashboard_name(self, dashboard_details: Any) -> str:
+    def get_dashboard_name(self, dashboard: Any) -> str:
         """
-        Get Dashboard Name
+        Get Dashboard Name from each element coming from `get_dashboards_list`
         """
 
     @abstractmethod
@@ -198,7 +198,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self, dashboard_details: Any
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
-        Yields lineage if config is enabled
+        Yields lineage if config is enabled.
+
+        We will look for the data in all the services
+        we have informed.
         """
         for db_service_name in self.source_config.dbServiceNames or []:
             yield from self.yield_dashboard_lineage_details(
@@ -265,7 +268,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
-    def _get_add_lineage_request(self, to_entity: Dashboard, from_entity: Table):
+    @staticmethod
+    def _get_add_lineage_request(
+        to_entity: Dashboard, from_entity: Table
+    ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
@@ -281,9 +287,20 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_dashboard(self) -> Any:
         """
-        Method to iterate through dashboard lists filter dashbaords & yield dashboard details
+        Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for dashboard in self.get_dashboards_list():
+
+            dashboard_name = self.get_dashboard_name(dashboard)
+            if filter_by_dashboard(
+                self.source_config.dashboardFilterPattern,
+                dashboard_name,
+            ):
+                self.status.filter(
+                    dashboard_name,
+                    "Dashboard Filtered Out",
+                )
+                continue
 
             try:
                 dashboard_details = self.get_dashboard_details(dashboard)
@@ -293,17 +310,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     f"Cannot extract dashboard details from {dashboard}: {exc}"
                 )
                 continue
-            dashboard_name = self.get_dashboard_name(dashboard_details)
 
-            if filter_by_dashboard(
-                self.source_config.dashboardFilterPattern,
-                dashboard_name,
-            ):
-                self.status.filter(
-                    dashboard_name,
-                    "Dashboard Fltered Out",
-                )
-                continue
             yield dashboard_details
 
     def test_connection(self) -> None:

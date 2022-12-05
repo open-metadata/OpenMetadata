@@ -19,6 +19,7 @@ import {
   queryByTestId,
   queryByText,
   render,
+  screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
@@ -62,16 +63,6 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   return jest
     .fn()
     .mockImplementation(() => <p>MarkdownWithPreview.component</p>);
-});
-
-jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () => {
-  return jest.fn().mockImplementation(({ onCancel, onConfirm }) => (
-    <div>
-      <p>ConfirmationModal.component</p>
-      <button onClick={onCancel}>cancelModal</button>
-      <button onClick={onConfirm}>confirmDelete</button>
-    </div>
-  ));
 });
 
 jest.mock('./EventFilterTree.component', () => {
@@ -331,7 +322,7 @@ describe('Test AddWebhook component', () => {
 
   it('If data is provided, it should work accordingly', async () => {
     await act(async () => {
-      const { container } = render(
+      render(
         <AddWebhook
           {...addWebhookProps}
           data={mockData as Webhook}
@@ -343,43 +334,29 @@ describe('Test AddWebhook component', () => {
           wrapper: MemoryRouter,
         }
       );
-
-      const header = await findByTestId(container, 'header');
-      const deleteWebhook = await findByTestId(container, 'delete-webhook');
-
-      expect(header).toBeInTheDocument();
-      expect(await findByText(container, 'Edit Webhook')).toBeInTheDocument();
-      expect(deleteWebhook).toBeInTheDocument();
-      expect(
-        queryByText(container, 'ConfirmationModal.component')
-      ).not.toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(deleteWebhook);
-      });
-
-      // on click of delete button confirmation modal should open
-      expect(
-        await findByText(container, 'ConfirmationModal.component')
-      ).toBeInTheDocument();
-
-      // on click of cancelModal confirmation modal should close
-      fireEvent.click(await findByText(container, 'cancelModal'));
-
-      expect(
-        queryByText(container, 'ConfirmationModal.component')
-      ).not.toBeInTheDocument();
-
-      fireEvent.click(deleteWebhook);
-
-      expect(
-        queryByText(container, 'ConfirmationModal.component')
-      ).toBeInTheDocument();
-
-      // on click of confirmDelete delete function should call
-      fireEvent.click(await findByText(container, 'confirmDelete'));
-
-      expect(addWebhookProps.onDelete).toBeCalled();
     });
+
+    const header = await screen.findByTestId('header');
+    const deleteWebhook = await screen.findByTestId('delete-webhook');
+
+    expect(header).toBeInTheDocument();
+    expect(await screen.findByText('Edit Webhook')).toBeInTheDocument();
+    expect(deleteWebhook).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(deleteWebhook);
+    });
+
+    // on click of cancelModal confirmation modal should close
+    fireEvent.click(await screen.findByTestId('cancel'));
+
+    fireEvent.click(deleteWebhook);
+
+    expect(await screen.findByTestId('confirmation-modal')).toBeInTheDocument();
+
+    // on click of confirmDelete delete function should call
+    fireEvent.click(await screen.findByTestId('save-button'));
+
+    expect(addWebhookProps.onDelete).toBeCalled();
   });
 });
