@@ -22,6 +22,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 from sqlparse.sql import Identifier
 
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.orm_profiler.metrics.core import SystemtMetric
 from metadata.orm_profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
@@ -35,6 +38,8 @@ def get_system_metrics_for_dialect(
     dialect: str,
     session: Session,
     table: DeclarativeMeta,
+    *args,
+    **kwargs,
 ) -> Optional[Dict]:
     """_summary_
 
@@ -54,11 +59,99 @@ def get_system_metrics_for_dialect(
     return None
 
 
+@get_system_metrics_for_dialect.register(Dialects.BigQuery)
+def _(
+    dialect: str,
+    session: Session,
+    table: DeclarativeMeta,
+    conn_config: BigQueryConnection,
+    *args,
+    **kwargs,
+) -> List[Dict]:
+    """Compute system metrics for bigquery
+
+    Args:
+        dialect (str): bigqeury
+        session (Session): session Object
+        table (DeclarativeMeta): orm table
+
+    Returns:
+        List[Dict]:
+    """
+    logger.info(f"Fetching system metrics for {dialect}")
+
+    region = (
+        f"region-{conn_config.usageLocation}"
+        if conn_config.usageLocation in {"us", "eu"}
+        else conn_config.usageLocation
+    )
+
+    jobs = dedent(
+        f"""
+        SELECT 
+            statement_type,
+            start_time,
+            destination_table,
+            dml_statistics
+        FROM 
+            `{region}`.INFORMATION_SCHEMA.JOBS
+        WHERE
+            DATE(creation_time) = CURRENT_DATE() AND
+            statement_type IN ('INSERT', 'UPDATE', 'INSERT')
+        ORDER BY creation_time DESC;
+        """
+    )
+
+    metric_results: List[Dict] = []
+    QueryResult = namedtuple(
+        "QueryResult",
+        "query_type,timestamp,destination_table,dml_statistics",
+    )
+
+    cursor_jobs = session.execute(text(jobs))
+    rows_jobs = [
+        QueryResult(
+            row.statement_type,
+            row.start_time,
+            row.destination_table,
+            row.dml_statistics,
+        )
+        for row in cursor_jobs.fetchall()
+    ]
+
+    for row_jobs in rows_jobs:
+        if (
+            row_jobs.destination_table.get("project_id") == session.get_bind().url.host
+            and row_jobs.destination_table.get("dataset_id")
+            == table.__table_args__["schema"]
+            and row_jobs.destination_table.get("table_id") == table.__tablename__
+        ):
+            rows_affected = None
+            if row_jobs.query_type == "INSERT":
+                rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
+            if row_jobs.query_type == "DELETE":
+                rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
+            if row_jobs.query_type == "UPDATE":
+                rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+
+            metric_results.append(
+                {
+                    "timestamp": int(row_jobs.timestamp.timestamp() * 1000),
+                    "operation": row_jobs.query_type,
+                    "rowsAffected": rows_affected,
+                }
+            )
+
+    return metric_results
+
+
 @get_system_metrics_for_dialect.register(Dialects.Redshift)
 def _(
     dialect: str,
     session: Session,
     table: DeclarativeMeta,
+    *args,
+    **kwargs,
 ) -> List[Dict]:
     """List all the DML operations for reshifts tables
 
@@ -70,6 +163,8 @@ def _(
     Returns:
         List[Dict]:
     """
+    logger.info(f"Fetching system metrics for {dialect}")
+
     stl_deleted = dedent(
         f"""
         SELECT
@@ -197,6 +292,8 @@ def _(
     dialect: str,
     session: Session,
     table: DeclarativeMeta,
+    *args,
+    **kwargs,
 ) -> List[Dict]:
     """Fetch system metrics for Snowflake. query_history will return maximum 10K rows in one request.
     We'll be fetching all the queries ran for the past 24 hours and filtered on specific query types
@@ -331,7 +428,7 @@ class System(SystemtMetric):
     def name(cls):
         return "system"
 
-    def sql(self, session: Session):
+    def sql(self, session: Session, **kwargs):
         """Implements the SQL logic to fetch system data"""
         if not hasattr(self, "table"):
             raise AttributeError(
@@ -340,8 +437,9 @@ class System(SystemtMetric):
 
         system_metrics = get_system_metrics_for_dialect(
             session.get_bind().dialect.name,
-            session,
-            self.table,
+            session=session,
+            table=self.table,
+            conn_config=kwargs["conn_config"],
         )
 
         return system_metrics

@@ -270,7 +270,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             dictionnary of results
         """
         try:
-            rows = metric().sql(session)
+            rows = metric().sql(session, conn_config=self.service_connection_config)
             return rows
         except Exception as exc:
             logger.debug(traceback.format_exc())
