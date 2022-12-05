@@ -137,11 +137,11 @@ class SupersetSource(DashboardServiceSource):
             for dashboard in dashboards["result"]:
                 yield dashboard
 
-    def get_dashboard_name(self, dashboard_details: dict) -> str:
+    def get_dashboard_name(self, dashboard: dict) -> str:
         """
         Get Dashboard Name
         """
-        return dashboard_details["dashboard_title"]
+        return dashboard["dashboard_title"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         """

@@ -96,7 +96,8 @@
         "GEOMETRY",
         "POINT",
         "POLYGON",
-        "BYTEA"
+        "BYTEA",
+        "AGGREGATEFUNCTION"
       ]
     },
     "constraint": {

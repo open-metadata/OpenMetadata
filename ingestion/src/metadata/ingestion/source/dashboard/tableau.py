@@ -146,11 +146,11 @@ class TableauSource(DashboardServiceSource):
         """
         return self.workbooks.values()
 
-    def get_dashboard_name(self, dashboard_details: dict) -> str:
+    def get_dashboard_name(self, dashboard: dict) -> str:
         """
         Get Dashboard Name
         """
-        return dashboard_details.get("name")
+        return dashboard.get("name")
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         """

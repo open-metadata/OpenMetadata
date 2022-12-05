@@ -238,7 +238,7 @@ const AddKPIPage = () => {
           gutter={[16, 16]}>
           <Col offset={4} span={12}>
             <TitleBreadcrumb titleLinks={breadcrumb} />
-            <Card>
+            <Card className="mt-4">
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
