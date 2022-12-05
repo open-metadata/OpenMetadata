@@ -99,7 +99,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         """Generic getter method for metrics. To be used with
         specific dispatch methods
         """
-        raise NotImplementedError
+        logger.warning("Could not get metric. No function registered.")
 
     # pylint: disable=unused-argument
     @_get_metrics.register(MetricTypes.Table.value)
@@ -249,6 +249,37 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             session.rollback()
             raise RuntimeError(exc)
 
+    @_get_metrics.register(MetricTypes.System.value)
+    def _(
+        self,
+        metric_type: str,
+        metric: Metrics,
+        runner: QueryRunner,
+        session,
+        *args,
+        **kwargs,
+    ):
+        """Get system metric for tables
+
+        Args:
+            metric_type: type of metric
+            metrics: list of metrics to compute
+            session: SQA session object
+
+        Returns:
+            dictionnary of results
+        """
+        try:
+            rows = metric().sql(session)
+            return rows
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
+            )
+            session.rollback()
+            raise RuntimeError(exc)
+
     def _create_thread_safe_sampler(
         self,
         session,
@@ -328,7 +359,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             if column is not None:
                 column = column.name
 
-            return row, column
+            return row, column, metric_type.value
 
     # pylint: disable=use-dict-literal
     def get_all_metrics(
@@ -350,11 +381,15 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             ]
 
         for future in concurrent.futures.as_completed(futures):
-            profile, column = future.result()
-            if not isinstance(profile, dict):
+            profile, column, metric_type = future.result()
+            if metric_type != MetricTypes.System.value and not isinstance(
+                profile, dict
+            ):
                 profile = dict()
-            if not column:
+            if metric_type == MetricTypes.Table.value:
                 profile_results["table"].update(profile)
+            elif metric_type == MetricTypes.System.value:
+                profile_results["system"] = profile
             else:
                 profile_results["columns"][column].update(
                     {

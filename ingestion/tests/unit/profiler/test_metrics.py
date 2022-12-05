@@ -777,6 +777,11 @@ class MetricsTest(TestCase):
 
         assert res == 61
 
+    def test_system_metric(self):
+        system = add_props(table=User)(Metrics.SYSTEM.value)
+        session = self.sqa_profiler_interface.session
+        system().sql(session)
+
     @classmethod
     def tearDownClass(cls) -> None:
         os.remove(cls.db_path)

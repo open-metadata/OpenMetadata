@@ -78,7 +78,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         """Generic getter method for metrics. To be used with
         specific dispatch methods
         """
-        raise NotImplementedError
+        logger.warning("Could not get metric. No function registered.")
 
     # pylint: disable=unused-argument
     @_get_metrics.register(MetricTypes.Table.value)
@@ -208,6 +208,18 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         """
         return None  # to be implemented
 
+    @_get_metrics.register(MetricTypes.System.value)
+    def _(
+        self,
+        *args,
+        **kwargs,
+    ):
+        """
+        Given a list of metrics, compute the given results
+        and returns the values
+        """
+        return None  # to be implemented
+
     def ometa_to_dataframe(self, config_source):
         if isinstance(config_source, GCSConfig):
             return DatalakeSource.get_gcs_files(
@@ -250,7 +262,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             row = None
         if column:
             column = column.name
-        return row, column
+        return row, column, metric_type.value
 
     def fetch_sample_data(self, table) -> TableData:
         """Fetch sample data from database
@@ -301,10 +313,12 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             self.compute_metrics(*metric_func) for metric_func in metric_funcs
         ]
         for metric_result in metric_list:
-            profile, column = metric_result
+            profile, column, metric_type = metric_result
 
-            if not column:
+            if metric_type == MetricTypes.Table.value:
                 profile_results["table"].update(profile)
+            if metric_type == MetricTypes.System.value:
+                profile_results["system"] = profile
             else:
                 if profile:
                     profile_results["columns"][column].update(
