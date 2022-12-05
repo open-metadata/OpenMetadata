@@ -458,7 +458,7 @@
     "delete-message-question-mark": "Delete Message?",
     "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
     "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata",
-    "filter-pattern-info": "To control whether or not to include {{filterPattern}} as part of metadata ingestion.",
+    "filter-pattern-info": "Select to include {{filterPattern}} as part of the metadata ingestion.",
     "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex."
   },
   "server": {
