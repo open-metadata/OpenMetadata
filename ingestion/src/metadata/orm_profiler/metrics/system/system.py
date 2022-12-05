@@ -96,7 +96,7 @@ def _(
         FROM 
             `{region}`.INFORMATION_SCHEMA.JOBS
         WHERE
-            DATE(creation_time) = CURRENT_DATE() AND
+            DATE(creation_time) = CURRENT_DATE() - 1 AND
             statement_type IN ('INSERT', 'UPDATE', 'INSERT')
         ORDER BY creation_time DESC;
         """
