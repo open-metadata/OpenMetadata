@@ -17,6 +17,7 @@ import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { UserProfile } from '../../authentication/auth-provider/AuthProvider.interface';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
@@ -25,7 +26,7 @@ import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import { getNameFromEmail } from '../../utils/AuthProvider.util';
+import { getNameFromUserData } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -33,14 +34,18 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const cookieStorage = new CookieStorage();
 
 const Signup = () => {
+  const { setIsSigningIn, jwtPrincipalClaims = [] } = useAuthContext();
+
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [details, setDetails] = useState({
     displayName: appState.newUser.name || '',
-    name: getNameFromEmail(appState.newUser.email),
+    name: getNameFromUserData(
+      appState.newUser as UserProfile,
+      jwtPrincipalClaims
+    ),
     email: appState.newUser.email || '',
   });
-  const { setIsSigningIn } = useAuthContext();
 
   const history = useHistory();
 
