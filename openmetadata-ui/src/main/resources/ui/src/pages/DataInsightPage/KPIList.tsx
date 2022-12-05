@@ -11,25 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import {
   getKpiPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
-  ROUTES,
 } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
@@ -41,9 +38,8 @@ import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTime } from '../../utils/TimeUtils';
 
-const KPIListPage = () => {
+const KPIList = () => {
   const { isAdminUser } = useAuth();
-  const history = useHistory();
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -159,68 +155,35 @@ const KPIListPage = () => {
     });
   };
 
-  const handleAddKPI = () => {
-    history.push(ROUTES.ADD_KPI);
-  };
-
   useEffect(() => {
     fetchKpiList();
   }, []);
 
   return (
-    <PageLayoutV1>
-      <Row className="w-full" gutter={[16, 16]}>
+    <>
+      <Col span={24}>
+        <Table
+          bordered
+          columns={columns}
+          dataSource={kpiList}
+          loading={{ spinning: isLoading, indicator: <Loader /> }}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
+      </Col>
+      {kpiList.length > PAGE_SIZE_MEDIUM && (
         <Col span={24}>
-          <Space className="w-full justify-between">
-            <TitleBreadcrumb
-              titleLinks={[
-                {
-                  name: t('label.data-insight'),
-                  url: ROUTES.DATA_INSIGHT,
-                },
-                {
-                  name: t('label.kpi-list'),
-                  url: '',
-                  activeTitle: true,
-                },
-              ]}
-            />
-            <Tooltip
-              title={
-                isAdminUser ? t('label.add-kpi') : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                disabled={!isAdminUser}
-                type="primary"
-                onClick={handleAddKPI}>
-                {t('label.add-kpi')}
-              </Button>
-            </Tooltip>
-          </Space>
-        </Col>
-        <Col span={24}>
-          <Table
-            bordered
-            columns={columns}
-            dataSource={kpiList}
-            loading={{ spinning: isLoading, indicator: <Loader /> }}
-            pagination={false}
-            rowKey="name"
-            size="small"
+          <NextPrevious
+            currentPage={kpiPage}
+            pageSize={PAGE_SIZE_MEDIUM}
+            paging={kpiPaging}
+            pagingHandler={kpiPagingHandler}
+            totalCount={kpiPaging.total}
           />
         </Col>
-        {kpiList.length > PAGE_SIZE_MEDIUM && (
-          <Col span={24}>
-            <NextPrevious
-              currentPage={kpiPage}
-              pageSize={PAGE_SIZE_MEDIUM}
-              paging={kpiPaging}
-              pagingHandler={kpiPagingHandler}
-              totalCount={kpiPaging.total}
-            />
-          </Col>
-        )}
-      </Row>
+      )}
+
       {selectedKpi && (
         <DeleteWidgetModal
           afterDeleteAction={fetchKpiList}
@@ -235,8 +198,8 @@ const KPIListPage = () => {
           onCancel={() => setSelectedKpi(undefined)}
         />
       )}
-    </PageLayoutV1>
+    </>
   );
 };
 
-export default KPIListPage;
+export default KPIList;
