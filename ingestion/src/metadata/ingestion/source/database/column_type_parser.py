@@ -192,6 +192,7 @@ class ColumnTypeParser:
         "UUID": "UUID",
         "POINT": "POINT",
         "POLYGON": "POLYGON",
+        "AggregateFunction()": "AGGREGATEFUNCTION",
         "BYTEA": "BYTEA",
     }
 

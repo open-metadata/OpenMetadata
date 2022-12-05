@@ -120,6 +120,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     TableResourceTest tableResourceTest = new TableResourceTest();
     TABLE = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     TABLE_REFERENCE = TABLE.getEntityReference();
+
+    // Add data source to ML_FEATURES to validate lineage
+    ML_FEATURES.get(0).getFeatureSources().get(0).withDataSource(TABLE_REFERENCE);
   }
 
   @Test
