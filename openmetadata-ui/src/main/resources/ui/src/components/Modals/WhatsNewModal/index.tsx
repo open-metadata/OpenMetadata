@@ -130,7 +130,7 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
               <div>
                 <div
                   className={classNames(
-                    'inline-flex border border-primary text-sm rounded-6 h-8 bg-white',
+                    'inline-flex border-1 border border-primary text-sm rounded-6 h-8 bg-white',
                     { 'w-60': activeData.features.length > 0 }
                   )}>
                   {activeData.features.length > 0 && (
