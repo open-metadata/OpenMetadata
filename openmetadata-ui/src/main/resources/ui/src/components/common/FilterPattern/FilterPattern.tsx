@@ -22,6 +22,7 @@ import {
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Field } from '../../Field/Field';
 import { FilterPatternProps } from './filterPattern.interface';
+import './FilterPattern.less';
 
 const FilterPattern = ({
   showSeparator = true,
@@ -53,7 +54,7 @@ const FilterPattern = ({
         <Col>
           <Checkbox
             checked={checked}
-            className="m-r-sm"
+            className="m-r-sm filter-pattern-checkbox"
             data-testid={`${type}-filter-pattern-checkbox`}
             id={`${type}FilterPatternCheckbox`}
             name={`${type}FilterPatternCheckbox`}
