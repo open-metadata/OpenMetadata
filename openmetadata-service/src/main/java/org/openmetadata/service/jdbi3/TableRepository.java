@@ -54,6 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
+import org.eclipse.jetty.util.IO;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -372,6 +373,49 @@ public class TableRepository extends EntityRepository<Table> {
       throw new EntityNotFoundException(String.format("Failed to find table profile for %s at %s", fqn, timestamp));
     }
     daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
+  }
+
+  @Transaction
+  public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) throws IOException {
+    List<TableProfile> tableProfiles;
+    tableProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs),
+            TableProfile.class);
+    return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
+  }
+
+  @Transaction
+  public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) throws IOException {
+    List<ColumnProfile> columnProfiles;
+    columnProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
+            ColumnProfile.class);
+    return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
+  }
+
+  @Transaction
+  public Table getLatestTableProfile(String fqn) throws IOException {
+    Table table = dao.findEntityByName(fqn);
+    TableProfile tableProfile = JsonUtils.readValue(daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
+        TableProfile.class);
+    table.setProfile(tableProfile);
+    for (Column c : table.getColumns()) {
+      c.setProfile(
+          JsonUtils.readValue(
+              daoCollection
+                  .entityExtensionTimeSeriesDao()
+                  .getLatestExtension(c.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+              ColumnProfile.class));
+    }
+    return table;
   }
 
   @Transaction
@@ -799,27 +843,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) throws IOException {
-    List<TableProfile> tableProfiles;
-    tableProfiles =
-        JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs),
-            TableProfile.class);
-    return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
-  }
-
-  public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) throws IOException {
-    List<ColumnProfile> columnProfiles;
-    columnProfiles =
-        JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
-            ColumnProfile.class);
-    return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
-  }
 
   /**
    * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list

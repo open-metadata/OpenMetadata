@@ -621,6 +621,32 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @GET
+  @Path("/{fqn}/tableProfile/latest")
+  @Operation(
+      operationId = "Get the latest table and column profile",
+      summary = "get the latest tableProfile",
+      tags = "tables",
+      description =
+          "Get the latest table and column profile ",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "Table with profile and column profile",
+              content =
+              @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table getLatestTableProfile(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return dao.getLatestTableProfile(fqn);
+  }
+
+  @GET
   @Path("/{fqn}/tableProfile")
   @Operation(
       operationId = "list Profiles",
