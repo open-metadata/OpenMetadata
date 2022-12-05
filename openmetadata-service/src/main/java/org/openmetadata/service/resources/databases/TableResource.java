@@ -626,14 +626,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       operationId = "Get the latest table and column profile",
       summary = "get the latest tableProfile",
       tags = "tables",
-      description =
-          "Get the latest table and column profile ",
+      description = "Get the latest table and column profile ",
       responses = {
-          @ApiResponse(
-              responseCode = "200",
-              description = "Table with profile and column profile",
-              content =
-              @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Table with profile and column profile",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Table getLatestTableProfile(
       @Context UriInfo uriInfo,

@@ -54,7 +54,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
-import org.eclipse.jetty.util.IO;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -402,10 +401,12 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table getLatestTableProfile(String fqn) throws IOException {
     Table table = dao.findEntityByName(fqn);
-    TableProfile tableProfile = JsonUtils.readValue(daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
-        TableProfile.class);
+    TableProfile tableProfile =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
+            TableProfile.class);
     table.setProfile(tableProfile);
     for (Column c : table.getColumns()) {
       c.setProfile(
@@ -842,7 +843,6 @@ public class TableRepository extends EntityRepository<Table> {
               JsonUtils.pojoToJson(newDailyCounts));
     }
   }
-
 
   /**
    * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
