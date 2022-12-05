@@ -53,7 +53,7 @@ const RichTextEditorPreviewer = ({
         <Viewer
           extendedAutolinks
           initialValue={
-            hideReadMoreText || !enableSeeMoreVariant
+            hideReadMoreText
               ? content
               : `${getTrimmedContent(content, maxLength)}...`
           }
