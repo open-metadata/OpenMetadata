@@ -58,6 +58,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: 11
+          distribution: 'adopt'
 
       - name: Run checkstyle
         run: mvn googleformatter:format@reformat-sources
