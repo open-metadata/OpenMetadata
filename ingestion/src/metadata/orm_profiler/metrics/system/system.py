@@ -435,11 +435,13 @@ class System(SystemtMetric):
                 "System requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
             )
 
+        conn_config = kwargs.get("conn_config")
+
         system_metrics = get_system_metrics_for_dialect(
             session.get_bind().dialect.name,
             session=session,
             table=self.table,
-            conn_config=kwargs["conn_config"],
+            conn_config=conn_config,
         )
 
         return system_metrics
