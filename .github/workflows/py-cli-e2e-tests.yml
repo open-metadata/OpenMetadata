@@ -68,6 +68,10 @@ jobs:
         E2E_TEST: ${{ matrix.e2e-test }}
         E2E_BQ_PROJECT_ID: ${{ secrets.E2E_BQ_PROJECT_ID }}
         E2E_BQ_PRIVATE_KEY: ${{ secrets.E2E_BQ_PRIVATE_KEY }}
+        CYPRESS_BQ_PROJECT_ID: ${{ secrets.CYPRESS_BQ_PROJECT_ID }}
+        CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.CYPRESS_BQ_PRIVATE_KEY_ID }}
+        CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.CYPRESS_BQ_CLIENT_EMAIL }}
+        CYPRESS_BQ_CLIENT_ID: ${{ secrets.CYPRESS_BQ_CLIENT_ID }}
       run: |
         source env/bin/activate
         python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
