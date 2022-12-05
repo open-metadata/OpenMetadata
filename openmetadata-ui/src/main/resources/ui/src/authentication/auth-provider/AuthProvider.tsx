@@ -44,6 +44,7 @@ import { NO_AUTH } from '../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { AuthTypes } from '../../enums/signin.enum';
+import { AuthenticationConfiguration } from '../../generated/configuration/authenticationConfiguration';
 import { AuthType, User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import {
@@ -107,6 +108,10 @@ export const AuthProvider = ({
     useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isUserCreated, setIsUserCreated] = useState(false);
+
+  const [jwtPrincipalClaims, setJwtPrincipalClaims] = useState<
+    AuthenticationConfiguration['jwtPrincipalClaims']
+  >([]);
 
   let silentSignInRetries = 0;
 
@@ -438,6 +443,7 @@ export const AuthProvider = ({
             Object.values(AuthTypes).includes(provider as AuthTypes)
           ) {
             const configJson = getAuthConfig(authRes);
+            setJwtPrincipalClaims(authRes.jwtPrincipalClaims);
             initializeAxiosInterceptors();
             setAuthConfig(configJson);
             updateAuthInstance(configJson);
@@ -620,6 +626,7 @@ export const AuthProvider = ({
     setLoadingIndicator,
     handleSuccessfulLogin,
     handleUserCreated,
+    jwtPrincipalClaims,
   };
 
   return (
