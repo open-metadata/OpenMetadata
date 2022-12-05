@@ -89,6 +89,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "properties": {
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -151,6 +152,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -188,6 +190,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",

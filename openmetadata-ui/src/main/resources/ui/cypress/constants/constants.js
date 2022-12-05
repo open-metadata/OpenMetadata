@@ -47,6 +47,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
 export const SEARCH_ENTITY_TABLE = {
   table_1: {
     term: 'raw_customer',
+    displayName: 'raw_customer',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
   },
@@ -65,6 +66,7 @@ export const SEARCH_ENTITY_TABLE = {
 export const SEARCH_ENTITY_TOPIC = {
   topic_1: {
     term: 'shop_products',
+    displayName: 'shop_products',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
   },
@@ -78,6 +80,7 @@ export const SEARCH_ENTITY_TOPIC = {
 export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
     term: 'Slack Dashboard',
+    displayName: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
   },

@@ -32,7 +32,9 @@ import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
 import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
+import IconArrowDownLight from '../assets/svg/arrow-down-light.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
+import IconArrowRightLight from '../assets/svg/arrow-right-light.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
 import IconArrowRight from '../assets/svg/arrow-right.svg';
 import IconBotProfile from '../assets/svg/bot-profile.svg';
@@ -75,6 +77,7 @@ import IconFitView from '../assets/svg/fitview.svg';
 import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconFullScreen from '../assets/svg/full-screen.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
+import IconHidePassword from '../assets/svg/hide-password.svg';
 import IconAllApplicationPrimary from '../assets/svg/ic-all-application-primary.svg';
 import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
@@ -175,6 +178,7 @@ import IconSchemaColor from '../assets/svg/schema-color.svg';
 import IconSearchV1Color from '../assets/svg/search-color.svg';
 import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
+import IconShowPassword from '../assets/svg/show-password.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconSuccessBadge from '../assets/svg/success-badge.svg';
@@ -389,6 +393,10 @@ export const Icons = {
   FILTER_PRIMARY: 'filter-primary',
   ADMIN: 'admin',
   NO_DATA_PLACEHOLDER: 'no-data-placeholder',
+  SHOW_PASSWORD: 'show-password',
+  HIDE_PASSWORD: 'hide-password',
+  ARROW_RIGHT_LIGHT: 'arrow-right-light',
+  ARROW_DOWN_LIGHT: 'arrow-down-light',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
@@ -1104,6 +1112,27 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconDeleteColored;
 
       break;
+
+    case Icons.SHOW_PASSWORD:
+      IconComponent = IconShowPassword;
+
+      break;
+
+    case Icons.HIDE_PASSWORD:
+      IconComponent = IconHidePassword;
+
+      break;
+
+    case Icons.ARROW_DOWN_LIGHT:
+      IconComponent = IconArrowDownLight;
+
+      break;
+
+    case Icons.ARROW_RIGHT_LIGHT:
+      IconComponent = IconArrowRightLight;
+
+      break;
+
     case Icons.TEST_SUITE:
       IconComponent = IconTestSuite;
 

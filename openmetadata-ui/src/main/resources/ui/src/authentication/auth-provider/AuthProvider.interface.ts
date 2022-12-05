@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Profile } from 'oidc-client';
 import { ComponentType, ReactNode } from 'react';
 
 export interface AuthProviderProps {
@@ -23,7 +24,7 @@ export type UserProfile = {
   name: string;
   picture: string;
   locale?: string;
-};
+} & Pick<Profile, 'preferred_username'>;
 
 export type OidcUser = {
   id_token: string;
@@ -35,4 +36,9 @@ export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => void;
   renewIdToken: () => Promise<string>;
+}
+
+export enum JWT_PRINCIPAL_CLAIMS {
+  EMAIL = 'email',
+  PREFERRED_USERNAME = 'preferred_username',
 }

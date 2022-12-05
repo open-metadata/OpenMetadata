@@ -119,6 +119,7 @@ export interface TeamDetailsProp {
   showDeletedTeam: boolean;
   onAssetsPaginate: (page: string | number) => void;
   onShowDeletedTeamChange: (checked: boolean) => void;
+  parentTeams: Team[];
   onTeamExpand: (
     loading?: boolean,
     parentTeam?: string,
