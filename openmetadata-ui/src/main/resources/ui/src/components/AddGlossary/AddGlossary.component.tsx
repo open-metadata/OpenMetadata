@@ -18,12 +18,12 @@ import { cloneDeep } from 'lodash';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getCurrentUserId, requiredField } from '../../utils/CommonUtils';
-import { getAddGlossaryError } from '../../utils/GlossaryUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
@@ -211,9 +211,9 @@ const AddGlossary = ({
             />
 
             {showErrorMsg.name
-              ? getAddGlossaryError(AddGlossaryError.NAME_REQUIRED)
+              ? ADD_GLOSSARY_ERROR[AddGlossaryError.NAME_REQUIRED]
               : showErrorMsg.invalidName
-              ? getAddGlossaryError(AddGlossaryError.NAME_INVALID)
+              ? ADD_GLOSSARY_ERROR[AddGlossaryError.NAME_INVALID]
               : null}
           </Field>
           <Field>
@@ -229,7 +229,7 @@ const AddGlossary = ({
               ref={markdownRef}
             />
             {showErrorMsg.description &&
-              getAddGlossaryError(AddGlossaryError.DESCRIPTION_REQUIRED)}
+              ADD_GLOSSARY_ERROR[AddGlossaryError.DESCRIPTION_REQUIRED]}
           </Field>
 
           <Field>

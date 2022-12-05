@@ -19,7 +19,6 @@ import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/Ingestions.constant';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
-
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
