@@ -76,7 +76,6 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
-  const handleListKpi = () => history.push(ROUTES.KPI_LIST);
 
   const fetchKpiList = async () => {
     try {
@@ -200,7 +199,6 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
               {t('label.kpi-subtitle')}
             </Typography.Text>
           </div>
-          <Button onClick={handleListKpi}>View All KPI&apos;s</Button>
         </Space>
       }>
       {kpiList.length ? (
