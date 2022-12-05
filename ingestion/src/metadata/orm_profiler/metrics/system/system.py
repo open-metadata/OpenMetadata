@@ -54,6 +54,144 @@ def get_system_metrics_for_dialect(
     return None
 
 
+@get_system_metrics_for_dialect.register(Dialects.Redshift)
+def _(
+    dialect: str,
+    session: Session,
+    table: DeclarativeMeta,
+) -> List[Dict]:
+    """List all the DML operations for reshifts tables
+
+    Args:
+        dialect (str): redshift
+        session (Session): session object
+        table (DeclarativeMeta): orm table
+
+    Returns:
+        List[Dict]:
+    """
+    stl_deleted = dedent(
+        f"""
+        SELECT
+            si."rows",
+            sti."database",
+            sti."schema",
+            sti."table",
+            sq.text,
+            MIN(si.starttime) AS starttime
+        FROM
+            pg_catalog.stl_delete si
+            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id 
+            INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
+        WHERE
+            sti."database" = '{session.get_bind().url.database}' AND
+            sti."schema" = '{table.__table_args__["schema"]}' AND
+            sti."table" = '{table.__tablename__}' AND
+            "rows" != 0 AND
+            DATE(starttime) = CURRENT_DATE - 1
+        GROUP BY 1,2,3,4,5
+        ORDER BY 6 desc
+        """
+    )
+
+    stl_insert = dedent(
+        f"""
+        SELECT
+            si."rows",
+            sti."database",
+            sti."schema",
+            sti."table",
+            sq.text,
+            MIN(si.starttime) AS starttime
+        FROM
+            pg_catalog.stl_insert si
+            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id 
+            INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
+        WHERE
+            sti."database" = '{session.get_bind().url.database}' AND
+            sti."schema" = '{table.__table_args__["schema"]}' AND
+            sti."table" = '{table.__tablename__}' AND
+            "rows" != 0 AND
+            DATE(starttime) = CURRENT_DATE - 1
+        GROUP BY 1,2,3,4,5
+        ORDER BY 6 desc
+        """
+    )
+
+    metric_results: List[Dict] = []
+    QueryResult = namedtuple(
+        "QueryResult",
+        "database_name,schema_name,table_name,query_text,timestamp,rowsAffected",
+    )
+
+    cursor_insert = session.execute(text(stl_insert))
+    rows_insert = [
+        QueryResult(
+            row.database,
+            row.schema,
+            row.table,
+            sqlparse.parse(row.text)[0],
+            row.starttime,
+            row.rows,
+        )
+        for row in cursor_insert.fetchall()
+    ]
+
+    cursor_deleted = session.execute(text(stl_deleted))
+    rows_deleted = [
+        QueryResult(
+            row.database,
+            row.schema,
+            row.table,
+            sqlparse.parse(row.text)[0],
+            row.starttime,
+            row.rows,
+        )
+        for row in cursor_deleted.fetchall()
+    ]
+
+    for row_insert in rows_insert:
+        query_text = row_insert.query_text
+        operation = next(
+            (
+                token.value
+                for token in query_text.tokens
+                if token.ttype is sqlparse.tokens.DML
+            ),
+            None,
+        )
+        if operation:
+            metric_results.append(
+                {
+                    "timestamp": int(row_insert.timestamp.timestamp() * 1000),
+                    "operation": operation,
+                    "rowsAffected": row_insert.rowsAffected,
+                }
+            )
+
+    for row_deleted in rows_deleted:
+        query_text = row_deleted.query_text
+        operation = next(
+            (
+                token.value
+                for token in query_text.tokens
+                if token.ttype is sqlparse.tokens.DML and token.value != "UPDATE"
+            ),
+            None,
+        )
+
+        if operation:
+            metric_results.append(
+                {
+                    "timestamp": int(row_deleted.timestamp.timestamp() * 1000),
+                    "operation": operation,
+                    "rowsAffected": row_deleted.rowsAffected,
+                }
+            )
+
+    return metric_results
+
+
 @get_system_metrics_for_dialect.register(Dialects.Snowflake)
 def _(
     dialect: str,
