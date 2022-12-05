@@ -715,7 +715,10 @@ const TagsPage = () => {
                     </Row>
                   ) : (
                     <Space>
-                      <Typography.Title className="m-b-0" level={5}>
+                      <Typography.Title
+                        className="m-b-0"
+                        data-testid="category-name"
+                        level={5}>
                         {getEntityName(currentCategory)}
                       </Typography.Title>
                       {currentCategory.provider === ProviderType.User && (
