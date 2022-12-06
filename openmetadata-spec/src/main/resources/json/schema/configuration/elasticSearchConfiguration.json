@@ -13,7 +13,8 @@
       "enum": [
         "EN",
         "JP"
-      ]
+      ],
+      "default": "EN"
     }
   },
   "properties": {
@@ -61,10 +62,9 @@
       "default": 10
     },
     "searchIndexMappingLanguage": {
-      "$ref": "#/definitions/searchIndexMappingLanguage",
-      "default": "EN"
+      "$ref": "#/definitions/searchIndexMappingLanguage"
     }
   },
-  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize"],
+  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }

@@ -282,11 +282,11 @@ public final class TablesInitializer {
         break;
       case ES_CREATE:
         esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
-        esIndexDefinition.createIndexes();
+        esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_MIGRATE:
         esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
-        esIndexDefinition.updateIndexes();
+        esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_DROP:
         esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
