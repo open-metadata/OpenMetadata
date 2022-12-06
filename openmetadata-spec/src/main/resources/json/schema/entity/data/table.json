@@ -418,6 +418,7 @@
             { "type": "number" },
             { "type": "integer" },
             { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/time" },
             { "$ref": "../../type/basic.json#/definitions/date" }
           ]
         },
@@ -427,6 +428,7 @@
             { "type": "number" },
             { "type": "integer" },
             { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/time" },
             { "$ref": "../../type/basic.json#/definitions/date" }
           ]
         },
