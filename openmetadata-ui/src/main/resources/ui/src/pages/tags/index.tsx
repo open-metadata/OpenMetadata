@@ -827,44 +827,43 @@ const TagsPage = () => {
                 onSave={updatePrimaryTag}
               />
             )}
-            {isAddingCategory && (
-              <FormModal
-                errorData={errorDataCategory}
-                form={Form}
-                header="Adding new category"
-                initialData={{
-                  name: '',
-                  description: '',
-                }}
-                isSaveButtonDisabled={!isEmpty(errorDataCategory)}
-                onCancel={() => setIsAddingCategory(false)}
-                onChange={(data) => {
-                  setErrorDataCategory({});
-                  onNewCategoryChange(data as TagCategory);
-                }}
-                onSave={(data) => createCategory(data as TagCategory)}
-              />
-            )}
-            {isAddingTag && (
-              <FormModal
-                errorData={errorDataTag}
-                form={Form}
-                header={`Adding new tag on ${
-                  currentCategory?.displayName ?? currentCategory?.name
-                }`}
-                initialData={{
-                  name: '',
-                  description: '',
-                }}
-                isSaveButtonDisabled={!isEmpty(errorDataTag)}
-                onCancel={() => setIsAddingTag(false)}
-                onChange={(data) => {
-                  setErrorDataTag({});
-                  onNewTagChange(data as TagCategory);
-                }}
-                onSave={(data) => createPrimaryTag(data as TagCategory)}
-              />
-            )}
+            <FormModal
+              errorData={errorDataCategory}
+              form={Form}
+              header={t('label.adding-new-category')}
+              initialData={{
+                name: '',
+                description: '',
+              }}
+              isSaveButtonDisabled={!isEmpty(errorDataCategory)}
+              visible={isAddingCategory}
+              onCancel={() => setIsAddingCategory(false)}
+              onChange={(data) => {
+                setErrorDataCategory({});
+                onNewCategoryChange(data as TagCategory);
+              }}
+              onSave={(data) => createCategory(data as TagCategory)}
+            />
+            <FormModal
+              errorData={errorDataTag}
+              form={Form}
+              header={t('label.adding-new-tag', {
+                categoryName:
+                  currentCategory?.displayName ?? currentCategory?.name,
+              })}
+              initialData={{
+                name: '',
+                description: '',
+              }}
+              isSaveButtonDisabled={!isEmpty(errorDataTag)}
+              visible={isAddingTag}
+              onCancel={() => setIsAddingTag(false)}
+              onChange={(data) => {
+                setErrorDataTag({});
+                onNewTagChange(data as TagCategory);
+              }}
+              onSave={(data) => createPrimaryTag(data as TagCategory)}
+            />
             <ConfirmationModal
               bodyText={t('message.are-you-sure-delete-tag', {
                 isCategory: deleteTags.data?.isCategory ? 'category' : '',

@@ -159,6 +159,10 @@ jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
   jest.fn().mockReturnValue(<div>Breadcrumb</div>)
 );
 
+jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () =>
+  jest.fn().mockReturnValue(<div>Entity Delete Modal</div>)
+);
+
 const mockProps = {
   assetData: mockedAssetData,
   currentPage: 1,

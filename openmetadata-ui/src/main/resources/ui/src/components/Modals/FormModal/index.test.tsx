@@ -33,6 +33,7 @@ describe.skip('Test FormModal component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <FormModal
+        visible
         form={mockForm}
         header="Adding new users"
         initialData={mockInitionalData}
@@ -54,6 +55,7 @@ describe.skip('Test FormModal component', () => {
   it('Onclick of Cancel button, onCancel callback should called', async () => {
     const { container } = render(
       <FormModal
+        visible
         form={mockForm}
         header="Adding new users"
         initialData={mockInitionalData}
@@ -70,6 +72,7 @@ describe.skip('Test FormModal component', () => {
   it('Onclick of Save button, onSave callback should called', async () => {
     const { container } = render(
       <FormModal
+        visible
         form={mockForm}
         header="Adding new users"
         initialData={mockInitionalData}

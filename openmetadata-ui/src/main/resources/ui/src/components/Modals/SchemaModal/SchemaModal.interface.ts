@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,24 +11,11 @@
  *  limitations under the License.
  */
 
-export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
-  TEAM = 'team',
-  SERVICE = 'service',
-}
+import { HTMLAttributes } from 'react';
 
-export enum SIZE {
-  SMALL = '60',
-  MEDIUM = '80',
-  LARGE = '100',
-}
-
-export enum ACTION_TYPE {
-  UPDATE = 'update',
-  REMOVE = 'remove',
-}
-
-export enum LOADING_STATE {
-  INITIAL = 'initial',
-  WAITING = 'waiting',
-  SUCCESS = 'success',
+export interface SchemaModalProp extends HTMLAttributes<HTMLDivElement> {
+  onClose: () => void;
+  // eslint-disable-next-line
+  data: any;
+  visible: boolean;
 }
