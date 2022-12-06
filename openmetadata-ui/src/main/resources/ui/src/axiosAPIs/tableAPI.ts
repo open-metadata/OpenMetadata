@@ -198,3 +198,15 @@ export const getColumnProfilerList = async (
 
   return response.data;
 };
+
+export const getSampleDataByTableId = async (id: string) => {
+  const response = await APIClient.get<Table>(`/tables/${id}/sampleData`);
+
+  return response.data;
+};
+
+export const getTableQueryByTableId = async (id: string) => {
+  const response = await APIClient.get<Table>(`/tables/${id}/tableQuery`);
+
+  return response.data;
+};

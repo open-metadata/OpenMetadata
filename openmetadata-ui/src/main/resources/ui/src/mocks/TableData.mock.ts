@@ -199,6 +199,14 @@ export const MOCK_TABLE = {
       checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
     },
   ],
+  sampleData: {
+    columns: ['address_id', 'shop_id', 'first_name', 'last_name'],
+    rows: [
+      ['address_id1', 'shop_id1', 'first_name1', 'last_name1'],
+      ['address_id2', 'shop_id2', 'first_name2', 'last_name2'],
+      ['address_id3', 'shop_id3', 'first_name3', 'last_name3'],
+    ],
+  },
   deleted: false,
 } as unknown as Table;
 
