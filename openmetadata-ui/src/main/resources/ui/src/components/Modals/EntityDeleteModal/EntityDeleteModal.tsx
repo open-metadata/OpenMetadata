@@ -12,10 +12,10 @@
  */
 
 import { Button, Input, Modal, Typography } from 'antd';
-import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { ChangeEvent, useCallback, useMemo, useState } from 'react';
+import React, { ChangeEvent, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
+import { LOADING_STATE } from '../../../enums/common.enum';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
@@ -36,12 +36,10 @@ const EntityDeleteModal = ({
     setName(e.target.value);
   };
 
-  const isNameMatching = useCallback(() => {
-    return name === 'DELETE';
-  }, [name]);
+  const isNameMatching = useMemo(() => name === 'DELETE', [name]);
 
   const isLoadingWaiting = useMemo(
-    () => loadingState === 'waiting',
+    () => loadingState === LOADING_STATE.WAITING,
     [loadingState]
   );
 
@@ -55,7 +53,7 @@ const EntityDeleteModal = ({
       footer={
         <div data-testid="delete-confirmation-modal-footer">
           <Button
-            className={classNames('mr-2')}
+            className="mr-2"
             data-testid="discard-button"
             disabled={isLoadingWaiting}
             type="text"
@@ -64,7 +62,7 @@ const EntityDeleteModal = ({
           </Button>
           <Button
             data-testid={isLoadingWaiting ? 'loading-button' : 'confirm-button'}
-            disabled={!isNameMatching()}
+            disabled={!isNameMatching}
             loading={isLoadingWaiting}
             type="primary"
             onClick={onConfirm}>
@@ -104,7 +102,7 @@ const EntityDeleteModal = ({
         <Input
           autoComplete="off"
           data-testid="confirmation-text-input"
-          disabled={loadingState === 'waiting'}
+          disabled={loadingState === LOADING_STATE.WAITING}
           name="entityName"
           placeholder={t('label.delete-uppercase')}
           type="text"

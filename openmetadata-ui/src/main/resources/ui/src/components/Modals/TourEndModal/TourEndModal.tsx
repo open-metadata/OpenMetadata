@@ -41,7 +41,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
           />
         </Col>
         <Col span={24}>
-          <Typography className="tw-text-base mt-5">
+          <Typography className="text-base mt-5">
             {t('label.successfully-completed-the-tour')}
             <br />
             {t('label.get-started-with-open-metadata')}

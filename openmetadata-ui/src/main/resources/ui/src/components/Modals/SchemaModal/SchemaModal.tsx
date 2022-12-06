@@ -50,7 +50,7 @@ const SchemaModal: FC<SchemaModalProp> = ({
       width={800}>
       <div data-testid="schema-modal-body">
         <SchemaEditor
-          className="tw-border tw-border-main tw-rounded-md tw-py-4"
+          className="schema-editor"
           editorClass="custom-entity-schema"
           value={data}
         />
