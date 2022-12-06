@@ -15,7 +15,7 @@ import { Col, Row, Space, Table as TableAntd } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, startCase, toNumber } from 'lodash';
+import { isUndefined, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, ExtraInfo } from 'Models';
 import React, {
@@ -323,13 +323,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       });
   };
 
-  const getSchemaTables = async (pageNumber: string | number) => {
+  const getSchemaTables = async (
+    pageNumber: number,
+    databaseSchema: DatabaseSchema
+  ) => {
     try {
-      setCurrentTablesPage(toNumber(pageNumber));
+      setCurrentTablesPage(pageNumber);
       const res = await searchQuery({
-        pageNumber: toNumber(pageNumber),
+        pageNumber,
         pageSize: PAGE_SIZE,
-        queryFilter: { 'databaseSchema.name': databaseSchema?.name ?? '' },
+        queryFilter: { 'databaseSchema.name': databaseSchema.name },
         searchIndex: SearchIndex.TABLE,
         includeDeleted: false,
       });
@@ -337,6 +340,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setTableInstanceCount(res.hits.total.value);
     } catch (err) {
       showErrorToast(err as AxiosError);
+    }
+  };
+
+  const tablePaginationHandler = (pageNumber: string | number) => {
+    if (!isUndefined(databaseSchema)) {
+      getSchemaTables(toNumber(pageNumber), databaseSchema);
     }
   };
 
@@ -612,7 +621,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           currentPage={currentTablesPage}
           pageSize={PAGE_SIZE}
           paging={paging}
-          pagingHandler={getSchemaTables}
+          pagingHandler={tablePaginationHandler}
           totalCount={tableInstanceCount}
         />
       </>
@@ -648,9 +657,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [databaseSchemaPermission, databaseSchemaFQN]);
 
   useEffect(() => {
-    if (!isEmpty(databaseSchema)) {
-      getSchemaTables(INITIAL_PAGING_VALUE);
-    }
+    tablePaginationHandler(INITIAL_PAGING_VALUE);
   }, [databaseSchema]);
 
   useEffect(() => {
