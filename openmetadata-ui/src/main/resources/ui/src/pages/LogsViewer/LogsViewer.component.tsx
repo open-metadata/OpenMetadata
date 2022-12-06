@@ -89,6 +89,10 @@ const LogsViewer = () => {
           setLogs(logs.concat(res.data?.test_suite_task || ''));
 
           break;
+        case PipelineType.DataInsight:
+          setLogs(logs.concat(res.data?.data_insight_task || ''));
+
+          break;
 
         default:
           setLogs('');
