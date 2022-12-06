@@ -538,7 +538,7 @@ export const addUser = (username, email) => {
 
 export const softDeleteUser = (username) => {
     //Search the created user
-    interceptURL('GET', '/api/v1/search/query*', 'searchUser');
+    interceptURL('GET', '/api/v1/search/query?q=**&from=0&size=*&index=*', 'searchUser');
     cy.get('[data-testid="searchbar"]')
         .should('exist')
         .should('be.visible')
@@ -619,9 +619,11 @@ export const restoreUser = (username) => {
 };
 
 export const deleteSoftDeletedUser = (username) => {
-    cy.get('.ant-switch-handle').should('exist').should('be.visible').click();
+    interceptURL('GET', '/api/v1/users?fields=profile,teams,roles&include=*&limit=*', 'getSoftDeletedUser')
 
-    cy.wait(1000);
+    cy.get('.ant-switch-handle').should('exist').should('be.visible').click();  
+
+    verifyResponseStatusCode('@getSoftDeletedUser', 200);
 
     cy.get(`[data-testid="delete-user-btn-${username}"]`)
         .should('exist')
@@ -832,7 +834,7 @@ export const addTeam = (TEAM_DETAILS) => {
     cy.get('[data-testid="display-name"]')
         .should('exist')
         .should('be.visible')
-        .type(TEAM_DETAILS.displayName);
+        .type(TEAM_DETAILS.name);
 
     cy.get('[data-testid="team-selector"]')
         .should('exist')
