@@ -15,7 +15,7 @@ import { Col, Row, Space, Table as TableAntd } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { startCase } from 'lodash';
+import { isEmpty, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, ExtraInfo } from 'Models';
 import React, {
@@ -325,11 +325,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTables = async (pageNumber: string | number) => {
     try {
-      setCurrentTablesPage(pageNumber as number);
+      setCurrentTablesPage(toNumber(pageNumber));
       const res = await searchQuery({
-        pageNumber: pageNumber as number,
+        pageNumber: toNumber(pageNumber),
         pageSize: PAGE_SIZE,
-        queryFilter: { 'databaseSchema.name': databaseSchema?.name },
+        queryFilter: { 'databaseSchema.name': databaseSchema?.name ?? '' },
         searchIndex: SearchIndex.TABLE,
         includeDeleted: false,
       });
@@ -643,10 +643,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         activeTabHandler(1);
       }
       getDetailsByFQN();
-      getSchemaTables(INITIAL_PAGING_VALUE);
       getEntityFeedCount();
     }
   }, [databaseSchemaPermission, databaseSchemaFQN]);
+
+  useEffect(() => {
+    if (!isEmpty(databaseSchema)) {
+      getSchemaTables(INITIAL_PAGING_VALUE);
+    }
+  }, [databaseSchema]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
