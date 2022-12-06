@@ -26,6 +26,7 @@ export const SECONDARY_COLOR = '#B02AAC';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const SUCCESS_COLOR = '#008376';
+export const DE_ACTIVE_COLOR = '#6B7280';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
@@ -266,9 +267,10 @@ export const ROUTES = {
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
 
   DATA_INSIGHT: `/data-insights`,
-  KPI_LIST: `/data-insights/kpi-list`,
-  ADD_KPI: `/data-insights/kpi-list/add-kpi`,
-  EDIT_KPI: `/data-insights/kpi-list/edit-kpi/${KPI_NAME}`,
+  DATA_INSIGHT_WITH_TAB: `/data-insights/${PLACEHOLDER_ROUTE_TAB}`,
+  KPI_LIST: `/data-insights/kpi`,
+  ADD_KPI: `/data-insights/kpi/add-kpi`,
+  EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 };
 
 export const SOCKET_EVENTS = {
