@@ -10,18 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface IngestionPipelineLogByIdInterface {
-  ingestion_task?: string;
-  profiler_task?: string;
-  usage_task?: string;
-  lineage_task?: string;
-  test_suite_task?: string;
-  data_insight_task?: string;
-  total?: string;
-  after?: string;
-}
 
-export interface LogViewerParams {
-  logEntityType: string;
-  ingestionName: string;
+@schema-editor-border-color: #dce3ec;
+
+.schema-modal {
+  .ant-modal-close-x {
+    display: flex;
+    align-items: center;
+  }
+}
+.schema-editor {
+  border-width: 0.0625rem;
+  border-radius: 0.375rem;
+  border-color: @schema-editor-border-color;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }

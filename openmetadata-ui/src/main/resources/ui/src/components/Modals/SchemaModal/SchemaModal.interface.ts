@@ -10,18 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface IngestionPipelineLogByIdInterface {
-  ingestion_task?: string;
-  profiler_task?: string;
-  usage_task?: string;
-  lineage_task?: string;
-  test_suite_task?: string;
-  data_insight_task?: string;
-  total?: string;
-  after?: string;
-}
 
-export interface LogViewerParams {
-  logEntityType: string;
-  ingestionName: string;
+import { HTMLAttributes } from 'react';
+
+export interface SchemaModalProp extends HTMLAttributes<HTMLDivElement> {
+  onClose: () => void;
+  // eslint-disable-next-line
+  data: any;
+  visible: boolean;
 }

@@ -78,7 +78,10 @@ const deleteGlossary = ({ name }) => {
     .should('be.visible')
     .click();
 
-  cy.get('.tw-modal-container').should('be.visible');
+  cy.get('[data-testid="delete-confirmation-modal"]').should('exist').then(() => {
+    cy.get('[role="dialog"]').should('be.visible');
+    cy.get('[data-testid="modal-header"]').should('be.visible');
+  })
   cy.get('[data-testid="modal-header"]').should('be.visible').should('contain', `Delete ${name}`);
   cy.get('[data-testid="confirmation-text-input"]')
     .should('be.visible')
@@ -90,7 +93,7 @@ const deleteGlossary = ({ name }) => {
     .click();
 
   toastNotification('Glossary term deleted successfully!')
-  cy.get('.tw-modal-container').should('not.exist');
+  cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
   cy.get('[data-testid="glossary-left-panel"]').should('be.visible').should('not.contain', name)
 };
 
@@ -529,9 +532,12 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="delete-button"]')
       .scrollIntoView()
       .should('be.visible')
-      .click();
+      .click(); 
 
-    cy.get('[data-testid="delete-confirmation-modal"]').should('be.visible');
+    cy.get('[data-testid="delete-confirmation-modal"]').should('exist').then(() => {
+        cy.get('[role="dialog"]').should('be.visible');
+        cy.get('[data-testid="modal-header"]').should('be.visible');
+      });
     cy.get('[data-testid="modal-header"]').should('be.visible').should('contain', `Delete ${NEW_GLOSSARY.name}`);
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
