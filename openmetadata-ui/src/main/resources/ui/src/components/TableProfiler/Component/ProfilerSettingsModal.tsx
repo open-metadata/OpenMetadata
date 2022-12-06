@@ -283,7 +283,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   step={1}
                   value={profileSample}
                   onChange={(value) => {
-                    setProfileSample(value);
+                    setProfileSample(Number(value));
                   }}
                 />
               </Col>

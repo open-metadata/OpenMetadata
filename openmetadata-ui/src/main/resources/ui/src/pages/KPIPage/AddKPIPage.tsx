@@ -350,7 +350,7 @@ const AddKPIPage = () => {
                           step={1}
                           value={metricValue}
                           onChange={(value) => {
-                            setMetricValue(value);
+                            setMetricValue(Number(value));
                           }}
                         />
                       </Col>
@@ -361,7 +361,7 @@ const AddKPIPage = () => {
                       className="w-full"
                       min={0}
                       value={metricValue}
-                      onChange={(value) => setMetricValue(value)}
+                      onChange={(value) => setMetricValue(Number(value))}
                     />
                   )}
                 </>

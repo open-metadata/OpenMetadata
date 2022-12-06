@@ -10,16 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
+import { CloseIconInterface } from './CloseIcon.interface';
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
+const CloseIcon = ({ handleCancel, dataTestId }: CloseIconInterface) => {
+  return (
+    <svg
+      className="w-6 h-6 m-l-xss cursor-pointer"
+      data-testid={dataTestId}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      onClick={handleCancel}>
+      <path
+        d="M6 18L18 6M6 6l12 12"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+};
 
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
-}
+export default CloseIcon;

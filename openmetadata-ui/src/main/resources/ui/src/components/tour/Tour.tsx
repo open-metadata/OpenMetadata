@@ -62,7 +62,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
         />
       ) : null}
 
-      {showTourEndModal && <TourEndModal onSave={handleModalSubmit} />}
+      <TourEndModal visible={showTourEndModal} onSave={handleModalSubmit} />
     </div>
   );
 };

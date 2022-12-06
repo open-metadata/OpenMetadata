@@ -243,7 +243,7 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
     toastNotification('Test Case deleted successfully!')
-    cy.get('table').contains('No Data').should('be.visible');
+    cy.get('[class="ant-empty-description"]').invoke('text').should('eq', 'No data');
   });
 
   it('Add Column test case should work properly', () => {
@@ -347,11 +347,8 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
-    cy.get('.Toastify__toast-body')
-      .contains('Test Case deleted successfully!')
-      .should('be.visible')
-      .wait(200);
-    cy.get('table').contains('No Data').should('be.visible');
+    toastNotification('Test Case deleted successfully!')
+    cy.get('[class="ant-empty-description"]').invoke('text').should('eq', 'No data');
   });
 
   it('Delete Test suite should work properly', () => {

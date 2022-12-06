@@ -11,15 +11,10 @@
  *  limitations under the License.
  */
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
+export type WhatsNewModalProps = {
+  header: string;
+  onCancel: () => void;
+  visible: boolean;
+};
 
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
-}
+export type ToggleType = 'features' | 'change-log';

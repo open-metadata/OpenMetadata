@@ -10,16 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CSSProperties } from 'react';
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
-
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
+export interface VersionIndicatorInterface {
+  fill: string;
+  style?: CSSProperties;
 }

@@ -1,4 +1,9 @@
 import { TabSpecificField } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import {
+  SearchResponse,
+  TableSearchSource,
+} from '../interface/search.interface';
 
 export const databaseSchemaDetailsTabs = [
   {
@@ -29,3 +34,7 @@ export const getCurrentDatabaseSchemaDetailsTab = (tab: string) => {
 
   return currentTab;
 };
+
+export const getTablesFromSearchResponse = (
+  res: SearchResponse<SearchIndex.TABLE, keyof TableSearchSource>
+) => res.hits.hits.map((hit) => hit._source);
