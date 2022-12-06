@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
-import { isUndefined } from 'lodash';
+import { Button, Col, Row, Typography } from 'antd';
+import Modal from 'antd/lib/modal/Modal';
+import { isUndefined, uniqueId } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSuggestedUsers, searchData } from '../../../axiosAPIs/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { SearchResponse } from '../../../interface/search.interface';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
@@ -29,19 +29,14 @@ import {
   getEntityReferenceFromUser,
   getUserFromEntityReference,
 } from '../../Users/Users.util';
-
-type ReviewerModalProp = {
-  reviewer?: Array<EntityReference>;
-  onCancel: () => void;
-  onSave: (reviewer: Array<EntityReference>) => void;
-  header: string;
-};
+import { ReviewerModalProp } from './ReviewerModal.interface';
 
 const ReviewerModal = ({
   reviewer,
   onCancel,
   onSave,
   header,
+  visible,
 }: ReviewerModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -116,26 +111,6 @@ const ReviewerModal = ({
     }
   };
 
-  const getUserCards = () => {
-    return options.map((d) => (
-      <CheckboxUserCard
-        isActionVisible
-        isCheckBoxes
-        isIconVisible
-        item={{
-          name: d.name,
-          displayName: d.displayName || d.name,
-          email: d.email,
-          id: d.id,
-          isChecked: isIncludeInOptions(d.id),
-          type: 'user',
-        }}
-        key={d.id}
-        onSelect={selectionHandler}
-      />
-    ));
-  };
-
   useEffect(() => {
     if (!isUndefined(reviewer) && reviewer.length) {
       setOptions(reviewer.map(getUserFromEntityReference));
@@ -144,39 +119,23 @@ const ReviewerModal = ({
   }, []);
 
   return (
-    <dialog className="tw-modal" data-testid="modal-container">
-      <div className="tw-modal-backdrop" onClick={() => onCancel()} />
-      <div className="tw-modal-container tw-overflow-y-auto tw-max-w-3xl tw-max-h-screen">
-        <div className="tw-modal-header">
-          <p className="tw-modal-title tw-text-grey-body" data-testid="header">
-            {header}
-          </p>
-        </div>
-        <div className="tw-modal-body">
-          <Searchbar
-            placeholder="Search for user..."
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchAction}
-          />
-          <div className="tw-min-h-256">
-            {isLoading ? (
-              <Loader />
-            ) : options.length > 0 ? (
-              <div className="tw-grid tw-grid-cols-3 tw-gap-4">
-                {getUserCards()}
-              </div>
-            ) : (
-              <p className="tw-text-center tw-mt-10 tw-text-grey-muted tw-text-base">
-                No user available
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="tw-modal-footer" data-testid="cta-container">
-          <Button onClick={onCancel}>{t('label.cancel')}</Button>
+    <Modal
+      centered
+      destroyOnClose
+      closable={false}
+      data-testid="confirmation-modal"
+      footer={
+        <div data-testid="cta-container">
           <Button
-            data-testid="saveButton"
+            data-testid="cancel"
+            key="remove-edge-btn"
+            type="text"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="save-button"
+            key="save-btn"
             type="primary"
             onClick={() =>
               onSave(selectedOption.map(getEntityReferenceFromUser))
@@ -184,8 +143,52 @@ const ReviewerModal = ({
             {t('label.save')}
           </Button>
         </div>
-      </div>
-    </dialog>
+      }
+      title={
+        <Typography.Text strong data-testid="header">
+          {header}
+        </Typography.Text>
+      }
+      visible={visible}
+      width={800}>
+      <>
+        <Searchbar
+          placeholder={`${t('label.search-for-user')}...`}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
+        {isLoading ? (
+          <Loader />
+        ) : options.length > 0 ? (
+          <Row gutter={[16, 16]}>
+            {options.map((d) => (
+              <Col key={uniqueId()} span={8}>
+                <CheckboxUserCard
+                  isActionVisible
+                  isCheckBoxes
+                  isIconVisible
+                  item={{
+                    name: d.name,
+                    displayName: d.displayName || d.name,
+                    email: d.email,
+                    id: d.id,
+                    isChecked: isIncludeInOptions(d.id),
+                    type: 'user',
+                  }}
+                  key={d.id}
+                  onSelect={selectionHandler}
+                />
+              </Col>
+            ))}
+          </Row>
+        ) : (
+          <Typography.Text className="flex justify-center mt-10 text-grey-muted text-base">
+            {t('label.no-user-available')}
+          </Typography.Text>
+        )}
+      </>
+    </Modal>
   );
 };
 

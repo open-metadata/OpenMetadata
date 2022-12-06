@@ -72,11 +72,11 @@ class ModeSource(DashboardServiceSource):
         """
         return self.client.fetch_all_reports(self.workspace_name)
 
-    def get_dashboard_name(self, dashboard_details: dict) -> str:
+    def get_dashboard_name(self, dashboard: dict) -> str:
         """
         Get Dashboard Name
         """
-        return dashboard_details.get(mode_client.NAME)
+        return dashboard.get(mode_client.NAME)
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         """

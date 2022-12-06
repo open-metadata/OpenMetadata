@@ -10,16 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityReference } from '../../../generated/type/entityReference';
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
-
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
-}
+export type ReviewerModalProp = {
+  reviewer?: Array<EntityReference>;
+  onCancel: () => void;
+  onSave: (reviewer: Array<EntityReference>) => void;
+  header: string;
+  visible: boolean;
+};

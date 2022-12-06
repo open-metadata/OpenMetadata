@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
-
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
-}
+export type DeployIngestionLoaderModalProps = {
+  className?: string;
+  ingestionName: string;
+  action: string;
+  progress: number;
+  isIngestionCreated: boolean;
+  isDeployed: boolean;
+  visible: boolean;
+};

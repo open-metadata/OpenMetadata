@@ -91,6 +91,7 @@ const TeamsPage = () => {
     total: 0,
     currPage: 1,
   });
+  const [parentTeams, setParentTeams] = useState<Team[]>([]);
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -147,7 +148,7 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams(
-        ['defaultRoles', 'userCount', 'childrenCount'],
+        ['defaultRoles', 'userCount', 'childrenCount', 'owns'],
         {
           parentTeam: parentTeam ?? 'organization',
           include: 'all',
@@ -195,6 +196,23 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
+  const getParentTeam = async (name: string, newTeam = false) => {
+    setIsPageLoading(true);
+    try {
+      const data = await getTeamByName(name, ['parents'], 'all');
+      if (data) {
+        setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
+        if (!isEmpty(data.parents) && data.parents?.[0].name) {
+          await getParentTeam(data.parents[0].name, false);
+        }
+      } else {
+        throw t('server.unexpected-response');
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    }
+  };
+
   const fetchTeamByFqn = async (name: string) => {
     setIsPageLoading(true);
     try {
@@ -215,6 +233,9 @@ const TeamsPage = () => {
       if (data) {
         getCurrentTeamUsers(data.name);
         setSelectedTeam(data);
+        if (!isEmpty(data.parents) && data.parents?.[0].name) {
+          await getParentTeam(data.parents[0].name, true);
+        }
       } else {
         throw t('server.unexpected-response');
       }
@@ -574,6 +595,7 @@ const TeamsPage = () => {
           hasAccess={isAuthDisabled || isAdminUser}
           isDescriptionEditable={isDescriptionEditable}
           isTeamMemberLoading={isDataLoading}
+          parentTeams={parentTeams}
           removeUserFromTeam={removeUserFromTeam}
           showDeletedTeam={showDeletedTeam}
           teamUserPagin={userPaging}
