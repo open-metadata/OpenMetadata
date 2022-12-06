@@ -95,6 +95,7 @@ const DeleteWidgetModal = ({
       EntityType.DATABASE_SERVICE,
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
+      EntityType.METADATA_SERVICE,
     ];
 
     if (services.includes((entityType || '') as EntityType)) {
