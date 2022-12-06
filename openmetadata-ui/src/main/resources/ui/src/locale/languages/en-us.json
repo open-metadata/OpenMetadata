@@ -459,7 +459,7 @@
     "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
     "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata",
     "team-moved-success": "Team moved successfully",
-    "team-moved-error": "Error while moving team"
+    "team-transfer-message": "Click on Confirm if you’d like to move {{from}} team under {{to}} team."
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",
@@ -476,7 +476,8 @@
     "leave-team-error": "Error while leaving the team!",
     "no-query-available": "No query available",
     "unexpected-response": "Unexpected response from server!",
-    "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}"
+    "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
+    "team-moved-error": "Error while moving team"
   },
   "url": {}
 }

@@ -28,7 +28,12 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getMovedTeamData } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DraggableBodyRow from './DraggableBodyRow';
-import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
+import {
+  DraggableBodyRowProps,
+  MovedTeamProps,
+  TableExpandableDataProps,
+  TeamHierarchyProps,
+} from './team.interface';
 import './teams.less';
 
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
@@ -37,7 +42,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   onTeamExpand,
 }) => {
   const { t } = useTranslation();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
   const [movedTeam, setMovedTeam] = useState<MovedTeamProps>();
 
@@ -91,7 +96,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     let dropTeam: Team = dropRecord;
     if (!isArray(dropTeam.children)) {
       const res = await getTeamByName(dropTeam.name, ['parents'], 'all');
-      dropTeam = res.parents?.[0] as Team;
+      dropTeam = (res.parents?.[0] as Team) || currentTeam;
     }
     setMovedTeam({
       from: dragRecord,
@@ -109,21 +114,11 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           ['users', 'defaultRoles', 'policies', 'owner', 'parents', 'children'],
           'all'
         );
-        if (data) {
-          const res = await changeTeamParent(
-            getMovedTeamData(data, [movedTeam.to.id])
-          );
-          if (res) {
-            onTeamExpand(true, currentTeam?.name);
-            showSuccessToast(t('message.team-moved-success'));
-          } else {
-            throw t('message.team-moved-error');
-          }
-        } else {
-          throw t('server.unexpected-response');
-        }
+        await changeTeamParent(getMovedTeamData(data, [movedTeam.to.id]));
+        onTeamExpand(true, currentTeam?.name);
+        showSuccessToast(t('message.team-moved-success'));
       } catch (error) {
-        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+        showErrorToast(error as AxiosError, t('server.team-moved-error'));
       } finally {
         setIsTableLoading(false);
         setIsModalOpen(false);
@@ -137,6 +132,33 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     },
   };
 
+  const tableExpandableData = ({
+    expanded,
+    onExpand,
+    expandable,
+    record,
+  }: TableExpandableDataProps) =>
+    expandable ? (
+      <div
+        className="expand-cell-icon-container"
+        onClick={(e) =>
+          onExpand(
+            record,
+            e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
+          )
+        }>
+        <SVGIcons className="drag-icon" icon={Icons.DRAG} />
+        <SVGIcons
+          icon={expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT}
+        />
+      </div>
+    ) : (
+      <>
+        <SVGIcons className="drag-icon" icon={Icons.DRAG} />
+        <div className="expand-cell-empty-icon-container" />
+      </>
+    );
+
   return (
     <>
       <DndProvider backend={HTML5Backend}>
@@ -148,29 +170,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           dataSource={data}
           expandable={{
             expandIcon: ({ expanded, onExpand, expandable, record }) =>
-              expandable ? (
-                <div
-                  className="expand-cell-icon-container"
-                  onClick={(e) =>
-                    onExpand(
-                      record,
-                      e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
-                    )
-                  }>
-                  <SVGIcons className="drag-icon" icon={Icons.DRAG} />
-                  <SVGIcons
-                    icon={
-                      expanded
-                        ? Icons.ARROW_DOWN_LIGHT
-                        : Icons.ARROW_RIGHT_LIGHT
-                    }
-                  />
-                </div>
-              ) : (
-                <div className="expand-cell-empty-icon-container">
-                  <SVGIcons className="drag-icon" icon={Icons.DRAG} />
-                </div>
-              ),
+              tableExpandableData({ expanded, onExpand, expandable, record }),
           }}
           loading={isTableLoading}
           pagination={false}
@@ -188,8 +188,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               record,
             };
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return attr as React.HTMLAttributes<any>;
+            return attr as DraggableBodyRowProps;
           }}
         />
       </DndProvider>
@@ -204,9 +203,10 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         onCancel={() => setIsModalOpen(false)}
         onOk={handleOk}>
         <Typography.Text>
-          Click on Confirm if you’d like to move
-          <strong> {movedTeam?.from?.name}</strong> team under{' '}
-          <strong>{movedTeam?.to?.name}</strong> team.
+          {t('message.team-transfer-message', {
+            from: movedTeam?.from?.name,
+            to: movedTeam?.to?.name,
+          })}
         </Typography.Text>
       </Modal>
     </>
