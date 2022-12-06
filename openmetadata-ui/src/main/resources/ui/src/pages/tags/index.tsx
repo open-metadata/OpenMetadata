@@ -117,8 +117,8 @@ const TagsPage = () => {
   });
   const [categoryPermissions, setCategoryPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isNameEditing, setIsNameEditing] = useState(false);
-  const [currentCategoryName, setCurrentCategoryName] = useState<string>();
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [currentCategoryName, setCurrentCategoryName] = useState<string>('');
 
   const createCategoryPermission = useMemo(
     () =>
@@ -149,7 +149,7 @@ const TagsPage = () => {
 
   const handleEditNameCancel = () => {
     setIsNameEditing(false);
-    setCurrentCategoryName(currentCategory?.name);
+    setCurrentCategoryName(currentCategory?.name || '');
   };
 
   const fetchCategories = (setCurrent?: boolean) => {
@@ -346,14 +346,14 @@ const TagsPage = () => {
     }
   };
 
-  const updateCategory = async (updatedCategory: TagCategory) => {
+  const handleUpdateCategory = async (updatedCategory: TagCategory) => {
     try {
       const response = await updateTagCategory(
         currentCategory?.name ?? '',
         updatedCategory
       );
       if (response) {
-        if (currentCategory?.name !== updateCategory.name) {
+        if (currentCategory?.name !== updatedCategory.name) {
           history.push(getTagPath(response.name));
           setIsNameEditing(false);
         } else {
@@ -370,17 +370,21 @@ const TagsPage = () => {
   };
 
   const handleRenameSave = () => {
-    updateCategory({
+    handleUpdateCategory({
       name: (currentCategoryName || currentCategory?.name) ?? '',
       description: currentCategory?.description ?? '',
     });
   };
 
   const handleUpdateDescription = async (updatedHTML: string) => {
-    updateCategory({
+    handleUpdateCategory({
       name: currentCategory?.name ?? '',
       description: updatedHTML,
     });
+  };
+
+  const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentCategoryName(e.target.value);
   };
 
   const onNewTagChange = (data: TagCategory, forceSet = false) => {
@@ -669,8 +673,8 @@ const TagsPage = () => {
         ) : (
           <div className="full-height" data-testid="tags-container">
             {currentCategory && (
-              <div className="flex justify-between" data-testid="header">
-                <div className="flex items-center">
+              <Space className="w-full justify-between" data-testid="header">
+                <Space className="items-center">
                   {isNameEditing ? (
                     <Row align="middle" gutter={8}>
                       <Col>
@@ -679,9 +683,7 @@ const TagsPage = () => {
                           data-testid="tag-category-name"
                           name="tagCategoryName"
                           value={currentCategoryName}
-                          onChange={(e) =>
-                            setCurrentCategoryName(e.target.value)
-                          }
+                          onChange={handleCategoryNameChange}
                         />
                       </Col>
                       <Col>
@@ -748,7 +750,7 @@ const TagsPage = () => {
                       )}
                     </Space>
                   )}
-                </div>
+                </Space>
                 <div className="flex-center">
                   <Tooltip
                     title={
@@ -786,7 +788,7 @@ const TagsPage = () => {
                     Delete category
                   </Button>
                 </div>
-              </div>
+              </Space>
             )}
             <div className="m-b-sm" data-testid="description-container">
               <Description
