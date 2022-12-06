@@ -210,3 +210,11 @@ export const getTableQueryByTableId = async (id: string) => {
 
   return response.data;
 };
+
+export const getLatestTableProfileByFqn = async (fqn: string) => {
+  const response = await APIClient.get<Table>(
+    `/tables/${fqn}/tableProfile/latest`
+  );
+
+  return response.data;
+};

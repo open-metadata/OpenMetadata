@@ -762,7 +762,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {activeTab === 5 && (
                 <TableProfilerV1
                   permissions={tablePermissions}
-                  table={tableDetails}
+                  tableFqn={tableDetails.fullyQualifiedName || ''}
                 />
               )}
 
