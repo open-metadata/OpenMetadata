@@ -111,11 +111,18 @@ describe('Glossary page should work properly', () => {
       .should('exist')
       .and('be.visible')
       .click({ animationDistanceThreshold: 20 });
-    //Clicking on Glossary
-    cy.get('[data-testid="appbar-item-glossary"]')
+
+      //Clicking on Glossary
+      cy.get('.ant-dropdown-menu')
       .should('exist')
       .and('be.visible')
-      .click();
+      .then(($el) => {
+      cy.wrap($el)
+      .find('[data-testid="appbar-item-glossary"]')
+      .should('exist')
+      .and('be.visible')
+      .click()
+    });
 
     // Todo: need to remove below uncaught exception once tree-view error resolves
     cy.on('uncaught:exception', () => {
