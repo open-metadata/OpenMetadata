@@ -11,11 +11,14 @@
         }
       },
       "analyzer": {
-        "om_analyzer": {
-          "tokenizer": "letter",
-          "filter": [
-            "lowercase",
-            "om_stemmer"
+        "om_analyzer_jp" : {
+          "tokenizer" : "kuromoji_tokenizer",
+          "type" : "custom",
+          "filter" : [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
           ]
         }
       },

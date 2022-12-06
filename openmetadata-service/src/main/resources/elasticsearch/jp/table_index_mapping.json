@@ -18,7 +18,7 @@
             "om_stemmer"
           ]
         },
-        "om_analyzer_ja" : {
+        "om_analyzer_jp" : {
           "tokenizer" : "kuromoji_tokenizer",
           "type" : "custom",
           "filter" : [
@@ -57,11 +57,11 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer_jp"
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer_jp"
       },
       "version": {
         "type": "float"
@@ -96,7 +96,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer_jp"
           },
           "fullyQualifiedName": {
             "type": "text"
