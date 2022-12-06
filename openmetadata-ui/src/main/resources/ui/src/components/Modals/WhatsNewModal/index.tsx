@@ -16,16 +16,15 @@ import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { t } from 'i18next';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import CloseWhatNewIconComponent from '../CloseWhatNewIconComponent';
+import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
+import CloseIcon from '../CloseIcon.component';
+import { VersionIndicatorIcon } from '../VersionIndicatorIcon.component';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
 import { ToggleType, WhatsNewModalProps } from './WhatsNewModal.interface';
 import './WhatsNewModal.styles.less';
 import { getReleaseVersionExpiry } from './WhatsNewModal.util';
-
-const iconString = `M7.878 3.002a1.876 1.876 0 11-3.751 0 1.876 1.876 0 013.751 0zm1.073.562a3.003
- 3.003 0 01-5.897 0H.563a.563.563 0 010-1.125h2.49a3.002 3.002 0 015.898 0h2.491a.563.563 0 010 1.125H8.951z`;
 
 const cookieStorage = new CookieStorage();
 
@@ -70,17 +69,14 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
     <Modal
       centered
       destroyOnClose
-      className="what-news-modal"
+      className="whats-new-modal"
       closeIcon={
-        <CloseWhatNewIconComponent
-          dataTestId="closeWhatsNew"
-          handleCancel={handleCancel}
-        />
+        <CloseIcon dataTestId="closeWhatsNew" handleCancel={handleCancel} />
       }
       data-testid="whats-new-dialog"
       footer={null}
       title={
-        <Typography.Text strong data-testid="what-news-header">
+        <Typography.Text strong data-testid="whats-new-header">
           {header}
         </Typography.Text>
       }
@@ -93,19 +89,11 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
           <div className="flex flex-col-reverse">
             {WHATS_NEW.map((d) => (
               <div className="flex items-center justify-end mb-2.5" key={d.id}>
-                <svg
-                  fill="none"
-                  height="1em"
-                  viewBox="0 0 13 6"
-                  width="1em"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    clipRule="evenodd"
-                    d={iconString}
-                    fill={activeData.id === d.id ? '#7147E8' : '#6B7280'}
-                    fillRule="evenodd"
-                  />
-                </svg>
+                <VersionIndicatorIcon
+                  fill={
+                    activeData.id === d.id ? PRIMERY_COLOR : DE_ACTIVE_COLOR
+                  }
+                />
                 <button
                   className={classNames(
                     'm-l-xss',
@@ -129,10 +117,9 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
               </div>
               <div>
                 <div
-                  className={classNames(
-                    'inline-flex border-1 border border-primary text-sm rounded-6 h-8 bg-white',
-                    { 'w-60': activeData.features.length > 0 }
-                  )}>
+                  className={classNames('whats-new-modal-button-container', {
+                    'w-60': activeData.features.length > 0,
+                  })}>
                   {activeData.features.length > 0 && (
                     <button
                       className={getToggleButtonClasses('features')}

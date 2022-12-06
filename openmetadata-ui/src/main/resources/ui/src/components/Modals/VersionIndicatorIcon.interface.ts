@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CSSProperties } from 'react';
 
-export type WhatsNewModalProps = {
-  header: string;
-  onCancel: () => void;
-  visible: boolean;
-};
-
-export type ToggleType = 'features' | 'change-log';
+export interface VersionIndicatorInterface {
+  fill: string;
+  style?: CSSProperties;
+}

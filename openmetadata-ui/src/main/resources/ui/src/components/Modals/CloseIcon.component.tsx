@@ -10,11 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
+import { CloseIconInterface } from './CloseIcon.interface';
 
-export type WhatsNewModalProps = {
-  header: string;
-  onCancel: () => void;
-  visible: boolean;
+const CloseIcon = ({ handleCancel, dataTestId }: CloseIconInterface) => {
+  return (
+    <svg
+      className="w-6 h-6 m-l-xss cursor-pointer"
+      data-testid={dataTestId}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      onClick={handleCancel}>
+      <path
+        d="M6 18L18 6M6 6l12 12"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
 };
 
-export type ToggleType = 'features' | 'change-log';
+export default CloseIcon;

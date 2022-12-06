@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-export type WhatsNewModalProps = {
-  header: string;
-  onCancel: () => void;
-  visible: boolean;
-};
-
-export type ToggleType = 'features' | 'change-log';
+export interface CloseIconInterface {
+  handleCancel?: () => void;
+  dataTestId?: string;
+}
