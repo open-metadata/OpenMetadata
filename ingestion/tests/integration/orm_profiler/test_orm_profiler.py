@@ -211,6 +211,7 @@ class ProfilerWorkflowTest(TestCase):
         ).profile
 
         assert not table.tableProfilerConfig
+        assert profile.profileSample == 75.0
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""
