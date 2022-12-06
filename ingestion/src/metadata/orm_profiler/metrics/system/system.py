@@ -32,6 +32,13 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+DML_OPERATION_MAP = {
+    "INSERT": "INSERT",
+    "MERGE": "UPDATE",
+    "UPDATE": "UPDATE",
+    "DELETE": "DELETE",
+}
+
 
 @valuedispatch
 def get_system_metrics_for_dialect(
@@ -294,7 +301,7 @@ def _(
     table: DeclarativeMeta,
     *args,
     **kwargs,
-) -> List[Dict]:
+) -> Optional[List[Dict]]:
     """Fetch system metrics for Snowflake. query_history will return maximum 10K rows in one request.
     We'll be fetching all the queries ran for the past 24 hours and filtered on specific query types
     (INSERTS, MERGE, DELETE, UPDATE).
@@ -312,18 +319,16 @@ def _(
 
     metric_results: List[Dict] = []
 
-    information_schema_query_history = dedent(
-        """
+    information_schema_query_history = """
     SELECT * FROM table(information_schema.query_history_by_warehouse(
         warehouse_name=>CURRENT_WAREHOUSE(),
-        end_time_range_start=>to_timestamp_ltz(DATEADD(HOUR, -24, CURRENT_TIMESTAMP())),
-        end_time_range_end=>to_timestamp_ltz(CURRENT_TIMESTAMP()),
+        end_time_range_start=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_start}, CURRENT_TIMESTAMP())),
+        end_time_range_end=>to_timestamp_ltz(DATEADD(HOUR, -{decrement_end}, CURRENT_TIMESTAMP())),
         result_limit=>10000
     ))
     WHERE QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE')
     order by start_time DESC;
     """
-    )
 
     result_scan = """
     SELECT *
@@ -335,8 +340,22 @@ def _(
         "query_id,database_name,schema_name,query_text,query_type,timestamp",
     )
 
-    cursor = session.execute(text(information_schema_query_history))
-    rows = cursor.fetchall()
+    rows = []
+
+    # limit of results is 10K. We'll query range of 1 hours to make sure we
+    # get all the necessary data.
+    for decrement in range(24):
+        cursor = session.execute(
+            text(
+                dedent(
+                    information_schema_query_history.format(
+                        decrement_start=decrement + 1, decrement_end=decrement
+                    )
+                )
+            )
+        )
+        rows.extend(cursor.fetchall())
+
     query_results = [
         QueryResult(
             row.query_id,
@@ -359,44 +378,40 @@ def _(
             ),
             None,
         )
-        if identifier:
-            values = identifier.value.split(".")
-            database_name, schema_name, table_name = (
-                [None] * (3 - len(values))
-            ) + values
+        if not identifier:
+            return None
 
-            database_name = (
-                database_name.lower().strip('"')
-                if database_name
-                else query_result.database_name
+        values = identifier.value.split(".")
+        database_name, schema_name, table_name = ([None] * (3 - len(values))) + values
+
+        database_name = (
+            database_name.lower().strip('"')
+            if database_name
+            else query_result.database_name
+        )
+        schema_name = (
+            schema_name.lower().strip('"') if schema_name else query_result.schema_name
+        )
+
+        if (
+            session.get_bind().url.database.lower() == database_name
+            and table.__table_args__["schema"].lower() == schema_name
+            and table.__tablename__.lower() == table_name
+        ):
+            cursor_for_result_scan = session.execute(
+                text(dedent(result_scan.format(query_id=query_result.query_id)))
             )
-            schema_name = (
-                schema_name.lower().strip('"')
-                if schema_name
-                else query_result.schema_name
+            row_for_result_scan = cursor_for_result_scan.first()
+
+            metric_results.append(
+                {
+                    "timestamp": int(query_result.timestamp.timestamp() * 1000),
+                    "operation": DML_OPERATION_MAP.get(query_result.query_type),
+                    "rowsAffected": row_for_result_scan[0]
+                    if row_for_result_scan
+                    else None,
+                }
             )
-
-            if (
-                session.get_bind().url.database.lower() == database_name
-                and table.__table_args__["schema"].lower() == schema_name
-                and table.__tablename__.lower() == table_name
-            ):
-                cursor_for_result_scan = session.execute(
-                    text(dedent(result_scan.format(query_id=query_result.query_id)))
-                )
-                row_for_result_scan = cursor_for_result_scan.first()
-
-                metric_results.append(
-                    {
-                        "timestamp": int(query_result.timestamp.timestamp() * 1000),
-                        "operation": "UPDATE"
-                        if query_result.query_type == "MERGE"
-                        else query_result.query_type,
-                        "rowsAffected": row_for_result_scan[0]
-                        if row_for_result_scan
-                        else None,
-                    }
-                )
 
     return metric_results
 
