@@ -521,6 +521,5 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   }
 };
 
-export const getDataInsightPathWithFqn = (fqn: string) => {
-  return ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
-};
+export const getDataInsightPathWithFqn = (fqn: string) =>
+  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
