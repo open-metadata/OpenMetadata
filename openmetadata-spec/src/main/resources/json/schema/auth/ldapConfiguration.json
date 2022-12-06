@@ -58,7 +58,7 @@
       "type": "string"
     },
     "verifyCertificateHostname": {
-      "description": "If true use HostNameSSLVerifier(only ehen trust store as cn as hostname) else TrustAll ",
+      "description": "If true use HostNameSSLVerifier(only then trust store cn as hostname) else TrustAll ",
       "type": "boolean",
       "default": false
     }

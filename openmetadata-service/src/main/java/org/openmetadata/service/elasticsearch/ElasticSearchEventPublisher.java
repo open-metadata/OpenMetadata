@@ -69,6 +69,7 @@ import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.EventPublisherJob;
+import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -180,7 +181,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         LOG.error("Missing Document", ex);
         updateElasticSearchFailureStatus(
             contextInfo,
-            EventPublisherJob.Status.ACTIVEWITHERROR,
+            Status.ACTIVE_WITH_ERROR,
             String.format(
                 "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
                 ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
@@ -191,7 +192,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           LOG.error("Error in publishing to ElasticSearch");
           updateElasticSearchFailureStatus(
               contextInfo,
-              EventPublisherJob.Status.ACTIVEWITHERROR,
+              Status.ACTIVE_WITH_ERROR,
               String.format(
                   "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
                   e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
@@ -199,7 +200,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         } else {
           updateElasticSearchFailureStatus(
               contextInfo,
-              EventPublisherJob.Status.ACTIVEWITHERROR,
+              Status.ACTIVE_WITH_ERROR,
               String.format(
                   "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
                   e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
@@ -208,7 +209,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       } catch (IOException ie) {
         updateElasticSearchFailureStatus(
             contextInfo,
-            EventPublisherJob.Status.ACTIVEWITHERROR,
+            Status.ACTIVE_WITH_ERROR,
             String.format(
                 "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
                 ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
