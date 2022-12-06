@@ -13,6 +13,9 @@ Configure and schedule Atlas metadata and profiler workflows from the OpenMetada
 
 ## Requirements
 
+Before this, you must ingest the database / messaging service you want to get metadata for. 
+For more details click [here](/connectors/metadata/atlas#create-database-service)
+
 <InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.13 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
@@ -55,6 +58,8 @@ source:
       hostPort: http://localhost:10000
       username: username
       password: password
+      databaseServiceName: ["local_hive"] # create database service and messaging service and pass `service name` here
+      messagingServiceName: []
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -72,6 +77,8 @@ workflowConfig:
 - **Host and Port**: Host and port of the Atlas service.
 - **Username**: username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.
 - **Password**: password to connect  to the Atlas.
+- **databaseServiceName**: source database of the data source(Database service that you created from UI. example- local_hive)
+- **messagingServiceName**: messaging service source of the data source.
 
 #### Sink Configuration
 

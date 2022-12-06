@@ -35,6 +35,52 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
 
+## Create Database Service
+
+You need to create database services before ingesting the metadata from Atlas. In OpenMetadata we have to create database services with the same name as the source.
+
+To create database service follow these steps:
+
+### 1.Visit Service Page
+
+The first step is ingesting the metadata from your sources. Under Settings, you will find a Services link an external
+source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler
+workflows.To visit the Services page, select Services from the Settings menu.serv
+
+<Image src="/images/openmetadata/connectors/amundsen/create-service-1.png" alt="db-service" caption="Navigate to Settings >> Services"/>
+
+### 2. Create a New Service
+
+Click on the Add New Service button to start the Service creation.
+
+<Image
+src="/images/openmetadata/connectors/create-service.png"
+alt="Create a new service"
+caption="Add a new Service from the Services page"
+/>
+
+### 3. Complete the ingestion
+
+For ingestion, please click [here](/connectors)
+
+### 4. Pass the Service
+
+<Image
+src="/images/openmetadata/connectors/atlas/ui-service-name.png"
+alt="service name"
+caption="service name"
+/>
+
+Pass the `service name` in your config like given below
+
+```yaml
+  hostPort: http://localhost:10000
+  username: username
+  password: password
+  databaseServiceName: ["local_hive"] # pass database service here
+  messagingServiceName: [] # pass messaging service here
+```
+
 ## Metadata Ingestion
 
 All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json)
@@ -47,8 +93,6 @@ The workflow is modeled around the following [JSON Schema](https://github.com/op
 
 <Note>
 
-- For database service `Hive` service will be create with service name `<your-atlas-serviceName>_database`
-- For messaging service `Kafka` service will be create with service name `<your-atlas-serviceName>_messaging`
 - Every table ingested will have a tag name `AtlasMetadata.atlas_table`, that can be found under `explore` section on top left corner
 
 </Note>
@@ -134,6 +178,8 @@ the changes.
 - **Host and Port**: Host and port of the Atlas service.
 - **Username**: username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.
 - **Password**: password to connect  to the Atlas.
+- **databaseServiceName**: source database of the data source(Database service that you created from UI. example- local_hive)
+- **messagingServiceName**: messaging service source of the data source.
 
 ### 6. Schedule the Ingestion and Deploy
 
@@ -194,19 +240,21 @@ source:
   serviceConnection:
     config:
       type: Atlas
-      username: admin
-      password: admin
       hostPort: http://localhost:10000
+      username: username
+      password: password
+      databaseServiceName: ["local_hive"] # create database service and messaging service and pass `service name` here
+      messagingServiceName: []
   sourceConfig:
     config:
       type: DatabaseMetadata
-sink:
+sink: 
   type: metadata-rest
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
 ```
 
 ### Source Configuration - Service Connection
@@ -216,6 +264,8 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 - `username`: Username to connect to the Atlas. This user should have privileges to read all the metadata in Atlas.
 - `password`: Password to connect to the Atlas.
 - `hostPort`: Atlas Host of the data source.
+- `databaseServiceName`: source database of the data source(Database service that you created from UI. example- local_hive).
+- `messagingServiceName`: messaging service source of the data source.
 
 ### Sink Configuration
 
