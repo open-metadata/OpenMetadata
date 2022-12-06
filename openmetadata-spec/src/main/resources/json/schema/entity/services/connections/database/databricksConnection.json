@@ -48,6 +48,11 @@
       "description": "Databricks compute resources URL.",
       "type": "string"
     },
+    "catalog": {
+      "title": "Catalog",
+      "description": "Catalog of the data source.",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
