@@ -125,9 +125,6 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["database"],
         post_process=[
-            "process_dbt_lineage_and_descriptions",
-            "create_dbt_tests_suite_definition",
-            "create_dbt_test_cases",
             "yield_view_lineage",
         ],
     )
@@ -236,31 +233,8 @@ class DatabaseServiceSource(
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)
 
-    # Initialize DBT structures for all Databases
-    data_models = {}
-    dbt_tests = {}
-
-    def __init__(self):
-
-        if (
-            hasattr(self.source_config.dbtConfigSource, "dbtSecurityConfig")
-            and self.source_config.dbtConfigSource.dbtSecurityConfig is None
-        ):
-            logger.info("dbtConfigSource is not configured")
-            self.dbt_catalog = None
-            self.dbt_manifest = None
-            self.dbt_run_results = None
-            self.data_models = {}
-        else:
-            dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
-            if dbt_details:
-                self.dbt_catalog = dbt_details[0] if len(dbt_details) == 3 else None
-                self.dbt_manifest = dbt_details[1] if len(dbt_details) == 3 else None
-                self.dbt_run_results = dbt_details[2] if len(dbt_details) == 3 else None
-                self.data_models = {}
 
     def prepare(self):
-        # self._parse_data_model()
         pass
 
     def get_status(self) -> SourceStatus:
