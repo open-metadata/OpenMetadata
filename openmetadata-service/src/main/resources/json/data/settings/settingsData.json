@@ -51,7 +51,9 @@
               "description",
               "owner",
               "tags",
-              "followers"
+              "followers",
+              "tableConstraints",
+              "constraint"
             ],
             "exclude": []
           },
