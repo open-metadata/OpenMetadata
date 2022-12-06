@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-@import '~antd/dist/antd.less';
-@import url('./variables.less');
-@import url('./position.less');
-@import url('./spacing.less');
-@import url('./components/table.less');
-@import url('./components/form.less');
-@import url('./components/tabs.less');
-@import url('./components/toggle-switch.less');
-@import url('./components/button.less');
-@import url('./components/card.less');
-@import url('./layout.less');
+export interface CloseIconInterface {
+  handleCancel?: () => void;
+  dataTestId?: string;
+}

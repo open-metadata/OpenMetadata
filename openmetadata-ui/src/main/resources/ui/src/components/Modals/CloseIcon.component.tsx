@@ -10,15 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
+import { CloseIconInterface } from './CloseIcon.interface';
 
-@import '~antd/dist/antd.less';
-@import url('./variables.less');
-@import url('./position.less');
-@import url('./spacing.less');
-@import url('./components/table.less');
-@import url('./components/form.less');
-@import url('./components/tabs.less');
-@import url('./components/toggle-switch.less');
-@import url('./components/button.less');
-@import url('./components/card.less');
-@import url('./layout.less');
+const CloseIcon = ({ handleCancel, dataTestId }: CloseIconInterface) => {
+  return (
+    <svg
+      className="w-6 h-6 m-l-xss cursor-pointer"
+      data-testid={dataTestId}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      onClick={handleCancel}>
+      <path
+        d="M6 18L18 6M6 6l12 12"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+};
+
+export default CloseIcon;
