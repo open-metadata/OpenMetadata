@@ -110,7 +110,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .and('be.visible')
-      .click({ animationDistanceThreshold: 10 });
+      .click({ animationDistanceThreshold: 20 });
     //Clicking on Glossary
     cy.get('[data-testid="appbar-item-glossary"]')
       .should('exist')
