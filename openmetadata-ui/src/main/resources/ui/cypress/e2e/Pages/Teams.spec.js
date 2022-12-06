@@ -25,7 +25,6 @@ const updateddescription = 'This is updated description';
 const teamName = `team-ct-test-${uuid()}`;
 const TEAM_DETAILS = {
   name: teamName,
-  displayName: teamName,
   updatedname: `${teamName}-updated`,
   teamType: 'Department',
   description: `This is ${teamName} description`,

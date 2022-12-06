@@ -22,6 +22,7 @@ import {
   Space,
   Tooltip,
   Tree,
+  TreeDataNode,
   Typography,
 } from 'antd';
 import { DataNode, EventDataNode } from 'antd/lib/tree';
@@ -228,7 +229,7 @@ const GlossaryV1 = ({
     setIsDelete(false);
   };
 
-  const handleTreeClick = (node: EventDataNode) => {
+  const handleTreeClick = (node: EventDataNode<TreeDataNode>) => {
     const key = node.key as string;
     if (selectedKey !== key) {
       handleChildLoading(true);
@@ -562,12 +563,13 @@ const GlossaryV1 = ({
             ))}
         </>
       )}
-      {selectedData && isDelete && (
+      {selectedData && (
         <EntityDeleteModal
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
           entityType="Glossary"
           loadingState={deleteStatus}
+          visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
         />

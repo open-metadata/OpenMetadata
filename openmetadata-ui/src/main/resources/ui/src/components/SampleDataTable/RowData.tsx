@@ -40,7 +40,7 @@ export const RowData = ({ data }: { data: any }) => {
   return (
     <Fragment>
       {data ? getDataElement(data) : <p data-testid="empty-data">--</p>}
-      {isFullView && <SchemaModal data={data} onClose={onClose} />}
+      <SchemaModal data={data} visible={isFullView} onClose={onClose} />
     </Fragment>
   );
 };
