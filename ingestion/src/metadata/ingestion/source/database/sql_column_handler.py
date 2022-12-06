@@ -212,7 +212,7 @@ class SqlColumnHandlerMixin:
                         table_constraints.append(
                             TableConstraint(
                                 constraintType=ConstraintType.PRIMARY_KEY,
-                                columns=pk_columns,
+                                columns=[column["name"]],
                             )
                         )
                     col_data_length = self._check_col_length(col_type, column["type"])
