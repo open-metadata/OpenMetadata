@@ -248,7 +248,6 @@ public final class ChangeEventParser {
     for (FieldChange field : fields) {
       // if field name has dots, then it is an array field
       String fieldName = field.getName();
-
       String newFieldValue = getFieldValue(field.getNewValue());
       String oldFieldValue = getFieldValue(field.getOldValue());
       EntityLink link = getEntityLink(fieldName, entity);
@@ -270,7 +269,6 @@ public final class ChangeEventParser {
     if (CommonUtil.nullOrEmpty(fieldValue)) {
       return StringUtils.EMPTY;
     }
-
     try {
       // Check if field value is a json string
       JsonValue json = JsonUtils.readJson(fieldValue.toString());
@@ -288,6 +286,8 @@ public final class ChangeEventParser {
             } else if (keys.contains(FIELD_NAME)) {
               // Glossary term references have only "name" field
               labels.add(item.asJsonObject().getString(FIELD_NAME));
+            } else if (keys.contains("constraintType")) {
+              labels.add(item.asJsonObject().getString("constraintType"));
             }
           } else if (item.getValueType() == ValueType.STRING) {
             // The string might be enclosed with double quotes
@@ -415,7 +415,8 @@ public final class ChangeEventParser {
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
           message = String.format("Unfollowed %s `%s`", link.getEntityType(), link.getEntityFQN());
         } else {
-          message = String.format(("Deleted " + getBold(publishTo)), updatedField);
+          message =
+              String.format(("Deleted " + getBold(publishTo) + ": `%s`"), updatedField, getFieldValue(oldFieldValue));
         }
         break;
       default:
