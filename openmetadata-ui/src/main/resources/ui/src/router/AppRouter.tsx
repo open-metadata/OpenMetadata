@@ -137,42 +137,48 @@ const AppRouter = () => {
   }
 
   return (
-    <Switch>
+    <>
       {slackChat}
-      <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-      {callbackComponent ? (
-        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
-      ) : null}
+      <Switch>
+        <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+        {callbackComponent ? (
+          <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+        ) : null}
 
-      <Route exact path={ROUTES.HOME}>
-        {!isAuthenticated && !isSigningIn ? (
+        <Route exact path={ROUTES.HOME}>
+          {!isAuthenticated && !isSigningIn ? (
+            <>
+              <Redirect to={ROUTES.SIGNIN} />
+            </>
+          ) : (
+            <Redirect to={ROUTES.MY_DATA} />
+          )}
+        </Route>
+
+        {isBasicAuthProvider && (
           <>
-            <Redirect to={ROUTES.SIGNIN} />
+            <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
+            <Route
+              exact
+              component={ForgotPassword}
+              path={ROUTES.FORGOT_PASSWORD}
+            />
+            <Route
+              exact
+              component={ResetPassword}
+              path={ROUTES.RESET_PASSWORD}
+            />
+            <Route
+              exact
+              component={AccountActivationConfirmation}
+              path={ROUTES.ACCOUNT_ACTIVATION}
+            />
           </>
-        ) : (
-          <Redirect to={ROUTES.MY_DATA} />
         )}
-      </Route>
-
-      {isBasicAuthProvider && (
-        <>
-          <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
-          <Route
-            exact
-            component={ForgotPassword}
-            path={ROUTES.FORGOT_PASSWORD}
-          />
-          <Route exact component={ResetPassword} path={ROUTES.RESET_PASSWORD} />
-          <Route
-            exact
-            component={AccountActivationConfirmation}
-            path={ROUTES.ACCOUNT_ACTIVATION}
-          />
-        </>
-      )}
-      {isAuthenticated && <AuthenticatedAppRouter />}
-      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-    </Switch>
+        {isAuthenticated && <AuthenticatedAppRouter />}
+        <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      </Switch>
+    </>
   );
 };
 
