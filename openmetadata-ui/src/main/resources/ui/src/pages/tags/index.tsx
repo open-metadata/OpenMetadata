@@ -12,7 +12,16 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Table, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Input,
+  Row,
+  Space,
+  Table,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
@@ -108,6 +117,8 @@ const TagsPage = () => {
   });
   const [categoryPermissions, setCategoryPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [currentCategoryName, setCurrentCategoryName] = useState<string>('');
 
   const createCategoryPermission = useMemo(
     () =>
@@ -136,6 +147,11 @@ const TagsPage = () => {
     }
   };
 
+  const handleEditNameCancel = () => {
+    setIsNameEditing(false);
+    setCurrentCategoryName(currentCategory?.name || '');
+  };
+
   const fetchCategories = (setCurrent?: boolean) => {
     setIsLoading(true);
     getTagCategories('usageCount')
@@ -144,6 +160,7 @@ const TagsPage = () => {
           setCategoreis(res.data);
           if (setCurrent) {
             setCurrentCategory(res.data[0]);
+            setCurrentCategoryName(res.data[0].name);
           }
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -168,7 +185,8 @@ const TagsPage = () => {
       try {
         const currentCategory = await getCategory(name, 'usageCount');
         if (currentCategory) {
-          setCurrentCategory(currentCategory as TagCategory);
+          setCurrentCategory(currentCategory);
+          setCurrentCategoryName(currentCategory.name);
           setIsLoading(false);
         } else {
           showErrorToast(
@@ -328,14 +346,19 @@ const TagsPage = () => {
     }
   };
 
-  const UpdateCategory = async (updatedHTML: string) => {
+  const handleUpdateCategory = async (updatedCategory: TagCategory) => {
     try {
-      const response = await updateTagCategory(currentCategory?.name ?? '', {
-        name: currentCategory?.name ?? '',
-        description: updatedHTML,
-      });
+      const response = await updateTagCategory(
+        currentCategory?.name ?? '',
+        updatedCategory
+      );
       if (response) {
-        await fetchCurrentCategory(currentCategory?.name as string, true);
+        if (currentCategory?.name !== updatedCategory.name) {
+          history.push(getTagPath(response.name));
+          setIsNameEditing(false);
+        } else {
+          await fetchCurrentCategory(currentCategory?.name as string, true);
+        }
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -344,6 +367,24 @@ const TagsPage = () => {
     } finally {
       setIsEditCategory(false);
     }
+  };
+
+  const handleRenameSave = () => {
+    handleUpdateCategory({
+      name: (currentCategoryName || currentCategory?.name) ?? '',
+      description: currentCategory?.description ?? '',
+    });
+  };
+
+  const handleUpdateDescription = async (updatedHTML: string) => {
+    handleUpdateCategory({
+      name: currentCategory?.name ?? '',
+      description: updatedHTML,
+    });
+  };
+
+  const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentCategoryName(e.target.value);
   };
 
   const onNewTagChange = (data: TagCategory, forceSet = false) => {
@@ -632,14 +673,84 @@ const TagsPage = () => {
         ) : (
           <div className="full-height" data-testid="tags-container">
             {currentCategory && (
-              <div
-                className="tw-flex tw-justify-between tw-items-center"
-                data-testid="header">
-                <div
-                  className="tw-text-link tw-text-base tw-py-2"
-                  data-testid="category-name">
-                  {currentCategory.displayName ?? currentCategory.name}
-                </div>
+              <Space className="w-full justify-between" data-testid="header">
+                <Space className="items-center">
+                  {isNameEditing ? (
+                    <Row align="middle" gutter={8}>
+                      <Col>
+                        <Input
+                          className="input-width"
+                          data-testid="tag-category-name"
+                          name="tagCategoryName"
+                          value={currentCategoryName}
+                          onChange={handleCategoryNameChange}
+                        />
+                      </Col>
+                      <Col>
+                        <Button
+                          className="icon-buttons"
+                          data-testid="cancelAssociatedTag"
+                          icon={
+                            <FontAwesomeIcon
+                              className="w-3.5 h-3.5"
+                              icon="times"
+                            />
+                          }
+                          size="small"
+                          type="primary"
+                          onMouseDown={handleEditNameCancel}
+                        />
+                        <Button
+                          className="icon-buttons m-l-xss"
+                          data-testid="saveAssociatedTag"
+                          icon={
+                            <FontAwesomeIcon
+                              className="w-3.5 h-3.5"
+                              icon="check"
+                            />
+                          }
+                          size="small"
+                          type="primary"
+                          onMouseDown={handleRenameSave}
+                        />
+                      </Col>
+                    </Row>
+                  ) : (
+                    <Space>
+                      <Typography.Title
+                        className="m-b-0"
+                        data-testid="category-name"
+                        level={5}>
+                        {getEntityName(currentCategory)}
+                      </Typography.Title>
+                      {currentCategory.provider === ProviderType.User && (
+                        <Tooltip
+                          title={
+                            categoryPermissions.EditAll
+                              ? t('label.edit-entity', {
+                                  entity: t('label.name'),
+                                })
+                              : NO_PERMISSION_FOR_ACTION
+                          }>
+                          <Button
+                            className="p-0"
+                            data-testid="name-edit-icon"
+                            disabled={!categoryPermissions.EditAll}
+                            size="small"
+                            type="text"
+                            onClick={() => setIsNameEditing(true)}>
+                            <SVGIcons
+                              alt="icon-tag"
+                              className="tw-mx-1"
+                              icon={Icons.EDIT}
+                              width="16"
+                            />
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </Space>
+                  )}
+                </Space>
                 <div className="flex-center">
                   <Tooltip
                     title={
@@ -677,7 +788,7 @@ const TagsPage = () => {
                     Delete category
                   </Button>
                 </div>
-              </div>
+              </Space>
             )}
             <div className="m-b-sm" data-testid="description-container">
               <Description
@@ -692,7 +803,7 @@ const TagsPage = () => {
                 isEdit={isEditCategory}
                 onCancel={() => setIsEditCategory(false)}
                 onDescriptionEdit={() => setIsEditCategory(true)}
-                onDescriptionUpdate={UpdateCategory}
+                onDescriptionUpdate={handleUpdateDescription}
               />
             </div>
             <Table
