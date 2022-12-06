@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 import React from 'react';
-import { CloseIconInterface } from './CloseIconComponent.interface';
+import { CloseIconInterface } from './CloseIcon.interface';
 
-const CloseIconComponent = ({
-  handleCancel,
-  dataTestId,
-}: CloseIconInterface) => {
+const CloseIcon = ({ handleCancel, dataTestId }: CloseIconInterface) => {
   return (
     <svg
       className="w-6 h-6 m-l-xss cursor-pointer"
@@ -36,4 +33,4 @@ const CloseIconComponent = ({
   );
 };
 
-export default CloseIconComponent;
+export default CloseIcon;

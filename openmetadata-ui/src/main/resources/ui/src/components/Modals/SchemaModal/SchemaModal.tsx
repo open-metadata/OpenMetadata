@@ -17,7 +17,7 @@ import { t } from 'i18next';
 import React, { FC } from 'react';
 import ReactDOM from 'react-dom';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
-import CloseIconComponent from '../CloseIconComponent';
+import CloseIcon from '../CloseIcon.component';
 import { SchemaModalProp } from './SchemaModal.interface';
 import './SchemaModal.style.less';
 
@@ -34,7 +34,7 @@ const SchemaModal: FC<SchemaModalProp> = ({
       maskClosable
       className={classNames('schema-modal', className)}
       closeIcon={
-        <CloseIconComponent
+        <CloseIcon
           dataTestId="schema-modal-close-button"
           handleCancel={onClose}
         />
