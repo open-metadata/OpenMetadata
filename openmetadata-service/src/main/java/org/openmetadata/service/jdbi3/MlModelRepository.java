@@ -174,7 +174,40 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           mlModel.getId(), mlModel.getDashboard().getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
     }
 
+    setMlFeatureSourcesLineage(mlModel);
     applyTags(mlModel);
+  }
+
+  /**
+   * If we have the properties MLFeatures -> MlFeatureSources and the feature sources have properly informed the Data
+   * Source EntityRef, then we will automatically build the lineage between tables and ML Model.
+   *
+   * @param mlModel ML Model being created or updated.
+   */
+  private void setMlFeatureSourcesLineage(MlModel mlModel) {
+    if (mlModel.getMlFeatures() != null) {
+      mlModel
+          .getMlFeatures()
+          .forEach(
+              mlFeature -> {
+                if (mlFeature.getFeatureSources() != null) {
+                  mlFeature
+                      .getFeatureSources()
+                      .forEach(
+                          mlFeatureSource -> {
+                            EntityReference targetEntity = mlFeatureSource.getDataSource();
+                            if (targetEntity != null) {
+                              addRelationship(
+                                  targetEntity.getId(),
+                                  mlModel.getId(),
+                                  targetEntity.getType(),
+                                  MLMODEL,
+                                  Relationship.UPSTREAM);
+                            }
+                          });
+                }
+              });
+    }
   }
 
   @Override

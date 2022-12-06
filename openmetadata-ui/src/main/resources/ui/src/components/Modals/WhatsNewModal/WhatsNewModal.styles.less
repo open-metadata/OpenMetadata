@@ -10,15 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../../styles/variables.less');
 
-@import '~antd/dist/antd.less';
-@import url('./variables.less');
-@import url('./position.less');
-@import url('./spacing.less');
-@import url('./components/table.less');
-@import url('./components/form.less');
-@import url('./components/tabs.less');
-@import url('./components/toggle-switch.less');
-@import url('./components/button.less');
-@import url('./components/card.less');
-@import url('./layout.less');
+.whats-new-modal {
+  .ant-modal-body {
+    padding-top: 0;
+  }
+  .ant-modal-close-x {
+    display: flex;
+    align-items: center;
+  }
+}
+.whats-new-modal-button-container {
+  display: inline-flex;
+  border-width: 0.0625rem;
+  border-color: @primary-color;
+  border-radius: 0.375rem;
+  height: 2rem;
+  font-size: 0.875rem;
+  background: @white;
+}
