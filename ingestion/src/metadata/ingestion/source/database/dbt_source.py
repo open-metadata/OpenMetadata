@@ -14,7 +14,7 @@ DBT source methods.
 from abc import ABC
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Union, Any
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -57,9 +57,10 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
-from metadata.ingestion.source.database.dbt_service import DbtServiceSource
+from metadata.ingestion.source.database.dbt_service import DbtServiceSource, DbtFiles
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -68,6 +69,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import SourceStatus
 from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.dbt_config import get_dbt_details
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+
 logger = ingestion_logger()
 
 
@@ -79,6 +87,7 @@ class DbtSource(DbtServiceSource, ABC):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
+        self.source_config = self.config.sourceConfig.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.connection = self.config.serviceConnection.__root__.config
@@ -96,9 +105,6 @@ class DbtSource(DbtServiceSource, ABC):
         """
         By default, there's nothing to prepare
         """
-
-    def get_data_model(self, table_fqn: str) -> Optional[DataModel]:
-        return self.data_models.get(table_fqn.lower())
 
     def get_dbt_owner(self, mnode: dict, cnode: dict) -> Optional[str]:
         """
@@ -131,96 +137,177 @@ class DbtSource(DbtServiceSource, ABC):
                         )
         return owner
 
-    def _parse_data_model(self):
-        """
+    def get_dbt_tag_labels(self, dbt_tags_list):
+        return [
+            TagLabel(
+                tagFQN=fqn.build(
+                    self.metadata,
+                    entity_type=Tag,
+                    tag_category_name="DBTTags",
+                    tag_name=tag,
+                ),
+                labelType=LabelType.Automated,
+                state=State.Confirmed,
+                source=TagSource.Tag,
+            )
+            for tag in dbt_tags_list
+        ] or None
+
+    def yield_dbt_tags(self, dbt_files: DbtFiles) -> Iterable[OMetaTagAndCategory]:
+        try:
+            if (
+                self.source_config.dbtConfigSource
+                and dbt_files.dbt_manifest
+            ):
+                manifest_entities = {
+                    **dbt_files.dbt_manifest["nodes"],
+                    **dbt_files.dbt_manifest["sources"],
+                }
+                logger.info("Processing DBT Tags")
+                dbt_tags_list = []
+                for key, manifest_node in manifest_entities.items():
+                    try:
+                        if manifest_node["resource_type"] in ["analysis", "test"]:
+                            continue
+                        
+                        #Add the tags from the model
+                        model_tags = manifest_node.get("tags")
+                        if model_tags:
+                            dbt_tags_list.extend(model_tags)
+                        
+                        # Add the tags from the columns
+                        for _, column in manifest_node["columns"].items():
+                            column_tags = column.get("tags")
+                            if column_tags:
+                                dbt_tags_list.extend(column_tags)
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(f"Unable to process DBT tags for node: f{key} - {exc}")
+                    
+                # Create all the tags added
+                dbt_tag_labels = self.get_dbt_tag_labels(dbt_tags_list)
+                for tag_label in dbt_tag_labels:
+                    yield OMetaTagAndCategory(
+                        category_name=CreateTagCategoryRequest(
+                            name="DBTTags",
+                            description="",
+                        ),
+                        category_details=CreateTagRequest(
+                            name=tag_label.tagFQN.__root__.split(".")[1],
+                            description="DBT Tags",
+                        ),
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unexpected exception processing DBT tags: {exc}")
+    
+    def yield_data_models(self, dbt_files: DbtFiles) -> DataModelLink:
+        """ 
         Get all the DBT information and feed it to the Table Entity
         """
         if (
             self.source_config.dbtConfigSource
-            and self.dbt_manifest
-            and self.dbt_catalog
+            and dbt_files.dbt_manifest
         ):
-            logger.info("Parsing Data Models")
-            self.manifest_entities = {
-                **self.dbt_manifest["nodes"],
-                **self.dbt_manifest["sources"],
+            logger.info("Parsing DBT Data Models")
+            manifest_entities = {
+                **dbt_files.dbt_manifest["nodes"],
+                **dbt_files.dbt_manifest["sources"],
             }
-            self.catalog_entities = {
-                **self.dbt_catalog["nodes"],
-                **self.dbt_catalog["sources"],
-            }
-            for key, mnode in self.manifest_entities.items():
+            if dbt_files.dbt_catalog:
+                catalog_entities = {
+                    **dbt_files.dbt_catalog["nodes"],
+                    **dbt_files.dbt_catalog["sources"],
+                }
+            self.context.data_model_links = []
+            self.context.dbt_tests = {}
+            for key, manifest_node in manifest_entities.items():
                 try:
+                    # Skip the analysis node since it does not contain relevant metatada
+                    if manifest_node["resource_type"] in ["analysis"]:
+                        continue
+
+                    # If the run_results file is passed then only DBT tests will be processed
+                    if dbt_files.dbt_run_results:
+                        # Test nodes will be processed further in the topology
+                        if manifest_node["resource_type"] == "test":
+                            self.context.dbt_tests[key] = manifest_node
+                            self.context.dbt_tests[key]["upstream"] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+                            self.context.dbt_tests[key]["results"] = next(item for item in dbt_files.dbt_run_results.get("results") if item["unique_id"] == key)
+                            continue
+
                     model_name = (
-                        mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
+                        manifest_node["alias"] if "alias" in manifest_node.keys() else manifest_node["name"]
                     )
-                    cnode = self.catalog_entities.get(key)
-                    columns = (
-                        self._parse_data_model_columns(model_name, mnode, cnode)
-                        if cnode
-                        else []
+                    logger.info(f"Processing DBT node: {model_name}")
+                    
+                    catalog_node = None
+                    if dbt_files.dbt_catalog:
+                        catalog_node = catalog_entities.get(key)
+                    dbt_columns = (
+                        self.parse_data_model_columns(manifest_node, catalog_node)
                     )
 
-                    if mnode["resource_type"] == "test":
-                        self.dbt_tests[key] = mnode
-                        continue
-                    if mnode["resource_type"] == "analysis":
-                        continue
-                    upstream_nodes = self._parse_data_model_upstream(mnode)
-                    database = mnode["database"] if mnode["database"] else "default"
-                    schema = mnode["schema"] if mnode["schema"] else "default"
+                    # if manifest_node["resource_type"] == "test":
+                    #     self.dbt_tests[key] = manifest_node
+                    #     continue
+                    upstream_nodes = self.parse_upstream_nodes(manifest_entities, manifest_node)
+                    database = manifest_node["database"] if manifest_node["database"] else "default"
+                    schema = manifest_node["schema"] if manifest_node["schema"] else "default"
+                    
                     dbt_table_tags_list = None
-                    if mnode.get("tags"):
-                        dbt_table_tags_list = [
-                            TagLabel(
-                                tagFQN=fqn.build(
-                                    self.metadata,
-                                    entity_type=Tag,
-                                    tag_category_name="DBTTags",
-                                    tag_name=tag,
-                                ),
-                                labelType=LabelType.Automated,
-                                state=State.Confirmed,
-                                source=TagSource.Tag,
-                            )
-                            for tag in mnode.get("tags")
-                        ] or None
+                    dbt_model_tag_labels = manifest_node.get("tags")
+                    if dbt_model_tag_labels:
+                        dbt_table_tags_list = self.get_dbt_tag_labels(dbt_model_tag_labels)
 
-                    dbt_compiled_query = self.get_dbt_compiled_query(mnode)
-                    dbt_raw_query = self.get_dbt_raw_query(mnode)
+                    dbt_compiled_query = self.get_dbt_compiled_query(manifest_node)
+                    dbt_raw_query = self.get_dbt_raw_query(manifest_node)
 
                     model = DataModel(
                         modelType=ModelType.DBT,
-                        description=mnode.get("description")
-                        if mnode.get("description")
+                        description=manifest_node.get("description")
+                        if manifest_node.get("description")
                         else None,
-                        path=f"{mnode['root_path']}/{mnode['original_file_path']}",
+                        path=f"{manifest_node['root_path']}/{manifest_node['original_file_path']}",
                         rawSql=dbt_raw_query if dbt_raw_query else "",
                         sql=dbt_compiled_query if dbt_compiled_query else "",
-                        columns=columns,
+                        columns=dbt_columns,
                         upstream=upstream_nodes,
-                        owner=self.get_dbt_owner(mnode=mnode, cnode=cnode),
+                        # owner=self.get_dbt_owner(mnode=mnode, cnode=cnode),
                         tags=dbt_table_tags_list,
                     )
-                    model_fqn = fqn.build(
+                    # model_fqn = fqn.build(
+                    #     self.metadata,
+                    #     entity_type=DataModel,
+                    #     service_name=self.config.serviceName,
+                    #     database_name=database,
+                    #     schema_name=schema,
+                    #     model_name=model_name,
+                    # ).lower()
+                    table_fqn = fqn.build(
                         self.metadata,
-                        entity_type=DataModel,
+                        entity_type=Table,
                         service_name=self.config.serviceName,
                         database_name=database,
                         schema_name=schema,
-                        model_name=model_name,
-                    ).lower()
-                    self.data_models[model_fqn] = model
+                        table_name=model_name,
+                    )
+                    data_model_link = DataModelLink(
+                        fqn=table_fqn,
+                        datamodel=model
+                    )
+                    yield data_model_link
+                    self.context.data_model_links.append(data_model_link)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Unexpected exception parsing data model: {exc}")
 
-    def _parse_data_model_upstream(self, mnode):
+    def parse_upstream_nodes(self, manifest_entities, dbt_node):
         upstream_nodes = []
-        if "depends_on" in mnode and "nodes" in mnode["depends_on"]:
-            for node in mnode["depends_on"]["nodes"]:
+        if "depends_on" in dbt_node and "nodes" in dbt_node["depends_on"]:
+            for node in dbt_node["depends_on"]["nodes"]:
                 try:
-                    parent_node = self.manifest_entities[node]
+                    parent_node = manifest_entities[node]
                     parent_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -232,322 +319,301 @@ class DbtSource(DbtServiceSource, ABC):
                         if parent_node["schema"]
                         else "default",
                         table_name=parent_node["name"],
-                    )
+                    ).lower()
                     if parent_fqn:
                         upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(
-                        f"Failed to parse the node {node} to capture lineage: {exc}"
+                        f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
         return upstream_nodes
 
-    def _parse_data_model_columns(
-        self, _: str, mnode: Dict, cnode: Dict
+    def parse_data_model_columns(
+        self, manifest_node: dict, catalog_node: dict
     ) -> List[Column]:
         columns = []
-        catalogue_columns = cnode.get("columns", {})
-        manifest_columns = mnode.get("columns", {})
-        for key in catalogue_columns:
-            ccolumn = catalogue_columns[key]
+        # catalogue_columns = cnode.get("columns", {})
+        manifest_columns = manifest_node.get("columns", {})
+        for key, manifest_column in manifest_columns.items():
             try:
-                ctype = ccolumn["type"]
-                description = manifest_columns.get(key.lower(), {}).get("description")
-                if description is None:
-                    description = ccolumn.get("comment")
+                logger.info(f"Processing DBT column: {key}")
+                column_name = manifest_column.get("name")
+                column_type = manifest_column.get("data_type")
+                column_description = manifest_columns.get(key.lower(), {}).get("description")
                 dbt_column_tags = manifest_columns.get(key.lower(), {}).get("tags")
-                dbt_column_tags_list = None
-                if dbt_column_tags:
-                    dbt_column_tags_list = [
-                        TagLabel(
-                            tagFQN=fqn.build(
-                                self.metadata,
-                                entity_type=Tag,
-                                tag_category_name="DBTTags",
-                                tag_name=tag,
-                            ),
-                            labelType=LabelType.Automated,
-                            state=State.Confirmed,
-                            source=TagSource.Tag,
-                        )
-                        for tag in dbt_column_tags
-                    ] or None
-
+                dbt_column_tags_list = self.get_dbt_tag_labels(dbt_column_tags)
+                
+                # If catalog file is passed pass the column information from catalog file
+                column_index = None
+                if catalog_node:
+                    catalog_column = catalog_node["columns"].get(key)
+                    if catalog_column:
+                        column_name = catalog_column.get("name")
+                        column_type = catalog_column.get("type")
+                        column_index = catalog_column.get("index")
+                        if column_description is None:
+                            column_description = catalog_column.get("comment")
+                
                 col = Column(
-                    name=ccolumn["name"].lower(),
-                    description=description if description else None,
-                    dataType=ColumnTypeParser.get_column_type(ctype),
+                    name=column_name,
+                    description=column_description,
+                    dataType=ColumnTypeParser.get_column_type(column_type),
                     dataLength=1,
-                    ordinalPosition=ccolumn["index"],
+                    ordinalPosition=column_index,
                     tags=dbt_column_tags_list,
                 )
                 columns.append(col)
+                logger.info(f"Successfully processed DBT column: {key}")
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to parse column {ccolumn['name']}: {exc}")
+                logger.warning(f"Failed to parse DBT column {column_name}: {exc}")
 
         return columns
 
-    def process_dbt_lineage_and_descriptions(
-        self,
-    ) -> Iterable[AddLineageRequest]:
+    def create_dbt_lineage(self, data_model_link: DataModelLink) -> AddLineageRequest:
         """
-        After everything has been processed, add the lineage info
+        Prepares the database name to be sent to stage.
+        Filtering happens here.
         """
-        logger.info("Processing DBT lineage and Descriptions")
-        for data_model_name, data_model in self.data_models.items():
-            to_es_result = self.metadata.es_search_from_fqn(
+        logger.info(f"Processing DBT lineage for: {data_model_link.fqn.__root__}")
+        
+        # Get the table entity from ES
+        to_es_result = self.metadata.es_search_from_fqn(
                 entity_type=Table,
-                fqn_search_string=data_model_name,
+                fqn_search_string=data_model_link.fqn.__root__,
             )
-            to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
-                entity_list=to_es_result, fetch_multiple_entities=False
-            )
-            if to_entity:
-                try:
-                    # Patch table descriptions from DBT
-                    if data_model.description:
-                        self.metadata.patch_description(
-                            entity=Table,
-                            entity_id=to_entity.id,
-                            description=data_model.description.__root__,
-                            force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
-                        )
-
-                    # Patch column descriptions from DBT
-                    for column in data_model.columns:
-                        if column.description:
-                            self.metadata.patch_column_description(
-                                entity_id=to_entity.id,
-                                column_name=column.name.__root__,
-                                description=column.description.__root__,
-                                force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
-                            )
-                except Exception as exc:  # pylint: disable=broad-except
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to parse the node {upstream_node} to update dbt desctiption: {exc}"
-                    )
-
-            # Create Lineage from DBT Files
-            for upstream_node in data_model.upstream:
-                try:
-                    from_es_result = self.metadata.es_search_from_fqn(
-                        entity_type=Table,
-                        fqn_search_string=upstream_node,
-                    )
-                    from_entity: Optional[
-                        Union[Table, List[Table]]
-                    ] = get_entity_from_es_result(
-                        entity_list=from_es_result, fetch_multiple_entities=False
-                    )
-                    if from_entity and to_entity:
-                        yield AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=from_entity.id.__root__,
-                                    type="table",
-                                ),
-                                toEntity=EntityReference(
-                                    id=to_entity.id.__root__,
-                                    type="table",
-                                ),
-                            )
-                        )
-
-                except Exception as exc:  # pylint: disable=broad-except
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
-                    )
-
-            # Create Lineage from DBT Queries
+        to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+            entity_list=to_es_result, fetch_multiple_entities=False
+        )
+        for upstream_node in data_model_link.datamodel.upstream:
             try:
-                service_database_schema_table = fqn.split(data_model_name)
-                target_table_fqn = ".".join(service_database_schema_table[1:])
-                query = f"create table {target_table_fqn} as {data_model.sql.__root__}"
-                lineages = get_lineage_by_query(
-                    self.metadata,
-                    query=query,
-                    service_name=service_database_schema_table[0],
-                    database_name=service_database_schema_table[1],
-                    schema_name=service_database_schema_table[2],
+                from_es_result = self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=upstream_node,
                 )
-                for lineage_request in lineages or []:
-                    yield lineage_request
+                from_entity: Optional[
+                    Union[Table, List[Table]]
+                ] = get_entity_from_es_result(
+                    entity_list=from_es_result, fetch_multiple_entities=False
+                )
+                if from_entity and to_entity:
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=from_entity.id.__root__,
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=to_entity.id.__root__,
+                                type="table",
+                            ),
+                        )
+                    )
+
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the query {data_model.sql.__root__} to capture lineage: {exc}"
+                    f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                 )
 
-    def create_dbt_tests_suite_definition(self):
+    def process_dbt_descriptions(self, data_model_link: DataModelLink):
+        """
+        Prepares the database name to be sent to stage.
+        Filtering happens here.
+        """
+        logger.info(f"Processing DBT Descriptions for: {data_model_link.fqn.__root__}")
+
+        # Get the table entity from ES
+        to_es_result = self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=data_model_link.fqn.__root__,
+            )
+        to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+            entity_list=to_es_result, fetch_multiple_entities=False
+        )
+        if to_entity:
+            try:
+                data_model = data_model_link.datamodel
+                # Patch table descriptions from DBT
+                if data_model.description:
+                    self.metadata.patch_description(
+                        entity=Table,
+                        entity_id=to_entity.id,
+                        description=data_model.description.__root__,
+                        force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                    )
+
+                # Patch column descriptions from DBT
+                for column in data_model.columns:
+                    if column.description:
+                        self.metadata.patch_column_description(
+                            entity_id=to_entity.id,
+                            column_name=column.name.__root__,
+                            description=column.description.__root__,
+                            force=self.source_config.dbtConfigSource.dbtUpdateDescriptions,
+                        )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to parse the node {data_model_link.fqn.__root__} to update dbt desctiption: {exc}"
+                )
+    
+    def create_dbt_tests_suite(self, dbt_test: dict) -> CreateTestSuiteRequest:
         """
         After everything has been processed, add the tests suite and test definitions
         """
         try:
-            if (
-                self.source_config.dbtConfigSource
-                and self.dbt_manifest
-                and self.dbt_catalog
-                and self.dbt_run_results
-            ):
-                logger.info("Processing DBT Tests Suites and Test Definitions")
-                for _, dbt_test in self.dbt_tests.items():
-                    test_suite_name = dbt_test["meta"].get(
-                        "test_suite_name", "DBT_TEST_SUITE"
-                    )
-                    test_suite_desciption = dbt_test["meta"].get(
-                        "test_suite_desciption", ""
-                    )
-                    check_test_suite_exists = self.metadata.get_by_name(
-                        fqn=test_suite_name, entity=TestSuite
-                    )
-                    if not check_test_suite_exists:
-                        test_suite = CreateTestSuiteRequest(
-                            name=test_suite_name,
-                            description=test_suite_desciption,
-                        )
-                        yield test_suite
-                    check_test_definition_exists = self.metadata.get_by_name(
-                        fqn=dbt_test["name"],
-                        entity=TestDefinition,
-                    )
-                    if not check_test_definition_exists:
-                        column_name = dbt_test.get("column_name")
-                        if column_name:
-                            entity_type = EntityType.COLUMN
-                        else:
-                            entity_type = EntityType.TABLE
-                        test_definition = CreateTestDefinitionRequest(
-                            name=dbt_test["name"],
-                            description=dbt_test["description"],
-                            entityType=entity_type,
-                            testPlatforms=[TestPlatform.DBT],
-                            parameterDefinition=self.create_test_case_parameter_definitions(
-                                dbt_test
-                            ),
-                        )
-                        yield test_definition
+            test_name = dbt_test.get("name")
+            logger.info(f"Processing DBT Tests Suite for node: {test_name}")
+            test_suite_name = dbt_test["meta"].get(
+                "test_suite_name", "DBT_TEST_SUITE"
+            )
+            test_suite_desciption = dbt_test["meta"].get(
+                "test_suite_desciption", ""
+            )
+            check_test_suite_exists = self.metadata.get_by_name(
+                fqn=test_suite_name, entity=TestSuite
+            )
+            if not check_test_suite_exists:
+                yield CreateTestSuiteRequest(
+                    name=test_suite_name,
+                    description=test_suite_desciption,
+                )
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Failed to parse the node to capture tests {err}")
 
-    def create_dbt_test_cases(self):
+    def create_dbt_tests_suite_definition(self, dbt_test: dict) -> CreateTestDefinitionRequest:
+        """
+        After everything has been processed, add the tests suite and test definitions
+        """
+        try:
+            test_name = dbt_test.get("name")
+            logger.info(f"Processing DBT Tests Suite Definition for node: {test_name}")
+            check_test_definition_exists = self.metadata.get_by_name(
+                fqn=dbt_test["name"],
+                entity=TestDefinition,
+            )
+            if not check_test_definition_exists:
+                column_name = dbt_test.get("column_name")
+                if column_name:
+                    entity_type = EntityType.COLUMN
+                else:
+                    entity_type = EntityType.TABLE
+                yield CreateTestDefinitionRequest(
+                    name=dbt_test["name"],
+                    description=dbt_test["description"],
+                    entityType=entity_type,
+                    testPlatforms=[TestPlatform.DBT],
+                    parameterDefinition=self.create_test_case_parameter_definitions(
+                        dbt_test
+                    ),
+                )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(f"Failed to parse the node to capture tests {err}")
+
+
+    def create_dbt_test_case(self, dbt_test: dict) -> CreateTestCaseRequest:
         """
         After test suite and test definitions have been processed, add the tests cases info
         """
-        if (
-            self.source_config.dbtConfigSource
-            and self.dbt_manifest
-            and self.dbt_catalog
-            and self.dbt_run_results
-        ):
-            logger.info("Processing DBT Tests Cases")
-            for key, dbt_test in self.dbt_tests.items():
-                try:
-                    entity_link_list = self.generate_entity_link(dbt_test)
-                    for entity_link in entity_link_list:
-                        test_suite_name = dbt_test["meta"].get(
-                            "test_suite_name", "DBT_TEST_SUITE"
-                        )
-                        test_case = CreateTestCaseRequest(
-                            name=dbt_test["name"],
-                            description=dbt_test["description"],
-                            testDefinition=EntityReference(
-                                id=self.metadata.get_by_name(
-                                    fqn=dbt_test["name"],
-                                    entity=TestDefinition,
-                                ).id.__root__,
-                                type="testDefinition",
-                            ),
-                            entityLink=entity_link,
-                            testSuite=EntityReference(
-                                id=self.metadata.get_by_name(
-                                    fqn=test_suite_name, entity=TestSuite
-                                ).id.__root__,
-                                type="testSuite",
-                            ),
-                            parameterValues=self.create_test_case_parameter_values(
-                                dbt_test
-                            ),
-                        )
-                        yield test_case
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(
-                        f"Failed to parse the node {key} to capture tests {err}"
-                    )
-            self.update_dbt_test_result()
+        test_name = dbt_test.get("name")
+        logger.info(f"Processing DBT Test Case Definition for node: {test_name}")
+        try:
+            entity_link_list = self.generate_entity_link(dbt_test)
+            for entity_link in entity_link_list:
+                test_suite_name = dbt_test["meta"].get(
+                    "test_suite_name", "DBT_TEST_SUITE"
+                )
+                yield CreateTestCaseRequest(
+                    name=test_name,
+                    description=dbt_test["description"],
+                    testDefinition=EntityReference(
+                        id=self.metadata.get_by_name(
+                            fqn=test_name,
+                            entity=TestDefinition,
+                        ).id.__root__,
+                        type="testDefinition",
+                    ),
+                    entityLink=entity_link,
+                    testSuite=EntityReference(
+                        id=self.metadata.get_by_name(
+                            fqn=test_suite_name, entity=TestSuite
+                        ).id.__root__,
+                        type="testSuite",
+                    ),
+                    parameterValues=self.create_test_case_parameter_values(
+                        dbt_test
+                    ),
+                )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(
+                f"Failed to parse the node {test_name} to capture tests {err}"
+            )
 
-    def update_dbt_test_result(self):
+    def update_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
         """
-        if self.dbt_run_results:
-            logger.info("Processing DBT Tests Results")
-            for dbt_test_result in self.dbt_run_results.get("results"):
-                try:
-                    # Process the Test Status
-                    test_case_status = TestCaseStatus.Aborted
-                    test_result_value = 0
-                    if dbt_test_result.get("status") in {"success", "pass"}:
-                        test_case_status = TestCaseStatus.Success
-                        test_result_value = 1
-                    elif dbt_test_result.get("status") in {"failure", "fail"}:
-                        test_case_status = TestCaseStatus.Failed
-                        test_result_value = 0
+        test_name = dbt_test.get("name")
+        logger.info(f"Processing DBT Test Case Results for node: {test_name}")
+        try:
+            # Process the Test Status
+            dbt_test_result = dbt_test.get("results")
+            test_case_status = TestCaseStatus.Aborted
+            test_result_value = 0
+            if dbt_test_result.get("status") in {"success", "pass"}:
+                test_case_status = TestCaseStatus.Success
+                test_result_value = 1
+            elif dbt_test_result.get("status") in {"failure", "fail"}:
+                test_case_status = TestCaseStatus.Failed
+                test_result_value = 0
 
-                    # Process the Test Timings
-                    dbt_test_timings = dbt_test_result["timing"]
-                    dbt_test_completed_at = None
-                    for dbt_test_timing in dbt_test_timings:
-                        if dbt_test_timing.get("name", "") == "execute":
-                            dbt_test_completed_at = dbt_test_timing.get("completed_at")
-                    dbt_timestamp = None
-                    if dbt_test_completed_at:
-                        dbt_timestamp = datetime.strptime(
-                            dbt_test_completed_at, "%Y-%m-%dT%H:%M:%S.%fZ"
-                        ).replace(microsecond=0)
-                        dbt_timestamp = dbt_timestamp.timestamp()
-
-                    test_case_result = TestCaseResult(
-                        timestamp=dbt_timestamp,
-                        testCaseStatus=test_case_status,
-                        testResultValue=[
-                            TestResultValue(
-                                name=dbt_test_result.get("unique_id"),
-                                value=str(test_result_value),
-                            )
-                        ],
+            # Process the Test Timings
+            dbt_test_timings = dbt_test_result["timing"]
+            dbt_test_completed_at = None
+            for dbt_test_timing in dbt_test_timings:
+                if dbt_test_timing.get("name", "") == "execute":
+                    dbt_test_completed_at = dbt_test_timing.get("completed_at")
+            dbt_timestamp = None
+            if dbt_test_completed_at:
+                dbt_timestamp = datetime.strptime(
+                    dbt_test_completed_at, "%Y-%m-%dT%H:%M:%S.%fZ"
+                ).replace(microsecond=0)
+                dbt_timestamp = dbt_timestamp.timestamp()
+            
+            # Create the test case result object
+            test_case_result = TestCaseResult(
+                timestamp=dbt_timestamp,
+                testCaseStatus=test_case_status,
+                testResultValue=[
+                    TestResultValue(
+                        name=dbt_test_result.get("unique_id"),
+                        value=str(test_result_value),
                     )
+                ],
+            )
 
-                    dbt_test_node = self.dbt_tests.get(dbt_test_result["unique_id"])
-                    if dbt_test_node:
-                        nodes = dbt_test_node["depends_on"]["nodes"]
-                        for node in nodes:
-                            model = self.manifest_entities.get(node)
-                            test_case_fqn = fqn.build(
-                                self.metadata,
-                                entity_type=TestCase,
-                                service_name=self.config.serviceName,
-                                database_name=model["database"]
-                                if model["database"]
-                                else "default",
-                                schema_name=model["schema"]
-                                if model["schema"]
-                                else "default",
-                                table_name=model.get("name"),
-                                column_name=dbt_test_node.get("column_name"),
-                                test_case_name=self.dbt_tests.get(
-                                    dbt_test_result["unique_id"]
-                                )["name"],
-                            )
-                            self.metadata.add_test_case_results(
-                                test_results=test_case_result,
-                                test_case_fqn=test_case_fqn,
-                            )
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(f"Failed capture tests results {err}")
+            # Create the test case fqns and add the results
+            for table_fqn in dbt_test.get("upstream"):
+                source_elements = table_fqn.split(".")
+                test_case_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=TestCase,
+                    service_name=self.config.serviceName,
+                    database_name=source_elements[1],
+                    schema_name=source_elements[2],
+                    table_name=source_elements[3],
+                    column_name=dbt_test.get("column_name"),
+                    test_case_name=test_name,
+                )
+                self.metadata.add_test_case_results(
+                    test_results=test_case_result,
+                    test_case_fqn=test_case_fqn,
+                )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(f"Failed capture tests results for node: {test_name} {err}")
 
     def create_test_case_parameter_definitions(self, dbt_test):
         test_case_param_definition = [
@@ -573,18 +639,8 @@ class DbtSource(DbtServiceSource, ABC):
         """
         Method returns entity link
         """
-        nodes = dbt_test["depends_on"]["nodes"]
         entity_link_list = []
-        for node in nodes:
-            model = self.manifest_entities.get(node)
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.config.serviceName,
-                database_name=model["database"] if model["database"] else "default",
-                schema_name=model["schema"] if model["schema"] else "default",
-                table_name=model.get("name"),
-            )
+        for table_fqn in dbt_test["upstream"]:
             column_name = dbt_test.get("column_name")
             if column_name:
                 entity_link = (

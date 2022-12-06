@@ -17,10 +17,27 @@
       "$ref": "#/definitions/dbtConfigType",
       "default": "DBT"
     },
-    "queryLogDuration": {
-      "description": "Configuration to tune how far we want to look back in query logs to process lineage data.",
-      "type": "integer",
-      "default": 1
+    "dbtConfigSource": {
+      "mask": true,
+      "title": "DBT Configuration Source",
+      "description": "Available sources to fetch DBT catalog and manifest files.",
+      "oneOf": [
+        {
+          "$ref": "./dbtconfig/dbtCloudConfig.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtLocalConfig.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtHttpConfig.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtS3Config.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtGCSConfig.json"
+        }
+      ]
     }
   },
   "additionalProperties": false
