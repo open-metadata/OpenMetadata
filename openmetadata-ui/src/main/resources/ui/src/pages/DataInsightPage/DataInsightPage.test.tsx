@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  getByText,
-  render,
-  screen,
-} from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import DataInsightPage from './DataInsightPage.component';
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useParams: jest.fn().mockReturnValue({ tab: 'data-assets' }),
+}));
 
 jest.mock('../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
@@ -72,12 +71,7 @@ jest.mock('../../components/DataInsightDetail/TotalEntityInsight', () =>
 );
 
 jest.mock('../../utils/DataInsightUtils', () => ({
-  getMenuItems: jest.fn().mockReturnValue(
-    <select>
-      <option value="option1">option1</option>
-      <option value="option2">option2</option>
-    </select>
-  ),
+  getTeamFilter: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../components/DataInsightDetail/DailyActiveUsersChart', () =>
@@ -96,6 +90,14 @@ jest.mock('../../components/DataInsightDetail/PageViewsByEntitiesChart', () =>
 );
 jest.mock('../../components/DataInsightDetail/KPIChart', () =>
   jest.fn().mockReturnValue(<div data-testid="kpi-chart">KPIChart</div>)
+);
+
+jest.mock('./KPIList', () =>
+  jest.fn().mockReturnValue(<div data-testid="kpi-list">KPI List</div>)
+);
+
+jest.mock('./DataInsightLeftPanel', () =>
+  jest.fn().mockReturnValue(<div data-testid="left-panel">Left panel</div>)
 );
 
 describe('Test DataInsightPage Component', () => {
@@ -118,23 +120,5 @@ describe('Test DataInsightPage Component', () => {
     expect(tierInsight).toBeInTheDocument();
 
     expect(totalEntityInsight).toBeInTheDocument();
-  });
-
-  it('Should render the web analytics when tab is switch to web analytics', async () => {
-    render(<DataInsightPage />);
-
-    const switchContainer = screen.getByTestId('data-insight-switch');
-
-    const webAnalyticsButton = getByText(switchContainer, 'App Analytics');
-
-    act(() => {
-      fireEvent.click(webAnalyticsButton);
-    });
-
-    const topActiveUser = screen.getByTestId('top-active-user');
-    const topViewedEntities = screen.getByTestId('top-viewed-entities');
-
-    expect(topActiveUser).toBeInTheDocument();
-    expect(topViewedEntities).toBeInTheDocument();
   });
 });

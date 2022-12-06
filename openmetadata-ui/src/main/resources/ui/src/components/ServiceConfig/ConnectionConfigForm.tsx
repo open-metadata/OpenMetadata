@@ -150,6 +150,8 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       }
       case ServiceCategory.METADATA_SERVICES: {
         connSch = getMetadataConfig(serviceType as MetadataServiceType);
+
+        break;
       }
     }
 
