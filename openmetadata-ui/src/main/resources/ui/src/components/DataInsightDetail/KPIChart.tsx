@@ -32,6 +32,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from 'recharts';
 import {
   getLatestKpiResult,
@@ -215,6 +216,7 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="timestamp" />
+                    <YAxis />
                     <Tooltip
                       content={
                         <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
