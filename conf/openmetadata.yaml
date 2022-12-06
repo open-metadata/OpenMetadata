@@ -171,7 +171,7 @@ elasticsearch:
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
 
 # eventMonitoringConfiguration:
-  # eventMonitor: ${EVENT_MONITOR:-cloudwatch}  # Possible values are "cloudwatch"
+  # eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   # batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
