@@ -17,6 +17,8 @@ import json
 import traceback
 from typing import List, Optional
 
+from requests.utils import quote
+
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -29,9 +31,10 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfilerConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.ingestion.ometa.utils import model_str, ometa_logger
 from metadata.utils.lru_cache import LRUCache
 from metadata.utils.uuid_encoder import UUIDEncoder
 
@@ -177,7 +180,7 @@ class OMetaTableMixin:
 
     def _create_or_update_table_profiler_config(
         self,
-        table: Table,
+        table_id: Uuid,
         table_profiler_config: TableProfilerConfig,
     ):
         """create or update profler config
@@ -191,7 +194,7 @@ class OMetaTableMixin:
 
         """
         resp = self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfilerConfig",
+            f"{self.get_suffix(Table)}/{model_str(table_id)}/tableProfilerConfig",
             data=table_profiler_config.json(),
         )
         return Table(**resp)
@@ -210,8 +213,32 @@ class OMetaTableMixin:
         table = self.get_by_name(entity=Table, fqn=fqn)
         if table:
             return self._create_or_update_table_profiler_config(
-                table=table,
+                table.id,
                 table_profiler_config=table_profiler_config,
             )
 
         return None
+
+    def get_latest_table_profile(
+        self, fqn: FullyQualifiedEntityName
+    ) -> Optional[Table]:
+        """Get the latest profile data for a table
+
+        Args:
+            fqn (str): table fully qualified name
+
+        Returns:
+            Optional[Table]: OM table object
+        """
+        return self._get(Table, f"{quote(model_str(fqn))}/tableProfile/latest")
+
+    def get_table_queries(self, table_id: Uuid) -> Optional[Table]:
+        """Get the queries attached to a table
+
+        Args:
+            id (str): table fully qualified name
+
+        Returns:
+            Optional[Table]: OM table object
+        """
+        return self._get(Table, f"{model_str(table_id)}/tableQuery")
