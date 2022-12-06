@@ -56,6 +56,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           <RichTextEditorPreviewer
             enableSeeMoreVariant={false}
             markdown={description}
+            maxLength={500}
           />
         ) : (
           <span className="tw-no-description">No description</span>

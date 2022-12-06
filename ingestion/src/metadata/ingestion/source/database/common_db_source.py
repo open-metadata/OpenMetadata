@@ -27,7 +27,6 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -54,7 +53,7 @@ from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandl
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
 
@@ -147,21 +146,7 @@ class CommonDbSourceService(
         """
         return schema names
         """
-        for schema_name in self.get_raw_database_schema_names():
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
-                schema_name=schema_name,
-            )
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern,
-                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
-            ):
-                self.status.filter(schema_fqn, "Schema Filtered Out")
-                continue
-            yield schema_name
+        yield from self._get_filtered_schema_names()
 
     def yield_database_schema(
         self, schema_name: str
