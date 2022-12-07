@@ -16,15 +16,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
@@ -32,7 +30,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
-import org.openmetadata.schema.metadataIngestion.Source;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -82,7 +79,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(ingestionPipeline) : null);
     return ingestionPipeline;
   }
-
 
   @Override
   public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
@@ -196,15 +192,17 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
+
   public IngestionPipeline checkProfileSampleType(IngestionPipeline ingestionPipeline) throws IOException {
     if (Objects.equals(ingestionPipeline.getPipelineType().value(), "profiler")) {
-      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+      JSONObject origSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
       ObjectMapper objMapper = new ObjectMapper();
 
-      if (origSourceConfig.has("profileSample")
-              && origSourceConfig.has("profileSampleUsingRows")) {
+      if (origSourceConfig.has("profileSample") && origSourceConfig.has("profileSampleUsingRows")) {
         //        Default to percentage
-        JSONObject newSourceConfig = new JSONObject().put("config", origSourceConfig.put("profileSampleUsingRows", (Integer) null));
+        JSONObject newSourceConfig =
+            new JSONObject().put("config", origSourceConfig.put("profileSampleUsingRows", (Integer) null));
         SourceConfig sc = objMapper.readValue(newSourceConfig.toString(), SourceConfig.class);
         ingestionPipeline.setSourceConfig(sc);
         return ingestionPipeline;
@@ -212,7 +210,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     return ingestionPipeline;
-
   }
 
   public ResultList<PipelineStatus> listPipelineStatus(String ingestionPipelineFQN, Long startTs, Long endTs)
