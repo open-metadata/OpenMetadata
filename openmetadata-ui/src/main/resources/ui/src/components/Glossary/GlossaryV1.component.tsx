@@ -27,10 +27,10 @@ import {
 } from 'antd';
 import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
 import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getUserPath } from '../../constants/constants';
@@ -49,7 +49,7 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getDateTimeByTimeStamp } from '../../utils/TimeUtils';
+import { formatDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -129,6 +129,7 @@ const GlossaryV1 = ({
   currentPage,
 }: Props) => {
   const { DirectoryTree } = Tree;
+  const { t } = useTranslation();
 
   const { getEntityPermission, permissions } = usePermissionProvider();
   const [treeData, setTreeData] = useState<DataNode[]>([]);
@@ -558,16 +559,13 @@ const GlossaryV1 = ({
                 textClass="text-xs"
                 width="20"
               />
-              <span>
+              <Typography.Text>
                 <Link to={getUserPath(selectedData.updatedBy ?? '')}>
                   {selectedData.updatedBy}
                 </Link>
                 {` ${t('label.on-lowercase')} 
-               ${getDateTimeByTimeStamp(
-                 selectedData.updatedAt || 0,
-                 'dd MMM yyyy, hh:mm a'
-               )}`}
-              </span>
+               ${formatDateTime(selectedData.updatedAt || 0)}`}
+              </Typography.Text>
             </Space>
           </Space>
           {!isEmpty(selectedData) &&

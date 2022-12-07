@@ -387,8 +387,8 @@
     "reviewer-plural": "Reviewers",
     "notification-plural": "Notifications",
     "view-all": "view all",
-    "mention-you-thread": "mentioned you on the",
-    "assign-you-task": "assigned you a new task",
+    "mention-you-thread-lowercase": "mentioned you on the",
+    "assign-you-task-lowercase": "assigned you a new task",
     "updated-by": "Updated by",
     "on-lowercase": "on"
   },
