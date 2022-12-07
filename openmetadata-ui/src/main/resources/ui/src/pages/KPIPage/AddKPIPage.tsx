@@ -175,7 +175,7 @@ const AddKPIPage = () => {
         type: EntityType.DATA_INSIGHT_CHART,
       },
       description,
-      name: kebabCase(values.displayName),
+      name: kebabCase(`${values.displayName} ${selectedMetric?.name}`),
       displayName: values.displayName,
       startDate,
       endDate,
