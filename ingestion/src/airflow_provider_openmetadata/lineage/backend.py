@@ -14,7 +14,7 @@ OpenMetadata Airflow Lineage Backend
 """
 
 import traceback
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from airflow.lineage.backend import LineageBackend
 
@@ -22,11 +22,8 @@ from airflow_provider_openmetadata.lineage.config.loader import (
     AirflowLineageConfig,
     get_lineage_config,
 )
-from airflow_provider_openmetadata.lineage.utils import get_xlets, parse_lineage
+from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-if TYPE_CHECKING:
-    from airflow.models.baseoperator import BaseOperator
 
 
 # pylint: disable=too-few-public-methods
@@ -58,7 +55,7 @@ class OpenMetadataLineageBackend(LineageBackend):
         _ = get_lineage_config()
 
     # pylint: disable=protected-access
-    @staticmethod  # needed for Airflow 1.10.x
+    @staticmethod  # needed for Airflow 1.10.x. Airflow 2.X does not use a staticmethod
     def send_lineage(
         operator: "BaseOperator",
         inlets: Optional[List] = None,
@@ -81,10 +78,16 @@ class OpenMetadataLineageBackend(LineageBackend):
             config: AirflowLineageConfig = get_lineage_config()
             metadata = OpenMetadata(config.metadata_config)
 
-            op_inlets = get_xlets(operator, "_inlets")
-            op_outlets = get_xlets(operator, "_outlets")
+            runner = AirflowLineageRunner(
+                metadata=metadata,
+                service_name=config.airflow_service_name,
+                dag=context["dag"],
+                context=context,
+                only_keep_dag_lineage=config.only_keep_dag_lineage,
+                max_status_days=config.max_status_days,
+            )
+            runner.execute()
 
-            parse_lineage(config, context, operator, op_inlets, op_outlets, metadata)
         except Exception as exc:  # pylint: disable=broad-except
             operator.log.error(traceback.format_exc())
             operator.log.error(exc)
