@@ -385,7 +385,8 @@
     "show": "Show",
     "hide": "Hide",
     "restore-team": "Restore Team",
-    "remove": "Remove"
+    "remove": "Remove",
+    "data-insights": "Data Insights"
   },
   "message": {
     "service-email-required": "Service account Email is required",
