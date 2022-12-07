@@ -546,11 +546,11 @@ const GlossaryV1 = ({
               </Space>
             )}
           </div>
-          <Space className="m-b-sm" size={8}>
+          <Space className="m-b-md" size={8}>
             <Typography.Text className="text-grey-muted">
               {t('label.updated-by')} -
             </Typography.Text>
-            <Space size={4}>
+            <Space size={8}>
               <ProfilePicture
                 displayName={selectedData.updatedBy}
                 id={selectedData.id}
@@ -558,11 +558,16 @@ const GlossaryV1 = ({
                 textClass="text-xs"
                 width="20"
               />
-              <Link to={getUserPath(selectedData.updatedBy ?? '')}>
-                {selectedData.updatedBy}
-              </Link>
-              {t('label.on-lowercase')}
-              {getDateTimeByTimeStamp(selectedData.updatedAt || 0)}
+              <span>
+                <Link to={getUserPath(selectedData.updatedBy ?? '')}>
+                  {selectedData.updatedBy}
+                </Link>
+                {` ${t('label.on-lowercase')} 
+               ${getDateTimeByTimeStamp(
+                 selectedData.updatedAt || 0,
+                 'dd MMM yyyy, hh:mm a'
+               )}`}
+              </span>
             </Space>
           </Space>
           {!isEmpty(selectedData) &&
