@@ -12,6 +12,7 @@
 Sample Data source ingestion
 """
 import json
+import random
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -55,6 +56,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
+    SystemProfile,
     Table,
     TableProfile,
 )
@@ -897,6 +899,21 @@ class SampleDataSource(
                                 **col_profile,
                             )
                             for col_profile in profile["columnProfile"]
+                        ],
+                        systemProfile=[
+                            SystemProfile(
+                                timestamp=int(
+                                    (
+                                        datetime.now(tz=timezone.utc)
+                                        - timedelta(
+                                            days=days, hours=random.randint(0, 24)
+                                        )
+                                    ).timestamp()
+                                    * 1000
+                                ),
+                                **system_profile,
+                            )
+                            for system_profile in profile["systemProfile"]
                         ],
                     ),
                 )
