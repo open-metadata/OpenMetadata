@@ -26,6 +26,7 @@ export const SECONDARY_COLOR = '#B02AAC';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const SUCCESS_COLOR = '#008376';
+export const DE_ACTIVE_COLOR = '#6B7280';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 

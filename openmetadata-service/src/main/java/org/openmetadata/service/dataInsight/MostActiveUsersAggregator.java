@@ -8,7 +8,7 @@ import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.metrics.Max;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.datatInsight.type.MostActiveUsers;
+import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 
 public class MostActiveUsersAggregator extends DataInsightAggregatorInterface<MostActiveUsers> {
 

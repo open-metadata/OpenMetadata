@@ -3076,7 +3076,7 @@ public interface CollectionDAO {
           .withDatabaseServiceCount(rs.getInt("databaseServiceCount"))
           .withMessagingServiceCount(rs.getInt("messagingServiceCount"))
           .withDashboardServiceCount(rs.getInt("dashboardServiceCount"))
-          .withPipelineServiceCounte(rs.getInt("pipelineServiceCount"))
+          .withPipelineServiceCount(rs.getInt("pipelineServiceCount"))
           .withMlModelServiceCount(rs.getInt("mlModelServiceCount"));
     }
   }
