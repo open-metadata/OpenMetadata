@@ -148,7 +148,7 @@ class AtlasSource(Source):
                 entity=MessagingService, fqn=service
             )
             if check_service:
-                for key in ENTITY_TYPES.get("Topic", []):
+                for key in ENTITY_TYPES["Topic"]:
                     self.message_service = check_service
                     self.topics[key] = self.atlas_client.list_entities(entity_type=key)
                     if self.topics.get(key, None):
