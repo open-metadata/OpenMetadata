@@ -91,6 +91,7 @@ import {
 import {
   databaseSchemaDetailsTabs,
   getCurrentDatabaseSchemaDetailsTab,
+  getQueryStringForSchemaTables,
   getTablesFromSearchResponse,
 } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
@@ -330,9 +331,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     try {
       setCurrentTablesPage(pageNumber);
       const res = await searchQuery({
+        query: getQueryStringForSchemaTables(
+          databaseSchema.service,
+          databaseSchema.database,
+          databaseSchema
+        ),
         pageNumber,
         pageSize: PAGE_SIZE,
-        queryFilter: { 'databaseSchema.name': databaseSchema.name },
         searchIndex: SearchIndex.TABLE,
         includeDeleted: false,
       });
