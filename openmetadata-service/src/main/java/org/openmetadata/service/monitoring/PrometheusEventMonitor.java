@@ -26,6 +26,12 @@ import software.amazon.awssdk.services.cloudwatch.model.CloudWatchException;
 public class PrometheusEventMonitor extends EventMonitor {
 
   private final PrometheusMeterRegistry meterRegistry;
+  private static final String PIPELINE_STATUS = "pipelineStatus";
+  private static final String COUNTER_NAME = "ingestionPipeline.counter";
+  private static final String FQN_TAG_NAME = "fqn";
+  private static final String PIPELINE_TYPE_TAG_NAME = "pipelineType";
+  private static final String EVENT_TYPE_TAG_NAME = "eventType";
+  private static final String CLUSTER_TAG_NAME = "clusterName";
 
   public PrometheusEventMonitor(
       EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
@@ -53,7 +59,7 @@ public class PrometheusEventMonitor extends EventMonitor {
               .getFieldsUpdated()
               .forEach(
                   change -> {
-                    if (change.getName().equals("pipelineStatus") && change.getNewValue() != null) {
+                    if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
                       PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
                       incrementIngestionPipelineCounter(fqn, pipelineType, pipelineStatus.getPipelineState().value());
                     }
@@ -82,8 +88,16 @@ public class PrometheusEventMonitor extends EventMonitor {
    * @param eventType running, failed, entityCreated,...
    */
   public void incrementIngestionPipelineCounter(String fqn, String pipelineType, String eventType) {
-    Counter.builder("ingestionPipeline.counter")
-        .tags("fqn", fqn, "pipelineType", pipelineType, "eventType", eventType, "clusterName", getClusterPrefix())
+    Counter.builder(COUNTER_NAME)
+        .tags(
+            FQN_TAG_NAME,
+            fqn,
+            PIPELINE_TYPE_TAG_NAME,
+            pipelineType,
+            EVENT_TYPE_TAG_NAME,
+            eventType,
+            CLUSTER_TAG_NAME,
+            getClusterPrefix())
         .register(meterRegistry)
         .increment();
   }
