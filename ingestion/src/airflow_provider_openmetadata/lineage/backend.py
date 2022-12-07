@@ -77,7 +77,7 @@ class OpenMetadataLineageBackend(LineageBackend):
                 dag=context["dag"],
                 context=context,
                 only_keep_dag_lineage=config.only_keep_dag_lineage,
-                max_status_days=config.max_status_days,
+                max_status=config.max_status,
             )
             runner.execute()
 

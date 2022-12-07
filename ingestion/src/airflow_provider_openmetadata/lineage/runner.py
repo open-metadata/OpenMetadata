@@ -92,12 +92,12 @@ class AirflowLineageRunner:
         dag: "DAG",
         context: "Context",
         only_keep_dag_lineage: bool = False,
-        max_status_days: int = 10,
+        max_status: int = 10,
     ):
         self.metadata = metadata
         self.service_name = service_name
         self.only_keep_dag_lineage = only_keep_dag_lineage
-        self.max_status_days = max_status_days
+        self.max_status = max_status
 
         self.dag = dag
         self.context = context
@@ -194,7 +194,7 @@ class AirflowLineageRunner:
 
         return [
             self.get_pipeline_status(task_instances)
-            for task_instances in grouped_ti[: self.max_status_days]
+            for task_instances in grouped_ti[: self.max_status]
         ]
 
     @staticmethod
