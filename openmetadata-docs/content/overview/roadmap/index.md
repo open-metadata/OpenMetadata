@@ -28,16 +28,6 @@ You can check the latest release [here](/overview/releases).
   >
     <li>UI Improvements to the queries collected and attached to a table. Allow users upvote a query to show as an example</li>
   </Tile>
-  <Tile
-    title="Collaboration"
-    text=""
-    background="pink-70"
-    bordercolor="pink-70"
-  >
-    <li>Improvements Task & Activity Feed</li>
-    <li>Capture the popularity of entities based on thumbs up and down</li>
-    <li>Knowledge Articles - Users/Data Stewards can build knowledge articles right within OpenMetadata and attach them at the entity or database level. These articles can be searchable</li>
-  </Tile>
  <Tile
     title="Data Quality"
     text=""
@@ -72,16 +62,6 @@ You can check the latest release [here](/overview/releases).
     <li>Propagate tags at the root of glossary terms to its children</li>
     <li>Propagate tags/glossary by tagging at the database/schema level and applying them to all the schemas/tables underneath them.</li>
   </Tile>
-  <Tile
-    title="Access Control and Policies **tentative**"
-    text=""
-    background="yellow-70"
-    bordercolor="yellow-70"
-    link="https://github.com/open-metadata/OpenMetadata/issues/4199"
-  >
-    <li>Add Search Results Integration</li>
-    <li>Roles and Policies application to TestSuite and TestCases</li>
-  </Tile>
    <Tile
     title="Messaging - Kafka & Redpanda"
     text=""
@@ -98,14 +78,14 @@ You can check the latest release [here](/overview/releases).
     background="yellow-70"
     bordercolor="blue-70"
   >
-    <li>We are super excited about this feature coming in 0.13.0</li>
+    <li>We are super excited about this feature coming in 0.13.1</li>
   </Tile>
 
 </TileContainer>
 
 
 
-## 1.0 Release - Feb 6th, 2022
+## 1.0 Release - Feb 6th, 2023
 
 <TileContainer>
   <Tile
@@ -126,7 +106,7 @@ You can check the latest release [here](/overview/releases).
     link=""
     size="half"
   >
-    <li>Spark Lineage</li>
+    <li>Overhaul of lineage query parsing and improved new library</li>
     <li>UI Improvements to the queries collected and attached to a table. Allow users upvote a query to show as an example</li>
   </Tile>
   <Tile
@@ -136,8 +116,6 @@ You can check the latest release [here](/overview/releases).
     bordercolor="pink-70"
   >
     <li>Improvements Task & Activity Feed</li>
-    <li>Capture the popularity of entities based on thumbs up and down</li>
-    <li>Knowledge Articles - Users/Data Stewards can build knowledge articles right within OpenMetadata and attach them at the entity or database level. These articles can be searchable</li>
   </Tile>
   <Tile
     title="Entities"
@@ -157,7 +135,6 @@ You can check the latest release [here](/overview/releases).
   >
     <li>Complex types</li>
     <li>Add support for computing completeness</li>
-    <li>Add support for anomaly detection</li>
     <li>Improvements to Auto Classification of entities by ML</li>
   </Tile>
   <Tile
@@ -166,23 +143,9 @@ You can check the latest release [here](/overview/releases).
     background="purple-70"
     bordercolor="purple-70"
   >
+    <li>Search results integration for roles and policies</li>
     <li>Domain based restriction and domain only view</li>
     <li>Policy improvements based on community feedback</li>
-  </Tile>
-  <Tile
-    title="Reverse Metadata"
-    text="Support for propagating OpenMetadata description/tags to data sources such as snowflake, BigQuery, Redshift etc."
-    background="pink-70"
-    bordercolor="pink-70"
-  />
-  <Tile
-    title="Lineage"
-    text=""
-    background="green-70"
-    bordercolor="green-70"
-  >
-    <li>Spark Lineage</li>
-    <li>Connector Lineage improvements</li>
   </Tile>
 </TileContainer>
 

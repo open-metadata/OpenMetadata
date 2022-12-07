@@ -28,6 +28,7 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import { PLACEHOLDER_ROUTE_TAB, ROUTES } from '../constants/constants';
 import {
   ENTITIES_SUMMARY_LIST,
   KPI_DATE_PICKER_FORMAT,
@@ -519,3 +520,6 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
     return t('label.day-left', { day: pluralize(day, 'day') });
   }
 };
+
+export const getDataInsightPathWithFqn = (fqn: string) =>
+  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);

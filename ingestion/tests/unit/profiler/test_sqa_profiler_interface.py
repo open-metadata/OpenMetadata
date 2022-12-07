@@ -164,7 +164,11 @@ class SQAInterfaceTestMultiThread(TestCase):
     def test_get_all_metrics(self):
         table_metrics = [
             (
-                [metric for metric in self.metrics if not metric.is_col_metric()],
+                [
+                    metric
+                    for metric in self.metrics
+                    if (not metric.is_col_metric() and not metric.is_system_metrics())
+                ],
                 MetricTypes.Table,
                 None,
                 self.table,

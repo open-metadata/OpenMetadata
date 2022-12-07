@@ -45,7 +45,9 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: jest.fn(),
+  })),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
   }),
@@ -136,6 +138,7 @@ const mockCategory = [
     version: 0.1,
     updatedAt: 1649665563410,
     updatedBy: 'admin',
+    provider: 'user',
     href: 'http://localhost:8585/api/v1/tags/PII',
     usageCount: 0,
     children: [
@@ -498,6 +501,63 @@ describe('Test TagsPage page', () => {
     expect(descriptionContainer).toBeInTheDocument();
     expect(table).toBeInTheDocument();
     expect(sidePanelCategories.length).toBe(2);
+  });
+
+  it('System tag category should not be renamed', async () => {
+    await act(async () => {
+      render(<TagsPage />);
+    });
+    const tagsComponent = await screen.findByTestId('tags-container');
+    const header = await screen.findByTestId('header');
+    const editIcon = screen.queryByTestId('name-edit-icon');
+
+    expect(tagsComponent).toBeInTheDocument();
+    expect(header).toBeInTheDocument();
+    expect(editIcon).not.toBeInTheDocument();
+  });
+
+  it('User tag category should be renamed', async () => {
+    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [mockCategory[1]] })
+    );
+    await act(async () => {
+      render(<TagsPage />);
+    });
+    const tagsComponent = await screen.findByTestId('tags-container');
+    const header = await screen.findByTestId('header');
+    const leftPanelContent = await screen.findByTestId('left-panel-content');
+    const editIcon = await screen.findByTestId('name-edit-icon');
+    const tagCategoryName = await screen.findByTestId('category-name');
+
+    expect(tagsComponent).toBeInTheDocument();
+    expect(header).toBeInTheDocument();
+    expect(leftPanelContent).toBeInTheDocument();
+    expect(editIcon).toBeInTheDocument();
+    expect(tagCategoryName).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(editIcon);
+    });
+
+    const tagCategoryHeading = await screen.findByTestId('tag-category-name');
+    const cancelAssociatedTag = await screen.findByTestId(
+      'cancelAssociatedTag'
+    );
+    const saveAssociatedTag = await screen.findByTestId('saveAssociatedTag');
+
+    expect(tagCategoryHeading).toBeInTheDocument();
+    expect(cancelAssociatedTag).toBeInTheDocument();
+    expect(saveAssociatedTag).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.change(tagCategoryHeading, {
+        target: {
+          value: 'newPII',
+        },
+      });
+    });
+
+    expect(tagCategoryHeading).toHaveValue('newPII');
   });
 
   describe('Render Sad Paths', () => {

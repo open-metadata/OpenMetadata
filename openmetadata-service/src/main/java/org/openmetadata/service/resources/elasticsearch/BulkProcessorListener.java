@@ -14,6 +14,7 @@ import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.openmetadata.schema.settings.EventPublisherJob;
+import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.settings.Stats;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -63,8 +64,7 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
       }
       updateFailedAndSuccess(failedCount, bulkResponse.getItems().length - failedCount);
 
-      EventPublisherJob.Status status =
-          batchHasFailures ? EventPublisherJob.Status.ACTIVEWITHERROR : EventPublisherJob.Status.ACTIVE;
+      EventPublisherJob.Status status = batchHasFailures ? Status.ACTIVE_WITH_ERROR : EventPublisherJob.Status.ACTIVE;
       Stats stats = new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount).withTotal(totalRequests);
       FailureDetails hasFailureDetails = batchHasFailures ? failureDetails : null;
       updateElasticSearchStatus(status, hasFailureDetails, stats);
@@ -77,7 +77,7 @@ public class BulkProcessorListener implements BulkProcessor.Listener {
   public void afterBulk(long executionId, BulkRequest bulkRequest, Throwable throwable) {
     LOG.error("Failed to execute bulk", throwable);
     updateFailedAndSuccess(bulkRequest.numberOfActions(), 0);
-    EventPublisherJob.Status status = EventPublisherJob.Status.ACTIVEWITHERROR;
+    EventPublisherJob.Status status = Status.ACTIVE_WITH_ERROR;
     Stats stats = new Stats().withFailed(totalFailedCount).withSuccess(totalSuccessCount).withTotal(totalRequests);
     FailureDetails hasFailureDetails =
         new FailureDetails()

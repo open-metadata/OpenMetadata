@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isNil, isUndefined } from 'lodash';
+import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,7 +61,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
@@ -74,9 +72,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import SampleDataTable, {
-  SampleColumns,
-} from '../SampleDataTable/SampleDataTable.component';
+import SampleDataTable from '../SampleDataTable/SampleDataTable.component';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
@@ -94,7 +90,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableProfile,
   columns,
   tier,
-  sampleData,
   entityLineage,
   followTableHandler,
   unfollowTableHandler,
@@ -120,9 +115,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   removeLineageHandler,
   entityLineageHandler,
   isLineageLoading,
-  isSampleDataLoading,
-  isQueriesLoading,
-  tableQueries,
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
@@ -555,29 +547,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
-  const getSampleDataWithType = () => {
-    const updatedColumns = sampleData?.columns?.map((column) => {
-      const matchedColumn = columns.find((col) => col.name === column);
-
-      if (matchedColumn) {
-        return {
-          name: matchedColumn.name,
-          dataType: matchedColumn.dataType,
-        };
-      } else {
-        return {
-          name: column,
-          dataType: '',
-        };
-      }
-    });
-
-    return {
-      columns: updatedColumns as SampleColumns[] | undefined,
-      rows: sampleData?.rows,
-    };
-  };
-
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -757,7 +726,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       }
                       isReadOnly={deleted}
                       joins={tableJoinData.columnJoins as ColumnJoins[]}
-                      sampleData={sampleData}
                       tableConstraints={tableDetails.tableConstraints}
                       onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
@@ -787,36 +755,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               )}
               {activeTab === 3 && (
                 <div id="sampleDataDetails">
-                  <SampleDataTable
-                    isLoading={isSampleDataLoading}
-                    sampleData={getSampleDataWithType()}
-                  />
+                  <SampleDataTable tableId={tableDetails.id} />
                 </div>
               )}
-              {activeTab === 4 && (
-                <Row className="tw-p-2" id="tablequeries">
-                  {!isEmpty(tableQueries) || isQueriesLoading ? (
-                    <Col offset={3} span={18}>
-                      <TableQueries
-                        isLoading={isQueriesLoading}
-                        queries={tableQueries}
-                      />
-                    </Col>
-                  ) : (
-                    <Col
-                      className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-p-8 tw-col-span-3"
-                      span={24}>
-                      <div data-testid="no-queries">
-                        <ErrorPlaceHolder heading="queries" />
-                      </div>
-                    </Col>
-                  )}
-                </Row>
-              )}
+              {activeTab === 4 && <TableQueries tableId={tableDetails.id} />}
               {activeTab === 5 && (
                 <TableProfilerV1
                   permissions={tablePermissions}
-                  table={tableDetails}
+                  tableFqn={tableDetails.fullyQualifiedName || ''}
                 />
               )}
 
