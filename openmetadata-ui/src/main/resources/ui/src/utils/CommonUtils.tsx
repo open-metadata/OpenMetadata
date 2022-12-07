@@ -78,6 +78,7 @@ import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { TagCategory } from '../generated/entity/tags/tagCategory';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -668,6 +669,7 @@ export const getEntityName = (
     | Webhook
     | Bot
     | Kpi
+    | TagCategory
 ) => {
   return entity?.displayName || entity?.name || '';
 };

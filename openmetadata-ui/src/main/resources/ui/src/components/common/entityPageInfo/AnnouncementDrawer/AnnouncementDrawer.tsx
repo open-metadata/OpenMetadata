@@ -105,35 +105,36 @@ const AnnouncementDrawer: FC<Props> = ({
 
   return (
     <>
-      <Drawer
-        closable={false}
-        data-testid="announcement-drawer"
-        placement="right"
-        title={title}
-        visible={open}
-        width={576}
-        onClose={onClose}>
-        <div className="tw-flex tw-justify-end">
-          <Button
-            data-testid="add-announcement"
-            type="primary"
-            onClick={() => setIsAnnouncement(true)}>
-            Add Announcement
-          </Button>
-        </div>
+      <div data-testid="announcement-drawer">
+        <Drawer
+          closable={false}
+          placement="right"
+          title={title}
+          visible={open}
+          width={576}
+          onClose={onClose}>
+          <div className="tw-flex tw-justify-end">
+            <Button
+              data-testid="add-announcement"
+              type="primary"
+              onClick={() => setIsAnnouncement(true)}>
+              Add Announcement
+            </Button>
+          </div>
 
-        <ActivityThreadPanelBody
-          className="tw-p-0"
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          key={uniqueId()}
-          postFeedHandler={postFeedHandler}
-          showHeader={false}
-          threadLink={getEntityFeedLink(entityType, entityFQN)}
-          threadType={ThreadType.Announcement}
-          updateThreadHandler={updateThreadHandler}
-        />
-      </Drawer>
+          <ActivityThreadPanelBody
+            className="tw-p-0"
+            createThread={createThread}
+            deletePostHandler={deletePostHandler}
+            key={uniqueId()}
+            postFeedHandler={postFeedHandler}
+            showHeader={false}
+            threadLink={getEntityFeedLink(entityType, entityFQN)}
+            threadType={ThreadType.Announcement}
+            updateThreadHandler={updateThreadHandler}
+          />
+        </Drawer>
+      </div>
 
       {isAnnouncement && (
         <AddAnnouncementModal

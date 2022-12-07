@@ -11,19 +11,20 @@
  *  limitations under the License.
  */
 
+import { Col, Modal, Row, Typography } from 'antd';
+import { t } from 'i18next';
 import React, { useState } from 'react';
-import { EntityReference } from '../../../generated/type/entityReference';
 import UserCard from '../../../pages/teams/UserCard';
 import { getEntityName } from '../../../utils/CommonUtils';
 import Searchbar from '../searchbar/Searchbar';
+import { FollowersModalProps } from './FollowersModal.interface';
 
-type Props = {
-  header: string | React.ReactElement;
-  list: EntityReference[];
-  onCancel: () => void;
-};
-
-const FollowersModal = ({ header, list, onCancel }: Props) => {
+const FollowersModal = ({
+  header,
+  list,
+  onCancel,
+  visible,
+}: FollowersModalProps) => {
   const [searchText, setSearchText] = useState('');
 
   const getUserCards = () => {
@@ -43,7 +44,11 @@ const FollowersModal = ({ header, list, onCancel }: Props) => {
           name: user.name,
         };
 
-        return <UserCard isIconVisible item={User} key={index} />;
+        return (
+          <Col key={index} span={8}>
+            <UserCard isIconVisible item={User} />
+          </Col>
+        );
       });
   };
 
@@ -52,43 +57,28 @@ const FollowersModal = ({ header, list, onCancel }: Props) => {
   };
 
   return (
-    <dialog className="tw-modal " data-testid="modal-container">
-      <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-max-h-90vh tw-max-w-3xl">
-        <div className="tw-modal-header">
-          <p className="tw-modal-title" data-testid="header">
-            {header}
-          </p>
-          <div className="tw-flex">
-            <svg
-              className="tw-w-6 tw-h-6 tw-ml-1 tw-cursor-pointer"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              onClick={onCancel}>
-              <path
-                d="M6 18L18 6M6 6l12 12"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </svg>
-          </div>
-        </div>
-        <div className="tw-modal-body">
-          <Searchbar
-            placeholder="Search for followers..."
-            searchValue={searchText}
-            typingInterval={1500}
-            onSearch={handleSearchAction}
-          />
-          <div className="tw-grid tw-grid-cols-3 tw-gap-4">
-            {getUserCards()}
-          </div>
-        </div>
+    <Modal
+      centered
+      destroyOnClose
+      data-testid="modal-container"
+      title={
+        <Typography.Text strong data-testid="header">
+          {header}
+        </Typography.Text>
+      }
+      visible={visible}
+      width={800}
+      onCancel={onCancel}>
+      <div>
+        <Searchbar
+          placeholder={`${t('label.search-for-followers')}...`}
+          searchValue={searchText}
+          typingInterval={1500}
+          onSearch={handleSearchAction}
+        />
+        <Row gutter={[16, 16]}>{getUserCards()}</Row>
       </div>
-    </dialog>
+    </Modal>
   );
 };
 

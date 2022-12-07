@@ -672,15 +672,7 @@
   color: red;
   padding-left: 0.2rem;
 }
-.description-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  line-height: 18px;
-  max-height: 64px;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
+
 .asset-card-text {
   overflow: hidden;
   text-overflow: ellipsis;

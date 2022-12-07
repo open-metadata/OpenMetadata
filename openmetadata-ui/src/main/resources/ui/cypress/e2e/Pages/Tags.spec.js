@@ -70,7 +70,9 @@ describe('Tags page should work', () => {
     interceptURL("POST", "/api/v1/tags?*", "postTags");
         
     cy.get('[data-testid="add-category"]').should('be.visible').click();
-    cy.get('[data-testid="modal-container"]').should('be.visible');
+    cy.get('[data-testid="modal-container"]').should('exist').then(() => {
+        cy.get('[role="dialog"]').should('be.visible');
+    });
     cy.get('[data-testid="name"]')
       .should('be.visible')
       .type(NEW_TAG_CATEGORY.name);
@@ -105,7 +107,9 @@ describe('Tags page should work', () => {
     .parent()
     .should('have.class', 'activeCategory');
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible').click();
-    cy.get('[data-testid="modal-container"]').should('be.visible');
+    cy.get('[data-testid="modal-container"]').should('exist').then(() => {
+        cy.get('[role="dialog"]').should('be.visible');
+    });
     cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 

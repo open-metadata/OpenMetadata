@@ -53,9 +53,11 @@ describe('Add nested teams and test TeamsSelectable', () => {
       addTeam(getTeam(teamName));
 
       cy.reload();
-
+      interceptURL('GET','/api/v1/search/query?q=*&from=*&size=*&index=*', 'getCreatedTeam')
       // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
+
+      verifyResponseStatusCode('@getCreatedTeam', 200)
     });
 
     verifyResponseStatusCode('@getPermissions', 200);

@@ -17,7 +17,6 @@ import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 const teamName = `team-group-test-${uuid()}`;
 const TEAM_DETAILS = {
   name: teamName,
-  displayName: teamName,
   teamType: 'Group',
   description: `This is ${teamName} description`,
   ...SEARCH_ENTITY_TABLE.table_1,
@@ -76,10 +75,10 @@ describe('Create a team and add that team as a owner of the entity', () => {
 
     cy.get('[data-testid="searchInputText"]')
       .should('be.visible')
-      .type(TEAM_DETAILS.displayName);
+      .type(TEAM_DETAILS.name);
 
     //Selecting the team
-    cy.get(`[title="${TEAM_DETAILS.displayName}"]`)
+    cy.get(`[title="${TEAM_DETAILS.name}"]`)
       .should('exist')
       .should('be.visible')
       .click();
@@ -90,7 +89,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
       .scrollIntoView()
       .invoke('text')
       .then((text) => {
-        expect(text).equal(TEAM_DETAILS.displayName);
+        expect(text).equal(TEAM_DETAILS.name);
       });
   });
 });
