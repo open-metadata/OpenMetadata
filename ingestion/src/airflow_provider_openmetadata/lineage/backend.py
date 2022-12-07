@@ -47,16 +47,9 @@ class OpenMetadataLineageBackend(LineageBackend):
                  only if you are using google as SSO
     """
 
-    def __init__(self) -> None:
-        """
-        Instantiate a superclass object and run lineage config function
-        """
-        super().__init__()
-        _ = get_lineage_config()
-
     # pylint: disable=protected-access
-    @staticmethod  # needed for Airflow 1.10.x. Airflow 2.X does not use a staticmethod
     def send_lineage(
+        self,
         operator: "BaseOperator",
         inlets: Optional[List] = None,
         outlets: Optional[List] = None,

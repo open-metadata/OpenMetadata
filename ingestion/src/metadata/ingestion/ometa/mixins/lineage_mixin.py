@@ -143,5 +143,3 @@ class OMetaLineageMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
-
-        return None
