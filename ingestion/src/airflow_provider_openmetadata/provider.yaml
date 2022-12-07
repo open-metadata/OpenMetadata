@@ -13,7 +13,7 @@
 package-name: apache-airflow-providers-openmetadata
 name: OpenMetadata
 description: |
-    `OpenMetadata <https://open-metadata.org/>`__
+    `OpenMetadata <https://open-metadata.org/>`
 versions:
   - 0.0.1
 

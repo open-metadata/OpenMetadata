@@ -37,12 +37,21 @@ versions match.
 
 ### Adding Lineage Config
 
+<Note>
+
+If using OpenMetadata version 0.13.0 or lower, the import for the lineage backend is
+`airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`.
+
+For 0.13.1 or higher, the import has been renamed to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
+
+</Note>
+
 After the installation, we need to update the Airflow configuration. This can be done following this example on
 `airflow.cfg`:
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = no-auth
@@ -51,7 +60,7 @@ auth_provider_type = no-auth
 Or we can directly provide environment variables:
 
 ```env
-AIRFLOW__LINEAGE__BACKEND="airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend"
+AIRFLOW__LINEAGE__BACKEND="airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend"
 AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME="local_airflow"
 AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT="http://localhost:8585/api"
 AIRFLOW__LINEAGE__AUTH_PROVIDER_TYPE="no-auth"
@@ -67,7 +76,7 @@ but on your own Airflow you can freely choose.
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = google
@@ -79,7 +88,7 @@ secret_key = path-to-secret-key-file.json
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = okta
@@ -95,7 +104,7 @@ scopes = ["scope1", "scope2"]
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = auth0
@@ -108,7 +117,7 @@ domain = domain
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = azure
@@ -123,7 +132,7 @@ scopes = ["scope1", "scope2"]
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = openmetadata
@@ -134,7 +143,7 @@ jwt_token = token
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = custom-oidc
@@ -307,7 +316,7 @@ If you are running this example using the quickstart deployment of OpenMetadata,
 this:
 
 ```
-backend = airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend
+backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = openmetadata
