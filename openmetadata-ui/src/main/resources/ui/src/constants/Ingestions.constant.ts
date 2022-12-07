@@ -16,8 +16,18 @@ import { StepperStepType } from 'Models';
 import { FilterPattern } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
-  { name: i18next.t('label.configure-ingestion'), step: 1 },
-  { name: i18next.t('label.configure-dbt'), step: 2 },
+  {
+    name: i18next.t('label.configure-entity', {
+      entity: i18next.t('label.ingestion'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18next.t('label.configure-entity', {
+      entity: i18next.t('label.dbt-uppercase'),
+    }),
+    step: 2,
+  },
   {
     name: i18next.t('label.configure-metadata-to-es-config-optional'),
     step: 3,
@@ -29,3 +39,15 @@ export const INITIAL_FILTER_PATTERN: FilterPattern = {
   includes: [],
   excludes: [],
 };
+
+// Todo: Move this to service constant once we figure out issue related to localization in services constant
+export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
+  { name: i18next.t('label.select-service-type'), step: 1 },
+  {
+    name: i18next.t('label.configure-entity', {
+      entity: i18next.t('label.service'),
+    }),
+    step: 2,
+  },
+  { name: i18next.t('label.connection-details'), step: 3 },
+];
