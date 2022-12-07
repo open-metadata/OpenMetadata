@@ -27,7 +27,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isUndefined, kebabCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -46,7 +46,6 @@ import {
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
 import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
-import { nameWithSpace } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   CreateKpiRequest,
@@ -60,7 +59,6 @@ import {
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
-import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import {
   getDisabledDates,
   getKpiTargetValueByMetricType,
@@ -177,7 +175,7 @@ const AddKPIPage = () => {
         type: EntityType.DATA_INSIGHT_CHART,
       },
       description,
-      name: values.name,
+      name: kebabCase(values.displayName),
       displayName: values.displayName,
       startDate,
       endDate,
@@ -222,7 +220,7 @@ const AddKPIPage = () => {
             layout="vertical"
             validateMessages={VALIDATE_MESSAGES}
             onFinish={handleSubmit}>
-            <Form.Item
+            {/* <Form.Item
               label={t('label.name')}
               name="name"
               rules={[
@@ -249,7 +247,7 @@ const AddKPIPage = () => {
                 placeholder={t('label.kpi-name')}
                 type="text"
               />
-            </Form.Item>
+            </Form.Item> */}
 
             <Form.Item label={t('label.display-name')} name="displayName">
               <Input
