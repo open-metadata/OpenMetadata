@@ -22,7 +22,6 @@ import {
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Field } from '../../Field/Field';
 import { FilterPatternProps } from './filterPattern.interface';
-import './FilterPattern.less';
 
 const FilterPattern = ({
   showSeparator = true,
