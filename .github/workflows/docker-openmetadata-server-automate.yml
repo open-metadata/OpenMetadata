@@ -1,0 +1,16 @@
+name: docker-openmetadata-server release app
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Input tag"
+        required: true
+
+jobs:
+  log-the-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Tags: $TAGS"
+        env:
+          TAGS: ${{ inputs.tags }}
