@@ -25,7 +25,7 @@ from sqlparse.sql import Identifier
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.orm_profiler.metrics.core import SystemtMetric
+from metadata.orm_profiler.metrics.core import SystemMetric
 from metadata.orm_profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_logger
@@ -416,7 +416,7 @@ def _(
     return metric_results
 
 
-class System(SystemtMetric):
+class System(SystemMetric):
     """System metric class to fetch:
         1. freshness
         2. affected rows

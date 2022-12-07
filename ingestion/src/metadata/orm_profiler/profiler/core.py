@@ -41,7 +41,7 @@ from metadata.orm_profiler.metrics.core import (
     MetricTypes,
     QueryMetric,
     StaticMetric,
-    SystemtMetric,
+    SystemMetric,
     TMetric,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -217,8 +217,8 @@ class Profiler(Generic[TMetric]):
         return self._filter_metrics(QueryMetric)
 
     @property
-    def system_metrics(self) -> List[Type[SystemtMetric]]:
-        return self._filter_metrics(SystemtMetric)
+    def system_metrics(self) -> List[Type[SystemMetric]]:
+        return self._filter_metrics(SystemMetric)
 
     def get_col_metrics(
         self, metrics: List[Type[TMetric]], column: Optional[Column] = None

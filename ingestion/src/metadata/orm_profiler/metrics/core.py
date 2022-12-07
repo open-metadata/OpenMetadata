@@ -212,7 +212,7 @@ class CustomMetric(Metric, ABC):
         """
 
 
-class SystemtMetric(Metric, ABC):
+class SystemMetric(Metric, ABC):
     """Abstract class for system metrics"""
 
     @abstractmethod
