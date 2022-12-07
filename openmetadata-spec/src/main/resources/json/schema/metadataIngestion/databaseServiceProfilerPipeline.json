@@ -42,13 +42,11 @@
       "minimum": 0,
       "default": null
     },
-    "profileSampleType": {
-      "type": "string",
-      "enum": [
-        "percentage",
-        "numberofrows"
-      ],
-      "default": "percentage"
+    "profileSampleUsingRows": {
+      "description": "No. of rows for data we want to execute the profiler and tests on.",
+      "type": "number",
+      "minimum": 0,
+      "default": null
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
