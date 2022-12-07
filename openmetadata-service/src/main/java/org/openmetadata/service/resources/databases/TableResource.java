@@ -23,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -94,30 +92,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
-  @Override
-  protected MetadataOperation[] getViewOperations(Fields fields) {
-    List<MetadataOperation> operations = new ArrayList<>(List.of(MetadataOperation.VIEW_BASIC));
-    if (fields.contains("tests")) {
-      operations.add(MetadataOperation.VIEW_TESTS);
-    }
-    if (fields.contains("tableQueries")) {
-      operations.add(MetadataOperation.VIEW_QUERIES);
-    }
-    if (fields.contains("profile")) {
-      operations.add(MetadataOperation.VIEW_DATA_PROFILE);
-    }
-    if (fields.contains("sampleData")) {
-      operations.add(MetadataOperation.VIEW_SAMPLE_DATA);
-    }
-    if (operations.size() == 5) {
-      return EntityResource.VIEW_ALL_OPERATIONS; // All view operations are requested
-    }
-    return operations.toArray(new MetadataOperation[0]);
-  }
-
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
-    allowedFields.add("tests");
     allowedFields.add("customMetrics");
   }
 
@@ -144,8 +120,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
-          + "tags,followers,joins,sampleData,viewDefinition,tableProfilerConfig,profile,location,tableQueries,dataModel,tests,"
-          + "extension";
+          + "tags,followers,joins,viewDefinition,location,dataModel,extension";
 
   @GET
   @Operation(
@@ -523,6 +498,55 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @GET
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "getSampleData",
+      summary = "get sample data",
+      tags = "tables",
+      description = "get sample data from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table getSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid TableData tableData)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return addHref(uriInfo, dao.getSampleData(id));
+  }
+
+  @DELETE
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "deleteSampleData",
+      summary = "delete sample data",
+      tags = "tables",
+      description = "delete sample data from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table deleteSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid TableData tableData)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = dao.deleteSampleData(id);
+    return addHref(uriInfo, table);
+  }
+
   @PUT
   @Path("/{id}/tableProfilerConfig")
   @Operation(
@@ -597,6 +621,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @GET
+  @Path("/{fqn}/tableProfile/latest")
+  @Operation(
+      operationId = "Get the latest table and column profile",
+      summary = "get the latest tableProfile",
+      tags = "tables",
+      description = "Get the latest table and column profile ",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Table with profile and column profile",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table getLatestTableProfile(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return dao.getLatestTableProfile(fqn);
+  }
+
+  @GET
   @Path("/{fqn}/tableProfile")
   @Operation(
       operationId = "list Profiles",
@@ -614,6 +662,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfileList.class)))
       })
   public ResultList<TableProfile> listTableProfiles(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
           String fqn,
@@ -628,7 +677,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getTableProfiles(fqn, startTs, endTs);
   }
 
@@ -665,6 +715,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getColumnProfiles(fqn, startTs, endTs);
   }
 
@@ -696,10 +748,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @DELETE
   @Path("/{fqn}/{entityType}/{timestamp}/profile")
   @Operation(
-      operationId = "DeleteDataProfiler",
-      summary = "Delete table profile data",
+      operationId = "deleteDataProfiler",
+      summary = "delete table profile data",
       tags = "tables",
-      description = "Delete table profile data to the table.",
+      description = "delete table profile data to the table.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -771,6 +823,31 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.addQuery(id, sqlQuery);
+    return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/tableQuery")
+  @Operation(
+      operationId = "getTableQuery",
+      summary = "get table query data",
+      tags = "tables",
+      description = "get table query data from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table getQuery(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid SQLQuery sqlQuery)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = dao.getQueries(id);
     return addHref(uriInfo, table);
   }
 
