@@ -19,6 +19,7 @@ Workflow definition for the ORM Profiler.
 import traceback
 from copy import deepcopy
 from typing import Iterable, List, Optional, cast
+from metadata.utils.connections import test_connection, get_connection
 
 from pydantic import ValidationError
 from sqlalchemy import MetaData
@@ -111,6 +112,9 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             self.config.processor.dict().get("config")
         )
         self.metadata = OpenMetadata(self.metadata_config)
+        self.service_config = self.config.serviceConnection.__root__.config
+        self.engine = get_connection(self.service_config)
+        test_connection(self.engine)
         self._retrieve_service_connection_if_needed()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
         # Init and type the source config
