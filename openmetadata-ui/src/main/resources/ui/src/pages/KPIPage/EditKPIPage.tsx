@@ -345,10 +345,12 @@ const AddKPIPage = () => {
                       rules={[
                         {
                           required: true,
+                          message: t('label.field-required', {
+                            field: t('label.start-date'),
+                          }),
                         },
                       ]}>
                       <DatePicker
-                        showTime
                         className="w-full"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
@@ -366,10 +368,12 @@ const AddKPIPage = () => {
                       rules={[
                         {
                           required: true,
+                          message: t('label.field-required', {
+                            field: t('label.end-date'),
+                          }),
                         },
                       ]}>
                       <DatePicker
-                        showTime
                         className="w-full"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
