@@ -61,6 +61,7 @@ import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import {
   getDisabledDates,
+  getKPIFormattedDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
@@ -162,8 +163,10 @@ const AddKPIPage = () => {
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
-    const startDate = getTimeStampByDateTime(kpiDates.startDate);
-    const endDate = getTimeStampByDateTime(kpiDates.endDate);
+    const formattedDates = getKPIFormattedDates(kpiDates);
+
+    const startDate = getTimeStampByDateTime(formattedDates.startDate);
+    const endDate = getTimeStampByDateTime(formattedDates.endDate);
     const metricType =
       selectedMetric?.chartDataType as unknown as KpiTargetType;
 
