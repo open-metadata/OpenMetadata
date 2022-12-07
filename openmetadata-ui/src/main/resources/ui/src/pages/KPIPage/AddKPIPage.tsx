@@ -220,14 +220,6 @@ const AddKPIPage = () => {
             layout="vertical"
             validateMessages={VALIDATE_MESSAGES}
             onFinish={handleSubmit}>
-            <Form.Item label={t('label.display-name')} name="displayName">
-              <Input
-                data-testid="displayName"
-                placeholder={t('label.kpi-display-name')}
-                type="text"
-              />
-            </Form.Item>
-
             <Form.Item
               label={t('label.select-a-chart')}
               name="dataInsightChart"
@@ -249,6 +241,14 @@ const AddKPIPage = () => {
                   </Option>
                 ))}
               </Select>
+            </Form.Item>
+
+            <Form.Item label={t('label.display-name')} name="displayName">
+              <Input
+                data-testid="displayName"
+                placeholder={t('label.kpi-display-name')}
+                type="text"
+              />
             </Form.Item>
 
             <Form.Item
