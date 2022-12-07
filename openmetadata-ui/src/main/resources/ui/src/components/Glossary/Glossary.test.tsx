@@ -13,6 +13,7 @@
 
 import {
   act,
+  findByTestId,
   findByText,
   getByTestId,
   queryByText,
@@ -76,39 +77,13 @@ jest.mock('react-router-dom', () => ({
     glossaryName: 'GlossaryName',
   }),
 }));
-jest.mock('antd', () => ({
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Tree: {
-    DirectoryTree: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Typography: {
-    Title: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
-    <div>
-      {children}
-      {overlay}
-    </div>
-  )),
-  Menu: jest.fn().mockImplementation(({ items }) => (
-    <div>
-      {items.map((item: { key: string; label: JSX.Element }) => {
-        <div key={item.key}>{item.label}</div>;
-      })}
-    </div>
-  )),
-}));
 
 jest.mock('../../components/GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
+jest.mock('react-router-dom', () => ({
+  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
+}));
 
 jest.mock('../../components/GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
@@ -118,49 +93,15 @@ jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => {
   return jest.fn().mockReturnValue(<>TitleBreadcrumb</>);
 });
 
-jest.mock('antd', () => ({
-  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Tree: {
-    DirectoryTree: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Typography: {
-    Title: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
-    <div>
-      {children}
-      {overlay}
-    </div>
-  )),
-  Menu: jest.fn().mockImplementation(({ items }) => (
-    <div>
-      {items.map((item: { key: string; label: JSX.Element }) => {
-        <div key={item.key}>{item.label}</div>;
-      })}
-    </div>
-  )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children }) => <button>{children}</button>),
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-}));
-
 jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
   jest.fn().mockReturnValue(<div>Breadcrumb</div>)
 );
 
 jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () =>
   jest.fn().mockReturnValue(<div>Entity Delete Modal</div>)
+);
+jest.mock('../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<span>U</span>)
 );
 
 const mockProps = {
@@ -210,6 +151,7 @@ describe('Test Glossary component', () => {
       container,
       /Glossary-Details component/i
     );
+    const updateBy = await findByTestId(container, 'updated-by');
 
     const glossaryTerm = await queryByText(
       container,
@@ -217,6 +159,7 @@ describe('Test Glossary component', () => {
     );
 
     expect(glossaryDetails).toBeInTheDocument();
+    expect(updateBy).toBeInTheDocument();
     expect(glossaryTerm).not.toBeInTheDocument();
   });
 

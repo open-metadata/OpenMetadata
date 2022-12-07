@@ -547,7 +547,7 @@ const GlossaryV1 = ({
               </Space>
             )}
           </div>
-          <Space className="m-b-md" size={8}>
+          <Space className="m-b-md" data-testid="updated-by" size={8}>
             <Typography.Text className="text-grey-muted">
               {t('label.updated-by')} -
             </Typography.Text>
