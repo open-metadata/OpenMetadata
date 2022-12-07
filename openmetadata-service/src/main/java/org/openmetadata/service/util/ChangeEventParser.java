@@ -20,8 +20,6 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEST_CASE;
 
-import com.github.difflib.text.DiffRow;
-import com.github.difflib.text.DiffRowGenerator;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -407,7 +405,9 @@ public final class ChangeEventParser {
           message =
               String.format(("Followed " + getBold(publishTo) + " `%s`"), link.getEntityType(), link.getEntityFQN());
         } else if (fieldValue != null && !fieldValue.isEmpty()) {
-          message = String.format(("Added " + getBold(publishTo) + ": " + getBold(publishTo)), updatedField, fieldValue.trim());
+          message =
+              String.format(
+                  ("Added " + getBold(publishTo) + ": " + getBold(publishTo)), updatedField, fieldValue.trim());
         }
         break;
       case UPDATE:
@@ -418,7 +418,8 @@ public final class ChangeEventParser {
           message = String.format("Unfollowed %s `%s`", link.getEntityType(), link.getEntityFQN());
         } else {
           message =
-              String.format(("Deleted " + getBold(publishTo) + ": `%s`"), updatedField, getFieldValue(oldFieldValue).trim());
+              String.format(
+                  ("Deleted " + getBold(publishTo) + ": `%s`"), updatedField, getFieldValue(oldFieldValue).trim());
         }
         break;
       default:
