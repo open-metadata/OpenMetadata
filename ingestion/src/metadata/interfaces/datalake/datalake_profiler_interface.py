@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 from pydantic import BaseModel
 from sqlalchemy import Column
@@ -33,12 +33,11 @@ from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,
 )
-from metadata.orm_profiler.metrics.datalake_metrics_computation_registry import (
-    compute_metrics_registry,
-)
+from metadata.orm_profiler.metrics.core import MetricTypes
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.utils.connections import get_connection
+from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
@@ -74,6 +73,153 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             self.service_connection_config.configSource
         )
 
+    @valuedispatch
+    def _get_metrics(self, *args, **kwargs):
+        """Generic getter method for metrics. To be used with
+        specific dispatch methods
+        """
+        logger.warning("Could not get metric. No function registered.")
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Table.value)
+    def _(
+        self,
+        metric_type: str,
+        metrics: List[Metrics],
+        data_frame_list,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
+        try:
+            row = []
+            for metric in metrics:
+                for data_frame in data_frame_list:
+                    row.append(
+                        metric().dl_fn(
+                            data_frame.astype(object).where(
+                                pd.notnull(data_frame), None
+                            )
+                        )
+                    )
+            if row:
+                if isinstance(row, list):
+                    row_dict = {}
+                    for index, table_metric in enumerate(metrics):
+                        row_dict[table_metric.name()] = row[index]
+                    return row_dict
+                return dict(row)
+            return None
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to compute profile for {exc}")
+            raise RuntimeError(exc)
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Static.value)
+    def _(
+        self,
+        metric_type: str,
+        metrics: List[Metrics],
+        column,
+        data_frame_list,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
+        try:
+            row = []
+            for metric in metrics:
+                for data_frame in data_frame_list:
+                    row.append(
+                        metric(column).dl_fn(
+                            data_frame.astype(object).where(
+                                pd.notnull(data_frame), None
+                            )
+                        )
+                    )
+            row_dict = {}
+            for index, column_metric in enumerate(metrics):
+                row_dict[column_metric.name()] = row[index]
+            return row_dict
+        except Exception as exc:
+            logger.debug(
+                f"{traceback.format_exc()}\nError trying to compute profile for {exc}"
+            )
+            raise RuntimeError(exc)
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Query.value)
+    def _(
+        self,
+        metric_type: str,
+        metrics: Metrics,
+        column,
+        data_frame_list,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        col_metric = None
+        for data_frame in data_frame_list:
+            col_metric = metrics(column).dl_query(data_frame)
+        if not col_metric:
+            return None
+        return {metrics.name(): col_metric}
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Window.value)
+    def _(
+        self,
+        *args,
+        **kwargs,
+    ):
+        """
+        Given a list of metrics, compute the given results
+        and returns the values
+        """
+        return None  # to be implemented
+
+    @_get_metrics.register(MetricTypes.System.value)
+    def _(
+        self,
+        *args,
+        **kwargs,
+    ):
+        """
+        Given a list of metrics, compute the given results
+        and returns the values
+        """
+        return None  # to be implemented
+
     def ometa_to_dataframe(self, config_source):
         if isinstance(config_source, GCSConfig):
             return DatalakeSource.get_gcs_files(
@@ -91,31 +237,32 @@ class DataLakeProfilerInterface(ProfilerProtocol):
 
     def compute_metrics(
         self,
-        metric_funcs,
+        metrics,
+        metric_type,
+        column,
+        table,
     ):
         """Run metrics in processor worker"""
-        (
-            metrics,
-            metric_type,
-            column,
-            table,
-        ) = metric_funcs
         logger.debug(f"Running profiler for {table}")
         try:
-
-            row = compute_metrics_registry.registry[metric_type.value](
+            row = self._get_metrics(
+                metric_type.value,
                 metrics,
                 session=self.client,
                 data_frame_list=self.data_frame_list,
                 column=column,
-                processor_status=self.processor_status,
             )
-        except Exception as err:
-            logger.error(err)
+        except Exception as exc:
+            logger.error(exc)
+            self.processor_status.failure(
+                f"{column if column is not None else table}",
+                "metric_type.value",
+                f"{exc}",
+            )
             row = None
         if column:
             column = column.name
-        return row, column
+        return row, column, metric_type.value
 
     def fetch_sample_data(self, table) -> TableData:
         """Fetch sample data from database
@@ -163,14 +310,15 @@ class DataLakeProfilerInterface(ProfilerProtocol):
 
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
-            self.compute_metrics(metric_funcs=metric_func)
-            for metric_func in metric_funcs
+            self.compute_metrics(*metric_func) for metric_func in metric_funcs
         ]
         for metric_result in metric_list:
-            profile, column = metric_result
+            profile, column, metric_type = metric_result
 
-            if not column:
+            if metric_type == MetricTypes.Table.value:
                 profile_results["table"].update(profile)
+            if metric_type == MetricTypes.System.value:
+                profile_results["system"] = profile
             else:
                 if profile:
                     profile_results["columns"][column].update(
