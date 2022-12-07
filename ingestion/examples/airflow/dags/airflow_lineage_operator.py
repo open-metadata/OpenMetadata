@@ -25,7 +25,6 @@ from airflow.operators.python import PythonOperator
 # These args will get passed on to each operator
 # You can override them on a per-task basis during operator initialization
 from airflow_provider_openmetadata.lineage.operator import OpenMetadataLineageOperator
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -33,10 +32,9 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 
-
 default_args = {
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
 }
 
 
@@ -45,42 +43,40 @@ def explode():
 
 
 with DAG(
-    'lineage_tutorial_operator',
+    "lineage_tutorial_operator",
     default_args=default_args,
-    description='A simple tutorial DAG',
+    description="A simple tutorial DAG",
     schedule_interval=timedelta(days=1),
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    tags=['example'],
+    tags=["example"],
 ) as dag:
 
     # t1, t2 and t3 are examples of tasks created by instantiating operators
     t1 = BashOperator(
-        task_id='print_date',
-        bash_command='date',
-        outlets={
-            "tables": ["sample_data.ecommerce_db.shopify.dim_address"]
-        }
+        task_id="print_date",
+        bash_command="date",
+        outlets={"tables": ["sample_data.ecommerce_db.shopify.dim_address"]},
     )
 
     t2 = BashOperator(
-        task_id='sleep',
+        task_id="sleep",
         depends_on_past=False,
-        bash_command='sleep 1',
+        bash_command="sleep 1",
         retries=3,
-        inlets={
-            "tables": ["sample_data.ecommerce_db.shopify.dim_customer"]
-        }
+        inlets={"tables": ["sample_data.ecommerce_db.shopify.dim_customer"]},
     )
 
     risen = PythonOperator(
-        task_id='explode',
+        task_id="explode",
         provide_context=True,
         python_callable=explode,
         retries=0,
     )
 
-    dag.doc_md = __doc__  # providing that you have a docstring at the beginning of the DAG
+    dag.doc_md = (
+        __doc__  # providing that you have a docstring at the beginning of the DAG
+    )
     dag.doc_md = """
     This is a documentation placed anywhere
     """  # otherwise, type it like this
@@ -95,10 +91,10 @@ with DAG(
     )
 
     t3 = BashOperator(
-        task_id='templated',
+        task_id="templated",
         depends_on_past=False,
         bash_command=templated_command,
-        params={'my_param': 'Parameter I passed in'},
+        params={"my_param": "Parameter I passed in"},
     )
 
     t1 >> [t2, t3]
@@ -112,7 +108,7 @@ with DAG(
     )
 
     t4 = OpenMetadataLineageOperator(
-        task_id='lineage_op',
+        task_id="lineage_op",
         depends_on_past=False,
         server_config=server_config,
         service_name="airflow_lineage_op_service",
