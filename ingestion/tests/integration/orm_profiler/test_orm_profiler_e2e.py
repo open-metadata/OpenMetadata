@@ -207,24 +207,15 @@ class ProfilerWorkflowTest(TestCase):
         table = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.main.main.users",
-            fields=["tableProfilerConfig", "profile"],
+            fields=["tableProfilerConfig"],
         )
 
-        table_profile = self.metadata.get_profile_data(
-            "test_sqlite.main.main.users",
-            get_beginning_of_day_timestamp_mill(),
-            get_end_of_day_timestamp_mill(),
-        )
-        column_profile = self.metadata.get_profile_data(
-            "test_sqlite.main.main.users.id",
-            get_beginning_of_day_timestamp_mill(),
-            get_end_of_day_timestamp_mill(),
-            profile_type=ColumnProfile,
-        )
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
 
-        assert table_profile.data
-        assert column_profile.data
-        assert table.profile.profileSample == 75.0
+        assert not table.tableProfilerConfig
+        assert profile.profileSample == 75.0
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""

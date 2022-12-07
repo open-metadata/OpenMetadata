@@ -52,7 +52,7 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack,generic,msteams etc",
+      "description": "Type of webhook Slack, Generic, Microsoft Teams, etc",
       "$ref": "../../entity/events/webhook.json#/definitions/webhookType"
     }
   },

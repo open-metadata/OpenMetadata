@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
+import { FormErrorData } from 'Models';
+import { Team } from '../../../generated/entity/teams/team';
+import { TagsCategory } from '../../../pages/tags/tagsTypes';
 
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
-}
+export type FormData = TagsCategory | Team;
+export type FormModalProp = {
+  onCancel: () => void;
+  onChange?: (data: TagsCategory | Team) => void;
+  onSave: (data: TagsCategory | Team) => void;
+  form: React.ElementType;
+  header: string;
+  initialData: FormData;
+  errorData?: FormErrorData;
+  isSaveButtonDisabled?: boolean;
+  visible: boolean;
+};
+export type FormRef = {
+  fetchMarkDownData: () => string;
+};

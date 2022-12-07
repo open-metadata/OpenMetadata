@@ -1,24 +1,24 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/services/connections/database/domodatabaseConnection.json",
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/domoPipelineConnection.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "DomoDatabaseConnection",
-    "description": "Domo Database Connection Config",
+    "title": "DomoPipelineConnection",
+    "description": "Domo Pipeline Connection Config",
     "type": "object",
-    "javaType": "org.openmetadata.schema.services.connections.database.DomoDatabaseConnection",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.DomoPipelineConnection",
     "definitions": {
-      "domodatabaseType": {
-        "description": " service type",
+      "DomoPipelineType": {
+        "description": "Service type.",
         "type": "string",
-        "enum": ["DomoDatabase"],
-        "default": "DomoDatabase"
+        "enum": ["DomoPipeline"],
+        "default": "DomoPipeline"
       }
     },
     "properties": {
       "type": {
         "title": "Service Type",
         "description": "Service Type",
-        "$ref": "#/definitions/domodatabaseType",
-        "default": "DomoDatabase"
+        "$ref": "#/definitions/DomoPipelineType",
+        "default": "DomoPipeline"
       },
       "clientId": {
         "title": "Client ID",
@@ -27,13 +27,13 @@
       },
       "secretToken": {
         "title": "Secret Token",
-        "description": "Secret Token to connect DOMO",
+        "description": "Secret token to connect to DOMO",
         "type": "string",
         "format": "password"
       },
       "accessToken": {
         "title": "Access Token",
-        "description": "Access to connecto to DOMO",
+        "description": "Access token to connect to DOMO",
         "type": "string"
       },
       "apiHost": {
@@ -56,6 +56,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["clientId", "secretToken", "sandboxDomain"]
+    "required": ["clientId","secretToken","sandboxDomain"]
   }
   

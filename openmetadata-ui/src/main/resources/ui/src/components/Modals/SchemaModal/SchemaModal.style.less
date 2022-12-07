@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
+@schema-editor-border-color: #dce3ec;
 
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
+.schema-modal {
+  .ant-modal-close-x {
+    display: flex;
+    align-items: center;
   }
+}
+.schema-editor {
+  border-width: 0.0625rem;
+  border-radius: 0.375rem;
+  border-color: @schema-editor-border-color;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }

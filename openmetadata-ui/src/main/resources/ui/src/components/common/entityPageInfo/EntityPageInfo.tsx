@@ -16,6 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Popover, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
@@ -635,17 +636,14 @@ const EntityPageInfo = ({
           />
         )}
       </Space>
-      {isViewMore && (
-        <FollowersModal
-          header={
-            <>
-              Followers of <span className="tw-text-black">{entityName}</span>{' '}
-            </>
-          }
-          list={entityFollowers}
-          onCancel={() => setIsViewMore(false)}
-        />
-      )}
+      <FollowersModal
+        header={t('label.followers-of', {
+          entityName,
+        })}
+        list={entityFollowers}
+        visible={isViewMore}
+        onCancel={() => setIsViewMore(false)}
+      />
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
           entityFQN={entityFqn || ''}
