@@ -963,7 +963,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table putResponse = putSampleData(table.getId(), tableData, authHeaders);
     assertEquals(tableData, putResponse.getSampleData());
 
-    table = getEntity(table.getId(), "sampleData", authHeaders);
+    table = getSampleData(table.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(tableData, table.getSampleData());
   }
 
@@ -1250,7 +1250,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             authHeaders);
     verifyTableProfiles(tableProfiles, table1ProfileList, 4);
 
-    table1 = getEntity(table1.getId(), "*", authHeaders);
+    table1 = getLatestTableProfile(table1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     verifyTableProfile(table1.getProfile(), table1ProfileList.get(table1ProfileList.size() - 1));
 
     // Table profile with column profile as null
@@ -1266,8 +1266,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     tableProfile =
         new TableProfile().withRowCount(6.0).withColumnCount(3.0).withTimestamp(timestamp).withProfileSample(10.0);
     createTableProfile = new CreateTableProfile().withTableProfile(tableProfile);
-    putResponse = putTableProfileData(table.getId(), createTableProfile, authHeaders);
-    verifyTableProfile(putResponse.getProfile(), createTableProfile.getTableProfile());
+    putTableProfileData(table.getId(), createTableProfile, authHeaders);
+    Table table2 = getLatestTableProfile(table.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    verifyTableProfile(table2.getProfile(), createTableProfile.getTableProfile());
   }
 
   @Test
@@ -1292,7 +1293,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     SQLQuery query = new SQLQuery().withQuery("select * from test;").withQueryDate("2021-09-08").withDuration(600.0);
     Table putResponse = putTableQueriesData(table.getId(), query, ADMIN_AUTH_HEADERS);
-    table = getEntity(table.getId(), "tableQueries", ADMIN_AUTH_HEADERS);
+    table = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(query.getQuery(), putResponse.getTableQueries().get(0).getQuery());
 
     // first result should be the latest date
@@ -1308,7 +1309,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(query1.getQuery(), putResponse.getTableQueries().get(0).getQuery());
     assertEquals(query1.getVote(), putResponse.getTableQueries().get(0).getVote());
 
-    table = getEntity(table.getId(), "tableQueries", ADMIN_AUTH_HEADERS);
+    table = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(1, table.getTableQueries().size());
     assertEquals(query1.getQuery(), table.getTableQueries().get(0).getQuery());
     assertEquals(query1.getVote(), table.getTableQueries().get(0).getVote());
@@ -1324,7 +1325,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(query2.getQuery(), putResponse.getTableQueries().get(0).getQuery());
     assertEquals(query2.getVote(), putResponse.getTableQueries().get(0).getVote());
 
-    table = getEntity(table.getId(), "tableQueries", ADMIN_AUTH_HEADERS);
+    table = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(2, table.getTableQueries().size());
     // query2 with the highest vote should be the first result.
     assertEquals(query2.getQuery(), table.getTableQueries().get(0).getQuery());
@@ -1947,6 +1948,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
+  public static Table getSampleData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/sampleData");
+    return TestUtils.get(target, Table.class, authHeaders);
+  }
+
   public static Table putTableProfilerConfig(UUID tableId, TableProfilerConfig data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
@@ -1957,6 +1963,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableProfilerConfig");
     return TestUtils.delete(target, Table.class, authHeaders);
+  }
+
+  public static Table getLatestTableProfile(String fqn, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + fqn + "/tableProfile/latest");
+    return TestUtils.get(target, Table.class, authHeaders);
   }
 
   public static Table putTableProfileData(UUID tableId, CreateTableProfile data, Map<String, String> authHeaders)
@@ -1990,6 +2001,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableQuery");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public static Table getTableQueriesData(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = OpenMetadataApplicationTest.getResource("tables/" + tableId + "/tableQuery");
+    return TestUtils.get(target, Table.class, authHeaders);
   }
 
   public static Table putTableDataModel(UUID tableId, DataModel dataModel, Map<String, String> authHeaders)

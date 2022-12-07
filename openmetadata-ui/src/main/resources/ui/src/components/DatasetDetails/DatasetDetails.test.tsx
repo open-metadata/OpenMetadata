@@ -195,6 +195,9 @@ jest.mock('../common/description/Description', () => {
 jest.mock('../SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTab</p>);
 });
+jest.mock('../TableQueries/TableQueries', () => {
+  return jest.fn().mockReturnValue(<p>TableQueries</p>);
+});
 
 jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
@@ -373,7 +376,7 @@ describe('Test MyDataDetailsPage page', () => {
         wrapper: MemoryRouter,
       }
     );
-    const tableQueries = await findByTestId(container, 'no-queries');
+    const tableQueries = await findByText(container, 'TableQueries');
 
     expect(tableQueries).toBeInTheDocument();
   });

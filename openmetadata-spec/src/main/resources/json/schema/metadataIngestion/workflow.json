@@ -195,7 +195,7 @@
           "type": "string"
         },
         "pipelineRunId": {
-          "description": "Unique identifier of pipeline run, used to identify the current pipleine run",
+          "description": "Unique identifier of pipeline run, used to identify the current pipeline run",
           "$ref": "../type/basic.json#/definitions/uuid"
         }
       },
