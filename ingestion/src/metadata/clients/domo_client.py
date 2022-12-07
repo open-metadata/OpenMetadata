@@ -15,13 +15,13 @@ DomoClient source to extract data from DOMO
 
 from typing import Union
 
-from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
+from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.domopipelineConnection import (
+from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig

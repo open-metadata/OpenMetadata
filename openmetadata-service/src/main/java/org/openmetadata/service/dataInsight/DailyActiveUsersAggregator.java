@@ -6,7 +6,7 @@ import java.util.List;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.datatInsight.type.DailyActiveUsers;
+import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
 
 public class DailyActiveUsersAggregator extends DataInsightAggregatorInterface<DailyActiveUsers> {
 

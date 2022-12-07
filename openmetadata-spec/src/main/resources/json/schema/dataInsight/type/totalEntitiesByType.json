@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/datatInsight/type/totalEntitiesByType.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/totalEntitiesByType.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TotalEntitiesByType",
   "description": "totalEntitiesByType data blob",
   "type": "object",
-  "javaType": "org.openmetadata.schema.datatInsight.type.TotalEntitiesByType",
+  "javaType": "org.openmetadata.schema.dataInsight.type.TotalEntitiesByType",
   "properties": {
     "timestamp": {
       "description": "timestamp",

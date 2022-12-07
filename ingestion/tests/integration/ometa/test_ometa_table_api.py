@@ -327,13 +327,13 @@ class OMetaTableTest(TestCase):
             tableProfile=table_profile, columnProfile=column_profile
         )
         self.metadata.ingest_profile_data(res, profile)
-        res_from_table = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["profile"]
-        )
-        assert res_from_table.profile == table_profile
+
+        table = self.metadata.get_latest_table_profile(self.entity.fullyQualifiedName)
+
+        assert table.profile == table_profile
 
         res_column_profile = next(
-            (col.profile for col in res_from_table.columns if col.name.__root__ == "id")
+            (col.profile for col in table.columns if col.name.__root__ == "id")
         )
         assert res_column_profile == column_profile[0]
 
@@ -425,9 +425,7 @@ class OMetaTableTest(TestCase):
         self.metadata.ingest_table_queries_data(
             table=res, table_queries=[query_no_user]
         )
-        table_with_query: Table = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["tableQueries"]
-        )
+        table_with_query: Table = self.metadata.get_table_queries(res.id)
 
         assert len(table_with_query.tableQueries) == 1
         assert table_with_query.tableQueries[0].query == query_no_user.query
@@ -439,9 +437,7 @@ class OMetaTableTest(TestCase):
         self.metadata.ingest_table_queries_data(
             table=res, table_queries=[query_with_user]
         )
-        table_with_query: Table = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["tableQueries"]
-        )
+        table_with_query: Table = self.metadata.get_table_queries(res.id)
 
         assert len(table_with_query.tableQueries) == 1
         assert table_with_query.tableQueries[0].query == query_with_user.query
@@ -501,7 +497,7 @@ class OMetaTableTest(TestCase):
         assert table.tableProfilerConfig is None
 
         self.metadata._create_or_update_table_profiler_config(
-            table=table, table_profiler_config=TableProfilerConfig(profileSample=50.0)
+            table.id, table_profiler_config=TableProfilerConfig(profileSample=50.0)
         )
 
         stored = self.metadata.get_by_name(
