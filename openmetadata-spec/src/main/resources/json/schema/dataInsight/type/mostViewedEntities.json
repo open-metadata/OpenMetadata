@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/datatInsight/type/mostViewedEntities.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/mostViewedEntities.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MostViewedEntities",
   "description": "pageViewsByEntities data blob",
   "type": "object",
-  "javaType": "org.openmetadata.schema.datatInsight.type.MostViewedEntities",
+  "javaType": "org.openmetadata.schema.dataInsight.type.MostViewedEntities",
   "properties": {
     "entityFqn": {
       "description": "Number of page views",

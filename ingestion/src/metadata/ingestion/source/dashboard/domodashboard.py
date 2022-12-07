@@ -21,7 +21,7 @@ from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
+from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (

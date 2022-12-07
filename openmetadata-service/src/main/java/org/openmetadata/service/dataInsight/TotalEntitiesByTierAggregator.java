@@ -8,7 +8,7 @@ import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.datatInsight.type.TotalEntitiesByTier;
+import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 
 public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterface<TotalEntitiesByTier> {
   public TotalEntitiesByTierAggregator(

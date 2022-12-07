@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/datatInsight/type/percentageOfEntitiesWithDescriptionByType.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/percentageOfEntitiesWithDescriptionByType.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PercentageOfEntitiesWithDescriptionByType",
   "description": "percentageOfEntitiesWithDescriptionByType data blob",
   "type": "object",
-  "javaType": "org.openmetadata.schema.datatInsight.type.PercentageOfEntitiesWithDescriptionByType",
+  "javaType": "org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType",
   "properties": {
     "timestamp": {
       "description": "timestamp",

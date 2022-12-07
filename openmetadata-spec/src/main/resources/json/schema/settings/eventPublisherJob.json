@@ -75,7 +75,7 @@
         "STARTING",
         "ACTIVE",
         "RETRY",
-        "ACTIVEWITHERROR",
+        "ACTIVE_WITH_ERROR",
         "IDLE",
         "COMPLETED"
       ]
