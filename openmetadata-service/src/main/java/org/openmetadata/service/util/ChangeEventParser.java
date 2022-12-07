@@ -26,6 +26,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -39,6 +40,7 @@ import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
+import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -405,7 +407,7 @@ public final class ChangeEventParser {
           message =
               String.format(("Followed " + getBold(publishTo) + " `%s`"), link.getEntityType(), link.getEntityFQN());
         } else if (fieldValue != null && !fieldValue.isEmpty()) {
-          message = String.format(("Added " + getBold(publishTo) + ": `%s`"), updatedField, fieldValue);
+          message = String.format(("Added " + getBold(publishTo) + ": " + getBold(publishTo)), updatedField, fieldValue.trim());
         }
         break;
       case UPDATE:
@@ -416,7 +418,7 @@ public final class ChangeEventParser {
           message = String.format("Unfollowed %s `%s`", link.getEntityType(), link.getEntityFQN());
         } else {
           message =
-              String.format(("Deleted " + getBold(publishTo) + ": `%s`"), updatedField, getFieldValue(oldFieldValue));
+              String.format(("Deleted " + getBold(publishTo) + ": `%s`"), updatedField, getFieldValue(oldFieldValue).trim());
         }
         break;
       default:
@@ -556,27 +558,23 @@ public final class ChangeEventParser {
     String addMarker = FEED_ADD_MARKER;
     String removeMarker = FEED_REMOVE_MARKER;
 
-    DiffRowGenerator generator =
-        DiffRowGenerator.create()
-            .showInlineDiffs(true)
-            .mergeOriginalRevised(true)
-            .inlineDiffByWord(true)
-            .oldTag(f -> removeMarker) // introduce a tag to mark removals
-            .newTag(f -> addMarker) // introduce a tag to mark new additions
-            .build();
-    // compute the differences
-    List<DiffRow> rows = generator.generateDiffRows(List.of(oldValue), List.of(newValue));
-
-    // merge rows by %n for new line
-    String diff = null;
-    for (DiffRow row : rows) {
-      if (diff == null) {
-        diff = row.getOldLine();
+    DiffMatchPatch dmp = new DiffMatchPatch();
+    LinkedList<DiffMatchPatch.Diff> diffs = dmp.diffMain(oldValue, newValue);
+    dmp.diffCleanupSemantic(diffs);
+    StringBuilder outputStr = new StringBuilder();
+    for (DiffMatchPatch.Diff d : diffs) {
+      if (DiffMatchPatch.Operation.EQUAL.equals(d.operation)) {
+        // merging equal values of both string ..
+        outputStr.append(d.text.trim());
+      } else if (DiffMatchPatch.Operation.INSERT.equals(d.operation)) {
+        // merging added values with addMarker before and after of new values added..
+        outputStr.append(" ").append(addMarker).append(d.text.trim()).append(addMarker).append(" ");
       } else {
-        diff = String.format("%s%n%s", diff, row.getOldLine());
+        // merging deleted values with removeMarker before and after of old value removed ..
+        outputStr.append(" ").append(removeMarker).append(d.text.trim()).append(removeMarker).append(" ");
       }
     }
-
+    String diff = outputStr.toString().trim();
     // The additions and removals will be wrapped by <!add> and <!remove> tags
     // Replace them with html tags to render nicely in the UI
     // Example: This is a test <!remove>sentence<!remove><!add>line<!add>

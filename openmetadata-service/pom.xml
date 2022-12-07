@@ -412,6 +412,12 @@
       <artifactId>unboundid-ldapsdk</artifactId>
       <version>${unboundsdk.version}</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.bitbucket.cowwoc.diff-match-patch/diff-match-patch -->
+    <dependency>
+      <groupId>org.bitbucket.cowwoc.diff-match-patch</groupId>
+      <artifactId>diff-match-patch</artifactId>
+      <version>1.0</version>
+    </dependency>
   </dependencies>
 
   <build>
