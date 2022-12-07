@@ -12,7 +12,7 @@
  */
 
 import i18next from 'i18next';
-import { ServiceTypes, StepperStepType } from 'Models';
+import { ServiceTypes } from 'Models';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
 import noDataFound from '../assets/img/no-data-placeholder.svg';
@@ -210,12 +210,6 @@ export const servicesDisplayName: { [key: string]: string } = {
     entity: i18next.t('label.metadata'),
   }),
 };
-
-export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
-  { name: i18next.t('label.select-service-type'), step: 1 },
-  { name: i18next.t('label.configure-service'), step: 2 },
-  { name: i18next.t('label.connection-details'), step: 3 },
-];
 
 export const DEF_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
