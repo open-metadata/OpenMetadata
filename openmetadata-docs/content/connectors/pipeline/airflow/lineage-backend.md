@@ -54,7 +54,8 @@ After the installation, we need to update the Airflow configuration. This can be
 backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = no-auth
+auth_provider_type = openmetadata
+jwt_token = <your-token>
 ```
 
 Or we can directly provide environment variables:
@@ -63,94 +64,29 @@ Or we can directly provide environment variables:
 AIRFLOW__LINEAGE__BACKEND="airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend"
 AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME="local_airflow"
 AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT="http://localhost:8585/api"
-AIRFLOW__LINEAGE__AUTH_PROVIDER_TYPE="no-auth"
+AIRFLOW__LINEAGE__AUTH_PROVIDER_TYPE="openmetadata"
+AIRFLOW__LINEAGE__JWT_TOKEN="<your-token>"
 ```
 
 We can choose the option that best adapts to our current architecture. Find more information on Airflow configurations
 [here](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-config.html).
 
-We are now going to list the configurations for the different SSO. We will use the `ini` format for those,
-but on your own Airflow you can freely choose.
+#### Optional Parameters
 
-#### Google SSO
-
-```ini
-[lineage]
-backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
-airflow_service_name = local_airflow
-openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = google
-# Note that the path should be local in Airflow
-secret_key = path-to-secret-key-file.json
-```
-
-#### Okta SSO
+You can also set the following parameters:
 
 ```ini
 [lineage]
-backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
-airflow_service_name = local_airflow
-openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = okta
-client_id = client id
-org_url = org url
-private_key = private key
-email = email
-# Optional
-scopes = ["scope1", "scope2"]
+...
+only_keep_dag_lineage = true
+max_status = 10
 ```
 
-#### Auth0 SSO
+- `only_keep_dag_lineage` will remove any table lineage not present in the inlets or outlets. This will ensure
+that any lineage in OpenMetadata comes from your code.
+- `max_status` controls the number of status to ingest in each run. By default, we'll pick the last 10.
 
-```ini
-[lineage]
-backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
-airflow_service_name = local_airflow
-openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = auth0
-client_id = client id
-secret_key = secret key
-domain = domain
-```
 
-#### Azure SSO
-
-```ini
-[lineage]
-backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
-airflow_service_name = local_airflow
-openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = azure
-client_id = client id
-client_secret = client secret
-authority = authority
-# Optional
-scopes = ["scope1", "scope2"]
-```
-
-#### OpenMetadata SSO
-
-```ini
-[lineage]
-backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
-airflow_service_name = local_airflow
-openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = openmetadata
-jwt_token = token
-```
-
-#### Custom OIDC SSO
-
-```ini
-[lineage]
-backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
-airflow_service_name = local_airflow
-openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = custom-oidc
-client_id = client id
-client_secret = client secret
-token_endpoint = endpoint
-```
 
 In the following sections, we'll show how to adapt our pipelines to help us build the lineage information.
 
