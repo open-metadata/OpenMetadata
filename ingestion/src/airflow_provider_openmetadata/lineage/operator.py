@@ -41,14 +41,14 @@ class OpenMetadataLineageOperator(BaseOperator):
         server_config: OpenMetadataConnection,
         service_name: str,
         only_keep_dag_lineage: bool = False,
-        max_status_days: int = 10,
+        max_status: int = 10,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.server_config = server_config
         self.service_name = service_name
         self.only_keep_dag_lineage = only_keep_dag_lineage
-        self.max_status_days = max_status_days
+        self.max_status = max_status
 
     def execute(self, context: Context) -> None:
         """
@@ -63,7 +63,7 @@ class OpenMetadataLineageOperator(BaseOperator):
                 dag=self.dag,
                 context=context,
                 only_keep_dag_lineage=self.only_keep_dag_lineage,
-                max_status_days=self.max_status_days,
+                max_status=self.max_status,
             )
 
             runner.execute()
