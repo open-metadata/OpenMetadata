@@ -27,10 +27,13 @@ import {
 } from 'antd';
 import { DataNode, EventDataNode } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
 import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { getUserPath } from '../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -46,10 +49,12 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getDateTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -541,6 +546,25 @@ const GlossaryV1 = ({
               </Space>
             )}
           </div>
+          <Space className="m-b-sm" size={8}>
+            <Typography.Text className="text-grey-muted">
+              {t('label.updated-by')} -
+            </Typography.Text>
+            <Space size={4}>
+              <ProfilePicture
+                displayName={selectedData.updatedBy}
+                id={selectedData.id}
+                name={selectedData.updatedBy || ''}
+                textClass="text-xs"
+                width="20"
+              />
+              <Link to={getUserPath(selectedData.updatedBy ?? '')}>
+                {selectedData.updatedBy}
+              </Link>
+              {t('label.on-lowercase')}
+              {getDateTimeByTimeStamp(selectedData.updatedAt || 0)}
+            </Space>
+          </Space>
           {!isEmpty(selectedData) &&
             (isGlossaryActive ? (
               <GlossaryDetails

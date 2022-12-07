@@ -373,8 +373,6 @@
     "configure-service": "Configure Service",
     "connection-details": "Connection Details",
     "markdown-editor-placeholder": "Use @mention to tag a user or a team.\nUse #mention to tag a data asset.",
-    "add-related-terms": "Add Related Terms",
-    "change-logs": "Change Logs",
     "tag": "Tag",
     "tag-lowercase": "tag",
     "service": "Service",
@@ -385,7 +383,9 @@
     "show": "Show",
     "hide": "Hide",
     "restore-team": "Restore Team",
-    "remove": "Remove"
+    "remove": "Remove",
+    "updated-by": "Updated by",
+    "on-lowercase": "on"
   },
   "message": {
     "service-email-required": "Service account Email is required",
