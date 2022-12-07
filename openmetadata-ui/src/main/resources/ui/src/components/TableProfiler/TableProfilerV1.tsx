@@ -26,16 +26,18 @@ import {
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
+import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
+import { Table } from '../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import { Include } from '../../generated/type/include';
@@ -59,8 +61,11 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
-  const { profile, columns = [] } = table;
+const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
+  const [table, setTable] = useState<Table>();
+  const { profile, columns } = useMemo(() => {
+    return { profile: table?.profile, columns: table?.columns || [] };
+  }, [table]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
   const [tableTests, setTableTests] = useState<TableTestsType>({
@@ -172,7 +177,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
     try {
       const { data } = await getListTestCase({
         fields: 'testCaseResult,entityLink,testDefinition,testSuite',
-        entityLink: generateEntityLink(table.fullyQualifiedName || ''),
+        entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
         include: deleted ? Include.Deleted : Include.NonDeleted,
@@ -184,7 +189,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
         results: { ...INITIAL_TEST_RESULT_SUMMARY },
       };
       data.forEach((test) => {
-        if (test.entityFQN === table.fullyQualifiedName) {
+        if (test.entityFQN === table?.fullyQualifiedName) {
           tableTests.tests.push(test);
 
           updateTestResults(
@@ -239,11 +244,26 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
     fetchAllTests({ include: value ? Include.Deleted : Include.NonDeleted });
   };
 
+  const fetchLatestProfilerData = async () => {
+    try {
+      const response = await getLatestTableProfileByFqn(tableFqn);
+      setTable(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
-    if (!isEmpty(table) && viewTest) {
+    if (!isUndefined(table) && viewTest) {
       fetchAllTests();
     }
   }, [table, viewTest]);
+
+  useEffect(() => {
+    if (tableFqn) {
+      fetchLatestProfilerData();
+    }
+  }, [tableFqn]);
 
   return (
     <div
@@ -293,7 +313,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
                 editTest
                   ? getAddDataQualityTableTestPath(
                       ProfilerDashboardType.TABLE,
-                      `${table.fullyQualifiedName}`
+                      `${table?.fullyQualifiedName}`
                     )
                   : '#'
               }>
@@ -396,7 +416,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ table, permissions }) => {
       {settingModalVisible && (
         <ProfilerSettingsModal
           columns={columns}
-          tableId={table.id}
+          tableId={table?.id || ''}
           visible={settingModalVisible}
           onVisibilityChange={handleSettingModal}
         />

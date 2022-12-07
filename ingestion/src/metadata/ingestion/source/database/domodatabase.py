@@ -24,7 +24,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
-from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (

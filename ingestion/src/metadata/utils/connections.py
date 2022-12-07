@@ -60,7 +60,7 @@ from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
 )
-from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
+from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
@@ -101,7 +101,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.domodatabaseConnection import (
+from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
@@ -151,7 +151,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
     DagsterConnection,
     LocalDagtser,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.domopipelineConnection import (
+from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
