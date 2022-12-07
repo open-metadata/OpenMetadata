@@ -15,9 +15,9 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from collections import namedtuple
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, TypeVar
 
+from pydantic import BaseModel
 from requests.utils import quote
 
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str, ometa_logger
 from metadata.utils.lru_cache import LRUCache
 from metadata.utils.uuid_encoder import UUIDEncoder
@@ -44,6 +45,7 @@ from metadata.utils.uuid_encoder import UUIDEncoder
 logger = ometa_logger()
 
 LRU_CACHE_SIZE = 4096
+T = TypeVar("T", bound=BaseModel)
 
 
 class OMetaTableMixin:
@@ -229,8 +231,8 @@ class OMetaTableMixin:
         end_ts: int,
         limit=100,
         after=None,
-        profile_type: Union[Type[TableProfile], Type[ColumnProfile]] = TableProfile,
-    ):
+        profile_type: Type[T] = TableProfile,
+    ) -> EntityList[T]:
         """Get profile data
 
         Args:
@@ -243,13 +245,12 @@ class OMetaTableMixin:
                 Profile type to retrieve. Defaults to TableProfile.
 
         Raises:
-            ValueError: _description_
-            TypeError: _description_
+            TypeError: if `profile_type` is not TableProfile or ColumnProfile
 
         Returns:
-            _type_: Profile object with data, after and total attributs
+            EntityList: EntityList list object
         """
-        Profile = namedtuple("Profile", "data,after,total")
+
         url_after = f"&after={after}" if after else ""
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
         resp = self.client.get(
@@ -257,16 +258,13 @@ class OMetaTableMixin:
             data={"startTs": start_ts // 1000, "endTs": end_ts // 1000},
         )
 
-        if not resp or not resp["data"]:
-            return Profile(None, None, None)
-
         if profile_type is TableProfile:
-            data = [TableProfile(**datum) for datum in resp["data"]]
+            data: List[T] = [TableProfile(**datum) for datum in resp["data"]]  # type: ignore
         elif profile_type is ColumnProfile:
             split_fqn = fqn.split(".")
             if len(split_fqn) < 5:
                 raise ValueError(f"{fqn} is not a column fqn")
-            data = [ColumnProfile(**datum) for datum in resp["data"]]
+            data: List[T] = [ColumnProfile(**datum) for datum in resp["data"]]  # type: ignore
         else:
             raise TypeError(
                 f"{profile_type} is not an accepeted type."
@@ -275,7 +273,7 @@ class OMetaTableMixin:
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
 
-        return Profile(data, total, after)
+        return EntityList(entities=data, total=total, after=after)
 
     def get_latest_table_profile(
         self, fqn: FullyQualifiedEntityName

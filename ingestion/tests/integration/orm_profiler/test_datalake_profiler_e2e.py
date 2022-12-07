@@ -170,8 +170,8 @@ class DatalakeProfilerTestE2E(TestCase):
             profile_type=ColumnProfile,
         )
 
-        assert table_profile.data
-        assert column_profile.data
+        assert table_profile.entities
+        assert column_profile.entities
 
     def tearDown(self):
         s3 = boto3.resource(
