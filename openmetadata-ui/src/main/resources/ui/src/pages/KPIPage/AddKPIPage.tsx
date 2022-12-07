@@ -220,35 +220,6 @@ const AddKPIPage = () => {
             layout="vertical"
             validateMessages={VALIDATE_MESSAGES}
             onFinish={handleSubmit}>
-            {/* <Form.Item
-              label={t('label.name')}
-              name="name"
-              rules={[
-                {
-                  required: true,
-                  max: 128,
-                  min: 1,
-                  validator: (_, value) => {
-                    if (
-                      !isUrlFriendlyName(value) ||
-                      nameWithSpace.test(value)
-                    ) {
-                      return Promise.reject(
-                        t('label.special-character-not-allowed')
-                      );
-                    }
-
-                    return Promise.resolve();
-                  },
-                },
-              ]}>
-              <Input
-                data-testid="name"
-                placeholder={t('label.kpi-name')}
-                type="text"
-              />
-            </Form.Item> */}
-
             <Form.Item label={t('label.display-name')} name="displayName">
               <Input
                 data-testid="displayName"

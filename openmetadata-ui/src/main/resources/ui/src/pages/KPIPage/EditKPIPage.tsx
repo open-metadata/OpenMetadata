@@ -251,15 +251,6 @@ const AddKPIPage = () => {
                 layout="vertical"
                 validateMessages={VALIDATE_MESSAGES}
                 onFinish={handleSubmit}>
-                {/* <Form.Item label={t('label.name')} name="name">
-                  <Input
-                    disabled
-                    data-testid="name"
-                    placeholder={t('label.kpi-name')}
-                    type="text"
-                  />
-                </Form.Item> */}
-
                 <Form.Item label={t('label.display-name')} name="displayName">
                   <Input
                     data-testid="displayName"
