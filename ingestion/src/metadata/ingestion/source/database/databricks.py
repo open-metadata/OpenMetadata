@@ -13,17 +13,16 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional
+from typing import Iterable
 
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
-from sqlalchemy.engine import Inspector, reflection
+from sqlalchemy.engine import reflection
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -134,9 +133,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 
 @reflection.cache
-def get_schema_names(connection, **kw):
+def get_schema_names(self, connection, **kw): # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
-    _ = connection.execute(f"USE CATALOG {kw.get('database')}")
+    connection.execute(f"USE CATALOG {kw.get('database')}")
     return [row[0] for row in connection.execute("SHOW SCHEMAS")]
 
 
@@ -149,40 +148,9 @@ def get_schema_names_reflection(self, **kw):
     return []
 
 
-@reflection.cache
-def get_view_definition(
-    self, connection, view_name, schema=None, **kw  # pylint: disable=unused-argument
-):
-    query = f"SHOW CREATE TABLE {kw.get('database')}.{schema}.{view_name}"
-    try:
-        result = connection.execute(query)
-        view_definition = result.fetchone()
-        return view_definition[0] if view_definition else ""
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected exception getting view with query [{query}]: {exc}")
-        return ""
-
-
-def get_view_definition_reflection(self, view_name, schema=None, **kw):
-    """Return definition for `view_name`.
-
-    :param schema: Optional, retrieve names from a non-default schema.
-        For special quoting, use :class:`.quoted_name`.
-
-    """
-
-    with self._operation_context() as conn:  # pylint: disable=protected-access
-        return self.dialect.get_view_definition(
-            conn, view_name, schema, info_cache=self.info_cache, **kw
-        )
-
-
 DatabricksDialect.get_columns = get_columns
 DatabricksDialect.get_schema_names = get_schema_names
 reflection.Inspector.get_schema_names = get_schema_names_reflection
-DatabricksDialect.get_view_definition = get_view_definition
-reflection.Inspector.get_view_definition = get_view_definition_reflection
 
 
 class DatabricksSource(CommonDbSourceService):
@@ -256,23 +224,3 @@ class DatabricksSource(CommonDbSourceService):
                 database=self.context.database.name.__root__
             ):
                 yield schema_name
-
-    def get_view_definition(
-        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
-        if table_type == TableType.View:
-            try:
-                view_definition = self.inspector.get_view_definition(
-                    table_name,
-                    schema_name,
-                    database=self.context.database.name.__root__,
-                )
-                view_definition = (
-                    "" if view_definition is None else str(view_definition)
-                )
-                return view_definition
-            except NotImplementedError:
-                logger.warning("View definition not implemented11")
-                view_definition = ""
-            return None
-        return None
