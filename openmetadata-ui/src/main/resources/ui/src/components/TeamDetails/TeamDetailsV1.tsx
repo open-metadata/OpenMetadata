@@ -1166,7 +1166,7 @@ const TeamDetailsV1 = ({
                 ) : (
                   <Row
                     className="team-list-container"
-                    gutter={[8, 8]}
+                    gutter={[8, 16]}
                     justify="space-between">
                     <Col span={8}>
                       <Searchbar

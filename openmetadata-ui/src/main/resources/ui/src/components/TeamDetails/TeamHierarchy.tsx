@@ -93,6 +93,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   }, [data, onTeamExpand]);
 
   const moveRow = useCallback(async (dragRecord: Team, dropRecord: Team) => {
+    if (dragRecord.id === dropRecord.id) {
+      return;
+    }
     let dropTeam: Team = dropRecord;
     if (!isArray(dropTeam.children)) {
       const res = await getTeamByName(dropTeam.name, ['parents'], 'all');
@@ -141,6 +144,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     expandable ? (
       <div
         className="expand-cell-icon-container"
+        data-testid="expand-table-row"
         onClick={(e) =>
           onExpand(
             record,
@@ -167,6 +171,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           className="teams-list-table"
           columns={columns}
           components={components}
+          data-testid="team-hierarchy-table"
           dataSource={data}
           expandable={{
             expandIcon: ({ expanded, onExpand, expandable, record }) =>
@@ -197,6 +202,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         centered
         destroyOnClose
         closable={false}
+        data-testid="confirmation-modal"
         okText={t('label.confirm')}
         title={t('label.move-the-team')}
         visible={isModalOpen}
