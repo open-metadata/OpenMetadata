@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/datatInsight/type/totalEntitiesByTier.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/totalEntitiesByTier.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TotalEntitiesByTier",
   "description": "totalEntitiesByTier data blob",
   "type": "object",
-  "javaType": "org.openmetadata.schema.datatInsight.type.TotalEntitiesByTier",
+  "javaType": "org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier",
   "properties": {
     "timestamp": {
       "description": "timestamp",

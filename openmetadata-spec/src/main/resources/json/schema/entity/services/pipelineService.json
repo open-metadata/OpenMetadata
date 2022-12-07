@@ -81,7 +81,7 @@
               "$ref": "./connections/pipeline/nifiConnection.json"
             },
             {
-              "$ref": "./connections/pipeline/domopipelineConnection.json"
+              "$ref": "./connections/pipeline/domoPipelineConnection.json"
             },
             {
               "$ref": "./connections/pipeline/customPipelineConnection.json"

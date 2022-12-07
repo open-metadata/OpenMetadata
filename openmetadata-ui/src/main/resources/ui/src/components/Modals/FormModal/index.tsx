@@ -11,27 +11,13 @@
  *  limitations under the License.
  */
 
-import { FormErrorData } from 'Models';
+import { Button, Modal, Typography } from 'antd';
+import { t } from 'i18next';
 import React, { useRef, useState } from 'react';
 import { Team } from '../../../generated/entity/teams/team';
 import { TagsCategory } from '../../../pages/tags/tagsTypes';
-import { Button } from '../../buttons/Button/Button';
+import { FormData, FormModalProp, FormRef } from './FormModal.interface';
 
-type FormData = TagsCategory | Team;
-
-type FormModalProp = {
-  onCancel: () => void;
-  onChange?: (data: TagsCategory | Team) => void;
-  onSave: (data: TagsCategory | Team) => void;
-  form: React.ElementType;
-  header: string;
-  initialData: FormData;
-  errorData?: FormErrorData;
-  isSaveButtonDisabled?: boolean;
-};
-type FormRef = {
-  fetchMarkDownData: () => string;
-};
 const FormModal = ({
   onCancel,
   onChange,
@@ -41,6 +27,7 @@ const FormModal = ({
   initialData,
   errorData,
   isSaveButtonDisabled,
+  visible,
 }: FormModalProp) => {
   const formRef = useRef<FormRef>();
   const [data, setData] = useState<FormData>(initialData);
@@ -54,49 +41,46 @@ const FormModal = ({
   };
 
   return (
-    <dialog className="tw-modal" data-testid="modal-container">
-      <div className="tw-modal-backdrop" onClick={() => onCancel()} />
-      <div className="tw-modal-container tw-overflow-y-auto tw-max-h-screen">
-        <form action="." method="POST" onSubmit={onSubmitHandler}>
-          <div className="tw-modal-header">
-            <p
-              className="tw-modal-title tw-text-grey-body"
-              data-testid="header">
-              {header}
-            </p>
-          </div>
-          <div className="tw-modal-body">
-            <Form
-              errorData={errorData}
-              initialData={initialData}
-              ref={formRef}
-              saveData={(data: TagsCategory | Team) => {
-                setData(data);
-                onChange && onChange(data);
-              }}
-            />
-          </div>
-          <div className="tw-modal-footer" data-testid="cta-container">
-            <Button
-              size="regular"
-              theme="primary"
-              variant="link"
-              onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button
-              data-testid="saveButton"
-              disabled={isSaveButtonDisabled}
-              size="regular"
-              theme="primary"
-              type="submit"
-              variant="contained">
-              Save
-            </Button>
-          </div>
-        </form>
-      </div>
-    </dialog>
+    <Modal
+      centered
+      destroyOnClose
+      closable={false}
+      data-testid="modal-container"
+      footer={
+        <div className="tw-modal-footer" data-testid="cta-container">
+          <Button type="link" onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="saveButton"
+            disabled={isSaveButtonDisabled}
+            form="form-modal"
+            htmlType="submit"
+            type="primary">
+            {t('label.save')}
+          </Button>
+        </div>
+      }
+      title={
+        <Typography.Text strong data-testid="header">
+          {header}
+        </Typography.Text>
+      }
+      visible={visible}
+      width={1300}
+      onCancel={onCancel}>
+      <form id="form-modal" onSubmit={onSubmitHandler}>
+        <Form
+          errorData={errorData}
+          initialData={initialData}
+          ref={formRef}
+          saveData={(data: TagsCategory | Team) => {
+            setData(data);
+            onChange && onChange(data);
+          }}
+        />
+      </form>
+    </Modal>
   );
 };
 

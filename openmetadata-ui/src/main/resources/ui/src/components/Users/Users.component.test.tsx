@@ -84,14 +84,6 @@ jest.mock('../EntityList/EntityList', () => ({
   EntityListWithAntd: jest.fn().mockReturnValue(<p>EntityList.component</p>),
 }));
 
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
-
 const mockFetchFeedHandler = jest.fn();
 const feedFilterHandler = jest.fn();
 const fetchData = jest.fn();
@@ -216,8 +208,6 @@ describe('Test User Component', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 
   it('Should check if cards are rendered', async () => {

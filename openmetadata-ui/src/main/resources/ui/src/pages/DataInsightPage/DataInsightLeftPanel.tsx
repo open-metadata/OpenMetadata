@@ -19,8 +19,8 @@ import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analyti
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
 import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import { ROUTES } from '../../constants/constants';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
+import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 
 const DataInsightLeftPanel = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
@@ -47,7 +47,7 @@ const DataInsightLeftPanel = () => {
   ];
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
-    history.push(`${ROUTES.DATA_INSIGHT}/${e.key}`);
+    history.push(getDataInsightPathWithFqn(e.key));
   };
 
   return (

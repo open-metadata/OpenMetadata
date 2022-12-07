@@ -1,24 +1,24 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/domopipelineConnection.json",
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/domoDatabaseConnection.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "DomoPipelineConnection",
-    "description": "Domo Pipeline Connection Config",
+    "title": "DomoDatabaseConnection",
+    "description": "Domo Database Connection Config",
     "type": "object",
-    "javaType": "org.openmetadata.schema.services.connections.pipeline.DomoPipelineConnection",
+    "javaType": "org.openmetadata.schema.services.connections.database.DomoDatabaseConnection",
     "definitions": {
-      "DomoPipelineType": {
-        "description": "Service type.",
+      "domoDatabaseType": {
+        "description": " service type",
         "type": "string",
-        "enum": ["DomoPipeline"],
-        "default": "DomoPipeline"
+        "enum": ["DomoDatabase"],
+        "default": "DomoDatabase"
       }
     },
     "properties": {
       "type": {
         "title": "Service Type",
         "description": "Service Type",
-        "$ref": "#/definitions/DomoPipelineType",
-        "default": "DomoPipeline"
+        "$ref": "#/definitions/domoDatabaseType",
+        "default": "DomoDatabase"
       },
       "clientId": {
         "title": "Client ID",
@@ -27,7 +27,7 @@
       },
       "secretToken": {
         "title": "Secret Token",
-        "description": "Secret token to connect to DOMO",
+        "description": "Secret Token to connect DOMO",
         "type": "string",
         "format": "password"
       },
@@ -56,6 +56,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["clientId","secretToken","sandboxDomain"]
+    "required": ["clientId", "secretToken", "sandboxDomain"]
   }
   

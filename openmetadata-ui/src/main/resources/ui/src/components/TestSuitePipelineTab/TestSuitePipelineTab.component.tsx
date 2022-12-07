@@ -589,17 +589,16 @@ const TestSuitePipelineTab = () => {
           pagination={false}
           size="small"
         />
-        {isConfirmationModalOpen && (
-          <EntityDeleteModal
-            entityName={deleteSelection.name}
-            entityType={t('label.ingestion-lowercase')}
-            loadingState={deleteSelection.state}
-            onCancel={handleCancelConfirmationModal}
-            onConfirm={() =>
-              handleDelete(deleteSelection.id, deleteSelection.name)
-            }
-          />
-        )}
+        <EntityDeleteModal
+          entityName={deleteSelection.name}
+          entityType={t('label.ingestion-lowercase')}
+          loadingState={deleteSelection.state}
+          visible={isConfirmationModalOpen}
+          onCancel={handleCancelConfirmationModal}
+          onConfirm={() =>
+            handleDelete(deleteSelection.id, deleteSelection.name)
+          }
+        />
       </Col>
     </TestCaseCommonTabContainer>
   );

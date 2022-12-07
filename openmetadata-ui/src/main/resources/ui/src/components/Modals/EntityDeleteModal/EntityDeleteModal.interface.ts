@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
+import { HTMLAttributes } from 'react';
 
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
+export interface EntityDeleteModalProp extends HTMLAttributes<HTMLDivElement> {
+  onConfirm: () => void;
+  onCancel: () => void;
+  entityName: string;
+  entityType: string;
+  loadingState: string;
+  bodyText?: string;
+  softDelete?: boolean;
+  visible: boolean;
 }

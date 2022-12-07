@@ -18,7 +18,7 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import customDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json';
-import domodashboardConnection from '../jsons/connectionSchemas/connections/dashboard/domodashboardConnection.json';
+import domoDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
 import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
@@ -74,7 +74,7 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
       break;
     }
     case DashboardServiceType.DomoDashboard: {
-      schema = domodashboardConnection;
+      schema = domoDashboardConnection;
 
       break;
     }

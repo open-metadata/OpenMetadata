@@ -376,7 +376,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             entity=Table,
             fields=[
                 "tableProfilerConfig",
-                "tests",
             ],
             params={
                 "service": self.config.source.serviceName,
