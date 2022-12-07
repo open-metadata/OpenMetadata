@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
+    SystemProfile,
     TableProfile,
 )
 from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
@@ -40,6 +41,7 @@ from metadata.orm_profiler.metrics.core import (
     MetricTypes,
     QueryMetric,
     StaticMetric,
+    SystemMetric,
     TMetric,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -94,6 +96,7 @@ class Profiler(Generic[TMetric]):
         # Initialize profiler results
         self._table_results: Dict[str, Any] = {}
         self._column_results: Dict[str, Any] = {}
+        self._system_results: Optional[List[Dict]] = []
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
@@ -213,6 +216,10 @@ class Profiler(Generic[TMetric]):
     def query_metrics(self) -> List[Type[QueryMetric]]:
         return self._filter_metrics(QueryMetric)
 
+    @property
+    def system_metrics(self) -> List[Type[SystemMetric]]:
+        return self._filter_metrics(SystemMetric)
+
     def get_col_metrics(
         self, metrics: List[Type[TMetric]], column: Optional[Column] = None
     ) -> List[Type[TMetric]]:
@@ -291,24 +298,44 @@ class Profiler(Generic[TMetric]):
                 current_col_results,
             )
 
-    def _prepare_table_metrics_for_thread_pool(self):
-        """prepare table metrics for thread pool"""
-        metrics = [
-            metric for metric in self.static_metrics if not metric.is_col_metric()
+    def _prepare_table_metrics(self) -> List:
+        """prepare table metrics"""
+        table_metrics = [
+            metric
+            for metric in self.static_metrics
+            if (not metric.is_col_metric() and not metric.is_system_metrics())
         ]
-        if metrics:
+
+        if table_metrics:
             return [
                 (
-                    metrics,  # metric functions
+                    table_metrics,  # metric functions
                     MetricTypes.Table,  # metric type for function mapping
                     None,  # column name
                     self.table,  # table name
-                )
+                ),
             ]
         return []
 
-    def _prepare_column_metrics_for_thread_pool(self):
-        """prepare column metrics for thread pool"""
+    def _prepare_system_metrics(self) -> List:
+        """prepare system metrics"""
+        system_metrics = self.system_metrics
+
+        if system_metrics:
+            return [
+                (
+                    system_metric,  # metric functions
+                    MetricTypes.System,  # metric type for function mapping
+                    None,  # column name
+                    self.table,  # table name
+                )
+                for system_metric in system_metrics
+            ]
+
+        return []
+
+    def _prepare_column_metrics(self) -> List:
+        """prepare column metrics"""
         columns = [
             column
             for column in self.columns
@@ -358,18 +385,21 @@ class Profiler(Generic[TMetric]):
 
     def profile_entity(self) -> None:
         """Get all the metrics for a given table"""
-        table_metrics_for_thread_pool = self._prepare_table_metrics_for_thread_pool()
-        column_metrics_for_thread_pool = self._prepare_column_metrics_for_thread_pool()
+        table_metrics = self._prepare_table_metrics()
+        system_metrics = self._prepare_system_metrics()
+        column_metrics = self._prepare_column_metrics()
 
-        all_metrics_for_thread_pool = [
-            *table_metrics_for_thread_pool,
-            *column_metrics_for_thread_pool,
+        all_metrics = [
+            *system_metrics,
+            *table_metrics,
+            *column_metrics,
         ]
         profile_results = self.profiler_interface.get_all_metrics(
-            all_metrics_for_thread_pool,
+            all_metrics,
         )
         self._table_results = profile_results["table"]
         self._column_results = profile_results["columns"]
+        self._system_results = profile_results.get("system")
 
     def compute_metrics(self) -> Profiler:
         """Run the whole profiling using multithreading"""
@@ -446,7 +476,7 @@ class Profiler(Generic[TMetric]):
             # There are columns that we might have skipped from
             # computing metrics, if the type is not supported.
             # Let's filter those out.
-            computed_profiles = [
+            column_profile = [
                 ColumnProfile(
                     **self.column_results.get(
                         col.name
@@ -467,8 +497,18 @@ class Profiler(Generic[TMetric]):
                 rowCount=self._table_results.get(RowCount.name()),
                 profileSample=self.profiler_interface.profile_sample,
             )
+            if self._system_results:
+                system_profile = [
+                    SystemProfile(**system_result)
+                    for system_result in self._system_results
+                ]
+            else:
+                system_profile = None
+
             return CreateTableProfileRequest(
-                tableProfile=table_profile, columnProfile=computed_profiles
+                tableProfile=table_profile,
+                columnProfile=column_profile,
+                systemProfile=system_profile,
             )
 
         except ValidationError as err:
