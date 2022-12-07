@@ -40,13 +40,16 @@
       "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
       "type": "number",
       "minimum": 0,
-      "default": null
+      "exclusiveMinimum": 0,
+      "maximum": 100,
+      "default": 0
     },
-    "profileSampleUsingRows": {
+    "profileSampleRows": {
       "description": "No. of rows for data we want to execute the profiler and tests on.",
       "type": "number",
+      "exclusiveMinimum": 0,
       "minimum": 0,
-      "default": null
+      "default": 0
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
