@@ -63,7 +63,10 @@ logger = ingestion_logger()
 
 ATLAS_TAG_CATEGORY = "AtlasMetadata"
 ATLAS_TABLE_TAG = "atlas_table"
-ENTITY_TYPES = {"Table": {"Table": {"db": "db", "column": "columns"}}}
+ENTITY_TYPES = {
+    "Table": {"Table": {"db": "db", "column": "columns"}},
+    "Topic": {"Topic": {"schema": "schema"}},
+}
 
 
 class AtlasSourceStatus(SourceStatus):
@@ -125,36 +128,35 @@ class AtlasSource(Source):
 
     def next_record(self):
         for service in self.service_connection.databaseServiceName or []:
-
-            try:
-                create_service = self.metadata.get_by_name(
-                    entity_type=DatabaseService, fqn_search_string=service
-                )
+            check_service = self.metadata.get_by_name(
+                entity=DatabaseService, fqn=service
+            )
+            if check_service:
                 for key in ENTITY_TYPES["Table"]:
-                    self.service = create_service
+                    self.service = check_service
                     self.tables[key] = self.atlas_client.list_entities(entity_type=key)
-                    if self.tables:
+                    if self.tables.get(key, None):
                         for key in self.tables:
                             yield from self._parse_table_entity(key, self.tables[key])
-            except Exception as exc:
+            else:
                 logger.warning(
-                    f"Cannot find service for {service} - type DatabaseService - {exc}"
+                    f"Cannot find service for {service} - type DatabaseService"
                 )
 
         for service in self.service_connection.messagingServiceName or []:
-            try:
-                create_service = self.metadata.get_by_name(
-                    entity_type=MessagingService, fqn_search_string=service
-                )
+            check_service = self.metadata.get_by_name(
+                entity=MessagingService, fqn=service
+            )
+            if check_service:
                 for key in ENTITY_TYPES.get("Topic", []):
-                    self.message_service = create_service
+                    self.message_service = check_service
                     self.topics[key] = self.atlas_client.list_entities(entity_type=key)
-                    if self.topics:
+                    if self.topics.get(key, None):
                         for topic in self.topics:
                             yield from self._parse_topic_entity(topic)
-            except Exception as exc:
+            else:
                 logger.warning(
-                    f"Cannot find service for {service} - type MessagingService - {exc}"
+                    f"Cannot find service for {service} - type MessagingService"
                 )
 
     def close(self):
@@ -185,7 +187,7 @@ class AtlasSource(Source):
                         entity=Topic, fqn=topic_fqn
                     )
 
-                    if tpc_attrs.get("description"):
+                    if tpc_attrs.get("description") and topic_object:
                         self.metadata.patch_description(
                             entity=Topic,
                             entity_id=topic_object.id,
@@ -222,7 +224,7 @@ class AtlasSource(Source):
                     database_object = self.metadata.get_by_name(
                         entity=Database, fqn=database_fqn
                     )
-                    if db_entity.get("description", None):
+                    if db_entity.get("description", None) and database_object:
                         self.metadata.patch_description(
                             entity=Database,
                             entity_id=database_object.id,
@@ -241,7 +243,7 @@ class AtlasSource(Source):
                         entity=DatabaseSchema, fqn=database_schema_fqn
                     )
 
-                    if db_entity.get("description", None):
+                    if db_entity.get("description", None) and database_schema_object:
                         self.metadata.patch_description(
                             entity=DatabaseSchema,
                             entity_id=database_schema_object.id,
@@ -264,7 +266,7 @@ class AtlasSource(Source):
                         entity=Table, fqn=table_fqn
                     )
 
-                    if tbl_attrs.get("description", None):
+                    if tbl_attrs.get("description", None) and table_object:
                         self.metadata.patch_description(
                             entity_id=table_object.id,
                             entity=Table,
