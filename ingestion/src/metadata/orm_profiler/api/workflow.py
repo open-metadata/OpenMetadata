@@ -570,6 +570,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 )
 
     def test_connection(self):
-        service_config = self.config.serviceConnection.__root__.config
+        service_config = self.config.source.serviceConnection.__root__.config
         self.engine = get_connection(service_config)
         test_connection(self.engine)
