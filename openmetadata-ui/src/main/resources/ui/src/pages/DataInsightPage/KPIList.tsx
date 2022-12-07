@@ -187,6 +187,7 @@ const KPIList = () => {
         <Table
           bordered
           columns={columns}
+          data-testid="kpi-table"
           dataSource={kpiList}
           loading={{ spinning: isLoading, indicator: <Loader /> }}
           pagination={false}
