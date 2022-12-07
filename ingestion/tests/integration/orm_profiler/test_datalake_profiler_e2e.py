@@ -25,7 +25,7 @@ import boto3
 import botocore
 from moto import mock_s3
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, Table
+from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )

@@ -22,7 +22,7 @@ from unittest import TestCase
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -34,10 +34,6 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.connections import create_and_bind_session
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 

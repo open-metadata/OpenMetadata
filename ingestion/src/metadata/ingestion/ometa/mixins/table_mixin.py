@@ -276,6 +276,7 @@ class OMetaTableMixin:
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
 
         return Profile(data, total, after)
+
     def get_latest_table_profile(
         self, fqn: FullyQualifiedEntityName
     ) -> Optional[Table]:
