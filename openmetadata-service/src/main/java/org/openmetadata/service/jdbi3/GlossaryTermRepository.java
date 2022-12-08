@@ -105,12 +105,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent());
     entity.setParent(parentTerm);
-
-    validateHierarchy(entity);
-
     // Validate glossary
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
+
+    validateHierarchy(entity);
 
     // If reviewers is not set in the glossary term, then carry it from the glossary
     entity.setReviewers(entity.getReviewers() == null ? glossary.getReviewers() : entity.getReviewers());
