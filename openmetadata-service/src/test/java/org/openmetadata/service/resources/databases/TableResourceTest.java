@@ -242,7 +242,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void post_validTables_200_OK(TestInfo test) throws IOException {
     // Create table with different optional fields
     // Optional field description
-    CreateTable create = createRequest(test).withDescription("description").withColumns(null);
+    CreateTable create = createRequest(test).withDescription("description");
     Table createdTable = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     // Optional fields tableType
     create.withName(getEntityName(test, 1)).withTableType(TableType.View);
