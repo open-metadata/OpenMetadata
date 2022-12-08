@@ -35,6 +35,20 @@
       "format": "uri",
       "expose": true
     },
+    "databaseServiceName": {
+      "description": "service type of the data source.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "messagingServiceName": {
+      "description": "service type of the messaging source",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }    
+    },
     "connectionOptions": {
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },

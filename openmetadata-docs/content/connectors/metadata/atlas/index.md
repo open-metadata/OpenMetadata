@@ -5,20 +5,97 @@ slug: /connectors/metadata/atlas
 
 # Atlas
 
-In this page, you will learn how to use the `metadata` CLI to run a one-ingestion.
+<!-- In this page, you will learn how to use the `metadata` CLI to run a one-ingestion. -->
+
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
+the following docs to connect using Airflow SDK or with the CLI.
+
+<TileContainer>
+  <Tile
+    icon="air"
+    title="Ingest with Airflow"
+    text="Configure the ingestion using Airflow SDK"
+    link="/connectors/metadata/atlas/airflow"
+    size="half"
+  />
+  <Tile
+    icon="account_tree"
+    title="Ingest with the CLI"
+    text="Run a one-time ingestion using the metadata CLI"
+    link="/connectors/metadata/atlas/cli"
+    size="half"
+  />
+</TileContainer>
 
 <Requirements />
 
 <PythonMod connector="Atlas" module="atlas" />
 
-Make sure you are running openmetadata-ingestion version 0.11.0 or above.
+<InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.13.1 or later" href="/deployment">
+To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
+</InlineCallout>
 
-## Create Database Services
+## Create Database Service
 
-You need to create database services before ingesting the metadata from Atlas. In OpenMetadata we have to create database services with the same name
-as the source.
+You need to create database services before ingesting the metadata from Atlas. In OpenMetadata we have to create database services with the same name as the source.
 
 To create database service follow these steps:
+
+### 1.Visit Service Page
+
+The first step is ingesting the metadata from your sources. Under Settings, you will find a Services link an external
+source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler
+workflows.To visit the Services page, select Services from the Settings menu.serv
+
+<Image src="/images/openmetadata/connectors/amundsen/create-service-1.png" alt="db-service" caption="Navigate to Settings >> Services"/>
+
+### 2. Create a New Service
+
+Click on the Add New Service button to start the Service creation.
+
+<Image
+src="/images/openmetadata/connectors/create-service.png"
+alt="Create a new service"
+caption="Add a new Service from the Services page"
+/>
+
+### 3. Complete the ingestion
+
+For ingestion, please click [here](/connectors)
+
+### 4. Pass the Service
+
+<Image
+src="/images/openmetadata/connectors/atlas/ui-service-name.png"
+alt="service name"
+caption="service name"
+/>
+
+Pass the `service name` in your config like given below
+
+```yaml
+  hostPort: http://localhost:10000
+  username: username
+  password: password
+  databaseServiceName: ["local_hive"] # pass database service here
+  messagingServiceName: [] # pass messaging service here
+```
+
+## Metadata Ingestion
+
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json)
+you can find the structure to create a connection to Atlas.
+
+In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a
+YAML configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
+
+The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json).
+
+<Note>
+
+- Every table ingested will have a tag name `AtlasMetadata.atlas_table`, that can be found under `explore` section on top left corner
+
+</Note>
 
 ### 1. Visit the Services Page
 
@@ -32,31 +109,125 @@ workflows.To visit the Services page, select Services from the Settings menu.ser
 
 Click on the Add New Service button to start the Service creation.
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-2.png" alt="db-service" caption="Add a New Service from the Database Services Page"/>
+<Image
+src="/images/openmetadata/connectors/atlas/add-service.png"
+alt="Create a new service"
+caption="Add a new Service from the Services page"
+/>
 
 ### 3. Select the Service Type
 
-Select the service type which are available on the Atlas and create a service. In this example we will
-need to create services for hive.
+Select Atlas as the service type and click Next.
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-3.png" alt="db-service"/>
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/atlas/atlas-service.png"
+  alt="Select Service"
+  caption="Select your service from the list"
+/>
+</div>
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-4.png" alt="db-service"/>
+### 4. Name and Describe your Service
 
-Note: Adding ingestion in this step is optional, because we will fetch the metadata from Atlas. After creating all
-the database services, `my service` page looks like below, and we are ready to start with the Atlas ingestion via the CLI.
+Provide a name and description for your service as illustrated below.
 
-<Image src="/images/openmetadata/connectors/amundsen/create-service-5.png" alt="db-service"/>
+#### Service Name
 
-## Metadata Ingestion
+OpenMetadata uniquely identifies services by their Service Name. Provide
+a name that distinguishes your deployment from other services, including
+the other {connector} services that you might be ingesting metadata
+from.
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json)
-you can find the structure to create a connection to Atlas.
 
-In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a
-YAML configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/atlas/service-name.png"
+  alt="Add New Service"
+  caption="Provide a Name and description for your Service"
+/>
+</div>
 
-The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json).
+### 5. Configure the Service Connection
+
+In this step, we will configure the connection settings required for
+this connector. Please follow the instructions below to ensure that
+you've configured the connector to read from your atlas service as
+desired.
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/atlas/connection-options.png"
+  alt="Configure service connection"
+  caption="Configure the service connection by filling the form"
+/>
+</div>
+
+Once the credentials have been added, click on `Test Connection` and Save
+the changes.
+
+<div className="w-100 flex justify-center">
+<Image
+  src="/images/openmetadata/connectors/test-connection.png"
+  alt="Test Connection"
+  caption="Test the connection and save the Service"
+/>
+</div>
+
+#### Connection Options
+
+- **Host and Port**: Host and port of the Atlas service.
+- **Username**: username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.
+- **Password**: password to connect  to the Atlas.
+- **databaseServiceName**: source database of the data source(Database service that you created from UI. example- local_hive)
+- **messagingServiceName**: messaging service source of the data source.
+
+### 6. Schedule the Ingestion and Deploy
+
+Scheduling can be set up at an hourly, daily, or weekly cadence. The
+timezone is in UTC. Select a Start Date to schedule for ingestion. It is
+optional to add an End Date.
+
+Review your configuration settings. If they match what you intended,
+click Deploy to create the service and schedule metadata ingestion.
+
+If something doesn't look right, click the Back button to return to the
+appropriate step and change the settings as needed.
+
+<Image
+src="/images/openmetadata/connectors/schedule.png"
+alt="Schedule the Workflow"
+caption="Schedule the Ingestion Pipeline and Deploy"
+/>
+
+After configuring the workflow, you can click on Deploy to create the
+pipeline.
+
+### 7. View the Ingestion Pipeline
+
+Once the workflow has been successfully deployed, you can view the
+Ingestion Pipeline running from the Service Page.
+
+<Image
+src="/images/openmetadata/connectors/atlas/ingestion-pipeline.png"
+alt="View Ingestion Pipeline"
+caption="View the Ingestion Pipeline from the Service Page"
+/>
+
+### 8. Workflow Deployment Error
+
+If there were any errors during the workflow deployment process, the
+Ingestion Pipeline Entity will still be created, but no workflow will be
+present in the Ingestion container.
+
+You can then edit the Ingestion Pipeline and Deploy it again.
+
+<Image
+src="/images/openmetadata/connectors/atlas/workflow-deployment-error.png"
+alt="Workflow Deployment Error"
+caption="Edit and Deploy the Ingestion Pipeline"
+/>
+
+From the Connection tab, you can also Edit the Service if needed.
 
 ### 1. Define the YAML Config
 
@@ -69,38 +240,21 @@ source:
   serviceConnection:
     config:
       type: Atlas
-      atlasHost: http://192.168.1.8:21000
-      username: admin
-      password: admin
-      dbService: hive
-      messagingService: kafka
-      serviceType: Hive
-      hostPort: localhost:10000
-      entityTypes: examples/workflows/atlas_mapping.yaml
+      hostPort: http://localhost:10000
+      username: username
+      password: password
+      databaseServiceName: ["local_hive"] # create database service and messaging service and pass `service name` here
+      messagingServiceName: []
   sourceConfig:
     config:
       type: DatabaseMetadata
-sink:
+sink: 
   type: metadata-rest
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
-```
-
-This is a sample config for Atlas mapping:
-It represent a key which is used to map the name of the database in atlas with OMD Service.
-File name: `atlas_mapping.yaml`
-
-```yaml
-Table:
-  rdbms_table:
-    db: rdbms_db
-    column: rdbms_column
-Topic:
-  - kafka_topic
-  - kafka_topic_2
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
 ```
 
 ### Source Configuration - Service Connection
@@ -109,13 +263,9 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 
 - `username`: Username to connect to the Atlas. This user should have privileges to read all the metadata in Atlas.
 - `password`: Password to connect to the Atlas.
-- `hostPort`: Host and port of the data source..
-- `entityTypes`: entity types of the data source.
-- `serviceType`: service type of the data source.
-- `atlasHost`: Atlas Host of the data source.
-- `dbService` : source database of the data source(Database service that you created from UI. example- hive).
-- `messagingService` (Optional): messaging service source of the data source.
-- `database` (Optional) :Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Atlas.
+- `hostPort`: Atlas Host of the data source.
+- `databaseServiceName`: source database of the data source(Database service that you created from UI. example- local_hive).
+- `messagingServiceName`: messaging service source of the data source.
 
 ### Sink Configuration
 
