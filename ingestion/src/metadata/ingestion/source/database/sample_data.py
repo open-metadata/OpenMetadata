@@ -60,6 +60,7 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableProfile,
 )
+from metadata.generated.schema.entity.data.topic import FieldModel
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
@@ -97,6 +98,7 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
+from metadata.parsers.avro_parser import parse_avro_schema
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -667,7 +669,31 @@ class SampleDataSource(
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = CreateTopicRequest(**topic)
+            parsed_schema = parse_avro_schema(topic["schemaText"])
+
+            field_models = []
+            for field in parsed_schema.fields:
+                field_models.append(
+                    FieldModel(
+                        name=field.name, dataType=str(field.type.fullname).upper()
+                    )
+                )
+
+            create_topic = CreateTopicRequest(
+                name=topic["name"],
+                description=topic["description"],
+                partitions=topic["partitions"],
+                retentionSize=topic["retentionSize"],
+                replicationFactor=topic["replicationFactor"],
+                maximumMessageSize=topic["maximumMessageSize"],
+                cleanupPolicies=topic["cleanupPolicies"],
+                schemaType=topic["schemaType"],
+                schemaText=topic["schemaText"],
+                service=EntityReference(
+                    id=self.kafka_service.id, type="messagingService"
+                ),
+                schemaFields=field_models,
+            )
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
