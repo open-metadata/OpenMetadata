@@ -18,7 +18,7 @@
       "description": "Dashboard Service Count",
       "type": "integer"
     },
-    "pipelineServiceCounte": {
+    "pipelineServiceCount": {
       "description": "Pipeline Service Count",
       "type": "integer"
     },

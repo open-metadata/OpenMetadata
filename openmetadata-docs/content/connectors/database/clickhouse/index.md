@@ -136,9 +136,16 @@ the changes.
 - **Password**: Password to connect to Clickhouse.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Clickhouse deployment in the Host and Port field.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Clickhouse during the connection. These details must be added as Key-Value pairs.
+You can find the full list of accepted options [here](https://clickhouse-driver.readthedocs.io/en/latest/api.html#clickhouse_driver.connection.Connection)
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Clickhouse during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
   - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+- **Connecting to Clickhouse with SSL Certificate**: You will need to use the `clickhouse+native` connection scheme. Then in the `Connection Options` reference the following key with their value:
+  - `verify`: `true`
+  - `secure`: `true`
+  - `keyfile`: `/path/to/key/file` 
+
+  The `keyfile` needs to be accessible by the service running the ingestion. For example if you are running the ingestion in a docker container, your `keyfile` needs to be present in the container at the location specify as a value in the `Connection Options`. Additionally, your `keyfile` needs to be in the `.cert` or `.pem` format.
 
 ### 6. Configure Metadata Ingestion
 

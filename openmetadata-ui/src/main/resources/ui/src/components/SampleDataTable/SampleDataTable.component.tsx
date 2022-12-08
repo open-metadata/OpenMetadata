@@ -17,6 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, {
@@ -27,11 +28,14 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { getSampleDataByTableId } from '../../axiosAPIs/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
-import { TableData } from '../../generated/entity/data/table';
+import { Table, TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
 import './SampleDataTable.style.less';
 
@@ -40,21 +44,25 @@ export interface SampleColumns {
   dataType: string;
 }
 
+type SampleData = {
+  columns?: Array<SampleColumns>;
+  rows?: TableData['rows'];
+};
+
 interface Props {
-  sampleData?: {
-    columns?: Array<SampleColumns>;
-    rows?: TableData['rows'];
-  };
+  tableId: string;
 }
 
-const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
+const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
   const tableRef = useRef<HTMLDivElement>(null);
+  const [sampleData, setSampleData] = useState<SampleData>();
   const [scrollOffset, setScrollOffSet] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [scrollHandle, setScrollHandle] = useState<{
     left: boolean;
     right: boolean;
   }>({ left: true, right: true });
+  const [isLoading, setIsLoading] = useState(true);
 
   const scrollHandler = (scrollOffset: number) => {
     if (tableRef.current) {
@@ -70,11 +78,59 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
     );
   }, []);
 
+  const getSampleDataWithType = (table: Table) => {
+    const { sampleData, columns } = table;
+    const updatedColumns = sampleData?.columns?.map((column) => {
+      const matchedColumn = columns.find((col) => col.name === column);
+
+      if (matchedColumn) {
+        return {
+          name: matchedColumn.name,
+          dataType: matchedColumn.dataType,
+        };
+      } else {
+        return {
+          name: column,
+          dataType: '',
+        };
+      }
+    });
+
+    return {
+      columns: updatedColumns as SampleColumns[] | undefined,
+      rows: sampleData?.rows,
+    };
+  };
+
+  const fetchSampleData = async () => {
+    try {
+      const tableData = await getSampleDataByTableId(tableId);
+      setSampleData(getSampleDataWithType(tableData));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const rFlag = scrollOffset !== containerWidth;
     const lFlag = scrollOffset > 0;
     setScrollHandle((pre) => ({ ...pre, right: rFlag, left: lFlag }));
   }, [scrollOffset, containerWidth]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    if (tableId) {
+      fetchSampleData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [tableId]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div

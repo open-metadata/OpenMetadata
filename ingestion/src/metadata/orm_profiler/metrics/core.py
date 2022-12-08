@@ -143,6 +143,11 @@ class Metric(ABC):
         """
         return False
 
+    @classmethod
+    def is_system_metrics(cls) -> bool:
+        """Mark true if returns system metrics"""
+        return False
+
     @property
     def metric_type(self):
         """
@@ -207,6 +212,14 @@ class CustomMetric(Metric, ABC):
         """
 
 
+class SystemMetric(Metric, ABC):
+    """Abstract class for system metrics"""
+
+    @abstractmethod
+    def sql(self):
+        """SQL query to get system Metric"""
+
+
 class ComposedMetric(Metric, ABC):
     """
     A Metric composed by other metrics.
@@ -245,3 +258,4 @@ class MetricTypes(Enum):
     Custom = "Custom"
     Query = "Query"
     Window = "Window"
+    System = "System"

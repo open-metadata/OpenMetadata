@@ -203,9 +203,15 @@ class ProfilerWorkflowTest(TestCase):
         table = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.main.main.users",
-            fields=["tableProfilerConfig", "profile"],
+            fields=["tableProfilerConfig"],
         )
-        assert table.profile.profileSample == 75.0
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert not table.tableProfilerConfig
+        assert profile.profileSample == 75.0
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""

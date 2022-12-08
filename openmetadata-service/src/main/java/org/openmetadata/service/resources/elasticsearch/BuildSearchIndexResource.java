@@ -48,6 +48,7 @@ import org.openmetadata.schema.api.CreateEventPublisherJob.RunMode;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.EventPublisherJob;
+import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.settings.Stats;
 import org.openmetadata.schema.type.Include;
@@ -207,7 +208,7 @@ public class BuildSearchIndexResource {
       latestJob.setTimestamp(time);
       latestJob.setEndTime(time);
       if (latestJob.getFailureDetails() != null) {
-        latestJob.setStatus(EventPublisherJob.Status.ACTIVEWITHERROR);
+        latestJob.setStatus(Status.ACTIVE_WITH_ERROR);
       } else {
         latestJob.setStatus(EventPublisherJob.Status.ACTIVE);
       }
@@ -379,7 +380,7 @@ public class BuildSearchIndexResource {
       } catch (IOException ex) {
         failureDetails = new FailureDetails().withLastFailedAt(time).withLastFailedReason(ex.getMessage());
         latestJob.setFailureDetails(failureDetails);
-        latestJob.setStatus(EventPublisherJob.Status.ACTIVEWITHERROR);
+        latestJob.setStatus(Status.ACTIVE_WITH_ERROR);
       }
       latestJob.setTimestamp(time);
       dao.entityExtensionTimeSeriesDao()
