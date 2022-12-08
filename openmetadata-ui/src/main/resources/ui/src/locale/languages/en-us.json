@@ -370,8 +370,6 @@
     "select-service-type": "Select Service Type",
     "connection-details": "Connection Details",
     "markdown-editor-placeholder": "Use @mention to tag a user or a team.\nUse #mention to tag a data asset.",
-    "add-related-terms": "Add Related Terms",
-    "change-logs": "Change Logs",
     "tag": "Tag",
     "tag-lowercase": "tag",
     "service": "Service",
@@ -390,8 +388,10 @@
     "reviewer-plural": "Reviewers",
     "notification-plural": "Notifications",
     "view-all": "view all",
-    "mention-you-thread": "mentioned you on the",
-    "assign-you-task": "assigned you a new task"
+    "mention-you-thread-lowercase": "mentioned you on the",
+    "assign-you-task-lowercase": "assigned you a new task",
+    "updated-by": "Updated by",
+    "on-lowercase": "on"
   },
   "message": {
     "service-email-required": "Service account Email is required",
