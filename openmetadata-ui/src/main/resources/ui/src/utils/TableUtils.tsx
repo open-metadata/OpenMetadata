@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import i18n from 'i18next';
-import { upperCase } from 'lodash';
+import { toLower, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
@@ -52,12 +52,10 @@ import SVGIcons, { Icons } from './SvgUtils';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
-    case 'REGULAR':
-      return 'table';
     case 'QUERY':
-      return 'query';
+      return toLower(i18n.t('label.query'));
     default:
-      return 'table';
+      return toLower(i18n.t('label.table'));
   }
 };
 
@@ -138,28 +136,28 @@ export const getConstraintIcon = (constraint = '', className = '') => {
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
-        title = 'Primary key';
+        title = i18n.t('label.primary-key');
         icon = Icons.KEY;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
-        title = 'Unique';
+        title = i18n.t('label.unique');
         icon = Icons.UNIQUE;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
-        title = 'Not null';
+        title = i18n.t('label.not-null');
         icon = Icons.NOT_NULL;
       }
 
       break;
     case ConstraintTypes.FOREIGN_KEY:
       {
-        title = 'Foreign key';
+        title = i18n.t('label.foreign-key');
         icon = Icons.FOREGIN_KEY;
       }
 
