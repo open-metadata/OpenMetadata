@@ -14,13 +14,13 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { CURRENT_TEAM_MOCK_DATA, TABLE_MOCK_DATA } from './mockTeamData';
+import { MOCK_CURRENT_TEAM, MOCK_TABLE_DATA } from '../../mocks/Teams.mock';
 import { TeamHierarchyProps } from './team.interface';
 import TeamHierarchy from './TeamHierarchy';
 
 const teamHierarchyPropsData: TeamHierarchyProps = {
-  data: TABLE_MOCK_DATA,
-  currentTeam: CURRENT_TEAM_MOCK_DATA,
+  data: MOCK_TABLE_DATA,
+  currentTeam: MOCK_CURRENT_TEAM,
   onTeamExpand: jest.fn(),
 };
 
@@ -40,10 +40,10 @@ jest.mock('../../utils/TeamUtils', () => ({
 jest.mock('../../axiosAPIs/teamsAPI', () => ({
   changeTeamParent: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(CURRENT_TEAM_MOCK_DATA)),
+    .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
   getTeamByName: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(CURRENT_TEAM_MOCK_DATA)),
+    .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -107,7 +107,7 @@ describe('Team Hierarchy page', () => {
     expect(assetCountColumn).toBeInTheDocument();
     expect(descriptionColumn).toBeInTheDocument();
 
-    expect(rows).toHaveLength(TABLE_MOCK_DATA.length + 1);
+    expect(rows).toHaveLength(MOCK_TABLE_DATA.length + 1);
   });
 
   it('Should render child row in table', async () => {

@@ -10,7 +10,7 @@
  *  limitations under the License.
  */
 
-export const CURRENT_TEAM_MOCK_DATA = {
+export const MOCK_CURRENT_TEAM = {
   childrenCount: 22,
   defaultRoles: [
     {
@@ -56,7 +56,7 @@ export const CURRENT_TEAM_MOCK_DATA = {
   version: 2.4,
 };
 
-export const TABLE_MOCK_DATA = [
+export const MOCK_TABLE_DATA = [
   {
     children: [
       {
