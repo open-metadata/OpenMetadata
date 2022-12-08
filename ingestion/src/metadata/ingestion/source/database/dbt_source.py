@@ -63,7 +63,6 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
-
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
