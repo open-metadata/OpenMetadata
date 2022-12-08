@@ -15,8 +15,8 @@ import {
   Button,
   Col,
   Form,
-  Radio,
-  RadioChangeEvent,
+  Menu,
+  MenuProps,
   Row,
   Select,
   Space,
@@ -82,6 +82,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const isSummary = activeTab === ProfilerDashboardTab.SUMMARY;
   const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
+  const isProfiler = activeTab === ProfilerDashboardTab.PROFILER;
 
   const testCaseStatusOption = useMemo(() => {
     const testCaseStatus: SelectableOption[] = Object.values(
@@ -157,19 +158,23 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
   const tabOptions = [
     {
       label: ProfilerDashboardTab.SUMMARY,
-      value: ProfilerDashboardTab.SUMMARY,
+      key: ProfilerDashboardTab.SUMMARY,
+      disabled: !viewProfiler,
+    },
+    {
+      label: ProfilerDashboardTab.PROFILER,
+      key: ProfilerDashboardTab.PROFILER,
       disabled: !viewProfiler,
     },
     {
       label: ProfilerDashboardTab.DATA_QUALITY,
-      value: ProfilerDashboardTab.DATA_QUALITY,
+      key: ProfilerDashboardTab.DATA_QUALITY,
       disabled: !viewTest,
     },
   ];
 
-  const handleTabChange = (e: RadioChangeEvent) => {
-    const value = e.target.value as ProfilerDashboardTab;
-    setActiveTab(value);
+  const handleTabChange: MenuProps['onClick'] = (value) => {
+    setActiveTab(value.key as ProfilerDashboardTab);
   };
 
   const fetchAllTests = async (params?: ListTestCaseParams) => {
@@ -266,162 +271,177 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
   }, [tableFqn]);
 
   return (
-    <div
-      className="table-profiler-container"
+    <Row
+      className="table-profiler-container h-full tw-flex-grow"
       data-testid="table-profiler-container"
+      gutter={[16, 16]}
       id="profilerDetails">
-      <Row className="tw-mb-4" justify="space-between">
-        <Radio.Group
-          buttonStyle="solid"
-          className="profiler-switch"
-          data-testid="profiler-switch"
-          optionType="button"
-          options={tabOptions}
-          value={activeTab}
-          onChange={handleTabChange}
+      <Col span={4}>
+        <Menu
+          className="h-full tab-details-container p-x-0 custom-menu"
+          data-testid="data-insight-left-panel"
+          items={tabOptions}
+          mode="inline"
+          selectedKeys={[activeTab ?? ProfilerDashboardTab.SUMMARY]}
+          onClick={handleTabChange}
         />
+      </Col>
+      <Col span={20}>
+        <Space
+          className="tab-details-container w-full h-min-full"
+          direction="vertical">
+          <Space className="tw-mb-4 w-full tw-justify-end">
+            {isDataQuality && (
+              <>
+                <Form.Item className="m-0 " label="Deleted Tests">
+                  <Switch
+                    checked={deleted}
+                    onClick={handleDeletedTestCaseClick}
+                  />
+                </Form.Item>
+                <Form.Item className="m-0 w-40" label="Type">
+                  <Select
+                    options={testCaseTypeOption}
+                    value={selectedTestType}
+                    onChange={handleTestCaseTypeChange}
+                  />
+                </Form.Item>
+                <Form.Item className="m-0 w-40" label="Status">
+                  <Select
+                    options={testCaseStatusOption}
+                    value={selectedTestCaseStatus}
+                    onChange={handleTestCaseStatusChange}
+                  />
+                </Form.Item>
+              </>
+            )}
 
-        <Space>
-          {isDataQuality && (
-            <>
-              <Form.Item className="m-0 " label="Deleted Tests">
-                <Switch
-                  checked={deleted}
-                  onClick={handleDeletedTestCaseClick}
-                />
-              </Form.Item>
-              <Form.Item className="m-0 w-40" label="Type">
-                <Select
-                  options={testCaseTypeOption}
-                  value={selectedTestType}
-                  onChange={handleTestCaseTypeChange}
-                />
-              </Form.Item>
-              <Form.Item className="m-0 w-40" label="Status">
-                <Select
-                  options={testCaseStatusOption}
-                  value={selectedTestCaseStatus}
-                  onChange={handleTestCaseStatusChange}
-                />
-              </Form.Item>
-            </>
+            <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+              <Link
+                to={
+                  editTest
+                    ? getAddDataQualityTableTestPath(
+                        ProfilerDashboardType.TABLE,
+                        `${table?.fullyQualifiedName}`
+                      )
+                    : '#'
+                }>
+                <Button
+                  className="tw-rounded"
+                  data-testid="profiler-add-table-test-btn"
+                  disabled={!editTest}
+                  type="primary">
+                  Add Test
+                </Button>
+              </Link>
+            </Tooltip>
+            {isSummary && (
+              <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+                <Button
+                  ghost
+                  data-testid="profiler-setting-btn"
+                  disabled={!editTest}
+                  icon={
+                    <SVGIcons
+                      alt="setting"
+                      className="mr-2"
+                      icon={
+                        editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY
+                      }
+                    />
+                  }
+                  type="primary"
+                  onClick={() => handleSettingModal(true)}>
+                  Settings
+                </Button>
+              </Tooltip>
+            )}
+          </Space>
+
+          {isUndefined(profile) && (
+            <div
+              className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+              data-testid="no-profiler-placeholder">
+              <NoDataIcon />
+              <p className="tw-mb-0 tw-ml-2">
+                Data Profiler is an optional configuration in Ingestion. Please
+                enable the data profiler by following the documentation
+                <Link
+                  className="tw-ml-1"
+                  target="_blank"
+                  to={{
+                    pathname:
+                      'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
+                  }}>
+                  here.
+                </Link>
+              </p>
+            </div>
           )}
 
-          <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
-            <Link
-              to={
-                editTest
-                  ? getAddDataQualityTableTestPath(
-                      ProfilerDashboardType.TABLE,
-                      `${table?.fullyQualifiedName}`
-                    )
-                  : '#'
-              }>
-              <Button
-                className="tw-rounded"
-                data-testid="profiler-add-table-test-btn"
-                disabled={!editTest}
-                type="primary">
-                Add Test
-              </Button>
-            </Link>
-          </Tooltip>
+          <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
+            {overallSummery.map((summery) => (
+              <Col
+                className="overall-summery-card"
+                data-testid={`header-card-${summery.title}`}
+                key={summery.title}
+                span={4}>
+                <p className="overall-summery-card-title tw-font-medium tw-text-grey-muted tw-mb-1">
+                  {summery.title}
+                </p>
+                <p
+                  className={classNames(
+                    'tw-text-2xl tw-font-semibold',
+                    summery.className
+                  )}>
+                  {summery.value}
+                </p>
+              </Col>
+            ))}
+          </Row>
+
           {isSummary && (
-            <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
-              <Button
-                ghost
-                data-testid="profiler-setting-btn"
-                disabled={!editTest}
-                icon={
-                  <SVGIcons
-                    alt="setting"
-                    className="mr-2"
-                    icon={
-                      editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY
-                    }
-                  />
-                }
-                type="primary"
-                onClick={() => handleSettingModal(true)}>
-                Settings
-              </Button>
-            </Tooltip>
+            <ColumnProfileTable
+              columnTests={columnTests}
+              columns={columns.map((col) => ({
+                ...col,
+                key: col.name,
+              }))}
+              hasEditAccess={editTest}
+            />
+          )}
+
+          {isDataQuality && (
+            <DataQualityTab
+              deletedTable={deleted}
+              hasAccess={permissions.EditAll}
+              isLoading={isTestCaseLoading}
+              testCases={getFilterTestCase()}
+              onTestUpdate={fetchAllTests}
+            />
+          )}
+
+          {isProfiler && (
+            <DataQualityTab
+              deletedTable={deleted}
+              hasAccess={permissions.EditAll}
+              isLoading={isTestCaseLoading}
+              testCases={getFilterTestCase()}
+              onTestUpdate={fetchAllTests}
+            />
+          )}
+
+          {settingModalVisible && (
+            <ProfilerSettingsModal
+              columns={columns}
+              tableId={table?.id || ''}
+              visible={settingModalVisible}
+              onVisibilityChange={handleSettingModal}
+            />
           )}
         </Space>
-      </Row>
-
-      {isUndefined(profile) && (
-        <div
-          className="tw-border tw-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
-          data-testid="no-profiler-placeholder">
-          <NoDataIcon />
-          <p className="tw-mb-0 tw-ml-2">
-            Data Profiler is an optional configuration in Ingestion. Please
-            enable the data profiler by following the documentation
-            <Link
-              className="tw-ml-1"
-              target="_blank"
-              to={{
-                pathname:
-                  'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
-              }}>
-              here.
-            </Link>
-          </p>
-        </div>
-      )}
-
-      <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
-        {overallSummery.map((summery) => (
-          <Col
-            className="overall-summery-card"
-            data-testid={`header-card-${summery.title}`}
-            key={summery.title}
-            span={4}>
-            <p className="overall-summery-card-title tw-font-medium tw-text-grey-muted tw-mb-1">
-              {summery.title}
-            </p>
-            <p
-              className={classNames(
-                'tw-text-2xl tw-font-semibold',
-                summery.className
-              )}>
-              {summery.value}
-            </p>
-          </Col>
-        ))}
-      </Row>
-
-      {isSummary && (
-        <ColumnProfileTable
-          columnTests={columnTests}
-          columns={columns.map((col) => ({
-            ...col,
-            key: col.name,
-          }))}
-          hasEditAccess={editTest}
-        />
-      )}
-
-      {isDataQuality && (
-        <DataQualityTab
-          deletedTable={deleted}
-          hasAccess={permissions.EditAll}
-          isLoading={isTestCaseLoading}
-          testCases={getFilterTestCase()}
-          onTestUpdate={fetchAllTests}
-        />
-      )}
-
-      {settingModalVisible && (
-        <ProfilerSettingsModal
-          columns={columns}
-          tableId={table?.id || ''}
-          visible={settingModalVisible}
-          onVisibilityChange={handleSettingModal}
-        />
-      )}
-    </div>
+      </Col>
+    </Row>
   );
 };
 
