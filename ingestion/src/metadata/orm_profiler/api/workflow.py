@@ -132,7 +132,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             raise ValueError(
                 f"Service name `{self.config.source.serviceName}` does not exist. "
                 "Make sure you have run the ingestion for the service specified in the profiler workflow. "
-                "If so, make sure the profiler service name matches the service name specified during ingestion."
+                "If so, make sure the profiler service name matches the service name specified during ingestion "
+                "and that your ingestion token (settings > bots) is still valid."
             )
         self._table_entity = None
 

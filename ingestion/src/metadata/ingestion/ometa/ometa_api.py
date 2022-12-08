@@ -90,6 +90,7 @@ from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
+from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
@@ -126,21 +127,6 @@ class EmptyPayloadException(Exception):
     Raise when receiving no data, even if no exception
     during the API call is received
     """
-
-
-class EntityList(Generic[T], BaseModel):
-    """
-    Pydantic Entity list model
-
-    Attributes
-        entities (List): list of entities
-        total (int):
-        after (str):
-    """
-
-    entities: List[T]
-    total: int
-    after: str = None
 
 
 class OpenMetadata(
