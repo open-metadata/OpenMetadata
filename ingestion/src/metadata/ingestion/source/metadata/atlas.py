@@ -19,11 +19,6 @@ from typing import Any, Dict, Iterable, List
 
 from metadata.clients.atlas_client import AtlasClient
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -39,12 +34,15 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
     AtlasConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -65,7 +63,10 @@ logger = ingestion_logger()
 
 ATLAS_TAG_CATEGORY = "AtlasMetadata"
 ATLAS_TABLE_TAG = "atlas_table"
-ENTITY_TYPES = {"Table": {"Table": {"db": "db", "column": "columns"}}}
+ENTITY_TYPES = {
+    "Table": {"Table": {"db": "db", "column": "columns"}},
+    "Topic": {"Topic": {"schema": "schema"}},
+}
 
 
 class AtlasSourceStatus(SourceStatus):
@@ -126,20 +127,37 @@ class AtlasSource(Source):
         """
 
     def next_record(self):
-        for key in ENTITY_TYPES["Table"]:
-            self.service = self.get_database_service()
-            self.tables[key] = self.atlas_client.list_entities(entity_type=key)
+        for service in self.service_connection.databaseServiceName or []:
+            check_service = self.metadata.get_by_name(
+                entity=DatabaseService, fqn=service
+            )
+            if check_service:
+                for key in ENTITY_TYPES["Table"]:
+                    self.service = check_service
+                    self.tables[key] = self.atlas_client.list_entities(entity_type=key)
+                    if self.tables.get(key, None):
+                        for key in self.tables:
+                            yield from self._parse_table_entity(key, self.tables[key])
+            else:
+                logger.warning(
+                    f"Cannot find service for {service} - type DatabaseService"
+                )
 
-        for key in ENTITY_TYPES.get("Topic", []):
-            self.message_service = self.get_message_service()
-            self.topics[key] = self.atlas_client.list_entities(entity_type=key)
-
-        if self.tables:
-            for key in self.tables:
-                yield from self._parse_table_entity(key, self.tables[key])
-        if self.topics:
-            for topic in self.topics:
-                yield from self._parse_topic_entity(topic)
+        for service in self.service_connection.messagingServiceName or []:
+            check_service = self.metadata.get_by_name(
+                entity=MessagingService, fqn=service
+            )
+            if check_service:
+                for key in ENTITY_TYPES["Topic"]:
+                    self.message_service = check_service
+                    self.topics[key] = self.atlas_client.list_entities(entity_type=key)
+                    if self.topics.get(key, None):
+                        for topic in self.topics:
+                            yield from self._parse_topic_entity(topic)
+            else:
+                logger.warning(
+                    f"Cannot find service for {service} - type MessagingService"
+                )
 
     def close(self):
         """
@@ -157,15 +175,26 @@ class AtlasSource(Source):
                 try:
                     tpc_attrs = tpc_entity["attributes"]
                     topic_name = tpc_attrs["name"]
-                    topic = CreateTopicRequest(
-                        name=topic_name[0:63],
-                        service=EntityReference(
-                            id=self.message_service.id, type="messagingService"
-                        ),
-                        partitions=1,
+
+                    topic_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Topic,
+                        service_name=self.message_service.id,
+                        topic_name=topic_name,
                     )
 
-                    yield topic
+                    topic_object = self.metadata.get_by_name(
+                        entity=Topic, fqn=topic_fqn
+                    )
+
+                    if tpc_attrs.get("description") and topic_object:
+                        self.metadata.patch_description(
+                            entity=Topic,
+                            entity_id=topic_object.id,
+                            description=tpc_attrs["description"],
+                            force=True,
+                        )
+
                     yield from self.ingest_lineage(tpc_entity["guid"], name)
 
                 except Exception as exc:
@@ -174,20 +203,18 @@ class AtlasSource(Source):
                         f"Failed to parse topi entry [{topic_entity}]: {exc}"
                     )
 
-    def _parse_table_entity(self, name, entity):
+    def _parse_table_entity(self, name, entity):  # pylint: disable=too-many-locals
         for table in entity:
             table_entity = self.atlas_client.get_entity(table)
             tbl_entities = table_entity["entities"]
             for tbl_entity in tbl_entities:
                 try:
-                    tbl_columns = self._parse_table_columns(
-                        table_entity, tbl_entity, name
-                    )
+
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"][
                         ENTITY_TYPES["Table"][name]["db"]
                     ]
-                    yield self.get_database_entity(db_entity["displayText"])
+
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
@@ -197,13 +224,13 @@ class AtlasSource(Source):
                     database_object = self.metadata.get_by_name(
                         entity=Database, fqn=database_fqn
                     )
-
-                    yield CreateDatabaseSchemaRequest(
-                        name=db_entity["displayText"],
-                        database=EntityReference(
-                            id=database_object.id, type="database"
-                        ),
-                    )
+                    if db_entity.get("description", None) and database_object:
+                        self.metadata.patch_description(
+                            entity=Database,
+                            entity_id=database_object.id,
+                            description=db_entity["description"],
+                            force=True,
+                        )
 
                     database_schema_fqn = fqn.build(
                         self.metadata,
@@ -216,16 +243,46 @@ class AtlasSource(Source):
                         entity=DatabaseSchema, fqn=database_schema_fqn
                     )
 
+                    if db_entity.get("description", None) and database_schema_object:
+                        self.metadata.patch_description(
+                            entity=DatabaseSchema,
+                            entity_id=database_schema_object.id,
+                            description=db_entity["description"],
+                            force=True,
+                        )
+
                     yield self.create_tag()
 
-                    yield CreateTableRequest(
-                        name=tbl_attrs["name"],
-                        databaseSchema=EntityReference(
-                            id=database_schema_object.id, type="databaseSchema"
-                        ),
-                        description=tbl_attrs["description"],
-                        columns=tbl_columns,
-                        tags=self.get_tags(),
+                    table_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        service_name=self.service.name.__root__,
+                        database_name=db_entity["displayText"],
+                        schema_name=db_entity["displayText"],
+                        table_name=tbl_attrs["name"],
+                    )
+
+                    table_object = self.metadata.get_by_name(
+                        entity=Table, fqn=table_fqn
+                    )
+
+                    if tbl_attrs.get("description", None) and table_object:
+                        self.metadata.patch_description(
+                            entity_id=table_object.id,
+                            entity=Table,
+                            description=tbl_attrs["description"],
+                            force=True,
+                        )
+
+                    tag_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Tag,
+                        tag_category_name=ATLAS_TAG_CATEGORY,
+                        tag_name=ATLAS_TABLE_TAG,
+                    )
+
+                    self.metadata.patch_tag(
+                        entity=Table, entity_id=table_object.id, tag_fqn=tag_fqn
                     )
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
@@ -363,7 +420,7 @@ class AtlasSource(Source):
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
-                displayName="hive",
+                displayName=f"{self.config.serviceName}_database",
                 serviceType=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
                 connection=SERVICE_TYPE_MAPPER["hive"]["connection"],
             )
@@ -377,7 +434,7 @@ class AtlasSource(Source):
         service = self.metadata.create_or_update(
             CreateMessagingServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
-                displayName=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
+                displayName=f"{self.config.serviceName}_messaging",
                 serviceType=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
                 connection=SERVICE_TYPE_MAPPER.get("kafka")["connection"],
             )

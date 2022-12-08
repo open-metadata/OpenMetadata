@@ -23,7 +23,7 @@ export const getStatusResultBadgeIcon = (status: string) => {
     case Status.Completed:
       return Icons.SUCCESS_BADGE;
 
-    case Status.Activewitherror:
+    case Status.ActiveWithError:
       return Icons.FAIL_BADGE;
 
     case Status.Retry:
@@ -45,7 +45,7 @@ export const getEventPublisherStatusText = (status?: string) => {
     case Status.Active:
       return 'Active';
 
-    case Status.Activewitherror:
+    case Status.ActiveWithError:
       return 'Active with error';
 
     case Status.Retry:
