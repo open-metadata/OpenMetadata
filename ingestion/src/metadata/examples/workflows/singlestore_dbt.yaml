@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: singlestore-dbt
+  serviceName: local_singlestore
   sourceConfig:
     config:
       type: DBT

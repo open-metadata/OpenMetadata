@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: glue-dbt
+  serviceName: local_glue
   sourceConfig:
     config:
       type: DBT

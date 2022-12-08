@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: vertica-dbt
+  serviceName: local_vertica
   sourceConfig:
     config:
       type: DBT

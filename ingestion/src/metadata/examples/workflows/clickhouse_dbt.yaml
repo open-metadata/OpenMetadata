@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: clickhouse-dbt
+  serviceName: local_clickhouse
   sourceConfig:
     config:
       type: DBT

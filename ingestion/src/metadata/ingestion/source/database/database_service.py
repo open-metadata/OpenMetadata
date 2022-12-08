@@ -72,7 +72,6 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
@@ -232,7 +231,6 @@ class DatabaseServiceSource(
 
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)
-
 
     def prepare(self):
         pass

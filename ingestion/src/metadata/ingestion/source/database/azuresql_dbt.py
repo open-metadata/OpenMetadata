@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Redshift DBT module
+Azuresql DBT module
 
 """
 
@@ -25,7 +25,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class RedshiftDbtSource(DbtSource):
+class AzuresqlDbtSource(DbtSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

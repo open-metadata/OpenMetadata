@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: postgres-dbt
+  serviceName: local_postgres
   sourceConfig:
     config:
       type: DBT

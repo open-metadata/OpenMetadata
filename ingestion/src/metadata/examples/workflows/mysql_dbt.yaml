@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: mysql-dbt
+  serviceName: local_mysql
   sourceConfig:
     config:
       type: DBT
