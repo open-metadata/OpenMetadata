@@ -117,9 +117,11 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 class ProfilerPartitionUnitTest(TestCase):
     @patch("metadata.orm_profiler.api.workflow.ProfilerWorkflow._validate_service_name")
-    def __init__(self, methodName, validate_service_name):
+    @patch("metadata.utils.connections.test_connection")
+    def __init__(self, methodName, validate_service_name, test_connection):
         super().__init__(methodName)
         validate_service_name.return_value = True
+        test_connection.return_value = True
         self.profiler_workflow = ProfilerWorkflow.create(mock_bigquery_config)
 
     def test_partition_details_time_unit(self):
