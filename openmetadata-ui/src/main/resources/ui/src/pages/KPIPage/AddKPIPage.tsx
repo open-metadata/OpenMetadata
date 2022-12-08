@@ -45,7 +45,6 @@ import {
   SUPPORTED_CHARTS_FOR_KPI,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
-import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
 import { nameWithSpace } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -446,7 +445,7 @@ const AddKPIPage = () => {
         <Typography.Paragraph className="text-base font-medium">
           {t('label.add-kpi')}
         </Typography.Paragraph>
-        <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
+        <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
       </Col>
     </Row>
   );

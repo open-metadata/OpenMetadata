@@ -25,10 +25,6 @@ import {
   PAGE_SIZE_LARGE,
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
-import {
-  ADMIN_ONLY_ACTION,
-  INGESTION_BOT_CANT_BE_DELETED,
-} from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
@@ -127,10 +123,10 @@ const BotListV1 = ({
         render: (_, record) => {
           const isSystemBot = record.provider === ProviderType.System;
           const title = isSystemBot
-            ? INGESTION_BOT_CANT_BE_DELETED
+            ? t('label.ingestion-bot-cant-be-deleted')
             : isAdminUser
             ? t('label.delete')
-            : ADMIN_ONLY_ACTION;
+            : t('label.admin-only-action');
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
@@ -141,7 +137,7 @@ const BotListV1 = ({
                   disabled={isDisabled}
                   icon={
                     <SVGIcons
-                      alt="Delete"
+                      alt={t('label.delete')}
                       className="tw-w-4"
                       icon={Icons.DELETE}
                     />
@@ -214,7 +210,11 @@ const BotListV1 = ({
             <div className="tw-text-lg tw-text-center">
               <Tooltip
                 placement="left"
-                title={isAdminUser ? t('label.add-bot') : ADMIN_ONLY_ACTION}>
+                title={
+                  isAdminUser
+                    ? t('label.add-bot')
+                    : t('label.admin-only-action')
+                }>
                 <Button
                   ghost
                   data-testid="add-bot"
@@ -227,7 +227,7 @@ const BotListV1 = ({
             </div>
           }
           doc={BOTS_DOCS}
-          heading="Bot"
+          heading={t('label.bot')}
           type="ADD_DATA"
         />
       </Col>
@@ -253,7 +253,10 @@ const BotListV1 = ({
             <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
           </Space>
 
-          <Tooltip title={isAdminUser ? t('label.add-bot') : ADMIN_ONLY_ACTION}>
+          <Tooltip
+            title={
+              isAdminUser ? t('label.add-bot') : t('label.admin-only-action')
+            }>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}

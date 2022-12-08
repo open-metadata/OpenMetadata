@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -30,7 +31,6 @@ import { addRole, getPolicies } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { ADD_ROLE_TEXT } from '../../../constants/HelperTextUtil';
 import { Policy } from '../../../generated/entity/policies/policy';
 import {
   getPath,
@@ -43,15 +43,15 @@ const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const breadcrumb = [
   {
-    name: 'Settings',
+    name: t('label.settings'),
     url: getSettingPath(),
   },
   {
-    name: 'Roles',
+    name: t('label.roles'),
     url: rolesPath,
   },
   {
-    name: 'Add New Role',
+    name: t('label.add-new-role'),
     url: '',
   },
 ];
@@ -117,7 +117,7 @@ const AddRolePage = () => {
           <Typography.Paragraph
             className="tw-text-base"
             data-testid="form-title">
-            Add New Role
+            {t('label.add-new-role')}
           </Typography.Paragraph>
           <Form
             data-testid="role-form"
@@ -125,46 +125,48 @@ const AddRolePage = () => {
             layout="vertical"
             onFinish={handleSumbit}>
             <Form.Item
-              label="Name:"
+              label={`${t('label.name')}:`}
               name="name"
               rules={[
                 {
                   required: true,
                   max: 128,
                   min: 1,
-                  message: 'Invalid name',
+                  message: t('label.invalid-name'),
                 },
               ]}>
               <Input
                 data-testid="name"
-                placeholder="Role name"
+                placeholder={t('label.role-name')}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </Form.Item>
-            <Form.Item label="Description:" name="description">
+            <Form.Item label={`${t('label.description')}:`} name="description">
               <RichTextEditor
                 height="200px"
                 initialValue={description}
-                placeHolder="write your description"
+                placeHolder={t('label.write-your-description')}
                 style={{ margin: 0 }}
                 onTextChange={(value) => setDescription(value)}
               />
             </Form.Item>
             <Form.Item
-              label="Select a policy:"
+              label={`${t('label.select-a-policy')}:`}
               name="policies"
               rules={[
                 {
                   required: true,
-                  message: 'At least one policy is required!',
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.at-least-one-policy'),
+                  }),
                 },
               ]}>
               <Select
                 data-testid="policies"
                 mode="multiple"
-                placeholder="Select Policy"
+                placeholder={t('label.select-a-policy')}
                 value={selectedPolicies}
                 onChange={(values) => setSelectedPolicies(values)}>
                 {policies.map((policy) => (
@@ -180,14 +182,14 @@ const AddRolePage = () => {
                 data-testid="cancel-btn"
                 type="link"
                 onClick={handleCancel}>
-                Cancel
+                {t('label.cancel')}
               </Button>
               <Button
                 data-testid="submit-btn"
                 form="role-form"
                 htmlType="submit"
                 type="primary">
-                Submit
+                {t('label.submit')}
               </Button>
             </Space>
           </Form>
@@ -195,9 +197,9 @@ const AddRolePage = () => {
       </Col>
       <Col className="tw-mt-4" span={4}>
         <Typography.Paragraph className="tw-text-base tw-font-medium">
-          Add Role
+          {t('label.add-role')}
         </Typography.Paragraph>
-        <Typography.Text>{ADD_ROLE_TEXT}</Typography.Text>
+        <Typography.Text>{t('message.add-role-message')}</Typography.Text>
       </Col>
     </Row>
   );

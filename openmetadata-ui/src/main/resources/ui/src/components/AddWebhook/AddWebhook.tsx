@@ -16,7 +16,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { cloneDeep, isEmpty, isNil, trim } from 'lodash';
+import { t } from 'i18next';
+import { cloneDeep, isEmpty, isNil, toLower, trim } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, {
   FunctionComponent,
@@ -31,13 +32,8 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import {
-  CONFIGURE_MS_TEAMS_TEXT,
-  CONFIGURE_SLACK_TEXT,
-  CONFIGURE_WEBHOOK_TEXT,
-  NO_PERMISSION_FOR_ACTION,
-} from '../../constants/HelperTextUtil';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
+import { LOADING_STATE } from '../../enums/common.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import {
@@ -70,11 +66,27 @@ import EventFilterTree from './EventFilterTree.component';
 
 const CONFIGURE_TEXT: { [key: string]: { body: string; heading: string } } = {
   msteams: {
-    body: CONFIGURE_MS_TEAMS_TEXT,
-    heading: 'Configure MS Team Webhooks',
+    body: t('message.configure-webhook-name-message', {
+      webhookType: t('label.ms-teams'),
+    }),
+    heading: t('label.configure-webhook-type', {
+      webhookType: t('label.ms-team'),
+    }),
   },
-  slack: { body: CONFIGURE_SLACK_TEXT, heading: 'Configure Slack Webhooks' },
-  generic: { body: CONFIGURE_WEBHOOK_TEXT, heading: 'Configure Webhooks' },
+  slack: {
+    body: t('message.configure-webhook-name-message', {
+      webhookType: t('label.slack'),
+    }),
+    heading: t('label.configure-webhook-type', {
+      webhookType: t('label.slack'),
+    }),
+  },
+  generic: {
+    body: t('message.configure-webhook-message'),
+    heading: t('label.configure-webhook-type', {
+      webhookType: '',
+    }),
+  },
 };
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -85,8 +97,8 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   data,
   header,
   mode = FormSubmitType.ADD,
-  saveState = 'initial',
-  deleteState = 'initial',
+  saveState = LOADING_STATE.INITIAL,
+  deleteState = LOADING_STATE.INITIAL,
   allowAccess = true,
   webhookType = WebhookType.Generic,
   onCancel,
@@ -244,7 +256,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const getDeleteButton = () => {
     return (
       <>
-        {deleteState === 'waiting' ? (
+        {deleteState === LOADING_STATE.WAITING ? (
           <Button
             disabled
             className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
@@ -257,7 +269,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           <Tooltip
             placement="left"
             title={
-              deleteWebhookPermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+              deleteWebhookPermission
+                ? t('label.delete')
+                : t('label.no-permission-for-action')
             }>
             <Button
               data-testid="delete-webhook"
@@ -266,7 +280,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               theme="primary"
               variant="text"
               onClick={() => setIsDelete(true)}>
-              Delete
+              {t('label.delete')}
             </Button>
           </Tooltip>
         )}
@@ -279,7 +293,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
 
     return (
       <>
-        {saveState === 'waiting' ? (
+        {saveState === LOADING_STATE.WAITING ? (
           <Button
             disabled
             className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
@@ -288,7 +302,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             variant="contained">
             <Loader size="small" type="white" />
           </Button>
-        ) : saveState === 'success' ? (
+        ) : saveState === LOADING_STATE.SUCCESS ? (
           <Button
             disabled
             className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
@@ -300,7 +314,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         ) : (
           <Tooltip
             placement="left"
-            title={savePermission ? 'Save' : NO_PERMISSION_FOR_ACTION}>
+            title={
+              savePermission
+                ? t('label.save')
+                : t('label.no-permission-for-action')
+            }>
             <Button
               className={classNames('tw-w-16 tw-h-10')}
               data-testid="save-webhook"
@@ -309,7 +327,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               theme="primary"
               variant="contained"
               onClick={handleSave}>
-              Save
+              {t('label.save')}
             </Button>
           </Tooltip>
         )}
@@ -335,11 +353,14 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           <TitleBreadcrumb
             titleLinks={[
               {
-                name: 'Settings',
+                name: t('label.settings'),
                 url: ROUTES.SETTINGS,
               },
               {
-                name: webhookType === WebhookType.Slack ? 'Slack' : 'Webhook',
+                name:
+                  webhookType === WebhookType.Slack
+                    ? t('label.slack')
+                    : t('label.webhook'),
                 url: getSettingPath(
                   GlobalSettingsMenuCategory.INTEGRATIONS,
                   webhookType === WebhookType.Slack
@@ -372,7 +393,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   data-testid="name"
                   id="name"
                   name="name"
-                  placeholder="name"
+                  placeholder={toLower(t('label.name'))}
                   type="text"
                   value={name}
                   onChange={handleValidation}
@@ -382,21 +403,29 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   disabled
                   className="tw-form-inputs tw-form-inputs-padding tw-cursor-not-allowed"
                   id="name"
-                  name="name"
+                  name={toLower(t('label.name'))}
                   value={name}
                 />
               )}
               {showErrorMsg.name
-                ? errorMsg('Webhook name is required.')
+                ? errorMsg(
+                    t('message.field-text-is-required', {
+                      fieldText: 'Webhook name',
+                    })
+                  )
                 : showErrorMsg.invalidName
-                ? errorMsg('Webhook name is invalid.')
+                ? errorMsg(
+                    t('message.field-text-is-invalid', {
+                      fieldText: 'Webhook name',
+                    })
+                  )
                 : null}
             </Field>
             <Field>
               <label
                 className="tw-block tw-form-label tw-mb-0"
                 htmlFor="description">
-                Description:
+                {t('label.description')}:
               </label>
               <RichTextEditor
                 data-testid="description"
@@ -407,7 +436,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             </Field>
             <Field>
               <label className="tw-block tw-form-label" htmlFor="endpoint-url">
-                {requiredField('Endpoint URL:')}
+                {requiredField(`${t('label.endpoint-url')}:`)}
               </label>
               <input
                 className="tw-form-inputs tw-form-inputs-padding"
@@ -421,14 +450,22 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 onChange={handleValidation}
               />
               {showErrorMsg.endpointUrl
-                ? errorMsg('Webhook endpoint is required.')
+                ? errorMsg(
+                    t('message.field-text-is-required', {
+                      fieldText: 'Webhook endpoint',
+                    })
+                  )
                 : showErrorMsg.invalidEndpointUrl
-                ? errorMsg('Webhook endpoint is invalid.')
+                ? errorMsg(
+                    t('message.field-text-is-invalid', {
+                      fieldText: 'Webhook endpoint',
+                    })
+                  )
                 : null}
             </Field>
             <Field>
               <div className="tw-flex tw-pt-1">
-                <label>Active</label>
+                <label>{t('label.active')}</label>
                 <div
                   className={classNames('toggle-switch', { open: active })}
                   data-testid="active"
@@ -441,7 +478,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             </Field>
             {getSeparator(
               <span className="tw-text-base tw-px-0.5">
-                {requiredField('Event Filters', true)}
+                {requiredField(t('label.event-filters'), true)}
               </span>,
               'tw-mt-3'
             )}
@@ -457,7 +494,13 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   theme="primary"
                   variant="text"
                   onClick={() => setShowAdv((prev) => !prev)}>
-                  {showAdv ? 'Hide Advanced Config' : 'Show Advanced Config'}
+                  {showAdv
+                    ? t('label.show-or-hide-advanced-config', {
+                        showAdv: 'Hide',
+                      })
+                    : t('label.show-or-hide-advanced-config', {
+                        showAdv: 'Show',
+                      })}
                 </Button>
               </div>
             </Field>
@@ -466,7 +509,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <>
                 {getSeparator(
                   <span className="tw-text-base tw-px-0.5">
-                    Advanced Config
+                    {t('label.advanced-config')}
                   </span>,
                   'tw-mt-3'
                 )}
@@ -476,7 +519,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       <label
                         className="tw-block tw-form-label"
                         htmlFor="batch-size">
-                        Batch Size:
+                        {t('label.batch-size')}:
                       </label>
                       <input
                         className="tw-form-inputs tw-form-inputs-padding"
@@ -494,7 +537,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       <label
                         className="tw-block tw-form-label"
                         htmlFor="connection-timeout">
-                        Connection Timeout (s):
+                        {t('message.field-timeout-description')} (s):
                       </label>
                       <input
                         className="tw-form-inputs tw-form-inputs-padding"
@@ -517,7 +560,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                         <label
                           className="tw-block tw-form-label tw-my-0"
                           htmlFor="secret-key">
-                          Secret Key:
+                          {t('label.secret-key')}:
                         </label>
                         <div className="tw-flex tw-items-center">
                           <input
@@ -526,7 +569,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                             data-testid="secret-key"
                             id="secret-key"
                             name="secret-key"
-                            placeholder="secret key"
+                            placeholder={toLower(t('label.secret-key'))}
                             type="text"
                             value={secretKey}
                           />
@@ -599,7 +642,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       className="tw-text-sm tw-align-middle tw-pr-1.5"
                       icon={faArrowLeft}
                     />{' '}
-                    <span>Back</span>
+                    <span>{t('label.back')}</span>
                   </Button>
                   <div className="tw-flex tw-justify-end">
                     {getDeleteButton()}
@@ -614,7 +657,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                     theme="primary"
                     variant="text"
                     onClick={onCancel}>
-                    Cancel
+                    {t('label.cancel')}
                   </Button>
                   {getSaveButton()}
                 </div>
