@@ -296,7 +296,7 @@ const AddKPIPage = () => {
                 <>
                   {selectedMetric.chartDataType ===
                     ChartDataType.Percentage && (
-                    <Row gutter={20}>
+                    <Row data-testid="metric-percentage-input" gutter={20}>
                       <Col span={20}>
                         <Slider
                           className="kpi-slider"
@@ -331,6 +331,7 @@ const AddKPIPage = () => {
                   {selectedMetric.chartDataType === ChartDataType.Number && (
                     <InputNumber
                       className="w-full"
+                      data-testid="metric-number-input"
                       min={0}
                       value={metricValue}
                       onChange={(value) => setMetricValue(Number(value))}
@@ -356,6 +357,7 @@ const AddKPIPage = () => {
                   ]}>
                   <DatePicker
                     className="w-full"
+                    data-testid="start-date"
                     disabledDate={getDisabledDates}
                     format={KPI_DATE_PICKER_FORMAT}
                     onChange={(_, dateString) =>
@@ -379,6 +381,7 @@ const AddKPIPage = () => {
                   ]}>
                   <DatePicker
                     className="w-full"
+                    data-testid="end-date"
                     disabledDate={getDisabledDates}
                     format={KPI_DATE_PICKER_FORMAT}
                     onChange={(_, dateString) =>
@@ -418,7 +421,7 @@ const AddKPIPage = () => {
           </Form>
         </Card>
       </Col>
-      <Col className="m-t-md" span={4}>
+      <Col className="m-t-md" data-testid="right-panel" span={4}>
         <Typography.Paragraph className="text-base font-medium">
           {t('label.add-kpi')}
         </Typography.Paragraph>

@@ -64,7 +64,7 @@ import {
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const AddKPIPage = () => {
+const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { kpiName } = useParams<{ kpiName: string }>();
 
@@ -237,7 +237,7 @@ const AddKPIPage = () => {
       {kpiData ? (
         <Row
           className="bg-body-main h-full"
-          data-testid="add-kpi-container"
+          data-testid="edit-kpi-container"
           gutter={[16, 16]}>
           <Col offset={4} span={12}>
             <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
@@ -245,7 +245,7 @@ const AddKPIPage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-kpi')}
+                {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
               </Typography.Paragraph>
               <Form
                 data-testid="kpi-form"
@@ -259,6 +259,7 @@ const AddKPIPage = () => {
                   name="dataInsightChart">
                   <Input
                     disabled
+                    data-testid="dataInsightChart"
                     value={selectedChart?.displayName || selectedChart?.name}
                   />
                 </Form.Item>
@@ -272,7 +273,11 @@ const AddKPIPage = () => {
                 </Form.Item>
 
                 <Form.Item label={t('label.metric-type')} name="metricType">
-                  <Input disabled value={metricData?.name} />
+                  <Input
+                    disabled
+                    data-testid="metricType"
+                    value={metricData?.name}
+                  />
                 </Form.Item>
 
                 {!isUndefined(metricData) && (
@@ -295,7 +300,7 @@ const AddKPIPage = () => {
                     ]}>
                     <>
                       {kpiData?.metricType === KpiTargetType.Percentage && (
-                        <Row gutter={20}>
+                        <Row data-testid="metric-percentage-input" gutter={20}>
                           <Col span={20}>
                             <Slider
                               className="kpi-slider"
@@ -330,6 +335,7 @@ const AddKPIPage = () => {
                       {kpiData?.metricType === KpiTargetType.Number && (
                         <InputNumber
                           className="w-full"
+                          data-testid="metric-number-input"
                           min={0}
                           value={metricValue}
                           onChange={(value) => setMetricValue(Number(value))}
@@ -355,6 +361,7 @@ const AddKPIPage = () => {
                       ]}>
                       <DatePicker
                         className="w-full"
+                        data-testid="start-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
                         onChange={(_, dateString) =>
@@ -378,6 +385,7 @@ const AddKPIPage = () => {
                       ]}>
                       <DatePicker
                         className="w-full"
+                        data-testid="end-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
                         onChange={(_, dateString) =>
@@ -423,7 +431,7 @@ const AddKPIPage = () => {
               </Form>
             </Card>
           </Col>
-          <Col className="m-t-md" span={4}>
+          <Col className="m-t-md" data-testid="right-panel" span={4}>
             <Typography.Paragraph className="text-base font-medium">
               {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
             </Typography.Paragraph>
@@ -439,4 +447,4 @@ const AddKPIPage = () => {
   );
 };
 
-export default AddKPIPage;
+export default EditKPIPage;
