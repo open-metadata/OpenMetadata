@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: bigquery-dbt
+  serviceName: local_bigquery
   sourceConfig:
     config:
       type: DBT

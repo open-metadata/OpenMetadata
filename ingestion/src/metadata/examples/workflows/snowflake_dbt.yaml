@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: snowflake-dbt
+  serviceName: local_snowflake
   sourceConfig:
     config:
       type: DBT

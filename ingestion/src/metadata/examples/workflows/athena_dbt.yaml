@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: athena-dbt
+  serviceName: local_athena
   sourceConfig:
     config:
       type: DBT

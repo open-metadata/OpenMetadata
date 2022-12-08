@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: oracle-dbt
+  serviceName: local_oracle
   sourceConfig:
     config:
       type: DBT

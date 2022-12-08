@@ -59,12 +59,7 @@ def get_dbt_details(config):
 def _(config: DbtLocalConfig):
     try:
         dbt_run_results = None
-        if config.dbtCatalogFilePath is not None:
-            logger.debug(
-                f"Reading [dbtCatalogFilePath] from: {config.dbtCatalogFilePath}"
-            )
-            with open(config.dbtCatalogFilePath, "r", encoding="utf-8") as catalog:
-                dbt_catalog = catalog.read()
+        dbt_catalog = None
         if config.dbtManifestFilePath is not None:
             logger.debug(
                 f"Reading [dbtManifestFilePath] from: {config.dbtCatalogFilePath}"
@@ -82,8 +77,14 @@ def _(config: DbtLocalConfig):
                 config.dbtRunResultsFilePath, "r", encoding="utf-8"
             ) as run_results:
                 dbt_run_results = run_results.read()
+        if config.dbtCatalogFilePath is not None and config.dbtCatalogFilePath != "":
+            logger.debug(
+                f"Reading [dbtCatalogFilePath] from: {config.dbtCatalogFilePath}"
+            )
+            with open(config.dbtCatalogFilePath, "r", encoding="utf-8") as catalog:
+                dbt_catalog = catalog.read()
         return (
-            json.loads(dbt_catalog),
+            json.loads(dbt_catalog) if dbt_catalog else None,
             json.loads(dbt_manifest),
             json.loads(dbt_run_results) if dbt_run_results else None,
         )
@@ -96,11 +97,9 @@ def _(config: DbtLocalConfig):
 @get_dbt_details.register
 def _(config: DbtHttpConfig):
     try:
-        logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
-        dbt_catalog = requests.get(  # pylint: disable=missing-timeout
-            config.dbtCatalogHttpPath
+        logger.debug(
+            f"Requesting [dbtManifestHttpPath] to: {config.dbtManifestHttpPath}"
         )
-        logger.debug(f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}")
         dbt_manifest = requests.get(  # pylint: disable=missing-timeout
             config.dbtManifestHttpPath
         )
@@ -115,8 +114,17 @@ def _(config: DbtHttpConfig):
             dbt_run_results = requests.get(  # pylint: disable=missing-timeout
                 config.dbtRunResultsHttpPath
             )
+
+        dbt_catalog = None
+        if config.dbtCatalogHttpPath is not None and config.dbtCatalogHttpPath != "":
+            logger.debug(
+                f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}"
+            )
+            dbt_catalog = requests.get(  # pylint: disable=missing-timeout
+                config.dbtCatalogHttpPath
+            )
         return (
-            json.loads(dbt_catalog.text),
+            json.loads(dbt_catalog.text) if dbt_catalog else None,
             json.loads(dbt_manifest.text),
             json.loads(dbt_run_results.text) if dbt_run_results else None,
         )
@@ -210,7 +218,7 @@ def _(config: DbtS3Config):
                     logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
                     dbt_run_results = bucket_object.get()["Body"].read().decode()
         return (
-            json.loads(dbt_catalog),
+            json.loads(dbt_catalog) if dbt_catalog else None,
             json.loads(dbt_manifest),
             json.loads(dbt_run_results) if dbt_run_results else None,
         )
@@ -251,7 +259,7 @@ def _(config: DbtGcsConfig):
                     logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
                     dbt_run_results = blob.download_as_string().decode()
         return (
-            json.loads(dbt_catalog),
+            json.loads(dbt_catalog) if dbt_catalog else None,
             json.loads(dbt_manifest),
             json.loads(dbt_run_results) if dbt_run_results else None,
         )

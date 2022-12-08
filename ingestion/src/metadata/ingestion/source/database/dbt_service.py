@@ -12,20 +12,11 @@
 DBT service Topology.
 """
 
-from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.topology import (
-    NodeStage,
-    ServiceTopology,
-    TopologyNode,
-    create_source_context,
-)
 from abc import ABC, abstractmethod
-from typing import Iterable, List, Optional, Set, Tuple, Any
+from typing import Iterable, Optional
+
 from pydantic import BaseModel
-from metadata.utils.dbt_config import get_dbt_details
-from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -33,14 +24,27 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.tests.basic import TestCaseResult
-
+from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.topology import (
+    NodeStage,
+    ServiceTopology,
+    TopologyNode,
+    create_source_context,
+)
+from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.logger import ingestion_logger
+
 logger = ingestion_logger()
+
 
 class DbtFiles(BaseModel):
     dbt_catalog: Optional[dict]
     dbt_manifest: Optional[dict]
     dbt_run_results: Optional[dict]
+
 
 class DbtServiceTopology(ServiceTopology):
     """
@@ -54,7 +58,13 @@ class DbtServiceTopology(ServiceTopology):
     root = TopologyNode(
         producer="get_dbt_files",
         stages=[
-             NodeStage(
+            NodeStage(
+                type_=OMetaTagAndCategory,
+                processor="validate_dbt_files",
+                ack_sink=False,
+                nullable=True,
+            ),
+            NodeStage(
                 type_=OMetaTagAndCategory,
                 context="tags",
                 processor="yield_dbt_tags",
@@ -75,17 +85,22 @@ class DbtServiceTopology(ServiceTopology):
         producer="get_data_model",
         stages=[
             NodeStage(
-                type_=DataModelLink,
+                type_=AddLineageRequest,
                 processor="create_dbt_lineage",
+                ack_sink=False,
+            ),
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="create_dbt_query_lineage",
                 ack_sink=False,
             ),
             NodeStage(
                 type_=DataModelLink,
                 processor="process_dbt_descriptions",
                 ack_sink=False,
-                nullable=True
+                nullable=True,
             ),
-        ]
+        ],
     )
     process_dbt_tests = TopologyNode(
         producer="get_dbt_tests",
@@ -110,41 +125,51 @@ class DbtServiceTopology(ServiceTopology):
                 processor="update_dbt_test_result",
                 ack_sink=False,
                 nullable=True,
-            )
-        ]
+            ),
+        ],
     )
-class DbtServiceSource(
-    TopologyRunnerMixin, Source, ABC
-):  # pylint: disable=too-many-public-methods
+
+
+class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
+    """
+    Class for defining the topology of the DBT source
+    """
+
     topology = DbtServiceTopology()
     context = create_source_context(topology)
-    
+
     def get_dbt_files(self) -> DbtFiles:
-        dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
+        dbt_details = get_dbt_details(
+            self.source_config.dbtConfigSource  # pylint: disable=no-member
+        )
         dbt_files = DbtFiles(
-                dbt_catalog=dbt_details[0],
-                dbt_manifest=dbt_details[1],
-                dbt_run_results=dbt_details[2]
-            )
+            dbt_catalog=dbt_details[0],
+            dbt_manifest=dbt_details[1],
+            dbt_run_results=dbt_details[2],
+        )
         yield dbt_files
+
+    @abstractmethod
+    def validate_dbt_files(self, dbt_files: DbtFiles):
+        """
+        Method to validate DBT files
+        """
 
     @abstractmethod
     def yield_dbt_tags(self, dbt_files: DbtFiles) -> Iterable[OMetaTagAndCategory]:
         """
-        From topology. To be run for each schema
+        Create and yeild tags from DBT
         """
 
     @abstractmethod
     def yield_data_models(self, dbt_files: DbtFiles) -> DataModelLink:
         """
-        Prepares the database name to be sent to stage.
-        Filtering happens here.
+        Yield the data models
         """
-    
+
     def get_data_model(self) -> DataModelLink:
         """
-        Prepares the database name to be sent to stage.
-        Filtering happens here.
+        Prepare the data models
         """
         for data_model_link in self.context.data_model_links:
             yield data_model_link
@@ -152,35 +177,42 @@ class DbtServiceSource(
     @abstractmethod
     def create_dbt_lineage(self, data_model_link: DataModelLink) -> AddLineageRequest:
         """
-        Prepares the database name to be sent to stage.
-        Filtering happens here.
+        Method to process DBT lineage from upstream nodes
+        """
+
+    @abstractmethod
+    def create_dbt_query_lineage(
+        self, data_model_link: DataModelLink
+    ) -> AddLineageRequest:
+        """
+        Method to process DBT lineage from queries
         """
 
     @abstractmethod
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
         """
-        Prepares the database name to be sent to stage.
-        Filtering happens here.
+        Method to process DBT descriptions using patch APIs
         """
-    
+
     def get_dbt_tests(self) -> dict:
         """
-        Prepares the database name to be sent to stage.
-        Filtering happens here.
+        Prepare the DBT tests
         """
         for _, dbt_test in self.context.dbt_tests.items():
             yield dbt_test
-    
+
     @abstractmethod
     def create_dbt_tests_suite(self, dbt_test: dict) -> CreateTestSuiteRequest:
         """
-        After everything has been processed, add the tests suite and test definitions
+        Method to add the DBT tests suites
         """
-    
+
     @abstractmethod
-    def create_dbt_tests_suite_definition(self, dbt_test: dict) -> CreateTestDefinitionRequest:
+    def create_dbt_tests_suite_definition(
+        self, dbt_test: dict
+    ) -> CreateTestDefinitionRequest:
         """
-        After everything has been processed, add the tests suite and test definitions
+        Method to add DBT test definitions
         """
 
     @abstractmethod
@@ -192,5 +224,5 @@ class DbtServiceSource(
     @abstractmethod
     def update_dbt_test_result(self, dbt_test: dict):
         """
-        After test suite and test definitions have been processed, add the tests cases info
+        After test cases has been processed, add the tests results info
         """

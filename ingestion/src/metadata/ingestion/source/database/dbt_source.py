@@ -11,12 +11,16 @@
 """
 DBT source methods.
 """
-from abc import ABC
 import traceback
+from abc import ABC
 from datetime import datetime
-from typing import Iterable, List, Optional, Union, Any
+from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
@@ -28,9 +32,15 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -51,36 +61,23 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.dbt_service import DbtFiles, DbtServiceSource
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
-from metadata.ingestion.source.database.dbt_service import DbtServiceSource, DbtFiles
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.ingestion.api.source import SourceStatus
-from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.dbt_config import get_dbt_details
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 
 logger = ingestion_logger()
 
 
-class DbtSource(DbtServiceSource, ABC):
-
+class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-methods
     """
     Class defines method to extract metadata from DBT
     """
@@ -90,51 +87,51 @@ class DbtSource(DbtServiceSource, ABC):
         self.source_config = self.config.sourceConfig.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.connection = self.config.serviceConnection.__root__.config
-        self.source_config = self.config.sourceConfig.config
         self.report = SQLSourceStatus()
-    
 
     def get_status(self) -> SourceStatus:
         return self.report
 
     def test_connection(self) -> None:
-        test_connection(self.engine)
-    
+        pass
+
     def prepare(self):
         """
         By default, there's nothing to prepare
         """
 
-    def get_dbt_owner(self, mnode: dict, cnode: dict) -> Optional[str]:
+    def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
         """
         Returns dbt owner
         """
         owner = None
-        if mnode and cnode:
-            dbt_owner = mnode["meta"].get("owner") or cnode["metadata"].get("owner")
-            if dbt_owner:
-                owner_name = f"*{dbt_owner}*"
-                user_owner_fqn = fqn.build(
-                    self.metadata, entity_type=User, user_name=owner_name
+        dbt_owner = None
+        if catalog_node:
+            dbt_owner = catalog_node["metadata"].get("owner")
+        if manifest_node:
+            dbt_owner = manifest_node["meta"].get("owner")
+        if dbt_owner:
+            owner_name = dbt_owner
+            user_owner_fqn = fqn.build(
+                self.metadata, entity_type=User, user_name=owner_name
+            )
+            if user_owner_fqn:
+                owner = self.metadata.get_entity_reference(
+                    entity=User, fqn=user_owner_fqn
                 )
-                if user_owner_fqn:
+            else:
+                team_owner_fqn = fqn.build(
+                    self.metadata, entity_type=Team, team_name=owner_name
+                )
+                if team_owner_fqn:
                     owner = self.metadata.get_entity_reference(
-                        entity=User, fqn=user_owner_fqn
+                        entity=Team, fqn=team_owner_fqn
                     )
                 else:
-                    team_owner_fqn = fqn.build(
-                        self.metadata, entity_type=Team, team_name=owner_name
+                    logger.warning(
+                        "Unable to ingest owner from DBT since no user or"
+                        f" team was found with name {dbt_owner}"
                     )
-                    if team_owner_fqn:
-                        owner = self.metadata.get_entity_reference(
-                            entity=Team, fqn=team_owner_fqn
-                        )
-                    else:
-                        logger.warning(
-                            "Unable to ingest owner from DBT since no user or"
-                            f" team was found with name {dbt_owner}"
-                        )
         return owner
 
     def get_dbt_tag_labels(self, dbt_tags_list):
@@ -153,37 +150,100 @@ class DbtSource(DbtServiceSource, ABC):
             for tag in dbt_tags_list
         ] or None
 
-    def yield_dbt_tags(self, dbt_files: DbtFiles) -> Iterable[OMetaTagAndCategory]:
-        try:
-            if (
-                self.source_config.dbtConfigSource
-                and dbt_files.dbt_manifest
-            ):
-                manifest_entities = {
-                    **dbt_files.dbt_manifest["nodes"],
-                    **dbt_files.dbt_manifest["sources"],
+    def validate_dbt_files(self, dbt_files: DbtFiles):
+        """
+        Method to validate DBT files
+        """
+        # Validate the Manifest File
+        logger.info("Validating Manifest File")
+
+        required_manifest_keys = [
+            "alias",
+            "name",
+            "schema",
+            "database",
+            "resource_type",
+            "description",
+        ]
+        required_catalog_keys = ["name", "type", "index", "comment"]
+
+        if self.source_config.dbtConfigSource and dbt_files.dbt_manifest:
+            manifest_entities = {
+                **dbt_files.dbt_manifest["nodes"],
+                **dbt_files.dbt_manifest["sources"],
+            }
+            if dbt_files.dbt_catalog:
+                catalog_entities = {
+                    **dbt_files.dbt_catalog["nodes"],
+                    **dbt_files.dbt_catalog["sources"],
                 }
-                logger.info("Processing DBT Tags")
-                dbt_tags_list = []
-                for key, manifest_node in manifest_entities.items():
-                    try:
-                        if manifest_node["resource_type"] in ["analysis", "test"]:
-                            continue
-                        
-                        #Add the tags from the model
-                        model_tags = manifest_node.get("tags")
-                        if model_tags:
-                            dbt_tags_list.extend(model_tags)
-                        
-                        # Add the tags from the columns
-                        for _, column in manifest_node["columns"].items():
-                            column_tags = column.get("tags")
-                            if column_tags:
-                                dbt_tags_list.extend(column_tags)
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(f"Unable to process DBT tags for node: f{key} - {exc}")
-                    
+            for key, manifest_node in manifest_entities.items():
+                if manifest_node["resource_type"] in ["analysis", "test"]:
+                    continue
+
+                # Validate if all the required keys are present in the manifest nodes
+                if all(
+                    required_key in manifest_node
+                    for required_key in required_manifest_keys
+                ):
+                    logger.info(f"Successfully Validated DBT Node: {key}")
+                else:
+                    logger.warning(
+                        f"Error validating DBT Node: {key}\n"
+                        f"Please check if following keys exist for the node: {required_manifest_keys}"
+                    )
+
+                # Validate the catalog file if it is passed
+                if dbt_files.dbt_catalog:
+                    catalog_node = catalog_entities.get(key)
+                    for catalog_key, catalog_column in catalog_node.get(
+                        "columns"
+                    ).items():
+                        if all(
+                            required_catalog_key in catalog_column
+                            for required_catalog_key in required_catalog_keys
+                        ):
+                            logger.info(
+                                f"Successfully Validated DBT Column: {catalog_key}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Error validating DBT Column: {catalog_key}\n"
+                                f"Please check if following keys exist for the column node: {required_catalog_keys}"
+                            )
+
+    def yield_dbt_tags(self, dbt_files: DbtFiles) -> Iterable[OMetaTagAndCategory]:
+        """
+        Create and yeild tags from DBT
+        """
+        if self.source_config.dbtConfigSource and dbt_files.dbt_manifest:
+            manifest_entities = {
+                **dbt_files.dbt_manifest["nodes"],
+                **dbt_files.dbt_manifest["sources"],
+            }
+            logger.info("Processing DBT Tags")
+            dbt_tags_list = []
+            for key, manifest_node in manifest_entities.items():
+                try:
+                    if manifest_node["resource_type"] in ["analysis", "test"]:
+                        continue
+
+                    # Add the tags from the model
+                    model_tags = manifest_node.get("tags")
+                    if model_tags:
+                        dbt_tags_list.extend(model_tags)
+
+                    # Add the tags from the columns
+                    for _, column in manifest_node["columns"].items():
+                        column_tags = column.get("tags")
+                        if column_tags:
+                            dbt_tags_list.extend(column_tags)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Unable to process DBT tags for node: f{key} - {exc}"
+                    )
+            try:
                 # Create all the tags added
                 dbt_tag_labels = self.get_dbt_tag_labels(dbt_tags_list)
                 for tag_label in dbt_tag_labels:
@@ -197,18 +257,15 @@ class DbtSource(DbtServiceSource, ABC):
                             description="DBT Tags",
                         ),
                     )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception processing DBT tags: {exc}")
-    
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception creating DBT tags: {exc}")
+
     def yield_data_models(self, dbt_files: DbtFiles) -> DataModelLink:
-        """ 
-        Get all the DBT information and feed it to the Table Entity
         """
-        if (
-            self.source_config.dbtConfigSource
-            and dbt_files.dbt_manifest
-        ):
+        Yield the data models
+        """
+        if self.source_config.dbtConfigSource and dbt_files.dbt_manifest:
             logger.info("Parsing DBT Data Models")
             manifest_entities = {
                 **dbt_files.dbt_manifest["nodes"],
@@ -232,77 +289,90 @@ class DbtSource(DbtServiceSource, ABC):
                         # Test nodes will be processed further in the topology
                         if manifest_node["resource_type"] == "test":
                             self.context.dbt_tests[key] = manifest_node
-                            self.context.dbt_tests[key]["upstream"] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-                            self.context.dbt_tests[key]["results"] = next(item for item in dbt_files.dbt_run_results.get("results") if item["unique_id"] == key)
+                            self.context.dbt_tests[key][
+                                "upstream"
+                            ] = self.parse_upstream_nodes(
+                                manifest_entities, manifest_node
+                            )
+                            self.context.dbt_tests[key][
+                                "results"
+                            ] = next(  # pylint: disable=stop-iteration-return
+                                item
+                                for item in dbt_files.dbt_run_results.get("results")
+                                if item["unique_id"] == key
+                            )
                             continue
 
                     model_name = (
-                        manifest_node["alias"] if "alias" in manifest_node.keys() else manifest_node["name"]
+                        manifest_node["alias"]
+                        if "alias" in manifest_node.keys()
+                        else manifest_node["name"]
                     )
                     logger.info(f"Processing DBT node: {model_name}")
-                    
+
                     catalog_node = None
                     if dbt_files.dbt_catalog:
                         catalog_node = catalog_entities.get(key)
-                    dbt_columns = (
-                        self.parse_data_model_columns(manifest_node, catalog_node)
-                    )
 
-                    # if manifest_node["resource_type"] == "test":
-                    #     self.dbt_tests[key] = manifest_node
-                    #     continue
-                    upstream_nodes = self.parse_upstream_nodes(manifest_entities, manifest_node)
-                    database = manifest_node["database"] if manifest_node["database"] else "default"
-                    schema = manifest_node["schema"] if manifest_node["schema"] else "default"
-                    
                     dbt_table_tags_list = None
                     dbt_model_tag_labels = manifest_node.get("tags")
                     if dbt_model_tag_labels:
-                        dbt_table_tags_list = self.get_dbt_tag_labels(dbt_model_tag_labels)
+                        dbt_table_tags_list = self.get_dbt_tag_labels(
+                            dbt_model_tag_labels
+                        )
 
                     dbt_compiled_query = self.get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = self.get_dbt_raw_query(manifest_node)
 
-                    model = DataModel(
-                        modelType=ModelType.DBT,
-                        description=manifest_node.get("description")
-                        if manifest_node.get("description")
-                        else None,
-                        path=f"{manifest_node['root_path']}/{manifest_node['original_file_path']}",
-                        rawSql=dbt_raw_query if dbt_raw_query else "",
-                        sql=dbt_compiled_query if dbt_compiled_query else "",
-                        columns=dbt_columns,
-                        upstream=upstream_nodes,
-                        # owner=self.get_dbt_owner(mnode=mnode, cnode=cnode),
-                        tags=dbt_table_tags_list,
-                    )
-                    # model_fqn = fqn.build(
-                    #     self.metadata,
-                    #     entity_type=DataModel,
-                    #     service_name=self.config.serviceName,
-                    #     database_name=database,
-                    #     schema_name=schema,
-                    #     model_name=model_name,
-                    # ).lower()
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.config.serviceName,
-                        database_name=database,
-                        schema_name=schema,
-                        table_name=model_name,
-                    )
                     data_model_link = DataModelLink(
-                        fqn=table_fqn,
-                        datamodel=model
+                        fqn=fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=self.config.serviceName,
+                            database_name=(
+                                manifest_node["database"]
+                                if manifest_node["database"]
+                                else "default"
+                            ),
+                            schema_name=(
+                                manifest_node["schema"]
+                                if manifest_node["schema"]
+                                else "default"
+                            ),
+                            table_name=model_name,
+                        ),
+                        datamodel=DataModel(
+                            modelType=ModelType.DBT,
+                            description=manifest_node.get("description")
+                            if manifest_node.get("description")
+                            else None,
+                            path=f"{manifest_node['root_path']}/{manifest_node['original_file_path']}",
+                            rawSql=dbt_raw_query if dbt_raw_query else "",
+                            sql=dbt_compiled_query if dbt_compiled_query else "",
+                            columns=self.parse_data_model_columns(
+                                manifest_node, catalog_node
+                            ),
+                            upstream=self.parse_upstream_nodes(
+                                manifest_entities, manifest_node
+                            ),
+                            owner=self.get_dbt_owner(
+                                manifest_node=manifest_node, catalog_node=catalog_node
+                            ),
+                            tags=dbt_table_tags_list,
+                        ),
                     )
                     yield data_model_link
                     self.context.data_model_links.append(data_model_link)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Unexpected exception parsing data model: {exc}")
+                    logger.warning(
+                        f"Unexpected exception parsing DBT node:{model_name} - {exc}"
+                    )
 
     def parse_upstream_nodes(self, manifest_entities, dbt_node):
+        """
+        Method to fetch the upstream nodes
+        """
         upstream_nodes = []
         if "depends_on" in dbt_node and "nodes" in dbt_node["depends_on"]:
             for node in dbt_node["depends_on"]["nodes"]:
@@ -333,18 +403,22 @@ class DbtSource(DbtServiceSource, ABC):
     def parse_data_model_columns(
         self, manifest_node: dict, catalog_node: dict
     ) -> List[Column]:
+        """
+        Method to parse the DBT columns
+        """
         columns = []
-        # catalogue_columns = cnode.get("columns", {})
         manifest_columns = manifest_node.get("columns", {})
         for key, manifest_column in manifest_columns.items():
             try:
                 logger.info(f"Processing DBT column: {key}")
                 column_name = manifest_column.get("name")
                 column_type = manifest_column.get("data_type")
-                column_description = manifest_columns.get(key.lower(), {}).get("description")
+                column_description = manifest_columns.get(key.lower(), {}).get(
+                    "description"
+                )
                 dbt_column_tags = manifest_columns.get(key.lower(), {}).get("tags")
                 dbt_column_tags_list = self.get_dbt_tag_labels(dbt_column_tags)
-                
+
                 # If catalog file is passed pass the column information from catalog file
                 column_index = None
                 if catalog_node:
@@ -355,16 +429,17 @@ class DbtSource(DbtServiceSource, ABC):
                         column_index = catalog_column.get("index")
                         if column_description is None:
                             column_description = catalog_column.get("comment")
-                
-                col = Column(
-                    name=column_name,
-                    description=column_description,
-                    dataType=ColumnTypeParser.get_column_type(column_type),
-                    dataLength=1,
-                    ordinalPosition=column_index,
-                    tags=dbt_column_tags_list,
+
+                columns.append(
+                    Column(
+                        name=column_name,
+                        description=column_description,
+                        dataType=ColumnTypeParser.get_column_type(column_type),
+                        dataLength=1,
+                        ordinalPosition=column_index,
+                        tags=dbt_column_tags_list,
+                    )
                 )
-                columns.append(col)
                 logger.info(f"Successfully processed DBT column: {key}")
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -374,16 +449,15 @@ class DbtSource(DbtServiceSource, ABC):
 
     def create_dbt_lineage(self, data_model_link: DataModelLink) -> AddLineageRequest:
         """
-        Prepares the database name to be sent to stage.
-        Filtering happens here.
+        Method to process DBT lineage from upstream nodes
         """
         logger.info(f"Processing DBT lineage for: {data_model_link.fqn.__root__}")
-        
+
         # Get the table entity from ES
         to_es_result = self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=data_model_link.fqn.__root__,
-            )
+            entity_type=Table,
+            fqn_search_string=data_model_link.fqn.__root__,
+        )
         to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
             entity_list=to_es_result, fetch_multiple_entities=False
         )
@@ -418,18 +492,47 @@ class DbtSource(DbtServiceSource, ABC):
                     f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                 )
 
+    def create_dbt_query_lineage(
+        self, data_model_link: DataModelLink
+    ) -> AddLineageRequest:
+        """
+        Method to process DBT lineage from queries
+        """
+        table_fqn = data_model_link.fqn.__root__
+        logger.info(f"Processing DBT Query lineage for: {table_fqn}")
+
+        try:
+            source_elements = table_fqn.split(".")
+            query = (
+                f"create table {table_fqn} as {data_model_link.datamodel.sql.__root__}"
+            )
+            lineages = get_lineage_by_query(
+                self.metadata,
+                query=query,
+                service_name=source_elements[1],
+                database_name=source_elements[2],
+                schema_name=source_elements[3],
+            )
+            for lineage_request in lineages or []:
+                yield lineage_request
+
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to parse the query {data_model_link.datamodel.sql.__root__} to capture lineage: {exc}"
+            )
+
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
         """
-        Prepares the database name to be sent to stage.
-        Filtering happens here.
+        Method to process DBT descriptions using patch APIs
         """
         logger.info(f"Processing DBT Descriptions for: {data_model_link.fqn.__root__}")
 
         # Get the table entity from ES
         to_es_result = self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=data_model_link.fqn.__root__,
-            )
+            entity_type=Table,
+            fqn_search_string=data_model_link.fqn.__root__,
+        )
         to_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
             entity_list=to_es_result, fetch_multiple_entities=False
         )
@@ -459,20 +562,16 @@ class DbtSource(DbtServiceSource, ABC):
                 logger.warning(
                     f"Failed to parse the node {data_model_link.fqn.__root__} to update dbt desctiption: {exc}"
                 )
-    
+
     def create_dbt_tests_suite(self, dbt_test: dict) -> CreateTestSuiteRequest:
         """
-        After everything has been processed, add the tests suite and test definitions
+        Method to add the DBT tests suites
         """
         try:
             test_name = dbt_test.get("name")
             logger.info(f"Processing DBT Tests Suite for node: {test_name}")
-            test_suite_name = dbt_test["meta"].get(
-                "test_suite_name", "DBT_TEST_SUITE"
-            )
-            test_suite_desciption = dbt_test["meta"].get(
-                "test_suite_desciption", ""
-            )
+            test_suite_name = dbt_test["meta"].get("test_suite_name", "DBT_TEST_SUITE")
+            test_suite_desciption = dbt_test["meta"].get("test_suite_desciption", "")
             check_test_suite_exists = self.metadata.get_by_name(
                 fqn=test_suite_name, entity=TestSuite
             )
@@ -484,9 +583,11 @@ class DbtSource(DbtServiceSource, ABC):
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Failed to parse the node to capture tests {err}")
 
-    def create_dbt_tests_suite_definition(self, dbt_test: dict) -> CreateTestDefinitionRequest:
+    def create_dbt_tests_suite_definition(
+        self, dbt_test: dict
+    ) -> CreateTestDefinitionRequest:
         """
-        After everything has been processed, add the tests suite and test definitions
+        AMethod to add DBT test definitions
         """
         try:
             test_name = dbt_test.get("name")
@@ -512,7 +613,6 @@ class DbtSource(DbtServiceSource, ABC):
                 )
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Failed to parse the node to capture tests {err}")
-
 
     def create_dbt_test_case(self, dbt_test: dict) -> CreateTestCaseRequest:
         """
@@ -543,14 +643,10 @@ class DbtSource(DbtServiceSource, ABC):
                         ).id.__root__,
                         type="testSuite",
                     ),
-                    parameterValues=self.create_test_case_parameter_values(
-                        dbt_test
-                    ),
+                    parameterValues=self.create_test_case_parameter_values(dbt_test),
                 )
         except Exception as err:  # pylint: disable=broad-except
-            logger.error(
-                f"Failed to parse the node {test_name} to capture tests {err}"
-            )
+            logger.error(f"Failed to parse the node {test_name} to capture tests {err}")
 
     def update_dbt_test_result(self, dbt_test: dict):
         """
@@ -582,7 +678,7 @@ class DbtSource(DbtServiceSource, ABC):
                     dbt_test_completed_at, "%Y-%m-%dT%H:%M:%S.%fZ"
                 ).replace(microsecond=0)
                 dbt_timestamp = dbt_timestamp.timestamp()
-            
+
             # Create the test case result object
             test_case_result = TestCaseResult(
                 timestamp=dbt_timestamp,

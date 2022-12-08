@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: mssql-dbt
+  serviceName: local_mssql
   sourceConfig:
     config:
       type: DBT

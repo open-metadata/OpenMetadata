@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: db2-dbt
+  serviceName: local_db2
   sourceConfig:
     config:
       type: DBT

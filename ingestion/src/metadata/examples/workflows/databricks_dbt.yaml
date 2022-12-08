@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: databricks-dbt
+  serviceName: local_databricks
   sourceConfig:
     config:
       type: DBT

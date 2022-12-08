@@ -1,6 +1,6 @@
 source:
-  type: redshift-dbt
-  serviceName: local_redshift
+  type: trino-dbt
+  serviceName: local_trino
   sourceConfig:
     config:
       type: DBT
