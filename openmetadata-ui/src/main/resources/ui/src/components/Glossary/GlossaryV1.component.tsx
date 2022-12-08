@@ -547,26 +547,31 @@ const GlossaryV1 = ({
               </Space>
             )}
           </div>
-          <Space className="m-b-md" data-testid="updated-by" size={8}>
+          <Space className="m-b-md" data-testid="updated-by-container" size={8}>
             <Typography.Text className="text-grey-muted">
               {t('label.updated-by')} -
             </Typography.Text>
-            <Space size={8}>
-              <ProfilePicture
-                displayName={selectedData.updatedBy}
-                id={selectedData.id}
-                name={selectedData.updatedBy || ''}
-                textClass="text-xs"
-                width="20"
-              />
-              <Typography.Text>
-                <Link to={getUserPath(selectedData.updatedBy ?? '')}>
-                  {selectedData.updatedBy}
-                </Link>
-                {` ${t('label.on-lowercase')} 
-               ${formatDateTime(selectedData.updatedAt || 0)}`}
-              </Typography.Text>
-            </Space>
+            {selectedData.updatedBy && selectedData.updatedAt ? (
+              <>
+                {' '}
+                <ProfilePicture
+                  displayName={selectedData.updatedBy}
+                  id={selectedData.id}
+                  name={selectedData.updatedBy || ''}
+                  textClass="text-xs"
+                  width="20"
+                />
+                <Typography.Text data-testid="updated-by-details">
+                  <Link to={getUserPath(selectedData.updatedBy ?? '')}>
+                    {selectedData.updatedBy}
+                  </Link>{' '}
+                  {t('label.on-lowercase')}{' '}
+                  {formatDateTime(selectedData.updatedAt || 0)}
+                </Typography.Text>
+              </>
+            ) : (
+              '--'
+            )}
           </Space>
           {!isEmpty(selectedData) &&
             (isGlossaryActive ? (
