@@ -34,16 +34,6 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock(
-  '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="RequestDescriptionModal">RequestDescriptionModal</div>
-      ))
-);
-
 jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
 );
