@@ -67,7 +67,7 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   getKpiDateFormatByTimeStamp: jest.fn().mockReturnValue('2022-12-08'),
 }));
 
-describe('Add KPI page', () => {
+describe('Edit KPI page', () => {
   it('Should render all the components', async () => {
     render(<EditKPIPage />, { wrapper: MemoryRouter });
 
