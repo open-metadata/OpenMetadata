@@ -187,16 +187,25 @@ const ExplorePage: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
+  const combinedQueryFilter = useMemo(
+    () =>
+      // Both query filter objects have type as Record<string, unknown>
+      // Here unknown will not allow us to directly access the properties
+      // That is why I first did typecast it into QueryFilterInterface type to access the properties.
+      getCombinedQueryFilterObject(
+        elasticsearchQueryFilter as unknown as QueryFilterInterface,
+        advancesSearchQueryFilter as unknown as QueryFilterInterface
+      ),
+    [elasticsearchQueryFilter, advancesSearchQueryFilter]
+  );
+
   useDeepCompareEffect(() => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
         query: searchQueryParam,
         searchIndex,
-        queryFilter: getCombinedQueryFilterObject(
-          elasticsearchQueryFilter as unknown as QueryFilterInterface,
-          advancesSearchQueryFilter as unknown as QueryFilterInterface
-        ),
+        queryFilter: combinedQueryFilter,
         sortField: sortValue,
         sortOrder,
         pageNumber: page,
@@ -217,10 +226,7 @@ const ExplorePage: FunctionComponent = () => {
             query: searchQueryParam,
             pageNumber: 0,
             pageSize: 0,
-            queryFilter: getCombinedQueryFilterObject(
-              elasticsearchQueryFilter as unknown as QueryFilterInterface,
-              advancesSearchQueryFilter as unknown as QueryFilterInterface
-            ),
+            queryFilter: combinedQueryFilter,
             searchIndex: index,
             includeDeleted: showDeleted,
             trackTotalHits: true,

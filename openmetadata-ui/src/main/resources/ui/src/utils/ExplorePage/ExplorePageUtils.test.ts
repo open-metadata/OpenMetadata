@@ -28,6 +28,9 @@ import {
 
 describe('ExplorePageUtils test', () => {
   it('Function getCombinedQueryFilterObject should return proper combined filters for two different query filter objects', () => {
+    // Both query filter objects have type as Record<string, unknown>
+    // Here unknown will not allow us to directly access the properties
+    // That is why I first did typecast it into QueryFilterInterface type to access the properties.
     const combinedQueryFilterObject = getCombinedQueryFilterObject(
       mockESQueryFilters as unknown as QueryFilterInterface,
       mockAdvancedSearchQueryFilters as unknown as QueryFilterInterface
