@@ -383,6 +383,7 @@
     "hide": "Hide",
     "restore-team": "Restore Team",
     "remove": "Remove",
+    "data-insight-plural": "Data Insights",
     "configure-entity": "Configure {{entity}}",
     "name-lowercase": "name",
     "field-invalid": "{{field}} is invalid",
