@@ -28,7 +28,6 @@ import {
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 
@@ -127,7 +126,9 @@ const KPIList = () => {
               <Tooltip
                 placement="left"
                 title={
-                  isAdminUser ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+                  isAdminUser
+                    ? t('label.edit')
+                    : t('message.no-permission-for-action')
                 }>
                 <Button
                   data-testid={`edit-action-${getEntityName(record)}`}
@@ -146,7 +147,9 @@ const KPIList = () => {
               <Tooltip
                 placement="left"
                 title={
-                  isAdminUser ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+                  isAdminUser
+                    ? t('label.delete')
+                    : t('message.no-permission-for-action')
                 }>
                 <Button
                   data-testid={`delete-action-${getEntityName(record)}`}

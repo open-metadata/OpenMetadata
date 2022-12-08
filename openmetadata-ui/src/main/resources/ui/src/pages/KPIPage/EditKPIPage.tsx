@@ -47,10 +47,7 @@ import {
   KPI_DATE_PICKER_FORMAT,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
-import {
-  ADD_KPI_TEXT,
-  NO_PERMISSION_FOR_ACTION,
-} from '../../constants/HelperTextUtil';
+import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
@@ -415,7 +412,9 @@ const EditKPIPage = () => {
                   </Button>
                   <Tooltip
                     title={
-                      isAdminUser ? t('label.save') : NO_PERMISSION_FOR_ACTION
+                      isAdminUser
+                        ? t('label.save')
+                        : t('message.no-permission-for-action')
                     }>
                     <Button
                       data-testid="submit-btn"
