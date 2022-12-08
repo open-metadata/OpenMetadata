@@ -22,7 +22,7 @@ const mockProps = {
   entityType: 'TABLE',
 };
 
-const index = ['TABLE', 'TOPIC', 'DASHBOARD', 'MLMODEL'];
+const entityType = ['TABLE', 'TOPIC', 'DASHBOARD', 'MLMODEL'];
 
 jest.mock('../../axiosAPIs/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -39,7 +39,7 @@ describe('Test NodeSuggestions Component', () => {
     expect(suggestionNode).toBeInTheDocument();
   });
 
-  index.forEach((value) => {
+  entityType.forEach((value) => {
     it(`Search API for ${value} should work properly`, async () => {
       jest.useFakeTimers('modern');
       const mockSearchData = searchData as jest.Mock;
