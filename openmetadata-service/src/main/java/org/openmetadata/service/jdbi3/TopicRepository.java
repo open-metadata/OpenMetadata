@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -24,6 +27,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -42,6 +46,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getName(), topic.getName()));
+    setFieldFQN(topic.getFullyQualifiedName(), topic.getSchemaFields());
   }
 
   public TopicRepository(CollectionDAO dao) {
@@ -60,6 +65,9 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
+    // Validate field tags
+    addDerivedFieldTags(topic.getSchemaFields());
+    topic.getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
   }
 
   @Override
@@ -72,10 +80,14 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
+    // Don't store feild tags as JSON but build it on the fly based on relationships
+    List<Field> fieldsWithTags = topic.getSchemaFields();
+    topic.setSchemaFields(cloneWithoutTags(fieldsWithTags));
+    topic.getSchemaFields().forEach(field -> field.setTags(null));
     store(topic, update);
 
     // Restore the relationships
-    topic.withOwner(owner).withService(service).withTags(tags);
+    topic.withOwner(owner).withService(service).withTags(tags).withSchemaFields(fieldsWithTags);
   }
 
   @Override
@@ -90,6 +102,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(getContainer(topic.getId()));
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
+    getFieldTags(fields.contains(FIELD_TAGS), topic.getSchemaFields());
+
     return topic;
   }
 
@@ -121,6 +135,74 @@ public class TopicRepository extends EntityRepository<Topic> {
         .insert(topicId.toString(), "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
     return topic.withSampleData(sampleData);
+  }
+
+  private void setFieldFQN(String parentFQN, List<Field> fields) {
+    fields.forEach(
+        c -> {
+          String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
+          c.setFullyQualifiedName(fieldFqn);
+          if (c.getChildren() != null) {
+            setFieldFQN(fieldFqn, c.getChildren());
+          }
+        });
+  }
+
+  private void getFieldTags(boolean setTags, List<Field> fields) {
+    for (Field f : listOrEmpty(fields)) {
+      f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
+      getFieldTags(setTags, f.getChildren());
+    }
+  }
+
+  private void addDerivedFieldTags(List<Field> fields) {
+    if (nullOrEmpty(fields)) {
+      return;
+    }
+
+    for (Field field : fields) {
+      field.setTags(addDerivedTags(field.getTags()));
+      if (field.getChildren() != null) {
+        addDerivedFieldTags(field.getChildren());
+      }
+    }
+  }
+
+  List<Field> cloneWithoutTags(List<Field> fields) {
+    if (nullOrEmpty(fields)) {
+      return fields;
+    }
+    List<Field> copy = new ArrayList<>();
+    fields.forEach(f -> copy.add(cloneWithoutTags(f)));
+    return copy;
+  }
+
+  private Field cloneWithoutTags(Field field) {
+    List<Field> children = cloneWithoutTags(field.getChildren());
+    return new Field()
+        .withDescription(field.getDescription())
+        .withName(field.getName())
+        .withDisplayName(field.getDisplayName())
+        .withFullyQualifiedName(field.getFullyQualifiedName())
+        .withDataType(field.getDataType())
+        .withChildren(children);
+  }
+
+  private void applyTags(List<Field> fields) {
+    // Add column level tags by adding tag to column relationship
+    for (Field field : fields) {
+      applyTags(field.getTags(), field.getFullyQualifiedName());
+      if (field.getChildren() != null) {
+        applyTags(field.getChildren());
+      }
+    }
+  }
+
+  @Override
+  public void applyTags(Topic topic) {
+    // Add table level tags by adding tag to table relationship
+    super.applyTags(topic);
+    applyTags(topic.getSchemaFields());
   }
 
   public class TopicUpdater extends EntityUpdater {

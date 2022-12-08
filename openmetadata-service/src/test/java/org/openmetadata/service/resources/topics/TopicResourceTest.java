@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.resources.topics;
 
+import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -26,7 +29,9 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +46,9 @@ import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.SchemaType;
 import org.openmetadata.schema.type.topic.TopicSampleData;
@@ -55,6 +63,11 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
+  private static final String SCHEMA_TEXT =
+      "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\","
+          + "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},"
+          + "{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},"
+          + "{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}";
 
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
@@ -146,7 +159,18 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Test
-  void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
+  void put_topicSchemaFields_200_ok(TestInfo test) throws IOException {
+    List<Field> fields =
+        Arrays.asList(
+            getField("id", FieldDataType.STRING, null),
+            getField("first_name", FieldDataType.STRING, null),
+            getField("last_name", FieldDataType.STRING, null),
+            getField("email", FieldDataType.STRING, null),
+            getField("address_line_1", FieldDataType.STRING, null),
+            getField("address_line_2", FieldDataType.STRING, null),
+            getField("post_code", FieldDataType.STRING, null),
+            getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL));
+
     CreateTopic createTopic =
         createRequest(test)
             .withOwner(USER1_REF)
@@ -156,7 +180,40 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withSchemaText("abc")
+            .withSchemaText(SCHEMA_TEXT)
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields)
+            .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+
+    // Patch and update the topic
+    Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
+    topic = getEntity(topic.getId(), ADMIN_AUTH_HEADERS);
+    assertFields(fields, topic.getSchemaFields());
+  }
+
+  @Test
+  void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
+    List<Field> fields =
+        Arrays.asList(
+            getField("id", FieldDataType.STRING, null),
+            getField("first_name", FieldDataType.STRING, null),
+            getField("last_name", FieldDataType.STRING, null),
+            getField("email", FieldDataType.STRING, null),
+            getField("address_line_1", FieldDataType.STRING, null),
+            getField("address_line_2", FieldDataType.STRING, null),
+            getField("post_code", FieldDataType.STRING, null),
+            getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL));
+    CreateTopic createTopic =
+        createRequest(test)
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0)
+            .withSchemaText(SCHEMA_TEXT)
+            .withSchemaFields(fields)
             .withSchemaType(SchemaType.Avro)
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
@@ -184,7 +241,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldUpdated(change, "replicationFactor", 1, 2);
     fieldUpdated(change, "retentionTime", 1.0, 2.0);
     fieldUpdated(change, "retentionSize", 1.0, 2.0);
-    fieldUpdated(change, "schemaText", "abc", "bcd");
+    fieldUpdated(change, "schemaText", SCHEMA_TEXT, "bcd");
     fieldUpdated(change, "schemaType", SchemaType.Avro, SchemaType.JSON);
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
@@ -303,5 +360,40 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("topics/" + topicId + "/sampleData");
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
+  }
+
+  private static Field getField(String name, FieldDataType fieldDataType, TagLabel tag) {
+    List<TagLabel> tags = tag == null ? new ArrayList<>() : singletonList(tag);
+    return new Field().withName(name).withDataType(fieldDataType).withDescription(name).withTags(tags);
+  }
+
+  private static void assertFields(List<Field> expectedFields, List<Field> actualFields) throws HttpResponseException {
+    if (expectedFields == actualFields) {
+      return;
+    }
+    // Sort columns by name
+    assertEquals(expectedFields.size(), actualFields.size());
+
+    // Make a copy before sorting in case the lists are immutable
+    List<Field> expected = new ArrayList<>(expectedFields);
+    List<Field> actual = new ArrayList<>(actualFields);
+    expected.sort(Comparator.comparing(Field::getName));
+    actual.sort(Comparator.comparing(Field::getName));
+    for (int i = 0; i < expected.size(); i++) {
+      assertField(expected.get(i), actual.get(i));
+    }
+  }
+
+  private static void assertField(Field expectedField, Field actualField) throws HttpResponseException {
+    assertNotNull(actualField.getFullyQualifiedName());
+    assertTrue(
+        expectedField.getName().equals(actualField.getName())
+            || expectedField.getName().equals(actualField.getDisplayName()));
+    assertEquals(expectedField.getDescription(), actualField.getDescription());
+    assertEquals(expectedField.getDataType(), actualField.getDataType());
+    TestUtils.validateTags(expectedField.getTags(), actualField.getTags());
+
+    // Check the nested columns
+    assertFields(expectedField.getChildren(), actualField.getChildren());
   }
 }

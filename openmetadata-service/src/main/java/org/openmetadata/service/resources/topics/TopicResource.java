@@ -444,6 +444,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withPartitions(create.getPartitions())
         .withSchemaText(create.getSchemaText())
         .withSchemaType(create.getSchemaType())
+        .withSchemaFields(create.getSchemaFields())
         .withCleanupPolicies(create.getCleanupPolicies())
         .withMaximumMessageSize(create.getMaximumMessageSize())
         .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
