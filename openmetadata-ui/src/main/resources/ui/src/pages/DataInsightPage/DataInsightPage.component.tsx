@@ -179,7 +179,7 @@ const DataInsightPage = () => {
           <Space className="w-full justify-between">
             <div data-testid="data-insight-header">
               <Typography.Title level={5}>
-                {t('label.data-insights')}
+                {t('label.data-insight-plural')}
               </Typography.Title>
               <Typography.Text className="data-insight-label-text">
                 {t('label.data-insight-subtitle')}
