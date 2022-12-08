@@ -213,7 +213,7 @@ class DatabricksSource(CommonDbSourceService):
                 except Exception as exc:
                     logger.error(traceback.format_exc())
                     logger.warning(
-                        f"Error trying to connect to database {new_catalog}: {exc}"
+                        f"Error trying to process database {new_catalog}: {exc}"
                     )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
