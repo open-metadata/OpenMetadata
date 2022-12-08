@@ -239,10 +239,10 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated *columns.lo_orderpriority*:\n" +
-            "name: \"lo_order*priority* \"\n" +
-            "displayName: \"lo_order*priority* \"\n" +
-            "fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order*priority* \"",
+        "Updated *columns.lo_orderpriority*:\n"
+            + "name: \"lo_order*priority* \"\n"
+            + "displayName: \"lo_order*priority* \"\n"
+            + "fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order*priority* \"",
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
@@ -260,9 +260,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated *columns.lo_orderpriority*:\n" +
-            "dataType: \" ~BLOB~ *INT* \"\n" +
-            "dataTypeDisplay: \" ~blob~ *int* \"",
+        "Updated *columns.lo_orderpriority*:\n"
+            + "dataType: \" ~BLOB~ *INT* \"\n"
+            + "dataTypeDisplay: \" ~blob~ *int* \"",
         messages.values().iterator().next());
 
     // Simulate multiple changes to columns
