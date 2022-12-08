@@ -60,7 +60,7 @@ public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
   public static final String FEED_REMOVE_MARKER = "<!remove>";
   public static final String FEED_BOLD = "**%s**";
-  public static final String SLACK_BOLD = "*%s* ";
+  public static final String SLACK_BOLD = "*%s*";
   public static final String FEED_SPAN_ADD = "<span class=\"diff-added\">";
   public static final String FEED_SPAN_REMOVE = "<span class=\"diff-removed\">";
   public static final String FEED_SPAN_CLOSE = "</span>";
@@ -129,7 +129,7 @@ public final class ChangeEventParser {
         // TEAMS and FEED bold formatting is same
         return "** ";
       case SLACK:
-        return "* ";
+        return "*";
       default:
         return "INVALID";
     }
@@ -157,7 +157,7 @@ public final class ChangeEventParser {
         // TEAMS and FEED bold formatting is same
         return "~~ ";
       case SLACK:
-        return "~ ";
+        return "~";
       default:
         return "INVALID";
     }
@@ -435,7 +435,7 @@ public final class ChangeEventParser {
     if (nullOrEmpty(diff)) {
       return StringUtils.EMPTY;
     } else {
-      String field = String.format("Updated %s: %s", getBold(publishTo), diff);
+      String field = String.format("Updated %s : %s", getBold(publishTo), diff);
       return String.format(field, updatedField);
     }
   }
@@ -569,7 +569,7 @@ public final class ChangeEventParser {
         outputStr.append(d.text.trim());
       } else if (DiffMatchPatch.Operation.INSERT.equals(d.operation)) {
         // merging added values with addMarker before and after of new values added..
-        outputStr.append(" ").append(addMarker).append(d.text.trim()).append(addMarker).append(" ");
+        outputStr.append(addMarker).append(d.text.trim()).append(addMarker).append(" ");
       } else {
         // merging deleted values with removeMarker before and after of old value removed ..
         outputStr.append(" ").append(removeMarker).append(d.text.trim()).append(removeMarker).append(" ");
