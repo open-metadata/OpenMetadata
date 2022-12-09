@@ -1,4 +1,6 @@
-package org.openmetadata.service.elasticsearch;
+package org.openmetadata.service.elasticsearch.indexresolver;
+
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
 
 public class DefaultElasticSearchIndexResolver implements ElasticSearchIndexResolver {
   @Override

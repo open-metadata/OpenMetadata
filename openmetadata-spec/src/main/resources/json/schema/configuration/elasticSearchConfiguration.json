@@ -52,7 +52,7 @@
     "indexResolverClassName": {
       "description": "Implementation class name of ElasticSearchIndexResolver interface",
       "type": "string",
-      "default": "org.openmetadata.service.elasticsearch.DefaultElasticSearchIndexResolver"
+      "default": "org.openmetadata.service.elasticsearch.indexresolver.DefaultElasticSearchIndexResolver"
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize"],
