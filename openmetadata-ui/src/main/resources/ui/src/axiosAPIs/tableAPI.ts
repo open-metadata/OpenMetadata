@@ -164,9 +164,6 @@ export const getTableProfilesList = async (
   params?: {
     startTs?: number;
     endTs?: number;
-    limit?: number;
-    before?: string;
-    after?: string;
   }
 ) => {
   const url = `/tables/${tableId}/tableProfile`;

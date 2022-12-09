@@ -29,7 +29,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
@@ -54,6 +54,7 @@ import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
+import TableProfilerChart from './Component/TableProfilerChart';
 import {
   OverallTableSummeryType,
   TableProfilerProps,
@@ -61,7 +62,8 @@ import {
 } from './TableProfiler.interface';
 import './tableProfiler.less';
 
-const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
+const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
+  const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
   const { profile, columns } = useMemo(() => {
     return { profile: table?.profile, columns: table?.columns || [] };
@@ -251,7 +253,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
 
   const fetchLatestProfilerData = async () => {
     try {
-      const response = await getLatestTableProfileByFqn(tableFqn);
+      const response = await getLatestTableProfileByFqn(datasetFQN);
       setTable(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -265,10 +267,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
   }, [table, viewTest]);
 
   useEffect(() => {
-    if (tableFqn) {
+    if (datasetFQN) {
       fetchLatestProfilerData();
     }
-  }, [tableFqn]);
+  }, [datasetFQN]);
 
   return (
     <Row
@@ -421,15 +423,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ tableFqn, permissions }) => {
             />
           )}
 
-          {isProfiler && (
-            <DataQualityTab
-              deletedTable={deleted}
-              hasAccess={permissions.EditAll}
-              isLoading={isTestCaseLoading}
-              testCases={getFilterTestCase()}
-              onTestUpdate={fetchAllTests}
-            />
-          )}
+          {isProfiler && <TableProfilerChart />}
 
           {settingModalVisible && (
             <ProfilerSettingsModal
