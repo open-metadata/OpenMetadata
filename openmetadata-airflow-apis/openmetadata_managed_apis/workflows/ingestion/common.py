@@ -292,6 +292,10 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, _):
         metadata.create_or_update_pipeline_status(
             workflow_config.ingestionPipelineFQN, pipeline_status
         )
+    else:
+        logger.info(
+            "Workflow config does not have ingestionPipelineFQN informed. We won't update the status."
+        )
 
 
 def build_dag(
