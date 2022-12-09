@@ -238,22 +238,21 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     EntityInterface entityInterface = (EntityInterface) entity;
+    if (RestUtil.ENTITY_SOFT_DELETED.equals(changeType)) {
+      String entityType = Entity.getEntityTypeFromClass(entity.getClass());
+      String message = String.format("Soft deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
+      EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
+      Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
+      return List.of(thread);
+    }
     if (RestUtil.ENTITY_DELETED.equals(changeType)) {
       String entityType = Entity.getEntityTypeFromClass(entity.getClass());
       // In this case, the entity itself got deleted
       // for which there will be no change description.
-      String message = String.format("Deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
+      String message =
+          String.format("Permanently Deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
       EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
-      Thread thread =
-          new Thread()
-              .withId(UUID.randomUUID())
-              .withThreadTs(System.currentTimeMillis())
-              .withCreatedBy(entityInterface.getUpdatedBy())
-              .withAbout(about.getLinkString())
-              .withReactions(Collections.emptyList())
-              .withUpdatedBy(entityInterface.getUpdatedBy())
-              .withUpdatedAt(System.currentTimeMillis())
-              .withMessage(message);
+      Thread thread = getThread(about.getLinkString(), message, loggedInUserName);
       return List.of(thread);
     }
 
