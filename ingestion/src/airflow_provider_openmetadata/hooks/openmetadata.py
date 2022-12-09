@@ -21,9 +21,13 @@ from airflow.models import Connection
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
+    VerifySSL,
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
+)
+from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
+    ValidateSSLClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -44,26 +48,39 @@ class OpenMetadataHook(BaseHook):
         # Add defaults
         self.default_schema = "http"
         self.default_port = 8585
+        self.default_verify_ssl = VerifySSL.no_ssl
+        self.default_ssl_config = None
 
     def get_conn(self) -> OpenMetadataConnection:
 
-        if self.openmetadata_conn_id:
+        conn: Connection = self.get_connection(self.openmetadata_conn_id)
+        jwt_token = conn.get_password()
+        if not jwt_token:
+            raise ValueError("JWT Token should be informed.")
 
-            conn: Connection = self.get_connection(self.openmetadata_conn_id)
-            jwt_token = conn.get_password()
-            if not jwt_token:
-                raise ValueError("JWT Token should be informed.")
+        if not conn.host:
+            raise ValueError("Host should be informed.")
 
-            port = conn.port if conn.port else self.default_port
-            schema = conn.schema if conn.schema else self.default_schema
+        port = conn.port if conn.port else self.default_port
+        schema = conn.schema if conn.schema else self.default_schema
 
-            om_conn = OpenMetadataConnection(
-                hostPort=f"{schema}://{conn.host}:{port}/api",
-                authProvider=AuthProvider.openmetadata,
-                securityConfig=OpenMetadataJWTClientConfig(jwtToken=jwt_token),
-            )
+        extra = conn.extra_dejson if conn.get_extra() else {}
+        verify_ssl = extra.get("verifySSL") or self.default_verify_ssl
+        ssl_config = (
+            ValidateSSLClientConfig(certificatePath=extra["sslConfig"])
+            if extra.get("sslConfig")
+            else self.default_ssl_config
+        )
 
-            return om_conn
+        om_conn = OpenMetadataConnection(
+            hostPort=f"{schema}://{conn.host}:{port}/api",
+            authProvider=AuthProvider.openmetadata,
+            securityConfig=OpenMetadataJWTClientConfig(jwtToken=jwt_token),
+            verifySSL=verify_ssl,
+            sslConfig=ssl_config,
+        )
+
+        return om_conn
 
     def test_connection(self):
         """Test that we can instantiate the ometa client with the given connection"""
@@ -77,6 +94,6 @@ class OpenMetadataHook(BaseHook):
     def get_ui_field_behaviour() -> dict[str, Any]:
         """Returns custom field behaviour"""
         return {
-            "hidden_fields": ["login", "extra"],
+            "hidden_fields": ["login"],
             "relabeling": {"password": "JWT Token"},
         }

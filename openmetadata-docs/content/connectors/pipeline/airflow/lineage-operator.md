@@ -155,3 +155,59 @@ with DAG(
 
     t1 >> t4
 ```
+
+## Retrieving the OpenMetadataConnection from Airflow
+
+In 0.13.1 we have also added an `OpenMetadataHook`, which can be configured from the UI to safely store
+the parameters to connect to OpenMetadata.
+
+Go to the Airflow UI > Admin > Connection and create a new `OpenMetadata` connection as follows:
+
+<Image src="/images/openmetadata/connectors/airflow/airflow-connection.png" alt="Airflow Connection"/>
+
+Testing the connection will validate that the server is reachable and the installed client can be instantiated properly.
+
+Once the connection is configured, you can use it in your DAGs without creating the `OpenMetadataConnection` manually
+
+```python
+from airflow_provider_openmetadata.hooks.openmetadata import OpenMetadataHook
+
+openmetadata_hook = OpenMetadataHook(openmetadata_conn_id="om_id")
+server_config = openmetadata_hook.get_conn()
+
+OpenMetadataLineageOperator(
+    task_id='lineage_op',
+    depends_on_past=False,
+    server_config=server_config,
+    service_name="airflow_lineage_op_service",
+    only_keep_dag_lineage=True,
+)
+```
+
+### OpenMetadataHook with HTTPS and SSL
+
+If the OpenMetadata server connection needs to happen through HTTPS, update the `Schema` accordingly to `https`.
+
+For SSL parameters we have two options:
+
+#### 1. Ignore the SSL certificates
+
+You can add the `Extra` value as the following JSON to create the connection that will ignore SSL.
+
+```json
+{
+  "verifySSL": "ignore"
+}
+```
+
+#### 2. Validate SSL certificates
+
+Otherwise, you can use the `validate` value and add the path to the certificate. **It should be reachable locally
+in your Airflow instance**.
+
+```json
+{
+  "verifySSL": "validate",
+  "sslConfig": "path-to-cert"
+}
+```
