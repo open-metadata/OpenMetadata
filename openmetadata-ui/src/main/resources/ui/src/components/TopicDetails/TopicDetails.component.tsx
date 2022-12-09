@@ -69,6 +69,7 @@ import {
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
+import TopicSchemaFields from './TopicSchemaFields/TopicSchemaFields';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
@@ -561,11 +562,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   {schemaText ? (
                     <Fragment>
                       {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                      <div
+                      {/* <div
                         className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
                         data-testid="schema">
                         <SchemaEditor value={schemaText} />
-                      </div>
+                      </div> */}
+                      <TopicSchemaFields
+                        className="mt-4"
+                        schemaFields={topicDetails.schemaFields}
+                      />
                     </Fragment>
                   ) : (
                     <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
