@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import i18n from 'i18next';
+import { t } from 'i18next';
 import { toLower, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
@@ -53,9 +53,9 @@ import SVGIcons, { Icons } from './SvgUtils';
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
     case 'QUERY':
-      return toLower(i18n.t('label.query'));
+      return toLower(t('label.query'));
     default:
-      return toLower(i18n.t('label.table'));
+      return toLower(t('label.table'));
   }
 };
 
@@ -73,8 +73,8 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
   const usagePercentile = `${
-    isLiteral ? i18n.t('label.usage') : ''
-  } - ${ordinalPercentile} ${i18n.t('label.pctile-lowercase')}`;
+    isLiteral ? t('label.usage') : ''
+  } - ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
 
   return usagePercentile;
 };
@@ -136,28 +136,28 @@ export const getConstraintIcon = (constraint = '', className = '') => {
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
       {
-        title = i18n.t('label.primary-key');
+        title = t('label.primary-key');
         icon = Icons.KEY;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
-        title = i18n.t('label.unique');
+        title = t('label.unique');
         icon = Icons.UNIQUE;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
-        title = i18n.t('label.not-null');
+        title = t('label.not-null');
         icon = Icons.NOT_NULL;
       }
 
       break;
     case ConstraintTypes.FOREIGN_KEY:
       {
-        title = i18n.t('label.foreign-key');
+        title = t('label.foreign-key');
         icon = Icons.FOREGIN_KEY;
       }
 
