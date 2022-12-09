@@ -30,7 +30,8 @@ interface DropDownOption {
   key: string;
   label: string;
 }
-interface SearchDropdownProps {
+
+export interface SearchDropdownProps {
   label: string;
   options: DropDownOption[];
   searchKey: string;
@@ -61,8 +62,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       return {
         key: option.key,
         label: (
-          <Space size={6}>
-            <Checkbox checked={isSelected} />
+          <Space data-testid={option.label} size={6}>
+            <Checkbox checked={isSelected} data-testid={option.key} />
             {option.label}
           </Space>
         ),
@@ -98,14 +99,19 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       data-testid={searchKey}
       dropdownRender={(menuNode) => {
         return (
-          <Card className="custom-dropdown-render">
+          <Card className="custom-dropdown-render" data-testid="drop-down-menu">
             <Space direction="vertical" size={4}>
               <Input
+                data-testid="search-input"
                 placeholder={`Search ${label}...`}
                 onChange={handleSearch}
               />
               {showClear && (
-                <Button className="p-0" type="link" onClick={handleClear}>
+                <Button
+                  className="p-0"
+                  data-testid="clear-button"
+                  type="link"
+                  onClick={handleClear}>
                   {t('label.clear-all')}
                 </Button>
               )}
@@ -120,7 +126,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       visible={isDropDownOpen}
       onVisibleChange={(visible) => setIsDropDownOpen(visible)}>
       <Button>
-        <Space>
+        <Space data-testid="search-dropdown">
           {label}
           <DownOutlined />
         </Space>
