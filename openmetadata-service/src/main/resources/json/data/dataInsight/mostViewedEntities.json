@@ -7,6 +7,7 @@
   "dimensions": [
     {"name": "entityFqn","chartDataType":"STRING"},
     {"name":  "entityType", "chartDataType":  "STRING"},
+    {"name":  "entityHref", "chartDataType":  "STRING"},
     {"name": "owner","chartDataType":"STRING"}
   ],
   "metrics": [

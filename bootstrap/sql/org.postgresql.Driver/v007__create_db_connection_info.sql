@@ -6,6 +6,6 @@ UPDATE data_insight_chart
 SET json = jsonb_set(
         json,
         '{dimensions}',
-        '[{"name":"entityFqn","chartDataType":"STRING"},{"name":"owner","chartDataType":"STRING"},{"name":"owner","entityType":"STRING"}]'
+        '[{"name":"entityFqn","chartDataType":"STRING"},{"name":"owner","chartDataType":"STRING"},{"name":"owner","entityType":"STRING"},{"name":"entityHref","entityType":"STRING"}]'
 )
 WHERE name = 'mostViewedEntities';
