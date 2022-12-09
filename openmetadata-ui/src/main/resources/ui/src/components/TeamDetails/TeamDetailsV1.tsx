@@ -1383,7 +1383,7 @@ const TeamDetailsV1 = ({
     <Row align="middle" className="tw-h-full">
       <Col span={24}>
         <ErrorPlaceHolder>
-          <p>{t('label.no-permission-to-view')}</p>
+          <p>{t('message.no-permission-to-view')}</p>
         </ErrorPlaceHolder>
       </Col>
     </Row>

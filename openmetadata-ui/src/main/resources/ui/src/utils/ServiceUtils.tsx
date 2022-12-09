@@ -781,7 +781,7 @@ export const getDeleteEntityMessage = (
     case ServiceCategory.MESSAGING_SERVICES:
       return getEntityDeleteMessage(
         service || t('label.service'),
-        pluralize(instanceCount, t('label.service'))
+        pluralize(instanceCount, t('label.topic'))
       );
 
     case ServiceCategory.DASHBOARD_SERVICES:
