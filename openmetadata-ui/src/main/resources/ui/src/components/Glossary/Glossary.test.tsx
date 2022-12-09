@@ -13,11 +13,14 @@
 
 import {
   act,
+  findByTestId,
   findByText,
   getByTestId,
+  queryByTestId,
   queryByText,
   render,
 } from '@testing-library/react';
+import { omit } from 'lodash';
 import { LoadingState } from 'Models';
 import React from 'react';
 import { mockedAssetData, mockedGlossaries } from '../../mocks/Glossary.mock';
@@ -76,39 +79,13 @@ jest.mock('react-router-dom', () => ({
     glossaryName: 'GlossaryName',
   }),
 }));
-jest.mock('antd', () => ({
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Tree: {
-    DirectoryTree: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Typography: {
-    Title: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
-    <div>
-      {children}
-      {overlay}
-    </div>
-  )),
-  Menu: jest.fn().mockImplementation(({ items }) => (
-    <div>
-      {items.map((item: { key: string; label: JSX.Element }) => {
-        <div key={item.key}>{item.label}</div>;
-      })}
-    </div>
-  )),
-}));
 
 jest.mock('../../components/GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
+jest.mock('react-router-dom', () => ({
+  Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
+}));
 
 jest.mock('../../components/GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
@@ -118,43 +95,6 @@ jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => {
   return jest.fn().mockReturnValue(<>TitleBreadcrumb</>);
 });
 
-jest.mock('antd', () => ({
-  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Tree: {
-    DirectoryTree: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Typography: {
-    Title: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
-    <div>
-      {children}
-      {overlay}
-    </div>
-  )),
-  Menu: jest.fn().mockImplementation(({ items }) => (
-    <div>
-      {items.map((item: { key: string; label: JSX.Element }) => {
-        <div key={item.key}>{item.label}</div>;
-      })}
-    </div>
-  )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children }) => <button>{children}</button>),
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-}));
-
 jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
   jest.fn().mockReturnValue(<div>Breadcrumb</div>)
 );
@@ -162,6 +102,12 @@ jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
 jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () =>
   jest.fn().mockReturnValue(<div>Entity Delete Modal</div>)
 );
+jest.mock('../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<span>U</span>)
+);
+jest.mock('../../utils/TimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 15, 1970, 12:26 PM'),
+}));
 
 const mockProps = {
   assetData: mockedAssetData,
@@ -210,6 +156,11 @@ describe('Test Glossary component', () => {
       container,
       /Glossary-Details component/i
     );
+    const updateByContainer = await findByTestId(
+      container,
+      'updated-by-container'
+    );
+    const updateByDetails = await findByTestId(container, 'updated-by-details');
 
     const glossaryTerm = await queryByText(
       container,
@@ -217,6 +168,11 @@ describe('Test Glossary component', () => {
     );
 
     expect(glossaryDetails).toBeInTheDocument();
+    expect(updateByContainer).toBeInTheDocument();
+    expect(updateByDetails).toBeInTheDocument();
+    expect(updateByDetails.textContent).toContain(
+      'mocked_user label.on-lowercase Jan 15, 1970, 12:26 PM'
+    );
     expect(glossaryTerm).not.toBeInTheDocument();
   });
 
@@ -241,5 +197,28 @@ describe('Test Glossary component', () => {
 
     expect(glossaryTerm).toBeInTheDocument();
     expect(glossaryDetails).not.toBeInTheDocument();
+  });
+
+  it('UpdatedBy and updatedAt should not visible if not available', async () => {
+    const updatedData = omit(mockedGlossaries[0].children[0], [
+      'updatedAt',
+      'updatedBy',
+    ]);
+    const { container } = render(
+      <GlossaryV1
+        {...mockProps}
+        isGlossaryActive={false}
+        selectedData={updatedData}
+      />
+    );
+
+    const updateByContainer = await findByTestId(
+      container,
+      'updated-by-container'
+    );
+    const updateByDetails = queryByTestId(container, 'updated-by-details');
+
+    expect(updateByContainer).toBeInTheDocument();
+    expect(updateByDetails).not.toBeInTheDocument();
   });
 });
