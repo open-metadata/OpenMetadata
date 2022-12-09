@@ -48,6 +48,11 @@
       "description": "Batch Size for Requests",
       "type": "integer",
       "default": 10
+    },
+    "indexResolverClassName": {
+      "description": "Implementation class name of ElasticSearchIndexResolver interface",
+      "type": "string",
+      "default": "org.openmetadata.service.elasticsearch.DefaultElasticSearchIndexResolver"
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize"],

@@ -80,7 +80,9 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.IndexTypeInfo;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver.IndexInfo;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver.IndexType;
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -93,6 +95,9 @@ import org.openmetadata.service.util.JsonUtils;
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private static final String SENDING_REQUEST_TO_ELASTIC_SEARCH = "Sending request to ElasticSearch {}";
   private final RestHighLevelClient client;
+
+  private final ElasticSearchIndexResolver indexResolver;
+
   private final CollectionDAO dao;
   private static final String SERVICE_NAME = "service.name";
   private static final String DATABASE_NAME = "database.name";
@@ -100,10 +105,11 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize());
     this.dao = dao;
+    this.indexResolver = ElasticSearchIndexResolver.fromClassName(esConfig.getIndexResolverClassName());
     // needs Db connection
     registerElasticSearchJobs();
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
-    ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+    ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(client, dao, indexResolver);
     esIndexDefinition.createIndexes();
   }
 
@@ -226,7 +232,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private UpdateRequest applyChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
-    ElasticSearchIndexType esIndexType = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    IndexTypeInfo typeInfo = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType, indexResolver);
     UUID entityId = event.getEntityId();
     ChangeDescription changeDescription = event.getChangeDescription();
 
@@ -269,7 +275,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
     if (!scriptTxt.toString().isEmpty()) {
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt.toString(), fieldAddParams);
-      UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
+      UpdateRequest updateRequest = new UpdateRequest(typeInfo.getIndexInfo().getIndexName(), entityId.toString());
       updateRequest.script(script);
       return updateRequest;
     } else {
@@ -278,8 +284,10 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void updateTable(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TABLE_SEARCH_INDEX);
+    String tableSearchIndexName = indexInfo.getIndexName();
+
+    UpdateRequest updateRequest = new UpdateRequest(tableSearchIndexName, event.getEntityId().toString());
     TableIndex tableIndex;
 
     switch (event.getEventType()) {
@@ -303,16 +311,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(tableSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
   }
 
   private void updateTopic(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TOPIC_SEARCH_INDEX);
+    String topicSearchIndexName = indexInfo.getIndexName();
+
+    UpdateRequest updateRequest = new UpdateRequest(topicSearchIndexName, event.getEntityId().toString());
     TopicIndex topicIndex;
 
     switch (event.getEventType()) {
@@ -336,17 +345,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(topicSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
   }
 
   private void updateDashboard(ChangeEvent event) throws IOException {
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.DASHBOARD_SEARCH_INDEX);
+    String dashboardSearchIndexName = indexInfo.getIndexName();
     DashboardIndex dashboardIndex;
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    UpdateRequest updateRequest = new UpdateRequest(dashboardSearchIndexName, event.getEntityId().toString());
 
     switch (event.getEventType()) {
       case ENTITY_CREATED:
@@ -369,17 +378,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(dashboardSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
   }
 
   private void updatePipeline(ChangeEvent event) throws IOException {
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.PIPELINE_SEARCH_INDEX);
+    String pipelineSearchIndexName = indexInfo.getIndexName();
     PipelineIndex pipelineIndex;
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    UpdateRequest updateRequest = new UpdateRequest(pipelineSearchIndexName, event.getEntityId().toString());
     switch (event.getEventType()) {
       case ENTITY_CREATED:
         pipelineIndex = new PipelineIndex((Pipeline) event.getEntity());
@@ -401,16 +410,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(pipelineSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
   }
 
   private void updateUser(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.USER_SEARCH_INDEX);
+    String userSearchIndexName = indexInfo.getIndexName();
+
+    UpdateRequest updateRequest = new UpdateRequest(userSearchIndexName, event.getEntityId().toString());
     UserIndex userIndex;
 
     switch (event.getEventType()) {
@@ -430,16 +440,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(userSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
   }
 
   private void updateTeam(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TEAM_SEARCH_INDEX);
+    String teamSearchIndexName = indexInfo.getIndexName();
+
+    UpdateRequest updateRequest = new UpdateRequest(teamSearchIndexName, event.getEntityId().toString());
     TeamIndex teamIndex;
     switch (event.getEventType()) {
       case ENTITY_CREATED:
@@ -458,16 +469,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(teamSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
   }
 
   private void updateGlossaryTerm(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.GLOSSARY_SEARCH_INDEX);
+    String glossarySearchIndexName = indexInfo.getIndexName();
+
+    UpdateRequest updateRequest = new UpdateRequest(glossarySearchIndexName, event.getEntityId().toString());
     GlossaryTermIndex glossaryTermIndex;
 
     switch (event.getEventType()) {
@@ -500,8 +512,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateGlossary(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.GLOSSARY_SEARCH_INDEX);
       Glossary glossary = (Glossary) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       request.setQuery(
           QueryBuilders.boolQuery().should(QueryBuilders.matchQuery("glossary.id", glossary.getId().toString())));
       deleteEntityFromElasticSearchByQuery(request);
@@ -509,8 +522,10 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void updateMlModel(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.MLMODEL_SEARCH_INDEX);
+    String mlmodelSearchIndexName = indexInfo.getIndexName();
+
+    UpdateRequest updateRequest = new UpdateRequest(mlmodelSearchIndexName, event.getEntityId().toString());
     MlModelIndex mlModelIndex;
 
     switch (event.getEventType()) {
@@ -534,16 +549,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(mlmodelSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
   }
 
   private void updateTag(ChangeEvent event) throws IOException {
-    UpdateRequest updateRequest =
-        new UpdateRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TAG_SEARCH_INDEX);
+    String tagSearchIndexName = indexInfo.getIndexName();
+
+    UpdateRequest updateRequest = new UpdateRequest(tagSearchIndexName, event.getEntityId().toString());
     TagIndex tagIndex;
 
     switch (event.getEventType()) {
@@ -567,8 +583,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        DeleteRequest deleteRequest = new DeleteRequest(tagSearchIndexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }
@@ -576,8 +591,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateDatabase(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TABLE_SEARCH_INDEX);
       Database database = (Database) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       queryBuilder.must(new TermQueryBuilder(DATABASE_NAME, database.getName()));
       queryBuilder.must(new TermQueryBuilder(SERVICE_NAME, database.getService().getName()));
@@ -588,8 +604,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateDatabaseSchema(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TABLE_SEARCH_INDEX);
       DatabaseSchema databaseSchema = (DatabaseSchema) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       queryBuilder.must(new TermQueryBuilder("databaseSchema.name", databaseSchema.getName()));
       queryBuilder.must(new TermQueryBuilder(DATABASE_NAME, databaseSchema.getDatabase().getName()));
@@ -600,8 +617,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateDatabaseService(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TABLE_SEARCH_INDEX);
       DatabaseService databaseService = (DatabaseService) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       request.setQuery(new TermQueryBuilder(SERVICE_NAME, databaseService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
@@ -609,8 +627,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updatePipelineService(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.PIPELINE_SEARCH_INDEX);
       PipelineService pipelineService = (PipelineService) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       request.setQuery(new TermQueryBuilder(SERVICE_NAME, pipelineService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
@@ -618,8 +637,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateMlModelService(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.MLMODEL_SEARCH_INDEX);
       MlModelService mlModelService = (MlModelService) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       request.setQuery(new TermQueryBuilder(SERVICE_NAME, mlModelService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
@@ -627,8 +647,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateMessagingService(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TOPIC_SEARCH_INDEX);
       MessagingService messagingService = (MessagingService) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       request.setQuery(new TermQueryBuilder(SERVICE_NAME, messagingService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
@@ -636,8 +657,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateDashboardService(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.DASHBOARD_SEARCH_INDEX);
       DashboardService dashboardService = (DashboardService) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       request.setQuery(new TermQueryBuilder(SERVICE_NAME, dashboardService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
@@ -645,8 +667,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updateTagCategory(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
+      IndexInfo indexInfo = indexResolver.indexInfo(IndexType.TAG_SEARCH_INDEX);
       TagCategory tagCategory = (TagCategory) event.getEntity();
-      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexInfo.getIndexName());
       String fqnMatch = tagCategory.getName() + ".*";
       request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);

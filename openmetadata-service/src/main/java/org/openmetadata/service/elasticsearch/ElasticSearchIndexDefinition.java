@@ -12,8 +12,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -31,6 +33,8 @@ import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver.IndexInfo;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver.IndexType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -41,14 +45,16 @@ public class ElasticSearchIndexDefinition {
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
   private final CollectionDAO dao;
-  final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
-      new EnumMap<>(ElasticSearchIndexType.class);
+  final EnumMap<IndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new EnumMap<>(IndexType.class);
   private final RestHighLevelClient client;
+  private final ElasticSearchIndexResolver indexResolver;
 
-  public ElasticSearchIndexDefinition(RestHighLevelClient client, CollectionDAO dao) {
+  public ElasticSearchIndexDefinition(
+      RestHighLevelClient client, CollectionDAO dao, ElasticSearchIndexResolver resolver) {
     this.dao = dao;
     this.client = client;
-    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+    this.indexResolver = resolver;
+    for (IndexType elasticSearchIndexType : IndexType.values()) {
       elasticSearchIndexes.put(elasticSearchIndexType, ElasticSearchIndexStatus.NOT_CREATED);
     }
   }
@@ -86,40 +92,42 @@ public class ElasticSearchIndexDefinition {
   }
 
   public void createIndexes() {
-    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+    for (IndexType elasticSearchIndexType : IndexType.values()) {
       createIndex(elasticSearchIndexType);
     }
   }
 
   public void updateIndexes() {
-    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+    for (IndexType elasticSearchIndexType : IndexType.values()) {
       updateIndex(elasticSearchIndexType);
     }
   }
 
   public void dropIndexes() {
-    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+    for (IndexType elasticSearchIndexType : IndexType.values()) {
       deleteIndex(elasticSearchIndexType);
     }
   }
 
-  public boolean createIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  public boolean createIndex(IndexType indexType) {
+    IndexInfo indexInfo = this.indexResolver.indexInfo(indexType);
+    String indexName = indexInfo.getIndexName();
     try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+      GetIndexRequest gRequest = new GetIndexRequest(indexName);
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (!exists) {
-        String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType);
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        String elasticSearchIndexMapping = getIndexMapping(indexType);
+        CreateIndexRequest request = new CreateIndexRequest(indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
+        LOG.info("{} Created {}", indexName, createIndexResponse.isAcknowledged());
       }
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
+      setIndexStatus(indexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
+      setIndexStatus(indexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
-          getContext("Creating Index", elasticSearchIndexType.indexName),
+          getContext("Creating Index", indexName),
           String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to create Elastic Search indexes due to", e);
       return false;
@@ -131,87 +139,103 @@ public class ElasticSearchIndexDefinition {
     return String.format("Failed While : %s \n Additional Info:  %s ", type, info);
   }
 
-  private void updateIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  private void updateIndex(IndexType indexType) {
+    IndexInfo indexInfo = indexResolver.indexInfo(indexType);
+    String indexName = indexInfo.getIndexName();
     try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+      GetIndexRequest gRequest = new GetIndexRequest(indexName);
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
-      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType);
+      String elasticSearchIndexMapping = getIndexMapping(indexType);
       if (exists) {
-        PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
+        PutMappingRequest request = new PutMappingRequest(indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
-        LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
+        LOG.info("{} Updated {}", indexName, putMappingResponse.isAcknowledged());
       } else {
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        CreateIndexRequest request = new CreateIndexRequest(indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
+        LOG.info("{} Created {}", indexName, createIndexResponse.isAcknowledged());
       }
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
+      setIndexStatus(indexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
+      setIndexStatus(indexType, ElasticSearchIndexStatus.FAILED);
       updateElasticSearchFailureStatus(
-          getContext("Updating Index", elasticSearchIndexType.indexName),
+          getContext("Updating Index", indexName),
           String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to update Elastic Search indexes due to", e);
     }
   }
 
-  public void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  public void deleteIndex(IndexType indexType) {
+    IndexInfo indexInfo = indexResolver.indexInfo(indexType);
+    String indexName = indexInfo.getIndexName();
     try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+      GetIndexRequest gRequest = new GetIndexRequest(indexName);
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (exists) {
-        DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
+        DeleteIndexRequest request = new DeleteIndexRequest(indexName);
         AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-        LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
+        LOG.info("{} Deleted {}", indexName, deleteIndexResponse.isAcknowledged());
       }
     } catch (IOException e) {
       updateElasticSearchFailureStatus(
-          getContext("Deleting Index", elasticSearchIndexType.indexName),
+          getContext("Deleting Index", indexName),
           String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }
 
-  private void setIndexStatus(ElasticSearchIndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
+  private void setIndexStatus(IndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
     elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
   }
 
-  public String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType) throws IOException {
-    InputStream in = ElasticSearchIndexDefinition.class.getResourceAsStream(elasticSearchIndexType.indexMappingFile);
+  public String getIndexMapping(IndexType elasticSearchIndexType) throws IOException {
+    IndexInfo indexInfo = this.indexResolver.indexInfo(elasticSearchIndexType);
+    InputStream in = ElasticSearchIndexDefinition.class.getResourceAsStream(indexInfo.getMappingFilePath());
     return new String(in.readAllBytes());
   }
 
-  public static ElasticSearchIndexType getIndexMappingByEntityType(String type) {
+    @Value
+    @AllArgsConstructor(staticName = "of")
+    public static class IndexTypeInfo {
+      private IndexType indexType;
+      private IndexInfo indexInfo;
+    }
+
+  public static IndexTypeInfo getIndexMappingByEntityType(String type, ElasticSearchIndexResolver indexResolver) {
     if (type.equalsIgnoreCase(Entity.TABLE)) {
-      return ElasticSearchIndexType.TABLE_SEARCH_INDEX;
+      return IndexTypeInfo.of(IndexType.TABLE_SEARCH_INDEX, indexResolver.indexInfo(IndexType.TABLE_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
-      return ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
+      return IndexTypeInfo.of(
+          IndexType.DASHBOARD_SEARCH_INDEX, indexResolver.indexInfo(IndexType.DASHBOARD_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
-      return ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
+      return IndexTypeInfo.of(
+          IndexType.PIPELINE_SEARCH_INDEX, indexResolver.indexInfo(IndexType.PIPELINE_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
-      return ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
+      return IndexTypeInfo.of(IndexType.TOPIC_SEARCH_INDEX, indexResolver.indexInfo(IndexType.TOPIC_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.USER)) {
-      return ElasticSearchIndexType.USER_SEARCH_INDEX;
+      return IndexTypeInfo.of(IndexType.USER_SEARCH_INDEX, indexResolver.indexInfo(IndexType.USER_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.TEAM)) {
-      return ElasticSearchIndexType.TEAM_SEARCH_INDEX;
+      return IndexTypeInfo.of(IndexType.TEAM_SEARCH_INDEX, indexResolver.indexInfo(IndexType.TEAM_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
-      return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+      return IndexTypeInfo.of(
+          IndexType.GLOSSARY_SEARCH_INDEX, indexResolver.indexInfo(IndexType.GLOSSARY_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
-      return ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
+      return IndexTypeInfo.of(IndexType.MLMODEL_SEARCH_INDEX, indexResolver.indexInfo(IndexType.MLMODEL_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
-      return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+      return IndexTypeInfo.of(
+          IndexType.GLOSSARY_SEARCH_INDEX, indexResolver.indexInfo(IndexType.GLOSSARY_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(Entity.TAG)) {
-      return ElasticSearchIndexType.TAG_SEARCH_INDEX;
+      return IndexTypeInfo.of(IndexType.TAG_SEARCH_INDEX, indexResolver.indexInfo(IndexType.TAG_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
-      return ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
+      return IndexTypeInfo.of(IndexType.ENTITY_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.ENTITY_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
-      return ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
+      IndexTypeInfo.of(IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      return ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
+      IndexTypeInfo.of(IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX));
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }

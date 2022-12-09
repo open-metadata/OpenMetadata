@@ -62,6 +62,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexFactory;
 import org.openmetadata.service.elasticsearch.ReportDataIndexes;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -85,6 +86,8 @@ public class BuildSearchIndexResource {
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_BATCH = "eventPublisher:ElasticSearch:BATCH";
   private RestHighLevelClient client;
+
+  private ElasticSearchIndexResolver indexResolver;
   private ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   private final CollectionDAO dao;
   private final Authorizer authorizer;
@@ -102,8 +105,10 @@ public class BuildSearchIndexResource {
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
+      String indexResolverClassName = config.getElasticSearchConfiguration().getIndexResolverClassName();
+      this.indexResolver = ElasticSearchIndexResolver.fromClassName(indexResolverClassName);
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao, indexResolver);
     }
   }
 
@@ -326,7 +331,7 @@ public class BuildSearchIndexResource {
       BulkProcessor processor,
       BulkProcessorListener listener,
       String entityType,
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType) {
+      ElasticSearchIndexDefinition.IndexTypeInfo typeInfo) {
     ResultList<ReportData> result;
     String after = null;
     try {
@@ -425,14 +430,14 @@ public class BuildSearchIndexResource {
   private synchronized void updateEntityStream(
       UriInfo uriInfo, UUID startedBy, String entityType, CreateEventPublisherJob createRequest) {
 
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.IndexTypeInfo typeInfo =
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType, indexResolver);
 
     if (Boolean.TRUE.equals(createRequest.getRecreateIndex())) {
       // Delete index
-      elasticSearchIndexDefinition.deleteIndex(indexType);
+      elasticSearchIndexDefinition.deleteIndex(typeInfo.getIndexType());
       // Create index
-      elasticSearchIndexDefinition.createIndex(indexType);
+      elasticSearchIndexDefinition.createIndex(typeInfo.getIndexType());
     }
 
     // Start fetching a list of Entities and pushing them to ES
@@ -472,7 +477,7 @@ public class BuildSearchIndexResource {
   }
 
   private synchronized void updateElasticSearchForEntityBatch(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
+      ElasticSearchIndexResolver.IndexInfo indexInfo,
       BulkProcessor bulkProcessor,
       String entityType,
       List<EntityInterface> entities) {
@@ -480,7 +485,7 @@ public class BuildSearchIndexResource {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
       }
-      UpdateRequest request = getUpdateRequest(indexType, entityType, entity);
+      UpdateRequest request = getUpdateRequest(indexInfo, entityType, entity);
       if (request != null) {
         bulkProcessor.add(request);
       }
@@ -494,8 +499,8 @@ public class BuildSearchIndexResource {
             .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     EventPublisherJob latestJob = JsonUtils.readValue(reindexJobString, EventPublisherJob.class);
     Long lastUpdateTime = latestJob.getTimestamp();
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.IndexTypeInfo typeInfo =
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType, indexResolver);
     for (EntityInterface entity : entities) {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
@@ -503,7 +508,7 @@ public class BuildSearchIndexResource {
       FailureDetails failureDetails;
       Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       try {
-        client.update(getUpdateRequest(indexType, entityType, entity), RequestOptions.DEFAULT);
+        client.update(getUpdateRequest(typeInfo.getIndexInfo(), entityType, entity), RequestOptions.DEFAULT);
       } catch (IOException ex) {
         failureDetails = new FailureDetails().withLastFailedAt(time).withLastFailedReason(ex.getMessage());
         latestJob.setFailureDetails(failureDetails);
@@ -521,9 +526,9 @@ public class BuildSearchIndexResource {
   }
 
   private UpdateRequest getUpdateRequest(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, EntityInterface entity) {
+      ElasticSearchIndexResolver.IndexInfo indexInfo, String entityType, EntityInterface entity) {
     try {
-      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      UpdateRequest updateRequest = new UpdateRequest(indexInfo.getIndexName(), entity.getId().toString());
       updateRequest.doc(
           JsonUtils.pojoToJson(
               Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
@@ -531,20 +536,24 @@ public class BuildSearchIndexResource {
       updateRequest.docAsUpsert(true);
       return updateRequest;
     } catch (Exception ex) {
-      LOG.error("Failed in creating update Request for indexType : {}, entityType: {}", indexType, entityType, ex);
+      LOG.error(
+          "Failed in creating update Request for indexName : {}, entityType: {}",
+          indexInfo.getIndexName(),
+          entityType,
+          ex);
     }
     return null;
   }
 
   private UpdateRequest getUpdateRequest(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ReportData reportData) {
+          ElasticSearchIndexDefinition.IndexTypeInfo indexTypeInfo, String entityType, ReportData reportData) {
     try {
-      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
+      UpdateRequest updateRequest = new UpdateRequest(indexTypeInfo.getIndexInfo().getIndexName()., reportData.getId().toString());
       updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
       updateRequest.docAsUpsert(true);
       return updateRequest;
     } catch (Exception ex) {
-      LOG.error("Failed in creating update Request for indexType : {}, entityType: {}", indexType, entityType, ex);
+      LOG.error("Failed in creating update Request for indexType : {}, entityType: {}", indexTypeInfo.getIndexType(), entityType, ex);
     }
     return null;
   }
