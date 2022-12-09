@@ -13,6 +13,7 @@
 
 import {
   act,
+  findAllByText,
   findByTestId,
   findByText,
   fireEvent,
@@ -21,7 +22,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { MemoryRouter } from 'react-router';
 import { FormSubmitType } from '../../enums/form.enum';
 import { Webhook, WebhookType } from '../../generated/entity/events/webhook';
@@ -60,9 +61,20 @@ jest.mock('../buttons/CopyToClipboardButton/CopyToClipboardButton', () => {
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditor', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <p>MarkdownWithPreview.component</p>);
+  return forwardRef(
+    jest.fn().mockImplementation(({ initialValue }) => {
+      return (
+        <div
+          ref={(input) => {
+            return {
+              getEditorContent: input,
+            };
+          }}>
+          {initialValue} MarkdownWithPreview.component
+        </div>
+      );
+    })
+  );
 });
 
 jest.mock('./EventFilterTree.component', () => {
@@ -71,6 +83,10 @@ jest.mock('./EventFilterTree.component', () => {
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockImplementation(() => true),
+}));
+
+jest.mock('i18next', () => ({
+  t: jest.fn().mockImplementation((_key) => _key),
 }));
 
 const mockData = {
@@ -182,12 +198,13 @@ describe('Test AddWebhook component', () => {
       fireEvent.click(saveWebhook);
     });
 
-    expect(
-      await findByText(container, 'Webhook name is required.')
-    ).toBeInTheDocument();
-    expect(
-      await findByText(container, 'Webhook endpoint is required.')
-    ).toBeInTheDocument();
+    const requiredFields = await findAllByText(
+      container,
+      'message.field-text-is-required'
+    );
+
+    expect(requiredFields.length).toEqual(2);
+
     expect(active).toHaveClass('open');
 
     fireEvent.change(nameField, {
