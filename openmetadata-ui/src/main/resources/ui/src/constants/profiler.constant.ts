@@ -163,6 +163,17 @@ export const INITIAL_SUM_METRIC_VALUE = {
   data: [],
 };
 
+export const INITIAL_ROW_METRIC_VALUE = {
+  information: [
+    {
+      title: 'Row Count',
+      dataKey: 'rowCount',
+      color: '#1890FF',
+    },
+  ],
+  data: [],
+};
+
 export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
   {
     columnName: undefined,

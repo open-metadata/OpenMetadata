@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -18,6 +19,8 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../axiosAPIs/tableAPI';
+import { INITIAL_ROW_METRIC_VALUE } from '../../../constants/profiler.constant';
+import { calculateRowCountMetrics } from '../../../utils/TableProfilerUtls';
 import {
   getCurrentDateTimeMillis,
   getCurrentDateTimeStamp,
@@ -25,6 +28,8 @@ import {
   getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ProfilerDetailsCard from '../../ProfilerDashboard/component/ProfilerDetailsCard';
+import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { TableProfilerData } from '../TableProfiler.interface';
 
 const TableProfilerChart = () => {
@@ -33,18 +38,20 @@ const TableProfilerChart = () => {
     tableProfilerData: [],
     systemProfilerData: [],
   });
+  const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
+    INITIAL_ROW_METRIC_VALUE
+  );
 
   const fetchTableProfiler = async (fqn: string, days = 3) => {
     try {
       const startTs = getPastDatesTimeStampFromCurrentDate(days);
-
       const endTs = getCurrentDateTimeStamp();
-
       const { data } = await getTableProfilesList(fqn, {
         startTs,
         endTs,
       });
-
+      const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
+      setRowCountMetrics(rowMetricsData);
       setProfilerData((prev) => ({ ...prev, tableProfilerData: data }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -53,14 +60,11 @@ const TableProfilerChart = () => {
   const fetchSystemProfiler = async (fqn: string, days = 3) => {
     try {
       const startTs = getPastDaysDateTimeMillis(days);
-
       const endTs = getCurrentDateTimeMillis();
-
       const { data } = await getSystemProfileList(fqn, {
         startTs,
         endTs,
       });
-
       setProfilerData((prev) => ({ ...prev, systemProfilerData: data }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -78,7 +82,16 @@ const TableProfilerChart = () => {
     }
   }, [datasetFQN]);
 
-  return <div>TableProfilerChart</div>;
+  return (
+    <Row gutter={[16, 16]}>
+      <Col span={24}>
+        <ProfilerDetailsCard
+          chartCollection={rowCountMetrics}
+          name="rowCount"
+        />
+      </Col>
+    </Row>
+  );
 };
 
 export default TableProfilerChart;
