@@ -7,7 +7,7 @@ import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.datatInsight.type.MostViewedEntities;
+import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
 public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface<MostViewedEntities> {
 

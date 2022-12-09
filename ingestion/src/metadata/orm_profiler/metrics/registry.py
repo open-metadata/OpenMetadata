@@ -45,6 +45,7 @@ from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+from metadata.orm_profiler.metrics.system.system import System
 from metadata.orm_profiler.metrics.window.median import Median
 from metadata.orm_profiler.registry import MetricRegistry
 
@@ -87,3 +88,6 @@ class Metrics(MetricRegistry):
     ILIKE_RATIO = ILikeRatio
     LIKE_RATIO = LikeRatio
     NULL_RATIO = NullRatio
+
+    # System Metrics
+    SYSTEM = System

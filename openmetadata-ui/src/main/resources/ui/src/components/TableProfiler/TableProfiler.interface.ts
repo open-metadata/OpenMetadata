@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Column, Table } from '../../generated/entity/data/table';
+import { Column } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface TableProfilerProps {
-  table: Table;
+  tableFqn: string;
   permissions: OperationPermission;
 }
 

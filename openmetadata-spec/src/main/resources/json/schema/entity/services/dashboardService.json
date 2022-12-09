@@ -95,7 +95,7 @@
               "$ref": "./connections/dashboard/customDashboardConnection.json"
             },
             {
-              "$ref": "./connections/dashboard/domodashboardConnection.json"
+              "$ref": "./connections/dashboard/domoDashboardConnection.json"
             },
             {
               "$ref": "./connections/dashboard/quickSightConnection.json"

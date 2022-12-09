@@ -103,7 +103,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Added **owner**: `User One`", messages.values().iterator().next());
+    assertEquals("Added **owner**: **User One**", messages.values().iterator().next());
   }
 
   @Test
@@ -117,7 +117,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **description**: <span class=\"diff-removed\">old</span>"
+        "Updated **description** : <span class=\"diff-removed\">old</span> "
             + "<span class=\"diff-added\">new</span> description",
         messages.values().iterator().next());
 
@@ -145,7 +145,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Updated *description* : ~old~ *new*  description", messages.values().iterator().next());
+    assertEquals("Updated *description* : ~old~ *new* description", messages.values().iterator().next());
 
     // test if it updates correctly with one add and one delete change
     changeDescription = new ChangeDescription().withPreviousVersion(1.0);
@@ -180,7 +180,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns.lo_orderpriority**: <br/> name: <span class=\"diff-removed\">\"lo_order\"</span><span class=\"diff-added\">\"lo_orderpriority\"</span> <br/> displayName: <span class=\"diff-removed\">\"lo_order\"</span><span class=\"diff-added\">\"lo_orderpriority\"</span> <br/> fullyQualifiedName: \"local_mysql.sample_db.lineorder.<span class=\"diff-removed\">lo_order\"</span><span class=\"diff-added\">lo_orderpriority\"</span>",
+        "Updated **columns.lo_orderpriority**: <br/> name: \"lo_order<span class=\"diff-added\">priority</span> \" <br/> displayName: \"lo_order<span class=\"diff-added\">priority</span> \" <br/> fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order<span class=\"diff-added\">priority</span> \"",
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
@@ -198,7 +198,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns.lo_orderpriority**: <br/> dataType: <span class=\"diff-removed\">\"BLOB\"</span><span class=\"diff-added\">\"INT\"</span> <br/> dataTypeDisplay: <span class=\"diff-removed\">\"blob\"</span><span class=\"diff-added\">\"int\"</span>",
+        "Updated **columns.lo_orderpriority**: <br/> dataType: \" <span class=\"diff-removed\">BLOB</span> <span class=\"diff-added\">INT</span> \" <br/> dataTypeDisplay: \" <span class=\"diff-removed\">blob</span> <span class=\"diff-added\">int</span> \"",
         messages.values().iterator().next());
 
     // Simulate multiple changes to columns
@@ -216,7 +216,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns**: lo_orderpriority<span class=\"diff-added\">, newColumn</span>",
+        "Updated **columns** : lo_orderpriority<span class=\"diff-added\">, newColumn</span>",
         messages.values().iterator().next());
   }
 
@@ -239,10 +239,10 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated *columns.lo_orderpriority* :\n"
-            + "name: ~\"lo_order\"~ *\"lo_orderpriority\"* \n"
-            + "displayName: ~\"lo_order\"~ *\"lo_orderpriority\"* \n"
-            + "fullyQualifiedName: \"local_mysql.sample_db.lineorder.~lo_order\"~ *lo_orderpriority\"* ",
+        "Updated *columns.lo_orderpriority*:\n"
+            + "name: \"lo_order*priority* \"\n"
+            + "displayName: \"lo_order*priority* \"\n"
+            + "fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order*priority* \"",
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
@@ -260,9 +260,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated *columns.lo_orderpriority* :\n"
-            + "dataType: ~\"BLOB\"~ *\"INT\"* \n"
-            + "dataTypeDisplay: ~\"blob\"~ *\"int\"* ",
+        "Updated *columns.lo_orderpriority*:\n"
+            + "dataType: \" ~BLOB~ *INT* \"\n"
+            + "dataTypeDisplay: \" ~blob~ *int* \"",
         messages.values().iterator().next());
 
     // Simulate multiple changes to columns
@@ -279,6 +279,6 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Updated *columns* : lo_orderpriority*, newColumn* ", messages.values().iterator().next());
+    assertEquals("Updated *columns* : lo_orderpriority*, newColumn*", messages.values().iterator().next());
   }
 }

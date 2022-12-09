@@ -54,7 +54,10 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
-import { getTeamFilter } from '../../utils/DataInsightUtils';
+import {
+  getDataInsightPathWithFqn,
+  getTeamFilter,
+} from '../../utils/DataInsightUtils';
 import {
   getCurrentDateTimeMillis,
   getFormattedDateFromMilliSeconds,
@@ -136,9 +139,9 @@ const DataInsightPage = () => {
 
   const handleScrollToChart = (chartType: DataInsightChartType) => {
     if (ENTITIES_CHARTS.includes(chartType)) {
-      history.push(DataInsightTabs.DATA_ASSETS);
+      history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
     } else {
-      history.push(DataInsightTabs.APP_ANALYTICS);
+      history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
     }
     setSelectedChart(chartType);
   };
@@ -175,7 +178,9 @@ const DataInsightPage = () => {
         <Col span={24}>
           <Space className="w-full justify-between">
             <div data-testid="data-insight-header">
-              <Typography.Title level={5}>Data Insight</Typography.Title>
+              <Typography.Title level={5}>
+                {t('label.data-insight-plural')}
+              </Typography.Title>
               <Typography.Text className="data-insight-label-text">
                 {t('label.data-insight-subtitle')}
               </Typography.Text>

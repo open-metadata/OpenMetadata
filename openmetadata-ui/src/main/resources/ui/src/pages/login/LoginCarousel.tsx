@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import Slider from 'react-slick';
@@ -37,7 +38,7 @@ const LoginCarousel = () => {
               <p
                 className="text-center carousal-description font-medium text-white text-xl"
                 data-testid="carousel-slide-description">
-                {data.description}
+                {t(`message.${data.descriptionKey}`)}
               </p>
             </div>
           </div>

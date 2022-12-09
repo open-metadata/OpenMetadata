@@ -179,12 +179,6 @@ jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
 
-jest.mock('../PipelineStatusList/PipelineStatusList.component', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="pipeline-status-list">Pipeline Status</p>);
-});
-
 jest.mock('../TasksDAGView/TasksDAGView', () => {
   return jest.fn().mockReturnValue(<p data-testid="tasks-dag">Tasks DAG</p>);
 });
