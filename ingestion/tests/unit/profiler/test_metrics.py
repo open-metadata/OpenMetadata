@@ -88,6 +88,7 @@ class MetricsTest(TestCase):
                     service_connection_config=cls.sqlite_conn,
                     table_entity=cls.table_entity,
                     ometa_client=None,
+                    thread_count=1,
                 )
             )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
@@ -775,6 +776,11 @@ class MetricsTest(TestCase):
         res = session.query(SumFn(User.age)).select_from(User).scalar()
 
         assert res == 61
+
+    def test_system_metric(self):
+        system = add_props(table=User)(Metrics.SYSTEM.value)
+        session = self.sqa_profiler_interface.session
+        system().sql(session)
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SQLQuery;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
@@ -114,6 +115,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static class ColumnProfileList extends ResultList<ColumnProfile> {
     @SuppressWarnings("unused")
     public ColumnProfileList() {
+      /* Required for serde */
+    }
+  }
+
+  public static class SystemProfileList extends ResultList<SystemProfile> {
+    @SuppressWarnings("unused")
+    public SystemProfileList() {
       /* Required for serde */
     }
   }
@@ -648,7 +656,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{fqn}/tableProfile")
   @Operation(
       operationId = "list Profiles",
-      summary = "List of profiles",
+      summary = "List of table profiles",
       tags = "tables",
       description =
           "Get a list of all the table profiles for the given table fqn, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
@@ -686,7 +694,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{fqn}/columnProfile")
   @Operation(
       operationId = "list column Profiles",
-      summary = "List of profiles",
+      summary = "List of column profiles",
       tags = "tables",
       description =
           "Get a list of all the column profiles for the given table fqn, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
@@ -718,6 +726,42 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getColumnProfiles(fqn, startTs, endTs);
+  }
+
+  @GET
+  @Path("/{fqn}/systemProfile")
+  @Operation(
+      operationId = "list system Profiles",
+      summary = "List of system profiles",
+      tags = "tables",
+      description =
+          "Get a list of all the system profiles for the given table fqn, filtered by `extension`, `startTs` and `endTs` of the profile. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of system profiles",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = SystemProfileList.class)))
+      })
+  public ResultList<SystemProfile> listSystemProfiles(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "FQN of the table", schema = @Schema(type = "String")) @PathParam("fqn") String fqn,
+      @Parameter(
+              description = "Filter system profiles after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @NotNull
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter system profiles before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @NotNull
+          @QueryParam("endTs")
+          Long endTs)
+      throws IOException {
+    return dao.getSystemProfiles(fqn, startTs, endTs);
   }
 
   @PUT

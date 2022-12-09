@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SQLQuery;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -99,6 +100,7 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
   public static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  public static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
   public static final String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
@@ -348,6 +350,37 @@ public class TableRepository extends EntityRepository<Table> {
                 JsonUtils.pojoToJson(columnProfile));
       }
     }
+
+    List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
+    if (systemProfiles != null && !systemProfiles.isEmpty()) {
+      for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
+        SystemProfile storedSystemProfile =
+            JsonUtils.readValue(
+                daoCollection
+                    .entityExtensionTimeSeriesDao()
+                    .getExtensionAtTimestamp(
+                        table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, systemProfile.getTimestamp()),
+                SystemProfile.class);
+        if (storedSystemProfile != null) {
+          daoCollection
+              .entityExtensionTimeSeriesDao()
+              .update(
+                  table.getFullyQualifiedName(),
+                  SYSTEM_PROFILE_EXTENSION,
+                  JsonUtils.pojoToJson(systemProfile),
+                  storedSystemProfile.getTimestamp());
+        } else {
+          daoCollection
+              .entityExtensionTimeSeriesDao()
+              .insert(
+                  table.getFullyQualifiedName(),
+                  SYSTEM_PROFILE_EXTENSION,
+                  "systemProfile",
+                  JsonUtils.pojoToJson(systemProfile));
+        }
+      }
+    }
+
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withProfile(createTableProfile.getTableProfile());
   }
@@ -396,6 +429,18 @@ public class TableRepository extends EntityRepository<Table> {
                 .listBetweenTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
             ColumnProfile.class);
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
+  }
+
+  @Transaction
+  public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) throws IOException {
+    List<SystemProfile> systemProfiles;
+    systemProfiles =
+        JsonUtils.readObjects(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .listBetweenTimestamps(fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs),
+            SystemProfile.class);
+    return new ResultList<>(systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 
   @Transaction

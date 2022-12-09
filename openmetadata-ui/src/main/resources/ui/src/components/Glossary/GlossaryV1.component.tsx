@@ -30,7 +30,10 @@ import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty } from 'lodash';
 import { AssetsDataType, LoadingState } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { getUserPath } from '../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -46,10 +49,12 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { formatDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -124,6 +129,7 @@ const GlossaryV1 = ({
   currentPage,
 }: Props) => {
   const { DirectoryTree } = Tree;
+  const { t } = useTranslation();
 
   const { getEntityPermission, permissions } = usePermissionProvider();
   const [treeData, setTreeData] = useState<DataNode[]>([]);
@@ -541,6 +547,32 @@ const GlossaryV1 = ({
               </Space>
             )}
           </div>
+          <Space className="m-b-md" data-testid="updated-by-container" size={8}>
+            <Typography.Text className="text-grey-muted">
+              {t('label.updated-by')} -
+            </Typography.Text>
+            {selectedData.updatedBy && selectedData.updatedAt ? (
+              <>
+                {' '}
+                <ProfilePicture
+                  displayName={selectedData.updatedBy}
+                  id={selectedData.id}
+                  name={selectedData.updatedBy || ''}
+                  textClass="text-xs"
+                  width="20"
+                />
+                <Typography.Text data-testid="updated-by-details">
+                  <Link to={getUserPath(selectedData.updatedBy ?? '')}>
+                    {selectedData.updatedBy}
+                  </Link>{' '}
+                  {t('label.on-lowercase')}{' '}
+                  {formatDateTime(selectedData.updatedAt || 0)}
+                </Typography.Text>
+              </>
+            ) : (
+              '--'
+            )}
+          </Space>
           {!isEmpty(selectedData) &&
             (isGlossaryActive ? (
               <GlossaryDetails

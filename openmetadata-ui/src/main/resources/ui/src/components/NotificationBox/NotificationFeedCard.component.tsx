@@ -14,6 +14,7 @@
 import { List, Space, Typography } from 'antd';
 import { toString } from 'lodash';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
@@ -33,6 +34,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   feedType,
   taskDetails,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Link
       className="tw-no-underline"
@@ -52,7 +55,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
                 <>
-                  <span> mentioned you on the </span> <span>{entityType} </span>
+                  <span> {t('label.mention-you-thread-lowercase')} </span>{' '}
+                  <span>{entityType} </span>
                   <Link
                     className="tw-truncate"
                     to={prepareFeedLink(entityType, entityFQN)}>
@@ -61,7 +65,9 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                 </>
               ) : (
                 <>
-                  <span className="tw-px-1">assigned you a new task</span>
+                  <span className="p-x-xss">
+                    {t('label.assign-you-task-lowercase')}
+                  </span>
                   <Link
                     to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
                     {`#${taskDetails?.id}`} {taskDetails?.type}

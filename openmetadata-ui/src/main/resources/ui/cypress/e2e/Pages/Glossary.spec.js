@@ -143,7 +143,7 @@ describe('Glossary page should work properly', () => {
 
     // Redirecting to add glossary page
     cy.get('@addNewGlossary').click();
-    cy.get('.tw-form-container > .tw-heading')
+    cy.get('[data-testid="form-heading"]')
       .contains('Add Glossary')
       .should('be.visible');
 

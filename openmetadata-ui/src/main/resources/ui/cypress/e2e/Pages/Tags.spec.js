@@ -22,7 +22,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .and('be.visible')
-      .click({ animationDistanceThreshold: 10 });
+      .click({ animationDistanceThreshold: 20 });
 
     // adding manual wait to open dropdown in UI
     cy.wait(500);

@@ -12,8 +12,9 @@
  */
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, toLower } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
 import { getFeedsWithFilter } from '../../axiosAPIs/feedsAPI';
 import {
@@ -41,6 +42,7 @@ const NotificationBox = ({
   onMarkMentionsNotificationRead,
   onTabChange,
 }: NotificationBoxProp) => {
+  const { t } = useTranslation();
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
@@ -138,8 +140,8 @@ const NotificationBox = ({
         }
         offset={[5, 0]}>
         <SVGIcons
-          alt=""
-          className="tw-mr-2"
+          alt="notification-icon"
+          className="m-r-xs"
           icon={key === NotificationTabsKey.TASK ? Icons.TASK : Icons.MENTIONS}
           width="14px"
         />
@@ -151,8 +153,8 @@ const NotificationBox = ({
   const notificationList = useMemo(
     () =>
       isEmpty(notifications) ? (
-        <div className="tw-h-64 tw-flex tw-items-center tw-justify-center">
-          <p>No notifications Found</p>
+        <div className="h-64 flex-center">
+          <p>{t('message.no-notification-found')}</p>
         </div>
       ) : (
         <List
@@ -160,7 +162,7 @@ const NotificationBox = ({
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">
-              <span>view all</span>
+              <span>{toLower(t('label.view-all'))}</span>
             </Button>
           }
           itemLayout="vertical"
@@ -181,7 +183,7 @@ const NotificationBox = ({
         className="tw-px-4 tw-pt-3 tw-pb-1"
         data-testid="notification-heading"
         level={5}>
-        Notifications
+        {t('label.notification-plural')}
       </Typography.Title>
       <Tabs
         defaultActiveKey="Task"

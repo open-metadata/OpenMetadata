@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -28,7 +28,6 @@ import {
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 
@@ -39,6 +38,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTime } from '../../utils/TimeUtils';
 
 const KPIList = () => {
+  const history = useHistory();
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
@@ -122,21 +122,46 @@ const KPIList = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              placement="left"
-              title={
-                isAdminUser ? t('label.delete') : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!isAdminUser}
-                icon={
-                  <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
-                }
-                type="text"
-                onClick={() => setSelectedKpi(record)}
-              />
-            </Tooltip>
+            <Space>
+              <Tooltip
+                placement="left"
+                title={
+                  isAdminUser
+                    ? t('label.edit')
+                    : t('message.no-permission-for-action')
+                }>
+                <Button
+                  data-testid={`edit-action-${getEntityName(record)}`}
+                  disabled={!isAdminUser}
+                  icon={
+                    <SVGIcons
+                      alt={t('label.edit')}
+                      icon={Icons.EDIT}
+                      width="18px"
+                    />
+                  }
+                  type="text"
+                  onClick={() => history.push(getKpiPath(record.name))}
+                />
+              </Tooltip>
+              <Tooltip
+                placement="left"
+                title={
+                  isAdminUser
+                    ? t('label.delete')
+                    : t('message.no-permission-for-action')
+                }>
+                <Button
+                  data-testid={`delete-action-${getEntityName(record)}`}
+                  disabled={!isAdminUser}
+                  icon={
+                    <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+                  }
+                  type="text"
+                  onClick={() => setSelectedKpi(record)}
+                />
+              </Tooltip>
+            </Space>
           );
         },
       },
@@ -165,6 +190,7 @@ const KPIList = () => {
         <Table
           bordered
           columns={columns}
+          data-testid="kpi-table"
           dataSource={kpiList}
           loading={{ spinning: isLoading, indicator: <Loader /> }}
           pagination={false}

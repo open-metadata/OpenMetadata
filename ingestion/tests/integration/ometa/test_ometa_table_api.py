@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     JoinedWith,
     SqlQuery,
+    SystemProfile,
     Table,
     TableData,
     TableJoins,
@@ -323,8 +324,24 @@ class OMetaTableTest(TestCase):
                 timestamp=datetime.now(tz=timezone.utc).timestamp(),
             )
         ]
+
+        system_profile = [
+            SystemProfile(
+                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                operation="INSERT",
+                rowsAffected=11,
+            ),
+            SystemProfile(
+                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                operation="UPDATE",
+                rowsAffected=110,
+            ),
+        ]
+
         profile = CreateTableProfileRequest(
-            tableProfile=table_profile, columnProfile=column_profile
+            tableProfile=table_profile,
+            columnProfile=column_profile,
+            systemProfile=system_profile,
         )
         self.metadata.ingest_profile_data(res, profile)
 

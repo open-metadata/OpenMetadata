@@ -78,6 +78,7 @@
     <jackson.version>2.13.4</jackson.version>
     <jackson-databind.version>2.13.4.1</jackson-databind.version>
     <dropwizard.version>2.0.34</dropwizard.version>
+    <diffMatch.version>1.0</diffMatch.version>
     <dropwizard-jdbi3.version>2.0.34</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
