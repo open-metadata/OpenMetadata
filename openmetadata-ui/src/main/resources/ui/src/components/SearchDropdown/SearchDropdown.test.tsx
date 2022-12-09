@@ -14,8 +14,8 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-
-import SearchDropdown, { SearchDropdownProps } from './SearchDropdown';
+import SearchDropdown from './SearchDropdown';
+import { SearchDropdownProps } from './SearchDropdown.interface';
 
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();

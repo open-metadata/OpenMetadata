@@ -24,22 +24,8 @@ import {
 } from 'antd';
 import React, { ChangeEvent, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SearchDropdownProps } from './SearchDropdown.interface';
 import './SearchDropdown.less';
-
-interface DropDownOption {
-  key: string;
-  label: string;
-}
-
-export interface SearchDropdownProps {
-  label: string;
-  options: DropDownOption[];
-  searchKey: string;
-  selectedKeys: string[];
-  showClear?: boolean;
-  onChange: (values: string[], searchKey: string) => void;
-  onSearch: (searchText: string, searchKey: string) => void;
-}
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
   label,

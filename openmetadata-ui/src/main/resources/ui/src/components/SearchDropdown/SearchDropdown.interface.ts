@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-.custom-dropdown-render {
-  // this is taken from antd dropdown menu box shadow
-  box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%), 0 6px 16px 0 rgb(0 0 0 / 8%),
-    0 9px 28px 8px rgb(0 0 0 / 5%);
+export interface DropDownOption {
+  key: string;
+  label: string;
+}
 
-  .ant-dropdown-menu {
-    box-shadow: none;
-    padding: 0px;
-    .ant-dropdown-menu-item {
-      padding: 4px 0px;
-    }
-  }
+export interface SearchDropdownProps {
+  label: string;
+  options: DropDownOption[];
+  searchKey: string;
+  selectedKeys: string[];
+  showClear?: boolean;
+  onChange: (values: string[], searchKey: string) => void;
+  onSearch: (searchText: string, searchKey: string) => void;
 }
