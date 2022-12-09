@@ -23,7 +23,7 @@ export const getInitOptions = (): InitOptions => {
       'en-US': { translation: enUS },
       'fr-FR': { translation: frFR },
     },
-    fallbackLng: ['fr-FR'],
+    fallbackLng: ['en-US'],
     interpolation: {
       escapeValue: false, // XSS safety provided by React
     },
