@@ -271,7 +271,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             title={
               deleteWebhookPermission
                 ? t('label.delete')
-                : t('label.no-permission-for-action')
+                : t('message.no-permission-for-action')
             }>
             <Button
               data-testid="delete-webhook"
@@ -317,7 +317,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             title={
               savePermission
                 ? t('label.save')
-                : t('label.no-permission-for-action')
+                : t('message.no-permission-for-action')
             }>
             <Button
               className={classNames('tw-w-16 tw-h-10')}

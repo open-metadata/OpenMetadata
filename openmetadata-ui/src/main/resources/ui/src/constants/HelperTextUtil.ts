@@ -13,8 +13,8 @@
 
 import { t } from 'i18next';
 
-export const NO_PERMISSION_FOR_ACTION = t('label.no-permission-for-action');
+export const NO_PERMISSION_FOR_ACTION = t('message.no-permission-for-action');
 
-export const NO_PERMISSION_TO_VIEW = t('label.no-permission-to-view');
+export const NO_PERMISSION_TO_VIEW = t('message.no-permission-to-view');
 
 export const ADMIN_ONLY_ACTION = t('label.admin-only-action');
