@@ -156,9 +156,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     if (Entity.DATABASE_SERVICE.equals(updated.getService().getType())) {
-      assertNull(
-          JsonUtils.convertValue(updated.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class)
-              .getDbtConfigSource());
+      assertNull(JsonUtils.convertValue(updated.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class));
     }
   }
 

@@ -19,11 +19,6 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
-import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
-import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
-import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig;
-import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
 import org.openmetadata.schema.security.client.AzureSSOClientConfig;
 import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
@@ -33,9 +28,6 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.service.Entity;
 
 public class IngestionPipelineBuilder {
-
-  private static final List<Class<?>> DBT_CONFIG_CLASSES =
-      List.of(DbtCloudConfig.class, DbtGCSConfig.class, DbtHttpConfig.class, DbtLocalConfig.class, DbtS3Config.class);
 
   private static final List<Class<?>> SECURITY_CONFIG_CLASSES =
       List.of(
@@ -59,11 +51,7 @@ public class IngestionPipelineBuilder {
       DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
           JsonUtils.convertValue(
               ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
-      ingestionPipeline
-          .getSourceConfig()
-          .setConfig(
-              databaseServiceMetadataPipeline.withDbtConfigSource(
-                  buildDbtConfigSource(databaseServiceMetadataPipeline.getDbtConfigSource())));
+      ingestionPipeline.getSourceConfig();
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline
@@ -72,10 +60,6 @@ public class IngestionPipelineBuilder {
               buildSecurityConfig(ingestionPipeline.getOpenMetadataServerConnection().getSecurityConfig()));
     }
     return ingestionPipeline;
-  }
-
-  private static Object buildDbtConfigSource(Object config) {
-    return buildBasedOnClassList(config, DBT_CONFIG_CLASSES);
   }
 
   private static Object buildSecurityConfig(Object config) {
