@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { RestoreEntitiesRequestType } from 'Models';
+import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfile,
   Table,
@@ -160,16 +161,33 @@ export const putTableProfileConfig = async (
 };
 
 export const getTableProfilesList = async (
-  tableId: string,
+  tableFqn: string,
   params?: {
     startTs?: number;
     endTs?: number;
   }
 ) => {
-  const url = `/tables/${tableId}/tableProfile`;
+  const url = `/tables/${tableFqn}/tableProfile`;
 
   const response = await APIClient.get<{
     data: TableProfile[];
+    paging: Paging;
+  }>(url, { params });
+
+  return response.data;
+};
+
+export const getSystemProfileList = async (
+  tableFqn: string,
+  params?: {
+    startTs?: number;
+    endTs?: number;
+  }
+) => {
+  const url = `/tables/${tableFqn}/systemProfile`;
+
+  const response = await APIClient.get<{
+    data: SystemProfile[];
     paging: Paging;
   }>(url, { params });
 

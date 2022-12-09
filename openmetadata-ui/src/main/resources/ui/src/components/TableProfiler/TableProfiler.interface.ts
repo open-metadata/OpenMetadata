@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Column } from '../../generated/entity/data/table';
+import { SystemProfile } from '../../generated/api/data/createTableProfile';
+import { Column, TableProfile } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
@@ -64,4 +65,9 @@ export type OverallTableSummeryType = {
   title: string;
   value: number | string;
   className?: string;
+};
+
+export type TableProfilerData = {
+  tableProfilerData: TableProfile[];
+  systemProfilerData: SystemProfile[];
 };

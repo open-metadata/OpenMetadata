@@ -14,19 +14,27 @@
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getTableProfilesList } from '../../../axiosAPIs/tableAPI';
-import { TableProfile } from '../../../generated/entity/data/table';
 import {
+  getSystemProfileList,
+  getTableProfilesList,
+} from '../../../axiosAPIs/tableAPI';
+import {
+  getCurrentDateTimeMillis,
   getCurrentDateTimeStamp,
   getPastDatesTimeStampFromCurrentDate,
+  getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { TableProfilerData } from '../TableProfiler.interface';
 
 const TableProfilerChart = () => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
-  const [profilerData, setProfilerData] = useState<TableProfile[]>([]);
+  const [profilerData, setProfilerData] = useState<TableProfilerData>({
+    tableProfilerData: [],
+    systemProfilerData: [],
+  });
 
-  const fetchProfilerData = async (fqn: string, days = 3) => {
+  const fetchTableProfiler = async (fqn: string, days = 3) => {
     try {
       const startTs = getPastDatesTimeStampFromCurrentDate(days);
 
@@ -37,10 +45,31 @@ const TableProfilerChart = () => {
         endTs,
       });
 
-      setProfilerData(data);
+      setProfilerData((prev) => ({ ...prev, tableProfilerData: data }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
+  };
+  const fetchSystemProfiler = async (fqn: string, days = 3) => {
+    try {
+      const startTs = getPastDaysDateTimeMillis(days);
+
+      const endTs = getCurrentDateTimeMillis();
+
+      const { data } = await getSystemProfileList(fqn, {
+        startTs,
+        endTs,
+      });
+
+      setProfilerData((prev) => ({ ...prev, systemProfilerData: data }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchProfilerData = async (fqn: string, days = 3) => {
+    fetchTableProfiler(fqn, days);
+    fetchSystemProfiler(fqn, days);
   };
 
   useEffect(() => {
