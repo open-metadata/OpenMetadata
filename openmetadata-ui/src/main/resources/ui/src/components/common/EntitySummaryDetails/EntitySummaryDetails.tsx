@@ -18,7 +18,6 @@ import { isString, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GROUP_TEAM_TYPE_CHANGE_MSG } from '../../../constants/HelperTextUtil';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
 import { TeamType } from '../../../generated/entity/teams/team';
@@ -252,11 +251,15 @@ const EntitySummaryDetails = ({
                 <InfoIcon
                   content={
                     displayVal
-                      ? `This Entity is Owned by ${displayVal} ${
-                          !isUndefined(userDetails)
-                            ? `and followed team owned by ${userDetails.ownerName}`
-                            : ''
-                        }`
+                      ? `${t('message.entity-owned-by-name', {
+                          entityOwner: displayVal ?? '',
+                        })}
+                        
+                        ${t('message.and-followed-owned-by-name', {
+                          userName: !isUndefined(userDetails)
+                            ? userDetails.ownerName
+                            : '',
+                        })}`
                       : ''
                   }
                 />
@@ -335,7 +338,9 @@ const EntitySummaryDetails = ({
                 <Tooltip
                   placement="bottom"
                   title={
-                    isGroupType ? GROUP_TEAM_TYPE_CHANGE_MSG : 'Edit Team Type'
+                    isGroupType
+                      ? t('message.group-team-type-change-message')
+                      : t('label.edit-team-type')
                   }>
                   <AntdButton
                     className={isGroupType ? 'tw-opacity-50' : ''}
