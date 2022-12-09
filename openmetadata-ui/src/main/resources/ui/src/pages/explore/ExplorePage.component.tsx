@@ -36,11 +36,13 @@ import {
   INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   filterObjectToElasticsearchQuery,
   isFilterObject,
 } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { QueryFilterInterface } from './ExplorePage.interface';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
@@ -80,7 +82,7 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
 
-  const elasticsearchPostFilterQuery = useMemo(
+  const elasticsearchQueryFilter = useMemo(
     () => filterObjectToElasticsearchQuery(postFilter),
     [postFilter]
   );
@@ -185,14 +187,25 @@ const ExplorePage: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
+  const combinedQueryFilter = useMemo(
+    () =>
+      // Both query filter objects have type as Record<string, unknown>
+      // Here unknown will not allow us to directly access the properties
+      // That is why I first did typecast it into QueryFilterInterface type to access the properties.
+      getCombinedQueryFilterObject(
+        elasticsearchQueryFilter as unknown as QueryFilterInterface,
+        advancesSearchQueryFilter as unknown as QueryFilterInterface
+      ),
+    [elasticsearchQueryFilter, advancesSearchQueryFilter]
+  );
+
   useDeepCompareEffect(() => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
         query: searchQueryParam,
         searchIndex,
-        queryFilter: advancesSearchQueryFilter,
-        postFilter: elasticsearchPostFilterQuery,
+        queryFilter: combinedQueryFilter,
         sortField: sortValue,
         sortOrder,
         pageNumber: page,
@@ -213,8 +226,7 @@ const ExplorePage: FunctionComponent = () => {
             query: searchQueryParam,
             pageNumber: 0,
             pageSize: 0,
-            queryFilter: advancesSearchQueryFilter,
-            postFilter: elasticsearchPostFilterQuery,
+            queryFilter: combinedQueryFilter,
             searchIndex: index,
             includeDeleted: showDeleted,
             trackTotalHits: true,
@@ -248,7 +260,7 @@ const ExplorePage: FunctionComponent = () => {
     sortOrder,
     showDeleted,
     advancesSearchQueryFilter,
-    elasticsearchPostFilterQuery,
+    elasticsearchQueryFilter,
     page,
   ]);
 

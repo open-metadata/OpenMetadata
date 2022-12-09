@@ -19,9 +19,10 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Dict, List
 
 from sqlalchemy import Column
+from sqlalchemy.engine.row import Row
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
@@ -30,16 +31,15 @@ from metadata.interfaces.profiler_protocol import (
     ProfilerProtocol,
 )
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
+from metadata.orm_profiler.metrics.core import MetricTypes
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.metrics.sqa_metrics_computation_registry import (
-    compute_metrics_registry,
-)
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.utils.connections import (
     create_and_bind_thread_safe_session,
     get_connection,
 )
+from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
@@ -94,6 +94,192 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         engine = get_connection(service_connection_config)
         return create_and_bind_thread_safe_session(engine)
 
+    @valuedispatch
+    def _get_metrics(self, *args, **kwargs):
+        """Generic getter method for metrics. To be used with
+        specific dispatch methods
+        """
+        logger.warning("Could not get metric. No function registered.")
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Table.value)
+    def _(
+        self,
+        metric_type: str,
+        metrics: List[Metrics],
+        runner: QueryRunner,
+        session,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        try:
+            row = runner.select_first_from_sample(
+                *[metric().fn() for metric in metrics]
+            )
+
+            if row:
+                return dict(row)
+            return None
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
+            )
+            session.rollback()
+            raise RuntimeError(exc)
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Static.value)
+    def _(
+        self,
+        metric_type: str,
+        metrics: List[Metrics],
+        runner: QueryRunner,
+        session,
+        column: Column,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        try:
+            row = runner.select_first_from_sample(
+                *[
+                    metric(column).fn()
+                    for metric in metrics
+                    if not metric.is_window_metric()
+                ]
+            )
+            return dict(row)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            )
+            session.rollback()
+            raise RuntimeError(exc)
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Query.value)
+    def _(
+        self,
+        metric_type: str,
+        metric: Metrics,
+        runner: QueryRunner,
+        session,
+        column: Column,
+        sample,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        try:
+            col_metric = metric(column)
+            metric_query = col_metric.query(sample=sample, session=session)
+            if not metric_query:
+                return None
+            if col_metric.metric_type == dict:
+                results = runner.select_all_from_query(metric_query)
+                data = {k: [result[k] for result in results] for k in dict(results[0])}
+                return {metric.name(): data}
+
+            row = runner.select_first_from_query(metric_query)
+            return dict(row)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            )
+            session.rollback()
+            raise RuntimeError(exc)
+
+    # pylint: disable=unused-argument
+    @_get_metrics.register(MetricTypes.Window.value)
+    def _(
+        self,
+        metric_type: str,
+        metric: Metrics,
+        runner: QueryRunner,
+        session,
+        column: Column,
+        *args,
+        **kwargs,
+    ):
+        """Given a list of metrics, compute the given results
+        and returns the values
+
+        Args:
+            column: the column to compute the metrics against
+            metrics: list of metrics to compute
+        Returns:
+            dictionnary of results
+        """
+        try:
+            row = runner.select_first_from_sample(metric(column).fn())
+            if not isinstance(row, Row):
+                return {metric.name(): row}
+            return dict(row)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            )
+            session.rollback()
+            raise RuntimeError(exc)
+
+    @_get_metrics.register(MetricTypes.System.value)
+    def _(
+        self,
+        metric_type: str,
+        metric: Metrics,
+        runner: QueryRunner,
+        session,
+        *args,
+        **kwargs,
+    ):
+        """Get system metric for tables
+
+        Args:
+            metric_type: type of metric
+            metrics: list of metrics to compute
+            session: SQA session object
+
+        Returns:
+            dictionnary of results
+        """
+        try:
+            rows = metric().sql(session, conn_config=self.service_connection_config)
+            return rows
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
+            )
+            session.rollback()
+            raise RuntimeError(exc)
+
     def _create_thread_safe_sampler(
         self,
         session,
@@ -129,15 +315,12 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
 
     def compute_metrics_in_thread(
         self,
-        metric_funcs,
+        metrics,
+        metric_type,
+        column,
+        table,
     ):
         """Run metrics in processor worker"""
-        (
-            metrics,
-            metric_type,
-            column,
-            table,
-        ) = metric_funcs
         logger.debug(
             f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
         )
@@ -155,19 +338,28 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
                 sample,
             )
 
-            row = compute_metrics_registry.registry[metric_type.value](
-                metrics,
-                runner=runner,
-                session=session,
-                column=column,
-                sample=sample,
-                processor_status=self.processor_status,
-            )
+            try:
+                row = self._get_metrics(
+                    metric_type.value,
+                    metrics,
+                    runner=runner,
+                    session=session,
+                    column=column,
+                    sample=sample,
+                )
+            except Exception as exc:
+                logger.error(exc)
+                self.processor_status.failure(
+                    f"{column if column is not None else runner.table.__tablename__}",
+                    "metric_type.value",
+                    f"{exc}",
+                )
+                row = None
 
             if column is not None:
                 column = column.name
 
-            return row, column
+            return row, column, metric_type.value
 
     # pylint: disable=use-dict-literal
     def get_all_metrics(
@@ -183,17 +375,21 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             futures = [
                 executor.submit(
                     self.compute_metrics_in_thread,
-                    metric_func,
+                    *metric_func,
                 )
                 for metric_func in metric_funcs
             ]
 
         for future in concurrent.futures.as_completed(futures):
-            profile, column = future.result()
-            if not isinstance(profile, dict):
+            profile, column, metric_type = future.result()
+            if metric_type != MetricTypes.System.value and not isinstance(
+                profile, dict
+            ):
                 profile = dict()
-            if not column:
+            if metric_type == MetricTypes.Table.value:
                 profile_results["table"].update(profile)
+            elif metric_type == MetricTypes.System.value:
+                profile_results["system"] = profile
             else:
                 profile_results["columns"][column].update(
                     {
