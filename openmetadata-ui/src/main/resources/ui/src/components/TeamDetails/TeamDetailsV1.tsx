@@ -44,7 +44,6 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { TEAMS_DOCS } from '../../constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -275,7 +274,7 @@ const TeamDetailsV1 = ({
               title={
                 entityPermissions.EditAll
                   ? t('label.remove')
-                  : NO_PERMISSION_FOR_ACTION
+                  : t('message.no-permission-for-action')
               }>
               <ButtonAntd
                 data-testid="remove-user-btn"
@@ -787,7 +786,7 @@ const TeamDetailsV1 = ({
             disabled: !entityPermissions.EditAll,
             title: entityPermissions.EditAll
               ? t('label.add-new-user')
-              : t('label.no-permission-for-action'),
+              : t('message.no-permission-for-action'),
 
             onClick: () => handleAddUser(true),
             label: t('label.add-new-user'),
@@ -817,7 +816,7 @@ const TeamDetailsV1 = ({
                     title={
                       entityPermissions.EditAll
                         ? t('label.add-user')
-                        : t('label.no-permission-for-action')
+                        : t('message.no-permission-for-action')
                     }
                     variant="contained"
                     onClick={() => {
@@ -999,7 +998,7 @@ const TeamDetailsV1 = ({
                       ? t('label.edit-entity', {
                           entity: t('label.display-name'),
                         })
-                      : t('label.no-permission-for-action')
+                      : t('message.no-permission-for-action')
                   }>
                   <button
                     className="tw-ml-2 focus:tw-outline-none"
@@ -1157,7 +1156,7 @@ const TeamDetailsV1 = ({
                   fetchErrorPlaceHolder({
                     title: createTeamPermission
                       ? t('label.add-team')
-                      : NO_PERMISSION_FOR_ACTION,
+                      : t('message.no-permission-for-action'),
                     label: t('label.add-team'),
                     onClick: () => handleAddTeam(true),
                     disabled: !createTeamPermission,
@@ -1186,7 +1185,7 @@ const TeamDetailsV1 = ({
                           title={
                             createTeamPermission
                               ? t('label.add-team')
-                              : t('label.no-permission-for-action')
+                              : t('message.no-permission-for-action')
                           }
                           type="primary"
                           onClick={() => handleAddTeam(true)}>
@@ -1212,7 +1211,7 @@ const TeamDetailsV1 = ({
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
                       ? t('label.add-role')
-                      : t('label.no-permission-for-action'),
+                      : t('message.no-permission-for-action'),
                     label: t('label.add-role'),
                     onClick: () =>
                       setAddAttribute({
@@ -1233,7 +1232,7 @@ const TeamDetailsV1 = ({
                       title={
                         entityPermissions.EditAll
                           ? t('label.add-role')
-                          : t('label.no-permission-for-action')
+                          : t('message.no-permission-for-action')
                       }
                       type="primary"
                       onClick={() =>
@@ -1259,7 +1258,7 @@ const TeamDetailsV1 = ({
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
                       ? t('label.add-policy')
-                      : t('label.no-permission-for-action'),
+                      : t('message.no-permission-for-action'),
                     label: t('label.add-policy'),
                     datatestid: 'add-policy',
                     onClick: () =>
@@ -1280,7 +1279,7 @@ const TeamDetailsV1 = ({
                       title={
                         entityPermissions.EditAll
                           ? t('label.add-policy')
-                          : t('label.no-permission-for-action')
+                          : t('message.no-permission-for-action')
                       }
                       type="primary"
                       onClick={() =>
@@ -1316,7 +1315,7 @@ const TeamDetailsV1 = ({
                 title={
                   createTeamPermission
                     ? t('label.add-team')
-                    : t('label.no-permission-for-action')
+                    : t('message.no-permission-for-action')
                 }
                 variant="outlined"
                 onClick={() => handleAddTeam(true)}>
