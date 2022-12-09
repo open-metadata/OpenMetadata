@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
+export interface DropDownOption {
+  key: string;
+  label: string;
+}
 
-export const NO_PERMISSION_FOR_ACTION = t('message.no-permission-for-action');
-
-export const NO_PERMISSION_TO_VIEW = t('message.no-permission-to-view');
-
-export const ADMIN_ONLY_ACTION = t('label.admin-only-action');
+export interface SearchDropdownProps {
+  label: string;
+  options: DropDownOption[];
+  searchKey: string;
+  selectedKeys: string[];
+  showClear?: boolean;
+  onChange: (values: string[], searchKey: string) => void;
+  onSearch: (searchText: string, searchKey: string) => void;
+}

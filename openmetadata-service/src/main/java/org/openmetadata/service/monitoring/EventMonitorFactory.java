@@ -22,6 +22,8 @@ public class EventMonitorFactory {
 
     if (eventMonitorProvider == EventMonitorProvider.CLOUDWATCH) {
       return new CloudwatchEventMonitor(eventMonitorProvider, config, clusterName);
+    } else if (eventMonitorProvider == EventMonitorProvider.PROMETHEUS) {
+      return new PrometheusEventMonitor(eventMonitorProvider, config, clusterName);
     }
 
     throw new IllegalArgumentException("Not implemented Event monitor: " + eventMonitorProvider);
