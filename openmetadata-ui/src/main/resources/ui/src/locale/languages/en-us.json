@@ -381,6 +381,7 @@
     "hide": "Hide",
     "restore-team": "Restore Team",
     "remove": "Remove",
+    "data-insight-plural": "Data Insights",
     "configure-entity": "Configure {{entity}}",
     "name-lowercase": "name",
     "field-invalid": "{{field}} is invalid",
@@ -421,7 +422,11 @@
     "event-filters": "Event Filters",
     "show-or-hide-advanced-config": "{{showAdv}} Advanced Config",
     "advanced-config": "Advanced Config",
-    "batch-size": "Batch Size"
+    "batch-size": "Batch Size",
+    "mention-you-thread-lowercase": "mentioned you on the",
+    "assign-you-task-lowercase": "assigned you a new task",
+    "updated-by": "Updated by",
+    "on-lowercase": "on"
   },
   "message": {
     "service-email-required": "Service account Email is required",
