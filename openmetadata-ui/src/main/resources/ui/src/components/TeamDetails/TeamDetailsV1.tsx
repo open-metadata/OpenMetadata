@@ -30,7 +30,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined, orderBy, toLower } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -1068,11 +1068,11 @@ const TeamDetailsV1 = ({
                     extraDropdownContent={extraDropdownContent}
                     hardDeleteMessagePostFix={getDeleteMessagePostFix(
                       currentTeam.fullyQualifiedName || currentTeam.name,
-                      toLower(t('label.permanently'))
+                      t('label.permanently-lowercase')
                     )}
                     softDeleteMessagePostFix={getDeleteMessagePostFix(
                       currentTeam.fullyQualifiedName || currentTeam.name,
-                      toLower(t('label.soft'))
+                      t('label.soft-lowercase')
                     )}
                   />
                 )}

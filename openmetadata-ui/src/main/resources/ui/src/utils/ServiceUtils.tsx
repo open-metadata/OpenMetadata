@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
-import { toLower } from 'lodash';
 import {
   Bucket,
   DynamicFormFieldType,
@@ -612,20 +611,20 @@ export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES:
-      serviceCat = toLower(t('label.database'));
+      serviceCat = t('label.database-lowercase');
 
       break;
     case ServiceCategory.MESSAGING_SERVICES:
-      serviceCat = toLower(t('label.messaging'));
+      serviceCat = t('label.messaging-lowercase');
 
       break;
     case ServiceCategory.DASHBOARD_SERVICES:
-      serviceCat = toLower(t('label.dashboard'));
+      serviceCat = t('label.dashboard-lowercase');
 
       break;
 
     case ServiceCategory.PIPELINE_SERVICES:
-      serviceCat = toLower(t('label.pipeline'));
+      serviceCat = t('label.pipeline-lowercase');
 
       break;
     default:
@@ -634,7 +633,7 @@ export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
       break;
   }
 
-  return [serviceCat, toLower(t('label.service'))].join(' ');
+  return [serviceCat, t('label.service-lowercase')].join(' ');
 };
 
 export const setServiceSchemaCount = (

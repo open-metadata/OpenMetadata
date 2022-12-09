@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { toLower, upperCase } from 'lodash';
+import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
@@ -53,9 +53,9 @@ import SVGIcons, { Icons } from './SvgUtils';
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
     case 'QUERY':
-      return toLower(t('label.query'));
+      return t('label.query-lowercase');
     default:
-      return toLower(t('label.table'));
+      return t('label.table-lowercase');
   }
 };
 
