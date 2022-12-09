@@ -5,6 +5,6 @@
   "description": "OpenMetadata Event Monitor Provider.",
   "type": "string",
   "javaType": "org.openmetadata.schema.monitoring.EventMonitorProvider",
-  "enum": ["cloudwatch"],
+  "enum": ["cloudwatch", "prometheus"],
   "additionalProperties": false
 }
