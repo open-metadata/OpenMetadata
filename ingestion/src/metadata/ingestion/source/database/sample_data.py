@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate
+#  Copyright 2021 Collate pylint: disable=too-many-lines
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -665,6 +665,9 @@ class SampleDataSource(
             yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
+        """
+        Ingest Sample Topics
+        """
         for topic in self.topics["topics"]:
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
