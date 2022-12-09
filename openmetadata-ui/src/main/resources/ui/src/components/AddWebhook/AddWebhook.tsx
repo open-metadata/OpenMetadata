@@ -410,13 +410,17 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               {showErrorMsg.name
                 ? errorMsg(
                     t('message.field-text-is-required', {
-                      fieldText: 'Webhook name',
+                      fieldText: t('label.webhook-display-text', {
+                        displayText: toLower(t('label.name')),
+                      }),
                     })
                   )
                 : showErrorMsg.invalidName
                 ? errorMsg(
                     t('message.field-text-is-invalid', {
-                      fieldText: 'Webhook name',
+                      fieldText: t('label.webhook-display-text', {
+                        displayText: toLower(t('label.name')),
+                      }),
                     })
                   )
                 : null}
@@ -452,13 +456,17 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               {showErrorMsg.endpointUrl
                 ? errorMsg(
                     t('message.field-text-is-required', {
-                      fieldText: 'Webhook endpoint',
+                      fieldText: t('label.webhook-display-text', {
+                        displayText: toLower(t('label.endpoint')),
+                      }),
                     })
                   )
                 : showErrorMsg.invalidEndpointUrl
                 ? errorMsg(
                     t('message.field-text-is-invalid', {
-                      fieldText: 'Webhook endpoint',
+                      fieldText: t('label.webhook-display-text', {
+                        displayText: toLower(t('label.endpoint')),
+                      }),
                     })
                   )
                 : null}

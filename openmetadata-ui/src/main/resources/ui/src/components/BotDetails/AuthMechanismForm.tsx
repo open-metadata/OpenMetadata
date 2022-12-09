@@ -653,7 +653,7 @@ const AuthMechanismForm: FC<Props> = ({
           onOk={handleAccountEmailChange}>
           <Typography.Text>
             {t('message.bot-email-confirmation', {
-              email: t('label.update-email-account-for-bot'),
+              email: t('label.create-or-update-email-account-for-bot'),
               botName: botData.name,
             })}
           </Typography.Text>
