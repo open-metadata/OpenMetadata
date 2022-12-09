@@ -109,7 +109,7 @@
         "properties": {
           "name": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer_jp"
           },
           "value": {
             "type": "text"
