@@ -22,6 +22,7 @@ import {
 import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
+  PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import {
   calculateRowCountMetrics,
@@ -40,8 +41,9 @@ import Loader from '../../Loader/Loader';
 import ProfilerDetailsCard from '../../ProfilerDashboard/component/ProfilerDetailsCard';
 import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLatestValue';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
+import { TableProfilerChartProps } from '../TableProfiler.interface';
 
-const TableProfilerChart = () => {
+const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
@@ -87,6 +89,7 @@ const TableProfilerChart = () => {
   };
 
   const fetchProfilerData = async (fqn: string, days = 3) => {
+    setIsLoading(true);
     await fetchTableProfiler(fqn, days);
     await fetchSystemProfiler(fqn, days);
     setIsLoading(false);
@@ -94,9 +97,12 @@ const TableProfilerChart = () => {
 
   useEffect(() => {
     if (datasetFQN) {
-      fetchProfilerData(datasetFQN);
+      fetchProfilerData(
+        datasetFQN,
+        PROFILER_FILTER_RANGE[selectedTimeRange].days
+      );
     }
-  }, [datasetFQN]);
+  }, [datasetFQN, selectedTimeRange]);
 
   if (isLoading) {
     return <Loader />;

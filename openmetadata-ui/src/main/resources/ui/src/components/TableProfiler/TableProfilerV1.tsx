@@ -35,7 +35,10 @@ import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg'
 import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
-import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
+import {
+  INITIAL_TEST_RESULT_SUMMARY,
+  PROFILER_FILTER_RANGE,
+} from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { Table } from '../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
@@ -83,6 +86,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   const [selectedTestType, setSelectedTestType] = useState('');
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+  const [selectedTimeRange, setSelectedTimeRange] =
+    useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const isSummary = activeTab === ProfilerDashboardTab.SUMMARY;
   const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
   const isProfiler = activeTab === ProfilerDashboardTab.PROFILER;
@@ -176,8 +181,21 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
     },
   ];
 
+  const timeRangeOption = useMemo(() => {
+    return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
+      label: value.title,
+      value: key,
+    }));
+  }, []);
+
   const handleTabChange: MenuProps['onClick'] = (value) => {
     setActiveTab(value.key as ProfilerDashboardTab);
+  };
+
+  const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
+    if (value !== selectedTimeRange) {
+      setSelectedTimeRange(value);
+    }
   };
 
   const fetchAllTests = async (params?: ListTestCaseParams) => {
@@ -323,6 +341,15 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
               </>
             )}
 
+            {isProfiler && (
+              <Select
+                className="tw-w-32"
+                options={timeRangeOption}
+                value={selectedTimeRange}
+                onChange={handleTimeRangeChange}
+              />
+            )}
+
             <Tooltip
               title={
                 editTest
@@ -441,7 +468,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
             />
           )}
 
-          {isProfiler && <TableProfilerChart />}
+          {isProfiler && (
+            <TableProfilerChart selectedTimeRange={selectedTimeRange} />
+          )}
 
           {settingModalVisible && (
             <ProfilerSettingsModal

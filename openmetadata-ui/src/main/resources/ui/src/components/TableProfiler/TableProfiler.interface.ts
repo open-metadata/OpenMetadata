@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import { Column, TableProfile } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
@@ -70,4 +71,8 @@ export type OverallTableSummeryType = {
 export type TableProfilerData = {
   tableProfilerData: TableProfile[];
   systemProfilerData: SystemProfile[];
+};
+
+export type TableProfilerChartProps = {
+  selectedTimeRange: keyof typeof PROFILER_FILTER_RANGE;
 };
