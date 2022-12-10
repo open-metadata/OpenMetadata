@@ -450,6 +450,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const handleSchemaFieldsUpdate = async (
+    updatedSchemaFields: Topic['schemaFields']
+  ) => {
+    await settingsUpdateHandler({
+      ...topicDetails,
+      schemaFields: updatedSchemaFields,
+    });
+  };
+
   useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
@@ -562,14 +571,18 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   {schemaText ? (
                     <Fragment>
                       {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                      {/* <div
-                        className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
-                        data-testid="schema">
-                        <SchemaEditor value={schemaText} />
-                      </div> */}
                       <TopicSchemaFields
                         className="mt-4"
+                        hasDescriptionEditAccess={
+                          topicPermissions.EditAll ||
+                          topicPermissions.EditDescription
+                        }
+                        hasTagEditAccess={
+                          topicPermissions.EditAll || topicPermissions.EditTags
+                        }
+                        isReadOnly={Boolean(deleted)}
                         schemaFields={topicDetails.schemaFields}
+                        onUpdate={handleSchemaFieldsUpdate}
                       />
                     </Fragment>
                   ) : (

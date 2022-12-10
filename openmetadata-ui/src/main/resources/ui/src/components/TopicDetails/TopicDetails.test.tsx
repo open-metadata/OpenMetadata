@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -163,6 +168,12 @@ jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 
+jest.mock('./TopicSchemaFields/TopicSchemaFields', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="schema-fields">TopicSchemaFields</div>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
@@ -203,8 +214,10 @@ describe('Test TopicDetails component', () => {
       wrapper: MemoryRouter,
     });
     const schema = await findByTestId(container, 'label.schema');
+    const schemaFields = await screen.findByTestId('schema-fields');
 
     expect(schema).toBeInTheDocument();
+    expect(schemaFields).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {
