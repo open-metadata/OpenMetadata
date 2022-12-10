@@ -18,8 +18,10 @@ import Table, { ColumnsType, TableProps } from 'antd/lib/table';
 import React, { FC, HTMLAttributes, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field, Topic } from '../../../generated/entity/data/topic';
+import { getEntityName } from '../../../utils/CommonUtils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import TagsViewer from '../../tags-viewer/tags-viewer';
+import { nestedField } from './TopicScheamFields.mock';
 
 interface TopicSchemaFieldsProps extends HTMLAttributes<TableProps<Field>> {
   schemaFields: Topic['schemaFields'];
@@ -40,9 +42,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         accessor: 'name',
         ellipsis: true,
         width: 220,
-        render: (name: Field['name']) => (
-          <Popover destroyTooltipOnHide content={name} trigger="hover">
-            <Typography.Text>{name}</Typography.Text>
+        render: (_, record: Field) => (
+          <Popover
+            destroyTooltipOnHide
+            content={getEntityName(record)}
+            trigger="hover">
+            <Typography.Text>{getEntityName(record)}</Typography.Text>
           </Popover>
         ),
       },
@@ -96,7 +101,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       className={className}
       columns={columns}
       data-testid="topic-schema-fields-table"
-      dataSource={schemaFields}
+      dataSource={[nestedField, ...(schemaFields ?? [])]}
       expandable={{
         rowExpandable: (record) =>
           Boolean(record.children && record.children.length > 0),
@@ -105,12 +110,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           expandable && (
             <span
               className="m-r-xs cursor-pointer"
-              onClick={(e) =>
-                onExpand(
-                  record,
-                  e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
-                )
-              }>
+              onClick={(e) => onExpand(record, e)}>
               <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
             </span>
           ),
