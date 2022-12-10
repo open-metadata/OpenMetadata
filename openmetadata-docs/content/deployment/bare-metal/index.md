@@ -180,7 +180,10 @@ For Production Systems, we recommend Amazon RDS to be in Multiple Availability Z
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata bare metal systems to connect with Database and ElasticSearch.
 
-### MySQL Config 
+
+Below are the environment variables for OpenMetadata Server
+
+### Configure MySQL connection
 
 ```
 # MySQL Environment Variables
@@ -194,7 +197,7 @@ DB_PORT='<YOUR_MYSQL_PORT>'
 OM_DATABASE='<YOUR_MYSQL_DATABASE_NAME>'
 ```
 
-### Postgres Config
+### Configure Postgres Connection
 
 ```
 # Postgres Environment Variables
@@ -208,7 +211,7 @@ DB_PORT='<YOUR_POSTGRES_PORT>'
 OM_DATABASE='<YOUR_POSTGRES_DATABASE_NAME>'
 ```
 
-### ElasticSearch Environment Variables
+### Configure ElasticSearch Connection
 ```
 ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
 ELASTICSEARCH_USER='<ES_USERNAME>'
