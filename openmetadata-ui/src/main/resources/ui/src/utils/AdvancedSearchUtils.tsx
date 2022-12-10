@@ -12,7 +12,7 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import i18next from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -135,4 +135,32 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   }
 
   return <></>;
+};
+
+export const getSearchDropdownLabels = (
+  optionsArray: string[],
+  checked: boolean
+): MenuProps['items'] =>
+  optionsArray.map((option) => ({
+    key: option,
+    label: (
+      <Space data-testid={option} size={6}>
+        <Checkbox checked={checked} data-testid={option} />
+        <Typography.Text
+          ellipsis
+          className="dropdown-option-label"
+          title={option}>
+          {option}
+        </Typography.Text>
+      </Space>
+    ),
+  }));
+
+export const getSelectedOptionLabelString = (selectedOptions: string[]) => {
+  const stringifiedOptions = String(selectedOptions);
+  if (stringifiedOptions.length < 15) {
+    return stringifiedOptions;
+  } else {
+    return `${stringifiedOptions.slice(0, 11)}...`;
+  }
 };
