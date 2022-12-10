@@ -117,9 +117,7 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 )
 
 
-
 class ProfilerPartitionUnitTest(TestCase):
-    
     @patch("metadata.orm_profiler.api.workflow.ProfilerWorkflow._validate_service_name")
     @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
