@@ -166,7 +166,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
       case TOTAL_ENTITIES_BY_TIER:
-        termsAggregationBuilder = AggregationBuilders.terms(ENTITY_TIER).field(DATA_ENTITY_TIER).size(1000);
+        termsAggregationBuilder =
+            AggregationBuilders.terms(ENTITY_TIER).field(DATA_ENTITY_TIER).missing("NoTier").size(1000);
         return dateHistogramAggregationBuilder.subAggregation(
             termsAggregationBuilder.subAggregation(sumEntityCountAggregationBuilder));
       case TOTAL_ENTITIES_BY_TYPE:
@@ -188,12 +189,15 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
                 .order(BucketOrder.aggregation(PAGE_VIEWS, false));
 
         TermsAggregationBuilder ownerTermsAggregationBuilder = AggregationBuilders.terms(OWNER).field(DATA_OWNER);
+        TermsAggregationBuilder entityTypeTermsAggregationBuilder =
+            AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE);
         SumAggregationBuilder sumEntityPageViewsAggregationBuilder =
             AggregationBuilders.sum(PAGE_VIEWS).field(DATA_VIEWS);
 
         return termsAggregationBuilder
             .subAggregation(sumEntityPageViewsAggregationBuilder)
-            .subAggregation(ownerTermsAggregationBuilder);
+            .subAggregation(ownerTermsAggregationBuilder)
+            .subAggregation(entityTypeTermsAggregationBuilder);
       case MOST_ACTIVE_USERS:
         termsAggregationBuilder =
             AggregationBuilders.terms(USER_NAME)
