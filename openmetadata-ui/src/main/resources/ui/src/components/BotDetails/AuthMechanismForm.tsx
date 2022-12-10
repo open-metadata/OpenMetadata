@@ -20,7 +20,6 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { checkEmailInUse } from '../../axiosAPIs/auth-API';
 import { createBotWithPut } from '../../axiosAPIs/botsAPI';
 import { createUserWithPut, getUserByName } from '../../axiosAPIs/userAPI';
-import { BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION } from '../../constants/HelperTextUtil';
 import { validEmailRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SsoServiceType } from '../../generated/auth/ssoAuth';
@@ -33,7 +32,6 @@ import {
   SsoClientConfig,
   User,
 } from '../../generated/entity/teams/user';
-import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import {
   getAuthMechanismFormInitialValues,
@@ -613,7 +611,7 @@ const AuthMechanismForm: FC<Props> = ({
                   pattern: validEmailRegEx,
                   required: true,
                   type: 'email',
-                  message: jsonData['form-error-messages']['invalid-email'],
+                  message: t('message.email-is-invalid'),
                 },
               ]}>
               <Input
@@ -655,7 +653,7 @@ const AuthMechanismForm: FC<Props> = ({
           onOk={handleAccountEmailChange}>
           <Typography.Text>
             {t('message.bot-email-confirmation', {
-              email: BOT_ACCOUNT_EMAIL_CHANGE_CONFIRMATION,
+              email: t('label.create-or-update-email-account-for-bot'),
               botName: botData.name,
             })}
           </Typography.Text>

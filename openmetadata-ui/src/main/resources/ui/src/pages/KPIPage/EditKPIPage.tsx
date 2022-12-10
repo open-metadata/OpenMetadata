@@ -47,7 +47,6 @@ import {
   KPI_DATE_PICKER_FORMAT,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
-import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
@@ -434,7 +433,7 @@ const EditKPIPage = () => {
             <Typography.Paragraph className="text-base font-medium">
               {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
             </Typography.Paragraph>
-            <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
+            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </Col>
         </Row>
       ) : (
