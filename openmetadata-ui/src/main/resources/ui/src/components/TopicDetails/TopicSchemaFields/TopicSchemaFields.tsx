@@ -13,25 +13,87 @@
 
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover, Space, Typography } from 'antd';
-import Table, { ColumnsType, TableProps } from 'antd/lib/table';
-import React, { FC, HTMLAttributes, useMemo } from 'react';
+import { Button, Popover, Space, Typography } from 'antd';
+import Table, { ColumnsType } from 'antd/lib/table';
+import { cloneDeep, isUndefined } from 'lodash';
+import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Field, Topic } from '../../../generated/entity/data/topic';
+import { Field } from '../../../generated/entity/data/topic';
 import { getEntityName } from '../../../utils/CommonUtils';
+import SVGIcons from '../../../utils/SvgUtils';
+import { updateFieldDescription } from '../../../utils/TopicSchemaFields.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsViewer from '../../tags-viewer/tags-viewer';
-import { nestedField } from './TopicScheamFields.mock';
-
-interface TopicSchemaFieldsProps extends HTMLAttributes<TableProps<Field>> {
-  schemaFields: Topic['schemaFields'];
-}
+import {
+  CellRendered,
+  TopicSchemaFieldsProps,
+} from './TopicSchemaFields.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   schemaFields,
   className,
+  hasDescriptionEditAccess,
+  isReadOnly,
+  onUpdate,
 }) => {
   const { t } = useTranslation();
+
+  const [editFieldDescription, setEditFieldDescription] = useState<Field>();
+
+  const handleFieldDescriptionChange = async (updatedDescription: string) => {
+    if (!isUndefined(editFieldDescription)) {
+      const fields = cloneDeep(schemaFields);
+      updateFieldDescription(
+        fields,
+        editFieldDescription.name,
+        updatedDescription
+      );
+      await onUpdate(fields);
+      setEditFieldDescription(undefined);
+    } else {
+      setEditFieldDescription(undefined);
+    }
+  };
+
+  const renderDescription: CellRendered<Field, 'description'> = (
+    description,
+    record,
+    index
+  ) => {
+    return (
+      <Space
+        className="custom-group w-full"
+        data-testid="description"
+        id={`field-description-${index}`}
+        size={4}>
+        <>
+          {description ? (
+            <RichTextEditorPreviewer markdown={description} />
+          ) : (
+            <Typography.Text className="tw-no-description">
+              {t('label.no-description')}
+            </Typography.Text>
+          )}
+        </>
+        {isReadOnly && !hasDescriptionEditAccess ? null : (
+          <Button
+            className="p-0 opacity-0 group-hover-opacity-100"
+            icon={
+              <SVGIcons
+                alt={t('label.edit')}
+                icon="icon-edit"
+                title={t('label.edit')}
+                width="16px"
+              />
+            }
+            type="text"
+            onClick={() => setEditFieldDescription(record)}
+          />
+        )}
+      </Space>
+    );
+  };
 
   const columns: ColumnsType<Field> = useMemo(
     () => [
@@ -67,17 +129,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        render: (description: Field['description']) => (
-          <>
-            {description ? (
-              <RichTextEditorPreviewer markdown={description} />
-            ) : (
-              <Typography.Text className="tw-no-description">
-                {t('label.no-description')}
-              </Typography.Text>
-            )}
-          </>
-        ),
+        render: renderDescription,
       },
       {
         title: t('label.tag-plural'),
@@ -96,28 +148,43 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   );
 
   return (
-    <Table
-      bordered
-      className={className}
-      columns={columns}
-      data-testid="topic-schema-fields-table"
-      dataSource={[nestedField, ...(schemaFields ?? [])]}
-      expandable={{
-        rowExpandable: (record) =>
-          Boolean(record.children && record.children.length > 0),
+    <>
+      <Table
+        bordered
+        className={className}
+        columns={columns}
+        data-testid="topic-schema-fields-table"
+        dataSource={schemaFields}
+        expandable={{
+          rowExpandable: (record) =>
+            Boolean(record.children && record.children.length > 0),
 
-        expandIcon: ({ expanded, onExpand, expandable, record }) =>
-          expandable && (
-            <span
-              className="m-r-xs cursor-pointer"
-              onClick={(e) => onExpand(record, e)}>
-              <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
-            </span>
-          ),
-      }}
-      pagination={false}
-      size="small"
-    />
+          expandIcon: ({ expanded, onExpand, expandable, record }) =>
+            expandable && (
+              <span
+                className="m-r-xs cursor-pointer"
+                onClick={(e) => onExpand(record, e)}>
+                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+              </span>
+            ),
+        }}
+        pagination={false}
+        size="small"
+      />
+      {editFieldDescription && (
+        <ModalWithMarkdownEditor
+          header={`${t('label.edit-entity', {
+            entity: t('label.schema-field'),
+          })}: "${editFieldDescription.name}"`}
+          placeholder={t('label.enter-field-description', {
+            field: t('label.schema-field'),
+          })}
+          value={editFieldDescription.description ?? ''}
+          onCancel={() => setEditFieldDescription(undefined)}
+          onSave={handleFieldDescriptionChange}
+        />
+      )}
+    </>
   );
 };
 
