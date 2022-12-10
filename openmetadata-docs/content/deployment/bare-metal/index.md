@@ -166,7 +166,7 @@ server {
 }
 ```
 
-## Run OpenMetadata with AWS Services or your hosted DB/ElsaticSearch
+## Run OpenMetadata with AWS Services or your hosted DB/ElasticSearch
 
 If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html) and [Amazon OpenSearch Service](https://docs.aws.amazon.com/opensearch-service/?id=docs_gateway).
 
