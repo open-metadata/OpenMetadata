@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Statistic } from 'antd';
+import { Card, Col, Row } from 'antd';
 import React from 'react';
 import {
   Legend,
@@ -25,11 +25,13 @@ import {
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
+import ProfilerLatestValue from './ProfilerLatestValue';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   chartCollection,
   tickFormatter,
   name,
+  chartType,
 }) => {
   const { data, information } = chartCollection;
 
@@ -55,20 +57,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
     <Card className="tw-rounded-md tw-border">
       <Row gutter={[16, 16]}>
         <Col span={4}>
-          <Space direction="vertical" size={16}>
-            {information.map((info) => (
-              <Statistic
-                key={info.title}
-                title={<span className="tw-text-grey-body">{info.title}</span>}
-                value={
-                  tickFormatter
-                    ? `${info.latestValue}${tickFormatter}`
-                    : formatNumberWithComma(info.latestValue as number)
-                }
-                valueStyle={{ color: info.color }}
-              />
-            ))}
-          </Space>
+          <ProfilerLatestValue
+            information={information}
+            tickFormatter={tickFormatter}
+          />
         </Col>
         <Col span={20}>
           {data.length > 0 ? (
@@ -98,7 +90,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     key={info.dataKey}
                     name={info.title}
                     stroke={info.color}
-                    type="monotone"
+                    type={chartType ?? 'monotone'}
                   />
                 ))}
                 <Legend formatter={renderColorfulLegendText} />

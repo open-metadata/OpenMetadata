@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -19,8 +19,14 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../axiosAPIs/tableAPI';
-import { INITIAL_ROW_METRIC_VALUE } from '../../../constants/profiler.constant';
-import { calculateRowCountMetrics } from '../../../utils/TableProfilerUtls';
+import {
+  INITIAL_OPERATION_METRIC_VALUE,
+  INITIAL_ROW_METRIC_VALUE,
+} from '../../../constants/profiler.constant';
+import {
+  calculateRowCountMetrics,
+  calculateSystemMetrics,
+} from '../../../utils/TableProfilerUtils';
 import {
   getCurrentDateTimeMillis,
   getCurrentDateTimeStamp,
@@ -28,19 +34,25 @@ import {
   getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import CustomBarChartProps from '../../Chart/CustomBarChart';
+import OperationDateBarChart from '../../Chart/OperationDateBarChart';
+import Loader from '../../Loader/Loader';
 import ProfilerDetailsCard from '../../ProfilerDashboard/component/ProfilerDetailsCard';
+import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLatestValue';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
-import { TableProfilerData } from '../TableProfiler.interface';
 
 const TableProfilerChart = () => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
-  const [profilerData, setProfilerData] = useState<TableProfilerData>({
-    tableProfilerData: [],
-    systemProfilerData: [],
-  });
+
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
   );
+  const [operationMetrics, setOperationMetrics] = useState<MetricChartType>(
+    INITIAL_OPERATION_METRIC_VALUE
+  );
+  const [operationDateMetrics, setOperationDateMetrics] =
+    useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchTableProfiler = async (fqn: string, days = 3) => {
     try {
@@ -52,7 +64,6 @@ const TableProfilerChart = () => {
       });
       const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
       setRowCountMetrics(rowMetricsData);
-      setProfilerData((prev) => ({ ...prev, tableProfilerData: data }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -65,15 +76,20 @@ const TableProfilerChart = () => {
         startTs,
         endTs,
       });
-      setProfilerData((prev) => ({ ...prev, systemProfilerData: data }));
+      const { operationMetrics: metricsData, operationDateMetrics } =
+        calculateSystemMetrics(data, operationMetrics);
+
+      setOperationDateMetrics(operationDateMetrics);
+      setOperationMetrics(metricsData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
   const fetchProfilerData = async (fqn: string, days = 3) => {
-    fetchTableProfiler(fqn, days);
-    fetchSystemProfiler(fqn, days);
+    await fetchTableProfiler(fqn, days);
+    await fetchSystemProfiler(fqn, days);
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -82,11 +98,49 @@ const TableProfilerChart = () => {
     }
   }, [datasetFQN]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
+        <Card className="tw-rounded-md tw-border">
+          <Row gutter={[16, 16]}>
+            <Col span={4}>
+              <ProfilerLatestValue
+                stringValue
+                information={operationDateMetrics.information}
+              />
+            </Col>
+            <Col span={20}>
+              <OperationDateBarChart
+                chartCollection={operationDateMetrics}
+                name="operationDateMetrics"
+              />
+            </Col>
+          </Row>
+        </Card>
+      </Col>
+      <Col span={24}>
+        <Card className="tw-rounded-md tw-border">
+          <Row gutter={[16, 16]}>
+            <Col span={4}>
+              <ProfilerLatestValue information={operationMetrics.information} />
+            </Col>
+            <Col span={20}>
+              <CustomBarChartProps
+                chartCollection={operationMetrics}
+                name="operationMetrics"
+              />
+            </Col>
+          </Row>
+        </Card>
+      </Col>
+      <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={rowCountMetrics}
+          chartType="stepAfter"
           name="rowCount"
         />
       </Col>
