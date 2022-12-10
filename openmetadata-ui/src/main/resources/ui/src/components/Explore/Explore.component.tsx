@@ -237,25 +237,39 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
-    const term = {} as Record<string, unknown>;
+    const terms = [] as Array<Record<string, unknown>>;
 
     data.forEach((filter) => {
-      if (filter.key) {
-        term[filter.key] = filter.value;
-      }
+      filter.value?.map((val) => {
+        if (filter.key) {
+          terms.push({ term: { [filter.key]: val } });
+        }
+      });
     });
 
     onChangeAdvancedSearchQueryFilter(
-      isEmpty(term)
+      isEmpty(terms)
         ? undefined
         : {
-            query: { bool: { must: [{ term }] } },
+            query: { bool: { must: terms } },
           }
     );
   };
 
+  const handleClearSelection = (key: string) => {
+    setSelectedQuickFilters((prev) => {
+      const data = prev.map((filter) =>
+        filter.key === key ? { ...filter, value: undefined } : filter
+      );
+      handleAdvanceSearchFilter(data);
+
+      return data;
+    });
+  };
+
   const handleAdvanceFieldClear = () => {
     setSelectedQuickFilters([]);
+    handleAdvanceSearchFilter([]);
   };
 
   const handleAdvanceFieldRemove = (value: string) => {
@@ -283,12 +297,12 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const handleAdvancedFieldSelect = (value: string) => {
+  const handleAdvancedFieldSelect = (value: string, label: string) => {
     const flag = selectedQuickFilters.some((field) => field.key === value);
     if (!flag) {
       setSelectedQuickFilters((pre) => [
         ...pre,
-        { key: value, value: undefined },
+        { key: value, label, value: undefined },
       ]);
     }
   };
@@ -394,6 +408,7 @@ const Explore: React.FC<ExploreProps> = ({
               index={searchIndex}
               onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
               onClear={handleAdvanceFieldClear}
+              onClearSelection={handleClearSelection}
               onFieldRemove={handleAdvanceFieldRemove}
               onFieldSelect={handleAdvancedFieldSelect}
               onFieldValueSelect={handleAdvanceFieldValueSelect}

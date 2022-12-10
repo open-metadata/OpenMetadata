@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 
-export interface DropDownOption {
-  key: string;
-  label: string;
-}
-
 export interface SearchDropdownProps {
   label: string;
-  options: DropDownOption[];
+  options: string[];
   searchKey: string;
   selectedKeys: string[];
   showClear?: boolean;
   onChange: (values: string[], searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
+  onRemove: (searchKey: string) => void;
+  onClearSelection: (key: string) => void;
 }

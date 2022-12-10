@@ -19,14 +19,10 @@ import { SearchDropdownProps } from './SearchDropdown.interface';
 
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
+const mockOnRemove = jest.fn();
+const mockOnClearSelection = jest.fn();
 
-const searchOptions = [
-  { key: 'user.1', label: 'User 1' },
-  { key: 'user.2', label: 'User 2' },
-  { key: 'user.3', label: 'User 3' },
-  { key: 'user.4', label: 'User 4' },
-  { key: 'user.5', label: 'User 5' },
-];
+const searchOptions = ['User 1', 'User 2', 'User 3', 'User 4', 'User 5'];
 
 const mockProps: SearchDropdownProps = {
   label: 'Owner',
@@ -35,6 +31,8 @@ const mockProps: SearchDropdownProps = {
   selectedKeys: ['user.1'],
   showClear: true,
   onChange: mockOnChange,
+  onClearSelection: mockOnClearSelection,
+  onRemove: mockOnRemove,
   onSearch: mockOnSearch,
 };
 

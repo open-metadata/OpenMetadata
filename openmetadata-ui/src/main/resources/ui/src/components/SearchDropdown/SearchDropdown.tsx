@@ -11,19 +11,24 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
+import { CloseOutlined, DownOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
-  Checkbox,
+  Divider,
   Dropdown,
   Input,
   MenuItemProps,
   MenuProps,
   Space,
+  Typography,
 } from 'antd';
 import React, { ChangeEvent, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  getSearchDropdownLabels,
+  getSelectedOptionLabelString,
+} from '../../utils/AdvancedSearchUtils';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 import './SearchDropdown.less';
 
@@ -34,6 +39,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   selectedKeys,
   showClear,
   onChange,
+  onClearSelection,
+  onRemove,
   onSearch,
 }) => {
   const { t } = useTranslation();
@@ -42,19 +49,19 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
-    return options.map((option) => {
-      const isSelected = selectedKeys.includes(option.key);
+    // Separating selected options to show on top
+    const selectedOptions = getSearchDropdownLabels(selectedKeys, true) || [];
 
-      return {
-        key: option.key,
-        label: (
-          <Space data-testid={option.label} size={6}>
-            <Checkbox checked={isSelected} data-testid={option.key} />
-            {option.label}
-          </Space>
-        ),
-      };
-    });
+    // Filtering out unselected options
+    const unselectedOptions = options.filter(
+      (option) => !selectedKeys.includes(option)
+    );
+
+    // Labels for unselected options
+    const otherOptions =
+      getSearchDropdownLabels(unselectedOptions, false) || [];
+
+    return [...selectedOptions, ...otherOptions];
   }, [options, selectedKeys]);
 
   // handle menu item click
@@ -71,7 +78,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   };
 
   // handle clear all
-  const handleClear = () => onChange([], searchKey);
+  const handleClear = () => {
+    onSearch('', searchKey);
+    onClearSelection(searchKey);
+  };
 
   // handle search
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
@@ -82,6 +92,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   return (
     <Dropdown
+      destroyPopupOnHide
       data-testid={searchKey}
       dropdownRender={(menuNode) => {
         return (
@@ -89,7 +100,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             <Space direction="vertical" size={4}>
               <Input
                 data-testid="search-input"
-                placeholder={`Search ${label}...`}
+                placeholder={`${t('label.search-entity', {
+                  entity: label,
+                })}...`}
                 onChange={handleSearch}
               />
               {showClear && (
@@ -108,13 +121,32 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       }}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
+      open={isDropDownOpen}
       trigger={['click']}
-      visible={isDropDownOpen}
-      onVisibleChange={(visible) => setIsDropDownOpen(visible)}>
-      <Button>
-        <Space data-testid="search-dropdown">
-          {label}
-          <DownOutlined />
+      onOpenChange={(visible) => {
+        visible && onSearch('', searchKey);
+        setIsDropDownOpen(visible);
+      }}>
+      <Button className="search-dropdown-trigger-btn">
+        <Space
+          className="search-dropdown-btn-content"
+          data-testid="search-dropdown">
+          <Space size={0}>
+            <Typography.Text>{`${label} : `}</Typography.Text>
+            {selectedKeys.length > 0 && (
+              <Typography.Text className="text-primary font-medium">
+                {getSelectedOptionLabelString(selectedKeys)}
+              </Typography.Text>
+            )}
+          </Space>
+          <DownOutlined className="m-l-xs" />
+          <Divider className="m-0" type="vertical" />
+          <CloseOutlined
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(searchKey);
+            }}
+          />
         </Space>
       </Button>
     </Dropdown>

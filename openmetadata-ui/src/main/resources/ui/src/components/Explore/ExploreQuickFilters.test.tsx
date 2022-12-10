@@ -38,6 +38,7 @@ const onAdvanceSearch = jest.fn();
 const onClear = jest.fn();
 const onFieldValueSelect = jest.fn();
 const onFieldSelect = jest.fn();
+const onClearSelection = jest.fn();
 
 const mockProps = {
   index,
@@ -45,6 +46,7 @@ const mockProps = {
   onFieldRemove,
   onAdvanceSearch,
   onClear,
+  onClearSelection,
   onFieldValueSelect,
   onFieldSelect,
 };
