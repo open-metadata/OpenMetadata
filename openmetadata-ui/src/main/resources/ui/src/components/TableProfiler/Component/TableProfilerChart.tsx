@@ -105,7 +105,7 @@ const TableProfilerChart = () => {
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Card className="tw-rounded-md tw-border">
+        <Card className="rounded-6 border-1">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue
@@ -123,7 +123,7 @@ const TableProfilerChart = () => {
         </Card>
       </Col>
       <Col span={24}>
-        <Card className="tw-rounded-md tw-border">
+        <Card className="rounded-6 border-1">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue information={operationMetrics.information} />

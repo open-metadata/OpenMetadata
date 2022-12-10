@@ -16,7 +16,6 @@ import React from 'react';
 import {
   Bar,
   BarChart,
-  Brush,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -91,7 +90,6 @@ const CustomBarChart = ({
           />
         ))}
         <Legend formatter={renderColorfulLegendText} />
-        <Brush dataKey="name" height={30} stroke="#8884d8" />
       </BarChart>
     </ResponsiveContainer>
   );

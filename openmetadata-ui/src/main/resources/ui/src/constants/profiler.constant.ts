@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { capitalize } from 'lodash';
+import { t } from 'i18next';
 import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
@@ -168,7 +168,7 @@ export const INITIAL_SUM_METRIC_VALUE = {
 export const INITIAL_ROW_METRIC_VALUE = {
   information: [
     {
-      title: 'Row Count',
+      title: t('label.row-count'),
       dataKey: 'rowCount',
       color: '#1890FF',
     },
@@ -179,17 +179,17 @@ export const INITIAL_ROW_METRIC_VALUE = {
 export const INITIAL_OPERATION_METRIC_VALUE = {
   information: [
     {
-      title: capitalize(DMLOperationType.Insert),
+      title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
       color: '#1890FF',
     },
     {
-      title: capitalize(DMLOperationType.Update),
+      title: t('label.update'),
       dataKey: DMLOperationType.Update,
       color: '#7147E8',
     },
     {
-      title: capitalize(DMLOperationType.Delete),
+      title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
       color: '#008376',
     },

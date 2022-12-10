@@ -29,12 +29,12 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { Table } from '../../generated/entity/data/table';
@@ -63,6 +63,7 @@ import {
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
+  const { t } = useTranslation();
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
   const { profile, columns } = useMemo(() => {
@@ -94,7 +95,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
       value: value,
     }));
     testCaseStatus.unshift({
-      label: 'All',
+      label: t('label.all'),
       value: '',
     });
 
@@ -109,7 +110,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
       })
     );
     testCaseStatus.unshift({
-      label: 'All',
+      label: t('label.all'),
       value: '',
     });
 
@@ -128,29 +129,29 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   const overallSummery: OverallTableSummeryType[] = useMemo(() => {
     return [
       {
-        title: 'Row Count',
+        title: t('label.row-count'),
         value: formatNumberWithComma(profile?.rowCount ?? 0),
       },
       {
-        title: 'Column Count',
+        title: t('label.column-count'),
         value: profile?.columnCount ?? 0,
       },
       {
-        title: 'Table Sample %',
+        title: `${t('label.column-count')} %`,
         value: `${profile?.profileSample ?? 100}%`,
       },
       {
-        title: 'Success',
+        title: t('label.success'),
         value: formTwoDigitNmber(tableTests.results.success),
         className: 'success',
       },
       {
-        title: 'Aborted',
+        title: t('label.aborted'),
         value: formTwoDigitNmber(tableTests.results.aborted),
         className: 'aborted',
       },
       {
-        title: 'Failed',
+        title: t('label.failed'),
         value: formTwoDigitNmber(tableTests.results.failed),
         className: 'failed',
       },
@@ -159,17 +160,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
 
   const tabOptions = [
     {
-      label: ProfilerDashboardTab.SUMMARY,
+      label: t('label.summary'),
       key: ProfilerDashboardTab.SUMMARY,
       disabled: !viewProfiler,
     },
     {
-      label: ProfilerDashboardTab.PROFILER,
+      label: t('label.profiler'),
       key: ProfilerDashboardTab.PROFILER,
       disabled: !viewProfiler,
     },
     {
-      label: ProfilerDashboardTab.DATA_QUALITY,
+      label: t('label.data-quality'),
       key: ProfilerDashboardTab.DATA_QUALITY,
       disabled: !viewTest,
     },
@@ -274,7 +275,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
 
   return (
     <Row
-      className="table-profiler-container h-full tw-flex-grow"
+      className="table-profiler-container h-full flex-grow"
       data-testid="table-profiler-container"
       gutter={[16, 16]}
       id="profilerDetails">
@@ -292,23 +293,27 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
         <Space
           className="tab-details-container w-full h-min-full"
           direction="vertical">
-          <Space className="tw-mb-4 w-full tw-justify-end">
+          <Space className="m-b-md w-full justify-end">
             {isDataQuality && (
               <>
-                <Form.Item className="m-0 " label="Deleted Tests">
+                <Form.Item
+                  className="m-0"
+                  label={t('label.deleted', {
+                    entity: t('label.test-plural'),
+                  })}>
                   <Switch
                     checked={deleted}
                     onClick={handleDeletedTestCaseClick}
                   />
                 </Form.Item>
-                <Form.Item className="m-0 w-40" label="Type">
+                <Form.Item className="m-0 w-40" label={t('label.type')}>
                   <Select
                     options={testCaseTypeOption}
                     value={selectedTestType}
                     onChange={handleTestCaseTypeChange}
                   />
                 </Form.Item>
-                <Form.Item className="m-0 w-40" label="Status">
+                <Form.Item className="m-0 w-40" label={t('label.status')}>
                   <Select
                     options={testCaseStatusOption}
                     value={selectedTestCaseStatus}
@@ -318,7 +323,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
               </>
             )}
 
-            <Tooltip title={editTest ? 'Add Test' : NO_PERMISSION_FOR_ACTION}>
+            <Tooltip
+              title={
+                editTest
+                  ? t('label.add-entity', {
+                      entity: t('label.test'),
+                    })
+                  : t('message.no-permission-for-action')
+              }>
               <Link
                 to={
                   editTest
@@ -329,16 +341,23 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                     : '#'
                 }>
                 <Button
-                  className="tw-rounded"
+                  className="rounded-4"
                   data-testid="profiler-add-table-test-btn"
                   disabled={!editTest}
                   type="primary">
-                  Add Test
+                  {t('label.add-entity', {
+                    entity: t('label.test'),
+                  })}
                 </Button>
               </Link>
             </Tooltip>
             {isSummary && (
-              <Tooltip title={editTest ? 'Settings' : NO_PERMISSION_FOR_ACTION}>
+              <Tooltip
+                title={
+                  editTest
+                    ? t('label.settings')
+                    : t('message.no-permission-for-action')
+                }>
                 <Button
                   ghost
                   data-testid="profiler-setting-btn"
@@ -354,7 +373,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                   }
                   type="primary"
                   onClick={() => handleSettingModal(true)}>
-                  Settings
+                  {t('label.settings')}
                 </Button>
               </Tooltip>
             )}
@@ -366,8 +385,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
               data-testid="no-profiler-placeholder">
               <NoDataIcon />
               <p className="tw-mb-0 tw-ml-2">
-                Data Profiler is an optional configuration in Ingestion. Please
-                enable the data profiler by following the documentation
+                {t('message.no-profiler-message')}
                 <Link
                   className="tw-ml-1"
                   target="_blank"
@@ -375,25 +393,25 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                     pathname:
                       'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
                   }}>
-                  here.
+                  {t('label.here-lowercase')}.
                 </Link>
               </p>
             </div>
           )}
 
-          <Row className="tw-rounded tw-border tw-p-4 tw-mb-4">
+          <Row className="rounded-4 border-1 p-md m-b-md">
             {overallSummery.map((summery) => (
               <Col
                 className="overall-summery-card"
                 data-testid={`header-card-${summery.title}`}
                 key={summery.title}
                 span={4}>
-                <p className="overall-summery-card-title tw-font-medium tw-text-grey-muted tw-mb-1">
+                <p className="overall-summery-card-title font-medium text-grey-muted m-b-xss">
                   {summery.title}
                 </p>
                 <p
                   className={classNames(
-                    'tw-text-2xl tw-font-semibold',
+                    'text-2xl font-semibold',
                     summery.className
                   )}>
                   {summery.value}

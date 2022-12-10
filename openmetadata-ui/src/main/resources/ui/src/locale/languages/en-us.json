@@ -462,7 +462,14 @@
     "pipeline-lowercase": "pipeline",
     "service-lowercase": "service",
     "query-lowercase": "query",
-    "table-lowercase": "table"
+    "table-lowercase": "table",
+    "deleted": "Deleted {{entity}}",
+    "test-plural": "Tests",
+    "test": "Test",
+    "profiler": "Profiler",
+    "here-lowercase": "here",
+    "insert": "Insert",
+    "update": "Update"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -556,7 +563,8 @@
     "entity-owned-by-name": "This Entity is Owned by {{entityOwner}}",
     "and-followed-owned-by-name": "and followed team owned by {{userName}}",
     "field-text-is-invalid": "{{fieldText}} is invalid.",
-    "delete-team-message": "Any teams under \"{{teamName}}\" will be {{deleteType}} deleted as well."
+    "delete-team-message": "Any teams under \"{{teamName}}\" will be {{deleteType}} deleted as well.",
+    "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation"
   },
   "server": {
     "no-followed-entities": "You have not followed anything yet.",
