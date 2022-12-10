@@ -465,10 +465,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    String decodedFQN = java.net.URLDecoder.decode(fqn, StandardCharsets.UTF_8);
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(decodedFQN).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.addTestCaseResult(uriInfo, fqn, testCaseResult).toResponse();
+    return dao.addTestCaseResult(uriInfo, decodedFQN, testCaseResult).toResponse();
   }
 
   @GET
