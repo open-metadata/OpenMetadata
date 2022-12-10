@@ -35,7 +35,7 @@ import {
   getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import CustomBarChartProps from '../../Chart/CustomBarChart';
+import CustomBarChart from '../../Chart/CustomBarChart';
 import OperationDateBarChart from '../../Chart/OperationDateBarChart';
 import Loader from '../../Loader/Loader';
 import ProfilerDetailsCard from '../../ProfilerDashboard/component/ProfilerDetailsCard';
@@ -109,9 +109,11 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
   }
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Card className="rounded-6 border-1">
+        <Card
+          className="rounded-6 border-1"
+          data-testid="operation-date-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue
@@ -129,13 +131,13 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         </Card>
       </Col>
       <Col span={24}>
-        <Card className="rounded-6 border-1">
+        <Card className="rounded-6 border-1" data-testid="operation-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue information={operationMetrics.information} />
             </Col>
             <Col span={20}>
-              <CustomBarChartProps
+              <CustomBarChart
                 chartCollection={operationMetrics}
                 name="operationMetrics"
               />
@@ -143,7 +145,7 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
           </Row>
         </Card>
       </Col>
-      <Col span={24}>
+      <Col data-testid="row-metrics" span={24}>
         <ProfilerDetailsCard
           chartCollection={rowCountMetrics}
           chartType="stepAfter"

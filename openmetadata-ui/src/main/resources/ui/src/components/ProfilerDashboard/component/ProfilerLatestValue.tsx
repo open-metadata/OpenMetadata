@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Statistic } from 'antd';
+import { Space, Statistic, Typography } from 'antd';
 import React from 'react';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { ProfilerLatestValueProps } from '../profilerDashboard.interface';
@@ -22,11 +22,15 @@ const ProfilerLatestValue = ({
   stringValue = false,
 }: ProfilerLatestValueProps) => {
   return (
-    <Space direction="vertical" size={16}>
+    <Space data-testid="data-summary-container" direction="vertical" size={16}>
       {information.map((info) => (
         <Statistic
           key={info.title}
-          title={<span className="tw-text-grey-body">{info.title}</span>}
+          title={
+            <Typography.Text className="text-grey-body" data-testid="title">
+              {info.title}
+            </Typography.Text>
+          }
           value={
             tickFormatter || stringValue
               ? `${info.latestValue}${tickFormatter ?? ''}`

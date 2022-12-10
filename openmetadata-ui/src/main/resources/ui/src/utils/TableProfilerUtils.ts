@@ -68,7 +68,7 @@ export const calculateSystemMetrics = (
     operationDateMetrics.push({
       name: timestamp,
       timestamp: Number(data.timestamp),
-      data: Number(data.rowsAffected),
+      data: data.rowsAffected || 0,
       [data.operation || 'value']: 10,
     });
   });
@@ -81,7 +81,7 @@ export const calculateSystemMetrics = (
     return {
       ...item,
       stackId: stackId,
-      latestValue: operation?.rowsAffected,
+      latestValue: operation?.rowsAffected ?? 0,
     };
   });
   const operationDateMetricsInfo = currentMetrics.information.map((item) => {
@@ -93,10 +93,12 @@ export const calculateSystemMetrics = (
     return {
       ...item,
       stackId: stackId,
-      latestValue: getFormattedDateFromMilliSeconds(
-        Number(operation?.timestamp),
-        'dd/MMM HH:mm'
-      ),
+      latestValue: operation?.timestamp
+        ? getFormattedDateFromMilliSeconds(
+            Number(operation?.timestamp),
+            'dd/MMM HH:mm'
+          )
+        : '--',
     };
   });
 

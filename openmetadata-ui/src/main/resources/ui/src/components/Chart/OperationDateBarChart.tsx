@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
@@ -30,6 +31,7 @@ const OperationDateBarChart = ({
   name,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
+  const { t } = useTranslation();
   const renderColorfulLegendText = (
     value: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,11 +49,13 @@ const OperationDateBarChart = ({
 
   if (data.length === 0) {
     return (
-      <Row align="middle" className="tw-h-full tw-w-full" justify="center">
+      <Row
+        align="middle"
+        className="tw-h-full tw-w-full"
+        data-testid="no-data-placeholder"
+        justify="center">
         <Col>
-          <ErrorPlaceHolder>
-            <Typography.Text>No Data Available</Typography.Text>
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder>{t('label.no-data-available')}</ErrorPlaceHolder>
         </Col>
       </Row>
     );
