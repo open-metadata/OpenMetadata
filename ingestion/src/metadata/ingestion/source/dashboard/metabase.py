@@ -214,7 +214,7 @@ class MetabaseSource(DashboardServiceSource):
                     ) or []
 
             except Exception as exc:  # pylint: disable=broad-except
-                logger.error(traceback.format_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(f"Error creating chart [{chart}]: {exc}")
 
     def req_get(self, path):
