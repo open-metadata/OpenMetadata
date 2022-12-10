@@ -15,6 +15,7 @@ import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Popover, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import { cloneDeep, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,6 +80,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         {isReadOnly && !hasDescriptionEditAccess ? null : (
           <Button
             className="p-0 opacity-0 group-hover-opacity-100"
+            data-testid="edit-button"
             icon={
               <SVGIcons
                 alt={t('label.edit')}
@@ -147,6 +149,20 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [schemaFields]
   );
 
+  const expandableConfig: ExpandableConfig<Field> = {
+    rowExpandable: (record) =>
+      Boolean(record.children && record.children.length > 0),
+
+    expandIcon: ({ expanded, onExpand, expandable, record }) =>
+      expandable && (
+        <Typography.Text
+          className="m-r-xs cursor-pointer"
+          onClick={(e) => onExpand(record, e)}>
+          <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+        </Typography.Text>
+      ),
+  };
+
   return (
     <>
       <Table
@@ -155,19 +171,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         columns={columns}
         data-testid="topic-schema-fields-table"
         dataSource={schemaFields}
-        expandable={{
-          rowExpandable: (record) =>
-            Boolean(record.children && record.children.length > 0),
-
-          expandIcon: ({ expanded, onExpand, expandable, record }) =>
-            expandable && (
-              <span
-                className="m-r-xs cursor-pointer"
-                onClick={(e) => onExpand(record, e)}>
-                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
-              </span>
-            ),
-        }}
+        expandable={expandableConfig}
         pagination={false}
         size="small"
       />
