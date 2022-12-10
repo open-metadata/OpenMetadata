@@ -29,6 +29,9 @@ from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -49,6 +52,9 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.interfaces.datalake.datalake_test_suite_interface import (
+    DataLakeTestSuiteInterface,
+)
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
@@ -218,25 +224,41 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         """
         return get_partition_details(entity)
 
-    def _create_runner_interface(self, entity_fqn: str, sqa_metadata_obj: MetaData):
+    def _create_runner_interface(self, entity_fqn: str):
         """create the interface to execute test against SQA sources"""
         table_entity = self._get_table_entity_from_test_case(entity_fqn)
-        return SQATestSuiteInterface(
-            service_connection_config=self._get_service_connection_from_test_case(
-                entity_fqn
-            ),
-            ometa_client=create_ometa_client(self.metadata_config),
-            sqa_metadata_obj=sqa_metadata_obj,
-            table_entity=table_entity,
-            table_sample_precentage=self._get_profile_sample(table_entity)
-            if not self._get_profile_query(table_entity)
-            else None,
-            table_sample_query=self._get_profile_query(table_entity)
+        service_connection_config = self._get_service_connection_from_test_case(
+            entity_fqn
+        )
+        table_partition_config = None
+        table_sample_precentage = None
+        table_sample_query = (
+            self._get_profile_query(table_entity)
             if not self._get_profile_sample(table_entity)
-            else None,
-            table_partition_config=self._get_partition_details(table_entity)
-            if not self._get_profile_query(table_entity)
-            else None,
+            else None
+        )
+        if not table_sample_query:
+            table_sample_precentage = self._get_profile_sample(table_entity)
+            table_partition_config = self._get_partition_details(table_entity)
+
+        if not isinstance(service_connection_config, DatalakeConnection):
+            sqa_metadata_obj = MetaData()
+            return SQATestSuiteInterface(
+                service_connection_config=service_connection_config,
+                ometa_client=create_ometa_client(self.metadata_config),
+                sqa_metadata_obj=sqa_metadata_obj,
+                table_entity=table_entity,
+                table_sample_precentage=table_sample_precentage,
+                table_sample_query=table_sample_query,
+                table_partition_config=table_partition_config,
+            )
+        return DataLakeTestSuiteInterface(
+            service_connection_config=service_connection_config,
+            ometa_client=create_ometa_client(self.metadata_config),
+            table_entity=table_entity,
+            table_sample_precentage=table_sample_precentage,
+            table_sample_query=table_sample_query,
+            table_partition_config=table_partition_config,
         )
 
     def _create_data_tests_runner(self, sqa_interface):
@@ -400,11 +422,8 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
 
         for entity_fqn in unique_entity_fqns:
-            sqa_metadata_obj = MetaData()
             try:
-                runner_interface = self._create_runner_interface(
-                    entity_fqn, sqa_metadata_obj
-                )
+                runner_interface = self._create_runner_interface(entity_fqn)
                 data_test_runner = self._create_data_tests_runner(runner_interface)
 
                 for test_case in self._filter_test_cases_for_entity(
