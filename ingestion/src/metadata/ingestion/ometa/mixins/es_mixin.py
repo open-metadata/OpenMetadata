@@ -13,8 +13,8 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
-import traceback
 import functools
+import traceback
 from typing import Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
@@ -40,7 +40,9 @@ class ESMixin(Generic[T]):
     fqdn_search = "/search/query?q=fullyQualifiedName:{fqn}&from={from_}&size={size}&index={index}"
 
     @functools.lru_cache(maxsize=512)
-    def _search_es_entity(self,entity_type ,query_string: str) -> Optional[List[T]]:
+    def _search_es_entity(
+        self, entity_type: Type[T], query_string: str
+    ) -> Optional[List[T]]:
         """
         Run the ES query and return a list of entities that match
         :param entity_type: Entity to look for
@@ -84,7 +86,9 @@ class ESMixin(Generic[T]):
         )
 
         try:
-            entity_list = self._search_es_entity(entity_type,query_string)
+            entity_list = self._search_es_entity(
+                entity_type=entity_type, query_string=query_string
+            )
             if entity_list:
                 return entity_list
 
