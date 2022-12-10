@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,29 +11,16 @@
  *  limitations under the License.
  */
 
-export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
-  TEAM = 'team',
-  SERVICE = 'service',
-}
+.custom-dropdown-render {
+  // this is taken from antd dropdown menu box shadow
+  box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%), 0 6px 16px 0 rgb(0 0 0 / 8%),
+    0 9px 28px 8px rgb(0 0 0 / 5%);
 
-export enum SIZE {
-  SMALL = '60',
-  MEDIUM = '80',
-  LARGE = '100',
-}
-
-export enum ACTION_TYPE {
-  UPDATE = 'update',
-  REMOVE = 'remove',
-}
-
-export enum LOADING_STATE {
-  INITIAL = 'initial',
-  WAITING = 'waiting',
-  SUCCESS = 'success',
-}
-
-export enum PROMISE_STATE {
-  FULFILLED = 'fulfilled',
-  REJECTED = 'rejected',
+  .ant-dropdown-menu {
+    box-shadow: none;
+    padding: 0px;
+    .ant-dropdown-menu-item {
+      padding: 4px 0px;
+    }
+  }
 }
