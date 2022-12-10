@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreEntitiesRequestType } from 'Models';
+import { PagingResponse, RestoreEntitiesRequestType } from 'Models';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfile,
@@ -169,10 +169,9 @@ export const getTableProfilesList = async (
 ) => {
   const url = `/tables/${tableFqn}/tableProfile`;
 
-  const response = await APIClient.get<{
-    data: TableProfile[];
-    paging: Paging;
-  }>(url, { params });
+  const response = await APIClient.get<PagingResponse<TableProfile[]>>(url, {
+    params,
+  });
 
   return response.data;
 };
@@ -186,10 +185,9 @@ export const getSystemProfileList = async (
 ) => {
   const url = `/tables/${tableFqn}/systemProfile`;
 
-  const response = await APIClient.get<{
-    data: SystemProfile[];
-    paging: Paging;
-  }>(url, { params });
+  const response = await APIClient.get<PagingResponse<SystemProfile[]>>(url, {
+    params,
+  });
 
   return response.data;
 };

@@ -18,6 +18,7 @@ import {
   Bar,
   BarChart,
   Legend,
+  LegendProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -34,14 +35,12 @@ const CustomBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const { t } = useTranslation();
-  const renderColorfulLegendText = (
-    value: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entry: any
-  ) => <span style={{ color: entry?.color }}>{value}</span>;
+  const renderColorfulLegendText: LegendProps['formatter'] = (value, entry) => (
+    <span style={{ color: entry?.color }}>{value}</span>
+  );
 
-  const tooltipFormatter = (value: string | number | (string | number)[]) => {
-    const numValue = value as number;
+  const tooltipFormatter = (value: string | number) => {
+    const numValue = Number(value);
 
     return (
       <>
@@ -56,7 +55,7 @@ const CustomBarChart = ({
     return (
       <Row
         align="middle"
-        className="tw-h-full tw-w-full"
+        className="h-full w-full"
         data-testid="no-data-placeholder"
         justify="center">
         <Col>

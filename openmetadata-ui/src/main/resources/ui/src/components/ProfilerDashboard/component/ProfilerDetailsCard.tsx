@@ -15,6 +15,7 @@ import { Card, Col, Row } from 'antd';
 import React from 'react';
 import {
   Legend,
+  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -31,15 +32,13 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   chartCollection,
   tickFormatter,
   name,
-  chartType,
+  curveType,
 }) => {
   const { data, information } = chartCollection;
 
-  const renderColorfulLegendText = (
-    value: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entry: any
-  ) => <span style={{ color: entry?.color }}>{value}</span>;
+  const renderColorfulLegendText: LegendProps['formatter'] = (value, entry) => (
+    <span style={{ color: entry?.color }}>{value}</span>
+  );
 
   const tooltipFormatter = (value: string | number | (string | number)[]) => {
     const numValue = value as number;
@@ -90,7 +89,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     key={info.dataKey}
                     name={info.title}
                     stroke={info.color}
-                    type={chartType ?? 'monotone'}
+                    type={curveType ?? 'monotone'}
                   />
                 ))}
                 <Legend formatter={renderColorfulLegendText} />

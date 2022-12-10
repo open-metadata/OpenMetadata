@@ -46,7 +46,7 @@ export interface ProfilerDetailsCardProps {
   chartCollection: MetricChartType;
   name: string;
   tickFormatter?: string;
-  chartType?: CurveType;
+  curveType?: CurveType;
 }
 
 export enum ProfilerDashboardTab {

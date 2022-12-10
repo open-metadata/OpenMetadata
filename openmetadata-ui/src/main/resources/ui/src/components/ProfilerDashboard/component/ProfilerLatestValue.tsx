@@ -34,7 +34,7 @@ const ProfilerLatestValue = ({
           value={
             tickFormatter || stringValue
               ? `${info.latestValue}${tickFormatter ?? ''}`
-              : formatNumberWithComma(info.latestValue as number)
+              : formatNumberWithComma(Number(info.latestValue))
           }
           valueStyle={{ color: info.color }}
         />

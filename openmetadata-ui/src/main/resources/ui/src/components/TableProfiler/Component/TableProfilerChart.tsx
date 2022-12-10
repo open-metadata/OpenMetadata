@@ -148,7 +148,7 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
       <Col data-testid="row-metrics" span={24}>
         <ProfilerDetailsCard
           chartCollection={rowCountMetrics}
-          chartType="stepAfter"
+          curveType="stepAfter"
           name="rowCount"
         />
       </Col>
