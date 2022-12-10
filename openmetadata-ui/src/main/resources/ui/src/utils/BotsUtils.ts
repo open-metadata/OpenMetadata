@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationMechanism } from '../generated/api/teams/createUser';
 import { SsoServiceType } from '../generated/auth/ssoAuth';
 
 import { AuthType, JWTTokenExpiry, User } from '../generated/entity/teams/user';
-import {
-  getExpiryDateTimeFromDate,
-  getExpiryDateTimeFromTimeStamp,
-} from './TimeUtils';
+import { getExpiryDateTimeFromTimeStamp } from './TimeUtils';
 
 export const getJWTTokenExpiryOptions = () => {
   return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -37,7 +35,10 @@ export const getJWTTokenExpiryOptions = () => {
 export const getAuthMechanismTypeOptions = (
   authConfig: Record<string, string | boolean> | undefined
 ) => {
-  const JWTOption = { label: 'OpenMetadata JWT', value: AuthType.Jwt };
+  const JWTOption = {
+    label: `${t('label.open-metadata')} ${t('label.jwt-uppercase')}`,
+    value: AuthType.Jwt,
+  };
   /**
    * If no auth is setup return the JWT option only
    */
@@ -50,28 +51,50 @@ export const getAuthMechanismTypeOptions = (
      */
     switch (authConfig?.provider) {
       case SsoServiceType.Google: {
-        const GoogleSSOOption = { label: 'Google SSO', value: AuthType.Sso };
+        const GoogleSSOOption = {
+          label: t('label.service-sso', {
+            serviceType: t('label.google'),
+          }),
+          value: AuthType.Sso,
+        };
 
         return [JWTOption, GoogleSSOOption];
       }
       case SsoServiceType.Auth0: {
-        const Auth0SSOOption = { label: 'Auth0 SSO', value: AuthType.Sso };
+        const Auth0SSOOption = {
+          label: t('label.service-sso', {
+            serviceType: t('label.auth0'),
+          }),
+          value: AuthType.Sso,
+        };
 
         return [JWTOption, Auth0SSOOption];
       }
       case SsoServiceType.Azure: {
-        const AzureSSOOption = { label: 'Azure SSO', value: AuthType.Sso };
+        const AzureSSOOption = {
+          label: t('label.service-sso', {
+            serviceType: t('label.azure'),
+          }),
+          value: AuthType.Sso,
+        };
 
         return [JWTOption, AzureSSOOption];
       }
       case SsoServiceType.Okta: {
-        const OktaSSOOption = { label: 'Okta SSO', value: AuthType.Sso };
+        const OktaSSOOption = {
+          label: t('label.service-sso', {
+            serviceType: t('label.okta'),
+          }),
+          value: AuthType.Sso,
+        };
 
         return [JWTOption, OktaSSOOption];
       }
       case SsoServiceType.CustomOidc: {
         const CustomOidcSSOOption = {
-          label: 'CustomOidc SSO',
+          label: t('label.service-sso', {
+            serviceType: t('label.custom-oidc'),
+          }),
           value: AuthType.Sso,
         };
 
@@ -82,25 +105,6 @@ export const getAuthMechanismTypeOptions = (
       default:
         return [JWTOption];
     }
-  }
-};
-
-/**
- *
- * @param expiry expiry value like "7" "30"
- * @returns expiry text like "The Token will expire on date"
- */
-export const getTokenExpiryText = (expiry: string) => {
-  if (expiry === JWTTokenExpiry.Unlimited) {
-    return 'The token will never expire!';
-  } else if (expiry === JWTTokenExpiry.OneHour) {
-    return `The token will expire in ${expiry}`;
-  } else {
-    return `The token will expire on ${getExpiryDateTimeFromDate(
-      expiry,
-      'days',
-      "cccc d'th' MMMM, yyyy"
-    )}`;
   }
 };
 

@@ -32,3 +32,8 @@ export enum LOADING_STATE {
   WAITING = 'waiting',
   SUCCESS = 'success',
 }
+
+export enum PROMISE_STATE {
+  FULFILLED = 'fulfilled',
+  REJECTED = 'rejected',
+}

@@ -55,7 +55,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               <>{createdBy}</>
               {feedType === ThreadType.Conversation ? (
                 <>
-                  <span> {t('label.mention-you-thread')} </span>{' '}
+                  <span> {t('label.mention-you-thread-lowercase')} </span>{' '}
                   <span>{entityType} </span>
                   <Link
                     className="tw-truncate"
@@ -65,7 +65,9 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                 </>
               ) : (
                 <>
-                  <span className="p-x-xss">{t('label.assign-you-task')}</span>
+                  <span className="p-x-xss">
+                    {t('label.assign-you-task-lowercase')}
+                  </span>
                   <Link
                     to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
                     {`#${taskDetails?.id}`} {taskDetails?.type}

@@ -45,6 +45,7 @@ import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntities
 import {
   ChartValue,
   DataInsightChartTooltipProps,
+  KpiDates,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
 import { getFormattedDateFromMilliSeconds } from './TimeUtils';
@@ -523,3 +524,10 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
 
 export const getDataInsightPathWithFqn = (fqn: string) =>
   ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
+
+export const getKPIFormattedDates = (kpiDates: KpiDates): KpiDates => {
+  return {
+    startDate: `${kpiDates.startDate} 00:00`,
+    endDate: `${kpiDates.endDate} 23:59`,
+  };
+};
