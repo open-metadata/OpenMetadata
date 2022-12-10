@@ -462,7 +462,9 @@
     "pipeline-lowercase": "pipeline",
     "service-lowercase": "service",
     "query-lowercase": "query",
-    "table-lowercase": "table"
+    "table-lowercase": "table",
+    "schema-field": "Schema field",
+    "enter-field-description": "Enter {{field}} description"
   },
   "message": {
     "service-email-required": "Service account Email is required",
