@@ -493,8 +493,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         request.setQuery(
             QueryBuilders.boolQuery()
                 .should(QueryBuilders.matchQuery("id", glossaryTerm.getId().toString()))
-                .should(QueryBuilders.matchQuery("parent.id", glossaryTerm.getId().toString()))
-        );
+                .should(QueryBuilders.matchQuery("parent.id", glossaryTerm.getId().toString())));
         deleteEntityFromElasticSearchByQuery(request);
         break;
     }
@@ -505,9 +504,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       Glossary glossary = (Glossary) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
       request.setQuery(
-          QueryBuilders.boolQuery()
-              .should(QueryBuilders.matchQuery("glossary.id", glossary.getId().toString()))
-      );
+          QueryBuilders.boolQuery().should(QueryBuilders.matchQuery("glossary.id", glossary.getId().toString())));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
