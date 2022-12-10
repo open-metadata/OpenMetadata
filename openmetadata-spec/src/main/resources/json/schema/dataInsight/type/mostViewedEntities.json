@@ -11,6 +11,10 @@
       "type": "string"
     },
     "owner": {
+      "description": "Owner of the entity",
+      "type": "string"
+    },
+    "entityType": {
       "description": "Type of entity. Derived from the page URL.",
       "type": "string"
     },

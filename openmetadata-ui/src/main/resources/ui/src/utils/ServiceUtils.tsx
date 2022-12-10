@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { t } from 'i18next';
 import {
   Bucket,
   DynamicFormFieldType,
@@ -93,6 +94,7 @@ import {
   TRINO,
   VERTICA,
 } from '../constants/Services.constant';
+import { PROMISE_STATE } from '../enums/common.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
@@ -433,11 +435,11 @@ export const servicePageTabs = (entity: string) => [
     path: entity.toLowerCase(),
   },
   {
-    name: 'Ingestions',
+    name: t('label.ingestions'),
     path: 'ingestions',
   },
   {
-    name: 'Connection',
+    name: t('label.connection'),
     path: 'connection',
   },
 ];
@@ -523,10 +525,16 @@ export const getServiceIngestionStepGuide = (
 
   const getTitle = (title: string) => {
     const update = showDeployTitle
-      ? title.replace('Added', 'Updated & Deployed')
-      : title.replace('Added', 'Updated');
+      ? title.replace(
+          t('label.added'),
+          `${t('label.updated')} & ${t('label.deployed')}`
+        )
+      : title.replace(t('label.added'), t('label.updated'));
     const newTitle = showDeployTitle
-      ? title.replace('Added', 'Added & Deployed')
+      ? title.replace(
+          t('label.added'),
+          `${t('label.added')} & ${t('label.deployed')}`
+        )
       : title;
 
     return isUpdated ? update : newTitle;
@@ -541,12 +549,12 @@ export const getServiceIngestionStepGuide = (
             {isIngestion
               ? getFormattedGuideText(
                   guide.description,
-                  '<Ingestion Pipeline Name>',
+                  `<${t('label.ingestion-pipeline-name')}>`,
                   `${ingestionName}`
                 )
               : getFormattedGuideText(
                   guide.description,
-                  '<Service Name>',
+                  `<${t('label.service-name')}>`,
                   serviceName
                 )}
           </div>
@@ -603,20 +611,20 @@ export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES:
-      serviceCat = 'database';
+      serviceCat = t('label.database-lowercase');
 
       break;
     case ServiceCategory.MESSAGING_SERVICES:
-      serviceCat = 'messaging';
+      serviceCat = t('label.messaging-lowercase');
 
       break;
     case ServiceCategory.DASHBOARD_SERVICES:
-      serviceCat = 'dashboard';
+      serviceCat = t('label.dashboard-lowercase');
 
       break;
 
     case ServiceCategory.PIPELINE_SERVICES:
-      serviceCat = 'pipeline';
+      serviceCat = t('label.pipeline-lowercase');
 
       break;
     default:
@@ -625,7 +633,7 @@ export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
       break;
   }
 
-  return [serviceCat, 'service'].join(' ');
+  return [serviceCat, t('label.service-lowercase')].join(' ');
 };
 
 export const setServiceSchemaCount = (
@@ -640,7 +648,7 @@ export const setServiceSchemaCount = (
     .then((results) => {
       let count = 0;
       results.forEach((result) => {
-        if (result.status === 'fulfilled') {
+        if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value.data?.paging?.total || 0;
         }
       });
@@ -661,7 +669,7 @@ export const setServiceTableCount = (
     .then((results) => {
       let count = 0;
       results.forEach((result) => {
-        if (result.status === 'fulfilled') {
+        if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value.data?.paging?.total || 0;
         }
       });
@@ -680,7 +688,7 @@ export const getOptionalFields = (
 
       return (
         <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">Brokers:</label>
+          <label className="tw-mb-0">{t('label.brokers')}:</label>
           <span
             className=" tw-ml-1 tw-font-normal tw-text-grey-body"
             data-testid="brokers">
@@ -694,7 +702,7 @@ export const getOptionalFields = (
 
       return (
         <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">URL:</label>
+          <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
           <span
             className=" tw-ml-1 tw-font-normal tw-text-grey-body"
             data-testid="dashboard-url">
@@ -708,7 +716,7 @@ export const getOptionalFields = (
 
       return (
         <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">URL:</label>
+          <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
           <span
             className=" tw-ml-1 tw-font-normal tw-text-grey-body"
             data-testid="pipeline-url">
@@ -724,7 +732,7 @@ export const getOptionalFields = (
       return (
         <>
           <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">Registry:</label>
+            <label className="tw-mb-0">{t('label.registry')}:</label>
             <span
               className=" tw-ml-1 tw-font-normal tw-text-grey-body"
               data-testid="pipeline-url">
@@ -732,7 +740,7 @@ export const getOptionalFields = (
             </span>
           </div>
           <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-            <label className="tw-mb-0">Tracking:</label>
+            <label className="tw-mb-0">{t('label.tracking')}:</label>
             <span
               className=" tw-ml-1 tw-font-normal tw-text-grey-body"
               data-testid="pipeline-url">
@@ -759,35 +767,38 @@ export const getDeleteEntityMessage = (
   switch (serviceName) {
     case ServiceCategory.DATABASE_SERVICES:
       return getEntityDeleteMessage(
-        service || 'Service',
-        `${pluralize(instanceCount, 'Database')}, ${pluralize(
+        service || t('label.service'),
+        `${pluralize(instanceCount, t('label.database'))}, ${pluralize(
           schemaCount,
-          'Schema'
-        )} and ${pluralize(tableCount, 'Table')}`
+          t('label.schema')
+        )} ${t('label.and-lowercase')} ${pluralize(
+          tableCount,
+          t('label.table')
+        )}`
       );
 
     case ServiceCategory.MESSAGING_SERVICES:
       return getEntityDeleteMessage(
-        service || 'Service',
-        pluralize(instanceCount, 'Topic')
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.topic'))
       );
 
     case ServiceCategory.DASHBOARD_SERVICES:
       return getEntityDeleteMessage(
-        service || 'Service',
-        pluralize(instanceCount, 'Dashboard')
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.dashboard'))
       );
 
     case ServiceCategory.PIPELINE_SERVICES:
       return getEntityDeleteMessage(
-        service || 'Service',
-        pluralize(instanceCount, 'Pipeline')
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.pipeline'))
       );
 
     case ServiceCategory.METADATA_SERVICES:
       return getEntityDeleteMessage(
-        service || 'Service',
-        pluralize(instanceCount, 'Metadata')
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.metadata'))
       );
 
     default:
@@ -882,14 +893,14 @@ export const getServicePageTabs = (
 
   tabs.push(
     {
-      name: 'Ingestions',
+      name: t('label.ingestions'),
       isProtected: false,
 
       position: 2,
       count: ingestions.length,
     },
     {
-      name: 'Connection',
+      name: t('label.connection'),
       isProtected: !servicePermission.EditAll,
       isHidden: !servicePermission.EditAll,
       position: 3,
