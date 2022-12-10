@@ -191,7 +191,7 @@ describe('Data Quality and Profiler should work properly', () => {
     const testName = `${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`;
     goToProfilerTab();
 
-    cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
+    cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Data Quality')
       .should('be.visible')
       .click();
@@ -219,7 +219,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     goToProfilerTab();
 
-    cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
+    cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Data Quality')
       .should('be.visible')
       .click();
@@ -409,7 +409,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     interceptURL('GET', '/api/v1/testCase?*', 'getTestCaseInfo');
     interceptURL('GET', '/api/v1/testCase/*/testCaseResult?*', 'getTestResult');
-    cy.get('[data-testid="profiler-switch"]')
+    cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Data Quality')
       .scrollIntoView()
       .click();

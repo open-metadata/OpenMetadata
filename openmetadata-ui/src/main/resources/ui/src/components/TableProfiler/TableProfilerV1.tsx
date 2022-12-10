@@ -300,7 +300,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
       <Col span={4}>
         <Menu
           className="h-full tab-details-container p-x-0 custom-menu"
-          data-testid="data-insight-left-panel"
+          data-testid="profiler-tab-left-panel"
           items={tabOptions}
           mode="inline"
           selectedKeys={[activeTab ?? ProfilerDashboardTab.SUMMARY]}
