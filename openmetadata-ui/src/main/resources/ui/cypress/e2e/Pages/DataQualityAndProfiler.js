@@ -409,7 +409,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     interceptURL('GET', '/api/v1/testCase?*', 'getTestCaseInfo');
     interceptURL('GET', '/api/v1/testCase/*/testCaseResult?*', 'getTestResult');
-    cy.get('[data-testid="profiler-tab-left-panel"]')
+    cy.get('[data-testid="profiler-switch"]')
       .contains('Data Quality')
       .scrollIntoView()
       .click();
