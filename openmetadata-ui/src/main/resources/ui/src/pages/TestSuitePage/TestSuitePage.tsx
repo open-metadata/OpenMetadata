@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table, Typography } from 'antd';
+import { Button, Col, Row, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from '../../axiosAPIs/testAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
@@ -24,14 +26,16 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
+  ROUTES,
 } from '../../constants/constants';
+import { WEBHOOK_DOCS } from '../../constants/docs.constants';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName, pluralize } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
-const { Text } = Typography;
 
 const TestSuitePage = () => {
+  const history = useHistory();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
@@ -49,7 +53,6 @@ const TestSuitePage = () => {
       setTestSuites(response.data);
       setTestSuitePaging(response.paging);
     } catch (err) {
-      setTestSuites([]);
       setTestSuitePaging(pagingObject);
     } finally {
       setIsLoading(false);
@@ -84,7 +87,9 @@ const TestSuitePage = () => {
         dataIndex: 'noOfTests',
         key: 'noOfTests',
         render: (_, record) => (
-          <Text>{pluralize(record?.tests?.length || 0, 'Test')}</Text>
+          <Typography.Text>
+            {pluralize(record?.tests?.length || 0, 'Test')}
+          </Typography.Text>
         ),
       },
       {
@@ -110,21 +115,57 @@ const TestSuitePage = () => {
     });
   };
 
+  const onAddTestSuite = () => history.push(ROUTES.ADD_TEST_SUITES);
+
   useEffect(() => {
     fetchTestSuites();
   }, []);
 
+  const fetchErrorPlaceHolder = useCallback(
+    () => (
+      <ErrorPlaceHolder
+        buttons={
+          <p className="text-center">
+            <Button
+              ghost
+              className="h-8 rounded-4 tw-m-y-sm"
+              data-testid="add-test-suite-button"
+              size="small"
+              type="primary"
+              onClick={onAddTestSuite}>
+              Add Test Suite
+            </Button>
+          </p>
+        }
+        doc={WEBHOOK_DOCS}
+        heading="Test Suite"
+        type="ADD_DATA"
+      />
+    ),
+    []
+  );
+
+  if (isEmpty(testSuites)) {
+    return fetchErrorPlaceHolder();
+  }
+
   return (
     <PageLayoutV1>
-      <TitleBreadcrumb
-        titleLinks={[
-          {
-            name: 'Test Suites',
-            url: '',
-            activeTitle: true,
-          },
-        ]}
-      />
+      <Space align="center" className="w-full justify-between" size={16}>
+        <TitleBreadcrumb
+          titleLinks={[
+            {
+              name: 'Test Suites',
+              url: '',
+              activeTitle: true,
+            },
+          ]}
+        />
+        <Button type="primary" onClick={onAddTestSuite}>
+          Add Test Suite
+        </Button>
+      </Space>
+
       <Row className="w-full mt-4">
         <Col span={24}>
           <Table
