@@ -32,6 +32,8 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
+from ....tests.unit.source.test_bigquery import MOCK_GET_SOURCE_CONNECTION
+
 """
 Check Partitioned Table in Profiler Workflow
 """
@@ -117,9 +119,20 @@ MOCK_RANGE_PARTITIONING = RangePartitioning(
 
 class ProfilerPartitionUnitTest(TestCase):
     @patch("metadata.orm_profiler.api.workflow.ProfilerWorkflow._validate_service_name")
-    def __init__(self, methodName, validate_service_name):
+    @patch("google.auth.default")
+    @patch("sqlalchemy.engine.base.Engine.connect")
+    @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
+    def __init__(
+        self,
+        methodName,
+        mock_connect,
+        mock_create_bigquery_client,
+        auth_default,
+        validate_service_name,
+    ):
         super().__init__(methodName)
         validate_service_name.return_value = True
+        auth_default.return_value = (None, MOCK_GET_SOURCE_CONNECTION)
         self.profiler_workflow = ProfilerWorkflow.create(mock_bigquery_config)
 
     def test_partition_details_time_unit(self):
