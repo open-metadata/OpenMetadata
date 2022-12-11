@@ -39,7 +39,7 @@ class OMetaUserMixin:
         + ES_INDEX_MAP[User.__name__]
     )
 
-    @lru_cache
+    @lru_cache(maxsize=None)
     def get_user_by_email(
         self,
         email: Optional[str],
