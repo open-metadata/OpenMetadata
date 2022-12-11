@@ -69,7 +69,9 @@ class OMetaUserTest(TestCase):
         """
 
         cls.user_1: User = cls.metadata.create_or_update(
-            data=CreateUserRequest(name="random", email="random@user.com"),
+            data=CreateUserRequest(
+                name="random.user", email="random.user@getcollate.io"
+            ),
         )
 
         cls.user_2: User = cls.metadata.create_or_update(
