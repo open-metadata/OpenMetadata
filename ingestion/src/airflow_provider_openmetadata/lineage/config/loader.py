@@ -32,6 +32,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 class AirflowLineageConfig(BaseModel):
     airflow_service_name: str
     metadata_config: OpenMetadataConnection
+    only_keep_dag_lineage: bool = False
+    max_status: int = 10
 
 
 def parse_airflow_config(
@@ -59,6 +61,12 @@ def parse_airflow_config(
 
     return AirflowLineageConfig(
         airflow_service_name=airflow_service_name,
+        # Check if value is a literal string `true`
+        only_keep_dag_lineage=conf.get(
+            LINEAGE, "only_keep_dag_lineage", fallback="false"
+        )
+        == "true",
+        max_status=int(conf.get(LINEAGE, "max_status", fallback=10)),
         metadata_config=OpenMetadataConnection(
             hostPort=conf.get(
                 LINEAGE,

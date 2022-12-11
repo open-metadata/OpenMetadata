@@ -43,6 +43,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
@@ -487,9 +488,13 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
-        deleteEntityFromElasticSearch(deleteRequest);
+        DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+        GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
+        request.setQuery(
+            QueryBuilders.boolQuery()
+                .should(QueryBuilders.matchQuery("id", glossaryTerm.getId().toString()))
+                .should(QueryBuilders.matchQuery("parent.id", glossaryTerm.getId().toString())));
+        deleteEntityFromElasticSearchByQuery(request);
         break;
     }
   }
@@ -498,9 +503,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       Glossary glossary = (Glossary) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
-      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      queryBuilder.must(new TermQueryBuilder("name", glossary.getName()));
-      request.setQuery(queryBuilder);
+      request.setQuery(
+          QueryBuilders.boolQuery().should(QueryBuilders.matchQuery("glossary.id", glossary.getId().toString())));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
