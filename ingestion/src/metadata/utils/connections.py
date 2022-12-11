@@ -21,7 +21,6 @@ from typing import Union
 
 import pkg_resources
 import requests
-from metadata.utils.ssl_registry import get_verify_ssl_fn
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.event import listen
@@ -173,6 +172,7 @@ from metadata.utils.source_connections import (
     update_connection_opts_args,
 )
 from metadata.utils.sql_queries import NEO4J_AMUNDSEN_USER_QUERY
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")

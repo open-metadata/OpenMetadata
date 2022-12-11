@@ -114,7 +114,8 @@ class OMetaUserTest(TestCase):
 
         # I can get User 1, who has the name equal to its email
         self.assertEqual(
-            self.user_1.id, self.metadata.get_user_by_email(email="random.user@getcollate.io").id
+            self.user_1.id,
+            self.metadata.get_user_by_email(email="random.user@getcollate.io").id,
         )
 
         # I can get User 2, who has an email not matching the name
