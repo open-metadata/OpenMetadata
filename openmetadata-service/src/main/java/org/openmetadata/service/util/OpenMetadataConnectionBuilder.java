@@ -59,8 +59,7 @@ public class OpenMetadataConnectionBuilder {
     verifySSL = VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     airflowSSLConfig =
         getAirflowSSLConfig(
-            VerifySSL.fromValue(airflowConfiguration.getVerifySSL()),
-            airflowConfiguration.getSslConfig());
+            VerifySSL.fromValue(airflowConfiguration.getVerifySSL()), airflowConfiguration.getSslConfig());
   }
 
   private OpenMetadataConnection.AuthProvider extractAuthProvider(User botUser) {
