@@ -13,6 +13,7 @@
 
 import { Modal, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { isArray, isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
@@ -92,21 +93,24 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     ];
   }, [data, onTeamExpand]);
 
-  const moveRow = useCallback(async (dragRecord: Team, dropRecord: Team) => {
-    if (dragRecord.id === dropRecord.id) {
-      return;
-    }
-    let dropTeam: Team = dropRecord;
-    if (!isArray(dropTeam.children)) {
-      const res = await getTeamByName(dropTeam.name, ['parents'], 'all');
-      dropTeam = (res.parents?.[0] as Team) || currentTeam;
-    }
-    setMovedTeam({
-      from: dragRecord,
-      to: dropTeam,
-    });
-    setIsModalOpen(true);
-  }, []);
+  const handleMoveRow = useCallback(
+    async (dragRecord: Team, dropRecord: Team) => {
+      if (dragRecord.id === dropRecord.id) {
+        return;
+      }
+      let dropTeam: Team = dropRecord;
+      if (!isArray(dropTeam.children)) {
+        const res = await getTeamByName(dropTeam.name, ['parents'], 'all');
+        dropTeam = (res.parents?.[0] as Team) || currentTeam;
+      }
+      setMovedTeam({
+        from: dragRecord,
+        to: dropTeam,
+      });
+      setIsModalOpen(true);
+    },
+    []
+  );
 
   const handleOk = async () => {
     if (movedTeam) {
@@ -129,13 +133,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     }
   };
 
-  const components = {
-    body: {
-      row: DraggableBodyRow,
-    },
-  };
-
-  const tableExpandableData = ({
+  const tableExpandableIconData = ({
     expanded,
     onExpand,
     expandable,
@@ -153,6 +151,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         }>
         <SVGIcons className="drag-icon" icon={Icons.DRAG} />
         <SVGIcons
+          className="expand-icon"
           icon={expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT}
         />
       </div>
@@ -163,6 +162,22 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       </>
     );
 
+  const TABLE_CONSTANTS = {
+    body: {
+      row: DraggableBodyRow,
+    },
+  };
+
+  const expandableConfig: ExpandableConfig<Team> = {
+    onExpand: (isOpen, record) => {
+      if (isOpen && isEmpty(record.children)) {
+        onTeamExpand(false, record.fullyQualifiedName, true);
+      }
+    },
+    expandIcon: ({ expanded, onExpand, expandable, record }) =>
+      tableExpandableIconData({ expanded, onExpand, expandable, record }),
+  };
+
   return (
     <>
       <DndProvider backend={HTML5Backend}>
@@ -170,26 +185,18 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           bordered
           className="teams-list-table"
           columns={columns}
-          components={components}
+          components={TABLE_CONSTANTS}
           data-testid="team-hierarchy-table"
           dataSource={data}
-          expandable={{
-            expandIcon: ({ expanded, onExpand, expandable, record }) =>
-              tableExpandableData({ expanded, onExpand, expandable, record }),
-          }}
+          expandable={expandableConfig}
           loading={isTableLoading}
           pagination={false}
           rowKey="name"
           size="small"
-          onExpand={(isOpen, record) => {
-            if (isOpen && isEmpty(record.children)) {
-              onTeamExpand(false, record.fullyQualifiedName, true);
-            }
-          }}
           onRow={(record, index) => {
             const attr = {
               index,
-              moveRow,
+              handleMoveRow,
               record,
             };
 

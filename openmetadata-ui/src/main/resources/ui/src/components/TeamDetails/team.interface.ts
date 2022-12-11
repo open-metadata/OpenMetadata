@@ -26,7 +26,7 @@ export interface TeamHierarchyProps {
 export interface DraggableBodyRowProps
   extends React.HTMLAttributes<HTMLTableRowElement> {
   index: number;
-  moveRow: (dragRecord: Team, dropRecord: Team) => void;
+  handleMoveRow: (dragRecord: Team, dropRecord: Team) => void;
   record: Team;
 }
 

@@ -19,7 +19,7 @@ import { DragCollectProps, DraggableBodyRowProps } from './team.interface';
 
 const DraggableBodyRow = ({
   index,
-  moveRow,
+  handleMoveRow,
   className,
   record,
   style,
@@ -42,7 +42,7 @@ const DraggableBodyRow = ({
     },
     // this will going to return the drag and drop object of a table
     drop: ({ record: dragRecord }: { record: Team }) => {
-      moveRow(dragRecord, record);
+      handleMoveRow(dragRecord, record);
     },
   });
   // here we are passing the drag record
