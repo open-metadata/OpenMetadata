@@ -15,9 +15,9 @@ Processor class used to compute refined report data
 
 from __future__ import annotations
 
+import re
 from collections import namedtuple
 from typing import Generator, Iterable, Optional
-import re
 
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -112,24 +112,23 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
             re_pattern = re.compile(f"(.*{entity_type}/{entity_obj.fqn})")
 
             if (
-                entity_obj.fqn in refined_data and
-                not refined_data[entity_obj.fqn]["entityHref"]
+                entity_obj.fqn in refined_data
+                and not refined_data[entity_obj.fqn]["entityHref"]
             ):
                 # if we've seen the entity previously but were not able to get
                 # the URL we'll try again from the new event.
                 try:
-                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(1)
+                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
+                        1
+                    )
                 except IndexError:
-                    entity_href = None
-
-                refined_data[entity_obj.fqn]["entityHref"] = entity_href
-
+                    logger.warning(f"Could not find entity Href for {entity_obj.fqn}")
 
             if entity_obj.fqn not in refined_data:
                 entity = self.metadata.get_by_name(
                     ENTITIES[entity_obj.entity_type],
                     fqn=entity_obj.fqn,
-                    fields=["tags"]
+                    fields=["tags"],
                 )
 
                 try:
@@ -161,12 +160,15 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     )
 
                 try:
-                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(1)
+                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
+                        1
+                    )
                 except IndexError:
                     entity_href = None
 
                 refined_data[split_url[1]] = {
-                    "entityType": entity_type[0].upper() + entity_type[1:],  # Normalise entity type
+                    "entityType": entity_type[0].upper()
+                    + entity_type[1:],  # Normalise entity type
                     "entityTier": entity_tier,
                     "entityFqn": entity_obj.fqn,
                     "entityHref": entity_href,
