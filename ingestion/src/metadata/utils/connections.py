@@ -21,6 +21,7 @@ from typing import Union
 
 import pkg_resources
 import requests
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.event import listen
@@ -812,9 +813,16 @@ def _(  # pylint: disable=inconsistent-return-statements
             "personal_access_token_secret"
         ] = connection.personalAccessTokenSecret.get_secret_value()
     try:
+
+        get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
+        # ssl_verify is typed as a `bool` in TableauServerConnection
+        # However, it is passed as `verify=self.ssl_verify` in each `requests` call.
+        # In requests (https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)
+        # the param can be None, False to ignore HTTPS certs or a string with the path to the cert.
         conn = TableauServerConnection(
             config_json=tableau_server_config,
             env=connection.env,
+            ssl_verify=get_verify_ssl(connection.sslConfig),
         )
         conn.sign_in().json()
         return TableauClient(conn)
