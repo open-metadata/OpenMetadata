@@ -34,9 +34,9 @@ from metadata.clients.atlas_client import AtlasClient
 from metadata.clients.connection_clients import (
     AirByteClient,
     AmundsenClient,
-    DatalakeGen2Client,
     DagsterClient,
     DatalakeClient,
+    DatalakeGen2Client,
     DeltaLakeClient,
     DomoClient,
     DynamoClient,
@@ -64,9 +64,6 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakegen2Connection import (
-    DatalakeGen2Connection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -102,6 +99,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
     GCSConfig,
     S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakegen2Connection import (
+    DatalakeGen2Connection,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,

@@ -14,17 +14,14 @@ Datalake Gen2 source to extract metadata
 """
 
 from typing import Iterable, Optional, Tuple
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    Table,
-    TableType,
-)
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.datalakegen2Connection import (
     DatalakeGen2Connection,
 )
