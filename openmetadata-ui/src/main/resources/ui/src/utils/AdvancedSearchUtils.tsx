@@ -17,6 +17,7 @@ import i18next from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
+import { FilterFieldsMenuItem } from '../components/Explore/ExploreQuickFilters.interface';
 import {
   ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
@@ -135,6 +136,26 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   }
 
   return <></>;
+};
+
+export const getFieldsWithDefaultFlags = (
+  dropdownItems: { key: string; label: string }[]
+): FilterFieldsMenuItem[] => {
+  // For showing some default quick filters
+  // Marking first 2 fields as default fields to show on render
+  return dropdownItems.map((item, index) => ({
+    ...item,
+    defaultField: index <= 1,
+  }));
+};
+
+export const getShouldShowCloseIcon = (
+  menuItems: FilterFieldsMenuItem[],
+  fieldKey: string
+) => {
+  return Boolean(
+    menuItems.find((item) => item.key === fieldKey && !item.defaultField)
+  );
 };
 
 export const getSearchDropdownLabels = (

@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-export interface SearchDropdownProps {
-  label: string;
-  options: string[];
-  searchKey: string;
-  selectedKeys: string[];
-  showClearAllBtn?: boolean;
-  showCloseIcon: boolean;
-  onChange: (values: string[], searchKey: string) => void;
-  onSearch: (searchText: string, searchKey: string) => void;
-  onRemove: (searchKey: string) => void;
+import { SearchIndex } from '../../enums/search.enum';
+import { ExploreQuickFilterField } from './explore.interface';
+
+export interface ExploreQuickFiltersProps {
+  index: SearchIndex;
+  fields: Array<ExploreQuickFilterField>;
+  onFieldRemove: (value: string) => void;
+  onClear: () => void;
+  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
+  onFieldSelect: (value: string, label: string) => void;
+  onAdvanceSearch: () => void;
   onClearSelection: (key: string) => void;
+}
+
+export interface FilterFieldsMenuItem {
+  key: string;
+  label: string;
+  defaultField: boolean;
 }

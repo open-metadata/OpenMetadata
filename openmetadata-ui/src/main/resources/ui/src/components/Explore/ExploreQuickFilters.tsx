@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Badge, Divider, Dropdown, Menu, Space, Typography } from 'antd';
+import { Divider, Dropdown, Menu, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -23,28 +23,21 @@ import {
   getUserSuggestions,
 } from '../../axiosAPIs/miscAPI';
 import { MISC_FIELDS } from '../../constants/AdvancedSearch.constants';
-import { SearchIndex } from '../../enums/search.enum';
 import {
   getAdvancedField,
   getDropDownItems,
+  getFieldsWithDefaultFlags,
+  getShouldShowCloseIcon,
 } from '../../utils/AdvancedSearchUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
-import { ExploreQuickFilterField } from './explore.interface';
+import {
+  ExploreQuickFiltersProps,
+  FilterFieldsMenuItem,
+} from './ExploreQuickFilters.interface';
 
-interface Props {
-  index: SearchIndex;
-  fields: Array<ExploreQuickFilterField>;
-  onFieldRemove: (value: string) => void;
-  onClear: () => void;
-  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-  onFieldSelect: (value: string, label: string) => void;
-  onAdvanceSearch: () => void;
-  onClearSelection: (key: string) => void;
-}
-
-const ExploreQuickFilters: FC<Props> = ({
+const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
   onFieldRemove,
   onClear,
@@ -60,7 +53,11 @@ const ExploreQuickFilters: FC<Props> = ({
     onFieldSelect(menuInfo.key, label);
   }, []);
 
-  const menuItems = useMemo(() => getDropDownItems(index), [index]);
+  const menuItems: FilterFieldsMenuItem[] = useMemo(() => {
+    const dropdownItems = getDropDownItems(index);
+
+    return getFieldsWithDefaultFlags(dropdownItems);
+  }, [index]);
 
   const menu = useMemo(() => {
     return (
@@ -80,11 +77,6 @@ const ExploreQuickFilters: FC<Props> = ({
     handleMenuItemClick(menuItems[0], menuItems[0].label);
     handleMenuItemClick(menuItems[1], menuItems[1].label);
   }, [menuItems]);
-
-  const filterCount = useMemo(
-    () => fields.filter((field) => !isEmpty(field.value)).length,
-    [fields]
-  );
 
   const fetchOptions = (query: string, fieldKey: string) => {
     const advancedField = getAdvancedField(fieldKey);
@@ -142,43 +134,38 @@ const ExploreQuickFilters: FC<Props> = ({
 
   return (
     <Space wrap size={[16, 16]}>
-      {fields.map((field) => (
-        <SearchDropdown
-          showClear
-          key={field.key}
-          label={field.label}
-          options={options || []}
-          searchKey={field.key}
-          selectedKeys={field.value || []}
-          onChange={(updatedValues) => {
-            onFieldValueSelect({ ...field, value: updatedValues });
-          }}
-          onClearSelection={onClearSelection}
-          onRemove={onFieldRemove}
-          onSearch={getFilterOptions}
-        />
-      ))}
+      {fields.map((field) => {
+        const showClearAllBtn = field.value && field.value.length > 1;
+
+        return (
+          <SearchDropdown
+            key={field.key}
+            label={field.label}
+            options={options || []}
+            searchKey={field.key}
+            selectedKeys={field.value || []}
+            showClearAllBtn={showClearAllBtn}
+            showCloseIcon={getShouldShowCloseIcon(menuItems, field.key)}
+            onChange={(updatedValues) => {
+              onFieldValueSelect({ ...field, value: updatedValues });
+            }}
+            onClearSelection={onClearSelection}
+            onRemove={onFieldRemove}
+            onSearch={getFilterOptions}
+          />
+        );
+      })}
       <Dropdown
         className="cursor-pointer"
         data-testid="quick-filter-dropdown"
         overlay={menu}
         trigger={['click']}>
-        <Badge count={filterCount} size="small">
-          <Space size={4}>
-            <Typography.Text>{t('label.more')}</Typography.Text>
-            <DropDownIcon className="flex self-center" />
-          </Space>
-        </Badge>
+        <Space size={4}>
+          <Typography.Text>{t('label.more')}</Typography.Text>
+          <DropDownIcon className="flex self-center" />
+        </Space>
       </Dropdown>
       <Divider type="vertical" />
-      {!isEmpty(fields) && (
-        <span
-          className="tw-text-primary tw-self-center tw-cursor-pointer"
-          data-testid="clear-all-button"
-          onClick={onClear}>
-          Clear All
-        </span>
-      )}
       <span
         className="tw-text-primary tw-self-center tw-cursor-pointer"
         data-testid="advance-search-button"

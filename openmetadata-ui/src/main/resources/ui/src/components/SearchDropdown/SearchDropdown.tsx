@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseCircleFilled } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -20,9 +20,11 @@ import {
   Input,
   MenuItemProps,
   MenuProps,
+  Row,
   Space,
   Typography,
 } from 'antd';
+import classNames from 'classnames';
 import React, { ChangeEvent, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -38,7 +40,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   options,
   searchKey,
   selectedKeys,
-  showClear,
+  showClearAllBtn,
+  showCloseIcon,
   onChange,
   onClearSelection,
   onRemove,
@@ -95,23 +98,24 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     <Dropdown
       destroyPopupOnHide
       data-testid={searchKey}
-      dropdownRender={(menuNode) => {
-        return (
-          <Card
-            bodyStyle={{ padding: 0 }}
-            className="custom-dropdown-render"
-            data-testid="drop-down-menu">
-            <Space direction="vertical" size={4}>
-              <div className="p-t-sm p-x-sm">
-                <Input
-                  data-testid="search-input"
-                  placeholder={`${t('label.search-entity', {
-                    entity: label,
-                  })}...`}
-                  onChange={handleSearch}
-                />
-              </div>
-              {showClear && (
+      dropdownRender={(menuNode) => (
+        <Card
+          bodyStyle={{ padding: 0 }}
+          className="custom-dropdown-render"
+          data-testid="drop-down-menu">
+          <Space direction="vertical" size={0}>
+            <div className="p-t-sm p-x-sm">
+              <Input
+                data-testid="search-input"
+                placeholder={`${t('label.search-entity', {
+                  entity: label,
+                })}...`}
+                onChange={handleSearch}
+              />
+            </div>
+            {showClearAllBtn && (
+              <>
+                <Divider className="m-t-xs m-b-0" />
                 <Button
                   className="p-0 m-l-sm"
                   data-testid="clear-button"
@@ -119,13 +123,23 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                   onClick={handleClear}>
                   {t('label.clear-all')}
                 </Button>
-              )}
-              <Divider className="m-0" />
-              {menuNode}
-            </Space>
-          </Card>
-        );
-      }}
+              </>
+            )}
+            <Divider
+              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+            />
+            {options.length > 0 ? (
+              menuNode
+            ) : (
+              <Row className="m-y-sm" justify="center">
+                <Typography.Text>
+                  {t('label.no-data-available')}
+                </Typography.Text>
+              </Row>
+            )}
+          </Space>
+        </Card>
+      )}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}
@@ -135,28 +149,26 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         setIsDropDownOpen(visible);
       }}>
       <Button className="search-dropdown-trigger-btn">
-        <Space
-          className="search-dropdown-btn-content"
-          data-testid="search-dropdown">
-          <Space size={0}>
-            <DropDownIcon className="flex self-center m-r-xss" />
-            <Typography.Text>{label}</Typography.Text>
-            {selectedKeys.length > 0 && (
-              <span>
-                {' : '}
-                <Typography.Text className="text-primary font-medium">
-                  {getSelectedOptionLabelString(selectedKeys)}
-                </Typography.Text>
-              </span>
-            )}
-          </Space>
-          <Divider className="m-0" type="vertical" />
-          <CloseOutlined
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(searchKey);
-            }}
-          />
+        <Space data-testid="search-dropdown" size={4}>
+          <Typography.Text>{label}</Typography.Text>
+          {selectedKeys.length > 0 && (
+            <span>
+              {' : '}
+              <Typography.Text className="text-primary font-medium">
+                {getSelectedOptionLabelString(selectedKeys)}
+              </Typography.Text>
+            </span>
+          )}
+          <DropDownIcon className="flex self-center" />
+          {showCloseIcon && (
+            <CloseCircleFilled
+              className="remove-field-icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(searchKey);
+              }}
+            />
+          )}
         </Space>
       </Button>
     </Dropdown>
