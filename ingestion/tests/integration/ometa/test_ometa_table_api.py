@@ -294,6 +294,10 @@ class OMetaTableTest(TestCase):
         res_sample = self.metadata.ingest_table_sample_data(res, sample_data)
         assert res_sample == sample_data
 
+        # Let's also validate that we can properly retrieve sample data back
+        res_sample = self.metadata.get_sample_data(table=res).sampleData
+        assert res_sample == sample_data
+
     def test_ingest_table_profile_data(self):
         """
         We can ingest profile data TableProfile
