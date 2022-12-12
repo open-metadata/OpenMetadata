@@ -63,6 +63,7 @@ import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
+import IconDrag from '../assets/svg/drag.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
@@ -397,6 +398,7 @@ export const Icons = {
   HIDE_PASSWORD: 'hide-password',
   ARROW_RIGHT_LIGHT: 'arrow-right-light',
   ARROW_DOWN_LIGHT: 'arrow-down-light',
+  DRAG: 'drag',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
@@ -508,6 +510,11 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.FEED:
       IconComponent = IconFeed;
+
+      break;
+
+    case Icons.DRAG:
+      IconComponent = IconDrag;
 
       break;
     case Icons.THUMBSUP:
