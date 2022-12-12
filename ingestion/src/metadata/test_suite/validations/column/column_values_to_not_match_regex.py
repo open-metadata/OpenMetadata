@@ -63,6 +63,7 @@ def _get_not_match_count(not_like_count, not_regex_count, runner, col) -> Option
         return not_like_count_dict.get(Metrics.NOT_LIKE_COUNT.name)
 
 
+@singledispatch
 def column_values_to_not_match_regex(
     test_case: TestCase,
     execution_date: datetime,
@@ -137,3 +138,17 @@ def column_values_to_not_match_regex(
             TestResultValue(name="notLikeCount", value=str(not_match_count_value_res))
         ],
     )
+
+
+from functools import singledispatch
+
+from pandas import DataFrame
+
+
+@column_values_to_not_match_regex.register
+def column_values_to_not_match_regex(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    pass

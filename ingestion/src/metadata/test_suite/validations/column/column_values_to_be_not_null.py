@@ -33,6 +33,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
+@singledispatch
 def column_values_to_be_not_null(
     test_case: TestCase,
     execution_date: datetime,
@@ -88,3 +89,17 @@ def column_values_to_be_not_null(
             TestResultValue(name="nullCount", value=str(null_count_value_res))
         ],
     )
+
+
+from functools import singledispatch
+
+from pandas import DataFrame
+
+
+@column_values_to_be_not_null.register
+def column_values_to_be_not_null_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    pass

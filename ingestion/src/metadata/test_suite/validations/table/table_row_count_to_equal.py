@@ -12,10 +12,12 @@
 """
 TableRowCountToEqual validation implementation
 """
-# pylint: disable=duplicate-code
-
 import traceback
 from datetime import datetime
+from functools import singledispatch
+
+# pylint: disable=duplicate-code
+from pandas import DataFrame
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -30,6 +32,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
+@singledispatch
 def table_row_count_to_equal(
     test_case: TestCase,
     execution_date: datetime,
@@ -79,3 +82,10 @@ def table_row_count_to_equal(
         result=result,
         testResultValue=[TestResultValue(name="rowCount", value=str(row_count_value))],
     )
+
+
+@table_row_count_to_equal.register
+def table_row_count_to_equal_dl(
+    test_case: TestCase, execution_date: datetime, data_frame: DataFrame
+):
+    print(test_case)

@@ -16,6 +16,8 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional
 
+from pandas import DataFrame
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -47,9 +49,11 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         table_sample_precentage: float = None,
         table_sample_query: str = None,
         table_partition_config: dict = None,
-        table_entity: Table = None,
+        table_entity=None,
+        data_frame: DataFrame = None,
     ):
         self.table_entity = table_entity
+        self.data_frame = data_frame
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
         self.table_sample_precentage = table_sample_precentage
@@ -75,6 +79,7 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
             ](
                 test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
+                data_frame=self.data_frame,
             )
         except KeyError as err:
             logger.warning(

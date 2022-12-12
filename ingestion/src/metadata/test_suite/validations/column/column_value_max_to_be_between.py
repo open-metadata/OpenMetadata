@@ -16,7 +16,9 @@ ColumnValuesToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -34,6 +36,7 @@ from metadata.utils.test_suite import get_test_case_param_value
 logger = test_suite_logger()
 
 
+@singledispatch
 def column_value_max_to_be_between(
     test_case: TestCase,
     execution_date: datetime,
@@ -110,3 +113,17 @@ def column_value_max_to_be_between(
         result=result,
         testResultValue=[TestResultValue(name="max", value=str(max_value_res))],
     )
+
+
+from functools import singledispatch
+
+from pandas import DataFrame
+
+
+@column_value_max_to_be_between.register
+def column_value_max_to_be_between_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    pass

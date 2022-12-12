@@ -52,6 +52,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.datalake import ometa_to_dataframe
 from metadata.interfaces.datalake.datalake_test_suite_interface import (
     DataLakeTestSuiteInterface,
 )
@@ -93,6 +94,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
+        self.client = create_ometa_client(self.metadata_config)
         self.metadata = OpenMetadata(self.metadata_config)
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
@@ -225,7 +227,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return get_partition_details(entity)
 
     def _create_runner_interface(self, entity_fqn: str):
-        """create the interface to execute test against SQA sources"""
+        """create the interface to execute test against sources"""
         table_entity = self._get_table_entity_from_test_case(entity_fqn)
         service_connection_config = self._get_service_connection_from_test_case(
             entity_fqn
@@ -245,16 +247,20 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             sqa_metadata_obj = MetaData()
             return SQATestSuiteInterface(
                 service_connection_config=service_connection_config,
-                ometa_client=create_ometa_client(self.metadata_config),
+                ometa_client=self.client,
                 sqa_metadata_obj=sqa_metadata_obj,
                 table_entity=table_entity,
                 table_sample_precentage=table_sample_precentage,
                 table_sample_query=table_sample_query,
                 table_partition_config=table_partition_config,
             )
+        self.data_frame_list = ometa_to_dataframe(
+            service_connection_config.configSource, self.client, table_entity
+        )
         return DataLakeTestSuiteInterface(
             service_connection_config=service_connection_config,
-            ometa_client=create_ometa_client(self.metadata_config),
+            ometa_client=self.client,
+            data_frame=self.data_frame_list[0],
             table_entity=table_entity,
             table_sample_precentage=table_sample_precentage,
             table_sample_query=table_sample_query,

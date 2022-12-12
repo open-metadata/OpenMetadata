@@ -12,11 +12,12 @@
 """
 ColumnValuesToBeUnique validation implementation
 """
-# pylint: disable=duplicate-code,protected-access
-
 import traceback
 from datetime import datetime
+from functools import singledispatch
 
+# pylint: disable=duplicate-code,protected-access
+from pandas import DataFrame
 from sqlalchemy import inspect
 from sqlalchemy.orm.util import AliasedClass
 
@@ -34,6 +35,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
+@singledispatch
 def column_values_to_be_unique(
     test_case: TestCase,
     execution_date: datetime,
@@ -107,3 +109,12 @@ def column_values_to_be_unique(
             TestResultValue(name="uniqueCount", value=str(unique_count_value_res)),
         ],
     )
+
+
+@column_values_to_be_unique.register
+def column_values_to_be_unique_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    pass

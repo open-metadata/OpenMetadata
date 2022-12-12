@@ -34,6 +34,7 @@ from metadata.utils.test_suite import get_test_case_param_value
 logger = test_suite_logger()
 
 
+@singledispatch
 def column_value_min_to_be_between(
     test_case: TestCase,
     execution_date: datetime,
@@ -110,3 +111,17 @@ def column_value_min_to_be_between(
         result=result,
         testResultValue=[TestResultValue(name="min", value=str(min_value_res))],
     )
+
+
+from functools import singledispatch
+
+from pandas import DataFrame
+
+
+@column_value_min_to_be_between.register
+def column_value_min_to_be_between_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    pass

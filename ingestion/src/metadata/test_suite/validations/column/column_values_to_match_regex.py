@@ -61,6 +61,7 @@ def _get_match_count(like_count, regex_count, runner, col) -> Optional[int]:
         return like_count_dict.get(Metrics.LIKE_COUNT.name)
 
 
+@singledispatch
 def column_values_to_match_regex(
     test_case: TestCase,
     execution_date: datetime,
@@ -132,3 +133,17 @@ def column_values_to_match_regex(
             TestResultValue(name="likeCount", value=str(match_count_value_res))
         ],
     )
+
+
+from functools import singledispatch
+
+from pandas import DataFrame
+
+
+@column_values_to_match_regex.register
+def column_values_to_match_regex_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    pass
