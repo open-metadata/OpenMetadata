@@ -52,19 +52,15 @@ class ESMixin(Generic[T]):
         response = self.client.get(query_string)
 
         if response:
-            return (
-                query_string,
-                [
-                    self.get_by_name(
-                        entity=entity_type,
-                        fqn=hit["_source"]["fullyQualifiedName"],
-                    )
-                    for hit in response["hits"]["hits"]
-                ]
-                or None,
-            )
+            return [
+                self.get_by_name(
+                    entity=entity_type,
+                    fqn=hit["_source"]["fullyQualifiedName"],
+                )
+                for hit in response["hits"]["hits"]
+            ] or None
 
-        return (query_string, None)
+        return None
 
     def es_search_from_fqn(
         self,
@@ -90,7 +86,7 @@ class ESMixin(Generic[T]):
         )
 
         try:
-            query_string, response = self._search_es_entity(
+            response = self._search_es_entity(
                 entity_type=entity_type, query_string=query_string
             )
             return response
