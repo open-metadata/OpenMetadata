@@ -39,7 +39,7 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 </Note>
 
-## Postgres (version 0.12.0 or greater)
+## Postgres (version between 12.0 and 14.6)
 
 To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
 <Note>
