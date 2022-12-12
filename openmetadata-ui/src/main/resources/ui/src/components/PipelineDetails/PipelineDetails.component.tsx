@@ -47,7 +47,7 @@ import {
   PIPELINE_DETAILS_TABS,
   PIPELINE_TASK_TABS,
 } from '../../constants/pipeline.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -251,7 +251,7 @@ const PipelineDetails = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: EntityInfo.OWNER,
       value: owner && getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -262,11 +262,11 @@ const PipelineDetails = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: 'Tier',
+      key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
     {
-      key: `${serviceType} Url`,
+      key: `${serviceType} ${EntityInfo.URL}`,
       value: pipelineUrl,
       placeholderText: entityName,
       isLink: true,
