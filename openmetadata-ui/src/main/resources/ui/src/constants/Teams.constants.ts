@@ -11,4 +11,12 @@
  *  limitations under the License.
  */
 
+import DraggableBodyRow from '../components/TeamDetails/DraggableBodyRow';
+
 export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';
+
+export const TABLE_CONSTANTS = {
+  body: {
+    row: DraggableBodyRow,
+  },
+};

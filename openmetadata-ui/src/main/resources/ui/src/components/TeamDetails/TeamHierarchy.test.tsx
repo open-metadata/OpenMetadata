@@ -58,18 +58,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
 }));
 
-jest.mock('../../utils/SvgUtils', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockReturnValue(<p data-testid="svg-icon">SVGIcons</p>),
-    Icons: {
-      DRAG: 'drag',
-      ARROW_DOWN_LIGHT: 'arrow-down-light',
-      ARROW_RIGHT_LIGHT: 'arrow-right-light',
-    },
-  };
-});
-
 describe('Team Hierarchy page', () => {
   it('Initially, Table should load', async () => {
     await act(async () => {

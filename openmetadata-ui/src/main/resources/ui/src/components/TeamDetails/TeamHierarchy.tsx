@@ -22,13 +22,13 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTeamByName, updateTeam } from '../../axiosAPIs/teamsAPI';
+import { TABLE_CONSTANTS } from '../../constants/Teams.constants';
 import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getMovedTeamData } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import DraggableBodyRow from './DraggableBodyRow';
 import {
   DraggableBodyRowProps,
   MovedTeamProps,
@@ -112,7 +112,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     []
   );
 
-  const handleOk = async () => {
+  const handleChangeTeam = async () => {
     if (movedTeam) {
       setIsTableLoading(true);
       try {
@@ -133,50 +133,51 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     }
   };
 
-  const tableExpandableIconData = ({
-    expanded,
-    onExpand,
-    expandable,
-    record,
-  }: TableExpandableDataProps) =>
-    expandable ? (
-      <div
-        className="expand-cell-icon-container"
-        data-testid="expand-table-row"
-        onClick={(e) =>
-          onExpand(
-            record,
-            e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
-          )
-        }>
-        <SVGIcons className="drag-icon" icon={Icons.DRAG} />
-        <SVGIcons
-          className="expand-icon"
-          icon={expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT}
-        />
-      </div>
-    ) : (
-      <>
-        <SVGIcons className="drag-icon" icon={Icons.DRAG} />
-        <div className="expand-cell-empty-icon-container" />
-      </>
-    );
+  const tableExpandableIconData = useMemo(
+    () =>
+      ({ expanded, onExpand, expandable, record }: TableExpandableDataProps) =>
+        expandable ? (
+          <div
+            draggable
+            className="expand-cell-icon-container"
+            data-testid="expand-table-row"
+            onClick={(e) =>
+              onExpand(
+                record,
+                e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
+              )
+            }>
+            <SVGIcons
+              className="drag-icon"
+              draggable="true"
+              icon={Icons.DRAG}
+            />
+            <SVGIcons
+              className="expand-icon"
+              icon={expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT}
+            />
+          </div>
+        ) : (
+          <>
+            <SVGIcons className="drag-icon" icon={Icons.DRAG} />
+            <div className="expand-cell-empty-icon-container" />
+          </>
+        ),
+    []
+  );
 
-  const TABLE_CONSTANTS = {
-    body: {
-      row: DraggableBodyRow,
-    },
-  };
-
-  const expandableConfig: ExpandableConfig<Team> = {
-    onExpand: (isOpen, record) => {
-      if (isOpen && isEmpty(record.children)) {
-        onTeamExpand(false, record.fullyQualifiedName, true);
-      }
-    },
-    expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      tableExpandableIconData({ expanded, onExpand, expandable, record }),
-  };
+  const expandableConfig: ExpandableConfig<Team> = useMemo(
+    () => ({
+      onExpand: (isOpen, record) => {
+        if (isOpen && isEmpty(record.children)) {
+          onTeamExpand(false, record.fullyQualifiedName, true);
+        }
+      },
+      expandIcon: ({ expanded, onExpand, expandable, record }) =>
+        tableExpandableIconData({ expanded, onExpand, expandable, record }),
+    }),
+    [onTeamExpand, tableExpandableIconData]
+  );
 
   return (
     <>
@@ -214,7 +215,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         title={t('label.move-the-team')}
         visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
-        onOk={handleOk}>
+        onOk={handleChangeTeam}>
         <Typography.Text>
           {t('message.team-transfer-message', {
             from: movedTeam?.from?.name,
