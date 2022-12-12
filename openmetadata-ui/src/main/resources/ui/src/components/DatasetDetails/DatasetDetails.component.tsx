@@ -400,14 +400,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: EntityInfo.TYPE, value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} ${t('label.queries')}` },
+    { value: `${weeklyUsageCount} ${t('label.query-plural')}` },
     {
       key: EntityInfo.COLUMNS,
       value:
         tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} ${t('label.columns')}`
+          ? `${tableProfile.columnCount} ${t('label.columns-plural')}`
           : columns.length
-          ? `${columns.length} ${t('label.columns')}`
+          ? `${columns.length} ${t('label.columns-plural')}`
           : '',
     },
     {
