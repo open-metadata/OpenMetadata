@@ -221,9 +221,10 @@ class CliDBBase(TestCase):
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
 
         def retrieve_sample_data(self, table_name_fqn: str) -> Table:
-            return self.openmetadata.get_by_name(
-                entity=Table, fqn=table_name_fqn, fields=["sampleData"]
+            table: Table = self.openmetadata.get_by_name(
+                entity=Table, fqn=table_name_fqn
             )
+            return self.openmetadata.get_sample_data(table=table)
 
         def retrieve_lineage(self, table_name_fqn: str) -> dict:
             return self.openmetadata.client.get(

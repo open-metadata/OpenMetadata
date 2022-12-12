@@ -106,6 +106,39 @@ class OMetaTableMixin:
 
         return None
 
+    def get_sample_data(self, table: Table) -> Optional[Table]:
+        """
+        GET call for the /sampleData endpoint for a given Table
+
+        Returns a Table entity with TableData (sampleData informed)
+        """
+        resp = None
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(Table)}/{table.id.__root__}/sampleData",
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to GET sample data for {table.fullyQualifiedName.__root__}: {exc}"
+            )
+
+        if resp:
+            try:
+                return Table(**resp)
+            except UnicodeError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unicode Error parsing the sample data response from {table.fullyQualifiedName.__root__}: {err}"
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse sample data results from {table.fullyQualifiedName.__root__}: {exc}"
+                )
+
+        return None
+
     def ingest_profile_data(
         self, table: Table, profile_request: CreateTableProfileRequest
     ) -> Table:
