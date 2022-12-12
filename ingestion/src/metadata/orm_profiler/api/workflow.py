@@ -79,6 +79,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import profiler_logger
 from metadata.utils.partition import get_partition_details
@@ -111,6 +112,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             self.config.processor.dict().get("config")
         )
         self.metadata = OpenMetadata(self.metadata_config)
+        self.test_connection()
         self._retrieve_service_connection_if_needed()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
         # Init and type the source config
@@ -566,3 +568,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     f"Error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
+
+    def test_connection(self):
+        service_config = self.config.source.serviceConnection.__root__.config
+        self.engine = get_connection(service_config)
+        test_connection(self.engine)

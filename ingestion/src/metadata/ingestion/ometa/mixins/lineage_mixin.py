@@ -19,6 +19,7 @@ from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type, ometa_logger
 
@@ -129,3 +130,16 @@ class OMetaLineageMixin(Generic[T]):
                 + f"{entity.__name__} and {path}: {err}"
             )
             return None
+
+    def delete_lineage_edge(self, edge: EntitiesEdge) -> None:
+        """
+        Remove the given Edge
+        """
+        try:
+            self.client.delete(
+                f"{self.get_suffix(AddLineageRequest)}/{edge.fromEntity.type}/{edge.fromEntity.id.__root__}/"
+                f"{edge.toEntity.type}/{edge.toEntity.id.__root__}"
+            )
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")

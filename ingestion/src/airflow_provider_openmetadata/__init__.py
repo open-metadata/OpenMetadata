@@ -22,7 +22,16 @@ def get_provider_config():
     """
     return {
         "name": "OpenMetadata",
-        "description": "OpenMetadata <https://open-metadata.org/>",
+        "description": "`OpenMetadata <https://open-metadata.org/>`__",
         "package-name": "openmetadata-ingestion",
         "version": "0.4.1",
+        "connection-types": [
+            {
+                "connection-type": "openmetadata",
+                "hook-class-name": "airflow_provider_openmetadata.hooks.openmetadata.OpenMetadataHook",
+            }
+        ],
+        "hook-class-names": [
+            "airflow_provider_openmetadata.hooks.openmetadata.OpenMetadataHook",
+        ],
     }
