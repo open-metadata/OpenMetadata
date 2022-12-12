@@ -161,8 +161,8 @@ plugins: Dict[str, Set[str]] = {
     "datalake-azure": {
         "azure-storage-blob~=12.14.1",
         "azure-identity~=1.12.0",
-        "pandas~=1.4.0",
-        "adlfs==2022.11.2",
+        "adlfs==2022.2.0",
+        *datalake_common,
     },
 }
 dev = {
