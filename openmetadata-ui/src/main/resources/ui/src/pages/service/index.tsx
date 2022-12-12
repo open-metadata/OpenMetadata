@@ -943,24 +943,28 @@ const ServicePage: FunctionComponent = () => {
         key: 'owner',
         render: (owner: ServicePageData['owner']) =>
           !isUndefined(owner) ? (
-            <Space>
+            <Space data-testid="owner-data">
               <ProfilePicture
                 id=""
                 name={owner.name ?? ''}
                 type="circle"
                 width="24"
               />
-              <Typography.Text>{getEntityName(owner)}</Typography.Text>
+              <Typography.Text data-testid={`${owner.name}-owner-name`}>
+                {getEntityName(owner)}
+              </Typography.Text>
             </Space>
           ) : (
-            <Typography.Text>--</Typography.Text>
+            <Typography.Text data-testid="no-owner-text">--</Typography.Text>
           ),
       },
       {
         title: lastColumn,
         dataIndex: toLower(lastColumn),
         key: toLower(lastColumn),
-        render: (_, record: ServicePageData) => getOptionalTableCells(record),
+        render: (_, record: ServicePageData) => (
+          <div data-testid="record-tags">{getOptionalTableCells(record)}</div>
+        ),
       },
     ];
   }, []);
@@ -1091,10 +1095,10 @@ const ServicePage: FunctionComponent = () => {
                                 children,
                               }: {
                                 children: React.ReactNode;
-                              }) => <tr data-testid="column">{children}</tr>,
+                              }) => <tr data-testid="row">{children}</tr>,
                             },
                           }}
-                          data-testid="database-table"
+                          data-testid="service-children-table"
                           dataSource={data}
                           pagination={false}
                           rowKey="id"
