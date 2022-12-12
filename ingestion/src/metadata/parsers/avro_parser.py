@@ -14,7 +14,7 @@ Utils module to parse the avro schema
 """
 
 import traceback
-from typing import Optional
+from typing import List, Optional
 
 import avro.schema as avroschema
 from avro.schema import ArraySchema, RecordSchema
@@ -38,7 +38,7 @@ def parse_avro_schema(schema: str) -> Optional[RecordSchema]:
     return None
 
 
-def get_avro_fields(parsed_schema):
+def get_avro_fields(parsed_schema) -> Optional[List[FieldModel]]:
     """
     Recursively convert the parsed schema into required pydantic models
     """
