@@ -39,6 +39,17 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 
 </Note>
 
+## Postgres (version between 12.0 and 14.6)
+
+To install Postgres see the instructions for your operating system (OS) at [Postgres Download](https://www.postgresql.org/download/) 
+<Note>
+
+Make sure to configure required databases and users for OpenMetadata. 
+
+You can refer a sample script [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/local-metadata/postgres-script.sql).
+
+</Note>
+
 
 ## Elasticsearch (version 7.X)
 
@@ -155,7 +166,7 @@ server {
 }
 ```
 
-## Run OpenMetadata with AWS Services
+## Run OpenMetadata with AWS Services or your hosted DB/ElasticSearch
 
 If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html) and [Amazon OpenSearch Service](https://docs.aws.amazon.com/opensearch-service/?id=docs_gateway).
 
@@ -169,18 +180,39 @@ For Production Systems, we recommend Amazon RDS to be in Multiple Availability Z
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata bare metal systems to connect with Database and ElasticSearch.
 
+
+Below are the environment variables for OpenMetadata Server
+
+### Configure MySQL connection
+
 ```
 # MySQL Environment Variables
 DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
 DB_SCHEME='mysql'
 DB_USE_SSL='true'
-MYSQL_USER_PASSWORD='<YOUR_RDS_USER_PASSWORD>'
-DB_SCHEME='mysql'
-MYSQL_HOST='<YOUR_RDS_HOST_NAME>'
-MYSQL_USER='<YOUR_RDS_USER_NAME>'
-MYSQL_DATABASE='<YOUR_RDS_DATABASE_NAME>'
-MYSQL_PORT='<YOUR_RDS_PORT>'
-# ElasticSearch Environment Variables
+DB_USER='<YOUR_MYSQL_USER_NAME>'
+DB_USER_PASSWORD='<YOUR_MYSQL_USER_PASSWORD>'
+DB_HOST='<YOUR_MYSQL_HOST_NAME>'
+DB_PORT='<YOUR_MYSQL_PORT>'
+OM_DATABASE='<YOUR_MYSQL_DATABASE_NAME>'
+```
+
+### Configure Postgres Connection
+
+```
+# Postgres Environment Variables
+DB_DRIVER_CLASS='org.postgresql.Driver'
+DB_SCHEME='postgresql'
+DB_USE_SSL='true'
+DB_USER='<YOUR_POSTGRES_USER_NAME>'
+DB_USER_PASSWORD='<YOUR_POSTGRES_USER_PASSWORD>'
+DB_HOST='<YOUR_POSTGRES_HOST_NAME>'
+DB_PORT='<YOUR_POSTGRES_PORT>'
+OM_DATABASE='<YOUR_POSTGRES_DATABASE_NAME>'
+```
+
+### Configure ElasticSearch Connection
+```
 ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
 ELASTICSEARCH_USER='<ES_USERNAME>'
 ELASTICSEARCH_CONNECTION_TIMEOUT_SECS='5'
