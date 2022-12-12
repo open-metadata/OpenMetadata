@@ -29,7 +29,8 @@ const mockProps: SearchDropdownProps = {
   options: searchOptions,
   searchKey: 'owner.name',
   selectedKeys: ['User 1'],
-  showClear: true,
+  showClearAllBtn: true,
+  showCloseIcon: true,
   onChange: mockOnChange,
   onClearSelection: mockOnClearSelection,
   onRemove: mockOnRemove,
@@ -88,7 +89,7 @@ describe('Search DropDown Component', () => {
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
-    // user.1 is selected key so should be checked
+    // User 1 is selected key so should be checked
     expect(await screen.findByTestId('User 1-checkbox')).toBeChecked();
   });
 
@@ -137,7 +138,7 @@ describe('Search DropDown Component', () => {
   });
 
   it('Should not render the clear all button if showClear is false/undefined', async () => {
-    render(<SearchDropdown {...mockProps} showClear={false} />);
+    render(<SearchDropdown {...mockProps} showClearAllBtn={false} />);
 
     const container = await screen.findByTestId('search-dropdown');
 

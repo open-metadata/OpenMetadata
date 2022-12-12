@@ -53,33 +53,11 @@ const mockProps = {
 
 describe('Test ExploreQuickFilters component', () => {
   it('Should render ExploreQuickFilters component', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
+    const { findAllByTestId } = render(<ExploreQuickFilters {...mockProps} />);
 
     const fields = await findAllByTestId('search-dropdown');
-    const clearButton = await findByTestId('clear-all-button');
 
     expect(fields).toHaveLength(fields.length);
-
-    expect(clearButton).toBeInTheDocument();
-  });
-
-  it('Should call onClear method on click of Clear All button', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
-
-    const fields = await findAllByTestId('search-dropdown');
-    const clearButton = await findByTestId('clear-all-button');
-
-    expect(fields).toHaveLength(fields.length);
-
-    expect(clearButton).toBeInTheDocument();
-
-    fireEvent.click(clearButton);
-
-    expect(onClear).toBeCalledWith();
   });
 
   it('Should call onAdvanceSearch method on click of Advance Search button', async () => {
