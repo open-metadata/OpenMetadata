@@ -148,7 +148,7 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
     // Get count before adding services
     int beforeMessagingServiceCount = getServicesCount().getMessagingServiceCount();
     int beforeDashboardServiceCount = getServicesCount().getDashboardServiceCount();
-    int beforePipelineServiceCount = getServicesCount().getPipelineServiceCounte();
+    int beforePipelineServiceCount = getServicesCount().getPipelineServiceCount();
     int beforeMlModelServiceCount = getServicesCount().getMlModelServiceCount();
 
     // Create Database Service
@@ -179,7 +179,7 @@ public class UtilResourceTest extends OpenMetadataApplicationTest {
     // Get count after creating services
     int afterMessagingServiceCount = getServicesCount().getMessagingServiceCount();
     int afterDashboardServiceCount = getServicesCount().getDashboardServiceCount();
-    int afterPipelineServiceCount = getServicesCount().getPipelineServiceCounte();
+    int afterPipelineServiceCount = getServicesCount().getPipelineServiceCount();
     int afterMlModelServiceCount = getServicesCount().getMlModelServiceCount();
     int actualCount = 1;
 

@@ -13,3 +13,9 @@ export interface AddGlossaryProps {
   onSave: (data: CreateGlossary) => void;
   fetchTags?: () => void;
 }
+
+export enum AddGlossaryError {
+  NAME_REQUIRED = 'name required',
+  NAME_INVALID = 'name invalid',
+  DESCRIPTION_REQUIRED = 'description required',
+}

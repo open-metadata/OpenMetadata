@@ -11,34 +11,35 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const topicDetailsTabs = [
   {
-    name: 'Schema',
+    name: t('label.schema'),
     path: 'schema',
   },
   {
-    name: 'Activity Feeds & Tasks',
+    name: t('label.activity-feed-and-task-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Sample Data',
+    name: t('label.sample-data'),
     path: 'sample_data',
     field: TabSpecificField.SAMPLE_DATA,
   },
   {
-    name: 'Config',
+    name: t('label.config'),
     path: 'config',
   },
   {
-    name: 'Lineage',
+    name: t('label.lineage'),
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Custom Properties',
+    name: t('label.custom-properties'),
     path: 'custom_properties',
   },
 ];

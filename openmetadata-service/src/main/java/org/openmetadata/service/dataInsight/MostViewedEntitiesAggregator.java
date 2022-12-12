@@ -7,7 +7,7 @@ import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.datatInsight.type.MostViewedEntities;
+import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
 public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface<MostViewedEntities> {
 
@@ -31,13 +31,23 @@ public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface
       String tableFqn = entityFqnBucket.getKeyAsString();
       Sum sumPageViews = entityFqnBucket.getAggregations().get("pageViews");
       MultiBucketsAggregation ownerBucket = entityFqnBucket.getAggregations().get("owner");
+      MultiBucketsAggregation entityTypeBucket = entityFqnBucket.getAggregations().get("entityType");
       String owner = null;
+      String entityType = null;
       if (!ownerBucket.getBuckets().isEmpty()) {
         owner = ownerBucket.getBuckets().get(0).getKeyAsString();
       }
 
+      if (!entityTypeBucket.getBuckets().isEmpty()) {
+        entityType = entityTypeBucket.getBuckets().get(0).getKeyAsString().toLowerCase();
+      }
+
       data.add(
-          new MostViewedEntities().withEntityFqn(tableFqn).withOwner(owner).withPageViews(sumPageViews.getValue()));
+          new MostViewedEntities()
+              .withEntityFqn(tableFqn)
+              .withOwner(owner)
+              .withEntityType(entityType)
+              .withPageViews(sumPageViews.getValue()));
     }
     return data;
   }

@@ -26,6 +26,7 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
@@ -69,7 +70,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         '',
         '',
         '',
-        entityType as ExploreSearchIndex
+        SearchIndex[
+          entityType as keyof typeof SearchIndex
+        ] as ExploreSearchIndex
       );
       setData(formatDataResponse(data.data.hits.hits));
     } catch (error) {
@@ -103,9 +106,10 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   }, [data]);
 
   return (
-    <div>
+    <div data-testid="suggestion-node">
       <input
         className="tw-form-inputs tw-form-inputs-padding tw-w-full"
+        data-testid="node-search-box"
         placeholder={`Search for ${capitalize(entityType)}s...`}
         type="search"
         value={searchValue}

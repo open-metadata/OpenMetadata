@@ -29,13 +29,15 @@ jest.mock(
 );
 
 jest.mock('react-lazylog', () => ({
-  LazyLog: jest.fn().mockImplementation(() => <div>LazyLog</div>),
+  LazyLog: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
 }));
 
 jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(mockLogsData)),
+    .mockImplementation(() => Promise.resolve({ data: mockLogsData })),
   getIngestionPipelineByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockIngestionPipeline)),
@@ -63,5 +65,9 @@ describe('LogsViewer.component', () => {
     expect(
       await screen.findByText('test-redshift_metadata_ZeCajs9g')
     ).toBeInTheDocument();
+
+    const logElement = await screen.findByTestId('logs');
+
+    expect(logElement).toBeInTheDocument();
   });
 });

@@ -15,7 +15,7 @@ import { Col, Row, Space, Table as TableAntd } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { startCase } from 'lodash';
+import { isUndefined, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, ExtraInfo } from 'Models';
 import React, {
@@ -40,19 +40,20 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
+import { searchQuery } from '../../axiosAPIs/searchAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
 import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
-import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -64,18 +65,20 @@ import {
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
 } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { Post, Thread } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
@@ -86,9 +89,10 @@ import {
 import {
   databaseSchemaDetailsTabs,
   getCurrentDatabaseSchemaDetailsTab,
+  getQueryStringForSchemaTables,
+  getTablesFromSearchResponse,
 } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -138,8 +142,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [currentTablesPage, setCurrentTablesPage] =
+    useState<number>(INITIAL_PAGING_VALUE);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const history = useHistory();
@@ -222,13 +227,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setThreadLink('');
   };
 
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
-
   const getEntityFeedCount = () => {
     getFeedCount(
       getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
@@ -250,11 +248,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
-    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
-      'owner',
-      'tables',
-      'usageSummary',
-    ])
+    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, ['owner', 'usageSummary'])
       .then((res) => {
         if (res) {
           const {
@@ -263,16 +257,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             name,
             service,
             serviceType,
-            tables = [],
             database,
           } = res;
           setDatabaseSchema(res);
           setDescription(schemaDescription);
           setDatabaseSchemaId(id);
           setDatabaseSchemaName(name);
-          // TODO: fix type overlapping here
-          setTableData(tables as unknown as Table[]);
-          setTableInstanceCount(tables?.length || 0);
           setSlashedTableName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
@@ -321,6 +311,36 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  const getSchemaTables = async (
+    pageNumber: number,
+    databaseSchema: DatabaseSchema
+  ) => {
+    try {
+      setCurrentTablesPage(pageNumber);
+      const res = await searchQuery({
+        query: getQueryStringForSchemaTables(
+          databaseSchema.service,
+          databaseSchema.database,
+          databaseSchema
+        ),
+        pageNumber,
+        pageSize: PAGE_SIZE,
+        searchIndex: SearchIndex.TABLE,
+        includeDeleted: false,
+      });
+      setTableData(getTablesFromSearchResponse(res));
+      setTableInstanceCount(res.hits.total.value);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  };
+
+  const tablePaginationHandler = (pageNumber: string | number) => {
+    if (!isUndefined(databaseSchema)) {
+      getSchemaTables(toNumber(pageNumber), databaseSchema);
+    }
   };
 
   const onCancel = () => {
@@ -579,16 +599,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTableList = () => {
     return (
-      <TableAntd
-        bordered
-        className="table-shadow"
-        columns={tableColumn}
-        data-testid="databaseSchema-tables"
-        dataSource={tableData}
-        pagination={false}
-        rowKey="id"
-        size="small"
-      />
+      <>
+        <TableAntd
+          bordered
+          className="table-shadow"
+          columns={tableColumn}
+          data-testid="databaseSchema-tables"
+          dataSource={tableData}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+        <NextPrevious
+          isNumberBased
+          currentPage={currentTablesPage}
+          pageSize={PAGE_SIZE}
+          paging={paging}
+          pagingHandler={tablePaginationHandler}
+          totalCount={tableInstanceCount}
+        />
+      </>
     );
   };
 
@@ -619,6 +649,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       getEntityFeedCount();
     }
   }, [databaseSchemaPermission, databaseSchemaFQN]);
+
+  useEffect(() => {
+    tablePaginationHandler(INITIAL_PAGING_VALUE);
+  }, [databaseSchema]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
@@ -701,7 +735,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
-                    onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </Col>
@@ -759,23 +792,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                       threadLink={threadLink}
                       updateThreadHandler={updateThreadHandler}
                       onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
-                </Col>
-                <Col span={24}>
-                  {selectedField ? (
-                    <RequestDescriptionModal
-                      createThread={createThread}
-                      defaultValue={getDefaultValue(
-                        databaseSchema?.owner as EntityReference
-                      )}
-                      header="Request description"
-                      threadLink={getEntityFeedLink(
-                        EntityType.DATABASE_SCHEMA,
-                        databaseSchemaFQN,
-                        selectedField
-                      )}
-                      onCancel={closeRequestModal}
                     />
                   ) : null}
                 </Col>

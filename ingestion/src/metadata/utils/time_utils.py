@@ -74,13 +74,13 @@ def get_end_of_day_timestamp_mill(
     """Get the end of day timestamp
 
     Args:
-        days (int, optional): delat in days. Defaults to 0.
-        seconds (int, optional): delat in seconds. Defaults to 0.
-        microseconds (int, optional): delat in microseconds. Defaults to 0.
-        milliseconds (int, optional): delat in milliseconds. Defaults to 0.
-        minutes (int, optional): delat in minutes. Defaults to 0.
-        hours (int, optional): delat in hours. Defaults to 0.
-        weeks (int, optional): delat in weeks. Defaults to 0.
+        days (int, optional): delay in days. Defaults to 0.
+        seconds (int, optional): delay in seconds. Defaults to 0.
+        microseconds (int, optional): delay in microseconds. Defaults to 0.
+        milliseconds (int, optional): delay in milliseconds. Defaults to 0.
+        minutes (int, optional): delay in minutes. Defaults to 0.
+        hours (int, optional): delay in hours. Defaults to 0.
+        weeks (int, optional): delay in weeks. Defaults to 0.
 
     Returns:
         int: timestamp milliseconds

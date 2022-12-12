@@ -218,13 +218,6 @@
       <artifactId>flyway-mysql</artifactId>
     </dependency>
 
-    <!-- Diff util to compute diffs in plain text -->
-    <dependency>
-      <groupId>io.github.java-diff-utils</groupId>
-      <artifactId>java-diff-utils</artifactId>
-      <version>4.12</version>
-    </dependency>
-
     <!-- Dependencies for secret store manager providers -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -411,6 +404,11 @@
       <groupId>com.unboundid</groupId>
       <artifactId>unboundid-ldapsdk</artifactId>
       <version>${unboundsdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bitbucket.cowwoc.diff-match-patch</groupId>
+      <artifactId>diff-match-patch</artifactId>
+      <version>${diffMatch.version}</version>
     </dependency>
   </dependencies>
 

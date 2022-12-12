@@ -60,7 +60,7 @@ jest.mock('../../axiosAPIs/testAPI', () => ({
 }));
 
 const mockProps: TableProfilerProps = {
-  table: MOCK_TABLE,
+  tableFqn: MOCK_TABLE.fullyQualifiedName || '',
   permissions: {
     Create: true,
     Delete: true,

@@ -3076,7 +3076,7 @@ public interface CollectionDAO {
           .withDatabaseServiceCount(rs.getInt("databaseServiceCount"))
           .withMessagingServiceCount(rs.getInt("messagingServiceCount"))
           .withDashboardServiceCount(rs.getInt("dashboardServiceCount"))
-          .withPipelineServiceCounte(rs.getInt("pipelineServiceCount"))
+          .withPipelineServiceCount(rs.getInt("pipelineServiceCount"))
           .withMlModelServiceCount(rs.getInt("mlModelServiceCount"));
     }
   }
@@ -3090,6 +3090,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT (SELECT COUNT(*) FROM database_entity <cond>) + "
+                + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+"
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
@@ -3106,6 +3107,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT (SELECT COUNT(*) FROM database_entity <cond>) + "
+                + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "

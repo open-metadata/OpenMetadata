@@ -64,6 +64,11 @@ class ProfilerProtocol(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def _get_metrics(self, *args, **kwargs):
+        """Get metrics"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_all_metrics(self, metric_funcs) -> dict:
         """run profiler metrics"""
         raise NotImplementedError

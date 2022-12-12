@@ -26,3 +26,14 @@ export enum ACTION_TYPE {
   UPDATE = 'update',
   REMOVE = 'remove',
 }
+
+export enum LOADING_STATE {
+  INITIAL = 'initial',
+  WAITING = 'waiting',
+  SUCCESS = 'success',
+}
+
+export enum PROMISE_STATE {
+  FULFILLED = 'fulfilled',
+  REJECTED = 'rejected',
+}

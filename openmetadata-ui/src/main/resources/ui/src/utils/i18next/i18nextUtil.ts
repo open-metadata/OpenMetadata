@@ -13,13 +13,15 @@
 
 import { InitOptions } from 'i18next';
 import enUS from '../../locale/languages/en-us.json';
+import frFR from '../../locale/languages/fr-fr.json';
 
 // Returns i18next options
 export const getInitOptions = (): InitOptions => {
   return {
-    supportedLngs: ['en-US'],
+    supportedLngs: ['en-US', 'fr-FR'],
     resources: {
       'en-US': { translation: enUS },
+      'fr-FR': { translation: frFR },
     },
     fallbackLng: ['en-US'],
     interpolation: {

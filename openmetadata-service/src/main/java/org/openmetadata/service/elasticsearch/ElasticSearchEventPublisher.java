@@ -43,6 +43,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
@@ -69,6 +70,7 @@ import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.EventPublisherJob;
+import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -180,7 +182,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         LOG.error("Missing Document", ex);
         updateElasticSearchFailureStatus(
             contextInfo,
-            EventPublisherJob.Status.ACTIVEWITHERROR,
+            Status.ACTIVE_WITH_ERROR,
             String.format(
                 "Missing Document while Updating ES. Reason[%s], Cause[%s], Stack [%s]",
                 ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
@@ -191,7 +193,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           LOG.error("Error in publishing to ElasticSearch");
           updateElasticSearchFailureStatus(
               contextInfo,
-              EventPublisherJob.Status.ACTIVEWITHERROR,
+              Status.ACTIVE_WITH_ERROR,
               String.format(
                   "Timeout when updating ES request. Reason[%s], Cause[%s], Stack [%s]",
                   e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
@@ -199,7 +201,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         } else {
           updateElasticSearchFailureStatus(
               contextInfo,
-              EventPublisherJob.Status.ACTIVEWITHERROR,
+              Status.ACTIVE_WITH_ERROR,
               String.format(
                   "Failed while updating ES. Reason[%s], Cause[%s], Stack [%s]",
                   e.getMessage(), e.getCause(), ExceptionUtils.getStackTrace(e)));
@@ -208,7 +210,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       } catch (IOException ie) {
         updateElasticSearchFailureStatus(
             contextInfo,
-            EventPublisherJob.Status.ACTIVEWITHERROR,
+            Status.ACTIVE_WITH_ERROR,
             String.format(
                 "Issue in updating ES request. Reason[%s], Cause[%s], Stack [%s]",
                 ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
@@ -486,9 +488,13 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteRequest deleteRequest =
-            new DeleteRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
-        deleteEntityFromElasticSearch(deleteRequest);
+        DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+        GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
+        request.setQuery(
+            QueryBuilders.boolQuery()
+                .should(QueryBuilders.matchQuery("id", glossaryTerm.getId().toString()))
+                .should(QueryBuilders.matchQuery("parent.id", glossaryTerm.getId().toString())));
+        deleteEntityFromElasticSearchByQuery(request);
         break;
     }
   }
@@ -497,9 +503,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       Glossary glossary = (Glossary) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
-      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      queryBuilder.must(new TermQueryBuilder("name", glossary.getName()));
-      request.setQuery(queryBuilder);
+      request.setQuery(
+          QueryBuilders.boolQuery().should(QueryBuilders.matchQuery("glossary.id", glossary.getId().toString())));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
