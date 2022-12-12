@@ -11,6 +11,5 @@
       "type": "string"
     }
   },
-  "additionalProperties": false,
-  "required": ["certificatePath"]
+  "additionalProperties": false
 }
