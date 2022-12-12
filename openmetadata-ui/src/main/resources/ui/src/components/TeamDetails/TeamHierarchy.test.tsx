@@ -38,7 +38,7 @@ jest.mock('../../utils/TeamUtils', () => ({
 }));
 
 jest.mock('../../axiosAPIs/teamsAPI', () => ({
-  changeTeamParent: jest
+  updateTeam: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
   getTeamByName: jest

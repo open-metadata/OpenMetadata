@@ -103,7 +103,7 @@ export const deleteTeam = async (id: string) => {
   return response.data;
 };
 
-export const changeTeamParent = async (data: CreateTeam) => {
+export const updateTeam = async (data: CreateTeam) => {
   const response = await APIClient.put<CreateTeam, AxiosResponse<Team>>(
     '/teams',
     data

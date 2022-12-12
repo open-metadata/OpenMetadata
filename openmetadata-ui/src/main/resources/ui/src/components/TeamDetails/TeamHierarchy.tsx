@@ -21,7 +21,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { changeTeamParent, getTeamByName } from '../../axiosAPIs/teamsAPI';
+import { getTeamByName, updateTeam } from '../../axiosAPIs/teamsAPI';
 import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
@@ -121,7 +121,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           ['users', 'defaultRoles', 'policies', 'owner', 'parents', 'children'],
           'all'
         );
-        await changeTeamParent(getMovedTeamData(data, [movedTeam.to.id]));
+        await updateTeam(getMovedTeamData(data, [movedTeam.to.id]));
         onTeamExpand(true, currentTeam?.name);
         showSuccessToast(t('message.team-moved-success'));
       } catch (error) {
