@@ -301,7 +301,7 @@
     "chart-type": "Type de Graph",
     "query-plural": "Requêtes",
     "dbt-uppercase": "DBT",
-    "rows": "Lignes",
+    "row-plural": "Lignes",
     "columns-plural": "Colonnes",
     "algorithm": "Algorithme",
     "server": "Serveur",

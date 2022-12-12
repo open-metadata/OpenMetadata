@@ -103,7 +103,7 @@ export enum EntityInfo {
   TIER = 'Tier',
   TYPE = 'Type',
   COLUMNS = 'Columns',
-  ROWS = 'Rows',
+  ROWS = 'Row-plural',
   URL = 'Url',
   ALGORITHM = 'Algorithm',
   TARGET = 'Target',

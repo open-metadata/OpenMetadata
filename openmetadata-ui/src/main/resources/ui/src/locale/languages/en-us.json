@@ -298,7 +298,7 @@
     "chart-type": "Chart Type",
     "query-plural": "Queries",
     "dbt-uppercase": "DBT",
-    "rows": "Rows",
+    "row-plural": "Rows",
     "columns-plural": "Columns",
     "algorithm": "Algorithm",
     "server": "Server",
