@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isString } from 'lodash';
+import { RestoreRequestType } from 'Models';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
@@ -102,10 +103,19 @@ export const deleteTeam = async (id: string) => {
   return response.data;
 };
 
-export const reactivateTeam = async (data: CreateTeam) => {
+export const updateTeam = async (data: CreateTeam) => {
   const response = await APIClient.put<CreateTeam, AxiosResponse<Team>>(
     '/teams',
     data
+  );
+
+  return response.data;
+};
+
+export const restoreTeam = async (id: string) => {
+  const response = await APIClient.put<RestoreRequestType, AxiosResponse<Team>>(
+    '/teams/restore',
+    { id }
   );
 
   return response.data;

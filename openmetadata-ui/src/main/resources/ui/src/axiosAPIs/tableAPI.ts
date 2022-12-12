@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse, RestoreEntitiesRequestType } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfile,
@@ -99,7 +99,7 @@ export const patchTableDetails = async (id: string, data: Operation[]) => {
 
 export const restoreTable = async (id: string) => {
   const response = await APIClient.put<
-    RestoreEntitiesRequestType,
+    RestoreRequestType,
     AxiosResponse<Table>
   >('/tables/restore', { id });
 

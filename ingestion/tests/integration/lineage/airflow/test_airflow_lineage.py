@@ -28,9 +28,7 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.dummy import DummyOperator
 from airflow.utils.task_group import TaskGroup
 
-from airflow_provider_openmetadata.lineage.openmetadata import (
-    OpenMetadataLineageBackend,
-)
+from airflow_provider_openmetadata.lineage.backend import OpenMetadataLineageBackend
 from airflow_provider_openmetadata.lineage.utils import get_xlets
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
