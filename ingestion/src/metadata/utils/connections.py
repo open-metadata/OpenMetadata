@@ -36,7 +36,6 @@ from metadata.clients.connection_clients import (
     AmundsenClient,
     DagsterClient,
     DatalakeClient,
-    DatalakeGen2Client,
     DeltaLakeClient,
     DomoClient,
     DynamoClient,
@@ -96,12 +95,10 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    AzureDatalakeConfig,
     DatalakeConnection,
     GCSConfig,
     S3Config,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakegen2Connection import (
-    DatalakeGen2Connection,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
@@ -1010,6 +1007,9 @@ def _(connection: DatalakeClient) -> None:
             else:
                 connection.client.list_buckets()
 
+        if isinstance(config, AzureDatalakeConfig):
+            connection.client.list_containers(name_starts_with="")
+
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg) from err
@@ -1049,6 +1049,29 @@ def _(config: GCSConfig):
     set_google_credentials(gcs_credentials=config.securityConfig)
     gcs_client = storage.Client()
     return gcs_client
+
+
+@get_datalake_client.register
+def _(config: AzureDatalakeConfig):
+    from azure.identity import ClientSecretCredential
+    from azure.storage.blob import BlobServiceClient
+
+    try:
+        credentials = ClientSecretCredential(
+            config.securityConfig.tenantId,
+            config.securityConfig.clientId,
+            config.securityConfig.clientSecret.get_secret_value(),
+        )
+
+        azure_client = BlobServiceClient(
+            f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
+            credential=credentials,
+        )
+        return azure_client
+
+    except Exception as exc:
+        msg = f"Unknown error connecting with {config.securityConfig}: {exc}."
+        raise SourceConnectionException(msg)
 
 
 @get_connection.register
@@ -1364,39 +1387,6 @@ def _(connection: AtlasConnection) -> AtlasClient:
 def _(connection: AtlasClient) -> None:
     try:
         connection.list_entities()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
-
-
-@get_connection.register
-def _(connection: DatalakeGen2Connection) -> DatalakeGen2Client:
-
-    from azure.identity import ClientSecretCredential
-    from azure.storage.blob import BlobServiceClient
-
-    try:
-        credentials = ClientSecretCredential(
-            connection.tenantId,
-            connection.clientId,
-            connection.clientSecret.get_secret_value(),
-        )
-
-        blob_service = BlobServiceClient(
-            f"https://{connection.accountName}.blob.core.windows.net/",
-            credential=credentials,
-        )
-        return DatalakeGen2Client(blob_service)
-
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
-
-
-@test_connection.register
-def _(connection: DatalakeGen2Client) -> None:
-    try:
-        connection.list_containers(name_starts_with="")
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)

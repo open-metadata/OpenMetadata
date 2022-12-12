@@ -56,7 +56,7 @@ base_requirements = {
 
 
 datalake_common = {
-    "pandas==1.3.5",
+    "pandas==1.4.0",
     "pyarrow==6.0.1",
 }
 
@@ -158,10 +158,11 @@ plugins: Dict[str, Set[str]] = {
     "pinotdb": {"pinotdb~=0.3.11"},
     "nifi": {},
     "domo": {"pydomo~=0.3.0.5"},
-    "datalakegen2": {
+    "datalake-azure": {
         "azure-storage-blob~=12.14.1",
         "azure-identity~=1.12.0",
-        "pandas~=1.3.5",
+        "pandas~=1.4.0",
+        "adlfs==2022.11.2",
     },
 }
 dev = {
@@ -183,7 +184,7 @@ test = {
     "coverage",
     # sklearn integration
     "scikit-learn==1.0.2",
-    "pandas==1.3.5",
+    "pandas==1.4.0",
     # great_expectations tests
     "great-expectations~=0.15.0",
     # Airflow tests
