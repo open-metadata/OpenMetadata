@@ -119,14 +119,14 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
         """Test web analytic event deletion"""
 
         for delta in range(7):
-            tmps = int((datetime.utcnow() - timedelta(days=delta)).timestamp() * 1000)
+            tmsp = int((datetime.utcnow() - timedelta(days=delta)).timestamp() * 1000)
 
             user_id = uuid.uuid4()
             session_id = uuid.uuid4()
 
             event_data = WebAnalyticEventData(
                 eventId=None,
-                timestamp=tmps,
+                timestamp=tmsp,
                 eventType=WebAnalyticEventType.PageView,
                 eventData=PageViewData(
                     fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
