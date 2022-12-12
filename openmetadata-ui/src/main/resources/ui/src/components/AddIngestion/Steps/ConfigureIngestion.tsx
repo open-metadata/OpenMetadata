@@ -11,19 +11,23 @@
  *  limitations under the License.
  */
 
+import { Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { Fragment, useRef, useState } from 'react';
+import React, { Fragment, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
+import { ProfileSampleType } from '../../../enums/Profiler.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
+import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 import { Field } from '../../Field/Field';
+import SliderWithInput from '../../SliderWithInput/SliderWithInput';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
 
 const ConfigureIngestion = ({
@@ -83,8 +87,42 @@ const ConfigureIngestion = ({
   onCancel,
   onNext,
   formType,
+  profileSampleRow,
+  onProfileSampleRowChange,
 }: ConfigureIngestionProps) => {
+  const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
+  const [selectedProfileSampleType, setSelectedProfileSampleType] =
+    useState<ProfileSampleType>(
+      profileSampleRow
+        ? ProfileSampleType.SAMPLE_ROW
+        : ProfileSampleType.SAMPLE_PERCENTAGE
+    );
+
+  const profileSampleOptions = useMemo(
+    () => [
+      {
+        label: t('label.profile-sample-by-percentage') + ' (%)',
+        key: ProfileSampleType.SAMPLE_PERCENTAGE,
+        value: ProfileSampleType.SAMPLE_PERCENTAGE,
+      },
+      {
+        label: t('label.profile-sample-by-row-count'),
+        key: ProfileSampleType.SAMPLE_ROW,
+        value: ProfileSampleType.SAMPLE_ROW,
+      },
+    ],
+    []
+  );
+
+  const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
+    setSelectedProfileSampleType(value);
+    if (value === ProfileSampleType.SAMPLE_PERCENTAGE) {
+      onProfileSampleRowChange(undefined);
+    } else if (value === ProfileSampleType.SAMPLE_ROW) {
+      handleProfileSample(undefined);
+    }
+  };
 
   const getIngestSampleToggle = (label: string, desc: string) => {
     return (
@@ -122,41 +160,58 @@ const ConfigureIngestion = ({
     );
   };
 
-  const [profileSampleError, setProfileSampleError] = useState(false);
-
-  const handleProfileSampleValidation = (profileSampleValue: number) => {
-    let errMsg;
-    if (profileSampleValue < 0 || profileSampleValue > 99) {
-      errMsg = true;
-    } else {
-      errMsg = false;
-    }
-    setProfileSampleError(errMsg);
-    handleProfileSample(profileSampleValue);
-  };
-
   const getProfileSample = () => {
     return (
-      <div>
-        <label>Profile Sample</label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          This is an optional percentage used to compute the table profile.
-          Should be between 0 and 100.
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
-          data-testid="profileSample"
-          id="profileSample"
-          max={100}
-          min={0}
-          name="profileSample"
-          placeholder="75"
-          type="number"
-          value={profileSample}
-          onChange={(e) => handleProfileSampleValidation(+e.target.value)}
-        />
-        {profileSampleError && errorMsg('Value must be between 0 and 100.')}
-      </div>
+      <>
+        <Form.Item
+          initialValue={selectedProfileSampleType}
+          label={t('label.profile-sample-type')}
+          name="profileSample">
+          <Select
+            data-testid="profile-sample"
+            options={profileSampleOptions}
+            value={selectedProfileSampleType}
+            onChange={handleProfileSampleTypeChange}
+          />
+        </Form.Item>
+        <Form.Item
+          label={t('label.profile-sample-value')}
+          // If we provide class its internally prioritizing internal css
+          labelCol={{ style: { paddingBottom: '4px' } }}
+          name="profile-sample-value">
+          {selectedProfileSampleType ===
+            ProfileSampleType.SAMPLE_PERCENTAGE && (
+            <>
+              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
+                {t('message.profile-sample-percentage-message')}
+              </Typography.Paragraph>
+              <SliderWithInput
+                value={profileSample || 0}
+                onChange={(value) => handleProfileSample(value ?? undefined)}
+              />
+            </>
+          )}
+          {selectedProfileSampleType === ProfileSampleType.SAMPLE_ROW && (
+            <>
+              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
+                {t('message.profile-sample-row-count-message')}
+              </Typography.Paragraph>
+              <InputNumber
+                className="w-full"
+                data-testid="metric-number-input"
+                min={0}
+                placeholder={t('label.please-enter-value', {
+                  value: t('label.row-count-lowercase'),
+                })}
+                value={profileSampleRow}
+                onChange={(value) =>
+                  onProfileSampleRowChange(value ?? undefined)
+                }
+              />
+            </>
+          )}
+        </Form.Item>
+      </>
     );
   };
 
@@ -712,7 +767,10 @@ const ConfigureIngestion = ({
   };
 
   return (
-    <div className="tw-px-2" data-testid="configure-ingestion-container">
+    <Form
+      className="p-x-xs"
+      data-testid="configure-ingestion-container"
+      layout="vertical">
       {getIngestionPipelineFields()}
 
       <Field className="tw-flex tw-justify-end">
@@ -735,7 +793,7 @@ const ConfigureIngestion = ({
           <span>Next</span>
         </Button>
       </Field>
-    </div>
+    </Form>
   );
 };
 

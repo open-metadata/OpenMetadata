@@ -75,6 +75,7 @@ export interface ConfigureIngestionProps {
   markAllDeletedTables?: boolean;
   enableDebugLog: boolean;
   profileSample?: number;
+  profileSampleRow?: number;
   ingestSampleData: boolean;
   useFqnFilter: boolean;
   pipelineType: PipelineType;
@@ -104,8 +105,9 @@ export interface ConfigureIngestionProps {
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
   getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
   handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;
-  handleProfileSample: (value: number) => void;
+  handleProfileSample: (value?: number) => void;
   handleQueryLogDuration: (value: number) => void;
+  onProfileSampleRowChange: (value?: number) => void;
   handleStageFileLocation: (value: string) => void;
   handleResultLimit: (value: number) => void;
   handleThreadCount: (value: number) => void;

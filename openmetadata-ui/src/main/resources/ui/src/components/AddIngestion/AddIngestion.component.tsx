@@ -190,8 +190,11 @@ const AddIngestion = ({
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
   );
-  const [profileSample, setProfileSample] = useState(
+  const [profileSamplePercentage, setProfileSamplePercentage] = useState(
     (data?.sourceConfig.config as ConfigClass)?.profileSample
+  );
+  const [profileSampleRowCount, setProfileSampleRowCount] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.profileSampleRows
   );
   const [threadCount, setThreadCount] = useState(
     (data?.sourceConfig.config as ConfigClass)?.threadCount ?? 5
@@ -553,7 +556,8 @@ const AddIngestion = ({
 
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
-          profileSample: profileSample,
+          profileSample: profileSamplePercentage,
+          profileSampleRows: profileSampleRowCount,
           threadCount: threadCount,
         };
       }
@@ -737,7 +741,7 @@ const AddIngestion = ({
               setMarkAllDeletedTables((pre) => !pre)
             }
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
-            handleProfileSample={(val) => setProfileSample(val)}
+            handleProfileSample={(val) => setProfileSamplePercentage(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={setResultLimit}
             handleShowFilter={handleShowFilter}
@@ -753,7 +757,8 @@ const AddIngestion = ({
             mlModelFilterPattern={mlModelFilterPattern}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
-            profileSample={profileSample}
+            profileSample={profileSamplePercentage}
+            profileSampleRow={profileSampleRowCount}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}
@@ -773,6 +778,9 @@ const AddIngestion = ({
             useFqnFilter={useFqnFilter}
             onCancel={handleCancelClick}
             onNext={handleNext}
+            onProfileSampleRowChange={(val) =>
+              setProfileSampleRowCount(val ?? undefined)
+            }
             onUseFqnFilterClick={() => setUseFqnFilter((pre) => !pre)}
           />
         )}
