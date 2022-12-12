@@ -173,7 +173,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const mlModelPageInfo: ExtraInfo[] = [
     {
-      key: t('label.owner'),
+      key: 'Owner',
       value: getOwnerValue(mlModelDetail.owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(mlModelDetail.owner),
@@ -187,23 +187,23 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           : undefined,
     },
     {
-      key: t('label.tier'),
+      key: 'Tier',
       value: mlModelTier?.tagFQN
         ? mlModelTier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : '',
     },
     {
-      key: t('label.algorithm'),
+      key: 'Algorithm',
       value: mlModelDetail.algorithm,
       showLabel: true,
     },
     {
-      key: t('label.target'),
+      key: 'Target',
       value: mlModelDetail.target,
       showLabel: true,
     },
     {
-      key: t('label.server'),
+      key: 'Server',
       value: mlModelDetail.server,
       showLabel: true,
       isLink: true,
@@ -211,7 +211,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     ...(!isUndefined(mlModelDetail.dashboard)
       ? [
           {
-            key: t('label.dashboard'),
+            key: 'Dashboard',
             value: getDashboardDetailsPath(
               mlModelDetail.dashboard?.fullyQualifiedName as string
             ),

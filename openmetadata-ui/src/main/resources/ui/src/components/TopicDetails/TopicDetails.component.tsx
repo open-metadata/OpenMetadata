@@ -167,22 +167,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const getConfigDetails = () => {
     return [
-      { key: 'Partitions', value: `${partitions} partitions` },
+      { key: 'Partitions', value: `${partitions} ${t('label.partitions')}` },
       {
         key: 'Replication Factor',
-        value: `${replicationFactor} replication factor`,
+        value: `${replicationFactor} ${t('label.replication-factor')}`,
       },
       {
         key: 'Retention Size',
-        value: `${bytesToSize(retentionSize)} retention size`,
+        value: `${bytesToSize(retentionSize)}  ${t('label.retention-size')}`,
       },
       {
         key: 'Clean-up Policies',
-        value: `${cleanupPolicies.join(', ')} clean-up policies`,
+        value: `${cleanupPolicies.join(', ')} ${t('label.clean-up-policies')}`,
       },
       {
         key: 'Max Message Size',
-        value: `${bytesToSize(maximumMessageSize)} maximum size`,
+        value: `${bytesToSize(maximumMessageSize)} ${t('label.maximum-size')} `,
       },
     ];
   };
@@ -262,7 +262,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: t('label.owner'),
+      key: 'Owner',
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -273,7 +273,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: t('label.tier'),
+      key: 'Tier',
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
     ...getConfigDetails(),

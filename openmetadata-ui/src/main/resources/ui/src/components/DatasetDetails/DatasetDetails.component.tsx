@@ -382,7 +382,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: t('label.owner'),
+      key: 'Owner',
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -395,23 +395,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: t('label.tier'),
+      key: 'Tier',
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    { key: t('label.type'), value: `${tableType}`, showLabel: true },
+    { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} Queries` },
+    { value: `${weeklyUsageCount} ${t('label.queries')}` },
     {
-      key: t('label.column-plural'),
+      key: 'Columns',
       value:
         tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} Columns`
+          ? `${tableProfile.columnCount} ${t('label.columns')}`
           : columns.length
-          ? `${columns.length} Columns`
+          ? `${columns.length} ${t('label.columns')}`
           : '',
     },
     {
-      key: t('label.row-plural'),
+      key: 'Rows',
       value: prepareTableRowInfo(),
     },
   ];
