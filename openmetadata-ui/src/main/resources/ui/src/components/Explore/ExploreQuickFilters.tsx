@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Badge, Divider, Dropdown, Menu, Space } from 'antd';
+import { Badge, Divider, Dropdown, Menu, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getAdvancedFieldDefaultOptions,
   getAdvancedFieldOptions,
@@ -27,7 +28,7 @@ import {
   getAdvancedField,
   getDropDownItems,
 } from '../../utils/AdvancedSearchUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { ExploreQuickFilterField } from './explore.interface';
@@ -53,6 +54,7 @@ const ExploreQuickFilters: FC<Props> = ({
   onFieldValueSelect,
   onFieldSelect,
 }) => {
+  const { t } = useTranslation();
   const [options, setOptions] = useState<string[]>();
   const handleMenuItemClick = useCallback((menuInfo, label) => {
     onFieldSelect(menuInfo.key, label);
@@ -80,7 +82,7 @@ const ExploreQuickFilters: FC<Props> = ({
   }, [menuItems]);
 
   const filterCount = useMemo(
-    () => fields.filter((field) => !isNil(field.value)).length,
+    () => fields.filter((field) => !isEmpty(field.value)).length,
     [fields]
   );
 
@@ -162,7 +164,10 @@ const ExploreQuickFilters: FC<Props> = ({
         overlay={menu}
         trigger={['click']}>
         <Badge count={filterCount} size="small">
-          <SVGIcons alt="filter" icon={Icons.FILTER_PRIMARY} />
+          <Space size={4}>
+            <Typography.Text>{t('label.more')}</Typography.Text>
+            <DropDownIcon className="flex self-center" />
+          </Space>
         </Badge>
       </Dropdown>
       <Divider type="vertical" />

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, DownOutlined } from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -29,6 +29,7 @@ import {
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 import './SearchDropdown.less';
 
@@ -96,24 +97,30 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       data-testid={searchKey}
       dropdownRender={(menuNode) => {
         return (
-          <Card className="custom-dropdown-render" data-testid="drop-down-menu">
+          <Card
+            bodyStyle={{ padding: 0 }}
+            className="custom-dropdown-render"
+            data-testid="drop-down-menu">
             <Space direction="vertical" size={4}>
-              <Input
-                data-testid="search-input"
-                placeholder={`${t('label.search-entity', {
-                  entity: label,
-                })}...`}
-                onChange={handleSearch}
-              />
+              <div className="p-t-sm p-x-sm">
+                <Input
+                  data-testid="search-input"
+                  placeholder={`${t('label.search-entity', {
+                    entity: label,
+                  })}...`}
+                  onChange={handleSearch}
+                />
+              </div>
               {showClear && (
                 <Button
-                  className="p-0"
+                  className="p-0 m-l-sm"
                   data-testid="clear-button"
                   type="link"
                   onClick={handleClear}>
                   {t('label.clear-all')}
                 </Button>
               )}
+              <Divider className="m-0" />
               {menuNode}
             </Space>
           </Card>
@@ -132,14 +139,17 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           className="search-dropdown-btn-content"
           data-testid="search-dropdown">
           <Space size={0}>
-            <Typography.Text>{`${label} : `}</Typography.Text>
+            <DropDownIcon className="flex self-center m-r-xss" />
+            <Typography.Text>{label}</Typography.Text>
             {selectedKeys.length > 0 && (
-              <Typography.Text className="text-primary font-medium">
-                {getSelectedOptionLabelString(selectedKeys)}
-              </Typography.Text>
+              <span>
+                {' : '}
+                <Typography.Text className="text-primary font-medium">
+                  {getSelectedOptionLabelString(selectedKeys)}
+                </Typography.Text>
+              </span>
             )}
           </Space>
-          <DownOutlined className="m-l-xs" />
           <Divider className="m-0" type="vertical" />
           <CloseOutlined
             onClick={(e) => {
