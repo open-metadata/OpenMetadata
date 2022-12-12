@@ -93,9 +93,7 @@ class ESMixin(Generic[T]):
             query_string, response = self._search_es_entity(
                 entity_type=entity_type, query_string=query_string
             )
-            if response:
-                return response
-
+            return response
         except KeyError as err:
             logger.debug(traceback.format_exc())
             logger.warning(
