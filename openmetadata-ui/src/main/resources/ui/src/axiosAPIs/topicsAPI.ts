@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreEntitiesRequestType } from 'Models';
+import { RestoreRequestType } from 'Models';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -128,7 +128,7 @@ export const patchTopicDetails = async (id: string, data: Operation[]) => {
 
 export const restoreTopic = async (id: string) => {
   const response = await APIClient.put<
-    RestoreEntitiesRequestType,
+    RestoreRequestType,
     AxiosResponse<Topic>
   >('/topics/restore', { id });
 
