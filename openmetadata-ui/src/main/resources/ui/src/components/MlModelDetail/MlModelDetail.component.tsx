@@ -36,7 +36,7 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
@@ -173,7 +173,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const mlModelPageInfo: ExtraInfo[] = [
     {
-      key: 'Owner',
+      key: EntityInfo.OWNER,
       value: getOwnerValue(mlModelDetail.owner ?? ({} as EntityReference)),
       placeholderText: getEntityPlaceHolder(
         getEntityName(mlModelDetail.owner),
@@ -187,23 +187,23 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           : undefined,
     },
     {
-      key: 'Tier',
+      key: EntityInfo.TIER,
       value: mlModelTier?.tagFQN
         ? mlModelTier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : '',
     },
     {
-      key: 'Algorithm',
+      key: EntityInfo.ALGORITHM,
       value: mlModelDetail.algorithm,
       showLabel: true,
     },
     {
-      key: 'Target',
+      key: EntityInfo.TARGET,
       value: mlModelDetail.target,
       showLabel: true,
     },
     {
-      key: 'Server',
+      key: EntityInfo.SERVER,
       value: mlModelDetail.server,
       showLabel: true,
       isLink: true,
@@ -211,7 +211,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     ...(!isUndefined(mlModelDetail.dashboard)
       ? [
           {
-            key: 'Dashboard',
+            key: EntityInfo.DASHBOARD,
             value: getDashboardDetailsPath(
               mlModelDetail.dashboard?.fullyQualifiedName as string
             ),
