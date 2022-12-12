@@ -46,8 +46,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getName(), topic.getName()));
-    if (topic.getSchema() != null) {
-      setFieldFQN(topic.getFullyQualifiedName(), topic.getSchema().getSchemaFields());
+    if (topic.getMessageSchema() != null) {
+      setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
     }
   }
 
@@ -68,9 +68,9 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     // Validate field tags
-    if (topic.getSchema() != null) {
-      addDerivedFieldTags(topic.getSchema().getSchemaFields());
-      topic.getSchema().getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
+    if (topic.getMessageSchema() != null) {
+      addDerivedFieldTags(topic.getMessageSchema().getSchemaFields());
+      topic.getMessageSchema().getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
     }
   }
 
@@ -86,17 +86,17 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     // Don't store feild tags as JSON but build it on the fly based on relationships
     List<Field> fieldsWithTags = null;
-    if (topic.getSchema() != null) {
-      fieldsWithTags = topic.getSchema().getSchemaFields();
-      topic.getSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
-      topic.getSchema().getSchemaFields().forEach(field -> field.setTags(null));
+    if (topic.getMessageSchema() != null) {
+      fieldsWithTags = topic.getMessageSchema().getSchemaFields();
+      topic.getMessageSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
+      topic.getMessageSchema().getSchemaFields().forEach(field -> field.setTags(null));
     }
 
     store(topic, update);
 
     // Restore the relationships
     if (fieldsWithTags != null) {
-      topic.getSchema().withSchemaFields(fieldsWithTags);
+      topic.getMessageSchema().withSchemaFields(fieldsWithTags);
     }
     topic.withOwner(owner).withService(service).withTags(tags);
   }
@@ -113,8 +113,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(getContainer(topic.getId()));
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
-    if (topic.getSchema() != null) {
-      getFieldTags(fields.contains(FIELD_TAGS), topic.getSchema().getSchemaFields());
+    if (topic.getMessageSchema() != null) {
+      getFieldTags(fields.contains(FIELD_TAGS), topic.getMessageSchema().getSchemaFields());
     }
     return topic;
   }
@@ -214,8 +214,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   public void applyTags(Topic topic) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(topic);
-    if (topic.getSchema() != null) {
-      applyTags(topic.getSchema().getSchemaFields());
+    if (topic.getMessageSchema() != null) {
+      applyTags(topic.getMessageSchema().getSchemaFields());
     }
   }
 
@@ -232,9 +232,15 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
       recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
       recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
-      if (updated.getSchema() != null) {
-        recordChange("schema.schemaText", original.getSchema().getSchemaText(), updated.getSchema().getSchemaText());
-        recordChange("schema.schemaType", original.getSchema().getSchemaType(), updated.getSchema().getSchemaType());
+      if (updated.getMessageSchema() != null) {
+        recordChange(
+            "schema.schemaText",
+            original.getMessageSchema().getSchemaText(),
+            updated.getMessageSchema().getSchemaText());
+        recordChange(
+            "schema.schemaType",
+            original.getMessageSchema().getSchemaType(),
+            updated.getMessageSchema().getSchemaType());
       }
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);

@@ -442,7 +442,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return copy(new Topic(), create, user)
         .withService(create.getService())
         .withPartitions(create.getPartitions())
-        .withSchema(create.getSchema())
+        .withMessageSchema(create.getMessageSchema())
         .withCleanupPolicies(create.getCleanupPolicies())
         .withMaximumMessageSize(create.getMaximumMessageSize())
         .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())

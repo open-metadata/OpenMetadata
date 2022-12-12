@@ -1,5 +1,6 @@
 {
-	"topics": [{
+	"topics": [
+		{
 			"name": "customer_events",
 			"description": "Kafka topic to capture the customer events such as location updates or profile updates",
 			"partitions": 56,
@@ -64,6 +65,17 @@
 			"cleanupPolicies": ["compact","delete"],
 			"schemaType": "Avro",
 			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"sale_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"billing_address_id_2\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"product_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"order_id\",\"type\":\"double\"}]}"
+		},
+		{
+			"name": "record",
+			"description": "All record related events gets captured in this topic",
+			"partitions": 128,
+			"retentionSize": 1931232624,
+			"replicationFactor":4,
+			"maximumMessageSize":249,
+			"cleanupPolicies": ["compact","delete"],
+			"schemaType": "Avro",
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"level\",\"type\":\"record\",\"fields\":[{\"name\":\"uid\",\"type\":\"int\"},{\"name\":\"somefield\",\"type\":\"string\"},{\"name\":\"options\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"lvl2_record\",\"fields\":[{\"name\":\"item1_lvl2\",\"type\":\"string\"},{\"name\":\"item2_lvl2\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"record\",\"name\":\"lvl3_record\",\"fields\":[{\"name\":\"item1_lvl3\",\"type\":\"string\"},{\"name\":\"item2_lvl3\",\"type\":\"string\"}]}}}]}}}]}"
 		}
 	]
 }

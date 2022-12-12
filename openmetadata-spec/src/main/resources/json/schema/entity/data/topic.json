@@ -75,9 +75,9 @@
       "description": "Service type where this topic is hosted in.",
       "$ref": "../services/messagingService.json#/definitions/messagingServiceType"
     },
-   "schema": {
-     "$ref": "../../type/schema.json"
-   },
+    "messageSchema": {
+        "$ref": "../../type/schema.json"
+    },
     "partitions": {
       "description": "Number of partitions into which the topic is divided.",
       "type": "integer",
