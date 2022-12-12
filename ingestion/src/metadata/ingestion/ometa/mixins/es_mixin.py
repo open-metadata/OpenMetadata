@@ -39,7 +39,7 @@ class ESMixin(Generic[T]):
 
     fqdn_search = "/search/query?q=fullyQualifiedName:{fqn}&from={from_}&size={size}&index={index}"
 
-    @functools.lru_cache(maxsize=512)
+    @functools.lru_cache()
     def _search_es_entity(
         self, entity_type: Type[T], query_string: str
     ) -> Optional[List[T]]:
@@ -52,15 +52,19 @@ class ESMixin(Generic[T]):
         response = self.client.get(query_string)
 
         if response:
-            return [
-                self.get_by_name(
-                    entity=entity_type,
-                    fqn=hit["_source"]["fullyQualifiedName"],
-                )
-                for hit in response["hits"]["hits"]
-            ] or None
+            return (
+                query_string,
+                [
+                    self.get_by_name(
+                        entity=entity_type,
+                        fqn=hit["_source"]["fullyQualifiedName"],
+                    )
+                    for hit in response["hits"]["hits"]
+                ]
+                or None,
+            )
 
-        return None
+        return (query_string, None)
 
     def es_search_from_fqn(
         self,
@@ -86,11 +90,11 @@ class ESMixin(Generic[T]):
         )
 
         try:
-            entity_list = self._search_es_entity(
+            query_string, response = self._search_es_entity(
                 entity_type=entity_type, query_string=query_string
             )
-            if entity_list:
-                return entity_list
+            if response:
+                return response
 
         except KeyError as err:
             logger.debug(traceback.format_exc())
