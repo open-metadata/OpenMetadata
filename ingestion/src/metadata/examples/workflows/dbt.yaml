@@ -1,6 +1,6 @@
 source:
-  type: vertica-dbt
-  serviceName: local_vertica
+  type: dbt
+  serviceName: service_name
   sourceConfig:
     config:
       type: DBT
