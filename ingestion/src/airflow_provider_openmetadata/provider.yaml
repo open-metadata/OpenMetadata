@@ -24,3 +24,12 @@ integrations:
   - integration-name: OpenMetadata
     external-doc-url: https://open-metadata.org
     tags: [service]
+
+hooks:
+  - integration-name: OpenMetadata
+    python-modules:
+      - airflow_provider_openmetadata.hooks.openmetadata
+
+connection-types:
+  - hook-class-name: airflow_provider_openmetadata.hooks.openmetadata.OpenMetadataHook
+    connection-type: openmetadata

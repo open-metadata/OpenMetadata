@@ -14,7 +14,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
@@ -23,7 +22,6 @@ import { getPipelineServiceHostIp } from '../../../axiosAPIs/ingestionPipelineAP
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
@@ -71,7 +69,6 @@ const FormBuilder: FunctionComponent<Props> = ({
       setHostIp(data?.ip || '[unknown]');
     } catch (error) {
       setHostIp('[error - unknown]');
-      showErrorToast(error as AxiosError);
     }
   };
 
