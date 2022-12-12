@@ -310,7 +310,6 @@
     "clear-all": "Clear All",
     "view-less": "View less",
     "view-more": "View more",
-    "column-plural": "Columns",
     "field-plural": "Fields",
     "delete-group": "Delete Group",
     "add-display-name": "Add display name",
@@ -463,7 +462,12 @@
     "pipeline-lowercase": "pipeline",
     "service-lowercase": "service",
     "query-lowercase": "query",
-    "table-lowercase": "table"
+    "table-lowercase": "table",
+    "partitions": "Partitions",
+    "replication-factor": "replication factor",
+    "retention-size": "retention-size",
+    "clean-up-policies": "clean-up policies",
+    "maximum-size": "maximum size"
   },
   "message": {
     "service-email-required": "Service account Email is required",
