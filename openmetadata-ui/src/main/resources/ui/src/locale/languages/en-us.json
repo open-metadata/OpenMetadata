@@ -539,7 +539,7 @@
     "delete-message-question-mark": "Delete Message?",
     "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
     "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata",
-    "filter-pattern-info": "Select to include {{filterPattern}} as part of the metadata ingestion.",
+    "filter-pattern-info": "Choose to include or exclude {{filterPattern}} as part of the metadata ingestion.",
     "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex.",
     "create-new-glossary-guide": "A Glossary is a controlled vocabulary used to define the concepts and terminology in an organization. Glossaries can be specific to a certain domain (for e.g., Business Glossary, Technical Glossary). In the glossary, the standard terms and concepts can be defined along with the synonyms, and related terms. Control can be established over how and who can add the terms in the glossary.",
     "no-notification-found": "No notifications Found",
