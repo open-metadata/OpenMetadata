@@ -48,9 +48,10 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
-import org.openmetadata.schema.type.topic.SchemaType;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -68,6 +69,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
           + "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},"
           + "{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},"
           + "{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}";
+  private static final MessageSchema schema =
+      new MessageSchema().withSchemaText(SCHEMA_TEXT).withSchemaType(SchemaType.Avro);
 
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
@@ -115,6 +118,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
+    MessageSchema schema = new MessageSchema().withSchemaText("abc").withSchemaType(SchemaType.Avro);
     CreateTopic createTopic =
         createRequest(test)
             .withOwner(USER1_REF)
@@ -124,8 +128,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withSchemaText("abc")
-            .withSchemaType(SchemaType.Avro)
+            .withSchema(schema)
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
@@ -138,8 +141,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withReplicationFactor(2)
         .withRetentionTime(2.0)
         .withRetentionSize(2.0)
-        .withSchemaText("bcd")
-        .withSchemaType(SchemaType.JSON)
+        .withSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic.getVersion());
@@ -150,8 +152,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldUpdated(change, "replicationFactor", 1, 2);
     fieldUpdated(change, "retentionTime", 1.0, 2.0);
     fieldUpdated(change, "retentionSize", 1.0, 2.0);
-    fieldUpdated(change, "schemaText", "abc", "bcd");
-    fieldUpdated(change, "schemaType", SchemaType.Avro, SchemaType.JSON);
+    fieldUpdated(change, "schema.schemaText", "abc", "bcd");
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
 
@@ -180,15 +181,13 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withSchemaText(SCHEMA_TEXT)
-            .withSchemaType(SchemaType.Avro)
-            .withSchemaFields(fields)
+            .withSchema(schema.withSchemaFields(fields))
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
     Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
     topic = getEntity(topic.getId(), ADMIN_AUTH_HEADERS);
-    assertFields(fields, topic.getSchemaFields());
+    assertFields(fields, topic.getSchema().getSchemaFields());
   }
 
   @Test
@@ -212,9 +211,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withSchemaText(SCHEMA_TEXT)
-            .withSchemaFields(fields)
-            .withSchemaType(SchemaType.Avro)
+            .withSchema(schema.withSchemaFields(fields))
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
@@ -229,8 +226,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withReplicationFactor(2)
         .withRetentionTime(2.0)
         .withRetentionSize(2.0)
-        .withSchemaText("bcd")
-        .withSchemaType(SchemaType.JSON)
+        .withSchema(schema.withSchemaFields(fields))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic.getVersion());
@@ -241,8 +237,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldUpdated(change, "replicationFactor", 1, 2);
     fieldUpdated(change, "retentionTime", 1.0, 2.0);
     fieldUpdated(change, "retentionSize", 1.0, 2.0);
-    fieldUpdated(change, "schemaText", SCHEMA_TEXT, "bcd");
-    fieldUpdated(change, "schemaType", SchemaType.Avro, SchemaType.JSON);
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
     patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
