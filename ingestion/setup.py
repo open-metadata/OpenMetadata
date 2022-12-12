@@ -56,7 +56,7 @@ base_requirements = {
 
 
 datalake_common = {
-    "pandas==1.4.0",
+    "pandas==1.3.5",
     "pyarrow==6.0.1",
 }
 
@@ -184,7 +184,7 @@ test = {
     "coverage",
     # sklearn integration
     "scikit-learn==1.0.2",
-    "pandas==1.4.0",
+    "pandas==1.3.5",
     # great_expectations tests
     "great-expectations~=0.15.0",
     # Airflow tests
