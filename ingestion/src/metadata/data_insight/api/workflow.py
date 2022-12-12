@@ -241,11 +241,11 @@ class DataInsightWorkflow(WorkflowStatusMixin):
         """We will delete web analytics events older than `RETENTION_DAYS`
         to limit its accumulation
         """
-        tmps = get_beginning_of_day_timestamp_mill(days=RETENTION_DAYS)
+        tmsp = get_beginning_of_day_timestamp_mill(days=RETENTION_DAYS)
         for web_analytic_event in WebAnalyticEventType:
             self.metadata.delete_web_analytic_event_before_ts_exclusive(
                 web_analytic_event,
-                tmps,
+                tmsp,
             )
 
     @classmethod
