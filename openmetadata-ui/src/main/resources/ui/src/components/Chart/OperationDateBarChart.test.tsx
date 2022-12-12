@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { INITIAL_OPERATION_METRIC_VALUE } from '../../constants/profiler.constant';
+import '../../test/unit/mocks/recharts.mock';
 import { CustomBarChartProps } from './Chart.interface';
 import OperationDateBarChart from './OperationDateBarChart';
 
@@ -30,21 +31,6 @@ const mockCustomBarChartProp: CustomBarChartProps = {
   },
   name: 'testChart',
 };
-
-jest.mock('recharts', () => ({
-  Bar: jest.fn().mockImplementation(() => <div>Bar</div>),
-  Legend: jest.fn().mockImplementation(() => <div>Legend</div>),
-  Tooltip: jest.fn().mockImplementation(() => <div>Tooltip</div>),
-  XAxis: jest.fn().mockImplementation(() => <div>XAxis</div>),
-  BarChart: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  ResponsiveContainer: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="responsive-container">{children}</div>
-    )),
-}));
 
 describe('OperationDateBarChart component test', () => {
   it('Component should render', async () => {
