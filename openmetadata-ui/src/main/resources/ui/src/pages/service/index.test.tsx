@@ -12,17 +12,31 @@
  */
 
 import {
-  findAllByTestId,
+  act,
   findByTestId,
   findByText,
-  queryByText,
+  queryByTestId,
   render,
+  screen,
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { act } from 'react-test-renderer';
+import { getCurrentServiceTab } from '../../utils/ServiceUtils';
+
+let mockParams = {
+  serviceFQN: 'bigquery_gcp',
+  serviceType: 'BigQuery',
+  serviceCategory: 'databaseServices',
+  tab: 'databases',
+};
+
 import ServicePage from './index';
-import { mockData, mockDatabase, mockTabs } from './mocks/servicePage.mock';
+import {
+  DASHBOARD_DATA,
+  mockData,
+  mockDatabase,
+  mockTabs,
+} from './mocks/servicePage.mock';
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -94,7 +108,15 @@ jest.mock('../../axiosAPIs/topicsAPI', () => ({
 }));
 
 jest.mock('../../axiosAPIs/dashboardAPI', () => ({
-  getDashboards: jest.fn().mockImplementation(() => Promise.resolve()),
+  getDashboards: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: DASHBOARD_DATA,
+      paging: {
+        after: null,
+        before: null,
+      },
+    })
+  ),
 }));
 
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
@@ -125,12 +147,7 @@ jest.mock('react-router-dom', () => ({
       <span>{children}</span>
     )),
   useHistory: jest.fn(),
-  useParams: jest.fn().mockReturnValue({
-    serviceFQN: 'bigquery_gcp',
-    serviceType: 'BigQuery',
-    serviceCategory: 'databaseServices',
-    tab: 'databases',
-  }),
+  useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
 jest.mock('../../components/containers/PageContainer', () => {
@@ -142,13 +159,21 @@ jest.mock('../../components/containers/PageContainer', () => {
 });
 
 jest.mock('../../utils/ServiceUtils', () => ({
-  getCurrentServiceTab: jest.fn().mockReturnValue(1),
+  getCurrentServiceTab: jest.fn().mockImplementation(() => 1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
   servicePageTabs: jest.fn().mockReturnValue([
     {
       name: 'Databases',
       path: 'databases',
       field: 'databases',
+    },
+    {
+      name: 'Ingestions',
+      path: 'ingestions',
+    },
+    {
+      name: 'Connection',
+      path: 'connection',
     },
   ]),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
@@ -203,6 +228,34 @@ jest.mock(
     return jest.fn().mockReturnValue(<div>ManageButton</div>);
   }
 );
+jest.mock('../../components/Ingestion/Ingestion.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="ingestions">Ingestion</div>);
+});
+
+jest.mock(
+  '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component',
+  () => {
+    return jest
+      .fn()
+      .mockReturnValue(
+        <div data-testid="service-connections">ServiceConnectionDetails</div>
+      );
+  }
+);
+
+jest.mock('../../components/tags-viewer/tags-viewer', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>);
+});
+
+jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockImplementation(({ name }) => {
+    return <div data-testid={`${name}-profile`}>{name}</div>;
+  });
+});
 
 jest.mock('../../utils/TableUtils', () => ({
   getEntityLink: jest.fn(),
@@ -228,33 +281,158 @@ describe('Test ServicePage Component', () => {
       );
       const description = await findByText(container, /Description_component/i);
       const tabPane = await findByText(container, /TabsPane_component/i);
+      const tableContainer = await findByTestId(container, 'table-container');
 
       expect(servicePage).toBeInTheDocument();
       expect(titleBreadcrumb).toBeInTheDocument();
       expect(descriptionContainer).toBeInTheDocument();
       expect(description).toBeInTheDocument();
       expect(tabPane).toBeInTheDocument();
+      expect(tableContainer).toBeInTheDocument();
     });
   });
 
-  it('Table should be visible if data is available', async () => {
-    const { container } = render(<ServicePage />, {
+  it('Should render the service children table rows', async () => {
+    render(<ServicePage />, {
       wrapper: MemoryRouter,
     });
-    const tableContainer = await findByTestId(container, 'table-container');
+    const tableContainer = await screen.findByTestId('service-children-table');
 
     expect(tableContainer).toBeInTheDocument();
-    expect(
-      queryByText(container, /does not have any databases/i)
-    ).not.toBeInTheDocument();
+
+    const rows = await screen.findAllByTestId('row');
+
+    expect(rows).toHaveLength(1);
   });
 
-  it('Number of column should be same as data received', async () => {
-    const { container } = render(<ServicePage />, {
+  it('Should render the owner name and profile pic if child has owner', async () => {
+    render(<ServicePage />, {
       wrapper: MemoryRouter,
     });
-    const column = await findAllByTestId(container, 'column');
+    const tableContainer = await screen.findByTestId('service-children-table');
 
-    expect(column.length).toBe(1);
+    expect(tableContainer).toBeInTheDocument();
+
+    const rows = await screen.findAllByTestId('row');
+
+    const firstRow = rows[0];
+
+    const ownerData = await findByTestId(firstRow, 'owner-data');
+
+    expect(ownerData).toBeInTheDocument();
+
+    // owner profile pic
+    expect(
+      await findByTestId(ownerData, 'Compute-profile')
+    ).toBeInTheDocument();
+
+    // owner name
+    expect(
+      await findByTestId(ownerData, 'Compute-owner-name')
+    ).toBeInTheDocument();
+  });
+
+  it('Should render the ingestion component', async () => {
+    mockParams = { ...mockParams, tab: 'ingestions' };
+
+    (getCurrentServiceTab as jest.Mock).mockImplementationOnce(() => 2);
+
+    await act(async () => {
+      render(<ServicePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const ingestionContainer = await screen.findByText(
+      'Failed to find OpenMetadata - Managed Airflow APIs'
+    );
+
+    expect(ingestionContainer).toBeInTheDocument();
+  });
+
+  it('Should render the connection component', async () => {
+    mockParams = { ...mockParams, tab: 'connection' };
+
+    (getCurrentServiceTab as jest.Mock).mockImplementationOnce(() => 3);
+
+    await act(async () => {
+      render(<ServicePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const connectionContainer = await screen.findByTestId(
+      'service-connections'
+    );
+
+    const editButton = await screen.findByTestId('edit-connection-button');
+    const testButton = screen.queryByTestId('test-connection-button');
+
+    expect(connectionContainer).toBeInTheDocument();
+
+    expect(editButton).toBeInTheDocument();
+
+    expect(testButton).not.toBeInTheDocument();
+  });
+
+  it('Should render the dashboards and child components', async () => {
+    mockParams = {
+      serviceFQN: 'sample_superset',
+      serviceType: 'Superset',
+      serviceCategory: 'dashboardServices',
+      tab: 'dashboards',
+    };
+
+    await act(async () => {
+      render(<ServicePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const tableContainer = await screen.findByTestId('service-children-table');
+
+    expect(tableContainer).toBeInTheDocument();
+
+    const rows = await screen.findAllByTestId('row');
+
+    expect(rows).toHaveLength(3);
+
+    const firstRow = rows[0];
+    const secondRow = rows[1];
+
+    // first row test
+    const ownerData = await findByTestId(firstRow, 'owner-data');
+
+    expect(ownerData).toBeInTheDocument();
+
+    // owner profile pic
+    expect(
+      await findByTestId(ownerData, 'Compute-profile')
+    ).toBeInTheDocument();
+
+    // owner name
+    expect(
+      await findByTestId(ownerData, 'Compute-owner-name')
+    ).toBeInTheDocument();
+
+    const tagContainer = await findByTestId(firstRow, 'record-tags');
+
+    expect(tagContainer).toBeInTheDocument();
+
+    // should render tag viewer as it has tags
+    expect(await findByTestId(tagContainer, 'tag-viewer')).toBeInTheDocument();
+
+    // second row test
+
+    const noOwnerData = await findByTestId(secondRow, 'no-owner-text');
+
+    expect(noOwnerData).toBeInTheDocument();
+
+    const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
+
+    expect(secondRowTagContainer).toBeInTheDocument();
+
+    // should not render tag viewer as it does not have tags
+    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 });
