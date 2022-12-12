@@ -161,7 +161,7 @@ plugins: Dict[str, Set[str]] = {
     "datalakegen2": {
         "azure-storage-blob~=12.14.1",
         "azure-identity~=1.12.0",
-        "pandas~=1.4.0",
+        "pandas~=1.3.5",
     },
 }
 dev = {
