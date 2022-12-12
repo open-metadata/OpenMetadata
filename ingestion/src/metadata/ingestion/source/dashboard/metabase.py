@@ -11,7 +11,6 @@
 """Metabase source module"""
 
 import traceback
-from functools import lru_cache
 from typing import Iterable, List, Optional
 
 import requests
