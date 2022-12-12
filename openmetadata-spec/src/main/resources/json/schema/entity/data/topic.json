@@ -8,25 +8,6 @@
   "javaType": "org.openmetadata.schema.entity.data.Topic",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "schemaType": {
-      "description": "Schema type used for the message.",
-      "javaType": "org.openmetadata.schema.type.topic.SchemaType",
-      "enum": ["Avro", "Protobuf", "JSON", "Other"],
-      "javaEnums": [
-        {
-          "name": "Avro"
-        },
-        {
-          "name": "Protobuf"
-        },
-        {
-          "name": "JSON"
-        },
-        {
-          "name": "Other"
-        }
-      ]
-    },
     "cleanupPolicy": {
       "javaType": "org.openmetadata.schema.type.topic.CleanupPolicy",
       "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
@@ -50,84 +31,6 @@
           }
         }
       },
-      "additionalProperties": false
-    },
-    "dataTypeTopic": {
-      "javaType": "org.openmetadata.schema.type.FieldDataType",
-      "description": "This enum defines the type of data defined in schema.",
-      "type": "string",
-      "enum": [
-        "RECORD",
-        "NULL",
-        "BOOLEAN",
-        "INT",
-        "LONG",
-        "BYTES",
-        "FLOAT",
-        "DOUBLE",
-        "TIMESTAMP",
-        "TIMESTAMPZ",
-        "TIME",
-        "DATE",
-        "STRING",
-        "ARRAY",
-        "MAP",
-        "ENUM",
-        "UNION",
-        "FIXED",
-        "ERROR"
-      ]
-    },
-    "fieldName": {
-      "description": "Local name (not fully qualified name) of the field. ",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
-    },
-    "field": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.Field",
-      "description": "This schema defines the nested object to capture protobuf/avro/jsonschema of topic's schema.",
-      "properties": {
-        "name": {
-          "$ref": "#/definitions/fieldName"
-        },
-        "displayName": {
-          "description": "Display Name that identifies this field name.",
-          "type": "string"
-        },
-        "dataType": {
-          "description": "Data type of the field (int, date etc.).",
-          "$ref": "#/definitions/dataTypeTopic"
-        },
-        "description": {
-          "description": "Description of the column.",
-          "$ref": "../../type/basic.json#/definitions/markdown"
-        },
-        "fullyQualifiedName": {
-          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-        },
-        "tags": {
-          "description": "Tags associated with the column.",
-          "type": "array",
-          "items": {
-            "$ref": "../../type/tagLabel.json"
-          },
-          "default": null
-        },
-        "children": {
-          "description": "Child fields if dataType or arrayDataType is `map`, `record`, `message`",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/field"
-          },
-          "default": null
-        }
-      },
-      "required": [
-        "name",
-        "dataType"
-      ],
       "additionalProperties": false
     }
   },
@@ -172,22 +75,9 @@
       "description": "Service type where this topic is hosted in.",
       "$ref": "../services/messagingService.json#/definitions/messagingServiceType"
     },
-    "schemaText": {
-      "description": "Schema used for message serialization. Optional as some topics may not have associated schemas.",
-      "type": "string"
-    },
-    "schemaType": {
-      "description": "Schema used for message serialization.",
-      "$ref": "#/definitions/schemaType"
-    },
-    "schemaFields": {
-      "description": "Columns in this table.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/field"
-      },
-      "default": []
-    },
+   "schema": {
+     "$ref": "../../type/schema.json"
+   },
     "partitions": {
       "description": "Number of partitions into which the topic is divided.",
       "type": "integer",

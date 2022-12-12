@@ -46,7 +46,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getName(), topic.getName()));
-    setFieldFQN(topic.getFullyQualifiedName(), topic.getSchemaFields());
+    if (topic.getSchema() != null) {
+      setFieldFQN(topic.getFullyQualifiedName(), topic.getSchema().getSchemaFields());
+    }
   }
 
   public TopicRepository(CollectionDAO dao) {
@@ -66,8 +68,10 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     // Validate field tags
-    addDerivedFieldTags(topic.getSchemaFields());
-    topic.getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
+    if (topic.getSchema() != null) {
+      addDerivedFieldTags(topic.getSchema().getSchemaFields());
+      topic.getSchema().getSchemaFields().forEach(field -> checkMutuallyExclusive(field.getTags()));
+    }
   }
 
   @Override
@@ -81,13 +85,20 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
     // Don't store feild tags as JSON but build it on the fly based on relationships
-    List<Field> fieldsWithTags = topic.getSchemaFields();
-    topic.setSchemaFields(cloneWithoutTags(fieldsWithTags));
-    topic.getSchemaFields().forEach(field -> field.setTags(null));
+    List<Field> fieldsWithTags = null;
+    if (topic.getSchema() != null) {
+      fieldsWithTags = topic.getSchema().getSchemaFields();
+      topic.getSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
+      topic.getSchema().getSchemaFields().forEach(field -> field.setTags(null));
+    }
+
     store(topic, update);
 
     // Restore the relationships
-    topic.withOwner(owner).withService(service).withTags(tags).withSchemaFields(fieldsWithTags);
+    if (fieldsWithTags != null) {
+      topic.getSchema().withSchemaFields(fieldsWithTags);
+    }
+    topic.withOwner(owner).withService(service).withTags(tags);
   }
 
   @Override
@@ -102,8 +113,9 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setService(getContainer(topic.getId()));
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
-    getFieldTags(fields.contains(FIELD_TAGS), topic.getSchemaFields());
-
+    if (topic.getSchema() != null) {
+      getFieldTags(fields.contains(FIELD_TAGS), topic.getSchema().getSchemaFields());
+    }
     return topic;
   }
 
@@ -202,7 +214,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   public void applyTags(Topic topic) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(topic);
-    applyTags(topic.getSchemaFields());
+    if (topic.getSchema() != null) {
+      applyTags(topic.getSchema().getSchemaFields());
+    }
   }
 
   public class TopicUpdater extends EntityUpdater {
@@ -218,8 +232,10 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
       recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
       recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
-      recordChange("schemaText", original.getSchemaText(), updated.getSchemaText());
-      recordChange("schemaType", original.getSchemaType(), updated.getSchemaType());
+      if (updated.getSchema() != null) {
+        recordChange("schema.schemaText", original.getSchema().getSchemaText(), updated.getSchema().getSchemaText());
+        recordChange("schema.schemaType", original.getSchema().getSchemaType(), updated.getSchema().getSchemaType());
+      }
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);
     }
