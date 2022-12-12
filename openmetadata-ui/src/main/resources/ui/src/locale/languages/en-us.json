@@ -381,6 +381,7 @@
     "hide": "Hide",
     "restore-team": "Restore Team",
     "remove": "Remove",
+    "move-the-team": "Move the Team",
     "data-insight-plural": "Data Insights",
     "configure-entity": "Configure {{entity}}",
     "name-lowercase": "name",
@@ -536,6 +537,8 @@
     "delete-message-question-mark": "Delete Message?",
     "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
     "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata",
+    "team-moved-success": "Team moved successfully",
+    "team-transfer-message": "Click on Confirm if you’d like to move {{from}} team under {{to}} team.",
     "create-new-glossary-guide": "A Glossary is a controlled vocabulary used to define the concepts and terminology in an organization. Glossaries can be specific to a certain domain (for e.g., Business Glossary, Technical Glossary). In the glossary, the standard terms and concepts can be defined along with the synonyms, and related terms. Control can be established over how and who can add the terms in the glossary.",
     "no-notification-found": "No notifications Found",
     "enables-end-to-end-metadata-management": "Enables end-to-end metadata management with data discovery, data duality, observability, and people collaboration",
@@ -573,7 +576,8 @@
     "leave-team-error": "Error while leaving the team!",
     "no-query-available": "No query available",
     "unexpected-response": "Unexpected response from server!",
-    "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}"
+    "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
+    "team-moved-error": "Error while moving team"
   },
   "url": {}
 }
