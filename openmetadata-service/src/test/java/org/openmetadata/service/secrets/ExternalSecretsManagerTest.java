@@ -22,11 +22,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,6 +76,16 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testEncryptSSSOConfig() {
     testEncryptDecryptSSOConfig(ENCRYPT);
+  }
+
+  @Test
+  void testDecryptIngestionPipelineDBTConfig() {
+    testEncryptDecryptDBTConfig(DECRYPT);
+  }
+
+  @Test
+  void testEncryptIngestionPipelineDBTConfig() {
+    testEncryptDecryptDBTConfig(ENCRYPT);
   }
 
   @Test
@@ -119,6 +137,62 @@ public abstract class ExternalSecretsManagerTest {
         secretsManager.encryptOrDecryptAuthenticationMechanism("bot", authenticationMechanism, decrypt);
 
     assertEquals(expectedAuthenticationMechanism, actualAuthenticationMechanism);
+  }
+
+  void testEncryptDecryptDBTConfig(boolean decrypt) {
+    IngestionPipeline expectedIngestionPipeline =
+        new IngestionPipeline()
+            .withName("my-pipeline")
+            .withPipelineType(PipelineType.DBT)
+            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        new DbtPipeline()
+                            .withDbtConfigSource(
+                                new DbtS3Config()
+                                    .withDbtSecurityConfig(
+                                        new AWSCredentials()
+                                            .withAwsSecretAccessKey("secret-password")
+                                            .withAwsRegion("eu-west-1")))));
+
+    IngestionPipeline ingestionPipeline =
+        new IngestionPipeline()
+            .withName("my-pipeline")
+            .withPipelineType(PipelineType.DBT)
+            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        Map.of(
+                            "dbtConfigSource",
+                            Map.of(
+                                "dbtSecurityConfig",
+                                Map.of(
+                                    "awsSecretAccessKey", "secret-password",
+                                    "awsRegion", "eu-west-1")))));
+
+    IngestionPipeline actualIngestionPipeline =
+        secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, decrypt);
+
+    if (decrypt) {
+      DbtPipeline expectedDbtPipeline = ((DbtPipeline) expectedIngestionPipeline.getSourceConfig().getConfig());
+      DbtPipeline actualDbtPipeline = ((DbtPipeline) actualIngestionPipeline.getSourceConfig().getConfig());
+      ((DbtS3Config) expectedDbtPipeline.getDbtConfigSource())
+          .getDbtSecurityConfig()
+          .setAwsSecretAccessKey(
+              "secret:/openmetadata/pipeline/my-pipeline/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
+      ((DbtS3Config) actualDbtPipeline.getDbtConfigSource())
+          .getDbtSecurityConfig()
+          .setAwsSecretAccessKey(
+              Fernet.getInstance()
+                  .decrypt(
+                      ((DbtS3Config) actualDbtPipeline.getDbtConfigSource())
+                          .getDbtSecurityConfig()
+                          .getAwsSecretAccessKey()));
+    }
+
+    assertEquals(expectedIngestionPipeline, actualIngestionPipeline);
   }
 
   protected abstract SecretsManagerProvider expectedSecretManagerProvider();
