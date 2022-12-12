@@ -29,7 +29,7 @@ const policies = {
 };
 
 const errorMessageValidation = {
-  ifPolicyNotSelected: 'At least one policy is required!',
+  ifPolicyNotSelected: 'At least one policy is required.',
   ifNameNotEntered: 'invalid name',
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
 };

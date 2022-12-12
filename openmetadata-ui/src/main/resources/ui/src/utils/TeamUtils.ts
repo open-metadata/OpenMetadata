@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { cloneDeep, isEmpty, isNil, isUndefined, omit } from 'lodash';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import {
@@ -38,7 +39,10 @@ export const getDeleteMessagePostFix = (
   teamName: string,
   deleteType: string
 ) => {
-  return `Any teams under "${teamName}" will be ${deleteType} deleted as well.`;
+  return t('message.delete-team-message', {
+    teamName,
+    deleteType,
+  });
 };
 
 const getEntityValue = (value: EntityReference[] | undefined) => {

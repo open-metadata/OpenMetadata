@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { ExploreSearchIndex } from '../components/Explore/explore.interface';
 import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
@@ -23,6 +24,7 @@ export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
 export const MAX_RESULT_HITS = 10000;
 
+// as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [
   {
     name: 'Last Updated',
@@ -51,7 +53,7 @@ export interface ExploreTabInfo {
 
 export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
   [SearchIndex.TABLE]: {
-    label: 'Tables',
+    label: t('label.tables'),
     sortingFields: tableSortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'tables',
@@ -59,7 +61,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.TABLE,
   },
   [SearchIndex.TOPIC]: {
-    label: 'Topics',
+    label: t('label.topics'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'topics',
@@ -67,7 +69,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.TOPIC,
   },
   [SearchIndex.DASHBOARD]: {
-    label: 'Dashboards',
+    label: t('label.dashboards'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'dashboards',
@@ -75,7 +77,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.DASHBOARD,
   },
   [SearchIndex.PIPELINE]: {
-    label: 'Pipelines',
+    label: t('label.pipelines'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'pipelines',
@@ -83,7 +85,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.PIPELINE,
   },
   [SearchIndex.MLMODEL]: {
-    label: 'ML Models',
+    label: t('label.ml-models'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'mlmodels',

@@ -871,7 +871,7 @@ export const retryIngestionRun = () => {
     let timer = BASE_WAIT_TIME;
     let retryCount = 0;
     const testIngestionsTab = () => {
-        cy.get('[data-testid="Ingestions"]').should('be.visible');
+        cy.get('[data-testid="Ingestions"]').scrollIntoView().should('be.visible');
         cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
             'have.text',
             '1'
