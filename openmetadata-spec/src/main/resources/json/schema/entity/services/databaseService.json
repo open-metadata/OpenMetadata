@@ -44,7 +44,8 @@
         "Datalake",
         "DomoDatabase",
         "QueryLog",
-        "CustomDatabase"
+        "CustomDatabase",
+        "Dbt"
       ],
       "javaEnums": [
         {
@@ -136,6 +137,9 @@
         },
         {
           "name": "CustomDatabase"
+        },
+        {
+          "name": "Dbt"
         }
       ]
     },

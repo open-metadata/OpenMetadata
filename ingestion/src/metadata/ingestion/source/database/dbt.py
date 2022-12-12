@@ -88,6 +88,11 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
         self.metadata = OpenMetadata(metadata_config)
         self.report = SQLSourceStatus()
 
+    @classmethod
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        return cls(config, metadata_config)
+
     def get_status(self) -> SourceStatus:
         return self.report
 
