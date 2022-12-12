@@ -52,7 +52,10 @@ from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
 TABLEAU_TAG_CATEGORY = "TableauTags"
+GET_WORKBOOKS_PARAM_DICT = {"fields": "fields=_default_,owner.email,description"}
+GET_VIEWS_PARAM_DICT = {"fields": "fields=_default_,sheetType"}
 
 
 class TableauBaseModel(BaseModel):
@@ -142,7 +145,7 @@ class TableauSource(DashboardServiceSource):
             )
             for workbook in extract_pages(
                 self.client.query_workbooks_for_site,
-                parameter_dict={"fields": "fields=_default_,owner.email,description"},
+                parameter_dict=GET_WORKBOOKS_PARAM_DICT,
             )
         ]
 
@@ -160,7 +163,7 @@ class TableauSource(DashboardServiceSource):
             for chart in extract_pages(
                 self.client.query_views_for_site,
                 content_id=self.client.site_id,
-                parameter_dict={"fields": "fields=_default_,sheetType"},
+                parameter_dict=GET_VIEWS_PARAM_DICT,
             )
         ]
 

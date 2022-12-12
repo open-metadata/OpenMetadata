@@ -16,11 +16,12 @@ import json
 import logging
 import os
 import traceback
-from functools import singledispatch, wraps
-from typing import Union
+from functools import partial, singledispatch, wraps
+from typing import Callable, List, Union
 
 import pkg_resources
 import requests
+from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.event import listen
@@ -186,6 +187,32 @@ class SourceConnectionException(Exception):
     """
 
 
+class TestConnectionStep(BaseModel):
+    """
+    Function and step name to test.
+
+    The function should be ready to be called.
+
+    If it needs arguments, use `partial` to send a pre-filled
+    Callable. Example
+
+    ```
+    def suma(a, b):
+        return a + b
+
+    step_1 = TestConnectionStep(
+        function=partial(suma, a=1, b=1),
+        name="suma"
+    )
+    ```
+
+    so that we can execute `step_1.function()`
+    """
+
+    function: Callable
+    name: str
+
+
 def render_query_header(ometa_version: str) -> str:
     """
     Render the query header for OpenMetadata Queries
@@ -241,6 +268,18 @@ def singledispatch_with_options_secrets_verbose(fn):
         return fn(connection, verbose, **kwargs)
 
     return inner
+
+
+def test_connection_steps(steps: List[TestConnectionStep]) -> None:
+    """
+    Run all the function steps and raise any errors
+    """
+    for step in steps:
+        try:
+            step.function()
+        except Exception as exc:
+            msg = f"Error validating step [{step.name}] due to: {exc}."
+            raise SourceConnectionException(msg) from exc
 
 
 @singledispatch_with_options_secrets_verbose
@@ -833,12 +872,38 @@ def _(  # pylint: disable=inconsistent-return-statements
 
 @test_connection.register
 def _(connection: TableauClient) -> None:
-    try:
-        connection.client.server_info()
+    from tableau_api_lib.utils import extract_pages
 
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
+    from metadata.ingestion.source.dashboard.tableau import (
+        GET_VIEWS_PARAM_DICT,
+        GET_WORKBOOKS_PARAM_DICT,
+    )
+
+    steps = [
+        TestConnectionStep(
+            function=connection.client.server_info,
+            name="Server Info",
+        ),
+        TestConnectionStep(
+            function=partial(
+                extract_pages,
+                query_func=connection.client.query_workbooks_for_site,
+                parameter_dict=GET_WORKBOOKS_PARAM_DICT,
+            ),
+            name="Get Workbooks",
+        ),
+        TestConnectionStep(
+            function=partial(
+                extract_pages,
+                query_func=connection.client.query_views_for_site,
+                content_id=connection.client.site_id,
+                parameter_dict=GET_VIEWS_PARAM_DICT,
+            ),
+            name="Get Views",
+        ),
+    ]
+
+    test_connection_steps(steps)
 
 
 @get_connection.register
