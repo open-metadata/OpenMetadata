@@ -34,6 +34,7 @@ from metadata.clients.atlas_client import AtlasClient
 from metadata.clients.connection_clients import (
     AirByteClient,
     AmundsenClient,
+    DatalakeGen2Client,
     DagsterClient,
     DatalakeClient,
     DeltaLakeClient,
@@ -63,6 +64,9 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakegen2Connection import (
+    DatalakeGen2Connection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -1360,6 +1364,39 @@ def _(connection: AtlasConnection) -> AtlasClient:
 def _(connection: AtlasClient) -> None:
     try:
         connection.list_entities()
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@get_connection.register
+def _(connection: DatalakeGen2Connection) -> DatalakeGen2Client:
+
+    from azure.identity import ClientSecretCredential
+    from azure.storage.blob import BlobServiceClient
+
+    try:
+        credentials = ClientSecretCredential(
+            connection.tenantId,
+            connection.clientId,
+            connection.clientSecret.get_secret_value(),
+        )
+
+        blob_service = BlobServiceClient(
+            f"https://{connection.accountName}.blob.core.windows.net/",
+            credential=credentials,
+        )
+        return DatalakeGen2Client(blob_service)
+
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg)
+
+
+@test_connection.register
+def _(connection: DatalakeGen2Client) -> None:
+    try:
+        connection.list_containers(name_starts_with="")
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg)

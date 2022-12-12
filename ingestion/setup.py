@@ -158,6 +158,11 @@ plugins: Dict[str, Set[str]] = {
     "pinotdb": {"pinotdb~=0.3.11"},
     "nifi": {},
     "domo": {"pydomo~=0.3.0.5"},
+    "datalakegen2": {
+        "azure-storage-blob~=12.14.1",
+        "azure-identity~=1.12.0",
+        "pandas~=1.4.0",
+    },
 }
 dev = {
     "datamodel-code-generator==0.13.4",
