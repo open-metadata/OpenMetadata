@@ -469,7 +469,8 @@
     "profiler": "Profiler",
     "here-lowercase": "here",
     "insert": "Insert",
-    "update": "Update"
+    "update": "Update",
+    "table-profiler": "Table Profiler"
   },
   "message": {
     "service-email-required": "Service account Email is required",

@@ -170,7 +170,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
       disabled: !viewProfiler,
     },
     {
-      label: t('label.profiler'),
+      label: t('label.table-profiler'),
       key: ProfilerDashboardTab.PROFILER,
       disabled: !viewProfiler,
     },

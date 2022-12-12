@@ -755,6 +755,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   />
                   <div />
                 </div>
+                <div
+                  data-testid="observer-element"
+                  id="observer-element"
+                  ref={elementRef as RefObject<HTMLDivElement>}>
+                  {getLoader()}
+                </div>
               </div>
             )}
             {activeTab === 3 && (
@@ -821,12 +827,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
-            </div>
           </div>
           {threadLink ? (
             <ActivityThreadPanel

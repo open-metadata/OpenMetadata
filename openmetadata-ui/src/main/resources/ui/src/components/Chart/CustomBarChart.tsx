@@ -18,13 +18,15 @@ import {
   Bar,
   BarChart,
   Legend,
-  LegendProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatNumberWithComma } from '../../utils/CommonUtils';
+import {
+  renderColorfulLegendText,
+  tooltipFormatter,
+} from '../../utils/ChartUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -35,21 +37,6 @@ const CustomBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const { t } = useTranslation();
-  const renderColorfulLegendText: LegendProps['formatter'] = (value, entry) => (
-    <span style={{ color: entry?.color }}>{value}</span>
-  );
-
-  const tooltipFormatter = (value: string | number) => {
-    const numValue = Number(value);
-
-    return (
-      <>
-        {tickFormatter
-          ? `${numValue.toFixed(2)}${tickFormatter}`
-          : formatNumberWithComma(numValue)}
-      </>
-    );
-  };
 
   if (data.length === 0) {
     return (
@@ -84,7 +71,11 @@ const CustomBarChart = ({
             tickFormatter ? `${props}${tickFormatter}` : props
           }
         />
-        <Tooltip formatter={tooltipFormatter} />
+        <Tooltip
+          formatter={(value: number | string) =>
+            tooltipFormatter(value, tickFormatter)
+          }
+        />
         {information.map((info) => (
           <Bar
             dataKey={info.dataKey}

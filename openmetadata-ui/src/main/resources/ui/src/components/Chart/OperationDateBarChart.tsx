@@ -18,11 +18,11 @@ import {
   Bar,
   BarChart,
   Legend,
-  LegendProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from 'recharts';
+import { renderColorfulLegendText } from '../../utils/ChartUtils';
 import { formatNumberWithComma } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -33,9 +33,6 @@ const OperationDateBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const { t } = useTranslation();
-  const renderColorfulLegendText: LegendProps['formatter'] = (value, entry) => (
-    <span style={{ color: entry?.color }}>{value}</span>
-  );
 
   const tooltipFormatter = (
     _value: number,
