@@ -3,7 +3,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "VerifySSLConfig",
   "description": "Client configuration to validate SSL certificates.",
-  "type": "object",
   "definitions": {
     "verifySSL": {
       "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
@@ -25,6 +24,5 @@
         }
       ]
     }
-  },
-  "additionalProperties": false
+  }
 }
