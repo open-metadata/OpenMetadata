@@ -133,7 +133,7 @@ class MetabaseSource(DashboardServiceSource):
         for chart in charts:
             try:
                 chart_details = chart["card"]
-                if 'id' not in chart_details:
+                if "id" not in chart_details:
                     continue
                 chart_url = (
                     f"/question/{chart_details['id']}-"
@@ -233,10 +233,10 @@ class MetabaseSource(DashboardServiceSource):
         if resp_database.status_code == 200:
             database = resp_database.json()
             query = (
-                    chart_details.get("dataset_query", {})
-                    .get("native", {})
-                    .get("query", "")
-                )
+                chart_details.get("dataset_query", {})
+                .get("native", {})
+                .get("query", "")
+            )
             lineage_parser = LineageParser(query)
             for table in lineage_parser.source_tables:
                 database_schema_name, table = fqn.split(str(table))[-2:]
@@ -245,10 +245,7 @@ class MetabaseSource(DashboardServiceSource):
                     if database_schema_name == "<default>"
                     else database_schema_name
                 )
-                database = (
-                    database.get("details", {})
-                    .get("db", None)
-                )
+                database = database.get("details", {}).get("db", None)
                 if database:
                     from_entities = search_table_entities(
                         metadata=self.metadata,
@@ -263,7 +260,8 @@ class MetabaseSource(DashboardServiceSource):
                         service_name=db_service_name,
                         database=None,
                         database_schema=database_schema_name,
-                        table=table)
+                        table=table,
+                    )
 
                 to_fqn = fqn.build(
                     self.metadata,
@@ -287,11 +285,7 @@ class MetabaseSource(DashboardServiceSource):
         resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
         if resp_tables.status_code == 200:
             table = resp_tables.json()
-            database_name = (
-                    table.get("db", {})
-                    .get("details", {})
-                    .get("db", None)
-                )
+            database_name = table.get("db", {}).get("details", {}).get("db", None)
             if database_name:
                 from_entities = search_table_entities(
                     metadata=self.metadata,
@@ -324,4 +318,3 @@ class MetabaseSource(DashboardServiceSource):
                 yield self._get_add_lineage_request(
                     to_entity=to_entity, from_entity=from_entity
                 )
-
