@@ -17,10 +17,10 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 
-jest.mock('./ExploreQuickFilter', () =>
+jest.mock('../SearchDropdown/SearchDropdown', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="advanced-field">ExploreQuickFilter</div>)
+    .mockReturnValue(<div data-testid="search-dropdown">SearchDropdown</div>)
 );
 
 jest.mock('./AdvanceSearchModal.component', () => ({
@@ -57,7 +57,7 @@ describe('Test ExploreQuickFilters component', () => {
       <ExploreQuickFilters {...mockProps} />
     );
 
-    const fields = await findAllByTestId('advanced-field');
+    const fields = await findAllByTestId('search-dropdown');
     const clearButton = await findByTestId('clear-all-button');
 
     expect(fields).toHaveLength(fields.length);
@@ -70,7 +70,7 @@ describe('Test ExploreQuickFilters component', () => {
       <ExploreQuickFilters {...mockProps} />
     );
 
-    const fields = await findAllByTestId('advanced-field');
+    const fields = await findAllByTestId('search-dropdown');
     const clearButton = await findByTestId('clear-all-button');
 
     expect(fields).toHaveLength(fields.length);
@@ -87,7 +87,7 @@ describe('Test ExploreQuickFilters component', () => {
       <ExploreQuickFilters {...mockProps} />
     );
 
-    const fields = await findAllByTestId('advanced-field');
+    const fields = await findAllByTestId('search-dropdown');
     const advanceSearchButton = await findByTestId('advance-search-button');
 
     expect(fields).toHaveLength(fields.length);

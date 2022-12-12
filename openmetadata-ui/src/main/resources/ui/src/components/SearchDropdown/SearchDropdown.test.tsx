@@ -28,7 +28,7 @@ const mockProps: SearchDropdownProps = {
   label: 'Owner',
   options: searchOptions,
   searchKey: 'owner.name',
-  selectedKeys: ['user.1'],
+  selectedKeys: ['User 1'],
   showClear: true,
   onChange: mockOnChange,
   onClearSelection: mockOnClearSelection,
@@ -89,7 +89,7 @@ describe('Search DropDown Component', () => {
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
     // user.1 is selected key so should be checked
-    expect(await screen.findByTestId('user.1')).toBeChecked();
+    expect(await screen.findByTestId('User 1-checkbox')).toBeChecked();
   });
 
   it('UnSelected keys option should not be checked', async () => {
@@ -105,10 +105,10 @@ describe('Search DropDown Component', () => {
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
-    expect(await screen.findByTestId('user.2')).not.toBeChecked();
-    expect(await screen.findByTestId('user.3')).not.toBeChecked();
-    expect(await screen.findByTestId('user.4')).not.toBeChecked();
-    expect(await screen.findByTestId('user.5')).not.toBeChecked();
+    expect(await screen.findByTestId('User 2-checkbox')).not.toBeChecked();
+    expect(await screen.findByTestId('User 3-checkbox')).not.toBeChecked();
+    expect(await screen.findByTestId('User 4-checkbox')).not.toBeChecked();
+    expect(await screen.findByTestId('User 5-checkbox')).not.toBeChecked();
   });
 
   it('Should render the clear all button and click should work', async () => {
@@ -132,7 +132,8 @@ describe('Search DropDown Component', () => {
       userEvent.click(clearButton);
     });
 
-    expect(mockOnChange).toHaveBeenCalledWith([], 'owner.name');
+    expect(mockOnSearch).toHaveBeenCalledWith('', 'owner.name');
+    expect(mockOnClearSelection).toHaveBeenCalledWith('owner.name');
   });
 
   it('Should not render the clear all button if showClear is false/undefined', async () => {
@@ -198,7 +199,7 @@ describe('Search DropDown Component', () => {
 
     // onChange should be called with previous selected keys and current selected keys
     expect(mockOnChange).toHaveBeenCalledWith(
-      ['user.1', 'user.2'],
+      ['User 1', 'User 2'],
       'owner.name'
     );
   });

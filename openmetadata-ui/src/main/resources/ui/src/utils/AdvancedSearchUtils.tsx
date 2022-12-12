@@ -144,8 +144,8 @@ export const getSearchDropdownLabels = (
   optionsArray.map((option) => ({
     key: option,
     label: (
-      <Space data-testid={option} size={6}>
-        <Checkbox checked={checked} data-testid={option} />
+      <Space className="m-x-sm" data-testid={option} size={6}>
+        <Checkbox checked={checked} data-testid={`${option}-checkbox`} />
         <Typography.Text
           ellipsis
           className="dropdown-option-label"
