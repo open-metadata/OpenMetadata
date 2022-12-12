@@ -27,7 +27,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isUndefined, kebabCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -45,8 +45,6 @@ import {
   SUPPORTED_CHARTS_FOR_KPI,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
-import { ADD_KPI_TEXT } from '../../constants/HelperTextUtil';
-import { nameWithSpace } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   CreateKpiRequest,
@@ -60,9 +58,9 @@ import {
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
-import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import {
   getDisabledDates,
+  getKPIFormattedDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
@@ -164,8 +162,10 @@ const AddKPIPage = () => {
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
-    const startDate = getTimeStampByDateTime(kpiDates.startDate);
-    const endDate = getTimeStampByDateTime(kpiDates.endDate);
+    const formattedDates = getKPIFormattedDates(kpiDates);
+
+    const startDate = getTimeStampByDateTime(formattedDates.startDate);
+    const endDate = getTimeStampByDateTime(formattedDates.endDate);
     const metricType =
       selectedMetric?.chartDataType as unknown as KpiTargetType;
 
@@ -177,7 +177,7 @@ const AddKPIPage = () => {
         type: EntityType.DATA_INSIGHT_CHART,
       },
       description,
-      name: values.name,
+      name: kebabCase(`${values.displayName} ${selectedMetric?.name}`),
       displayName: values.displayName,
       startDate,
       endDate,
@@ -211,7 +211,7 @@ const AddKPIPage = () => {
       data-testid="add-kpi-container"
       gutter={[16, 16]}>
       <Col offset={4} span={12}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
+        <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph className="text-base" data-testid="form-title">
             {t('label.add-new-kpi')}
@@ -222,43 +222,6 @@ const AddKPIPage = () => {
             layout="vertical"
             validateMessages={VALIDATE_MESSAGES}
             onFinish={handleSubmit}>
-            <Form.Item
-              label={t('label.name')}
-              name="name"
-              rules={[
-                {
-                  required: true,
-                  max: 128,
-                  min: 1,
-                  validator: (_, value) => {
-                    if (
-                      !isUrlFriendlyName(value) ||
-                      nameWithSpace.test(value)
-                    ) {
-                      return Promise.reject(
-                        t('label.special-character-not-allowed')
-                      );
-                    }
-
-                    return Promise.resolve();
-                  },
-                },
-              ]}>
-              <Input
-                data-testid="name"
-                placeholder={t('label.kpi-name')}
-                type="text"
-              />
-            </Form.Item>
-
-            <Form.Item label={t('label.display-name')} name="displayName">
-              <Input
-                data-testid="displayName"
-                placeholder={t('label.kpi-display-name')}
-                type="text"
-              />
-            </Form.Item>
-
             <Form.Item
               label={t('label.select-a-chart')}
               name="dataInsightChart"
@@ -280,6 +243,14 @@ const AddKPIPage = () => {
                   </Option>
                 ))}
               </Select>
+            </Form.Item>
+
+            <Form.Item label={t('label.display-name')} name="displayName">
+              <Input
+                data-testid="displayName"
+                placeholder={t('label.kpi-display-name')}
+                type="text"
+              />
             </Form.Item>
 
             <Form.Item
@@ -324,7 +295,7 @@ const AddKPIPage = () => {
                 <>
                   {selectedMetric.chartDataType ===
                     ChartDataType.Percentage && (
-                    <Row gutter={20}>
+                    <Row data-testid="metric-percentage-input" gutter={20}>
                       <Col span={20}>
                         <Slider
                           className="kpi-slider"
@@ -350,7 +321,7 @@ const AddKPIPage = () => {
                           step={1}
                           value={metricValue}
                           onChange={(value) => {
-                            setMetricValue(value);
+                            setMetricValue(Number(value));
                           }}
                         />
                       </Col>
@@ -359,9 +330,10 @@ const AddKPIPage = () => {
                   {selectedMetric.chartDataType === ChartDataType.Number && (
                     <InputNumber
                       className="w-full"
+                      data-testid="metric-number-input"
                       min={0}
                       value={metricValue}
-                      onChange={(value) => setMetricValue(value)}
+                      onChange={(value) => setMetricValue(Number(value))}
                     />
                   )}
                 </>
@@ -377,11 +349,14 @@ const AddKPIPage = () => {
                   rules={[
                     {
                       required: true,
+                      message: t('label.field-required', {
+                        field: t('label.start-date'),
+                      }),
                     },
                   ]}>
                   <DatePicker
-                    showTime
                     className="w-full"
+                    data-testid="start-date"
                     disabledDate={getDisabledDates}
                     format={KPI_DATE_PICKER_FORMAT}
                     onChange={(_, dateString) =>
@@ -398,11 +373,14 @@ const AddKPIPage = () => {
                   rules={[
                     {
                       required: true,
+                      message: t('label.field-required', {
+                        field: t('label.end-date'),
+                      }),
                     },
                   ]}>
                   <DatePicker
-                    showTime
                     className="w-full"
+                    data-testid="end-date"
                     disabledDate={getDisabledDates}
                     format={KPI_DATE_PICKER_FORMAT}
                     onChange={(_, dateString) =>
@@ -442,11 +420,11 @@ const AddKPIPage = () => {
           </Form>
         </Card>
       </Col>
-      <Col className="m-t-md" span={4}>
+      <Col className="m-t-md" data-testid="right-panel" span={4}>
         <Typography.Paragraph className="text-base font-medium">
           {t('label.add-kpi')}
         </Typography.Paragraph>
-        <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
+        <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
       </Col>
     </Row>
   );

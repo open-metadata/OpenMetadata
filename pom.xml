@@ -78,6 +78,7 @@
     <jackson.version>2.13.4</jackson.version>
     <jackson-databind.version>2.13.4.1</jackson-databind.version>
     <dropwizard.version>2.0.34</dropwizard.version>
+    <diffMatch.version>1.0</diffMatch.version>
     <dropwizard-jdbi3.version>2.0.34</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
@@ -99,7 +100,7 @@
     <redshift-jdbc.version>2.1.0.9</redshift-jdbc.version>
     <gson.version>2.9.1</gson.version>
     <mysql.connector.version>8.0.30</mysql.connector.version>
-    <postgres.connector.version>42.5.0</postgres.connector.version>
+    <postgres.connector.version>42.5.1</postgres.connector.version>
     <jsonschema2pojo.version>1.1.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>

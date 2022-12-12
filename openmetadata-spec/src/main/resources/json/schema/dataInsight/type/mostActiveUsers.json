@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/datatInsight/type/mostActiveUsers.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/mostActiveUsers.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MostActiveUsers",
   "description": "pageViewsByEntities data blob",
   "type": "object",
-  "javaType": "org.openmetadata.schema.datatInsight.type.MostActiveUsers",
+  "javaType": "org.openmetadata.schema.dataInsight.type.MostActiveUsers",
   "properties": {
     "userName": {
       "description": "Name of a user",

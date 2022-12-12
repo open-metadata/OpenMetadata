@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -30,7 +31,6 @@ import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { ADD_POLICY_TEXT } from '../../../constants/HelperTextUtil';
 import {
   CreatePolicy,
   Effect,
@@ -48,15 +48,15 @@ const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const breadcrumb = [
   {
-    name: 'Settings',
+    name: t('label.settings'),
     url: getSettingPath(),
   },
   {
-    name: 'Policies',
+    name: t('label.policies'),
     url: policiesPath,
   },
   {
-    name: 'Add New Policy',
+    name: t('label.add-new-policy'),
     url: '',
   },
 ];
@@ -110,7 +110,7 @@ const AddPolicyPage = () => {
           <Typography.Paragraph
             className="tw-text-base"
             data-testid="form-title">
-            Add New Policy
+            {t('label.add-new-policy')}
           </Typography.Paragraph>
           <Form
             data-testid="policy-form"
@@ -121,35 +121,40 @@ const AddPolicyPage = () => {
             layout="vertical"
             onFinish={handleSumbit}>
             <Form.Item
-              label="Name:"
+              label={`${t('label.name')}:`}
               name="name"
               rules={[
                 {
                   required: true,
                   max: 128,
                   min: 1,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.name'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="policy-name"
-                placeholder="Policy name"
+                placeholder={t('label.policy-name')}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </Form.Item>
 
-            <Form.Item label="Description:" name="description">
+            <Form.Item label={`${t('label.description')}:`} name="description">
               <RichTextEditor
                 height="200px"
                 initialValue={description}
-                placeHolder="Write your description"
+                placeHolder={t('label.write-your-description')}
                 style={{ margin: 0 }}
                 onTextChange={(value) => setDescription(value)}
               />
             </Form.Item>
 
-            <Divider data-testid="add-rule-divider">Add Rule</Divider>
+            <Divider data-testid="add-rule-divider">
+              {t('label.add-rule')}
+            </Divider>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
             <Space align="center" className="tw-w-full tw-justify-end">
@@ -157,14 +162,14 @@ const AddPolicyPage = () => {
                 data-testid="cancel-btn"
                 type="link"
                 onClick={handleCancel}>
-                Cancel
+                {t('label.cancel')}
               </Button>
               <Button
                 data-testid="submit-btn"
                 form="policy-form"
                 htmlType="submit"
                 type="primary">
-                Submit
+                {t('label.submit')}
               </Button>
             </Space>
           </Form>
@@ -172,9 +177,9 @@ const AddPolicyPage = () => {
       </Col>
       <Col className="tw-mt-4" span={4}>
         <Typography.Paragraph className="tw-text-base tw-font-medium">
-          Add Policy
+          {t('label.add-policy')}
         </Typography.Paragraph>
-        <Typography.Text>{ADD_POLICY_TEXT}</Typography.Text>
+        <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
       </Col>
     </Row>
   );

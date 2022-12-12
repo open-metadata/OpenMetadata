@@ -47,10 +47,6 @@ import {
   KPI_DATE_PICKER_FORMAT,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
-import {
-  ADD_KPI_TEXT,
-  NO_PERMISSION_FOR_ACTION,
-} from '../../constants/HelperTextUtil';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
@@ -58,12 +54,13 @@ import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import {
   getDisabledDates,
   getKpiDateFormatByTimeStamp,
+  getKPIFormattedDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
 import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const AddKPIPage = () => {
+const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { kpiName } = useParams<{ kpiName: string }>();
 
@@ -164,8 +161,10 @@ const AddKPIPage = () => {
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     if (kpiData && metricData) {
-      const startDate = getTimeStampByDateTime(kpiDates.startDate);
-      const endDate = getTimeStampByDateTime(kpiDates.endDate);
+      const formattedDates = getKPIFormattedDates(kpiDates);
+
+      const startDate = getTimeStampByDateTime(formattedDates.startDate);
+      const endDate = getTimeStampByDateTime(formattedDates.endDate);
 
       const targetValue = getKpiTargetValueByMetricType(
         kpiData.metricType,
@@ -234,15 +233,15 @@ const AddKPIPage = () => {
       {kpiData ? (
         <Row
           className="bg-body-main h-full"
-          data-testid="add-kpi-container"
+          data-testid="edit-kpi-container"
           gutter={[16, 16]}>
           <Col offset={4} span={12}>
-            <TitleBreadcrumb titleLinks={breadcrumb} />
+            <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
             <Card>
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-kpi')}
+                {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
               </Typography.Paragraph>
               <Form
                 data-testid="kpi-form"
@@ -251,12 +250,13 @@ const AddKPIPage = () => {
                 layout="vertical"
                 validateMessages={VALIDATE_MESSAGES}
                 onFinish={handleSubmit}>
-                <Form.Item label={t('label.name')} name="name">
+                <Form.Item
+                  label={t('label.data-insight-chart')}
+                  name="dataInsightChart">
                   <Input
                     disabled
-                    data-testid="name"
-                    placeholder={t('label.kpi-name')}
-                    type="text"
+                    data-testid="dataInsightChart"
+                    value={selectedChart?.displayName || selectedChart?.name}
                   />
                 </Form.Item>
 
@@ -268,17 +268,12 @@ const AddKPIPage = () => {
                   />
                 </Form.Item>
 
-                <Form.Item
-                  label={t('label.data-insight-chart')}
-                  name="dataInsightChart">
+                <Form.Item label={t('label.metric-type')} name="metricType">
                   <Input
                     disabled
-                    value={selectedChart?.displayName || selectedChart?.name}
+                    data-testid="metricType"
+                    value={metricData?.name}
                   />
-                </Form.Item>
-
-                <Form.Item label={t('label.metric-type')} name="metricType">
-                  <Input disabled value={metricData?.name} />
                 </Form.Item>
 
                 {!isUndefined(metricData) && (
@@ -301,7 +296,7 @@ const AddKPIPage = () => {
                     ]}>
                     <>
                       {kpiData?.metricType === KpiTargetType.Percentage && (
-                        <Row gutter={20}>
+                        <Row data-testid="metric-percentage-input" gutter={20}>
                           <Col span={20}>
                             <Slider
                               className="kpi-slider"
@@ -327,7 +322,7 @@ const AddKPIPage = () => {
                               step={1}
                               value={metricValue}
                               onChange={(value) => {
-                                setMetricValue(value);
+                                setMetricValue(Number(value));
                               }}
                             />
                           </Col>
@@ -336,9 +331,10 @@ const AddKPIPage = () => {
                       {kpiData?.metricType === KpiTargetType.Number && (
                         <InputNumber
                           className="w-full"
+                          data-testid="metric-number-input"
                           min={0}
                           value={metricValue}
-                          onChange={(value) => setMetricValue(value)}
+                          onChange={(value) => setMetricValue(Number(value))}
                         />
                       )}
                     </>
@@ -354,11 +350,14 @@ const AddKPIPage = () => {
                       rules={[
                         {
                           required: true,
+                          message: t('label.field-required', {
+                            field: t('label.start-date'),
+                          }),
                         },
                       ]}>
                       <DatePicker
-                        showTime
                         className="w-full"
+                        data-testid="start-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
                         onChange={(_, dateString) =>
@@ -375,11 +374,14 @@ const AddKPIPage = () => {
                       rules={[
                         {
                           required: true,
+                          message: t('label.field-required', {
+                            field: t('label.end-date'),
+                          }),
                         },
                       ]}>
                       <DatePicker
-                        showTime
                         className="w-full"
+                        data-testid="end-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
                         onChange={(_, dateString) =>
@@ -409,7 +411,9 @@ const AddKPIPage = () => {
                   </Button>
                   <Tooltip
                     title={
-                      isAdminUser ? t('label.save') : NO_PERMISSION_FOR_ACTION
+                      isAdminUser
+                        ? t('label.save')
+                        : t('message.no-permission-for-action')
                     }>
                     <Button
                       data-testid="submit-btn"
@@ -425,11 +429,11 @@ const AddKPIPage = () => {
               </Form>
             </Card>
           </Col>
-          <Col className="m-t-md" span={4}>
+          <Col className="m-t-md" data-testid="right-panel" span={4}>
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.edit-kpi')}
+              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
             </Typography.Paragraph>
-            <Typography.Text>{ADD_KPI_TEXT}</Typography.Text>
+            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </Col>
         </Row>
       ) : (
@@ -441,4 +445,4 @@ const AddKPIPage = () => {
   );
 };
 
-export default AddKPIPage;
+export default EditKPIPage;

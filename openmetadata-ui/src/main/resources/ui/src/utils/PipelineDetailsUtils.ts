@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
 import {
   Pipeline,
@@ -24,26 +25,26 @@ ${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificFiel
 
 export const pipelineDetailsTabs = [
   {
-    name: 'Details',
+    name: t('label.detail-plural'),
     path: 'details',
   },
   {
-    name: 'Activity Feeds & Tasks',
+    name: t('label.activity-feed-and-task-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Executions',
+    name: t('label.executions'),
     path: 'executions',
     field: TabSpecificField.EXECUTIONS,
   },
   {
-    name: 'Lineage',
+    name: t('label.lineage'),
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Custom Properties',
+    name: t('label.custom-properties'),
     path: 'custom_properties',
   },
 ];

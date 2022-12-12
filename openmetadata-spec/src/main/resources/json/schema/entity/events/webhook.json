@@ -8,7 +8,7 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "webhookType": {
-      "description": "Type of webhook slack, generic, msteams, etc.",
+      "description": "Type of webhook Slack, Generic, MS Teams, etc.",
       "type": "string",
       "javaType": "org.openmetadata.schema.type.WebhookType",
       "default": "generic",
@@ -44,7 +44,7 @@
       "type": "string"
     },
     "webhookType": {
-      "description": "Type of webhook slack, generic, msteams, etc.",
+      "description": "Type of webhook Slack, Generic, MS Teams, etc.",
       "$ref": "#/definitions/webhookType"
     },
     "description": {

@@ -55,5 +55,4 @@ def get_entity_from_es_result(
             return entity_list
         return entity_list[0]
 
-    logger.warning("ES Query was empty")
     return None

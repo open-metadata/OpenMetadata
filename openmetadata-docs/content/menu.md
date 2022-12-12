@@ -428,6 +428,8 @@ site_menu:
     url: /connectors/pipeline/airflow/gcs
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
+  - category: Connectors / Pipeline / Airflow / Lineage Operator
+    url: /connectors/pipeline/airflow/lineage-operator
   - category: Connectors / Pipeline / Airbyte
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Airflow
@@ -474,6 +476,10 @@ site_menu:
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
+  - category: Connectors / Metadata / Atlas / Airflow
+    url: /connectors/metadata/atlas/airflow
+  - category: Connectors / Metadata / Atlas / CLI
+    url: /connectors/metadata/atlas/cli
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors

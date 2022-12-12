@@ -231,7 +231,7 @@
               "$ref": "./connections/database/datalakeConnection.json"
             },
             {
-              "$ref": "./connections/database/domodatabaseConnection.json"
+              "$ref": "./connections/database/domoDatabaseConnection.json"
             },
             {
               "$ref": "./connections/database/customDatabaseConnection.json"

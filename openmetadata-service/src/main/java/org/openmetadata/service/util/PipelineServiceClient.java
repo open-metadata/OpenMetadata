@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -35,6 +36,7 @@ import org.openmetadata.service.exception.PipelineServiceVersionException;
  *       to collect metadata, OpenMetadata to user metadata over APIs, etc.
  * </ul>
  */
+@Slf4j
 public abstract class PipelineServiceClient {
   protected final URL serviceURL;
   protected final String username;
@@ -128,7 +130,11 @@ public abstract class PipelineServiceClient {
         return Map.of("ip", this.hostIp);
       }
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());
+      LOG.error("Failed to get Pipeline Service host IP. {}", e.getMessage());
+      return Map.of(
+          "ip",
+          "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, "
+              + "https://api.my-ip.io/ip reachable from your network.");
     }
   }
 

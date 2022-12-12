@@ -205,7 +205,7 @@ const NavBar = ({
               to={{
                 pathname: ROUTES.TAGS,
               }}>
-              {t('label.tags')}
+              {t('label.tag-plural')}
             </NavLink>
           ),
         },
@@ -457,12 +457,11 @@ const NavBar = ({
             </div>
           </Space>
         </div>
-        {isFeatureModalOpen && (
-          <WhatsNewModal
-            header="What’s new!"
-            onCancel={() => handleFeatureModal(false)}
-          />
-        )}
+        <WhatsNewModal
+          header={`${t('label.whats-new')}!`}
+          visible={isFeatureModalOpen}
+          onCancel={() => handleFeatureModal(false)}
+        />
       </div>
     </>
   );

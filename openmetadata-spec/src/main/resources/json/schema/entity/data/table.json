@@ -96,7 +96,8 @@
         "GEOMETRY",
         "POINT",
         "POLYGON",
-        "BYTEA"
+        "BYTEA",
+        "AGGREGATEFUNCTION"
       ]
     },
     "constraint": {
@@ -417,6 +418,7 @@
             { "type": "number" },
             { "type": "integer" },
             { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/time" },
             { "$ref": "../../type/basic.json#/definitions/date" }
           ]
         },
@@ -426,6 +428,7 @@
             { "type": "number" },
             { "type": "integer" },
             { "$ref": "../../type/basic.json#/definitions/dateTime" },
+            { "$ref": "../../type/basic.json#/definitions/time" },
             { "$ref": "../../type/basic.json#/definitions/date" }
           ]
         },
@@ -482,6 +485,35 @@
       },
       "required": ["name", "timestamp"],
       "additionalProperties": false
+    },
+    "dmlOperationType": {
+      "javaType": "org.openmetadata.schema.type.DmlOperationType",
+      "description": "This schema defines the type of DML operation.",
+      "type": "string",
+      "enum": [
+        "UPDATE",
+        "INSERT",
+        "DELETE"
+      ]
+    },
+    "systemProfile": {
+      "description": "This schema defines the System Profile object holding profile data from system tables.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SystemProfile",
+      "properties": {
+        "timestamp": {
+          "description": "Timestamp on which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "operation": {
+          "description": "Operation performed.",
+          "$ref": "#/definitions/dmlOperationType"
+        },
+        "rowsAffected": {
+          "description": "Number of rows affected.",
+          "type":"integer"
+        }
+      }
     },
     "columnProfilerConfig": {
       "description": "This schema defines the type for Table profile config include Columns.",

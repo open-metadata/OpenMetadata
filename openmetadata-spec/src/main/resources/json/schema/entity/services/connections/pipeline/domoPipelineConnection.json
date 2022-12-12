@@ -1,0 +1,61 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/domoPipelineConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "DomoPipelineConnection",
+    "description": "Domo Pipeline Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.DomoPipelineConnection",
+    "definitions": {
+      "DomoPipelineType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["DomoPipeline"],
+        "default": "DomoPipeline"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/DomoPipelineType",
+        "default": "DomoPipeline"
+      },
+      "clientId": {
+        "title": "Client ID",
+        "description": "Client ID for DOMO",
+        "type": "string"
+      },
+      "secretToken": {
+        "title": "Secret Token",
+        "description": "Secret token to connect to DOMO",
+        "type": "string",
+        "format": "password"
+      },
+      "accessToken": {
+        "title": "Access Token",
+        "description": "Access token to connect to DOMO",
+        "type": "string"
+      },
+      "apiHost": {
+        "expose": true,
+        "title": "API Host",
+        "description": "API Host to connect to DOMO instance",
+        "default": "api.domo.com",
+        "type": "string",
+        "format": "string"
+      },
+      "sandboxDomain": {
+        "title": "Sandbox Domain",
+        "description": "Connect to Sandbox Domain",
+        "type": "string",
+        "format": "uri"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["clientId","secretToken","sandboxDomain"]
+  }
+  

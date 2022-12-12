@@ -27,6 +27,7 @@ import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutMappingRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.schema.settings.EventPublisherJob;
+import org.openmetadata.schema.settings.EventPublisherJob.Status;
 import org.openmetadata.schema.settings.FailureDetails;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -221,7 +222,7 @@ public class ElasticSearchIndexDefinition {
           dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
-      lastRecord.setStatus(EventPublisherJob.Status.ACTIVEWITHERROR);
+      lastRecord.setStatus(Status.ACTIVE_WITH_ERROR);
       lastRecord.setTimestamp(updateTime);
       lastRecord.setFailureDetails(
           new FailureDetails()

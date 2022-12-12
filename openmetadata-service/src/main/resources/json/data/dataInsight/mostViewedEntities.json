@@ -6,6 +6,7 @@
   "dataIndexType": "web_analytic_entity_view_report_data_index",
   "dimensions": [
     {"name": "entityFqn","chartDataType":"STRING"},
+    {"name":  "entityType", "chartDataType":  "STRING"},
     {"name": "owner","chartDataType":"STRING"}
   ],
   "metrics": [

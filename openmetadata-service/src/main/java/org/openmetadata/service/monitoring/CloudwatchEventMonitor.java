@@ -51,8 +51,6 @@ public class CloudwatchEventMonitor extends EventMonitor {
 
   private final CloudWatchClient client;
 
-  private static CloudwatchEventMonitor INSTANCE;
-
   public CloudwatchEventMonitor(
       EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
     super(eventMonitorProvider, config, clusterPrefix);

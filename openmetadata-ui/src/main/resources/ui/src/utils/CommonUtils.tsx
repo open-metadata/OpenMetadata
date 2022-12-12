@@ -78,6 +78,7 @@ import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { TagCategory } from '../generated/entity/tags/tagCategory';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -668,6 +669,7 @@ export const getEntityName = (
     | Webhook
     | Bot
     | Kpi
+    | TagCategory
 ) => {
   return entity?.displayName || entity?.name || '';
 };
@@ -1054,4 +1056,10 @@ export const getTrimmedContent = (content: string, limit: number) => {
   const refinedContent = words.slice(0, wordsCount - 1);
 
   return refinedContent.join(' ');
+};
+
+export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
+  return tags.sort((tag1, tag2) =>
+    tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
+  );
 };

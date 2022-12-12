@@ -53,7 +53,7 @@ const RichTextEditorPreviewer = ({
         <Viewer
           extendedAutolinks
           initialValue={
-            hideReadMoreText || !enableSeeMoreVariant
+            hideReadMoreText
               ? content
               : `${getTrimmedContent(content, maxLength)}...`
           }
@@ -66,7 +66,9 @@ const RichTextEditorPreviewer = ({
           data-testid="read-more-button"
           type="link"
           onClick={displayMoreHandler}>
-          {hideReadMoreText ? t('label.read-less') : t('label.read-more')}
+          {hideReadMoreText
+            ? t('label.read-less-lowercase')
+            : t('label.read-more-lowercase')}
         </Button>
       )}
     </div>

@@ -79,6 +79,12 @@
       "type": "string",
       "format": "date-time"
     },
+    "time": {
+      "$comment" : "@om-field-type",
+      "description": "time in ISO 8601 format. Example - '20:20:39+00:00'.",
+      "type": "string",
+      "format": "time"
+    },
     "entityLink": {
       "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",

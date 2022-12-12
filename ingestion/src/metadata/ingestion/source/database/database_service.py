@@ -74,6 +74,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt_source import DBTMixin
 from metadata.utils import fqn
 from metadata.utils.dbt_config import get_dbt_details
+from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -525,6 +526,24 @@ class DatabaseServiceSource(
         for schema in schema_list:
             yield from self.delete_schema_tables(schema.fullyQualifiedName.__root__)
 
+    def _get_filtered_schema_names(self, add_to_status: bool = True) -> Iterable[str]:
+        for schema_name in self.get_raw_database_schema_names():
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            )
+            if filter_by_schema(
+                self.source_config.schemaFilterPattern,
+                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
+            ):
+                if add_to_status:
+                    self.status.filter(schema_fqn, "Schema Filtered Out")
+                continue
+            yield schema_name
+
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
@@ -533,8 +552,13 @@ class DatabaseServiceSource(
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            if self.source_config.markDeletedTablesFromFilterOnly:
-                schema_names_list = self.get_database_schema_names()
+            # If markAllDeletedTables is True, all tables Which are not in FilterPattern will be deleted
+            if self.source_config.markAllDeletedTables:
+                yield from self.fetch_all_schema_and_delete_tables()
+
+            # If markAllDeletedTables is False (Default), Only delete tables which are deleted from the datasource
+            else:
+                schema_names_list = self._get_filtered_schema_names(add_to_status=False)
                 for schema_name in schema_names_list:
                     schema_fqn = fqn.build(
                         self.metadata,
@@ -545,5 +569,3 @@ class DatabaseServiceSource(
                     )
 
                     yield from self.delete_schema_tables(schema_fqn)
-            else:
-                yield from self.fetch_all_schema_and_delete_tables()

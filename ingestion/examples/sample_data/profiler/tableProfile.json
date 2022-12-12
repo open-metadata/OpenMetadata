@@ -169,6 +169,28 @@
                             "maxLength": 10.0,
                             "mean": 9.0
                         }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 109543
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 10435
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 34
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 55
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 55973
+                        }
                     ]
                 },
                 {
@@ -336,6 +358,28 @@
                             "minLength": 6.0,
                             "maxLength": 10.0,
                             "mean": 9.0
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 197352
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 1083524
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 37251
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 1243
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 5597329
                         }
                     ]
                 },
@@ -505,6 +549,20 @@
                             "maxLength": 10.0,
                             "mean": 9.0
                         }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 35
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 198
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 34831
+                        }
                     ]
                 },
                 {
@@ -672,6 +730,16 @@
                             "minLength": 6.0,
                             "maxLength": 10.0,
                             "mean": 9.0
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 19373
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 27621
                         }
                     ]
                 },
@@ -841,6 +909,28 @@
                             "maxLength": 10.0,
                             "mean": 9.0
                         }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 193864
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 10384
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 2945
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 231
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 2947
+                        }
                     ]
                 }
             ]
@@ -880,6 +970,20 @@
                             "distinctCount": 152.0,
                             "distinctProportion": 0.0864
                         }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 109543
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 10435
+                        },
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 34
+                        }
                     ]
                 },
                 {
@@ -913,6 +1017,20 @@
                             "nullProportion": 0.01986,
                             "distinctCount": 152.0,
                             "distinctProportion": 0.0864
+                        }
+                    ],
+                    "systemProfile": [
+                        {
+                            "operation": "INSERT",
+                            "rowsAffected": 726
+                        },
+                        {
+                            "operation": "UPDATE",
+                            "rowsAffected": 219
+                        },
+                        {
+                            "operation": "DELETE",
+                            "rowsAffected": 3437
                         }
                     ]
                 }

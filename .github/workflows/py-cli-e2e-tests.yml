@@ -22,19 +22,20 @@ jobs:
       matrix:
         py-version: ['3.9']
         e2e-test: ['mysql', 'bigquery']
+    environment: e2e
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up JDK 11
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@v3
       with:
         java-version: '11'
         distribution: 'adopt'
 
     - name: Set up Python ${{ matrix.py-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version:  ${{ matrix.py-version }}
 
@@ -66,7 +67,12 @@ jobs:
       continue-on-error: true
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
+        E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.E2E_BQ_PROJECT_ID_TAXONOMY }}
+        E2E_BQ_PRIVATE_KEY: ${{ secrets.E2E_BQ_PRIVATE_KEY }}
         E2E_BQ_PROJECT_ID: ${{ secrets.E2E_BQ_PROJECT_ID }}
+        E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.E2E_BQ_PRIVATE_KEY_ID }}
+        E2E_BQ_CLIENT_EMAIL: ${{ secrets.E2E_BQ_CLIENT_EMAIL }}
+        E2E_BQ_CLIENT_ID: ${{ secrets.E2E_BQ_CLIENT_ID }}
       run: |
         source env/bin/activate
         python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py

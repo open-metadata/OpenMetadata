@@ -25,7 +25,6 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis,
 } from 'recharts';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import {
@@ -111,7 +110,6 @@ const OwnerInsight: FC<Props> = ({ chartFilter }) => {
           <BarChart data={data} margin={BAR_CHART_MARGIN}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="timestamp" />
-            <YAxis />
             <Tooltip content={<CustomTooltip isPercentage />} />
             <Legend
               align="left"

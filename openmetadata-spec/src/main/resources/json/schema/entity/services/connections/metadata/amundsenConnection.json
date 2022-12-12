@@ -38,25 +38,22 @@
     "maxConnectionLifeTime": {
       "description": "Maximum connection lifetime for the Amundsen Neo4j Connection.",
       "type": "integer",
-      "default": "50"
+      "default": 50
     },
     "validateSSL": {
       "description": "Enable SSL validation for the Amundsen Neo4j Connection.",
       "type": "boolean",
-      "default": "false"
+      "default": false
     },
     "encrypted": {
       "description": "Enable encryption for the Amundsen Neo4j Connection.",
       "type": "boolean",
-      "default": "false"
-    },
-    "modelClass": {
-      "description": "Model Class for the Amundsen Neo4j Connection.",
-      "type": "string"
+      "default": false
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
+  "required": ["username", "password", "hostPort"],
   "additionalProperties": false
 }

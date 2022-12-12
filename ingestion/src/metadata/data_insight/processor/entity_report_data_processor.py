@@ -89,7 +89,6 @@ class EntityReportDataProcessor(DataProcessor):
         entity_reference: Optional[User] = self.metadata.get_by_name(
             User,
             owner_fqn,
-            fields=["*"],
         )
 
         if not entity_reference:
@@ -146,7 +145,6 @@ class EntityReportDataProcessor(DataProcessor):
             try:
                 yield from self.metadata.list_all_entities(
                     entity,
-                    fields="*",  # type: ignore,
                     limit=100,
                 )
             except Exception as err:

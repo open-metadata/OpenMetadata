@@ -15,6 +15,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button as ButtonAntd,
   Col,
+  Dropdown,
+  Menu,
   Modal,
   Row,
   Space,
@@ -42,10 +44,6 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { TEAMS_DOCS } from '../../constants/docs.constants';
-import {
-  NO_PERMISSION_FOR_ACTION,
-  NO_PERMISSION_TO_VIEW,
-} from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -56,7 +54,11 @@ import {
 } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
+import {
+  AddAttribute,
+  PlaceholderProps,
+  TeamDetailsProp,
+} from '../../interface/teamsAndUsers.interface';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import {
   commonUserDetailColumns,
@@ -100,22 +102,6 @@ import { getTabs, searchTeam } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
-interface AddAttribute {
-  type: EntityType;
-  selectedData: EntityReference[];
-}
-
-interface PlaceholderProps {
-  title?: string;
-  disabled?: boolean;
-  label?: string;
-  onClick?: () => void;
-  heading?: string;
-  description?: React.ReactNode;
-  button?: React.ReactNode;
-  datatestid?: string;
-}
-
 const TeamDetailsV1 = ({
   assets,
   hasAccess,
@@ -143,6 +129,7 @@ const TeamDetailsV1 = ({
   removeUserFromTeam,
   afterDeleteAction,
   onAssetsPaginate,
+  parentTeams,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const isOrganization = currentTeam.name === TeamType.Organization;
@@ -178,6 +165,7 @@ const TeamDetailsV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState<boolean>(false);
 
   const teamCount = useMemo(
     () =>
@@ -286,7 +274,7 @@ const TeamDetailsV1 = ({
               title={
                 entityPermissions.EditAll
                   ? t('label.remove')
-                  : NO_PERMISSION_FOR_ACTION
+                  : t('message.no-permission-for-action')
               }>
               <ButtonAntd
                 data-testid="remove-user-btn"
@@ -533,19 +521,19 @@ const TeamDetailsV1 = ({
         afterDeleteAction();
         showSuccessToast(
           t('message.entity-restored-success', {
-            entity: 'Team',
+            entity: t('label.team'),
           })
         );
       } else {
         throw t('message.entity-restored-error', {
-          entity: 'Team',
+          entity: t('label.team'),
         });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('message.entity-restored-error', {
-          entity: 'Team',
+          entity: t('label.team'),
         })
       );
     }
@@ -577,9 +565,9 @@ const TeamDetailsV1 = ({
 
   useEffect(() => {
     if (currentTeam) {
-      const perents =
-        currentTeam?.parents && !isOrganization
-          ? currentTeam?.parents.map((parent) => ({
+      const parents =
+        parentTeams && !isOrganization
+          ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
                 parent.name || parent.fullyQualifiedName || ''
@@ -587,7 +575,7 @@ const TeamDetailsV1 = ({
             }))
           : [];
       const breadcrumb = [
-        ...perents,
+        ...parents,
         {
           name: getEntityName(currentTeam),
           url: '',
@@ -596,7 +584,7 @@ const TeamDetailsV1 = ({
       setSlashedDatabaseName(breadcrumb);
       setHeading(currentTeam.displayName || currentTeam.name);
     }
-  }, [currentTeam]);
+  }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
     setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
@@ -617,15 +605,25 @@ const TeamDetailsV1 = ({
 
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
-      ? `${t('label.leave-the-team')} ${
-          currentTeam?.displayName ?? currentTeam?.name
-        }?`
-      : `${t('label.remove')} ${
-          deletingUser.user?.displayName ?? deletingUser.user?.name
-        }?`;
+      ? t('label.leave-the-team-team-name', {
+          teamName: currentTeam?.displayName ?? currentTeam?.name,
+        })
+      : t('label.remove-entity', {
+          entity: deletingUser.user?.displayName ?? deletingUser.user?.name,
+        });
 
-    return `${t('label.sure-want-to')} ${text}`;
+    return t('message.are-you-sure-want-to-text', { text });
   };
+
+  const deletedTeamIcon = useMemo(
+    () => (
+      <SVGIcons
+        alt={t('label.delete')}
+        icon={showDeletedTeam ? Icons.HIDE_PASSWORD : Icons.SHOW_PASSWORD}
+      />
+    ),
+    [showDeletedTeam]
+  );
 
   const openGroupIcon = useMemo(
     () => (
@@ -642,72 +640,122 @@ const TeamDetailsV1 = ({
     [currentTeam.isJoinable]
   );
 
+  const DELETED_TOGGLE_MENU_ITEM = {
+    label: (
+      <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
+        <Col span={3}>{deletedTeamIcon}</Col>
+        <Col span={21}>
+          <Row>
+            <Col span={21}>
+              <Typography.Text
+                className="font-medium"
+                data-testid="deleted-menu-item-label">
+                {t('label.deleted-team-action', {
+                  action: showDeletedTeam ? t('label.hide') : t('label.show'),
+                })}
+              </Typography.Text>
+            </Col>
+
+            <Col span={3}>
+              <Switch
+                checked={showDeletedTeam}
+                data-testid="deleted-menu-item-switch"
+                size="small"
+                onChange={onShowDeletedTeamChange}
+              />
+            </Col>
+
+            <Col className="p-t-xss">
+              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                {t('message.view-deleted-teams')}
+              </Typography.Paragraph>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    ),
+    key: 'deleted-team-dropdown',
+  };
+
+  const organizationDropdownContent = (
+    <Menu items={[DELETED_TOGGLE_MENU_ITEM]} />
+  );
+
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
       ...(!currentTeam.parents?.[0]?.deleted && currentTeam.deleted
         ? [
             {
               label: (
-                <Space
-                  className="cursor-pointer manage-button"
-                  size={8}
-                  onClick={handleReactiveTeam}>
-                  {restoreIcon}
-                  <div
-                    className="text-left open-group"
-                    data-testid="restore-team">
-                    <p className="font-medium" data-testid="restore-team-label">
-                      Restore Team
-                    </p>
-
-                    <p className="tw-text-grey-muted tw-text-xs">
-                      Restoring the Team will add all the metadata back to
-                      OpenMetadata
-                    </p>
-                  </div>
-                </Space>
+                <Row className="cursor-pointer" onClick={handleReactiveTeam}>
+                  <Col span={3}>{restoreIcon}</Col>
+                  <Col data-testid="restore-team" span={21}>
+                    <Row>
+                      <Col span={24}>
+                        <Typography.Text
+                          className="font-medium"
+                          data-testid="restore-team-label">
+                          {t('label.restore-team')}
+                        </Typography.Text>
+                      </Col>
+                      <Col className="p-t-xss" span={24}>
+                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                          {t('message.restore-deleted-team')}
+                        </Typography.Paragraph>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
               ),
               key: 'restore-team-dropdown',
             },
           ]
         : []),
-
       {
         label: (
-          <Space
-            className="tw-cursor-pointer manage-button"
-            size={8}
+          <Row
+            className="cursor-pointer"
+            data-testid="deleted-team-menu-item"
             onClick={handleOpenToJoinToggle}>
-            {openGroupIcon}
-            <div className="tw-text-left open-group" data-testid="open-group">
-              <Row className="tw-mb-1" justify="space-between">
-                <Col>
-                  <p className="tw-font-medium" data-testid="open-group-label">
+            <Col span={3}>{openGroupIcon}</Col>
+            <Col data-testid="open-group" span={21}>
+              <Row>
+                <Col span={21}>
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="open-group-label">
                     {`${
                       currentTeam.isJoinable
                         ? t('label.close')
                         : t('label.open')
                     } ${t('label.group')}`}
-                  </p>
+                  </Typography.Text>
                 </Col>
-                <Col>
+
+                <Col span={3}>
                   <Switch
                     checked={currentTeam.isJoinable}
                     className="tw-mr-2"
                     size="small"
                   />
                 </Col>
+
+                <Col className="p-t-xss">
+                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                    {t('label.access-to-collaborate')}
+                  </Typography.Paragraph>
+                </Col>
               </Row>
-              <p className="tw-text-grey-muted tw-text-xs">
-                {t('label.access-to-collaborate')}
-              </p>
-            </div>
-          </Space>
+            </Col>
+          </Row>
         ),
         key: 'open-group-dropdown',
       },
+      ...(currentTeam.teamType === TeamType.BusinessUnit
+        ? [DELETED_TOGGLE_MENU_ITEM]
+        : []),
     ],
-    [entityPermissions, currentTeam, childTeams]
+    [entityPermissions, currentTeam, childTeams, showDeletedTeam]
   );
 
   /**
@@ -726,18 +774,19 @@ const TeamDetailsV1 = ({
             description: (
               <div className="tw-mb-2">
                 <p>
-                  {t('label.no-users')}{' '}
-                  {teamUsersSearchText
-                    ? `as ${teamUsersSearchText}.`
-                    : `added yet.`}
+                  {t('label.no-users', {
+                    text: teamUsersSearchText
+                      ? `${t('label.as-lowercase')} ${teamUsersSearchText}.`
+                      : t('label.added-yet-lowercase'),
+                  })}
                 </p>
                 <p>{t('label.adding-some')} </p>
               </div>
             ),
             disabled: !entityPermissions.EditAll,
             title: entityPermissions.EditAll
-              ? 'Add New User'
-              : NO_PERMISSION_FOR_ACTION,
+              ? t('label.add-new-user')
+              : t('message.no-permission-for-action'),
 
             onClick: () => handleAddUser(true),
             label: t('label.add-new-user'),
@@ -749,7 +798,7 @@ const TeamDetailsV1 = ({
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
-                  placeholder="Search for user..."
+                  placeholder={`${t('label.search-for-user')}...`}
                   searchValue={teamUsersSearchText}
                   typingInterval={500}
                   onSearch={handleTeamUsersSearchAction}
@@ -767,7 +816,7 @@ const TeamDetailsV1 = ({
                     title={
                       entityPermissions.EditAll
                         ? t('label.add-user')
-                        : NO_PERMISSION_FOR_ACTION
+                        : t('message.no-permission-for-action')
                     }
                     variant="contained"
                     onClick={() => {
@@ -946,8 +995,10 @@ const TeamDetailsV1 = ({
                   title={
                     entityPermissions.EditAll ||
                     entityPermissions.EditDisplayName
-                      ? t('label.edit-display-name')
-                      : NO_PERMISSION_FOR_ACTION
+                      ? t('label.edit-entity', {
+                          entity: t('label.display-name'),
+                        })
+                      : t('message.no-permission-for-action')
                   }>
                   <button
                     className="tw-ml-2 focus:tw-outline-none"
@@ -995,7 +1046,7 @@ const TeamDetailsV1 = ({
             className="tw-flex tw-justify-between tw-items-center"
             data-testid="header">
             {getTeamHeading()}
-            {!isOrganization && (
+            {!isOrganization ? (
               <Space align="center">
                 {!isUndefined(currentUser) &&
                   teamActionButton(
@@ -1017,15 +1068,34 @@ const TeamDetailsV1 = ({
                     extraDropdownContent={extraDropdownContent}
                     hardDeleteMessagePostFix={getDeleteMessagePostFix(
                       currentTeam.fullyQualifiedName || currentTeam.name,
-                      'permanently'
+                      t('label.permanently-lowercase')
                     )}
                     softDeleteMessagePostFix={getDeleteMessagePostFix(
                       currentTeam.fullyQualifiedName || currentTeam.name,
-                      'soft'
+                      t('label.soft-lowercase')
                     )}
                   />
                 )}
               </Space>
+            ) : (
+              <Dropdown
+                align={{ targetOffset: [-12, 0] }}
+                overlay={organizationDropdownContent}
+                overlayStyle={{ width: '350px' }}
+                placement="bottomRight"
+                trigger={['click']}
+                visible={showActions}
+                onVisibleChange={setShowActions}>
+                <ButtonAntd
+                  className="rounded-4 w-6 manage-dropdown-button"
+                  data-testid="teams-dropdown"
+                  size="small">
+                  <FontAwesomeIcon
+                    className="text-primary self-center manage-dropdown-icon"
+                    icon="ellipsis-vertical"
+                  />
+                </ButtonAntd>
+              </Dropdown>
             )}
           </div>
           <Space size={0}>
@@ -1086,11 +1156,11 @@ const TeamDetailsV1 = ({
                   fetchErrorPlaceHolder({
                     title: createTeamPermission
                       ? t('label.add-team')
-                      : NO_PERMISSION_FOR_ACTION,
+                      : t('message.no-permission-for-action'),
                     label: t('label.add-team'),
                     onClick: () => handleAddTeam(true),
                     disabled: !createTeamPermission,
-                    heading: 'Team',
+                    heading: t('label.team'),
                     datatestid: 'add-team',
                   })
                 ) : (
@@ -1109,19 +1179,13 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
-                        <Switch
-                          checked={showDeletedTeam}
-                          data-testid="show-deleted-switch"
-                          onChange={onShowDeletedTeamChange}
-                        />
-                        <span>{t('label.deleted-teams')} </span>
                         <ButtonAntd
                           data-testid="add-team"
                           disabled={!createTeamPermission}
                           title={
                             createTeamPermission
                               ? t('label.add-team')
-                              : NO_PERMISSION_FOR_ACTION
+                              : t('message.no-permission-for-action')
                           }
                           type="primary"
                           onClick={() => handleAddTeam(true)}>
@@ -1147,7 +1211,7 @@ const TeamDetailsV1 = ({
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
                       ? t('label.add-role')
-                      : NO_PERMISSION_FOR_ACTION,
+                      : t('message.no-permission-for-action'),
                     label: t('label.add-role'),
                     onClick: () =>
                       setAddAttribute({
@@ -1155,7 +1219,7 @@ const TeamDetailsV1 = ({
                         selectedData: currentTeam.defaultRoles || [],
                       }),
                     disabled: !entityPermissions.EditAll,
-                    heading: 'Role',
+                    heading: t('label.role'),
                     datatestid: 'add-role',
                   })
                 ) : (
@@ -1168,7 +1232,7 @@ const TeamDetailsV1 = ({
                       title={
                         entityPermissions.EditAll
                           ? t('label.add-role')
-                          : NO_PERMISSION_FOR_ACTION
+                          : t('message.no-permission-for-action')
                       }
                       type="primary"
                       onClick={() =>
@@ -1194,7 +1258,7 @@ const TeamDetailsV1 = ({
                   fetchErrorPlaceHolder({
                     title: entityPermissions.EditAll
                       ? t('label.add-policy')
-                      : NO_PERMISSION_FOR_ACTION,
+                      : t('message.no-permission-for-action'),
                     label: t('label.add-policy'),
                     datatestid: 'add-policy',
                     onClick: () =>
@@ -1203,7 +1267,7 @@ const TeamDetailsV1 = ({
                         selectedData: currentTeam.policies || [],
                       }),
                     disabled: !entityPermissions.EditAll,
-                    heading: 'Policies',
+                    heading: t('label.policies'),
                   })
                 ) : (
                   <Space
@@ -1215,7 +1279,7 @@ const TeamDetailsV1 = ({
                       title={
                         entityPermissions.EditAll
                           ? t('label.add-policy')
-                          : NO_PERMISSION_FOR_ACTION
+                          : t('message.no-permission-for-action')
                       }
                       type="primary"
                       onClick={() =>
@@ -1251,7 +1315,7 @@ const TeamDetailsV1 = ({
                 title={
                   createTeamPermission
                     ? t('label.add-team')
-                    : NO_PERMISSION_FOR_ACTION
+                    : t('message.no-permission-for-action')
                 }
                 variant="outlined"
                 onClick={() => handleAddTeam(true)}>
@@ -1260,25 +1324,22 @@ const TeamDetailsV1 = ({
             </div>
           }
           doc={TEAMS_DOCS}
-          heading="Teams"
+          heading={t('label.teams')}
           type="ADD_DATA"
         />
       )}
 
-      {deletingUser.state && (
-        <ConfirmationModal
-          bodyText={removeUserBodyText(deletingUser.leave)}
-          cancelText={t('label.cancel')}
-          confirmText={t('label.confirm')}
-          header={
-            deletingUser.leave
-              ? t('label.leave-team')
-              : t('label.removing-user')
-          }
-          onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
-          onConfirm={handleRemoveUser}
-        />
-      )}
+      <ConfirmationModal
+        bodyText={removeUserBodyText(deletingUser.leave)}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.confirm')}
+        header={
+          deletingUser.leave ? t('label.leave-team') : t('label.removing-user')
+        }
+        visible={deletingUser.state}
+        onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
+        onConfirm={handleRemoveUser}
+      />
 
       {addAttribute && (
         <AddAttributeModal
@@ -1297,9 +1358,9 @@ const TeamDetailsV1 = ({
           closable={false}
           confirmLoading={isModalLoading}
           okText={t('label.confirm')}
-          title={`${t('label.remove')} ${getEntityName(
-            selectedEntity.record
-          )} from ${getEntityName(currentTeam)}`}
+          title={`${t('label.remove-entity', {
+            entity: getEntityName(selectedEntity?.record),
+          })} ${t('label.from')} ${getEntityName(currentTeam)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
@@ -1322,7 +1383,7 @@ const TeamDetailsV1 = ({
     <Row align="middle" className="tw-h-full">
       <Col span={24}>
         <ErrorPlaceHolder>
-          <p>{NO_PERMISSION_TO_VIEW}</p>
+          <p>{t('message.no-permission-to-view')}</p>
         </ErrorPlaceHolder>
       </Col>
     </Row>

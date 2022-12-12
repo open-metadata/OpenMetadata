@@ -21,7 +21,7 @@ from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.services.connections.dashboard.domodashboardConnection import (
+from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -69,8 +69,8 @@ class DomodashboardSource(DashboardServiceSource):
         dashboards = self.domo_client.page_list()
         return dashboards
 
-    def get_dashboard_name(self, dashboard_details: dict) -> str:
-        return dashboard_details["name"]
+    def get_dashboard_name(self, dashboard: dict) -> str:
+        return dashboard["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         return dashboard

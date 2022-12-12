@@ -15,7 +15,6 @@ import {
   Button,
   Card,
   Col,
-  Radio,
   Row,
   Select,
   SelectProps,
@@ -25,7 +24,7 @@ import {
 } from 'antd';
 import { t } from 'i18next';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
@@ -55,29 +54,33 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
-import { getTeamFilter } from '../../utils/DataInsightUtils';
+import {
+  getDataInsightPathWithFqn,
+  getTeamFilter,
+} from '../../utils/DataInsightUtils';
 import {
   getCurrentDateTimeMillis,
   getFormattedDateFromMilliSeconds,
   getPastDaysDateTimeMillis,
 } from '../../utils/TimeUtils';
 import './DataInsight.less';
+import DataInsightLeftPanel from './DataInsightLeftPanel';
+import KPIList from './KPIList';
 
 const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
 
 const DataInsightPage = () => {
+  const { tab } = useParams<{ tab: DataInsightTabs }>();
+
   const { isAdminUser } = useAuth();
   const history = useHistory();
+
   const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
   const [activeTab, setActiveTab] = useState(DataInsightTabs.DATA_ASSETS);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
 
   const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
-
-  useEffect(() => {
-    setChartFilter(INITIAL_CHART_FILTER);
-  }, []);
 
   const handleTierChange = (tiers: string[] = []) => {
     setChartFilter((previous) => ({
@@ -136,9 +139,9 @@ const DataInsightPage = () => {
 
   const handleScrollToChart = (chartType: DataInsightChartType) => {
     if (ENTITIES_CHARTS.includes(chartType)) {
-      setActiveTab(DataInsightTabs.DATA_ASSETS);
+      history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
     } else {
-      setActiveTab(DataInsightTabs.APP_ANALYTICS);
+      history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
     }
     setSelectedChart(chartType);
   };
@@ -161,13 +164,23 @@ const DataInsightPage = () => {
     fetchDefaultTeamOptions();
   }, []);
 
+  useEffect(() => {
+    setChartFilter(INITIAL_CHART_FILTER);
+  }, []);
+
+  useEffect(() => {
+    setActiveTab(tab ?? DataInsightTabs.DATA_ASSETS);
+  }, [tab]);
+
   return (
-    <PageLayoutV1>
+    <PageLayoutV1 leftPanel={<DataInsightLeftPanel />}>
       <Row data-testid="data-insight-container" gutter={[16, 16]}>
         <Col span={24}>
           <Space className="w-full justify-between">
             <div data-testid="data-insight-header">
-              <Typography.Title level={5}>Data Insight</Typography.Title>
+              <Typography.Title level={5}>
+                {t('label.data-insight-plural')}
+              </Typography.Title>
               <Typography.Text className="data-insight-label-text">
                 {t('label.data-insight-subtitle')}
               </Typography.Text>
@@ -242,17 +255,6 @@ const DataInsightPage = () => {
         <Col span={24}>
           <KPIChart chartFilter={chartFilter} />
         </Col>
-        <Col span={24}>
-          <Radio.Group
-            buttonStyle="solid"
-            className="radio-switch"
-            data-testid="data-insight-switch"
-            optionType="button"
-            options={Object.values(DataInsightTabs)}
-            value={activeTab}
-            onChange={(e) => setActiveTab(e.target.value)}
-          />
-        </Col>
         {activeTab === DataInsightTabs.DATA_ASSETS && (
           <>
             <Col span={24}>
@@ -285,6 +287,8 @@ const DataInsightPage = () => {
             </Col>
           </>
         )}
+
+        {activeTab === DataInsightTabs.KPIS && <KPIList />}
       </Row>
     </PageLayoutV1>
   );

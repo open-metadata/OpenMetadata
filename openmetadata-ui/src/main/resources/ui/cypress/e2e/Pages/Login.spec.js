@@ -24,7 +24,7 @@ const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
 
 describe('Login flow should work properly', () => {
-  it.skip('Signup and Login with signed up credentials', () => {
+  it('Signup and Login with signed up credentials', () => {
     interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
@@ -63,7 +63,7 @@ describe('Login flow should work properly', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     //Verify user profile
-    cy.get('[data-testid="avatar"]').should('be.visible').click();
+    cy.get('[data-testid="avatar"]').first().should('be.visible').trigger('mouseover').click();
 
     cy.get('[data-testid="user-name"]')
       .should('be.visible')

@@ -12,6 +12,7 @@
 Test FQN build behavior
 """
 from unittest import TestCase
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -90,8 +91,10 @@ class TestFqn(TestCase):
         """
         Validate Table FQN building
         """
+        mocked_metadata = MagicMock()
+        mocked_metadata.es_search_from_fqn.return_value = None
         table_fqn = fqn.build(
-            ...,  # metadata client not needed with all params
+            metadata=mocked_metadata,
             entity_type=Table,
             service_name="service",
             database_name="db",
@@ -101,7 +104,7 @@ class TestFqn(TestCase):
         self.assertEqual(table_fqn, "service.db.schema.table")
 
         table_fqn_dots = fqn.build(
-            ...,  # metadata client not needed with all params
+            metadata=mocked_metadata,
             entity_type=Table,
             service_name="service",
             database_name="data.base",
@@ -111,7 +114,7 @@ class TestFqn(TestCase):
         self.assertEqual(table_fqn_dots, 'service."data.base".schema.table')
 
         table_fqn_space = fqn.build(
-            ...,  # metadata client not needed with all params
+            metadata=mocked_metadata,
             entity_type=Table,
             service_name="service",
             database_name="data base",

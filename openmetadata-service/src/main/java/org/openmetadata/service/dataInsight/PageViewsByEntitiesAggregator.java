@@ -8,7 +8,7 @@ import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.datatInsight.type.PageViewsByEntities;
+import org.openmetadata.schema.dataInsight.type.PageViewsByEntities;
 
 public class PageViewsByEntitiesAggregator extends DataInsightAggregatorInterface<PageViewsByEntities> {
   public PageViewsByEntitiesAggregator(

@@ -75,6 +75,8 @@ describe('Data Quality and Profiler should work properly', () => {
   });
   
   it('Add Profiler ingestion', () => {
+    interceptURL("POST", "/api/v1/services/ingestionPipelines/deploy/*", "deployIngestion");
+
     goToProfilerTab();
 
     cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
@@ -102,7 +104,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();
-    cy.get('[data-testid="profileSample"]').should('be.visible').type(10);
+    cy.get('[data-testid="profileSample"]').should('be.visible').and('not.be.disabled').type(10);
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')
@@ -110,16 +112,15 @@ describe('Data Quality and Profiler should work properly', () => {
 
     scheduleIngestion();
 
-    // wait for ingestion to run
-    cy.clock();
-    cy.wait(10000);
+    cy.wait("@deployIngestion").then(() => {
+        cy.get('[data-testid="view-service-button"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();  
 
-    cy.get('[data-testid="view-service-button"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    handleIngestionRetry('database', true, 0, 'profiler');
+        handleIngestionRetry('database', true, 0, 'profiler');
+    })
+    
   });
   
   it('Check if profiler is ingested properly or not', () => {
@@ -242,7 +243,7 @@ describe('Data Quality and Profiler should work properly', () => {
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
     toastNotification('Test Case deleted successfully!')
-    cy.get('table').contains('No Data').should('be.visible');
+    cy.get('[class="ant-empty-description"]').invoke('text').should('eq', 'No data');
   });
 
   it('Add Column test case should work properly', () => {
@@ -346,11 +347,8 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
-    cy.get('.Toastify__toast-body')
-      .contains('Test Case deleted successfully!')
-      .should('be.visible')
-      .wait(200);
-    cy.get('table').contains('No Data').should('be.visible');
+    toastNotification('Test Case deleted successfully!')
+    cy.get('[class="ant-empty-description"]').invoke('text').should('eq', 'No data');
   });
 
   it('Delete Test suite should work properly', () => {

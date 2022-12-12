@@ -15,7 +15,7 @@ import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
 ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
-${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_PROFILE},${TabSpecificField.TESTS},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION}`;
+${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION}`;
 
 export const datasetTableTabs = [
   {
@@ -30,17 +30,14 @@ export const datasetTableTabs = [
   {
     name: 'Sample Data',
     path: 'sample_data',
-    field: TabSpecificField.SAMPLE_DATA,
   },
   {
     name: 'Queries',
     path: 'table_queries',
-    field: TabSpecificField.TABLE_QUERIES,
   },
   {
     name: 'Profiler',
     path: 'profiler',
-    field: TabSpecificField.TABLE_QUERIES,
   },
   {
     name: 'Data Quality',

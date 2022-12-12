@@ -20,27 +20,23 @@ import screenShot4 from '../assets/img/screenShot4.png';
 export const LOGIN_SLIDE = [
   {
     image: screenShot1,
-    description:
-      'Enables End-to-end Metadata Management with Data Discovery, Data Quality, Observability, and People Collaboration',
+    descriptionKey: 'enables-end-to-end-metadata-management',
   },
   {
     image: screenShot2,
-    description: 'Discover your Data and Unlock the Value of Data Assets',
+    descriptionKey: 'discover-your-data-and-unlock-the-value-of-data-assets',
   },
   {
     image: screenShot3,
-    description:
-      'Assess Data Reliability with Data Profiler, Lineage, Sample Data, and more',
+    descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
   },
   {
     image: screenShot4,
-    description:
-      'Fosters Collaboration among the Producers and Consumers of Data',
+    descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
   },
   {
     image: lineage,
-    description:
-      'Deeply understand table relations; thanks to column-level lineage.',
+    descriptionKey: 'deeply-understand-table-relations-message',
   },
 ];
 

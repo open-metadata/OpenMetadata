@@ -1,4 +1,11 @@
 import { TabSpecificField } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { EntityReference } from '../generated/type/entityReference';
+import {
+  SearchResponse,
+  TableSearchSource,
+} from '../interface/search.interface';
 
 export const databaseSchemaDetailsTabs = [
   {
@@ -29,3 +36,14 @@ export const getCurrentDatabaseSchemaDetailsTab = (tab: string) => {
 
   return currentTab;
 };
+
+export const getTablesFromSearchResponse = (
+  res: SearchResponse<SearchIndex.TABLE, keyof TableSearchSource>
+) => res.hits.hits.map((hit) => hit._source);
+
+export const getQueryStringForSchemaTables = (
+  serviceName: EntityReference,
+  databaseName: EntityReference,
+  schemaName: DatabaseSchema
+) =>
+  `(service.name:${serviceName.name}) AND (database.name:${databaseName.name}) AND (databaseSchema.name:${schemaName.name})`;
