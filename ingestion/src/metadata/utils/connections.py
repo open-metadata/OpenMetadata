@@ -874,9 +874,9 @@ def _(  # pylint: disable=inconsistent-return-statements
 def _(connection: TableauClient) -> None:
     from tableau_api_lib.utils import extract_pages
 
-    from metadata.ingestion.source.dashboard.tableau import (
-        GET_VIEWS_PARAM_DICT,
-        GET_WORKBOOKS_PARAM_DICT,
+    from metadata.utils.constants import (
+        TABLEAU_GET_VIEWS_PARAM_DICT,
+        TABLEAU_GET_WORKBOOKS_PARAM_DICT,
     )
 
     steps = [
@@ -888,7 +888,7 @@ def _(connection: TableauClient) -> None:
             function=partial(
                 extract_pages,
                 query_func=connection.client.query_workbooks_for_site,
-                parameter_dict=GET_WORKBOOKS_PARAM_DICT,
+                parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
             ),
             name="Get Workbooks",
         ),
@@ -897,7 +897,7 @@ def _(connection: TableauClient) -> None:
                 extract_pages,
                 query_func=connection.client.query_views_for_site,
                 content_id=connection.client.site_id,
-                parameter_dict=GET_VIEWS_PARAM_DICT,
+                parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
             ),
             name="Get Views",
         ),
