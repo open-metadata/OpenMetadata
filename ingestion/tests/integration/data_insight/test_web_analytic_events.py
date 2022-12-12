@@ -119,7 +119,7 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
         """Test web analytic event deletion"""
 
         for delta in range(7):
-            tmsp = int((datetime.utcnow() - timedelta(days=delta)).timestamp() * 1000)
+            tmsp = get_beginning_of_day_timestamp_mill(days=delta)
 
             user_id = uuid.uuid4()
             session_id = uuid.uuid4()
