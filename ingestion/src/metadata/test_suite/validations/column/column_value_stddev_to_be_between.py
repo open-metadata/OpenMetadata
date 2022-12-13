@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
@@ -36,6 +37,16 @@ logger = test_suite_logger()
 from functools import singledispatch
 
 from pandas import DataFrame
+
+
+def test_case_status_result(min_bound, max_bound, stddev_value_res):
+    return (
+        TestCaseStatus.Success
+        if min_bound <= stddev_value_res <= max_bound
+        else TestCaseStatus.Failed,
+        f"Found stddev={stddev_value_res:.2f} vs."
+        + f" the expected min={min_bound}, max={max_bound}.",
+    )
 
 
 @singledispatch
@@ -99,15 +110,7 @@ def column_value_stddev_to_be_between(
         default=float("inf"),
     )
 
-    status = (
-        TestCaseStatus.Success
-        if min_bound <= stddev_value_res <= max_bound
-        else TestCaseStatus.Failed
-    )
-    result = (
-        f"Found stddev={stddev_value_res:.2f} vs."
-        + f" the expected min={min_bound}, max={max_bound}."
-    )
+    status, result = test_case_status_result(min_bound, max_bound, stddev_value_res)
 
     return TestCaseResult(
         timestamp=execution_date,
@@ -118,9 +121,33 @@ def column_value_stddev_to_be_between(
 
 
 @column_value_stddev_to_be_between.register
-def column_value_stddev_to_be_between(
+def column_value_stddev_to_be_between_dl(
     test_case: TestCase,
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minValueForStdDevInCol",
+        float,
+        default=float("-inf"),
+    )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxValueForStdDevInCol",
+        float,
+        default=float("inf"),
+    )
+    stddev_value_res = Metrics.STDDEV.value(column_obj).dl_fn(data_frame)
+    status, result = test_case_status_result(min_bound, max_bound, stddev_value_res)
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="min", value=str(stddev_value_res))],
+    )

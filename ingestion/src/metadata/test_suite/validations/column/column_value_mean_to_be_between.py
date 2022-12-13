@@ -60,7 +60,7 @@ def column_value_mean_to_be_between(
 ) -> TestCaseResult:
     """
     Validate Column Values metric
-    :param test_case: ColumnValuesToBeBetween
+    :param test_case: columnValueMeanToBeBetween
     :param col_profile: should contain MIN & MAX metrics
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
@@ -150,7 +150,7 @@ def column_value_mean_to_be_between_dl(
         float,
         default=float("inf"),
     )
-    mean_value_res = Metrics.MEAN.value(column_obj).dl_fn()
+    mean_value_res = Metrics.MEAN.value(column_obj).dl_fn(data_frame)
 
     status, result = test_case_status_result(
         min_bound,

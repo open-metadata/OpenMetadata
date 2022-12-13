@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
@@ -79,10 +80,10 @@ def column_values_to_be_not_null(
             testResultValue=[TestResultValue(name="nullCount", value=None)],
         )
 
-    status = (
-        TestCaseStatus.Success if null_count_value_res == 0 else TestCaseStatus.Failed
+    status, result = (
+        TestCaseStatus.Success if null_count_value_res == 0 else TestCaseStatus.Failed,
+        f"Found nullCount={null_count_value_res}. It should be 0.",
     )
-    result = f"Found nullCount={null_count_value_res}. It should be 0."
 
     return TestCaseResult(
         timestamp=execution_date,
@@ -100,4 +101,20 @@ def column_values_to_be_not_null_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+
+    null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(data_frame)
+    status, result = (
+        TestCaseStatus.Success if null_count_value_res == 0 else TestCaseStatus.Failed,
+        f"Found nullCount={null_count_value_res}. It should be 0.",
+    )
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="nullCount", value=str(null_count_value_res))
+        ],
+    )

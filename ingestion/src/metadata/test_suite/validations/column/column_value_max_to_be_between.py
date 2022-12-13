@@ -142,7 +142,7 @@ def column_value_max_to_be_between_dl(
         default=float("inf"),
     )
 
-    max_value_res = Metrics.MAX.value(column_obj).dl_fn()
+    max_value_res = Metrics.MAX.value(column_obj).dl_fn(data_frame)
     status, result = test_case_status_result(min_bound, max_bound, max_value_res)
     return TestCaseResult(
         timestamp=execution_date,

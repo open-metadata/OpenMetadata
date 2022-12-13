@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
@@ -36,6 +37,19 @@ logger = test_suite_logger()
 from functools import singledispatch
 
 from pandas import DataFrame
+
+
+def test_case_status_result(
+    min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
+):
+    return (
+        TestCaseStatus.Success
+        if min_bound <= min_value_length_value_res
+        and max_bound >= max_value_length_value_res
+        else TestCaseStatus.Failed,
+        f"Found minLength={min_value_length_value_res}, maxLength={max_value_length_value_res} vs."
+        + f" the expected minLength={min_bound}, maxLength={max_bound}.",
+    )
 
 
 @singledispatch
@@ -125,15 +139,8 @@ def column_value_length_to_be_between(
         default=float("inf"),
     )
 
-    status = (
-        TestCaseStatus.Success
-        if min_bound <= min_value_length_value_res
-        and max_bound >= max_value_length_value_res
-        else TestCaseStatus.Failed
-    )
-    result = (
-        f"Found minLength={min_value_length_value_res}, maxLength={max_value_length_value_res} vs."
-        + f" the expected minLength={min_bound}, maxLength={max_bound}."
+    status, result = test_case_status_result(
+        min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
     )
 
     return TestCaseResult(
@@ -157,4 +164,39 @@ def column_value_length_to_be_between_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+
+    min_value_length_value_res = Metrics.MIN_LENGTH.value(column_obj).dl_fn(data_frame)
+    max_value_length_value_res = Metrics.MAX_LENGTH.value(column_obj).dl_fn(data_frame)
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minLength",
+        float,
+        default=float("-inf"),
+    )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxLength",
+        float,
+        default=float("inf"),
+    )
+    status, result = test_case_status_result(
+        min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
+    )
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(
+                name="minValueLength", value=str(min_value_length_value_res)
+            ),
+            TestResultValue(
+                name="maxValueLength", value=str(max_value_length_value_res)
+            ),
+        ],
+    )

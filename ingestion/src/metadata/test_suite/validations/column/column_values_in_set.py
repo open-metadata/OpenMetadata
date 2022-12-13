@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -36,6 +37,13 @@ logger = test_suite_logger()
 from functools import singledispatch
 
 from pandas import DataFrame
+
+
+def test_case_status_result(set_count_res):
+    return (
+        TestCaseStatus.Success if set_count_res >= 1 else TestCaseStatus.Failed,
+        f"Found countInSet={set_count_res}",
+    )
 
 
 @singledispatch  # pylint: disable=abstract-class-instantiated
@@ -91,8 +99,7 @@ def column_values_in_set(
             testResultValue=[TestResultValue(name="allowedValueCount", value=None)],
         )
 
-    status = TestCaseStatus.Success if set_count_res >= 1 else TestCaseStatus.Failed
-    result = f"Found countInSet={set_count_res}"
+    status, result = test_case_status_result(set_count_res)
 
     return TestCaseResult(
         timestamp=execution_date,
@@ -113,4 +120,29 @@ def column_values_in_set_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    allowed_value = next(
+        (
+            literal_eval(param.value)
+            for param in test_case.parameterValues
+            if param.name == "allowedValues"
+        )
+    )
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+    set_count_res = add_props(values=allowed_value)(Metrics.COUNT_IN_SET.value)(
+        column_obj
+    ).dl_fn()
+    status, result = test_case_status_result(set_count_res)
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(
+                name="allowedValueCount",
+                value=str(set_count_res),
+            )
+        ],
+    )

@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -35,6 +36,15 @@ logger = profiler_logger()
 from functools import singledispatch
 
 from pandas import DataFrame
+
+
+def test_case_status_result(null_count_value_res, missing_count_values):
+    return (
+        TestCaseStatus.Success
+        if null_count_value_res == missing_count_values
+        else TestCaseStatus.Failed,
+        f"Found missingCount={null_count_value_res}. It should be {missing_count_values}.",
+    )
 
 
 @singledispatch
@@ -121,13 +131,7 @@ def column_values_missing_count_to_be_equal(
                 result=msg,
                 testResultValue=[TestResultValue(name="nullCount", value=None)],
             )
-
-    status = (
-        TestCaseStatus.Success
-        if null_count_value_res == missing_count_values
-        else TestCaseStatus.Failed
-    )
-    result = f"Found missingCount={null_count_value_res}. It should be {missing_count_values}."
+    status, result = test_case_status_result(null_count_value_res, missing_count_values)
 
     return TestCaseResult(
         timestamp=execution_date,
@@ -145,4 +149,38 @@ def column_values_missing_count_to_be_equal_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+    null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(data_frame)
+
+    missing_values = next(
+        (
+            literal_eval(param.value)
+            for param in test_case.parameterValues
+            if param.name == "missingValueMatch"
+        ),
+        None,
+    )
+    if missing_values:
+        set_count = add_props(values=missing_values)(Metrics.COUNT_IN_SET.value)
+        null_count_value_res += set_count(column_obj).dl_fn()
+
+    missing_count_values = next(
+        (
+            literal_eval(param.value)
+            for param in test_case.parameterValues
+            if param.name == "missingCountValue"
+        )
+    )
+
+    status, result = test_case_status_result(null_count_value_res, missing_count_values)
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(name="missingCount", value=str(null_count_value_res))
+        ],
+    )

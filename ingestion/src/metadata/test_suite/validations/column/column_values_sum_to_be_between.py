@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
@@ -35,6 +36,16 @@ logger = test_suite_logger()
 from functools import singledispatch
 
 from pandas import DataFrame
+
+
+def test_case_status_result(min_bound, max_bound, sum_value_res):
+    return (
+        TestCaseStatus.Success
+        if min_bound <= sum_value_res <= max_bound
+        else TestCaseStatus.Failed,
+        f"Found sum={sum_value_res} vs."
+        + f" the expected min={min_bound}, max={max_bound}.",
+    )
 
 
 @singledispatch
@@ -86,7 +97,7 @@ def column_values_sum_to_be_between(
 
     min_bound = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore
-        "minValueForMeanInCol",
+        "minValueForColSum",
         float,
         default=float("-inf"),
     )
@@ -98,15 +109,7 @@ def column_values_sum_to_be_between(
         default=float("inf"),
     )
 
-    status = (
-        TestCaseStatus.Success
-        if min_bound <= sum_value_res <= max_bound
-        else TestCaseStatus.Failed
-    )
-    result = (
-        f"Found sum={sum_value_res} vs."
-        + f" the expected min={min_bound}, max={max_bound}."
-    )
+    status, result = test_case_status_result(min_bound, max_bound, sum_value_res)
 
     return TestCaseResult(
         timestamp=execution_date,
@@ -122,4 +125,29 @@ def column_values_sum_to_be_between_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minValueForColSum",
+        float,
+        default=float("-inf"),
+    )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxValueForColSum",
+        float,
+        default=float("inf"),
+    )
+
+    sum_value_res = Metrics.SUM.value(column_obj).dl_fn(data_frame)
+    status, result = test_case_status_result(min_bound, max_bound, sum_value_res)
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="sum", value=str(sum_value_res))],
+    )

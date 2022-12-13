@@ -136,7 +136,9 @@ def column_values_to_be_between_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_name = get_decoded_column(test_case.entityLink.__root__)
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
 
     min_bound = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore
@@ -151,13 +153,9 @@ def column_values_to_be_between_dl(
         float,
         default=float("inf"),
     )
-    min_value_res = Metrics.MIN.value(
-        ColumnBaseModel.col_base_model(data_frame[column_name])
-    ).dl_fn(data_frame)
+    min_value_res = Metrics.MIN.value(column_obj).dl_fn(data_frame)
 
-    max_value_res = Metrics.MAX.value(
-        ColumnBaseModel.col_base_model(data_frame[column_name])
-    ).dl_fn(data_frame)
+    max_value_res = Metrics.MAX.value(column_obj).dl_fn(data_frame)
 
     status, result = test_case_status_result(
         min_value_res, max_value_res, min_bound, max_bound
