@@ -31,6 +31,9 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+from functools import singledispatch
+
+from pandas import DataFrame
 
 
 @singledispatch
@@ -89,11 +92,6 @@ def column_values_to_be_not_null(
             TestResultValue(name="nullCount", value=str(null_count_value_res))
         ],
     )
-
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 @column_values_to_be_not_null.register

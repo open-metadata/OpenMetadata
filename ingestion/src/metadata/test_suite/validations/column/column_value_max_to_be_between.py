@@ -17,6 +17,7 @@ ColumnValuesToBeBetween validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -35,6 +36,16 @@ from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
 
+def test_case_status_result(
+        min_bound , max_bound,max_value_res 
+    ):
+    return (
+         TestCaseStatus.Success
+        if min_bound <= max_value_res <= max_bound
+        else TestCaseStatus.Failed,
+         f"Found max={max_value_res} vs."
+        + f" the expected min={min_bound}, max={max_bound}."
+    )
 
 @singledispatch
 def column_value_max_to_be_between(
@@ -97,15 +108,7 @@ def column_value_max_to_be_between(
         default=float("inf"),
     )
 
-    status = (
-        TestCaseStatus.Success
-        if min_bound <= max_value_res <= max_bound
-        else TestCaseStatus.Failed
-    )
-    result = (
-        f"Found max={max_value_res} vs."
-        + f" the expected min={min_bound}, max={max_bound}."
-    )
+    status, result = test_case_status_result(min_bound , max_bound , max_value_res)
 
     return TestCaseResult(
         timestamp=execution_date,
@@ -115,15 +118,38 @@ def column_value_max_to_be_between(
     )
 
 
-from functools import singledispatch
-
-from pandas import DataFrame
-
-
 @column_value_max_to_be_between.register
 def column_value_max_to_be_between_dl(
     test_case: TestCase,
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    column_obj = ColumnBaseModel.col_base_model(data_frame[get_decoded_column(test_case.entityLink.__root__)])
+
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minValueForMaxInCol",
+        float,
+        default=float("-inf"),
+    )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxValueForMaxInCol",
+        float,
+        default=float("inf"),
+    )
+
+    max_value_res = Metrics.MAX.value(column_obj).dl_fn() 
+    status, result = test_case_status_result(
+        min_bound ,   max_bound, max_value_res
+    )
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="max", value=str(max_value_res))],
+
+    )
+
+

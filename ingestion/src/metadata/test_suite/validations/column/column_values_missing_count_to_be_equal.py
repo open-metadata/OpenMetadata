@@ -32,6 +32,9 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
+from functools import singledispatch
+
+from pandas import DataFrame
 
 
 @singledispatch
@@ -134,11 +137,6 @@ def column_values_missing_count_to_be_equal(
             TestResultValue(name="missingCount", value=str(null_count_value_res))
         ],
     )
-
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 @column_values_missing_count_to_be_equal.register

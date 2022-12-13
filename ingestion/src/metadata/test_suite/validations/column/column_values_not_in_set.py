@@ -32,6 +32,10 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+from functools import singledispatch
+
+from pandas import DataFrame
+
 
 # pylint: disable=abstract-class-instantiated
 @singledispatch
@@ -97,11 +101,6 @@ def column_values_not_in_set(
             TestResultValue(name="countForbiddenValues", value=str(set_count_res))
         ],
     )
-
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 @column_values_not_in_set.register

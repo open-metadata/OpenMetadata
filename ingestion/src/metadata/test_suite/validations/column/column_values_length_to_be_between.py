@@ -33,6 +33,10 @@ from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
 
+from functools import singledispatch
+
+from pandas import DataFrame
+
 
 @singledispatch
 def column_value_length_to_be_between(
@@ -145,11 +149,6 @@ def column_value_length_to_be_between(
             ),
         ],
     )
-
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 @column_value_length_to_be_between.register

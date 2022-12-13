@@ -33,6 +33,10 @@ from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
 
+from functools import singledispatch
+
+from pandas import DataFrame
+
 
 @singledispatch
 def column_value_stddev_to_be_between(
@@ -111,11 +115,6 @@ def column_value_stddev_to_be_between(
         result=result,
         testResultValue=[TestResultValue(name="min", value=str(stddev_value_res))],
     )
-
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 @column_value_stddev_to_be_between.register

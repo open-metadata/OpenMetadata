@@ -32,6 +32,9 @@ from metadata.utils.logger import test_suite_logger
 from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
+from functools import singledispatch
+
+from pandas import DataFrame
 
 
 @singledispatch
@@ -111,11 +114,6 @@ def column_values_sum_to_be_between(
         result=result,
         testResultValue=[TestResultValue(name="sum", value=str(sum_value_res))],
     )
-
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 @column_values_sum_to_be_between.register

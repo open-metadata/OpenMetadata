@@ -33,6 +33,9 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+from functools import singledispatch
+
+from pandas import DataFrame
 
 
 def _get_match_count(like_count, regex_count, runner, col) -> Optional[int]:
@@ -133,11 +136,6 @@ def column_values_to_match_regex(
             TestResultValue(name="likeCount", value=str(match_count_value_res))
         ],
     )
-
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 @column_values_to_match_regex.register

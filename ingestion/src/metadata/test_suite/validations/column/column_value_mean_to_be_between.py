@@ -16,6 +16,7 @@ ColumnValuesToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 
 from sqlalchemy import inspect
 
@@ -32,7 +33,20 @@ from metadata.utils.logger import test_suite_logger
 from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
+from functools import singledispatch
 
+from pandas import DataFrame
+
+def test_case_status_result(
+        min_bound ,  max_bound,mean_value_res ,
+    ):
+    return (
+        TestCaseStatus.Success
+        if min_bound <= mean_value_res <= max_bound
+        else TestCaseStatus.Failed,
+        f"Found mean={mean_value_res:.2f} vs."
+        + f" the expected min={min_bound}, max={max_bound}."
+    )
 
 @singledispatch
 def column_value_mean_to_be_between(
@@ -95,14 +109,8 @@ def column_value_mean_to_be_between(
         default=float("inf"),
     )
 
-    status = (
-        TestCaseStatus.Success
-        if min_bound <= mean_value_res <= max_bound
-        else TestCaseStatus.Failed
-    )
-    result = (
-        f"Found mean={mean_value_res:.2f} vs."
-        + f" the expected min={min_bound}, max={max_bound}."
+    status, result = test_case_status_result(
+        min_bound ,  max_bound,mean_value_res ,
     )
 
     return TestCaseResult(
@@ -113,15 +121,39 @@ def column_value_mean_to_be_between(
     )
 
 
-from functools import singledispatch
-
-from pandas import DataFrame
-
-
 @column_value_mean_to_be_between.register
 def column_value_mean_to_be_between_dl(
     test_case: TestCase,
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    pass
+    column_obj = ColumnBaseModel.col_base_model(data_frame[get_decoded_column(test_case.entityLink.__root__)])
+
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minValueForMeanInCol",
+        float,
+        default=float("-inf"),
+    )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxValueForMeanInCol",
+        float,
+        default=float("inf"),
+    )
+    mean_value_res = Metrics.MEAN.value(column_obj).dl_fn()
+
+
+    status, result = test_case_status_result(
+        min_bound ,  max_bound,mean_value_res ,
+    )
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="mean", value=str(mean_value_res))],
+
+
+    )
+
