@@ -223,6 +223,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         <Form
           className="tw-h-70vh tw-overflow-auto"
           form={form}
+          initialValues={{ sqlExpression: sqlQuery.value }}
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
