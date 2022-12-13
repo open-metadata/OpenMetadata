@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.glossary;
+package org.openmetadata.service.resources.tags;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -45,68 +45,57 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.schema.api.data.CreateGlossary;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.api.tags.CreateTagCategory;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
+import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TagCategoryRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/glossaries")
-@Api(value = "Glossary collection", tags = "Glossary collection")
+@Slf4j
+@Path("/v1/categories")
+@Api(value = "Tag category resources collection", tags = "Tag category resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "glossaries", order = 6)
-public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
-  public static final String COLLECTION_PATH = "v1/glossaries/";
+@Collection(name = "categories", order = 4)
+public class TagCategoryResource extends EntityResource<TagCategory, TagCategoryRepository> {
+  public static final String TAG_COLLECTION_PATH = "/v1/categories/";
 
-  @Override
-  public Glossary addHref(UriInfo uriInfo, Glossary glossary) {
-    glossary.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, glossary.getId()));
-    Entity.withHref(uriInfo, glossary.getOwner());
-    Entity.withHref(uriInfo, glossary.getReviewers());
-    return glossary;
+  static class TagCategoryList extends ResultList<TagCategory> {
+    @SuppressWarnings("unused") // Empty constructor needed for deserialization
+    TagCategoryList() {}
   }
 
-  @Inject
-  public GlossaryResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Glossary.class, new GlossaryRepository(dao), authorizer);
+  public TagCategoryResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    super(TagCategory.class, new TagCategoryRepository(collectionDAO), authorizer);
+    Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
   }
 
-  public static class GlossaryList extends ResultList<Glossary> {
-    @SuppressWarnings("unused")
-    GlossaryList() {
-      // Empty constructor needed for deserialization
-    }
-  }
-
-  static final String FIELDS = "owner,tags,reviewers,usageCount";
+  @SuppressWarnings("unused") // Method used by reflection
+  static final String FIELDS = "usageCount";
 
   @GET
-  @Valid
   @Operation(
-      operationId = "listGlossaries",
-      summary = "List Glossaries",
-      tags = "glossaries",
-      description =
-          "Get a list of glossaries. Use `fields` parameter to get only necessary fields. "
-              + " Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+      operationId = "listTagCategories",
+      summary = "List tag categories",
+      tags = "tags",
+      description = "Get a list of tag categories.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of glossaries",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryList.class)))
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategoryList.class)))
       })
-  public ResultList<Glossary> list(
+  public ResultList<TagCategory> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -114,16 +103,16 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number glossaries returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number tag categories returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of glossaries before this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of tag categories before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of glossaries after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of tag categories after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -140,21 +129,21 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getGlossaryByID",
-      summary = "Get a glossary",
-      tags = "glossaries",
-      description = "Get a glossary by `id`.",
+      operationId = "getTagCategoryByID",
+      summary = "Get a tag category",
+      tags = "tags",
+      description = "Get a tag category by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
+            description = "tagCategory",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
+        @ApiResponse(responseCode = "404", description = "Tag category for instance {id} is not found")
       })
-  public Glossary get(
+  public TagCategory get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "tag category Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -171,23 +160,25 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   @GET
-  @Path("/name/{name}")
+  @Path("name/{name}")
   @Operation(
-      operationId = "getGlossaryByFQN",
-      summary = "Get a glossary by name",
-      tags = "glossaries",
-      description = "Get a glossary by name.",
+      operationId = "getTagCategoryByName",
+      summary = "Get a tag category",
+      tags = "tags",
+      description =
+          "Get a tag category identified by name. The response includes tag category information along "
+              + "with the entire hierarchy of all the children tags.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
+        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found")
       })
-  public Glossary getByName(
+  public TagCategory getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -206,20 +197,20 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllGlossaryVersion",
-      summary = "List glossary versions",
+      operationId = "listAllTagCategoryVersion",
+      summary = "List tag category versions",
       tags = "glossaries",
-      description = "Get a list of all the versions of a glossary identified by `id`",
+      description = "Get a list of all the versions of a tag category identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of glossary versions",
+            description = "List of tag category versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "tagCategory Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -227,25 +218,25 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificGlossaryVersion",
-      summary = "Get a version of the glossaries",
+      operationId = "getSpecificTagCategoryVersion",
+      summary = "Get a version of the tagCategory",
       tags = "glossaries",
-      description = "Get a version of the glossary by given `id`",
+      description = "Get a version of the tagCategory by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "glossaries",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Glossary for instance {id} and version {version} is " + "not found")
+            description = "TagCategory for instance {id} and version {version} is " + "not found")
       })
-  public Glossary getVersion(
+  public TagCategory getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "tagCategory Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "glossary version number in the form `major`.`minor`",
+              description = "tagCategory version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -255,37 +246,52 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @POST
   @Operation(
-      operationId = "createGlossary",
-      summary = "Create a glossary",
-      tags = "glossaries",
-      description = "Create a new glossary.",
+      operationId = "createTagCategory",
+      summary = "Create a tag category",
+      tags = "tags",
+      description =
+          "Create a new tag category. The request can include the children tags to be created along "
+              + "with the tag category.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
       throws IOException {
-    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, glossary);
+    TagCategory category = getTagCategory(create, securityContext);
+    return create(uriInfo, securityContext, category);
+  }
+
+  @PUT
+  @Operation(
+      operationId = "createOrUpdateTagCategory",
+      summary = "Update a tag category",
+      tags = "tags",
+      description = "Update an existing category identify by category name")
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
+      throws IOException {
+    TagCategory category = getTagCategory(create, securityContext);
+    return createOrUpdate(uriInfo, securityContext, category);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchGlossary",
-      summary = "Update a glossary",
-      tags = "glossaries",
-      description = "Update an existing glossary using JsonPatch.",
+      operationId = "patchTagCategory",
+      summary = "Update a TagCategory",
+      tags = "tags",
+      description = "Update an existing tag category using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the tag category", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -299,37 +305,13 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
-  @PUT
-  @Operation(
-      operationId = "createOrUpdateGlossary",
-      summary = "Create or update a glossary",
-      tags = "glossaries",
-      description = "Create a new glossary, if it does not exist or update an existing glossary.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The glossary",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
-      throws IOException {
-    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, glossary);
-  }
-
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteGlossary",
-      summary = "Delete a Glossary",
-      tags = "glossaries",
-      description = "Delete a glossary by `id`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "glossary for instance {id} is not found")
-      })
+      operationId = "deleteTagCategory",
+      summary = "Delete tag category",
+      tags = "tags",
+      description = "Delete a tag category and all the tags under it.")
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -341,7 +323,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Glossary Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Tag category id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -349,27 +331,41 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @PUT
   @Path("/restore")
   @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted Glossary.",
-      tags = "glossaries",
-      description = "Restore a soft deleted Glossary.",
+      operationId = "restoreTagCategory",
+      summary = "Restore a soft deleted tag category.",
+      tags = "tags",
+      description = "Restore a soft deleted tag category.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the Glossary ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class)))
+            description = "Successfully restored the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
-  public Response restoreGlossary(
+  public Response restore(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
       throws IOException {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Glossary getGlossary(CreateGlossary create, String user) throws IOException {
-    return copy(new Glossary(), create, user)
-        .withReviewers(create.getReviewers())
-        .withTags(create.getTags())
+  @Override
+  public TagCategory addHref(UriInfo uriInfo, TagCategory category) {
+    return category;
+  }
+
+  public static TagCategory getTagCategory(CreateTagCategory create, SecurityContext securityContext) {
+    return getTagCategory(create, securityContext.getUserPrincipal().getName());
+  }
+
+  public static TagCategory getTagCategory(CreateTagCategory create, String updatedBy) {
+    return new TagCategory()
+        .withId(UUID.randomUUID())
+        .withName(create.getName())
+        .withDisplayName(create.getDisplayName())
+        .withFullyQualifiedName(create.getName())
         .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
+        .withMutuallyExclusive(create.getMutuallyExclusive())
+        .withDescription(create.getDescription())
+        .withUpdatedBy(updatedBy)
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

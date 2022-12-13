@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tags/loadTags.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "loadTags",
+  "description": "Load tag categories and tags",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tags.LoadTags",
+  "properties": {
+    "createTagCategory": {
+      "$ref": "createTagCategory.json"
+    },
+    "createTags": {
+      "description": "Display Name that identifies this tag category.",
+      "type": "array",
+      "items": {
+        "$ref": "createTag.json"
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["createTagCategory"],
+  "additionalProperties": false
+}

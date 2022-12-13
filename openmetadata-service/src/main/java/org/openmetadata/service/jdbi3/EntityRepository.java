@@ -729,8 +729,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void store(T entity, boolean update) throws JsonProcessingException {
     if (update) {
       dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+      LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     } else {
       dao.insert(entity);
+      LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
   }
 

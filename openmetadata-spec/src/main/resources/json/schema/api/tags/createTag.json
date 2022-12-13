@@ -8,8 +8,16 @@
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
+    "tagCategory": {
+      "description": "Name of the tag category that this tag is part of.",
+      "$ref": "../../entity/tags/tag.json#/definitions/tagName"
+    },
+    "parent": {
+      "description": "Fully qualified name of the parent tag. When null, the term is at the root of the tag category.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "name": {
-      "$ref": "../../entity/tags/tagCategory.json#/definitions/tagName"
+      "$ref": "../../entity/tags/tag.json#/definitions/tagName"
     },
     "displayName": {
       "description": "Display Name that identifies this tag.",
@@ -25,6 +33,9 @@
       "items": {
         "type": "string"
       }
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
     },
     "mutuallyExclusive" : {
       "description" : "Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",

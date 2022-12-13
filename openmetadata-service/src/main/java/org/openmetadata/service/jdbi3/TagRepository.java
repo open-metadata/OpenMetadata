@@ -13,25 +13,31 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.TAG_CATEGORY;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.tags.Tag;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -39,54 +45,42 @@ public class TagRepository extends EntityRepository<Tag> {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
   }
 
-  // Populate the children tags for a given tag
-  Tag populateChildrenTags(Tag tag, Fields fields) throws IOException {
-    ListFilter listFilter = new ListFilter(Include.ALL).addQueryParam("parent", tag.getFullyQualifiedName());
-    List<String> tagJsons = dao.listAfter(listFilter, 10000, null);
-
-    // Get tags under the given tag
-    List<Tag> tagList = new ArrayList<>();
-    for (String json : listOrEmpty(tagJsons)) {
-      Tag childTag = setFieldsInternal(JsonUtils.readValue(json, Tag.class), fields);
-      tagList.add(populateChildrenTags(childTag, fields));
-    }
-    return tag.withChildren(!tagList.isEmpty() ? tagList : null);
-  }
-
   @Override
-  public void prepare(Tag entity) {
-    String[] split = FullyQualifiedName.split(entity.getFullyQualifiedName());
-    String categoryName = split[0];
-    daoCollection.tagCategoryDAO().findEntityByName(categoryName);
+  public void prepare(Tag entity) throws IOException {
+    // Validate parent term
+    EntityReference parentTerm = Entity.getEntityReferenceByName(entity.getParent());
+    entity.setParent(parentTerm);
 
-    if (split.length == 3) { // Secondary tag is being created. Check the primary tag
-      dao.findEntityByName(FullyQualifiedName.build(split[0], split[1]));
-    }
+    // Validate tagCategory
+    EntityReference tagCategory = Entity.getEntityReferenceByName(entity.getTagCategory());
+    entity.setTagCategory(tagCategory);
   }
 
   @Override
   public void storeEntity(Tag tag, boolean update) throws IOException {
-    List<Tag> tags = tag.getChildren();
-    tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
-    store(tag, update);
-    tag.setChildren(tags);
-    LOG.info("Added tag {}", tag.getFullyQualifiedName());
+    EntityReference tagCategory = tag.getTagCategory();
+    EntityReference parent = tag.getParent();
 
-    // Then add the children
-    for (Tag children : listOrEmpty(tag.getChildren())) {
-      children.setChildren(null); // No children allowed for the leaf tag
-      children.setFullyQualifiedName(FullyQualifiedName.add(children.getFullyQualifiedName(), children.getName()));
-      LOG.info("Added tag {}", children.getFullyQualifiedName());
-      dao.insert(children);
-    }
+    // Parent and tagCategory are not stored as part of JSON. Build it on the fly based on relationships
+    tag.withTagCategory(null).withParent(null);
+    store(tag, update);
+    tag.withTagCategory(tagCategory).withParent(parent);
   }
 
   @Override
-  public void storeRelationships(Tag entity) {}
+  public void restorePatchAttributes(Tag original, Tag updated) {
+    updated.setChildren(original.getChildren());
+  }
+
+  @Override
+  public void storeRelationships(Tag entity) {
+    addTagCategoryRelationship(entity);
+    addParentRelationship(entity);
+  }
 
   @Override
   public void setFullyQualifiedName(Tag entity) {
-    /* Nothing to do since it is already setup */
+    EntityUtil.setFullyQualifiedName(entity);
   }
 
   @Override
@@ -102,7 +96,8 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public Tag setFields(Tag tag, Fields fields) throws IOException {
-    populateChildrenTags(tag, fields);
+    tag.withTagCategory(getTagCategory(tag)).withParent(getParent(tag));
+    tag.setChildren(fields.contains("children") ? getChildren(tag) : null);
     return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
   }
 
@@ -121,6 +116,49 @@ public class TagRepository extends EntityRepository<Tag> {
     return tag;
   }
 
+  private List<EntityReference> getChildren(Tag entity) throws IOException {
+    List<EntityRelationshipRecord> ids = findTo(entity.getId(), TAG, Relationship.CONTAINS, TAG);
+    return EntityUtil.populateEntityReferences(ids, TAG);
+  }
+
+  private EntityReference getParent(Tag tag) throws IOException {
+    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
+  }
+
+  private EntityReference getTagCategory(Tag tag) throws IOException {
+    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG_CATEGORY, true);
+  }
+
+  private void addTagCategoryRelationship(Tag term) {
+    addRelationship(term.getTagCategory().getId(), term.getId(), TAG_CATEGORY, TAG, Relationship.CONTAINS);
+  }
+
+  private void deleteTagCategoryRelationship(Tag term) {
+    deleteRelationship(term.getTagCategory().getId(), TAG_CATEGORY, term.getId(), TAG, Relationship.CONTAINS);
+  }
+
+  private void updateTagCategoryRelationship(Tag orig, Tag updated) {
+    deleteTagCategoryRelationship(orig);
+    addTagCategoryRelationship(updated);
+  }
+
+  private void addParentRelationship(Tag term) {
+    if (term.getParent() != null) {
+      addRelationship(term.getParent().getId(), term.getId(), TAG, TAG, Relationship.CONTAINS);
+    }
+  }
+
+  private void deleteParentRelationship(Tag term) {
+    if (term.getParent() != null) {
+      deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
+    }
+  }
+
+  private void updateParentRelationship(Tag orig, Tag updated) {
+    deleteParentRelationship(orig);
+    addParentRelationship(updated);
+  }
+
   public class TagUpdater extends EntityUpdater {
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
@@ -130,6 +168,7 @@ public class TagRepository extends EntityRepository<Tag> {
     public void entitySpecificUpdate() throws IOException {
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       updateName(original, updated);
+      updateParent(original, updated);
     }
 
     public void updateName(Tag original, Tag updated) throws IOException {
@@ -146,7 +185,29 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       // Populate response fields
-      populateChildrenTags(updated, Fields.EMPTY_FIELDS);
+      getChildren(updated);
+    }
+
+    private void updateParent(Tag original, Tag updated) throws JsonProcessingException {
+      // Can't change parent and tagCategory both at the same time
+      UUID oldParentId = getId(original.getParent());
+      UUID newParentId = getId(updated.getParent());
+      boolean parentChanged = !Objects.equals(oldParentId, newParentId);
+
+      UUID oldCategoryId = getId(original.getTagCategory());
+      UUID newCategoryId = getId(updated.getTagCategory());
+      boolean tagCategoryChanged = !Objects.equals(oldCategoryId, newCategoryId);
+
+      daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      if (tagCategoryChanged) {
+        updateTagCategoryRelationship(original, updated);
+        recordChange("tagCategory", original.getTagCategory(), updated.getTagCategory(), true, entityReferenceMatch);
+      }
+      if (parentChanged) {
+        updateParentRelationship(original, updated);
+        recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+      }
     }
   }
 }

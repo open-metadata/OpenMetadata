@@ -129,6 +129,7 @@ import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.resources.tags.TagCategoryResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -141,6 +142,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
+  private final TagResourceTest tagResourceTest = new TagResourceTest();
 
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
@@ -2021,13 +2023,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
-  private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
-    return TagResourceTest.getTag(tagFQN, "usageCount", authHeaders).getUsageCount();
+  private int getTagUsageCount(String tagFqn, Map<String, String> authHeaders) throws HttpResponseException {
+    return tagResourceTest.getEntityByName(tagFqn, "usageCount", authHeaders).getUsageCount();
   }
 
-  private static int getTagCategoryUsageCount(String name, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    return TagResourceTest.getCategory(name, "usageCount", authHeaders).getUsageCount();
+  private int getTagCategoryUsageCount(String name, Map<String, String> authHeaders) throws HttpResponseException {
+    TagCategoryResourceTest tagCategoryResourceTest = new TagCategoryResourceTest();
+    return tagCategoryResourceTest.getEntityByName(name, "usageCount", authHeaders).getUsageCount();
   }
 
   private static int getGlossaryUsageCount(String name) throws HttpResponseException {

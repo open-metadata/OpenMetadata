@@ -48,7 +48,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -115,6 +114,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -131,6 +131,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -234,6 +235,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
 
+  public static TagCategory USER_TAG_CATEGORY;
+  public static Tag ADDRESS_TAG;
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
   public static TagLabel PII_SENSITIVE_TAG_LABEL;
@@ -415,7 +418,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
-  // Get container entity based on create request that has CONTAINS relationship to the entity created with this
+  // Get container entity used in createRequest that has CONTAINS relationship to the entity created with this
   // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
   // details.
   public EntityReference getContainer() {
@@ -779,11 +782,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
-    assertResponseContains(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponseContains(
+        () -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
 
     // Create an entity with mandatory name field too long
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
-    assertResponse(() -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponse(
+        () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+  }
+
+  @Test
+  void post_entityWithMissingDescription_400(TestInfo test) {
+    // Post entity that does not accept empty description and expect failure
+    if (supportsEmptyDescription) {
+      return;
+    }
+
+    final K create = createRequest(test).withDescription(null);
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
   }
 
   @Test
@@ -1626,6 +1642,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
     return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  public final T getEntityByName(String name, Map<String, String> authHeaders) throws HttpResponseException {
+    return getEntityByName(name, null, "", authHeaders);
   }
 
   public final T getEntityByName(String name, String fields, Map<String, String> authHeaders)

@@ -16,14 +16,11 @@ package org.openmetadata.service.jdbi3;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagCategory;
@@ -31,50 +28,20 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.resources.tags.TagCategoryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class TagCategoryRepository extends EntityRepository<TagCategory> {
-  private final TagRepository tagRepository;
-
-  public TagCategoryRepository(CollectionDAO dao, TagRepository tagRepository) {
-    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG_CATEGORY, TagCategory.class, dao.tagCategoryDAO(), dao, "", "");
-    this.tagRepository = tagRepository;
-  }
-
-  /** Initialize a category one time when the service comes up for the first time */
-  @Transaction
-  public void initCategory(TagCategory category) throws IOException {
-    String json = dao.findJsonByFqn(category.getName(), Include.ALL);
-    if (json == null) {
-      LOG.info("Tag category {} is not initialized", category.getName());
-      storeEntity(category, false);
-
-      // Only two levels of tag allowed under a category
-      for (Tag primaryTag : category.getChildren()) {
-        primaryTag.setFullyQualifiedName(FullyQualifiedName.build(category.getName(), primaryTag.getName()));
-        tagRepository.storeEntity(primaryTag, false);
-      }
-    } else {
-      LOG.info("Tag category {} is already initialized", category.getName());
-    }
-  }
-
-  // Populate TagCategory with children details
-  private void populateCategoryTags(TagCategory category, Fields fields) throws IOException {
-    // Get tags under that match category prefix
-    ListFilter listFilter = new ListFilter(Include.ALL).addQueryParam("parent", category.getName());
-    List<String> groupJsons = daoCollection.tagDAO().listAfter(listFilter, 10000, "");
-
-    List<Tag> tagList = new ArrayList<>();
-    for (String json : groupJsons) {
-      Tag tag = tagRepository.setFieldsInternal(JsonUtils.readValue(json, Tag.class), fields);
-      tagList.add(tagRepository.populateChildrenTags(tag, fields));
-    }
-    category.withChildren(tagList.isEmpty() ? null : tagList);
+  public TagCategoryRepository(CollectionDAO dao) {
+    super(
+        TagCategoryResource.TAG_COLLECTION_PATH,
+        Entity.TAG_CATEGORY,
+        TagCategory.class,
+        dao.tagCategoryDAO(),
+        dao,
+        "",
+        "");
   }
 
   @Override
@@ -84,7 +51,6 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   @Override
   public TagCategory setFields(TagCategory category, Fields fields) throws IOException {
-    populateCategoryTags(category, fields);
     return category.withUsageCount(fields.contains("usageCount") ? getUsageCount(category) : null);
   }
 
@@ -95,10 +61,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   @Override
   public void storeEntity(TagCategory category, boolean update) throws IOException {
-    List<Tag> primaryTags = category.getChildren();
-    category.setChildren(null); // Children are not stored as json and are constructed on the fly
     store(category, update);
-    category.withChildren(primaryTags);
   }
 
   @Override
@@ -154,9 +117,6 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
         daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
       }
-
-      // Populate response fields
-      populateCategoryTags(updated, Fields.EMPTY_FIELDS);
     }
   }
 }

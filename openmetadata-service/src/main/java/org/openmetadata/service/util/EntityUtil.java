@@ -269,6 +269,14 @@ public final class EntityUtil {
     return ids;
   }
 
+  public static void setFullyQualifiedName(Tag tag) {
+    String fqn =
+        tag.getParent() == null
+            ? FullyQualifiedName.add(tag.getTagCategory().getName(), tag.getName())
+            : FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName());
+    tag.setFullyQualifiedName(fqn);
+  }
+
   @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
@@ -451,6 +459,15 @@ public final class EntityUtil {
   }
 
   public static Column getColumn(Table table, String columnName) {
-    return table.getColumns().stream().filter(c -> c.getName().equals(columnName)).findFirst().orElse(null);
+    return table.getColumns().stream()
+        .filter(c -> c.getName().equals(columnName))
+        .findFirst()
+        .orElse(null);
+  }
+
+  public static void sortByTagHierarchy(List<Tag> tags) {
+    // Note - before calling this method - fullyQualifiedName should set up for the tags
+    // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
+    tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
   }
 }

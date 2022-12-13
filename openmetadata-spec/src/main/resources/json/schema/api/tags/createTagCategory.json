@@ -9,7 +9,7 @@
 
   "properties": {
     "name": {
-      "$ref": "../../entity/tags/tagCategory.json#/definitions/tagName"
+      "$ref": "../../entity/tags/tag.json#/definitions/tagName"
     },
     "displayName": {
       "description": "Display Name that identifies this tag category.",
@@ -18,6 +18,9 @@
     "description": {
       "description": "Description of the tag category",
       "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
     },
     "mutuallyExclusive" : {
       "description" : "Tags under this category are mutually exclusive. When mutually exclusive is `true` the tags from this category are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this category are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
