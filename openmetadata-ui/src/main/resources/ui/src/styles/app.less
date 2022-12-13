@@ -18,6 +18,7 @@
 @primary-hover-light: rgba(219, 209, 249);
 @white: #fff;
 @gray: #dde3ea;
+@trigger-btn-hover-bg: #efefef;
 
 //font weight
 .font-medium {
@@ -275,4 +276,16 @@
   text-overflow: ellipsis;
   display: -webkit-box;
   line-height: 18px;
+}
+
+.quick-filter-dropdown-trigger-btn {
+  padding: 4px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.quick-filter-dropdown-trigger-btn:hover,
+.quick-filter-dropdown-trigger-btn:focus {
+  background-color: @trigger-btn-hover-bg;
 }
