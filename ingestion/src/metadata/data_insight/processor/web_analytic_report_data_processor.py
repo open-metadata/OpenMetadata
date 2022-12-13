@@ -121,8 +121,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
                         1
                     )
+                    refined_data[entity_obj.fqn]["entityHref"] = entity_href
                 except IndexError:
-                    logger.warning(f"Could not find entity Href for {entity_obj.fqn}")
+                    logger.debug(f"Could not find entity Href for {entity_obj.fqn}")
 
             if entity_obj.fqn not in refined_data:
                 entity = self.metadata.get_by_name(
@@ -167,8 +168,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     entity_href = None
 
                 refined_data[split_url[1]] = {
-                    "entityType": entity_type[0].upper()
-                    + entity_type[1:],  # Normalise entity type
+                    "entityType": ENTITIES[entity_type].__name__,
                     "entityTier": entity_tier,
                     "entityFqn": entity_obj.fqn,
                     "entityHref": entity_href,

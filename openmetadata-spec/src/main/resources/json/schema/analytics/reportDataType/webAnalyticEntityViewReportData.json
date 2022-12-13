@@ -19,8 +19,8 @@
         "description": "entity fully qualified name"
       },
       "entityHref": {
-        "type": "string",
-        "description": "entity href"
+        "description": "entity href",
+        "type": "string"
       },
       "tagsFQN": {
         "description": "Tags FQN",
