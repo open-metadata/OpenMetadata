@@ -11,57 +11,6 @@
  *  limitations under the License.
  */
 
-export const mockMenuItem = [
-  {
-    key: 'User 1',
-    label: 'User 1',
-  },
-  {
-    key: 'User 2',
-    label: 'User 2',
-  },
-  {
-    key: 'User 3',
-    label: 'User 3',
-  },
-  {
-    key: 'User 4',
-    label: 'User 4',
-  },
-  {
-    key: 'User 5',
-    label: 'User 5',
-  },
-];
-
-export const mockMenuItemsWithDefaultKey = [
-  {
-    key: 'User 1',
-    label: 'User 1',
-    defaultField: true,
-  },
-  {
-    key: 'User 2',
-    label: 'User 2',
-    defaultField: true,
-  },
-  {
-    key: 'User 3',
-    label: 'User 3',
-    defaultField: false,
-  },
-  {
-    key: 'User 4',
-    label: 'User 4',
-    defaultField: false,
-  },
-  {
-    key: 'User 5',
-    label: 'User 5',
-    defaultField: false,
-  },
-];
-
 export const mockOptionsArray = [
   'option_1',
   'option_2',

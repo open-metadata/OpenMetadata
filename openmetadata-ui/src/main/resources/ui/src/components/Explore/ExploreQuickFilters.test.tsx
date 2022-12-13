@@ -17,6 +17,14 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 
+const mockOnFieldRemove = jest.fn();
+const mockOnAdvanceSearch = jest.fn();
+const mockOnClear = jest.fn();
+const mockOnFieldValueSelect = jest.fn();
+const mockOnFieldSelect = jest.fn();
+const mockOnClearSelection = jest.fn();
+const mockOnUpdateFilterValues = jest.fn();
+
 jest.mock('../SearchDropdown/SearchDropdown', () =>
   jest
     .fn()
@@ -33,12 +41,13 @@ const fields = [
   { key: 'column_names', value: undefined },
 ] as ExploreQuickFilterField[];
 
-const onFieldRemove = jest.fn();
-const onAdvanceSearch = jest.fn();
-const onClear = jest.fn();
-const onFieldValueSelect = jest.fn();
-const onFieldSelect = jest.fn();
-const onClearSelection = jest.fn();
+const onFieldRemove = mockOnFieldRemove;
+const onAdvanceSearch = mockOnAdvanceSearch;
+const onClear = mockOnClear;
+const onFieldValueSelect = mockOnFieldValueSelect;
+const onFieldSelect = mockOnFieldSelect;
+const onClearSelection = mockOnClearSelection;
+const onUpdateFilterValues = mockOnUpdateFilterValues;
 
 const mockProps = {
   index,
@@ -49,6 +58,7 @@ const mockProps = {
   onClearSelection,
   onFieldValueSelect,
   onFieldSelect,
+  onUpdateFilterValues,
 };
 
 describe('Test ExploreQuickFilters component', () => {

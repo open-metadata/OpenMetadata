@@ -19,21 +19,16 @@ import { SearchDropdownProps } from './SearchDropdown.interface';
 
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
-const mockOnRemove = jest.fn();
-const mockOnClearSelection = jest.fn();
 
 const searchOptions = ['User 1', 'User 2', 'User 3', 'User 4', 'User 5'];
 
 const mockProps: SearchDropdownProps = {
   label: 'Owner',
+  isSuggestionsLoading: false,
   options: searchOptions,
   searchKey: 'owner.name',
   selectedKeys: ['User 1'],
-  showClearAllBtn: true,
-  showCloseIcon: true,
   onChange: mockOnChange,
-  onClearSelection: mockOnClearSelection,
-  onRemove: mockOnRemove,
   onSearch: mockOnSearch,
 };
 
@@ -71,9 +66,15 @@ describe('Search DropDown Component', () => {
 
     expect(searchInput).toBeInTheDocument();
 
-    const clearButton = await screen.findByTestId('clear-button');
+    const clearButton = screen.queryByTestId('clear-button');
 
-    expect(clearButton).toBeInTheDocument();
+    expect(clearButton).not.toBeInTheDocument();
+
+    const updateButton = await screen.findByTestId('update-btn');
+    const closeButton = await screen.findByTestId('update-btn');
+
+    expect(updateButton).toBeInTheDocument();
+    expect(closeButton).toBeInTheDocument();
   });
 
   it('Selected keys option should be checked', async () => {
@@ -112,7 +113,7 @@ describe('Search DropDown Component', () => {
     expect(await screen.findByTestId('User 5-checkbox')).not.toBeChecked();
   });
 
-  it('Should render the clear all button and click should work', async () => {
+  it('Should render the clear all button after more than one options are selected and click should work', async () => {
     render(<SearchDropdown {...mockProps} />);
 
     const container = await screen.findByTestId('search-dropdown');
@@ -125,6 +126,18 @@ describe('Search DropDown Component', () => {
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
+    const option2 = await screen.findByTestId('User 2');
+
+    await act(async () => {
+      userEvent.click(option2);
+    });
+
+    let option1Checkbox = await screen.findByTestId('User 1-checkbox');
+    let option2Checkbox = await screen.findByTestId('User 2-checkbox');
+
+    expect(option1Checkbox).toBeChecked();
+    expect(option2Checkbox).toBeChecked();
+
     const clearButton = await screen.findByTestId('clear-button');
 
     expect(clearButton).toBeInTheDocument();
@@ -133,26 +146,11 @@ describe('Search DropDown Component', () => {
       userEvent.click(clearButton);
     });
 
-    expect(mockOnSearch).toHaveBeenCalledWith('', 'owner.name');
-    expect(mockOnClearSelection).toHaveBeenCalledWith('owner.name');
-  });
+    option1Checkbox = await screen.findByTestId('User 1-checkbox');
+    option2Checkbox = await screen.findByTestId('User 2-checkbox');
 
-  it('Should not render the clear all button if showClear is false/undefined', async () => {
-    render(<SearchDropdown {...mockProps} showClearAllBtn={false} />);
-
-    const container = await screen.findByTestId('search-dropdown');
-
-    expect(container).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(container);
-    });
-
-    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
-
-    const clearButton = screen.queryByTestId('clear-button');
-
-    expect(clearButton).not.toBeInTheDocument();
+    expect(option1Checkbox).not.toBeChecked();
+    expect(option2Checkbox).not.toBeChecked();
   });
 
   it('Search should work', async () => {
@@ -179,7 +177,7 @@ describe('Search DropDown Component', () => {
     expect(mockOnSearch).toHaveBeenCalledWith('user', 'owner.name');
   });
 
-  it('On Change should work', async () => {
+  it('Update button should work properly', async () => {
     render(<SearchDropdown {...mockProps} />);
 
     const container = await screen.findByTestId('search-dropdown');
@@ -196,6 +194,12 @@ describe('Search DropDown Component', () => {
 
     await act(async () => {
       userEvent.click(option2);
+    });
+
+    const updateButton = await screen.findByTestId('update-btn');
+
+    await act(async () => {
+      userEvent.click(updateButton);
     });
 
     // onChange should be called with previous selected keys and current selected keys
@@ -218,12 +222,50 @@ describe('Search DropDown Component', () => {
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
+    let option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).toBeChecked();
+
     const option1 = await screen.findByTestId('User 1');
 
     await act(async () => {
       userEvent.click(option1);
     });
 
-    expect(mockOnChange).toHaveBeenCalledWith([], 'owner.name');
+    option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).not.toBeChecked();
+  });
+
+  it('Close button should work properly', async () => {
+    render(<SearchDropdown {...mockProps} />);
+
+    const container = await screen.findByTestId('search-dropdown');
+
+    expect(container).toBeInTheDocument();
+
+    let dropdownMenu = screen.queryByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeNull();
+
+    await act(async () => {
+      userEvent.click(container);
+    });
+
+    dropdownMenu = await screen.findByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+
+    const closeButton = await screen.findByTestId('update-btn');
+
+    expect(closeButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(closeButton);
+    });
+
+    dropdownMenu = screen.queryByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeNull();
   });
 });
