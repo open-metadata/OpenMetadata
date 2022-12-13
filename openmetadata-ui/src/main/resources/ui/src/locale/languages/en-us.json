@@ -470,7 +470,11 @@
     "replication-factor": "replication factor",
     "retention-size": "retention-size",
     "clean-up-policies": "clean-up policies",
-    "maximum-size": "maximum size"
+    "maximum-size": "maximum size",
+    "no-of-test": " No. of Test",
+    "test-suite": "Test Suite",
+    "enter-entity": "Enter {{entity}}",
+    "test-suite-status": "Test Suite Status"
   },
   "message": {
     "service-email-required": "Service account Email is required",
