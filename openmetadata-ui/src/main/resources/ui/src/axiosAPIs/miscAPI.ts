@@ -248,6 +248,20 @@ export const getAdvancedFieldOptions = (
   });
 };
 
+export const getAdvancedFieldDefaultOptions = (
+  index: SearchIndex,
+  field: string
+) => {
+  const params = { index, field };
+
+  return APIClient.get<SearchResponse<ExploreSearchIndex>>(
+    `/search/aggregate`,
+    {
+      params,
+    }
+  );
+};
+
 export const getEntityCount = async (
   path: string,
   database?: string
