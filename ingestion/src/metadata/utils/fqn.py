@@ -148,12 +148,13 @@ def _(
     )
 
     es_result = (
-        not skip_es_search
-        and metadata.es_search_from_fqn(
+        metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
         )
-    ) or None
+        if not skip_es_search
+        else None
+    )
 
     entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
