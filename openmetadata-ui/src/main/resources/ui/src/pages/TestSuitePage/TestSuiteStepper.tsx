@@ -20,7 +20,7 @@ import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { createTestSuites } from '../../axiosAPIs/testAPI';
 import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
 import {
-  addTestSuitePageRightPanel,
+  getRightPanelForAddTestSuitePage,
   INGESTION_DATA,
 } from '../../components/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
@@ -140,7 +140,7 @@ const TestSuiteStepper = () => {
           data={
             addIngestion
               ? INGESTION_DATA
-              : addTestSuitePageRightPanel(
+              : getRightPanelForAddTestSuitePage(
                   activeServiceStep,
                   testSuiteResponse?.name || ''
                 )

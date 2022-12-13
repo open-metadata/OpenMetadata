@@ -31,10 +31,9 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
   const history = useHistory();
 
   const validateMessages = {
-    required: '${label} is required!',
-    string: {
-      range: '${label} must be between ${min} and ${max} character.',
-    },
+    required: t('message.field-text-is-required', {
+      fieldText: '${label}',
+    }),
   };
 
   const fetchTestSuites = async () => {

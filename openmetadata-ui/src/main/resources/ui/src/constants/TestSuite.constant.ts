@@ -11,29 +11,41 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { StepperStepType } from 'Models';
 import { ROUTES } from './constants';
 
+const TEST_SUITE_LABEL = i18next.t('label.test-suite');
+const ADD_TEST_SUITE_LABEL = i18next.t('label.add-entity', {
+  entity: i18next.t('label.test-suite'),
+});
+
 export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
-  { name: 'Add Test Suite', step: 1 },
-  { name: 'Test Suite Status', step: 2 },
+  {
+    name: ADD_TEST_SUITE_LABEL,
+    step: 1,
+  },
+  {
+    name: i18next.t('label.test-suite-status'),
+    step: 2,
+  },
 ];
 
 export const TEST_SUITE_BREADCRUMB = [
   {
-    name: 'Test Suites',
+    name: TEST_SUITE_LABEL,
     url: '',
     activeTitle: true,
   },
 ];
 export const TEST_SUITE_STEPPER_BREADCRUMB = [
   {
-    name: 'Test Suites',
+    name: TEST_SUITE_LABEL,
     url: ROUTES.TEST_SUITES,
     activeTitle: false,
   },
   {
-    name: 'Add Test Suites',
+    name: ADD_TEST_SUITE_LABEL,
     url: '',
     activeTitle: true,
   },

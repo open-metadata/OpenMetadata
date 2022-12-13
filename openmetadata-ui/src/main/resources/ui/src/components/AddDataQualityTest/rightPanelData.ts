@@ -73,7 +73,10 @@ export const addTestSuiteRightPanel = (
   return message;
 };
 
-export const addTestSuitePageRightPanel = (step: number, testSuite: string) => {
+export const getRightPanelForAddTestSuitePage = (
+  step: number,
+  testSuite: string
+) => {
   let message = TEST_PAGE_FORM_DATA[step - 1];
   if (step === 2) {
     message = TEST_PAGE_FORM_DATA[step - 1];

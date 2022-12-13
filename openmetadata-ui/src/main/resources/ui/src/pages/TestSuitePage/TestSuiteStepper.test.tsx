@@ -31,7 +31,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../components/AddDataQualityTest/rightPanelData', () => ({
-  addTestSuitePageRightPanel: jest.fn().mockReturnValue('Add test suite'),
+  getRightPanelForAddTestSuitePage: jest.fn().mockReturnValue('Add test suite'),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
