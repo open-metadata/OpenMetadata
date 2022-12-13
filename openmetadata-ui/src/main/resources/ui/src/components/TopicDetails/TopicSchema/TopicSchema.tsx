@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Popover, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
@@ -23,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Field } from '../../../generated/entity/data/topic';
 import { getEntityName } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
   updateFieldDescription,
@@ -241,20 +239,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
-  const expandableConfig: ExpandableConfig<Field> = {
-    rowExpandable: (record) =>
-      Boolean(record.children && record.children.length > 0),
-
-    expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      expandable && (
-        <Typography.Text
-          className="m-r-xs cursor-pointer"
-          onClick={(e) => onExpand(record, e)}>
-          <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
-        </Typography.Text>
-      ),
-  };
-
   return (
     <>
       <Table
@@ -263,7 +247,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         columns={columns}
         data-testid="topic-schema-fields-table"
         dataSource={messageSchema?.schemaFields}
-        expandable={expandableConfig}
+        expandable={getTableExpandableConfig<Field>()}
         pagination={false}
         rowKey="name"
         size="small"
