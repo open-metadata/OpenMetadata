@@ -452,10 +452,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const handleSchemaFieldsUpdate = async (
     updatedMessageSchema: Topic['messageSchema']
   ) => {
-    await settingsUpdateHandler({
-      ...topicDetails,
-      messageSchema: updatedMessageSchema,
-    });
+    try {
+      await settingsUpdateHandler({
+        ...topicDetails,
+        messageSchema: updatedMessageSchema,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   useEffect(() => {

@@ -20,17 +20,10 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PROMISE_STATE } from '../../../enums/common.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Field } from '../../../generated/entity/data/topic';
-import { TagCategory } from '../../../generated/entity/tags/tagCategory';
 import { getEntityName } from '../../../utils/CommonUtils';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../../utils/GlossaryUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
+import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
   updateFieldDescription,
   updateFieldTags,
@@ -61,44 +54,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const fetchTags = async () => {
     setIsTagLoading(true);
     try {
-      let tagsAndTerms: TagOption[] = [];
-
-      const promises = [getTagCategories(), fetchGlossaryTerms()];
-
-      const responses = await Promise.allSettled(promises);
-
-      const tagResponse = responses[0];
-      const glossaryResponse = responses[1];
-
-      // flag for both api success
-      const hasBothAPISuccess =
-        tagResponse.status === PROMISE_STATE.FULFILLED &&
-        glossaryResponse.status === PROMISE_STATE.FULFILLED;
-
-      // check for tags
-      if (tagResponse.status === PROMISE_STATE.FULFILLED) {
-        const tagsValue = tagResponse.value as { data: TagCategory[] };
-
-        tagsAndTerms = getTaglist(tagsValue.data ?? []).map((tag) => ({
-          fqn: tag,
-          source: 'Tag',
-        }));
-      }
-
-      // check for glossary term
-      if (glossaryResponse.status === PROMISE_STATE.FULFILLED) {
-        const glossaryTermValues = glossaryResponse.value as GlossaryTerm[];
-
-        const glossaryTerms: TagOption[] = getGlossaryTermlist(
-          glossaryTermValues
-        ).map((term) => ({ fqn: term, source: 'Glossary' }));
-
-        tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-      }
-
+      const tagsAndTerms = await fetchTagsAndGlossaryTerms();
       setTagList(tagsAndTerms);
-
-      setTagFetchFailed(!hasBothAPISuccess);
     } catch (error) {
       setTagList([]);
       setTagFetchFailed(true);
@@ -238,7 +195,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        accessor: 'name',
         ellipsis: true,
         width: 220,
         render: (_, record: Field) => (
@@ -254,7 +210,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.type'),
         dataIndex: 'dataType',
         key: 'dataType',
-        accessor: 'dataType',
         ellipsis: true,
         width: 220,
         render: (dataType: Field['dataType']) => (
@@ -265,14 +220,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        accessor: 'description',
         render: renderFieldDescription,
       },
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 272,
         render: renderFieldTags,
       },
