@@ -9,3 +9,7 @@ SET json = jsonb_set(
         '[{"name":"entityFqn","chartDataType":"STRING"},{"name":"owner","chartDataType":"STRING"},{"name":"owner","entityType":"STRING"}]'
 )
 WHERE name = 'mostViewedEntities';
+
+-- Remove DBT source config
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{sourceConfig,config,dbtConfigSource}';

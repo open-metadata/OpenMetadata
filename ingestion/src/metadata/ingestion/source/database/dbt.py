@@ -97,6 +97,8 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
         return self.report
 
     def test_connection(self) -> None:
+        # DBT does not need to connect to any source to process information
+        # Passing the test connection here
         pass
 
     def prepare(self):

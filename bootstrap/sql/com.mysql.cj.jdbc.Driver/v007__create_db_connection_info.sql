@@ -13,3 +13,7 @@ SET json = JSON_INSERT(
 		)
 )
 WHERE name = 'mostViewedEntities';
+
+-- Remove DBT source config
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json ,'$.sourceConfig.config.dbtConfigSource');
