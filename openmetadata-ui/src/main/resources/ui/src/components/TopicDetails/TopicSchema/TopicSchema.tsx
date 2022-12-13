@@ -17,14 +17,27 @@ import { Button, Popover, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PROMISE_STATE } from '../../../enums/common.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Field } from '../../../generated/entity/data/topic';
+import { TagCategory } from '../../../generated/entity/tags/tagCategory';
 import { getEntityName } from '../../../utils/CommonUtils';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../../utils/GlossaryUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { updateFieldDescription } from '../../../utils/TopicSchemaFields.utils';
+import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
+import {
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../utils/TopicSchemaFields.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import { CellRendered, TopicSchemaFieldsProps } from './TopicSchema.interface';
 
@@ -34,10 +47,97 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   hasDescriptionEditAccess,
   isReadOnly,
   onUpdate,
+  hasTagEditAccess,
 }) => {
   const { t } = useTranslation();
 
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
+  const [editFieldTags, setEditFieldTags] = useState<Field>();
+
+  const [tagList, setTagList] = useState<TagOption[]>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+
+  const fetchTags = async () => {
+    setIsTagLoading(true);
+    try {
+      let tagsAndTerms: TagOption[] = [];
+
+      const promises = [getTagCategories(), fetchGlossaryTerms()];
+
+      const responses = await Promise.allSettled(promises);
+
+      const tagResponse = responses[0];
+      const glossaryResponse = responses[1];
+
+      // flag for both api success
+      const hasBothAPISuccess =
+        tagResponse.status === PROMISE_STATE.FULFILLED &&
+        glossaryResponse.status === PROMISE_STATE.FULFILLED;
+
+      // check for tags
+      if (tagResponse.status === PROMISE_STATE.FULFILLED) {
+        const tagsValue = tagResponse.value as { data: TagCategory[] };
+
+        tagsAndTerms = getTaglist(tagsValue.data ?? []).map((tag) => ({
+          fqn: tag,
+          source: 'Tag',
+        }));
+      }
+
+      // check for glossary term
+      if (glossaryResponse.status === PROMISE_STATE.FULFILLED) {
+        const glossaryTermValues = glossaryResponse.value as GlossaryTerm[];
+
+        const glossaryTerms: TagOption[] = getGlossaryTermlist(
+          glossaryTermValues
+        ).map((term) => ({ fqn: term, source: 'Glossary' }));
+
+        tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+      }
+
+      setTagList(tagsAndTerms);
+
+      setTagFetchFailed(!hasBothAPISuccess);
+    } catch (error) {
+      setTagList([]);
+      setTagFetchFailed(true);
+    } finally {
+      setIsTagLoading(false);
+    }
+  };
+
+  const handleFieldTagsChange = async (selectedTags: EntityTags[] = []) => {
+    if (!isUndefined(editFieldTags)) {
+      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
+        fqn: tag.tagFQN,
+        source: tag.source,
+      }));
+
+      const schema = cloneDeep(messageSchema);
+
+      updateFieldTags(
+        schema?.schemaFields,
+        editFieldTags?.name,
+        newSelectedTags
+      );
+
+      await onUpdate(schema);
+      setEditFieldTags(undefined);
+    } else {
+      setEditFieldTags(undefined);
+    }
+  };
+
+  const handleAddTagClick = (record: Field) => {
+    if (isUndefined(editFieldTags)) {
+      setEditFieldTags(record);
+      // Fetch tags and terms only once
+      if (tagList.length === 0 || tagFetchFailed) {
+        fetchTags();
+      }
+    }
+  };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
     if (!isUndefined(editFieldDescription)) {
@@ -54,7 +154,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
-  const renderDescription: CellRendered<Field, 'description'> = (
+  const renderFieldDescription: CellRendered<Field, 'description'> = (
     description,
     record,
     index
@@ -94,6 +194,44 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     );
   };
 
+  const renderFieldTags: CellRendered<Field, 'tags'> = (
+    tags,
+    record: Field
+  ) => {
+    const isSelectedField = editFieldTags?.name === record.name;
+    const styleFlag = isSelectedField || !isEmpty(tags);
+
+    return (
+      <>
+        {isReadOnly ? (
+          <Space wrap>
+            <TagsViewer sizeCap={-1} tags={tags || []} />
+          </Space>
+        ) : (
+          <Space
+            align={styleFlag ? 'start' : 'center'}
+            className="justify-between"
+            data-testid="tags-wrapper"
+            direction={styleFlag ? 'vertical' : 'horizontal'}
+            onClick={() => handleAddTagClick(record)}>
+            <TagsContainer
+              className="w-max-256"
+              editable={isSelectedField}
+              isLoading={isTagLoading && isSelectedField}
+              selectedTags={tags || []}
+              showAddTagButton={hasTagEditAccess}
+              size="small"
+              tagList={tagList}
+              type="label"
+              onCancel={() => setEditFieldTags(undefined)}
+              onSelectionChange={handleFieldTagsChange}
+            />
+          </Space>
+        )}
+      </>
+    );
+  };
+
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
@@ -128,7 +266,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        render: renderDescription,
+        render: renderFieldDescription,
       },
       {
         title: t('label.tag-plural'),
@@ -136,17 +274,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (tags: Field['tags']) =>
-          !isEmpty(tags) ? (
-            <Space wrap>
-              <TagsViewer sizeCap={-1} tags={tags || []} />
-            </Space>
-          ) : (
-            '--'
-          ),
+        render: renderFieldTags,
       },
     ],
-    [messageSchema]
+    [
+      messageSchema,
+      hasDescriptionEditAccess,
+      hasTagEditAccess,
+      editFieldDescription,
+      editFieldTags,
+      isReadOnly,
+      isTagLoading,
+    ]
   );
 
   const expandableConfig: ExpandableConfig<Field> = {

@@ -12,7 +12,9 @@
  */
 
 import { isEmpty } from 'lodash';
+import { EntityTags, TagOption } from 'Models';
 import { Field } from '../generated/entity/data/topic';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 
 export const updateFieldDescription = (
   schemaFields: Field[] = [],
@@ -29,6 +31,48 @@ export const updateFieldDescription = (
       if (hasChildren) {
         updateFieldDescription(field.children, changedFieldName, description);
       }
+    }
+  });
+};
+
+const getUpdatedFieldTags = (field: Field, newFieldTags: TagOption[] = []) => {
+  const newTagsFqnList = newFieldTags.map((newTag) => newTag.fqn);
+
+  const prevTags = field?.tags?.filter((tag) =>
+    newTagsFqnList.includes(tag.tagFQN)
+  );
+
+  const prevTagsFqnList = prevTags?.map((prevTag) => prevTag.tagFQN);
+
+  const newTags: EntityTags[] = newFieldTags.reduce((prev, curr) => {
+    const isExistingTag = prevTagsFqnList?.includes(curr.fqn);
+
+    return isExistingTag
+      ? prev
+      : [
+          ...prev,
+          {
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+            source: curr.source,
+            tagFQN: curr.fqn,
+          },
+        ];
+  }, [] as EntityTags[]);
+
+  return [...(prevTags as TagLabel[]), ...newTags];
+};
+
+export const updateFieldTags = (
+  schemaFields: Field[] = [],
+  changedFieldName: string,
+  newFieldTags: TagOption[] = []
+) => {
+  schemaFields.forEach((field) => {
+    if (field.name === changedFieldName) {
+      field.tags = getUpdatedFieldTags(field, newFieldTags);
+    } else {
+      updateFieldTags(field?.children, changedFieldName, newFieldTags);
     }
   });
 };
