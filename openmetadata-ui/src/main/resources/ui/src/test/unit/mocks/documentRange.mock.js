@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-// import this this file in your test file if your test fails with below error
+// import this file in your test file if your test fails with below error
 // Error:- range(...).getBoundingClientRect is not a function
 
 document.createRange = () => {
