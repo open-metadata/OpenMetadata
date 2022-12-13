@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
-export interface SearchDropdownProps {
+import { SearchIndex } from '../../enums/search.enum';
+import { ExploreQuickFilterField } from './explore.interface';
+
+export interface ExploreQuickFiltersProps {
+  index: SearchIndex;
+  fields: Array<ExploreQuickFilterField>;
+  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
+  onAdvanceSearch: () => void;
+}
+
+export interface FilterFieldsMenuItem {
+  key: string;
   label: string;
-  isSuggestionsLoading?: boolean;
-  options: string[];
-  searchKey: string;
-  selectedKeys: string[];
-  onChange: (values: string[], searchKey: string) => void;
-  onSearch: (searchText: string, searchKey: string) => void;
+  defaultField: boolean;
 }

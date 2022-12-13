@@ -11,67 +11,79 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
-  Checkbox,
+  Divider,
   Dropdown,
   Input,
   MenuItemProps,
   MenuProps,
+  Row,
   Space,
+  Typography,
 } from 'antd';
+import classNames from 'classnames';
 import React, { ChangeEvent, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
+import {
+  getSearchDropdownLabels,
+  getSelectedOptionLabelString,
+} from '../../utils/AdvancedSearchUtils';
+import Loader from '../Loader/Loader';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
+  isSuggestionsLoading,
   label,
   options,
   searchKey,
   selectedKeys,
-  showClear,
   onChange,
   onSearch,
 }) => {
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
+  const [selectedOptions, setSelectedOptions] =
+    useState<string[]>(selectedKeys);
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
-    return options.map((option) => {
-      const isSelected = selectedKeys.includes(option.key);
+    // Separating selected options to show on top
+    const selectedOptionKeys =
+      getSearchDropdownLabels(selectedOptions, true) || [];
 
-      return {
-        key: option.key,
-        label: (
-          <Space data-testid={option.label} size={6}>
-            <Checkbox checked={isSelected} data-testid={option.key} />
-            {option.label}
-          </Space>
-        ),
-      };
-    });
-  }, [options, selectedKeys]);
+    // Filtering out unselected options
+    const unselectedOptions = options.filter(
+      (option) => !selectedOptions.includes(option)
+    );
+
+    // Labels for unselected options
+    const otherOptions =
+      getSearchDropdownLabels(unselectedOptions, false) || [];
+
+    return [...selectedOptionKeys, ...otherOptions];
+  }, [options, selectedOptions]);
 
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
-    const isSelected = selectedKeys.includes(currentKey);
+    const isSelected = selectedOptions.includes(currentKey);
 
     const updatedValues = isSelected
-      ? selectedKeys.filter((v) => v !== currentKey)
-      : [...selectedKeys, currentKey];
+      ? selectedOptions.filter((v) => v !== currentKey)
+      : [...selectedOptions, currentKey];
 
-    // call on change with updated value
-    onChange(updatedValues, searchKey);
+    setSelectedOptions(updatedValues);
   };
 
   // handle clear all
-  const handleClear = () => onChange([], searchKey);
+  const handleClear = () => {
+    setSelectedOptions([]);
+  };
 
   // handle search
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
@@ -80,41 +92,111 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     onSearch(value, searchKey);
   };
 
+  // Handle dropdown close
+  const handleDropdownClose = () => {
+    setIsDropDownOpen(false);
+  };
+
+  // Handle update button click
+  const handleUpdate = () => {
+    // call on change with updated value
+    onChange(selectedOptions, searchKey);
+    handleDropdownClose();
+  };
+
+  const showClearAllBtn = useMemo(
+    () => selectedOptions.length > 1,
+    [selectedOptions]
+  );
+
   return (
     <Dropdown
+      destroyPopupOnHide
       data-testid={searchKey}
-      dropdownRender={(menuNode) => {
-        return (
-          <Card className="custom-dropdown-render" data-testid="drop-down-menu">
-            <Space direction="vertical" size={4}>
+      dropdownRender={(menuNode) => (
+        <Card
+          bodyStyle={{ padding: 0 }}
+          className="custom-dropdown-render"
+          data-testid="drop-down-menu">
+          <Space direction="vertical" size={0}>
+            <div className="p-t-sm p-x-sm">
               <Input
                 data-testid="search-input"
-                placeholder={`Search ${label}...`}
+                placeholder={`${t('label.search-entity', {
+                  entity: label,
+                })}...`}
                 onChange={handleSearch}
               />
-              {showClear && (
+            </div>
+            {showClearAllBtn && (
+              <>
+                <Divider className="m-t-xs m-b-0" />
                 <Button
-                  className="p-0"
+                  className="p-0 m-l-sm"
                   data-testid="clear-button"
                   type="link"
                   onClick={handleClear}>
                   {t('label.clear-all')}
                 </Button>
-              )}
-              {menuNode}
+              </>
+            )}
+            <Divider
+              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+            />
+            {isSuggestionsLoading ? (
+              <Row align="middle" className="p-y-sm" justify="center">
+                <Loader size="small" />
+              </Row>
+            ) : options.length > 0 || selectedOptions.length > 0 ? (
+              menuNode
+            ) : (
+              <Row className="m-y-sm" justify="center">
+                <Typography.Text>
+                  {t('label.no-data-available')}
+                </Typography.Text>
+              </Row>
+            )}
+            <Space className="p-sm p-t-xss">
+              <Button
+                className="update-btn"
+                data-testid="update-btn"
+                size="small"
+                onClick={handleUpdate}>
+                {t('label.update')}
+              </Button>
+              <Button
+                data-testid="close-btn"
+                size="small"
+                type="link"
+                onClick={handleDropdownClose}>
+                {t('label.close')}
+              </Button>
             </Space>
-          </Card>
-        );
-      }}
+          </Space>
+        </Card>
+      )}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
+      open={isDropDownOpen}
       trigger={['click']}
-      visible={isDropDownOpen}
-      onVisibleChange={(visible) => setIsDropDownOpen(visible)}>
-      <Button>
-        <Space data-testid="search-dropdown">
-          {label}
-          <DownOutlined />
+      onOpenChange={(visible) => {
+        visible && onSearch('', searchKey);
+        setIsDropDownOpen(visible);
+      }}>
+      <Button className="quick-filter-dropdown-trigger-btn">
+        <Space data-testid="search-dropdown" size={4}>
+          <Space size={0}>
+            <Typography.Text>{label}</Typography.Text>
+            {selectedKeys.length > 0 && (
+              <span>
+                {': '}
+                <Typography.Text className="text-primary font-medium">
+                  {getSelectedOptionLabelString(selectedKeys)}
+                </Typography.Text>
+              </span>
+            )}
+          </Space>
+          <DropDown className="flex self-center" />
         </Space>
       </Button>
     </Dropdown>

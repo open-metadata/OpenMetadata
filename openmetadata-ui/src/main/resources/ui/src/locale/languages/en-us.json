@@ -474,7 +474,10 @@
     "no-of-test": " No. of Test",
     "test-suite": "Test Suite",
     "enter-entity": "Enter {{entity}}",
-    "test-suite-status": "Test Suite Status"
+    "test-suite-status": "Test Suite Status",
+    "search-entity": "Search {{entity}}",
+    "more": "More",
+    "update": "Update"
   },
   "message": {
     "service-email-required": "Service account Email is required",
