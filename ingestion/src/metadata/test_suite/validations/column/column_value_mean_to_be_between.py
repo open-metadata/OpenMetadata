@@ -16,7 +16,6 @@ ColumnValuesToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 
 from sqlalchemy import inspect
 
@@ -26,6 +25,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
@@ -37,16 +37,20 @@ from functools import singledispatch
 
 from pandas import DataFrame
 
+
 def test_case_status_result(
-        min_bound ,  max_bound,mean_value_res ,
-    ):
+    min_bound,
+    max_bound,
+    mean_value_res,
+):
     return (
         TestCaseStatus.Success
         if min_bound <= mean_value_res <= max_bound
         else TestCaseStatus.Failed,
         f"Found mean={mean_value_res:.2f} vs."
-        + f" the expected min={min_bound}, max={max_bound}."
+        + f" the expected min={min_bound}, max={max_bound}.",
     )
+
 
 @singledispatch
 def column_value_mean_to_be_between(
@@ -110,7 +114,9 @@ def column_value_mean_to_be_between(
     )
 
     status, result = test_case_status_result(
-        min_bound ,  max_bound,mean_value_res ,
+        min_bound,
+        max_bound,
+        mean_value_res,
     )
 
     return TestCaseResult(
@@ -127,7 +133,9 @@ def column_value_mean_to_be_between_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_obj = ColumnBaseModel.col_base_model(data_frame[get_decoded_column(test_case.entityLink.__root__)])
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
 
     min_bound = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore
@@ -144,16 +152,14 @@ def column_value_mean_to_be_between_dl(
     )
     mean_value_res = Metrics.MEAN.value(column_obj).dl_fn()
 
-
     status, result = test_case_status_result(
-        min_bound ,  max_bound,mean_value_res ,
+        min_bound,
+        max_bound,
+        mean_value_res,
     )
     return TestCaseResult(
         timestamp=execution_date,
         testCaseStatus=status,
         result=result,
         testResultValue=[TestResultValue(name="mean", value=str(mean_value_res))],
-
-
     )
-

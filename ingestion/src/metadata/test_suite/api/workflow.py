@@ -385,7 +385,9 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                             testSuite=self.metadata.get_entity_reference(
                                 entity=TestSuite, fqn=test_suite.name
                             ),
-                            parameterValues=list(test_case_to_create.parameterValues) if test_case_to_create.parameterValues else None ,
+                            parameterValues=list(test_case_to_create.parameterValues)
+                            if test_case_to_create.parameterValues
+                            else None,
                         )
                     )
                 )

@@ -15,13 +15,11 @@ ColumnValuesToBeUnique validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
-from metadata.test_suite.validations.column.column_values_to_be_between import test_case_status_result
 
 # pylint: disable=duplicate-code,protected-access
 from pandas import DataFrame
 from sqlalchemy import inspect
 from sqlalchemy.orm.util import AliasedClass
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -29,8 +27,12 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.test_suite.validations.column.column_values_to_be_between import (
+    test_case_status_result,
+)
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
@@ -42,9 +44,10 @@ def test_case_status_result(value_count_value_res, unique_count_value_res):
         TestCaseStatus.Success
         if value_count_value_res == unique_count_value_res
         else TestCaseStatus.Failed,
-       f"Found valuesCount={value_count_value_res} vs. uniqueCount={unique_count_value_res}."
-        + " Both counts should be equal for column values to be unique."
+        f"Found valuesCount={value_count_value_res} vs. uniqueCount={unique_count_value_res}."
+        + " Both counts should be equal for column values to be unique.",
     )
+
 
 @singledispatch
 def column_values_to_be_unique(
@@ -128,11 +131,13 @@ def column_values_to_be_unique_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_obj = ColumnBaseModel.col_base_model(data_frame[get_decoded_column(test_case.entityLink.__root__)])
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
 
     value_count_value_res = Metrics.COUNT.value(column_obj).dl_fn(data_frame)
-    unique_count_value_res =Metrics.UNIQUE_COUNT.value(column_obj).dl_query(data_frame)
-    
+    unique_count_value_res = Metrics.UNIQUE_COUNT.value(column_obj).dl_query(data_frame)
+
     status, result = test_case_status_result(
         value_count_value_res, unique_count_value_res
     )
@@ -145,4 +150,3 @@ def column_values_to_be_unique_dl(
             TestResultValue(name="uniqueCount", value=str(unique_count_value_res)),
         ],
     )
-
