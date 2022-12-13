@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
@@ -45,6 +45,7 @@ import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/E
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -106,7 +107,7 @@ import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
-export type ServicePageData = Database | Topic | Dashboard;
+export type ServicePageData = Database | Topic | Dashboard | Mlmodel | Pipeline;
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory, tab } =
@@ -524,7 +525,7 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getOptionalTableCells = (data: Database | Topic) => {
+  const getOptionalTableCells = (data: ServicePageData) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
         const database = data as Database;
@@ -927,9 +928,9 @@ const ServicePage: FunctionComponent = () => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
+        render: (description: ServicePageData['description']) =>
+          !isUndefined(description) && description.trim() ? (
+            <RichTextEditorPreviewer markdown={description} />
           ) : (
             <span className="tw-no-description">
               {t('label.no-description')}
@@ -940,16 +941,30 @@ const ServicePage: FunctionComponent = () => {
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
-        render: (record: ServicePageData) => (
-          <p>{record?.owner?.name || '--'}</p>
-        ),
+        render: (owner: ServicePageData['owner']) =>
+          !isUndefined(owner) ? (
+            <Space data-testid="owner-data">
+              <ProfilePicture
+                id=""
+                name={owner.name ?? ''}
+                type="circle"
+                width="24"
+              />
+              <Typography.Text data-testid={`${owner.name}-owner-name`}>
+                {getEntityName(owner)}
+              </Typography.Text>
+            </Space>
+          ) : (
+            <Typography.Text data-testid="no-owner-text">--</Typography.Text>
+          ),
       },
       {
         title: lastColumn,
         dataIndex: toLower(lastColumn),
         key: toLower(lastColumn),
-        render: (record: ServicePageData) =>
-          getOptionalTableCells(record as Database),
+        render: (_, record: ServicePageData) => (
+          <div data-testid="record-tags">{getOptionalTableCells(record)}</div>
+        ),
       },
     ];
   }, []);
@@ -1080,10 +1095,10 @@ const ServicePage: FunctionComponent = () => {
                                 children,
                               }: {
                                 children: React.ReactNode;
-                              }) => <tr data-testid="column">{children}</tr>,
+                              }) => <tr data-testid="row">{children}</tr>,
                             },
                           }}
-                          data-testid="database-table"
+                          data-testid="service-children-table"
                           dataSource={data}
                           pagination={false}
                           rowKey="id"
