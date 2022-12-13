@@ -11,7 +11,33 @@
  *  limitations under the License.
  */
 import { DataTypeTopic, Field } from '../generated/entity/data/topic';
-import { updateFieldDescription } from './TopicSchema.utils';
+import { updateFieldDescription, updateFieldTags } from './TopicSchema.utils';
+
+const mockTagOptions = [
+  {
+    fqn: 'PII.Sensitive',
+    source: 'Tag',
+  },
+  {
+    fqn: 'PersonalData.Personal',
+    source: 'Tag',
+  },
+];
+
+const mockTags = [
+  {
+    tagFQN: 'PII.Sensitive',
+    source: 'Tag',
+    labelType: 'Manual',
+    state: 'Confirmed',
+  },
+  {
+    tagFQN: 'PersonalData.Personal',
+    source: 'Tag',
+    labelType: 'Manual',
+    state: 'Confirmed',
+  },
+];
 
 const nestedField = {
   name: 'Order',
@@ -64,6 +90,48 @@ const updatedSingleField = {
   description: 'updated description',
 };
 
+const nestedFieldWithTags = {
+  name: 'Order',
+  displayName: 'Order',
+  dataType: DataTypeTopic.Record,
+  description: 'All the order events on our online store',
+  children: [
+    {
+      name: 'order_id',
+      dataType: DataTypeTopic.Int,
+      description: 'order_id',
+      tags: [],
+    },
+    {
+      name: 'api_client_id',
+      dataType: DataTypeTopic.Int,
+      description: 'api_client_id',
+      tags: [],
+    },
+  ],
+};
+
+const updatedNestedFieldWithTags: Field = {
+  name: 'Order',
+  displayName: 'Order',
+  dataType: DataTypeTopic.Record,
+  description: 'All the order events on our online store',
+  children: [
+    {
+      name: 'order_id',
+      dataType: DataTypeTopic.Int,
+      description: 'order_id',
+      tags: mockTags as Field['tags'],
+    },
+    {
+      name: 'api_client_id',
+      dataType: DataTypeTopic.Int,
+      description: 'api_client_id',
+      tags: [],
+    },
+  ],
+};
+
 describe('Topic schema field utils', () => {
   it('updateFieldDescription method should update the field', () => {
     const schemaFields = [singleField, nestedField];
@@ -79,6 +147,30 @@ describe('Topic schema field utils', () => {
     );
 
     const updatedSchemaFields = [updatedSingleField, updatedNestedField];
+
+    expect(schemaFields).toEqual(updatedSchemaFields);
+  });
+
+  it('updateFieldTags method should update the field', () => {
+    const schemaFields = [
+      { ...singleField, tags: [], description: 'updated description' },
+    ];
+
+    // updated the single field
+    updateFieldTags(schemaFields, 'id', mockTagOptions);
+
+    const updatedSchemaFields = [{ ...updatedSingleField, tags: mockTags }];
+
+    expect(schemaFields).toEqual(updatedSchemaFields);
+  });
+
+  it('updateFieldTags method should update the nested field', () => {
+    const schemaFields = [nestedFieldWithTags];
+
+    // updated the single field
+    updateFieldTags(schemaFields, 'order_id', mockTagOptions);
+
+    const updatedSchemaFields = [updatedNestedFieldWithTags];
 
     expect(schemaFields).toEqual(updatedSchemaFields);
   });
