@@ -16,11 +16,12 @@ import json
 import logging
 import os
 import traceback
-from functools import singledispatch, wraps
-from typing import Union
+from functools import partial, singledispatch, wraps
+from typing import Callable, List, Union
 
 import pkg_resources
 import requests
+from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.event import listen
@@ -172,6 +173,7 @@ from metadata.utils.source_connections import (
     update_connection_opts_args,
 )
 from metadata.utils.sql_queries import NEO4J_AMUNDSEN_USER_QUERY
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")
@@ -183,6 +185,32 @@ class SourceConnectionException(Exception):
     """
     Raised when we cannot connect to the source
     """
+
+
+class TestConnectionStep(BaseModel):
+    """
+    Function and step name to test.
+
+    The function should be ready to be called.
+
+    If it needs arguments, use `partial` to send a pre-filled
+    Callable. Example
+
+    ```
+    def suma(a, b):
+        return a + b
+
+    step_1 = TestConnectionStep(
+        function=partial(suma, a=1, b=1),
+        name="suma"
+    )
+    ```
+
+    so that we can execute `step_1.function()`
+    """
+
+    function: Callable
+    name: str
 
 
 def render_query_header(ometa_version: str) -> str:
@@ -240,6 +268,18 @@ def singledispatch_with_options_secrets_verbose(fn):
         return fn(connection, verbose, **kwargs)
 
     return inner
+
+
+def test_connection_steps(steps: List[TestConnectionStep]) -> None:
+    """
+    Run all the function steps and raise any errors
+    """
+    for step in steps:
+        try:
+            step.function()
+        except Exception as exc:
+            msg = f"Error validating step [{step.name}] due to: {exc}."
+            raise SourceConnectionException(msg) from exc
 
 
 @singledispatch_with_options_secrets_verbose
@@ -812,9 +852,16 @@ def _(  # pylint: disable=inconsistent-return-statements
             "personal_access_token_secret"
         ] = connection.personalAccessTokenSecret.get_secret_value()
     try:
+
+        get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
+        # ssl_verify is typed as a `bool` in TableauServerConnection
+        # However, it is passed as `verify=self.ssl_verify` in each `requests` call.
+        # In requests (https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)
+        # the param can be None, False to ignore HTTPS certs or a string with the path to the cert.
         conn = TableauServerConnection(
             config_json=tableau_server_config,
             env=connection.env,
+            ssl_verify=get_verify_ssl(connection.sslConfig),
         )
         conn.sign_in().json()
         return TableauClient(conn)
@@ -825,12 +872,38 @@ def _(  # pylint: disable=inconsistent-return-statements
 
 @test_connection.register
 def _(connection: TableauClient) -> None:
-    try:
-        connection.client.server_info()
+    from tableau_api_lib.utils import extract_pages
 
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
+    from metadata.utils.constants import (
+        TABLEAU_GET_VIEWS_PARAM_DICT,
+        TABLEAU_GET_WORKBOOKS_PARAM_DICT,
+    )
+
+    steps = [
+        TestConnectionStep(
+            function=connection.client.server_info,
+            name="Server Info",
+        ),
+        TestConnectionStep(
+            function=partial(
+                extract_pages,
+                query_func=connection.client.query_workbooks_for_site,
+                parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
+            ),
+            name="Get Workbooks",
+        ),
+        TestConnectionStep(
+            function=partial(
+                extract_pages,
+                query_func=connection.client.query_views_for_site,
+                content_id=connection.client.site_id,
+                parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
+            ),
+            name="Get Views",
+        ),
+    ]
+
+    test_connection_steps(steps)
 
 
 @get_connection.register
