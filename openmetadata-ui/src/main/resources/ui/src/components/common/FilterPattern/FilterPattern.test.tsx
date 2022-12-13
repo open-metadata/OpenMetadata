@@ -27,10 +27,6 @@ const mockFilterPatternProps: FilterPatternProps = {
   getIncludeValue: jest.fn(),
 };
 
-jest.mock('i18next', () => ({
-  t: jest.fn(),
-}));
-
 describe('Test FilterPattern component', () => {
   it('FilterPattern component should render', async () => {
     const { container } = render(<FilterPattern {...mockFilterPatternProps} />);
