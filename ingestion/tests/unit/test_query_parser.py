@@ -54,6 +54,13 @@ class QueryParserTests(TestCase):
         clean_tables = set(self.parser.clean_table_list)
         self.assertEqual(clean_tables, {"db.grault", "db.holis", "foo", "db.random"})
 
+    def test_bracketed_parser_table_list(self):
+        parser = LineageParser(
+            "create view [test_schema].[test_view] as select * from [test_table];"
+        )
+        clean_tables = set(parser.clean_table_list)
+        self.assertEqual(clean_tables, {"test_schema.test_view", "test_table"})
+
     def test_parser_table_aliases(self):
         aliases = self.parser.table_aliases
         self.assertEqual(
