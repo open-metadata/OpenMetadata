@@ -29,7 +29,6 @@ import {
   toLower,
   toUpper,
 } from 'lodash';
-import { EntityType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -40,7 +39,7 @@ import SearchedData from '../../components/searched-data/SearchedData';
 import { API_RES_MAX_SIZE, ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Include } from '../../generated/type/include';
@@ -52,7 +51,6 @@ import {
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Entities } from '../AddWebhook/WebhookConstants';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
@@ -111,7 +109,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
-    const entityName = toUpper(ENTITY_PATH[tab as EntityType] ?? 'table');
+    const entityName = toUpper(ENTITY_PATH[tab] ?? 'table');
 
     return SearchIndex[entityName as ExploreSearchIndexKey];
   }, [tab]);
@@ -407,7 +405,7 @@ const Explore: React.FC<ExploreProps> = ({
                 currentPage={page}
                 data={searchResults?.hits.hits ?? []}
                 handleSummaryPanelDisplay={
-                  tab === toLower(Entities.table)
+                  tab === toLower(EntityType.TABLE)
                     ? handleSummaryPanelDisplay
                     : undefined
                 }
@@ -426,7 +424,7 @@ const Explore: React.FC<ExploreProps> = ({
           </Col>
         </Row>
       </div>
-      {tab === toLower(Entities.table) && (
+      {tab === toLower(EntityType.TABLE) && (
         <EntitySummaryPanel
           entityDetails={entityDetails || ({} as Table)}
           handleClosePanel={handleClosePanel}
