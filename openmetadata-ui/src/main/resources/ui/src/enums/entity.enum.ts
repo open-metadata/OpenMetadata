@@ -97,3 +97,21 @@ export enum FqnPart {
   Column,
   NestedColumn,
 }
+
+export enum EntityInfo {
+  OWNER = 'Owner',
+  TIER = 'Tier',
+  TYPE = 'Type',
+  COLUMNS = 'Columns',
+  ROWS = 'row-plural',
+  URL = 'Url',
+  ALGORITHM = 'Algorithm',
+  TARGET = 'Target',
+  SERVER = 'Server',
+  DASHBOARD = 'Dashboard',
+  PARTITIONS = 'Partitions',
+  REPLICATION_FACTOR = 'Replication Factor',
+  RETENTION_SIZE = 'Retention Size',
+  CLEAN_UP_POLICIES = 'Clean-up Policies',
+  MAX_MESSAGE_SIZE = 'Max Message Size',
+}
