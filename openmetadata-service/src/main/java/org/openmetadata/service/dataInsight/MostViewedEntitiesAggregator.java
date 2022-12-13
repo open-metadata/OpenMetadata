@@ -32,14 +32,20 @@ public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface
       Sum sumPageViews = entityFqnBucket.getAggregations().get("pageViews");
       MultiBucketsAggregation ownerBucket = entityFqnBucket.getAggregations().get("owner");
       MultiBucketsAggregation entityTypeBucket = entityFqnBucket.getAggregations().get("entityType");
+      MultiBucketsAggregation entityHrefBucket = entityFqnBucket.getAggregations().get("entityHref");
       String owner = null;
       String entityType = null;
+      String entityHref = null;
       if (!ownerBucket.getBuckets().isEmpty()) {
         owner = ownerBucket.getBuckets().get(0).getKeyAsString();
       }
 
       if (!entityTypeBucket.getBuckets().isEmpty()) {
-        entityType = entityTypeBucket.getBuckets().get(0).getKeyAsString().toLowerCase();
+        entityType = entityTypeBucket.getBuckets().get(0).getKeyAsString();
+      }
+
+      if (!entityHrefBucket.getBuckets().isEmpty()) {
+        entityHref = entityHrefBucket.getBuckets().get(0).getKeyAsString();
       }
 
       data.add(
@@ -47,6 +53,7 @@ public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface
               .withEntityFqn(tableFqn)
               .withOwner(owner)
               .withEntityType(entityType)
+              .withEntityHref(entityHref)
               .withPageViews(sumPageViews.getValue()));
     }
     return data;

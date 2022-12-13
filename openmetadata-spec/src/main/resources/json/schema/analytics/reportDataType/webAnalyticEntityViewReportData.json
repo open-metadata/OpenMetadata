@@ -18,6 +18,10 @@
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName",
         "description": "entity fully qualified name"
       },
+      "entityHref": {
+        "description": "entity href",
+        "type": "string"
+      },
       "tagsFQN": {
         "description": "Tags FQN",
         "type": "array",

@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-export interface SearchDropdownProps {
-  label: string;
-  isSuggestionsLoading?: boolean;
-  options: string[];
-  searchKey: string;
-  selectedKeys: string[];
-  onChange: (values: string[], searchKey: string) => void;
-  onSearch: (searchText: string, searchKey: string) => void;
+export interface TestSuiteFormDataProps {
+  name: string;
+  description: string;
+}
+
+export interface AddTestSuiteFormProps {
+  onSubmit: (data: TestSuiteFormDataProps) => void;
 }

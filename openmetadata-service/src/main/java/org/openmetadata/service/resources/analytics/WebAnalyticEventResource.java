@@ -37,10 +37,12 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
+import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -49,6 +51,7 @@ import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -414,6 +417,34 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
             throw new RuntimeException(e);
           }
         });
+  }
+
+  @DELETE
+  @Path("/{name}/{timestamp}/collect")
+  @Operation(
+      operationId = "deleteWebAnalyticEventData",
+      summary = "delete web analytic event data before a timestamp",
+      tags = "webAnalyticEvent",
+      description = "Delete web analytic event data before a timestamp.",
+      responses = {@ApiResponse(responseCode = "200", description = "Successfully deleted Web Analytic Event Data")})
+  public Response deleteWebAnalyticEventData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Web Analytic Event type Name",
+              schema = @Schema(implementation = WebAnalyticEventType.class))
+          @PathParam("name")
+          WebAnalyticEventType name,
+      @Parameter(
+              description = "Timestamp of the event. Event before the timestamp will be deleted",
+              schema = @Schema(type = "long"))
+          @PathParam("timestamp")
+          Long timestamp)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name.value()));
+    dao.deleteWebAnalyticEventData(name, timestamp);
+    return Response.ok().build();
   }
 
   @GET
