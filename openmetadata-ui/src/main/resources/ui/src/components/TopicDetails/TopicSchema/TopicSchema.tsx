@@ -170,6 +170,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         dataSource={messageSchema?.schemaFields}
         expandable={expandableConfig}
         pagination={false}
+        rowKey="name"
         size="small"
       />
       {editFieldDescription && (
