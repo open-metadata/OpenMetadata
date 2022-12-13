@@ -35,7 +35,7 @@
         }
       ]
     },
-    "dataType": {
+    "dataTypeTopic": {
       "javaType": "org.openmetadata.schema.type.FieldDataType",
       "description": "This enum defines the type of data defined in schema.",
       "type": "string",
@@ -81,7 +81,7 @@
         },
         "dataType": {
           "description": "Data type of the field (int, date etc.).",
-          "$ref": "#/definitions/dataType"
+          "$ref": "#/definitions/dataTypeTopic"
         },
         "description": {
           "description": "Description of the column.",

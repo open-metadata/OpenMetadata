@@ -24,7 +24,7 @@
       "description": "Link to the messaging service where this topic is hosted in",
       "$ref": "../../type/entityReference.json"
     },
-    "schema": {
+    "messageSchema": {
       "$ref": "../../type/schema.json"
     },
     "partitions": {

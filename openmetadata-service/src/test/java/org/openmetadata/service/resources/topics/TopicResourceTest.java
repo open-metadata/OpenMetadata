@@ -128,7 +128,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withSchema(schema)
+            .withMessageSchema(schema)
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
@@ -141,7 +141,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withReplicationFactor(2)
         .withRetentionTime(2.0)
         .withRetentionSize(2.0)
-        .withSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
+        .withMessageSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic.getVersion());
@@ -181,13 +181,13 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withSchema(schema.withSchemaFields(fields))
+            .withMessageSchema(schema.withSchemaFields(fields))
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
     Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
     topic = getEntity(topic.getId(), ADMIN_AUTH_HEADERS);
-    assertFields(fields, topic.getSchema().getSchemaFields());
+    assertFields(fields, topic.getMessageSchema().getSchemaFields());
   }
 
   @Test
@@ -211,7 +211,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withReplicationFactor(1)
             .withRetentionTime(1.0)
             .withRetentionSize(1.0)
-            .withSchema(schema.withSchemaFields(fields))
+            .withMessageSchema(schema.withSchemaFields(fields))
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
@@ -226,7 +226,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withReplicationFactor(2)
         .withRetentionTime(2.0)
         .withRetentionSize(2.0)
-        .withSchema(schema.withSchemaFields(fields))
+        .withMessageSchema(schema.withSchemaFields(fields))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic.getVersion());
