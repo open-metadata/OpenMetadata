@@ -15,7 +15,6 @@ import { Card, Col, Row } from 'antd';
 import React from 'react';
 import {
   Legend,
-  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -23,7 +22,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import {
+  renderColorfulLegendText,
+  tooltipFormatter,
+} from '../../../utils/ChartUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
@@ -35,22 +37,6 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   curveType,
 }) => {
   const { data, information } = chartCollection;
-
-  const renderColorfulLegendText: LegendProps['formatter'] = (value, entry) => (
-    <span style={{ color: entry?.color }}>{value}</span>
-  );
-
-  const tooltipFormatter = (value: string | number | (string | number)[]) => {
-    const numValue = value as number;
-
-    return (
-      <>
-        {tickFormatter
-          ? `${numValue.toFixed(2)}${tickFormatter}`
-          : formatNumberWithComma(numValue)}
-      </>
-    );
-  };
 
   return (
     <Card className="tw-rounded-md tw-border">
@@ -82,7 +68,11 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     tickFormatter ? `${props}${tickFormatter}` : props
                   }
                 />
-                <Tooltip formatter={tooltipFormatter} />
+                <Tooltip
+                  formatter={(value: number) =>
+                    tooltipFormatter(value, tickFormatter)
+                  }
+                />
                 {information.map((info) => (
                   <Line
                     dataKey={info.dataKey}

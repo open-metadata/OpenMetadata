@@ -16,6 +16,8 @@ import React from 'react';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { ProfilerLatestValueProps } from '../profilerDashboard.interface';
 
+import '../profilerDashboard.less';
+
 const ProfilerLatestValue = ({
   information,
   tickFormatter,
@@ -25,6 +27,7 @@ const ProfilerLatestValue = ({
     <Space data-testid="data-summary-container" direction="vertical" size={16}>
       {information.map((info) => (
         <Statistic
+          className="profiler-latest-value"
           key={info.title}
           title={
             <Typography.Text className="text-grey-body" data-testid="title">
@@ -36,7 +39,7 @@ const ProfilerLatestValue = ({
               ? `${info.latestValue}${tickFormatter ?? ''}`
               : formatNumberWithComma(Number(info.latestValue))
           }
-          valueStyle={{ color: info.color }}
+          valueStyle={{ color: info.color, fontSize: '18px', fontWeight: 700 }}
         />
       ))}
     </Space>

@@ -170,7 +170,7 @@ export const INITIAL_ROW_METRIC_VALUE = {
     {
       title: t('label.row-count'),
       dataKey: 'rowCount',
-      color: '#28a745',
+      color: '#008376',
     },
   ],
   data: [],
@@ -181,17 +181,17 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
-      color: '#28a745',
+      color: '#008376',
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: '#efae2f',
+      color: '#1890FF',
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
-      color: '#cb2431',
+      color: '#7147E8',
     },
   ],
   data: [],
