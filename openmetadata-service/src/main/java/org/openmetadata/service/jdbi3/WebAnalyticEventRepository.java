@@ -9,6 +9,7 @@ import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
+import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -69,6 +70,13 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
             JsonUtils.pojoToJson(webAnalyticEventData));
 
     return Response.ok(webAnalyticEventData).build();
+  }
+
+  @Transaction
+  public void deleteWebAnalyticEventData(WebAnalyticEventType name, Long timestamp) throws IOException {
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .deleteBeforeExclusive(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);
   }
 
   public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs)

@@ -162,3 +162,17 @@ class DataInisghtMixin:
         resp = self.client.get("/analytics/webAnalyticEvent/collect", params)
 
         return [WebAnalyticEventData(**data) for data in resp["data"]]
+
+    def delete_web_analytic_event_before_ts_exclusive(
+        self, event_type: WebAnalyticEventType, tmsp: int
+    ):
+        """Deletes web analytics events before a timestamp
+
+        Args:
+            event_type (WebAnalyticEventData): web analytic event type
+            tmsp (int): timestamp
+        """
+        event_type_value = event_type.value
+        self.client.delete(
+            f"/analytics/webAnalyticEvent/{event_type_value}/{tmsp}/collect"
+        )

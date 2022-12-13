@@ -31,6 +31,17 @@ export const TEST_FORM_DATA = [
   },
 ];
 
+export const TEST_PAGE_FORM_DATA = [
+  {
+    title: 'Create Test Suite',
+    body: 'A Test Suite is a container consisting of multiple but related test cases. With a Test Suite, you can easily deploy a pipeline to execute the Test Cases. Start by selecting an existing test suite or create a new test suite to create a table or column level test for an entity.',
+  },
+  {
+    title: 'Test Suite Created Successfully',
+    body: '{testSuite} has been created successfully. In the next step, you can schedule to ingest metadata at the desired frequency. You can also view the Test Suite to check the details of the new created test case.',
+  },
+];
+
 export const INGESTION_DATA = {
   title: 'Scheduler for Tests',
   body: 'The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.',
@@ -57,6 +68,19 @@ export const addTestSuiteRightPanel = (
       );
       message.body = updatedMessage;
     }
+  }
+
+  return message;
+};
+
+export const getRightPanelForAddTestSuitePage = (
+  step: number,
+  testSuite: string
+) => {
+  let message = TEST_PAGE_FORM_DATA[step - 1];
+  if (step === 2) {
+    message = TEST_PAGE_FORM_DATA[step - 1];
+    message.body = message.body.replace('{testSuite}', testSuite);
   }
 
   return message;

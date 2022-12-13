@@ -186,7 +186,7 @@ export const testServiceCreationAndIngestion = (
     cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
 
     if (isDatabaseService(type)) {
-        cy.get('[data-testid="schema-filter-pattern-checkbox"]').should(
+        cy.get('[data-testid="configure-ingestion-container"]').should(
             'be.visible'
         );
 

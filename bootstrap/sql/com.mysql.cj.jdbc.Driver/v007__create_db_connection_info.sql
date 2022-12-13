@@ -9,7 +9,8 @@ SET json = JSON_INSERT(
 	JSON_ARRAY(
 		JSON_OBJECT('name', 'entityFqn', 'chartDataType', 'STRING'),
 		JSON_OBJECT('name', 'owner', 'chartDataType', 'STRING'),
-		JSON_OBJECT('name', 'entityType', 'chartDataType', 'STRING')
+		JSON_OBJECT('name', 'entityType', 'chartDataType', 'STRING'),
+		JSON_OBJECT('name', 'entityHref', 'chartDataType', 'STRING')
 		)
 )
 WHERE name = 'mostViewedEntities';

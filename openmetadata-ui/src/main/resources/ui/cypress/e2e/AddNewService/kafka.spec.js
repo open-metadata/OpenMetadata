@@ -40,7 +40,7 @@ describe('Kafka Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="topic-filter-pattern-checkbox"]')
-        .should('be.visible')
+      .invoke('show').trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-topic"]')
         .should('be.visible')
