@@ -15,6 +15,7 @@ import { Button, Col, Row, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from '../../axiosAPIs/testAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -29,15 +30,17 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { WEBHOOK_DOCS } from '../../constants/docs.constants';
+import { TEST_SUITE_BREADCRUMB } from '../../constants/TestSuite.constant';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName, pluralize } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 
 const TestSuitePage = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
   const [testSuitePaging, setTestSuitePaging] = useState<Paging>(pagingObject);
 
@@ -62,7 +65,7 @@ const TestSuitePage = () => {
   const columns = useMemo(() => {
     const col: ColumnsType<TestSuite> = [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
@@ -70,7 +73,7 @@ const TestSuitePage = () => {
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         width: 300,
@@ -83,7 +86,7 @@ const TestSuitePage = () => {
         ),
       },
       {
-        title: 'No. of Test',
+        title: t('label.no-of-test'),
         dataIndex: 'noOfTests',
         key: 'noOfTests',
         render: (_, record) => (
@@ -93,7 +96,7 @@ const TestSuitePage = () => {
         ),
       },
       {
-        title: 'Owner',
+        title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
         render: (_, record) => (
@@ -133,7 +136,9 @@ const TestSuitePage = () => {
               size="small"
               type="primary"
               onClick={onAddTestSuite}>
-              Add Test Suite
+              {t('label.add-entity', {
+                entity: t('label.test-suite'),
+              })}
             </Button>
           </p>
         }
@@ -152,17 +157,14 @@ const TestSuitePage = () => {
   return (
     <PageLayoutV1>
       <Space align="center" className="w-full justify-between" size={16}>
-        <TitleBreadcrumb
-          titleLinks={[
-            {
-              name: 'Test Suites',
-              url: '',
-              activeTitle: true,
-            },
-          ]}
-        />
-        <Button type="primary" onClick={onAddTestSuite}>
-          Add Test Suite
+        <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
+        <Button
+          data-testid="add-test-suite"
+          type="primary"
+          onClick={onAddTestSuite}>
+          {t('label.add-entity', {
+            entity: t('label.test-suite'),
+          })}
         </Button>
       </Space>
 
@@ -171,6 +173,7 @@ const TestSuitePage = () => {
           <Table
             bordered
             columns={columns}
+            data-testid="test-suite-table"
             dataSource={testSuites}
             loading={{ spinning: isLoading, indicator: <Loader /> }}
             pagination={false}
@@ -178,7 +181,7 @@ const TestSuitePage = () => {
             size="small"
           />
         </Col>
-        {testSuites.length > PAGE_SIZE_MEDIUM && (
+        {testSuitePaging.total > PAGE_SIZE_MEDIUM && (
           <Col span={24}>
             <NextPrevious
               currentPage={testSuitePage}

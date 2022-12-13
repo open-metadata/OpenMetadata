@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { createTestSuites } from '../../axiosAPIs/testAPI';
@@ -24,8 +25,12 @@ import {
 } from '../../components/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
 import SuccessScreen from '../../components/common/success-screen/SuccessScreen';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
-import { STEPS_FOR_ADD_TEST_SUITE } from '../../constants/TestSuite.constant';
+import {
+  STEPS_FOR_ADD_TEST_SUITE,
+  TEST_SUITE_STEPPER_BREADCRUMB,
+} from '../../constants/TestSuite.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -36,6 +41,7 @@ import AddTestSuiteForm from './AddTestSuiteForm';
 import { TestSuiteFormDataProps } from './testSuite.interface';
 
 const TestSuiteStepper = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
@@ -96,33 +102,38 @@ const TestSuiteStepper = () => {
   return (
     <Row
       className="m-t-md"
-      data-testid="add-test-suite-container"
+      data-testid="test-suite-stepper-container"
       gutter={[16, 16]}>
       <Col offset={4} span={12}>
-        {addIngestion ? (
-          <TestSuiteIngestion
-            testSuite={testSuiteResponse as TestSuite}
-            onCancel={() => setAddIngestion(false)}
-          />
-        ) : (
-          <Row className="tw-form-container" gutter={[16, 16]}>
-            <Col span={24}>
-              <Typography.Title
-                className="heading"
-                data-testid="header"
-                level={5}>
-                Add Test Suite
-              </Typography.Title>
-            </Col>
-            <Col span={24}>
-              <IngestionStepper
-                activeStep={activeServiceStep}
-                steps={STEPS_FOR_ADD_TEST_SUITE}
-              />
-            </Col>
-            <Col span={24}>{RenderSelectedTab()}</Col>
-          </Row>
-        )}
+        <Space direction="vertical" size="middle">
+          <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
+          {addIngestion ? (
+            <TestSuiteIngestion
+              testSuite={testSuiteResponse as TestSuite}
+              onCancel={() => setAddIngestion(false)}
+            />
+          ) : (
+            <Row className="tw-form-container" gutter={[16, 16]}>
+              <Col span={24}>
+                <Typography.Title
+                  className="heading"
+                  data-testid="header"
+                  level={5}>
+                  {t('label.add-entity', {
+                    entity: t('label.test-suite'),
+                  })}
+                </Typography.Title>
+              </Col>
+              <Col span={24}>
+                <IngestionStepper
+                  activeStep={activeServiceStep}
+                  steps={STEPS_FOR_ADD_TEST_SUITE}
+                />
+              </Col>
+              <Col span={24}>{RenderSelectedTab()}</Col>
+            </Row>
+          )}
+        </Space>
       </Col>
       <Col className="m-t-md" data-testid="right-panel" span={6}>
         <RightPanel

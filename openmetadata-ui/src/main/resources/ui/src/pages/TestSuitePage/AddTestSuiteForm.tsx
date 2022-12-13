@@ -13,6 +13,7 @@
 
 import { Button, Form, Input, Space } from 'antd';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getListTestSuites } from '../../axiosAPIs/testAPI';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
@@ -23,6 +24,7 @@ import jsonData from '../../jsons/en';
 import { AddTestSuiteFormProps } from './testSuite.interface';
 
 const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -60,13 +62,14 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
 
   return (
     <Form
+      data-testid="test-suite-form"
       form={form}
       layout="vertical"
       name="selectTestSuite"
       validateMessages={validateMessages}
       onFinish={(data) => onSubmit(data)}>
       <Form.Item
-        label="Name"
+        label={t('label.name')}
         name="name"
         rules={[
           {
@@ -79,7 +82,11 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
           {
             validator: (_, value) => {
               if (testSuites.some((suite) => suite.name === value)) {
-                return Promise.reject('Name already exist!');
+                return Promise.reject(
+                  `${t('label.entity-already-exists', {
+                    entity: t('label.name'),
+                  })}!`
+                );
               }
 
               return Promise.resolve();
@@ -88,11 +95,13 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
         ]}>
         <Input
           data-testid="test-suite-name"
-          placeholder="Enter test suite name"
+          placeholder={t('label.enter-entity', {
+            entity: `${t('label.test-suite')} ${t('label.name')}`,
+          })}
         />
       </Form.Item>
       <Form.Item
-        label="Description"
+        label={t('label.description')}
         name="description"
         rules={[
           {
@@ -108,11 +117,13 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
 
       <Form.Item noStyle>
         <Space className="w-full justify-end" size={16}>
-          <Button onClick={() => history.push(ROUTES.TEST_SUITES)}>
-            Cancel
+          <Button
+            data-testid="cancel-button"
+            onClick={() => history.push(ROUTES.TEST_SUITES)}>
+            {t('label.cancel')}
           </Button>
           <Button data-testid="submit-button" htmlType="submit" type="primary">
-            Submit
+            {t('label.submit')}
           </Button>
         </Space>
       </Form.Item>
