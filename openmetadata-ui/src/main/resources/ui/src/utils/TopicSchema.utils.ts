@@ -72,7 +72,12 @@ export const updateFieldTags = (
     if (field.name === changedFieldName) {
       field.tags = getUpdatedFieldTags(field, newFieldTags);
     } else {
-      updateFieldTags(field?.children, changedFieldName, newFieldTags);
+      const hasChildren = !isEmpty(field.children);
+
+      // stop condition
+      if (hasChildren) {
+        updateFieldTags(field.children, changedFieldName, newFieldTags);
+      }
     }
   });
 };
