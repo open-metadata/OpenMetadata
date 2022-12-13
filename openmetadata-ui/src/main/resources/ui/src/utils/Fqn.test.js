@@ -59,8 +59,8 @@ describe('Test FQN', () => {
     expect('"a.b"').toStrictEqual(Fqn.quoteName('"a.b"')); // Leave existing valid quotes
     expect('a').toStrictEqual(Fqn.quoteName('"a"')); // Remove quotes when not needed
 
-    expect(() => Fqn.quoteName('"a')).toThrow('Invalid name "a'); // Error when ending quote is missing
-    expect(() => Fqn.quoteName('a"')).toThrow('Invalid name a"'); // Error when beginning quote is missing
-    expect(() => Fqn.quoteName('a"b')).toThrow('Invalid name a"b'); // Error when invalid quote is present in the middle of the string
+    expect(() => Fqn.quoteName('"a')).toThrow('label.invalid-name "a'); // Error when ending quote is missing
+    expect(() => Fqn.quoteName('a"')).toThrow('label.invalid-name a"'); // Error when beginning quote is missing
+    expect(() => Fqn.quoteName('a"b')).toThrow('label.invalid-name a"b'); // Error when invalid quote is present in the middle of the string
   });
 });
