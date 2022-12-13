@@ -12,6 +12,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -27,7 +28,7 @@ public class OpenMetadataConnectionBuilder {
   OpenMetadataConnection.AuthProvider authProvider;
   String bot;
   Object securityConfig;
-  private final OpenMetadataConnection.VerifySSL verifySSL;
+  private final VerifySSL verifySSL;
   private final String openMetadataURL;
   private final String clusterName;
   private final SecretsManagerProvider secretsManagerProvider;
@@ -55,11 +56,10 @@ public class OpenMetadataConnectionBuilder {
     openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
-    verifySSL = OpenMetadataConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
+    verifySSL = VerifySSL.fromValue(airflowConfiguration.getVerifySSL());
     airflowSSLConfig =
         getAirflowSSLConfig(
-            OpenMetadataConnection.VerifySSL.fromValue(airflowConfiguration.getVerifySSL()),
-            airflowConfiguration.getSslConfig());
+            VerifySSL.fromValue(airflowConfiguration.getVerifySSL()), airflowConfiguration.getSslConfig());
   }
 
   private OpenMetadataConnection.AuthProvider extractAuthProvider(User botUser) {
@@ -132,7 +132,7 @@ public class OpenMetadataConnectionBuilder {
     }
   }
 
-  protected Object getAirflowSSLConfig(OpenMetadataConnection.VerifySSL verifySSL, SSLConfig sslConfig) {
+  protected Object getAirflowSSLConfig(VerifySSL verifySSL, SSLConfig sslConfig) {
     switch (verifySSL) {
       case NO_SSL:
       case IGNORE:
