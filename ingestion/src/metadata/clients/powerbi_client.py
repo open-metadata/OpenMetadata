@@ -12,6 +12,7 @@
 REST Auth & Client for PowerBi
 """
 import json
+import math
 import traceback
 from time import sleep
 from typing import List, Optional, Tuple
@@ -91,18 +92,30 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_all_workspaces(self) -> Optional[dict]:
+    def fetch_all_workspaces(self) -> Optional[List[dict]]:
         """Method to fetch all powerbi workspace details
         Returns:
             dict
         """
         try:
-            params_data = {"$top": "100"}
-            return self.client.get("/myorg/admin/groups", data=params_data)
+            entities_per_page = 1000
+            params_data = {"$top": "1"}
+            response = self.client.get("/myorg/admin/groups", data=params_data)
+            count = response.get("@odata.count")
+            indexes = math.ceil(count / entities_per_page)
+
+            workspaces = []
+            for index in range(indexes):
+                params_data = {
+                    "$top": str(entities_per_page),
+                    "$skip": str(index * entities_per_page),
+                }
+                response = self.client.get("/myorg/admin/groups", data=params_data)
+                workspaces.extend(response.get("value"))
+            return workspaces
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspaces: {exc}")
-
         return None
 
     def initiate_workspace_scan(self, workspace_ids: List[str]) -> Optional[dict]:
