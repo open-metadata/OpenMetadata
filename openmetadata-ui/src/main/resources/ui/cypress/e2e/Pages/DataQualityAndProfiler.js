@@ -294,10 +294,7 @@ describe('Data Quality and Profiler should work properly', () => {
       )
       .should('be.visible');
     cy.get('[data-testid="view-service-button"]').scrollIntoView().click();
-
-    cy.get('[data-row-key="id_columnValueLengthsToBeBetween"]').should(
-      'be.visible'
-    );
+    cy.get('.ant-table-row').should('contain', "id_columnValueLengthsToBeBetween");
   });
 
   it('Edit column test case should work properly', () => {
