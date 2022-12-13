@@ -469,12 +469,7 @@
     "clean-up-policies": "clean-up policies",
     "maximum-size": "maximum size",
     "search-entity": "Search {{entity}}",
-    "more": "More",
-    "partitions": "Partitions",
-    "replication-factor": "replication factor",
-    "retention-size": "retention-size",
-    "clean-up-policies": "clean-up policies",
-    "maximum-size": "maximum size"
+    "more": "More"
   },
   "message": {
     "service-email-required": "Service account Email is required",
