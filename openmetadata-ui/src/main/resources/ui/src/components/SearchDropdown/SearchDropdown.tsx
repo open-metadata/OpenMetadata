@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseCircleFilled } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -27,64 +26,63 @@ import {
 import classNames from 'classnames';
 import React, { ChangeEvent, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
 import {
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import Loader from '../Loader/Loader';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
+  isSuggestionsLoading,
   label,
   options,
   searchKey,
   selectedKeys,
-  showClearAllBtn,
-  showCloseIcon,
   onChange,
-  onClearSelection,
-  onRemove,
   onSearch,
 }) => {
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
+  const [selectedOptions, setSelectedOptions] =
+    useState<string[]>(selectedKeys);
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Separating selected options to show on top
-    const selectedOptions = getSearchDropdownLabels(selectedKeys, true) || [];
+    const selectedOptionKeys =
+      getSearchDropdownLabels(selectedOptions, true) || [];
 
     // Filtering out unselected options
     const unselectedOptions = options.filter(
-      (option) => !selectedKeys.includes(option)
+      (option) => !selectedOptions.includes(option)
     );
 
     // Labels for unselected options
     const otherOptions =
       getSearchDropdownLabels(unselectedOptions, false) || [];
 
-    return [...selectedOptions, ...otherOptions];
-  }, [options, selectedKeys]);
+    return [...selectedOptionKeys, ...otherOptions];
+  }, [options, selectedOptions]);
 
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
-    const isSelected = selectedKeys.includes(currentKey);
+    const isSelected = selectedOptions.includes(currentKey);
 
     const updatedValues = isSelected
-      ? selectedKeys.filter((v) => v !== currentKey)
-      : [...selectedKeys, currentKey];
+      ? selectedOptions.filter((v) => v !== currentKey)
+      : [...selectedOptions, currentKey];
 
-    // call on change with updated value
-    onChange(updatedValues, searchKey);
+    setSelectedOptions(updatedValues);
   };
 
   // handle clear all
   const handleClear = () => {
-    onSearch('', searchKey);
-    onClearSelection(searchKey);
+    setSelectedOptions([]);
   };
 
   // handle search
@@ -93,6 +91,23 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
     onSearch(value, searchKey);
   };
+
+  // Handle dropdown close
+  const handleDropdownClose = () => {
+    setIsDropDownOpen(false);
+  };
+
+  // Handle update button click
+  const handleUpdate = () => {
+    // call on change with updated value
+    onChange(selectedOptions, searchKey);
+    handleDropdownClose();
+  };
+
+  const showClearAllBtn = useMemo(
+    () => selectedOptions.length > 1,
+    [selectedOptions]
+  );
 
   return (
     <Dropdown
@@ -128,7 +143,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             <Divider
               className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
             />
-            {options.length > 0 ? (
+            {isSuggestionsLoading ? (
+              <Row align="middle" className="p-y-sm" justify="center">
+                <Loader size="small" />
+              </Row>
+            ) : options.length > 0 || selectedOptions.length > 0 ? (
               menuNode
             ) : (
               <Row className="m-y-sm" justify="center">
@@ -137,6 +156,22 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 </Typography.Text>
               </Row>
             )}
+            <Space className="p-sm p-t-xss">
+              <Button
+                className="update-btn"
+                data-testid="update-btn"
+                size="small"
+                onClick={handleUpdate}>
+                {t('label.update')}
+              </Button>
+              <Button
+                data-testid="close-btn"
+                size="small"
+                type="link"
+                onClick={handleDropdownClose}>
+                {t('label.close')}
+              </Button>
+            </Space>
           </Space>
         </Card>
       )}
@@ -148,27 +183,20 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         visible && onSearch('', searchKey);
         setIsDropDownOpen(visible);
       }}>
-      <Button className="search-dropdown-trigger-btn">
+      <Button className="quick-filter-dropdown-trigger-btn">
         <Space data-testid="search-dropdown" size={4}>
-          <Typography.Text>{label}</Typography.Text>
-          {selectedKeys.length > 0 && (
-            <span>
-              {' : '}
-              <Typography.Text className="text-primary font-medium">
-                {getSelectedOptionLabelString(selectedKeys)}
-              </Typography.Text>
-            </span>
-          )}
-          <DropDownIcon className="flex self-center" />
-          {showCloseIcon && (
-            <CloseCircleFilled
-              className="remove-field-icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove(searchKey);
-              }}
-            />
-          )}
+          <Space size={0}>
+            <Typography.Text>{label}</Typography.Text>
+            {selectedKeys.length > 0 && (
+              <span>
+                {': '}
+                <Typography.Text className="text-primary font-medium">
+                  {getSelectedOptionLabelString(selectedKeys)}
+                </Typography.Text>
+              </span>
+            )}
+          </Space>
+          <DropDown className="flex self-center" />
         </Space>
       </Button>
     </Dropdown>

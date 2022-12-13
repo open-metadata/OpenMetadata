@@ -17,12 +17,8 @@ import { ExploreQuickFilterField } from './explore.interface';
 export interface ExploreQuickFiltersProps {
   index: SearchIndex;
   fields: Array<ExploreQuickFilterField>;
-  onFieldRemove: (value: string) => void;
-  onClear: () => void;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-  onFieldSelect: (value: string, label: string) => void;
   onAdvanceSearch: () => void;
-  onClearSelection: (key: string) => void;
 }
 
 export interface FilterFieldsMenuItem {

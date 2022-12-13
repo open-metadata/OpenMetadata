@@ -44,6 +44,7 @@ import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Include } from '../../generated/type/include';
+import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import {
   formatNumberWithComma,
   formTwoDigitNmber,
@@ -256,31 +257,6 @@ const Explore: React.FC<ExploreProps> = ({
     );
   };
 
-  const handleClearSelection = (key: string) => {
-    setSelectedQuickFilters((prev) => {
-      const data = prev.map((filter) =>
-        filter.key === key ? { ...filter, value: undefined } : filter
-      );
-      handleAdvanceSearchFilter(data);
-
-      return data;
-    });
-  };
-
-  const handleAdvanceFieldClear = () => {
-    setSelectedQuickFilters([]);
-    handleAdvanceSearchFilter([]);
-  };
-
-  const handleAdvanceFieldRemove = (value: string) => {
-    setSelectedQuickFilters((prev) => {
-      const data = prev.filter((p) => p.key !== value);
-      handleAdvanceSearchFilter(data);
-
-      return data;
-    });
-  };
-
   const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
       const data = pre.map((preField) => {
@@ -297,16 +273,6 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const handleAdvancedFieldSelect = (value: string, label: string) => {
-    const flag = selectedQuickFilters.some((field) => field.key === value);
-    if (!flag) {
-      setSelectedQuickFilters((pre) => [
-        ...pre,
-        { key: value, label, value: undefined },
-      ]);
-    }
-  };
-
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -319,6 +285,14 @@ const Explore: React.FC<ExploreProps> = ({
       document.removeEventListener('keydown', escapeKeyHandler);
     };
   }, []);
+
+  useEffect(() => {
+    const dropdownItems = getDropDownItems(searchIndex);
+
+    setSelectedQuickFilters(
+      dropdownItems.map((item) => ({ ...item, value: undefined }))
+    );
+  }, [searchIndex]);
 
   return (
     <PageLayoutV1
@@ -407,10 +381,6 @@ const Explore: React.FC<ExploreProps> = ({
               fields={selectedQuickFilters}
               index={searchIndex}
               onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
-              onClear={handleAdvanceFieldClear}
-              onClearSelection={handleClearSelection}
-              onFieldRemove={handleAdvanceFieldRemove}
-              onFieldSelect={handleAdvancedFieldSelect}
               onFieldValueSelect={handleAdvanceFieldValueSelect}
             />
           </Col>

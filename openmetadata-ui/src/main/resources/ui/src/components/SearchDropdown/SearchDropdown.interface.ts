@@ -13,13 +13,10 @@
 
 export interface SearchDropdownProps {
   label: string;
+  isSuggestionsLoading?: boolean;
   options: string[];
   searchKey: string;
   selectedKeys: string[];
-  showClearAllBtn?: boolean;
-  showCloseIcon: boolean;
   onChange: (values: string[], searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
-  onRemove: (searchKey: string) => void;
-  onClearSelection: (key: string) => void;
 }

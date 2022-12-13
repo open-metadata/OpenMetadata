@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Divider, Dropdown, Menu, Space, Typography } from 'antd';
+import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { FC, useState } from 'react';
 import {
   getAdvancedFieldDefaultOptions,
   getAdvancedFieldOptions,
@@ -23,149 +22,90 @@ import {
   getUserSuggestions,
 } from '../../axiosAPIs/miscAPI';
 import { MISC_FIELDS } from '../../constants/AdvancedSearch.constants';
-import {
-  getAdvancedField,
-  getDropDownItems,
-  getFieldsWithDefaultFlags,
-  getShouldShowCloseIcon,
-} from '../../utils/AdvancedSearchUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import { getAdvancedField } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
-import {
-  ExploreQuickFiltersProps,
-  FilterFieldsMenuItem,
-} from './ExploreQuickFilters.interface';
+import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
-  onFieldRemove,
-  onClear,
   onAdvanceSearch,
   index,
-  onClearSelection,
   onFieldValueSelect,
-  onFieldSelect,
 }) => {
-  const { t } = useTranslation();
   const [options, setOptions] = useState<string[]>();
-  const handleMenuItemClick = useCallback((menuInfo, label) => {
-    onFieldSelect(menuInfo.key, label);
-  }, []);
+  const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
-  const menuItems: FilterFieldsMenuItem[] = useMemo(() => {
-    const dropdownItems = getDropDownItems(index);
-
-    return getFieldsWithDefaultFlags(dropdownItems);
-  }, [index]);
-
-  const menu = useMemo(() => {
-    return (
-      <Menu
-        items={menuItems.map((option) => ({
-          ...option,
-          disabled: Boolean(fields.find((f) => f.key === option.key)),
-          onClick: (menuInfo) => handleMenuItemClick(menuInfo, option.label),
-          'data-testid': 'dropdown-menu-item',
-        }))}
-      />
-    );
-  }, [onFieldSelect, fields, menuItems]);
-
-  useEffect(() => {
-    onClear();
-    handleMenuItemClick(menuItems[0], menuItems[0].label);
-    handleMenuItemClick(menuItems[1], menuItems[1].label);
-  }, [menuItems]);
-
-  const fetchOptions = (query: string, fieldKey: string) => {
+  const fetchOptions = async (query: string, fieldKey: string) => {
     const advancedField = getAdvancedField(fieldKey);
     if (!MISC_FIELDS.includes(fieldKey)) {
-      getAdvancedFieldOptions(query, index, advancedField)
-        .then((res) => {
-          const suggestOptions =
-            res.data.suggest['metadata-suggest'][0].options ?? [];
-          const uniqueOptions = [
-            ...new Set(suggestOptions.map((op) => op.text)),
-          ];
-          setOptions(uniqueOptions);
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
+      const res = await getAdvancedFieldOptions(query, index, advancedField);
+
+      const suggestOptions =
+        res.data.suggest['metadata-suggest'][0].options ?? [];
+      const uniqueOptions = [...new Set(suggestOptions.map((op) => op.text))];
+      setOptions(uniqueOptions);
     } else {
       if (fieldKey === 'tags.tagFQN') {
-        getTagSuggestions(query)
-          .then((res) => {
-            const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              ...new Set(
-                suggestOptions
-                  .filter((op) => !isUndefined(op._source.fullyQualifiedName))
-                  .map((op) => op._source.fullyQualifiedName as string)
-              ),
-            ];
-            setOptions(uniqueOptions);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        const res = await getTagSuggestions(query);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+        const uniqueOptions = [
+          ...new Set(
+            suggestOptions
+              .filter((op) => !isUndefined(op._source.fullyQualifiedName))
+              .map((op) => op._source.fullyQualifiedName as string)
+          ),
+        ];
+        setOptions(uniqueOptions);
       } else {
-        getUserSuggestions(query)
-          .then((res) => {
-            const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              ...new Set(suggestOptions.map((op) => op._source.name)),
-            ];
-            setOptions(uniqueOptions);
-          })
-          .catch((err: AxiosError) => showErrorToast(err));
+        const res = await getUserSuggestions(query);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+        const uniqueOptions = [
+          ...new Set(suggestOptions.map((op) => op._source.name)),
+        ];
+        setOptions(uniqueOptions);
       }
     }
   };
 
   const getFilterOptions = async (value: string, key: string) => {
-    if (value) {
-      fetchOptions(value, key);
-    } else {
-      const res = await getAdvancedFieldDefaultOptions(index, key);
-      const buckets = res.data.aggregations[`sterms#${key}`].buckets;
-      setOptions(buckets.map((option) => option.key));
+    setIsOptionsLoading(true);
+    try {
+      if (value) {
+        await fetchOptions(value, key);
+      } else {
+        const res = await getAdvancedFieldDefaultOptions(index, key);
+        const buckets = res.data.aggregations[`sterms#${key}`].buckets;
+        setOptions(buckets.map((option) => option.key));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsOptionsLoading(false);
     }
   };
 
   return (
-    <Space wrap size={[16, 16]}>
-      {fields.map((field) => {
-        const showClearAllBtn = field.value && field.value.length > 1;
-
-        return (
-          <SearchDropdown
-            key={field.key}
-            label={field.label}
-            options={options || []}
-            searchKey={field.key}
-            selectedKeys={field.value || []}
-            showClearAllBtn={showClearAllBtn}
-            showCloseIcon={getShouldShowCloseIcon(menuItems, field.key)}
-            onChange={(updatedValues) => {
-              onFieldValueSelect({ ...field, value: updatedValues });
-            }}
-            onClearSelection={onClearSelection}
-            onRemove={onFieldRemove}
-            onSearch={getFilterOptions}
-          />
-        );
-      })}
-      <Dropdown
-        className="cursor-pointer"
-        data-testid="quick-filter-dropdown"
-        overlay={menu}
-        trigger={['click']}>
-        <Space size={4}>
-          <Typography.Text>{t('label.more')}</Typography.Text>
-          <DropDownIcon className="flex self-center" />
-        </Space>
-      </Dropdown>
-      <Divider type="vertical" />
+    <Space wrap className="explore-quick-filters-container" size={[16, 16]}>
+      {fields.map((field) => (
+        <SearchDropdown
+          isSuggestionsLoading={isOptionsLoading}
+          key={field.key}
+          label={field.label}
+          options={options || []}
+          searchKey={field.key}
+          selectedKeys={field.value || []}
+          onChange={(updatedValues) => {
+            onFieldValueSelect({ ...field, value: updatedValues });
+          }}
+          onSearch={getFilterOptions}
+        />
+      ))}
+      <Divider className="m-0" type="vertical" />
       <span
         className="tw-text-primary tw-self-center tw-cursor-pointer"
         data-testid="advance-search-button"
