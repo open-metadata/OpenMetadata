@@ -467,7 +467,8 @@
     "replication-factor": "replication factor",
     "retention-size": "retention-size",
     "clean-up-policies": "clean-up policies",
-    "maximum-size": "maximum size"
+    "maximum-size": "maximum size",
+    "mlmodel": "Mlmodel"
   },
   "message": {
     "service-email-required": "Service account Email is required",
