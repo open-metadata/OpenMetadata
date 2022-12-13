@@ -16,6 +16,7 @@ Expand sqlalchemy types to map them to OpenMetadata DataType
 
 from typing import Optional
 
+import chardet
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
 
 
@@ -49,4 +50,11 @@ class ByteaToHex(TypeDecorator):
         if not value:
             return None
         self.validate(value)
+
+        bytes_value = bytes(value)
+        detected_encoding = chardet.detect(bytes_value).get("encoding")
+        if detected_encoding:
+            value = bytes_value.decode(encoding=detected_encoding)
+            return value
+
         return value.hex()
