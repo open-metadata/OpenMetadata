@@ -23,9 +23,9 @@ export type CellRendered<T, K extends keyof T> = (
 
 export interface TopicSchemaFieldsProps
   extends HTMLAttributes<TableProps<Field>> {
-  schemaFields: Topic['schemaFields'];
+  messageSchema: Topic['messageSchema'];
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
-  onUpdate: (updatedSchemaFields: Topic['schemaFields']) => Promise<void>;
+  onUpdate: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
 }

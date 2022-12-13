@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -78,8 +79,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   maximumMessageSize,
   replicationFactor,
   retentionSize,
-  schemaText,
-  schemaType,
   topicTags,
   activeTab,
   entityName,
@@ -451,11 +450,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const handleSchemaFieldsUpdate = async (
-    updatedSchemaFields: Topic['schemaFields']
+    updatedMessageSchema: Topic['messageSchema']
   ) => {
     await settingsUpdateHandler({
       ...topicDetails,
-      schemaFields: updatedSchemaFields,
+      messageSchema: updatedMessageSchema,
     });
   };
 
@@ -568,9 +567,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       />
                     </div>
                   </div>
-                  {schemaText ? (
+                  {!isEmpty(topicDetails.messageSchema?.schemaFields) ? (
                     <Fragment>
-                      {getInfoBadge([{ key: 'Schema', value: schemaType }])}
+                      {getInfoBadge([
+                        {
+                          key: 'Schema',
+                          value: topicDetails.messageSchema?.schemaType ?? '',
+                        },
+                      ])}
                       <TopicSchemaFields
                         className="mt-4"
                         hasDescriptionEditAccess={
@@ -581,7 +585,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                           topicPermissions.EditAll || topicPermissions.EditTags
                         }
                         isReadOnly={Boolean(deleted)}
-                        schemaFields={topicDetails.schemaFields}
+                        messageSchema={topicDetails.messageSchema}
                         onUpdate={handleSchemaFieldsUpdate}
                       />
                     </Fragment>

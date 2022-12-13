@@ -32,7 +32,7 @@ import {
 } from './TopicSchemaFields.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
-  schemaFields,
+  messageSchema,
   className,
   hasDescriptionEditAccess,
   isReadOnly,
@@ -44,13 +44,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
     if (!isUndefined(editFieldDescription)) {
-      const fields = cloneDeep(schemaFields);
+      const schema = cloneDeep(messageSchema);
       updateFieldDescription(
-        fields,
+        schema?.schemaFields,
         editFieldDescription.name,
         updatedDescription
       );
-      await onUpdate(fields);
+      await onUpdate(schema);
       setEditFieldDescription(undefined);
     } else {
       setEditFieldDescription(undefined);
@@ -146,7 +146,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         ),
       },
     ],
-    [schemaFields]
+    [messageSchema]
   );
 
   const expandableConfig: ExpandableConfig<Field> = {
@@ -170,7 +170,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         className={className}
         columns={columns}
         data-testid="topic-schema-fields-table"
-        dataSource={schemaFields}
+        dataSource={messageSchema?.schemaFields}
         expandable={expandableConfig}
         pagination={false}
         size="small"
