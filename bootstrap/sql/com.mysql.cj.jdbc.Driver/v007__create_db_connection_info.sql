@@ -39,3 +39,6 @@ CREATE TABLE IF NOT EXISTS alert_action_def (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+-- Remove DBT source config
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json ,'$.sourceConfig.config.dbtConfigSource');
