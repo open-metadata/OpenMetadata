@@ -26,10 +26,7 @@ import { updateFieldDescription } from '../../../utils/TopicSchemaFields.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsViewer from '../../tags-viewer/tags-viewer';
-import {
-  CellRendered,
-  TopicSchemaFieldsProps,
-} from './TopicSchemaFields.interface';
+import { CellRendered, TopicSchemaFieldsProps } from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   messageSchema,

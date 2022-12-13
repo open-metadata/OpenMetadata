@@ -166,10 +166,10 @@ jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 
-jest.mock('./TopicSchemaFields/TopicSchemaFields', () => {
+jest.mock('./TopicSchema/TopicSchema', () => {
   return jest
     .fn()
-    .mockReturnValue(<div data-testid="schema-fields">TopicSchemaFields</div>);
+    .mockReturnValue(<div data-testid="schema-fields">TopicSchema</div>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({
