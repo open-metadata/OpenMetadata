@@ -41,7 +41,7 @@ class HexByteString(TypeDecorator):
         """
         Make sure the data is of correct type
         """
-        if not isinstance(value, bytes):
+        if not isinstance(value, (bytes, bytearray)):
             raise TypeError("HexByteString columns support only bytes values.")
 
     def process_result_value(self, value: str, dialect) -> Optional[str]:
@@ -57,15 +57,15 @@ class HexByteString(TypeDecorator):
             return None
         self.validate(value)
 
-        try:
-            bytes_value = bytes(value)
-            detected_encoding = chardet.detect(bytes_value).get("encoding")
-            if detected_encoding:
+        bytes_value = bytes(value)
+        detected_encoding = chardet.detect(bytes_value).get("encoding")
+        if detected_encoding:
+            try:
                 value = bytes_value.decode(encoding=detected_encoding)
                 return value
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(exc)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(exc)
 
         return value.hex()
 
