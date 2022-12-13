@@ -13,7 +13,6 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import '../../test/unit/mocks/documentRange.mock';
 import SchemaEditor from './SchemaEditor';
 
 describe('SchemaEditor component test', () => {
