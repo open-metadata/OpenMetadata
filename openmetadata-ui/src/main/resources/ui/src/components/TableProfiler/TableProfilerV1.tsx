@@ -79,7 +79,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
   const [activeTab, setActiveTab] = useState<ProfilerDashboardTab>(
-    ProfilerDashboardTab.SUMMARY
+    ProfilerDashboardTab.PROFILER
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
@@ -165,13 +165,13 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
 
   const tabOptions = [
     {
-      label: t('label.summary'),
-      key: ProfilerDashboardTab.SUMMARY,
+      label: t('label.table-profile'),
+      key: ProfilerDashboardTab.PROFILER,
       disabled: !viewProfiler,
     },
     {
-      label: t('label.table-profiler'),
-      key: ProfilerDashboardTab.PROFILER,
+      label: t('label.column-profile'),
+      key: ProfilerDashboardTab.SUMMARY,
       disabled: !viewProfiler,
     },
     {
@@ -303,7 +303,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
           data-testid="profiler-tab-left-panel"
           items={tabOptions}
           mode="inline"
-          selectedKeys={[activeTab ?? ProfilerDashboardTab.SUMMARY]}
+          selectedKeys={[activeTab ?? ProfilerDashboardTab.PROFILER]}
           onClick={handleTabChange}
         />
       </Col>
@@ -378,32 +378,31 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                 </Button>
               </Link>
             </Tooltip>
-            {isSummary && (
-              <Tooltip
-                title={
-                  editTest
-                    ? t('label.settings')
-                    : t('message.no-permission-for-action')
-                }>
-                <Button
-                  ghost
-                  data-testid="profiler-setting-btn"
-                  disabled={!editTest}
-                  icon={
-                    <SVGIcons
-                      alt="setting"
-                      className="mr-2"
-                      icon={
-                        editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY
-                      }
-                    />
-                  }
-                  type="primary"
-                  onClick={() => handleSettingModal(true)}>
-                  {t('label.settings')}
-                </Button>
-              </Tooltip>
-            )}
+
+            <Tooltip
+              title={
+                editTest
+                  ? t('label.settings')
+                  : t('message.no-permission-for-action')
+              }>
+              <Button
+                ghost
+                data-testid="profiler-setting-btn"
+                disabled={!editTest}
+                icon={
+                  <SVGIcons
+                    alt="setting"
+                    className="mr-2"
+                    icon={
+                      editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY
+                    }
+                  />
+                }
+                type="primary"
+                onClick={() => handleSettingModal(true)}>
+                {t('label.settings')}
+              </Button>
+            </Tooltip>
           </Space>
 
           {isUndefined(profile) && (

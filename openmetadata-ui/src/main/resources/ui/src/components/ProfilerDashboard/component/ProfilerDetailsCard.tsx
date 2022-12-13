@@ -14,6 +14,7 @@
 import { Card, Col, Row } from 'antd';
 import React from 'react';
 import {
+  CartesianGrid,
   Legend,
   Line,
   LineChart,
@@ -22,7 +23,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import {
+  axisTickFormatter,
   renderColorfulLegendText,
   tooltipFormatter,
 } from '../../../utils/ChartUtils';
@@ -54,6 +57,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 className="tw-w-full"
                 data={data}
                 margin={{ left: 16 }}>
+                <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                 <XAxis
                   dataKey="name"
                   padding={{ left: 16, right: 16 }}
@@ -65,7 +69,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   padding={{ top: 16, bottom: 16 }}
                   tick={{ fontSize: 12 }}
                   tickFormatter={(props) =>
-                    tickFormatter ? `${props}${tickFormatter}` : props
+                    axisTickFormatter(props, tickFormatter)
                   }
                 />
                 <Tooltip

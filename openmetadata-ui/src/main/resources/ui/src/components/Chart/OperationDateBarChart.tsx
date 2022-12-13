@@ -15,13 +15,15 @@ import { Col, Row } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bar,
-  BarChart,
+  CartesianGrid,
+  ComposedChart,
   Legend,
   ResponsiveContainer,
+  Scatter,
   Tooltip,
   XAxis,
 } from 'recharts';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { renderColorfulLegendText } from '../../utils/ChartUtils';
 import { formatNumberWithComma } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -58,25 +60,24 @@ const OperationDateBarChart = ({
 
   return (
     <ResponsiveContainer debounce={200} id={`${name}_graph`} minHeight={300}>
-      <BarChart className="tw-w-full" data={data} margin={{ left: 16 }}>
+      <ComposedChart className="w-full" data={data} margin={{ left: 16 }}>
         <XAxis
           dataKey="name"
           padding={{ left: 16, right: 16 }}
           tick={{ fontSize: 12 }}
         />
-
+        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <Tooltip formatter={tooltipFormatter} />
         {information.map((info) => (
-          <Bar
+          <Scatter
             dataKey={info.dataKey}
             fill={info.color}
             key={info.dataKey}
             name={info.title}
-            stackId={info.stackId}
           />
         ))}
         <Legend formatter={renderColorfulLegendText} />
-      </BarChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 };

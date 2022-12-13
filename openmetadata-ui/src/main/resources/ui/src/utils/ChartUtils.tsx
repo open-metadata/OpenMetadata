@@ -34,3 +34,9 @@ export const renderColorfulLegendText: LegendProps['formatter'] = (
   value,
   entry
 ) => <span style={{ color: entry?.color }}>{value}</span>;
+
+export const axisTickFormatter = (value: number, tickFormatter?: string) => {
+  return tickFormatter
+    ? `${value}${tickFormatter}`
+    : formatNumberWithComma(value);
+};

@@ -69,7 +69,7 @@ export const calculateSystemMetrics = (
       name: timestamp,
       timestamp: Number(data.timestamp),
       data: data.rowsAffected || 0,
-      [data.operation || 'value']: 10,
+      [data.operation || 'value']: 5,
     });
   });
   const operationMetricsInfo = currentMetrics.information.map((item) => {

@@ -475,7 +475,8 @@
     "here-lowercase": "here",
     "insert": "Insert",
     "update": "Update",
-    "table-profiler": "Table Profiler"
+    "table-profile": "Table Profile",
+    "column-profile": "Column Profile"
   },
   "message": {
     "service-email-required": "Service account Email is required",

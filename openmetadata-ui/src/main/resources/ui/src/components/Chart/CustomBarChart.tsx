@@ -17,13 +17,16 @@ import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
+  axisTickFormatter,
   renderColorfulLegendText,
   tooltipFormatter,
 } from '../../utils/ChartUtils';
@@ -57,6 +60,7 @@ const CustomBarChart = ({
   return (
     <ResponsiveContainer debounce={200} id={`${name}_graph`} minHeight={300}>
       <BarChart className="tw-w-full" data={data} margin={{ left: 16 }}>
+        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <XAxis
           dataKey="name"
           padding={{ left: 16, right: 16 }}
@@ -67,9 +71,7 @@ const CustomBarChart = ({
           allowDataOverflow
           padding={{ top: 16, bottom: 16 }}
           tick={{ fontSize: 12 }}
-          tickFormatter={(props) =>
-            tickFormatter ? `${props}${tickFormatter}` : props
-          }
+          tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
         />
         <Tooltip
           formatter={(value: number | string) =>
