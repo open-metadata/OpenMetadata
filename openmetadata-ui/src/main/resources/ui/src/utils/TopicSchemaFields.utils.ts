@@ -24,8 +24,11 @@ export const updateFieldDescription = (
       field.description = description;
     } else {
       const hasChildren = !isEmpty(field.children);
-      hasChildren &&
+
+      // stop condition
+      if (hasChildren) {
         updateFieldDescription(field.children, changedFieldName, description);
+      }
     }
   });
 };
