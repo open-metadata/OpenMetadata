@@ -28,6 +28,15 @@ describe('AdvancedSearchUtils tests', () => {
     expect(resultMenuItems).toHaveLength(4);
   });
 
+  it('Function getSearchDropdownLabels should return an empty array if passed 1st argument as other than array', () => {
+    const resultMenuItems = getSearchDropdownLabels(
+      '' as unknown as string[],
+      true
+    );
+
+    expect(resultMenuItems).toHaveLength(0);
+  });
+
   it('Function getSelectedOptionLabelString should return all options if the length of resultant string is less than 15', () => {
     const resultOptionsString = getSelectedOptionLabelString(
       mockShortOptionsArray
@@ -41,5 +50,13 @@ describe('AdvancedSearchUtils tests', () => {
       getSelectedOptionLabelString(mockLongOptionsArray);
 
     expect(resultOptionsString).toEqual('string1, st...');
+  });
+
+  it('Function getSelectedOptionLabelString should return an empty string when passed anything else than string array as an argument', () => {
+    const resultOptionsString = getSelectedOptionLabelString(
+      'invalidInput' as unknown as string[]
+    );
+
+    expect(resultOptionsString).toEqual('');
   });
 });

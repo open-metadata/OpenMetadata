@@ -14,7 +14,7 @@
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import i18next from 'i18next';
-import { isUndefined } from 'lodash';
+import { isArray, isUndefined } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
 import {
@@ -140,27 +140,36 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
 export const getSearchDropdownLabels = (
   optionsArray: string[],
   checked: boolean
-): MenuProps['items'] =>
-  optionsArray.map((option) => ({
-    key: option,
-    label: (
-      <Space className="m-x-sm" data-testid={option} size={6}>
-        <Checkbox checked={checked} data-testid={`${option}-checkbox`} />
-        <Typography.Text
-          ellipsis
-          className="dropdown-option-label"
-          title={option}>
-          {option}
-        </Typography.Text>
-      </Space>
-    ),
-  }));
+): MenuProps['items'] => {
+  if (isArray(optionsArray)) {
+    return optionsArray.map((option) => ({
+      key: option,
+      label: (
+        <Space className="m-x-sm" data-testid={option} size={6}>
+          <Checkbox checked={checked} data-testid={`${option}-checkbox`} />
+          <Typography.Text
+            ellipsis
+            className="dropdown-option-label"
+            title={option}>
+            {option}
+          </Typography.Text>
+        </Space>
+      ),
+    }));
+  } else {
+    return [];
+  }
+};
 
 export const getSelectedOptionLabelString = (selectedOptions: string[]) => {
-  const stringifiedOptions = selectedOptions.join(', ');
-  if (stringifiedOptions.length < 15) {
-    return stringifiedOptions;
+  if (isArray(selectedOptions)) {
+    const stringifiedOptions = selectedOptions.join(', ');
+    if (stringifiedOptions.length < 15) {
+      return stringifiedOptions;
+    } else {
+      return `${stringifiedOptions.slice(0, 11)}...`;
+    }
   } else {
-    return `${stringifiedOptions.slice(0, 11)}...`;
+    return '';
   }
 };
