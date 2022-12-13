@@ -21,7 +21,6 @@ import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
-import javax.ws.rs.Encoded;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -461,8 +460,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public Response addTestCaseResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Encoded @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn,
+      @Parameter(description = "fqn of the testCase", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Valid TestCaseResult testCaseResult)
       throws IOException {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
@@ -506,11 +504,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-    ListFilter filter =
-        new ListFilter(Include.ALL)
-            .addQueryParam("entityFQN", fqn)
-            .addQueryParam("extension", TestCaseRepository.TESTCASE_RESULT_EXTENSION);
-
     return dao.getTestCaseResults(fqn, startTs, endTs);
   }
 

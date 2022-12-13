@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/customPipelineServiceConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/customPipelineConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CustomPipelineServiceConnection",
+  "title": "CustomPipelineConnection",
   "description": "Custom Pipeline Service connection to build a source that is not supported by OpenMetadata yet.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.messaging.CustomPipelineServiceConnection",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.CustomPipelineConnection",
   "definitions": {
     "customPipelineType": {
       "title": "Service Type",

@@ -14,7 +14,7 @@
 import { Button as AntdButton, Dropdown, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import { isString, isUndefined } from 'lodash';
+import { isString, isUndefined, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -138,7 +138,7 @@ const EntitySummaryDetails = ({
             )
           ) : (
             <>
-              {t('label.no-entity', { entity: 'Owner' })}
+              {t('label.no-entity', { entity: t('label.owner') })}
               <span
                 data-testid={`edit-${data.key}-icon`}
                 onClick={() => setShow(!show)}>
@@ -155,7 +155,7 @@ const EntitySummaryDetails = ({
         retVal =
           !displayVal || displayVal === '--' ? (
             <>
-              {t('label.no-entity', { entity: 'Tier' })}
+              {t('label.no-entity', { entity: t('label.tier') })}
               <Dropdown
                 overlay={
                   <TierCard
@@ -198,9 +198,11 @@ const EntitySummaryDetails = ({
             {data.key
               ? displayVal
                 ? data.showLabel
-                  ? `${data.key}: `
+                  ? `${t(`label.${toLower(data.key)}`)} : `
                   : null
-                : `${t('label.no-entity', { entity: data.key })}`
+                : `${t('label.no-entity', {
+                    entity: t(`label.${toLower(data.key)}`),
+                  })}`
               : null}
           </>
         );
