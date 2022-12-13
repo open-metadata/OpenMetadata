@@ -50,10 +50,11 @@ const FilterPattern = ({
   return (
     <div className="m-t-md" data-testid="filter-pattern-container">
       <Row>
-        <Col data-testid={`${type}-filter-pattern-checkbox`}>
+        <Col>
           <Checkbox
             checked={checked}
             className="m-r-sm filter-pattern-checkbox"
+            data-testid={`${type}-filter-pattern-checkbox`}
             id={`${type}FilterPatternCheckbox`}
             name={`${type}FilterPatternCheckbox`}
             onChange={(e) => handleChecked(e.target.checked)}
