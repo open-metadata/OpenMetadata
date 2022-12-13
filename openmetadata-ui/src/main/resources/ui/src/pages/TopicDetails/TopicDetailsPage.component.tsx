@@ -99,7 +99,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
-  const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [partitions, setPartitions] = useState<number>(0);
@@ -110,8 +109,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [name, setName] = useState<string>('');
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
-
-  const [schemaText, setSchemaText] = useState<string>('{}');
   const [slashedTopicName, setSlashedTopicName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -398,8 +395,6 @@ const TopicDetailsPage: FunctionComponent = () => {
             followers,
             fullyQualifiedName,
             name,
-            schemaType,
-            schemaText,
             service,
             tags,
             owner,
@@ -416,12 +411,10 @@ const TopicDetailsPage: FunctionComponent = () => {
           setTopicId(id);
           setCurrentVersion(version?.toString());
           setDescription(description ?? '');
-          setSchemaType(schemaType ?? '');
           setFollowers(followers ?? []);
           setOwner(owner);
           setTier(getTierTags(tags ?? []));
           setTags(getTagsWithoutTier(tags ?? []));
-          setSchemaText(schemaText ?? '');
           setPartitions(partitions);
           setCleanupPolicies(cleanupPolicies ?? []);
           setMaximumMessageSize(maximumMessageSize ?? 0);
@@ -748,8 +741,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               replicationFactor={replicationFactor}
               retentionSize={retentionSize}
               sampleData={sampleData}
-              schemaText={schemaText}
-              schemaType={schemaType}
               setActiveTabHandler={activeTabHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedTopicName={slashedTopicName}
