@@ -20,11 +20,6 @@ from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
 
-try:
-    pass
-except ModuleNotFoundError:
-    pass
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )

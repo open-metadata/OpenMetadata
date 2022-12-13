@@ -20,11 +20,6 @@ from openmetadata_managed_apis.utils.logger import routes_logger
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
 
-try:
-    pass
-except ImportError:
-    pass
-
 from openmetadata_managed_apis.api.response import ApiResponse
 
 logger = routes_logger()

@@ -20,10 +20,6 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
     metadata_ingestion_workflow,
 )
 
-try:
-    pass
-except ModuleNotFoundError:
-    pass
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,

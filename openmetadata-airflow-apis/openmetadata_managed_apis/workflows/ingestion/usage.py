@@ -28,11 +28,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Stage,
 )
 
-try:
-    pass
-except ModuleNotFoundError:
-    pass
-
 import tempfile
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
