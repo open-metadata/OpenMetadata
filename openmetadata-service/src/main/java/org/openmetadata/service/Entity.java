@@ -90,6 +90,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
   public static final String BOT = "bot";
+  public static final String ALERT = "alert";
   public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
   public static final String GLOSSARY = "glossary";
@@ -98,6 +99,8 @@ public final class Entity {
   public static final String TAG_CATEGORY = "tagCategory";
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
+
+  public static final String ALERT_ACTION = "alertAction";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";

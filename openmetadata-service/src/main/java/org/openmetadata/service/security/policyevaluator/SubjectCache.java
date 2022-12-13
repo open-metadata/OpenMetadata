@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -59,7 +60,7 @@ public class SubjectCache {
       TEAM_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new TeamLoader());
       USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
-      USER_FIELDS = USER_REPOSITORY.getFields("roles, teams");
+      USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin");
       TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
       TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
       INSTANCE = new SubjectCache();
@@ -80,6 +81,31 @@ public class SubjectCache {
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }
+  }
+
+  public SubjectContext getSubjectContext(UUID userId) throws EntityNotFoundException {
+    try {
+      for (Map.Entry<String, SubjectContext> entrySet : USER_CACHE.asMap().entrySet()) {
+        if (entrySet.getValue().getUser().getId().equals(userId)) {
+          return USER_CACHE.get(entrySet.getKey());
+        }
+      }
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      throw new EntityNotFoundException(ex.getMessage());
+    }
+    throw new EntityNotFoundException("UserName does not exist");
+  }
+
+  public List<User> getAllUsers() throws EntityNotFoundException {
+    List<User> allUsers = new ArrayList<>();
+    try {
+      for (SubjectContext context : USER_CACHE.asMap().values()) {
+        allUsers.add(context.getUser());
+      }
+    } catch (UncheckedExecutionException ex) {
+      throw new EntityNotFoundException(ex.getMessage());
+    }
+    return allUsers;
   }
 
   public Team getTeam(UUID teamId) throws EntityNotFoundException {
