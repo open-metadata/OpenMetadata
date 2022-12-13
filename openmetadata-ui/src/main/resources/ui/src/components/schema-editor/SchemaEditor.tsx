@@ -68,7 +68,9 @@ const SchemaEditor = ({
     readOnly: true,
     ...options,
   };
-  const [internalValue, setInternalValue] = useState<string>('');
+  const [internalValue, setInternalValue] = useState<string>(
+    getSchemaEditorValue(value)
+  );
   const handleEditorInputBeforeChange = (
     _editor: Editor,
     _data: EditorChange,
@@ -89,7 +91,7 @@ const SchemaEditor = ({
   }, [value]);
 
   return (
-    <div className={className}>
+    <div className={className} data-testid="code-mirror-container">
       <CodeMirror
         className={editorClass}
         options={defaultOptions}
