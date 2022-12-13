@@ -95,8 +95,6 @@
     "no-rule-found": "No rule found",
     "no-policy-found": "No policy found for",
     "delete": "Delete",
-    "not-followed-yet": "You have not followed anything yet",
-    "not-owned-yet": "You have not owned anything yet",
     "no-inherited-found": "No inherited roles found",
     "inherited-roles": "Inherited Roles",
     "roles": "Roles",
@@ -234,6 +232,8 @@
     "lineage": "Lineage",
     "custom-properties": "Custom Properties",
     "dag-view": "DAG view",
+    "read-more": "Read more",
+    "read-less": "Read less",
     "read-more-lowercase": "read more",
     "read-less-lowercase": "read less",
     "no-entity": "No {{entity}}",
@@ -310,7 +310,6 @@
     "clear-all": "Clear All",
     "view-less": "View less",
     "view-more": "View more",
-    "column-plural": "Columns",
     "field-plural": "Fields",
     "delete-group": "Delete Group",
     "add-display-name": "Add display name",
@@ -381,6 +380,10 @@
     "hide": "Hide",
     "restore-team": "Restore Team",
     "remove": "Remove",
+    "list-of-strings-regex-patterns-csv": "Enter a list of strings/regex patterns as a comma separated value",
+    "owned-lowercase": "owned",
+    "followed-lowercase": "followed",
+    "move-the-team": "Move the Team",
     "data-insight-plural": "Data Insights",
     "configure-entity": "Configure {{entity}}",
     "name-lowercase": "name",
@@ -464,7 +467,16 @@
     "query-lowercase": "query",
     "table-lowercase": "table",
     "schema-field": "Schema field",
-    "enter-field-description": "Enter {{field}} description"
+    "enter-field-description": "Enter {{field}} description",
+    "partitions": "Partitions",
+    "replication-factor": "replication factor",
+    "retention-size": "retention-size",
+    "clean-up-policies": "clean-up policies",
+    "maximum-size": "maximum size",
+    "no-of-test": " No. of Test",
+    "test-suite": "Test Suite",
+    "enter-entity": "Enter {{entity}}",
+    "test-suite-status": "Test Suite Status"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -538,6 +550,10 @@
     "delete-message-question-mark": "Delete Message?",
     "view-deleted-teams": "View all the Deleted Teams, which come under this Team.",
     "restore-deleted-team": " Restoring the Team will add all the metadata back to OpenMetadata",
+    "filter-pattern-info": "Choose to include or exclude {{filterPattern}} as part of the metadata ingestion.",
+    "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex.",
+    "team-moved-success": "Team moved successfully",
+    "team-transfer-message": "Click on Confirm if you’d like to move {{from}} team under {{to}} team.",
     "create-new-glossary-guide": "A Glossary is a controlled vocabulary used to define the concepts and terminology in an organization. Glossaries can be specific to a certain domain (for e.g., Business Glossary, Technical Glossary). In the glossary, the standard terms and concepts can be defined along with the synonyms, and related terms. Control can be established over how and who can add the terms in the glossary.",
     "no-notification-found": "No notifications Found",
     "enables-end-to-end-metadata-management": "Enables end-to-end metadata management with data discovery, data duality, observability, and people collaboration",
@@ -561,7 +577,7 @@
     "delete-team-message": "Any teams under \"{{teamName}}\" will be {{deleteType}} deleted as well."
   },
   "server": {
-    "no-followed-entities": "You have not followed anything yet.",
+    "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
     "no-owned-entities": "You have not owned anything yet.",
     "no-task-available": "No task data is available",
     "entity-fetch-error": "Error while fetching {{entity}}",
@@ -575,7 +591,8 @@
     "leave-team-error": "Error while leaving the team!",
     "no-query-available": "No query available",
     "unexpected-response": "Unexpected response from server!",
-    "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}"
+    "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
+    "team-moved-error": "Error while moving team"
   },
   "url": {}
 }

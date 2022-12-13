@@ -71,9 +71,10 @@ describe('BigQuery Ingestion', () => {
     };
 
     const addIngestionInput = () => {
+      
       cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .scrollIntoView()
-        .should('be.visible')
+        .invoke('show')
+        .trigger('mouseover')
         .check();
         cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()

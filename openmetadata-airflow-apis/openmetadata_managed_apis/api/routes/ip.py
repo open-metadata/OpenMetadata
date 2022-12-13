@@ -79,10 +79,8 @@ def get_fn(blueprint: Blueprint) -> Callable:
                 if host_ip:
                     return ApiResponse.success({"ip": host_ip})
 
-            return ApiResponse.error(
-                status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Could not extract the host IP from neither {IP_SERVICES}. Verify connectivity.",
-            )
+            # If we cannot fetch the IP, still return a 200 but without informing the IP.
+            return ApiResponse.success({"ip": "unknown"})
 
         except Exception as exc:
             msg = f"Internal error obtaining host IP due to [{exc}] "

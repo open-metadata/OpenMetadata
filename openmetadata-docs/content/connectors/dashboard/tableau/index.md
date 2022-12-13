@@ -107,7 +107,11 @@ this connector. Please follow the instructions below to ensure that
 you've configured the connector to read from your tableau service as
 desired.
 
-#### 1. Service Connection for a default tableau site
+#### 1. Service Connection for Tableau Cloud
+
+If you're connecting to a cloud Tableau instance, add the `Site Name` and `Site Url` with your site name.
+
+#### 2. Service Connection for a default tableau site
 For a default tableau site `Site Name` and `Site Url` fields should be kept empty as shown in the below image 
 <div className="w-100 flex justify-center">
 <Image
@@ -117,7 +121,7 @@ For a default tableau site `Site Name` and `Site Url` fields should be kept empt
 />
 </div>
 
-#### 2. Service Connection for a non-default tableau site
+#### 3. Service Connection for a non-default tableau site
 For a non-default tableau site `Site Name` and `Site Url` fields are required.
 
 <Note>

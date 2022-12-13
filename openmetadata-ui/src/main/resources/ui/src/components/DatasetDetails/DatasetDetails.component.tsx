@@ -24,7 +24,7 @@ import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
-import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { EntityInfo, EntityType, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
   JoinedWith,
@@ -382,7 +382,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: t('label.owner'),
+      key: EntityInfo.OWNER,
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -395,23 +395,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: t('label.tier'),
+      key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    { key: t('label.type'), value: `${tableType}`, showLabel: true },
+    { key: EntityInfo.TYPE, value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} Queries` },
+    { value: `${weeklyUsageCount} ${t('label.query-plural')}` },
     {
-      key: t('label.column-plural'),
+      key: EntityInfo.COLUMNS,
       value:
         tableProfile && tableProfile?.columnCount
-          ? `${tableProfile.columnCount} Columns`
+          ? `${tableProfile.columnCount} ${t('label.columns-plural')}`
           : columns.length
-          ? `${columns.length} Columns`
+          ? `${columns.length} ${t('label.columns-plural')}`
           : '',
     },
     {
-      key: t('label.row-plural'),
+      key: EntityInfo.ROWS,
       value: prepareTableRowInfo(),
     },
   ];
