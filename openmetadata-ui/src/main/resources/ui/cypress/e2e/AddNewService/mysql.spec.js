@@ -27,7 +27,8 @@ describe('MySQL Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
+      // cy.get('[data-testid="filter-pattern-container"]').first().scrollIntoView().should('be.visible');
+      cy.get('[data-testid="schema-filter-pattern-checkbox"]').invoke('show').trigger('mouseover').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
         .type(Cypress.env('mysqlDatabaseSchema'));

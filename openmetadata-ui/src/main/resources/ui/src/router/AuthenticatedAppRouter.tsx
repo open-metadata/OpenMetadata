@@ -230,6 +230,10 @@ const EditKPIPage = withSuspenseFallback(
   React.lazy(() => import('../pages/KPIPage/EditKPIPage'))
 );
 
+const AddTestSuitePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TestSuitePage/TestSuiteStepper'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -537,6 +541,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={AddKPIPage} path={ROUTES.ADD_KPI} />
       <Route exact component={EditKPIPage} path={ROUTES.EDIT_KPI} />
+      <Route exact component={AddTestSuitePage} path={ROUTES.ADD_TEST_SUITES} />
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>

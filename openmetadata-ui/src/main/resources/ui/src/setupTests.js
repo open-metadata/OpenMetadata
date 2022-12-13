@@ -62,4 +62,5 @@ jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key) => key,
   }),
+  t: (key) => key,
 }));
