@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+@trigger-btn-hover-bg: #efefef;
+@remove-icon-color: #bbb;
+@remove-icon-hover-color: #373737;
+@update-btn-hover-bg: #e2e2e2;
+
 .custom-dropdown-render {
   // this is taken from antd dropdown menu box shadow
   box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%), 0 6px 16px 0 rgb(0 0 0 / 8%),
@@ -19,8 +24,37 @@
   .ant-dropdown-menu {
     box-shadow: none;
     padding: 0px;
+    max-height: 200px;
+    overflow-y: scroll;
+    margin-bottom: 8px;
+
     .ant-dropdown-menu-item {
       padding: 4px 0px;
     }
+  }
+
+  .dropdown-option-label {
+    max-width: 200px;
+  }
+
+  .update-btn {
+    background-color: @trigger-btn-hover-bg;
+    border-color: @trigger-btn-hover-bg;
+  }
+
+  .update-btn:hover {
+    background-color: @update-btn-hover-bg;
+    border-color: @update-btn-hover-bg;
+    color: inherit;
+  }
+}
+
+.quick-filter-dropdown-trigger-btn {
+  .remove-field-icon {
+    color: @remove-icon-color;
+    padding-bottom: 2px;
+  }
+  .remove-field-icon:hover {
+    color: @remove-icon-hover-color;
   }
 }

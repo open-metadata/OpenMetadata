@@ -51,6 +51,7 @@ base_requirements = {
     "requests-aws4auth==1.1.2",
     "pymysql>=1.0.2",
     "cached-property==1.5.2",
+    "chardet",
 }
 
 
@@ -140,7 +141,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake-usage": {"snowflake-sqlalchemy~=1.4.3"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
-    "tableau": {"tableau-api-lib==0.1.29"},
+    "tableau": {"tableau-api-lib==0.1.50"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "webhook-server": {},
     "salesforce": {"simple_salesforce~=1.11.4"},

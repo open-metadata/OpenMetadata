@@ -13,11 +13,14 @@ Mixin class containing User specific methods
 
 To be used by OpenMetadata class
 """
+import traceback
+from functools import lru_cache
 from typing import Optional
 
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.elasticsearch import ES_INDEX_MAP
 
 logger = ometa_logger()
 
@@ -31,17 +34,42 @@ class OMetaUserMixin:
 
     client: REST
 
-    def get_user_by_email(self, email: str) -> Optional[User]:
+    email_search = (
+        "/search/query?q=email:{email}&from={from_}&size={size}&index="
+        + ES_INDEX_MAP[User.__name__]
+    )
+
+    @lru_cache(maxsize=None)
+    def get_user_by_email(
+        self,
+        email: Optional[str],
+        from_count: int = 0,
+        size: int = 10,
+    ) -> Optional[User]:
         """
         GET user entity by name
 
-        :param email: User Email
+        Args:
+            email: user email to search
+            from_count: records to expect
+            size: number of records
         """
         if email:
 
-            name = email.split("@")[0]
-            users = self.es_search_from_fqn(entity_type=User, fqn_search_string=name)
-            for user in users or []:
-                if user.email.__root__ == email:
+            query_string = self.email_search.format(
+                email=email, from_=from_count, size=size
+            )
+
+            try:
+                entity_list = self._search_es_entity(
+                    entity_type=User, query_string=query_string
+                )
+                for user in entity_list or []:
                     return user
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Could not get user info from ES for user email {email} due to {err}"
+                )
+
         return None

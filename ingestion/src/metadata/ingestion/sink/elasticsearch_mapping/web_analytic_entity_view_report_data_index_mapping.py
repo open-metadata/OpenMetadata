@@ -29,6 +29,9 @@ WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX_MAPPING = textwrap.dedent(
                         "entityType": {
                             "type": "keyword"
                         },
+                        "entityHref": {
+                            "type": "keyword"
+                        },
                         "entityTier": {
                             "type": "keyword"
                         },

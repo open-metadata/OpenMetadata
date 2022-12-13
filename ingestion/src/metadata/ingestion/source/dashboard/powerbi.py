@@ -60,8 +60,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def prepare(self):
         # fetch all the workspace ids
-        workspaces_data = self.client.fetch_all_workspaces()
-        workspaces = workspaces_data.get("value")
+        workspaces = self.client.fetch_all_workspaces()
         if workspaces:
             workspace_id_list = [workspace.get("id") for workspace in workspaces]
 
