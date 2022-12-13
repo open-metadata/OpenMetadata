@@ -20,11 +20,11 @@ import {
 import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Topic } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import TopicDetails from './TopicDetails.component';
+import { TOPIC_DETAILS } from './TopicDetails.mock';
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
@@ -67,11 +67,9 @@ const TopicDetailsProps = {
   maximumMessageSize: 0,
   replicationFactor: 0,
   retentionSize: 0,
-  schemaText: 'schema text',
-  schemaType: 'Avro',
   serviceType: '',
   users: [],
-  topicDetails: {} as Topic,
+  topicDetails: TOPIC_DETAILS,
   entityName: '',
   activeTab: 1,
   owner: {} as EntityReference,
