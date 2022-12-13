@@ -17,10 +17,18 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 
-jest.mock('./ExploreQuickFilter', () =>
+const mockOnFieldRemove = jest.fn();
+const mockOnAdvanceSearch = jest.fn();
+const mockOnClear = jest.fn();
+const mockOnFieldValueSelect = jest.fn();
+const mockOnFieldSelect = jest.fn();
+const mockOnClearSelection = jest.fn();
+const mockOnUpdateFilterValues = jest.fn();
+
+jest.mock('../SearchDropdown/SearchDropdown', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="advanced-field">ExploreQuickFilter</div>)
+    .mockReturnValue(<div data-testid="search-dropdown">SearchDropdown</div>)
 );
 
 jest.mock('./AdvanceSearchModal.component', () => ({
@@ -33,11 +41,13 @@ const fields = [
   { key: 'column_names', value: undefined },
 ] as ExploreQuickFilterField[];
 
-const onFieldRemove = jest.fn();
-const onAdvanceSearch = jest.fn();
-const onClear = jest.fn();
-const onFieldValueSelect = jest.fn();
-const onFieldSelect = jest.fn();
+const onFieldRemove = mockOnFieldRemove;
+const onAdvanceSearch = mockOnAdvanceSearch;
+const onClear = mockOnClear;
+const onFieldValueSelect = mockOnFieldValueSelect;
+const onFieldSelect = mockOnFieldSelect;
+const onClearSelection = mockOnClearSelection;
+const onUpdateFilterValues = mockOnUpdateFilterValues;
 
 const mockProps = {
   index,
@@ -45,39 +55,19 @@ const mockProps = {
   onFieldRemove,
   onAdvanceSearch,
   onClear,
+  onClearSelection,
   onFieldValueSelect,
   onFieldSelect,
+  onUpdateFilterValues,
 };
 
 describe('Test ExploreQuickFilters component', () => {
   it('Should render ExploreQuickFilters component', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
+    const { findAllByTestId } = render(<ExploreQuickFilters {...mockProps} />);
 
-    const fields = await findAllByTestId('advanced-field');
-    const clearButton = await findByTestId('clear-all-button');
+    const fields = await findAllByTestId('search-dropdown');
 
     expect(fields).toHaveLength(fields.length);
-
-    expect(clearButton).toBeInTheDocument();
-  });
-
-  it('Should call onClear method on click of Clear All button', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
-
-    const fields = await findAllByTestId('advanced-field');
-    const clearButton = await findByTestId('clear-all-button');
-
-    expect(fields).toHaveLength(fields.length);
-
-    expect(clearButton).toBeInTheDocument();
-
-    fireEvent.click(clearButton);
-
-    expect(onClear).toBeCalledWith();
   });
 
   it('Should call onAdvanceSearch method on click of Advance Search button', async () => {
@@ -85,7 +75,7 @@ describe('Test ExploreQuickFilters component', () => {
       <ExploreQuickFilters {...mockProps} />
     );
 
-    const fields = await findAllByTestId('advanced-field');
+    const fields = await findAllByTestId('search-dropdown');
     const advanceSearchButton = await findByTestId('advance-search-button');
 
     expect(fields).toHaveLength(fields.length);
