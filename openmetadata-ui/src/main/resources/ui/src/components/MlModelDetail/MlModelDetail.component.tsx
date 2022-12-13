@@ -379,7 +379,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const handleRestoreTable = async () => {
+  const handleRestoreMlmodel = async () => {
     try {
       await restoreMlmodel(mlModelDetail.id);
       showSuccessToast(
@@ -591,7 +591,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
-          onRestoreEntity={handleRestoreTable}
+          onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}
         />
 
