@@ -26,7 +26,7 @@ import { restoreTopic } from '../../axiosAPIs/topicsAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -167,22 +167,25 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const getConfigDetails = () => {
     return [
-      { key: 'Partitions', value: `${partitions} partitions` },
       {
-        key: 'Replication Factor',
-        value: `${replicationFactor} replication factor`,
+        key: EntityInfo.PARTITIONS,
+        value: `${partitions} ${t('label.partitions')}`,
       },
       {
-        key: 'Retention Size',
-        value: `${bytesToSize(retentionSize)} retention size`,
+        key: EntityInfo.REPLICATION_FACTOR,
+        value: `${replicationFactor} ${t('label.replication-factor')}`,
       },
       {
-        key: 'Clean-up Policies',
-        value: `${cleanupPolicies.join(', ')} clean-up policies`,
+        key: EntityInfo.RETENTION_SIZE,
+        value: `${bytesToSize(retentionSize)}  ${t('label.retention-size')}`,
       },
       {
-        key: 'Max Message Size',
-        value: `${bytesToSize(maximumMessageSize)} maximum size`,
+        key: EntityInfo.CLEAN_UP_POLICIES,
+        value: `${cleanupPolicies.join(', ')} ${t('label.clean-up-policies')}`,
+      },
+      {
+        key: EntityInfo.MAX_MESSAGE_SIZE,
+        value: `${bytesToSize(maximumMessageSize)} ${t('label.maximum-size')} `,
       },
     ];
   };
@@ -262,7 +265,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: t('label.owner'),
+      key: EntityInfo.OWNER,
       value: getOwnerValue(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -273,7 +276,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
-      key: t('label.tier'),
+      key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
     ...getConfigDetails(),
