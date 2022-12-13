@@ -40,7 +40,6 @@ def _(elements, compiler, **kwargs):
     return "percentile_cont(%s , 0.5) OVER()" % col
 
 
-@compiles(MedianFn, Dialects.Athena)
 @compiles(MedianFn, Dialects.ClickHouse)
 def _(elements, compiler, **kwargs):
     col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
@@ -48,11 +47,12 @@ def _(elements, compiler, **kwargs):
 
 
 # pylint: disable=unused-argument
+@compiles(MedianFn, Dialects.Athena)
 @compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
     col = elements.clauses.clauses[0].name
-    return "approx_percentile(%s, 0.5)" % col
+    return 'approx_percentile("%s", 0.5)' % col
 
 
 @compiles(MedianFn, Dialects.MSSQL)
