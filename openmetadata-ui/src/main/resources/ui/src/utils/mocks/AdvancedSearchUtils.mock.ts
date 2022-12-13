@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
-export interface SearchDropdownProps {
-  label: string;
-  isSuggestionsLoading?: boolean;
-  options: string[];
-  searchKey: string;
-  selectedKeys: string[];
-  onChange: (values: string[], searchKey: string) => void;
-  onSearch: (searchText: string, searchKey: string) => void;
-}
+export const mockOptionsArray = [
+  'option_1',
+  'option_2',
+  'option_3',
+  'option_4',
+];
+
+export const mockShortOptionsArray = ['str1', 'str2'];
+
+export const mockLongOptionsArray = [
+  'string1',
+  'string2',
+  'string3',
+  'string4',
+];
