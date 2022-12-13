@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Popover, Space, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { cloneDeep, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '../../../generated/entity/data/topic';
@@ -136,11 +136,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (tags: Field['tags']) => (
-          <Space wrap>
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          </Space>
-        ),
+        render: (tags: Field['tags']) =>
+          !isEmpty(tags) ? (
+            <Space wrap>
+              <TagsViewer sizeCap={-1} tags={tags || []} />
+            </Space>
+          ) : (
+            '--'
+          ),
       },
     ],
     [messageSchema]
