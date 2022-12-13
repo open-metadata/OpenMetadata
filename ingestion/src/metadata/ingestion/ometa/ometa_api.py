@@ -95,12 +95,9 @@ from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
-from metadata.ingestion.ometa.ssl_registry import (
-    InvalidSSLVerificationException,
-    ssl_verification_registry,
-)
 from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ometa_logger()
 
@@ -190,20 +187,14 @@ class OpenMetadata(
 
         self._auth_provider = auth_provider_fn(self.config)
 
-        get_verify_ssl = ssl_verification_registry.registry.get(
-            self.config.verifySSL.value
-        )
-        if not get_verify_ssl:
-            raise InvalidSSLVerificationException(
-                f"Cannot find {self.config.verifySSL.value} in {ssl_verification_registry.registry}"
-            )
+        get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
             auth_token=self._auth_provider.get_access_token,
-            verify=get_verify_ssl(config),
+            verify=get_verify_ssl(self.config.sslConfig),
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data

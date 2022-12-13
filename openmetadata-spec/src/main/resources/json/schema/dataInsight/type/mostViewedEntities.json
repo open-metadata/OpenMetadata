@@ -10,6 +10,10 @@
       "description": "Number of page views",
       "type": "string"
     },
+    "entityHref": {
+      "description": "Entity href link",
+      "type": "string"
+    },
     "owner": {
       "description": "Owner of the entity",
       "type": "string"

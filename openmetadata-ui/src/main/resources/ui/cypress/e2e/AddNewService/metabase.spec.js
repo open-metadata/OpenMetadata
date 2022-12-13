@@ -41,7 +41,7 @@ describe('Metabase Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
-      .should('be.visible')
+      .invoke('show').trigger('mouseover')
       .check();
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
       .should('be.visible')
