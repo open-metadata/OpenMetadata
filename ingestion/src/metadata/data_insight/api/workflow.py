@@ -38,6 +38,7 @@ from metadata.data_insight.processor.web_analytic_report_data_processor import (
     WebAnalyticUserActivityReportDataProcessor,
 )
 from metadata.data_insight.runner.kpi_runner import KpiRunner
+from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -65,6 +66,7 @@ from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 logger = data_insight_logger()
 
 NOW = datetime.utcnow().timestamp() * 1000
+RETENTION_DAYS = 7
 
 
 class DataInsightWorkflow(WorkflowStatusMixin):
@@ -235,6 +237,17 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                     "No sink attribute found, skipping ingestion of KPI result"
                 )
 
+    def _execute_web_analytics_event_data_cleaning(self):
+        """We will delete web analytics events older than `RETENTION_DAYS`
+        to limit its accumulation
+        """
+        tmsp = get_beginning_of_day_timestamp_mill(days=RETENTION_DAYS)
+        for web_analytic_event in WebAnalyticEventType:
+            self.metadata.delete_web_analytic_event_before_ts_exclusive(
+                web_analytic_event,
+                tmsp,
+            )
+
     @classmethod
     def create(cls, config_dict: dict) -> DataInsightWorkflow:
         """instantiate a class object
@@ -271,6 +284,9 @@ class DataInsightWorkflow(WorkflowStatusMixin):
             logger.info("Starting KPI runner")
             self._execute_kpi_runner()
             logger.info("KPI runner finished running")
+
+            logger.info(f"Deleting Web Analytic Events older than {RETENTION_DAYS}")
+            self._execute_web_analytics_event_data_cleaning()
 
             # At the end of the `execute`, update the associated Ingestion Pipeline status as success
             self.set_ingestion_pipeline_status(PipelineState.success)

@@ -114,3 +114,53 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
         )
 
         assert test_event
+
+    def test_delete_web_analytic_event(self):
+        """Test web analytic event deletion"""
+
+        for delta in range(7):
+            tmsp = get_beginning_of_day_timestamp_mill(days=delta)
+
+            user_id = uuid.uuid4()
+            session_id = uuid.uuid4()
+
+            event_data = WebAnalyticEventData(
+                eventId=None,
+                timestamp=tmsp,
+                eventType=WebAnalyticEventType.PageView,
+                eventData=PageViewData(
+                    fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
+                    url="/table/sample_data.ecommerce_db.shopify.dim.foo",
+                    hostname="localhost",
+                    language="en-US",
+                    screenSize="1280x720",
+                    userId=user_id,
+                    sessionId=session_id,
+                    pageLoadTime=0.0,
+                    referrer="",
+                ),
+            )
+            self.metadata.add_web_analytic_events(
+                event_data,
+            )
+
+        self.metadata.delete_web_analytic_event_before_ts_exclusive(
+            WebAnalyticEventType.PageView,
+            int((datetime.utcnow() - timedelta(days=3)).timestamp() * 1000),
+        )
+
+        event = self.metadata.get_web_analytic_events(
+            WebAnalyticEventType.PageView,
+            int((datetime.utcnow() - timedelta(days=2)).timestamp() * 1000),
+            int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
+        )
+
+        assert event
+
+        empty_event = self.metadata.get_web_analytic_events(
+            WebAnalyticEventType.PageView,
+            int((datetime.utcnow() - timedelta(days=7)).timestamp() * 1000),
+            int((datetime.utcnow() - timedelta(days=6)).timestamp() * 1000),
+        )
+
+        assert not empty_event
