@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.alerts;
 
+import static org.openmetadata.schema.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,9 +48,12 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateAlert;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
+import org.openmetadata.schema.filter.EventFilter;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
@@ -60,7 +65,10 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.settings.SettingsResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -73,6 +81,32 @@ import org.openmetadata.service.util.ResultList;
 public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public static final String COLLECTION_PATH = "v1/alerts/";
   private final CollectionDAO.AlertDAO alertDAO;
+  private List<EventFilter> bootStrappedFilters;
+
+  private void initDefaultTriggersSettings() throws IOException {
+    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/settings/settingsData.json$");
+    if (jsonDataFiles.size() != 1) {
+      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
+      return;
+    }
+    String jsonDataFile = jsonDataFiles.get(0);
+    try {
+      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
+      List<Settings> settings = JsonUtils.readObjects(json, Settings.class);
+      settings.forEach(
+          (setting) -> {
+              try {
+                  if (setting.getConfigType() == ACTIVITY_FEED_FILTER_SETTING) {
+                      bootStrappedFilters = FilterUtil.getEventFilterFromSettings(setting);
+                  }
+              } catch (IOException e) {
+                  LOG.debug("Default Filter Init failed ", e);
+              }
+          });
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize the {} from file {}", "filters", jsonDataFile, e);
+    }
+  }
 
   @Override
   public Alert addHref(UriInfo uriInfo, Alert entity) {
@@ -98,6 +132,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       for (Alert alert : alertList) {
         dao.addAlertActionPublishers(alert);
       }
+      initDefaultTriggersSettings();
     } catch (Exception ex) {
       // Starting application should not fail
       LOG.warn("Exception during initialization", ex);
@@ -207,6 +242,27 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
           UUID alertActionId)
       throws IOException {
     return dao.getAlertActionStatus(alertId, alertActionId);
+  }
+
+  @GET
+  @Path("/defaultTriggers")
+  @Operation(
+      operationId = "defaultTriggers",
+      summary = "List All Default Triggers Config",
+      tags = "alerts",
+      description = "Get a List of all OpenMetadata Bootstrapped Filters",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SettingsResource.SettingsList.class)))
+      })
+  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return bootStrappedFilters;
   }
 
   @GET
