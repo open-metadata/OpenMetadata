@@ -52,7 +52,7 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
     col = elements.clauses.clauses[0].name
-    return "approx_percentile(\"%s\", 0.5)" % col
+    return 'approx_percentile("%s", 0.5)' % col
 
 
 @compiles(MedianFn, Dialects.MSSQL)
