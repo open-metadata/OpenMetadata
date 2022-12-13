@@ -13,7 +13,7 @@
 
 import { Button, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -91,6 +91,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        render: (text) => (isEmpty(text) ? '--' : text),
       },
       {
         title: t('label.test-suite'),
