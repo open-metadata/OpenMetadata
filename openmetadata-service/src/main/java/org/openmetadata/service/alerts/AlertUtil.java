@@ -2,16 +2,27 @@ package org.openmetadata.service.alerts;
 
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.type.Function;
+import org.openmetadata.schema.type.ParamAdditionalContext;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.emailAlert.EmailAlertPublisher;
 import org.openmetadata.service.alerts.generic.GenericWebhookPublisher;
 import org.openmetadata.service.alerts.msteams.MSTeamsWebhookPublisher;
 import org.openmetadata.service.alerts.slack.SlackWebhookEventPublisher;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.CollectionRegistry;
 import org.springframework.expression.Expression;
 
+@Slf4j
 public class AlertUtil {
 
   public static AlertsActionPublisher getAlertPublisher(
@@ -49,5 +60,40 @@ public class AlertUtil {
       String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
       throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
     }
+  }
+
+  public static List<Function> getAlertFilterFunctions() {
+    List<Function> alertFunctions = new ArrayList<>();
+    for (Function func : CollectionRegistry.getInstance().getFunctions(AlertsRuleEvaluator.class)) {
+      switch (func.getParameterInputType()) {
+        case NOT_REQUIRED:
+          break;
+        case READ_FROM_PARAM_CONTEXT:
+          func.setParamAdditionalContext(
+              new ParamAdditionalContext().withEntities(new HashSet<>(Entity.getEntityList())));
+          break;
+        case ALL_INDEX_ELASTIC_SEARCH:
+          Set<String> indexesToSearch = new HashSet<>();
+          for (String entityType : Entity.getEntityList()) {
+            try {
+              ElasticSearchIndexDefinition.ElasticSearchIndexType type =
+                  ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+              indexesToSearch.add(type.indexName);
+            } catch (RuntimeException ex) {
+              LOG.error("Failing to get Index for EntityType");
+            }
+          }
+          func.setParamAdditionalContext(new ParamAdditionalContext().withSearchIndexes(indexesToSearch));
+          break;
+        case SPECIFIC_INDEX_ELASTIC_SEARCH:
+          Set<String> indexes = new HashSet<>();
+          indexes.add(ElasticSearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX.indexName);
+          indexes.add(ElasticSearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName);
+          func.setParamAdditionalContext(new ParamAdditionalContext().withSearchIndexes(indexes));
+          break;
+      }
+      alertFunctions.add(func);
+    }
+    return alertFunctions;
   }
 }

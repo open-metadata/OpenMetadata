@@ -1,5 +1,8 @@
 package org.openmetadata.service.alerts;
 
+import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
+import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
@@ -15,6 +18,13 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class AlertsRuleEvaluator {
+  public enum AlertRuleType {
+    matchAnySource,
+    matchAnyOwnerName,
+    matchAnyEntityFqn,
+    matchAnyEntityId
+  }
+
   private final ChangeEvent changeEvent;
 
   public AlertsRuleEvaluator(ChangeEvent event) {
@@ -25,7 +35,8 @@ public class AlertsRuleEvaluator {
       name = "matchAnySource",
       input = "List of comma separated source",
       description = "Returns true if the change event entity being accessed has source as mentioned in condition",
-      examples = {"matchAnySource('bot', 'user')"})
+      examples = {"matchAnySource('bot', 'user')"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean matchAnySource(String... originEntity) {
     if (changeEvent == null) {
       return false;
@@ -43,7 +54,8 @@ public class AlertsRuleEvaluator {
       name = "matchAnyOwnerName",
       input = "List of comma separated ownerName",
       description = "Returns true if the change event entity being accessed has following owners from the List.",
-      examples = {"matchAnyOwnerName('Owner1', 'Owner2')"})
+      examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
+      paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyOwnerName(String... ownerNameList) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
@@ -74,7 +86,8 @@ public class AlertsRuleEvaluator {
       name = "matchAnyEntityFqn",
       input = "List of comma separated entityName",
       description = "Returns true if the change event entity being accessed has following entityName from the List.",
-      examples = {"matchAnyEntityFqn('Name1', 'Name')"})
+      examples = {"matchAnyEntityFqn('Name1', 'Name')"},
+      paramInputType = ALL_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyEntityFqn(String... entityNames) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
@@ -92,7 +105,8 @@ public class AlertsRuleEvaluator {
       name = "matchAnyEntityId",
       input = "List of comma separated entityName",
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
-      examples = {"matchAnyEntityId('uuid1', 'uuid2')"})
+      examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
+      paramInputType = ALL_INDEX_ELASTIC_SEARCH)
   public boolean matchAnyEntityId(String... entityIds) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;

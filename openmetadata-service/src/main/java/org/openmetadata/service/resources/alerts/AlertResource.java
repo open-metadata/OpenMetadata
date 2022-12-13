@@ -55,12 +55,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerts.AlertUtil;
-import org.openmetadata.service.alerts.AlertsRuleEvaluator;
 import org.openmetadata.service.jdbi3.AlertRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
@@ -162,7 +160,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "getAlertByID",
       summary = "Get a alert",
-      tags = "alert",
+      tags = "alerts",
       description = "Get a alert by given Id",
       responses = {
         @ApiResponse(
@@ -191,7 +189,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "getAlertActionStatus",
       summary = "Get a alert Action status",
-      tags = "alert",
+      tags = "alerts",
       description = "Get a alert actions status by given Id",
       responses = {
         @ApiResponse(
@@ -216,10 +214,10 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "listAlertFunctions",
       summary = "Get list of Alert functions used in filtering alert.",
-      tags = "alert",
+      tags = "alerts",
       description = "Get list of Alert functions used in filtering conditions in alerts")
   public ResultList<Function> listAlertFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return new FunctionList(CollectionRegistry.getInstance().getFunctions(AlertsRuleEvaluator.class));
+    return new FunctionList(AlertUtil.getAlertFilterFunctions());
   }
 
   @GET
@@ -243,7 +241,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "getAlertByFQN",
       summary = "Get a alert by name",
-      tags = "alert",
+      tags = "alerts",
       description = "Get a alert by name.",
       responses = {
         @ApiResponse(
@@ -271,7 +269,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "listAllAlertVersion",
       summary = "List alert versions",
-      tags = "alert",
+      tags = "alerts",
       description = "Get a list of all the versions of a alert identified by `id`",
       responses = {
         @ApiResponse(
@@ -292,7 +290,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "getSpecificAlertVersion",
       summary = "Get a version of the alert",
-      tags = "alert",
+      tags = "alerts",
       description = "Get a version of the alert by given `id`",
       responses = {
         @ApiResponse(
@@ -320,7 +318,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "createAlert",
       summary = "Subscribe to a new alert",
-      tags = "alert",
+      tags = "alerts",
       description = "Subscribe to a new alert",
       responses = {
         @ApiResponse(
@@ -342,7 +340,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "createOrUpdateAlert",
       summary = "Updated an existing or create a new Alert",
-      tags = "alert",
+      tags = "alerts",
       description = "Updated an existing or create a new alert",
       responses = {
         @ApiResponse(
@@ -365,7 +363,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "patchAlert",
       summary = "Update a Alert",
-      tags = "alert",
+      tags = "alerts",
       description = "Update an existing alert using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -394,7 +392,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Operation(
       operationId = "deleteAlert",
       summary = "Delete a Alert",
-      tags = "alert",
+      tags = "alerts",
       description = "Get a alert by given Id",
       responses = {
         @ApiResponse(
