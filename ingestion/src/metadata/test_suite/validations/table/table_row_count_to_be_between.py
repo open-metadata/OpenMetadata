@@ -18,16 +18,17 @@ import traceback
 from datetime import datetime
 from functools import singledispatch
 
+from pandas import DataFrame
+
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.utils.entity_link import get_decoded_column
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -91,18 +92,20 @@ def table_row_count_to_be_between(
     )
 
 
-from pandas import DataFrame
-
-
 @table_row_count_to_be_between.register
 def table_row_count_to_be_between_dl(
     test_case: TestCase,
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_obj = ColumnBaseModel.col_base_model(
-        data_frame[get_decoded_column(test_case.entityLink.__root__)]
-    )
+    """
+    Validate row count metric
+    :param test_case: TableRowCountToBeBetween
+    :param table_profile: should contain row count metric
+    :param execution_date: Datetime when the tests ran
+    :return: TestCaseResult with status and results
+    """
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
     row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(data_frame)
 
     min_ = next(

@@ -64,7 +64,7 @@ class CountInSet(StaticMetric):
             return None
 
     @_label
-    def dl_fn(self, data_frame: Optional[DataFrame]):
+    def dl_fn(self, data_frame: Optional[DataFrame]):  # pylint: disable=unused-argument
         try:
             count = 0
             for value in self.values:

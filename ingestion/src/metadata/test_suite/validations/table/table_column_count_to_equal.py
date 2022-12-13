@@ -18,6 +18,7 @@ import traceback
 from datetime import datetime
 from functools import singledispatch
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -77,9 +78,6 @@ def table_column_count_to_equal(
         result=result,
         testResultValue=[TestResultValue(name="columnCount", value=str(column_count))],
     )
-
-
-from pandas import DataFrame
 
 
 @table_column_count_to_equal.register

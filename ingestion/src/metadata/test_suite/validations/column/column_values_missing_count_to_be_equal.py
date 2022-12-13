@@ -16,7 +16,9 @@ ColumnValuesMissingCount validation implementation
 import traceback
 from ast import literal_eval
 from datetime import datetime
+from functools import singledispatch
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -25,17 +27,14 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 def test_case_status_result(null_count_value_res, missing_count_values):
@@ -143,15 +142,25 @@ def column_values_missing_count_to_be_equal(
     )
 
 
+# pylint: disable=abstract-class-instantiated,no-member
 @column_values_missing_count_to_be_equal.register
 def column_values_missing_count_to_be_equal_dl(
     test_case: TestCase,
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_obj = ColumnBaseModel.col_base_model(
-        data_frame[get_decoded_column(test_case.entityLink.__root__)]
-    )
+    """
+    Validate Column Values metric
+    :param test_case: ColumnValuesMissingCount. Just used to trigger singledispatch
+    :param col_profile: should contain count and distinct count metrics
+    :param execution_date: Datetime when the tests ran
+    :param session: SQLAlchemy Session, for tests that need to compute new metrics
+    :param table: SQLAlchemy Table, for tests that need to compute new metrics
+    :param profile_sample: % of the data to run the profiler on
+    :return: TestCaseResult with status and results
+    """
+
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
     null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(data_frame)
 
     missing_values = next(

@@ -16,7 +16,9 @@ ColumnValuesToBeNotNull validation implementation
 import traceback
 from ast import literal_eval
 from datetime import datetime
+from functools import singledispatch
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -25,17 +27,14 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 def test_case_status_result(set_count_res):
@@ -116,9 +115,7 @@ def column_values_not_in_set_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_obj = ColumnBaseModel.col_base_model(
-        data_frame[get_decoded_column(test_case.entityLink.__root__)]
-    )
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
     forbidden_value = next(
         (
             literal_eval(param.value)
@@ -127,7 +124,7 @@ def column_values_not_in_set_dl(
         )
     )
     set_count = add_props(values=forbidden_value)(Metrics.COUNT_IN_SET.value)
-    set_count_res = set_count(column_obj).dl_fn()
+    set_count_res = set_count(column_obj).dl_fn()  # pylint: disable=no-member
     status, result = test_case_status_result(set_count_res)
     return TestCaseResult(
         timestamp=execution_date,

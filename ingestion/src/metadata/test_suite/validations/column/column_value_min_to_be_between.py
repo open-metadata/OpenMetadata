@@ -16,7 +16,9 @@ ColumnValuesToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -25,17 +27,14 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 def test_case_status_result(min_bound, max_bound, min_value_res):
@@ -56,7 +55,7 @@ def column_value_min_to_be_between(
 ) -> TestCaseResult:
     """
     Validate Column Values metric
-    :param test_case: ColumnValuesToBeBetween
+    :param test_case: columnValueMinToBeBetween
     :param col_profile: should contain MIN & MAX metrics
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
@@ -125,9 +124,14 @@ def column_value_min_to_be_between_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_obj = ColumnBaseModel.col_base_model(
-        data_frame[get_decoded_column(test_case.entityLink.__root__)]
-    )
+    """
+    Validate Column Values metric
+    :param test_case: columnValueMinToBeBetween
+    :param col_profile: should contain MIN & MAX metrics
+    :param execution_date: Datetime when the tests ran
+    :return: TestCaseResult with status and results
+    """
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
 
     min_bound = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore

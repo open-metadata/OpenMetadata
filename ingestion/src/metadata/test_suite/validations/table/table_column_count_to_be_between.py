@@ -16,7 +16,9 @@ TableColumnCountToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -30,7 +32,6 @@ from metadata.utils.logger import test_suite_logger
 from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
-from functools import singledispatch
 
 
 @singledispatch
@@ -99,15 +100,22 @@ def table_column_count_to_be_between(
     )
 
 
-from pandas import DataFrame
-
-
 @table_column_count_to_be_between.register
 def table_column_count_to_be_between_dl(
     test_case: TestCase,
     execution_date: datetime,
     data_frame: DataFrame,
 ):
+    """
+    Validate row count metric
+
+    Args:
+        test_case: test case type to be ran. Used to dispatch
+        table_profile: table profile results
+        execution_date: datetime of the test execution
+    Returns:
+        TestCaseResult with status and results
+    """
     column_count = len(data_frame.columns)
     min_ = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore

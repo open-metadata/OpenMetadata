@@ -254,17 +254,13 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 table_sample_query=table_sample_query,
                 table_partition_config=table_partition_config,
             )
-        self.data_frame_list = ometa_to_dataframe(
-            service_connection_config.configSource, self.client, table_entity
-        )
         return DataLakeTestSuiteInterface(
             service_connection_config=service_connection_config,
             ometa_client=self.client,
-            data_frame=self.data_frame_list[0],
+            data_frame=ometa_to_dataframe(
+                service_connection_config.configSource, self.client, table_entity
+            )[0],
             table_entity=table_entity,
-            table_sample_precentage=table_sample_precentage,
-            table_sample_query=table_sample_query,
-            table_partition_config=table_partition_config,
         )
 
     def _create_data_tests_runner(self, sqa_interface):

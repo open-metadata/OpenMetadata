@@ -15,6 +15,7 @@ ColumnValuesToBeNotNull validation implementation
 # pylint: disable=duplicate-code
 import traceback
 from datetime import datetime
+from functools import singledispatch
 from typing import Optional
 
 from sqlalchemy import inspect
@@ -33,8 +34,6 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
-
-from functools import singledispatch
 
 
 def _get_not_match_count(not_like_count, not_regex_count, runner, col) -> Optional[int]:

@@ -27,12 +27,9 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.test_suite.validations.column.column_values_to_be_between import (
-    test_case_status_result,
-)
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
@@ -104,16 +101,9 @@ def column_values_to_be_unique(
             ],
         )
 
-    status = (
-        TestCaseStatus.Success
-        if value_count_value_res == unique_count_value_res
-        else TestCaseStatus.Failed
+    status, result = test_case_status_result(
+        value_count_value_res, unique_count_value_res
     )
-    result = (
-        f"Found valuesCount={value_count_value_res} vs. uniqueCount={unique_count_value_res}."
-        + " Both counts should be equal for column values to be unique."
-    )
-
     return TestCaseResult(
         timestamp=execution_date,
         testCaseStatus=status,
@@ -131,9 +121,7 @@ def column_values_to_be_unique_dl(
     execution_date: datetime,
     data_frame: DataFrame,
 ):
-    column_obj = ColumnBaseModel.col_base_model(
-        data_frame[get_decoded_column(test_case.entityLink.__root__)]
-    )
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
 
     value_count_value_res = Metrics.COUNT.value(column_obj).dl_fn(data_frame)
     unique_count_value_res = Metrics.UNIQUE_COUNT.value(column_obj).dl_query(data_frame)

@@ -21,6 +21,7 @@ from datetime import datetime
 from functools import singledispatch
 from typing import List
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -121,15 +122,22 @@ def table_column_to_match_set(
     )
 
 
-from pandas import DataFrame
-
-
 @table_column_to_match_set.register
 def table_column_to_match_set_dl(
     test_case: TestCase,
     execution_date: datetime,
     data_frame: DataFrame,
 ):
+    """
+    Validate row count metric
+
+    Args:
+        test_case: test case type to be ran. Used to dispatch
+        table_profile: table profile results
+        execution_date: datetime of the test execution
+    Returns:
+        TestCaseResult with status and results
+    """
     column_names = list(data_frame.columns)
     column_name = next(
         param_value.value

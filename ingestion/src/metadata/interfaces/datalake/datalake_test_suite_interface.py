@@ -25,7 +25,6 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
-from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.test_suite.validations.core import validation_enum_registry
 from metadata.utils.logger import test_suite_logger
 
@@ -43,9 +42,6 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         self,
         ometa_client: OpenMetadata = None,
         service_connection_config: DatalakeConnection = None,
-        table_sample_precentage: float = None,
-        table_sample_query: str = None,
-        table_partition_config: dict = None,
         table_entity=None,
         data_frame: DataFrame = None,
     ):
@@ -53,9 +49,6 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
         self.data_frame = data_frame
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
-        self.table_sample_precentage = table_sample_precentage
-        self.table_sample_query = table_sample_query
-        self.table_partition_config = table_partition_config
 
     def run_test_case(
         self,
