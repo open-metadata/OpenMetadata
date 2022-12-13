@@ -14,10 +14,15 @@ Expand sqlalchemy types to map them to OpenMetadata DataType
 """
 # pylint: disable=duplicate-code,abstract-method
 
+import traceback
 from typing import Optional
 
 import chardet
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
+
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class ByteaToHex(TypeDecorator):
@@ -51,10 +56,14 @@ class ByteaToHex(TypeDecorator):
             return None
         self.validate(value)
 
-        bytes_value = bytes(value)
-        detected_encoding = chardet.detect(bytes_value).get("encoding")
-        if detected_encoding:
-            value = bytes_value.decode(encoding=detected_encoding)
-            return value
+        try:
+            bytes_value = bytes(value)
+            detected_encoding = chardet.detect(bytes_value).get("encoding")
+            if detected_encoding:
+                value = bytes_value.decode(encoding=detected_encoding)
+                return value
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(exc)
 
         return value.hex()
