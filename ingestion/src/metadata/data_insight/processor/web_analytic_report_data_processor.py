@@ -15,6 +15,7 @@ Processor class used to compute refined report data
 
 from __future__ import annotations
 
+import re
 from collections import namedtuple
 from typing import Generator, Iterable, Optional
 
@@ -107,12 +108,28 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 continue
 
             entity_obj = EntityObj(split_url[0], split_url[1])
+            entity_type = entity_obj.entity_type
+            re_pattern = re.compile(f"(.*{entity_type}/{entity_obj.fqn})")
+
+            if (
+                entity_obj.fqn in refined_data
+                and not refined_data[entity_obj.fqn]["entityHref"]
+            ):
+                # if we've seen the entity previously but were not able to get
+                # the URL we'll try again from the new event.
+                try:
+                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
+                        1
+                    )
+                    refined_data[entity_obj.fqn]["entityHref"] = entity_href
+                except IndexError:
+                    logger.debug(f"Could not find entity Href for {entity_obj.fqn}")
 
             if entity_obj.fqn not in refined_data:
                 entity = self.metadata.get_by_name(
                     ENTITIES[entity_obj.entity_type],
                     fqn=entity_obj.fqn,
-                    fields="*",
+                    fields=["tags"],
                 )
 
                 try:
@@ -143,10 +160,18 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                         "`tags` attribute not supported for entity type",
                     )
 
+                try:
+                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
+                        1
+                    )
+                except IndexError:
+                    entity_href = None
+
                 refined_data[split_url[1]] = {
-                    "entityType": entity_obj.entity_type.title(),
+                    "entityType": ENTITIES[entity_type].__name__,
                     "entityTier": entity_tier,
                     "entityFqn": entity_obj.fqn,
+                    "entityHref": entity_href,
                     "tagsFQN": tags,
                     "owner": owner,
                     "ownerId": owner_id,

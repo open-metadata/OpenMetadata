@@ -21,7 +21,6 @@ from airflow.models import Connection
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
-    VerifySSL,
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
@@ -29,6 +28,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
     ValidateSSLClientConfig,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

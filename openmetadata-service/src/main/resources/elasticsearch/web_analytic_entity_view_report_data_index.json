@@ -18,6 +18,9 @@
           "entityFqn": {
             "type": "keyword"
           },
+          "entityHref": {
+            "type": "keyword"
+        },
           "owner": {
             "type": "keyword"
           },
