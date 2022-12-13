@@ -18,7 +18,8 @@ import {
     descriptionBox,
     goToAddNewServicePage,
     handleIngestionRetry,
-    interceptURL, mySqlConnectionInput,
+    interceptURL,
+    mySqlConnectionInput,
     scheduleIngestion,
     testServiceCreationAndIngestion,
     toastNotification,
@@ -27,7 +28,10 @@ import {
     visitEntityDetailsPage
 } from '../../common/common';
 import {
-    API_SERVICE, DATA_QUALITY_SAMPLE_DATA_TABLE, DELETE_TERM, MYDATA_SUMMARY_OPTIONS,
+    API_SERVICE,
+    DATA_QUALITY_SAMPLE_DATA_TABLE,
+    DELETE_TERM,
+    MYDATA_SUMMARY_OPTIONS,
     NEW_COLUMN_TEST_CASE,
     NEW_TABLE_TEST_CASE,
     NEW_TEST_SUITE,
@@ -52,10 +56,9 @@ const goToProfilerTab = () => {
 };
 
 describe('Data Quality and Profiler should work properly', () => {
-
   beforeEach(() => {
     cy.login();
-  })
+  });
   it('Add and ingest mysql data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
@@ -73,9 +76,13 @@ describe('Data Quality and Profiler should work properly', () => {
       serviceName
     );
   });
-  
+
   it('Add Profiler ingestion', () => {
-    interceptURL("POST", "/api/v1/services/ingestionPipelines/deploy/*", "deployIngestion");
+    interceptURL(
+      'POST',
+      '/api/v1/services/ingestionPipelines/deploy/*',
+      'deployIngestion'
+    );
 
     goToProfilerTab();
 
@@ -116,17 +123,16 @@ describe('Data Quality and Profiler should work properly', () => {
 
     scheduleIngestion();
 
-    cy.wait("@deployIngestion").then(() => {
-        cy.get('[data-testid="view-service-button"]')
+    cy.wait('@deployIngestion').then(() => {
+      cy.get('[data-testid="view-service-button"]')
         .scrollIntoView()
         .should('be.visible')
-        .click();  
+        .click();
 
-        handleIngestionRetry('database', true, 0, 'profiler');
-    })
-    
+      handleIngestionRetry('database', true, 0, 'profiler');
+    });
   });
-  
+
   it('Check if profiler is ingested properly or not', () => {
     goToProfilerTab();
     cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
@@ -246,8 +252,10 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
-    toastNotification('Test Case deleted successfully!')
-    cy.get('[class="ant-empty-description"]').invoke('text').should('eq', 'No data');
+    toastNotification('Test Case deleted successfully!');
+    cy.get('[class="ant-empty-description"]')
+      .invoke('text')
+      .should('eq', 'No data');
   });
 
   it('Add Column test case should work properly', () => {
@@ -348,12 +356,16 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
     verifyResponseStatusCode('@deleteTest', 200);
     verifyResponseStatusCode('@getTestCase', 200);
-    toastNotification('Test Case deleted successfully!')
-    cy.get('[class="ant-empty-description"]').invoke('text').should('eq', 'No data');
+    toastNotification('Test Case deleted successfully!');
+    cy.get('[class="ant-empty-description"]')
+      .invoke('text')
+      .should('eq', 'No data');
   });
 
   it('Delete Test suite should work properly', () => {
-    cy.get('[data-testid="appbar-item-data-quality"]').should('be.visible').click();
+    cy.get('[data-testid="appbar-item-data-quality"]')
+      .should('be.visible')
+      .click();
     cy.get(`[data-row-key="${NEW_TEST_SUITE.name}"] > :nth-child(1) > a`)
       .contains(NEW_TEST_SUITE.name)
       .should('be.visible')
@@ -380,7 +392,11 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      API_SERVICE.databaseServices
+    );
   });
 
   it('Profiler matrix and test case graph should visible', () => {
@@ -418,5 +434,67 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get(`[data-testid="${testCaseName}"]`).should('be.visible').click();
     verifyResponseStatusCode('@getTestResult', 200);
     cy.get(`[id="${testCaseName}_graph"]`).should('be.visible');
+  });
+
+  it('SQL query should be visible while editing the test case', () => {
+    const { term, entity, serviceName, sqlTestCase, testSuiteName, sqlQuery } =
+      DATA_QUALITY_SAMPLE_DATA_TABLE;
+
+    visitEntityDetailsPage(term, serviceName, entity);
+    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
+    cy.get('[data-testid="Profiler & Data Quality"]')
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="Profiler & Data Quality"]').should(
+      'have.class',
+      'active'
+    );
+
+    cy.get('[data-testid="profiler-add-table-test-btn"]')
+      .should('be.visible')
+      .click();
+
+    // selecting existing test suite
+    cy.get('#selectTestSuite_testSuiteId').should('exist').click();
+    cy.contains(testSuiteName).should('be.visible').click();
+    cy.get('[data-testid="next-button"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    // creating new test case
+    cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
+    cy.contains(sqlTestCase).should('be.visible').click();
+    cy.get('.CodeMirror-scroll')
+      .scrollIntoView()
+      .should('be.visible')
+      .type(sqlQuery);
+    cy.get(descriptionBox).scrollIntoView().type(sqlTestCase);
+
+    cy.get('[data-testid="submit-test"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    interceptURL('GET', '/api/v1/testCase?fields=*', 'testCase');
+    interceptURL('GET', '/api/v1/testDefinition/*', 'testCaseDefinition');
+
+    cy.get('[data-testid="success-line"]').should('be.visible');
+    cy.get('[data-testid="view-service-button"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="dim_address_tableCustomSQLQuery"]').should(
+      'be.visible'
+    );
+    cy.get('[data-testid="edit-dim_address_tableCustomSQLQuery"]')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@testCaseDefinition', 200);
+    cy.get('#tableTestForm').should('be.visible');
+    cy.get('.CodeMirror-scroll')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(sqlQuery);
   });
 });
