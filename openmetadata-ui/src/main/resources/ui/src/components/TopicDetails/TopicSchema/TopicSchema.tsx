@@ -34,7 +34,7 @@ import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import {
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TopicSchemaFields.utils';
+} from '../../../utils/TopicSchema.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../../tags-container/tags-container';

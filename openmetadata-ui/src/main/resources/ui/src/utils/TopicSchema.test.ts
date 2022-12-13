@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DataTypeTopic, Field } from '../generated/entity/data/topic';
-import { updateFieldDescription } from './TopicSchemaFields.utils';
+import { updateFieldDescription } from './TopicSchema.utils';
 
 const nestedField = {
   name: 'Order',
