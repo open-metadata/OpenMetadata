@@ -95,13 +95,13 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       List<Settings> settings = JsonUtils.readObjects(json, Settings.class);
       settings.forEach(
           (setting) -> {
-              try {
-                  if (setting.getConfigType() == ACTIVITY_FEED_FILTER_SETTING) {
-                      bootStrappedFilters = FilterUtil.getEventFilterFromSettings(setting);
-                  }
-              } catch (IOException e) {
-                  LOG.debug("Default Filter Init failed ", e);
+            try {
+              if (setting.getConfigType() == ACTIVITY_FEED_FILTER_SETTING) {
+                bootStrappedFilters = FilterUtil.getEventFilterFromSettings(setting);
               }
+            } catch (IOException e) {
+              LOG.debug("Default Filter Init failed ", e);
+            }
           });
     } catch (Exception e) {
       LOG.warn("Failed to initialize the {} from file {}", "filters", jsonDataFile, e);
