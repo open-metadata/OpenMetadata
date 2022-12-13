@@ -92,7 +92,7 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_all_workspaces(self) -> List[dict]:
+    def fetch_all_workspaces(self) -> Optional[List[dict]]:
         """Method to fetch all powerbi workspace details
         Returns:
             dict
