@@ -36,8 +36,6 @@ logger = test_suite_logger()
 
 from functools import singledispatch
 
-from pandas import DataFrame
-
 
 def _get_not_match_count(not_like_count, not_regex_count, runner, col) -> Optional[int]:
     """Not all database engine support REGEXP (e.g. MSSQL) so we'll fallback to LIKE.
@@ -142,12 +140,3 @@ def column_values_to_not_match_regex(
             TestResultValue(name="notLikeCount", value=str(not_match_count_value_res))
         ],
     )
-
-
-@column_values_to_not_match_regex.register
-def column_values_to_not_match_regex(
-    test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
-):
-    pass

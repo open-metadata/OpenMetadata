@@ -30,8 +30,10 @@ from metadata.utils.logger import test_suite_logger
 from metadata.utils.test_suite import get_test_case_param_value
 
 logger = test_suite_logger()
+from functools import singledispatch
 
 
+@singledispatch
 def table_column_count_to_be_between(
     test_case: TestCase,
     execution_date: datetime,
@@ -68,6 +70,45 @@ def table_column_count_to_be_between(
             testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
+    min_ = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minColValue",
+        int,
+        default=float("-inf"),
+    )
+
+    max_ = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxColValue",
+        int,
+        default=float("inf"),
+    )
+
+    status = (
+        TestCaseStatus.Success
+        if min_ <= column_count <= max_
+        else TestCaseStatus.Failed
+    )
+    result = f"Found {column_count} column vs. the expected range [{min_}, {max_}]."
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnCount", value=column_count)],
+    )
+
+
+from pandas import DataFrame
+
+
+@table_column_count_to_be_between.register
+def table_column_count_to_be_between_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    column_count = len(data_frame.columns)
     min_ = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore
         "minColValue",

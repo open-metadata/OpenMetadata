@@ -21,9 +21,9 @@ from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
 
 try:
-    from importlib.metadata import version
+    pass
 except ImportError:
-    from importlib_metadata import version
+    pass
 
 from openmetadata_managed_apis.api.response import ApiResponse
 

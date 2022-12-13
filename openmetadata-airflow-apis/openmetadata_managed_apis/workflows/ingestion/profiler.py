@@ -21,9 +21,9 @@ from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
 
 try:
-    from airflow.operators.python import PythonOperator
+    pass
 except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
+    pass
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,

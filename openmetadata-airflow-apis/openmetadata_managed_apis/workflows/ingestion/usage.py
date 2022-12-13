@@ -29,9 +29,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 
 try:
-    from airflow.operators.python import PythonOperator
+    pass
 except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
+    pass
 
 import tempfile
 

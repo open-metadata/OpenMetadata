@@ -25,8 +25,10 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -88,4 +90,24 @@ def table_row_count_to_equal(
 def table_row_count_to_equal_dl(
     test_case: TestCase, execution_date: datetime, data_frame: DataFrame
 ):
-    print(test_case)
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(data_frame)
+    value = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "value"
+    )
+
+    status = (
+        TestCaseStatus.Success if row_count_value == value else TestCaseStatus.Failed
+    )
+    result = f"Found {row_count_value} rows vs. the expected {value}"
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="rowCount", value=str(row_count_value))],
+    )

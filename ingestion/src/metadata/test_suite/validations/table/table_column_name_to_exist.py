@@ -17,6 +17,7 @@ TableColumnCountToBeBetween validation implementation
 import reprlib
 import traceback
 from datetime import datetime
+from functools import singledispatch
 from typing import List
 
 from sqlalchemy import inspect
@@ -45,6 +46,7 @@ def format_column_list(status: TestCaseStatus, cols: List):
     return cols
 
 
+@singledispatch
 def table_column_name_to_exist(
     test_case: TestCase,
     execution_date: datetime,
@@ -100,6 +102,50 @@ def table_column_name_to_exist(
     )
 
     result = f"{column_name} column expected vs {format_column_list(status, [col.name for col in column_names])}"
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnNameExits", value=str(True))],
+    )
+
+
+from pandas import DataFrame
+
+
+@table_column_name_to_exist.register
+def table_column_name_to_exist_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    column_names = list(data_frame.columns)
+    if column_names is None:
+        msg = "columnNames should not be None for TableColumnNameToExist"
+        logger.error(msg)
+        return TestCaseResult(
+            executionTime=execution_date,
+            testCaseStatus=TestCaseStatus.Aborted,
+            result=msg,
+            testResultValue=[TestResultValue(name="columnNameExits", value=None)],
+        )
+
+    column_name = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "columnName"
+    )
+
+    status = (
+        TestCaseStatus.Success
+        if column_name in {col.name for col in column_names}
+        else TestCaseStatus.Failed
+    )
+
+    result = (
+        f"{column_name} column expected vs {format_column_list(status, column_names)}"
+    )
 
     return TestCaseResult(
         timestamp=execution_date,

@@ -62,7 +62,7 @@ os.environ["AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_RUNNER_TEMPLATE"] = str(
 from airflow import DAG
 from airflow.models import DagBag, DagModel
 from airflow.operators.bash import BashOperator
-from airflow.utils import db, timezone
+from airflow.utils import timezone
 from airflow.utils.state import DagRunState
 from airflow.utils.types import DagRunType
 from openmetadata_managed_apis.operations.delete import delete_dag_id

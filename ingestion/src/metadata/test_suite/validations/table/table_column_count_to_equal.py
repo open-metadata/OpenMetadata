@@ -16,6 +16,7 @@ TableColumnCountToEqual validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
 
 from sqlalchemy import inspect
 
@@ -31,6 +32,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
+@singledispatch
 def table_column_count_to_equal(
     test_case: TestCase,
     execution_date: datetime,
@@ -60,6 +62,33 @@ def table_column_count_to_equal(
             testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
+    count = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "columnCount"
+    )
+
+    status = TestCaseStatus.Success if column_count == count else TestCaseStatus.Failed
+    result = f"Found {column_count} columns vs. the expected {count}"
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnCount", value=str(column_count))],
+    )
+
+
+from pandas import DataFrame
+
+
+@table_column_count_to_equal.register
+def table_column_count_to_equal_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    column_count = len(data_frame.columns)
     count = next(
         int(param_value.value)
         for param_value in test_case.parameterValues

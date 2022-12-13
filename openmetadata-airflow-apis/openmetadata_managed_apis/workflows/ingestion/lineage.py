@@ -21,9 +21,9 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
 )
 
 try:
-    from airflow.operators.python import PythonOperator
+    pass
 except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
+    pass
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,

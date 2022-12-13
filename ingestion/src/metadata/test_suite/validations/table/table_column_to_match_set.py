@@ -18,6 +18,7 @@ import collections
 import reprlib
 import traceback
 from datetime import datetime
+from functools import singledispatch
 from typing import List
 
 from sqlalchemy import inspect
@@ -46,6 +47,7 @@ def format_column_list(status: TestCaseStatus, cols: List):
     return cols
 
 
+@singledispatch
 def table_column_to_match_set(
     test_case: TestCase,
     execution_date: datetime,
@@ -116,4 +118,51 @@ def table_column_to_match_set(
                 name="columnNames", value=str([col.name for col in column_names])
             )
         ],
+    )
+
+
+from pandas import DataFrame
+
+
+@table_column_to_match_set.register
+def table_column_to_match_set_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    column_names = list(data_frame.columns)
+    column_name = next(
+        param_value.value
+        for param_value in test_case.parameterValues
+        if param_value.name == "columnNames"
+    )
+    ordered = next(
+        (
+            bool(param_value.value)
+            for param_value in test_case.parameterValues
+            if param_value.name == "ordered"
+        ),
+        None,
+    )
+    expected_column_names = [item.strip() for item in column_name.split(",")]
+    # pylint: disable=unnecessary-lambda-assignment
+    compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
+
+    if ordered:
+        _status = expected_column_names == column_names
+    else:
+        _status = compare(expected_column_names, column_names)
+
+    status = TestCaseStatus.Success if _status else TestCaseStatus.Failed
+
+    result = (
+        f"Found {format_column_list(status, column_names)} column vs. "
+        f"the expected column names {format_column_list(status, expected_column_names)}."
+    )
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnNames", value=str(column_names))],
     )

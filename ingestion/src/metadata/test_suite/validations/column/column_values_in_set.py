@@ -16,7 +16,9 @@ ColumnValuesToBeNotNull validation implementation
 import traceback
 from ast import literal_eval
 from datetime import datetime
+from functools import singledispatch
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -33,10 +35,6 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
-
-from functools import singledispatch
-
-from pandas import DataFrame
 
 
 def test_case_status_result(set_count_res):

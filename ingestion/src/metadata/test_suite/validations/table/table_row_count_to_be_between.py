@@ -16,6 +16,7 @@ TableRowCountToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -23,13 +24,16 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 
+@singledispatch
 def table_row_count_to_be_between(
     test_case: TestCase,
     execution_date: datetime,
@@ -61,6 +65,45 @@ def table_row_count_to_be_between(
             result=msg,
             testResultValue=[TestResultValue(name="rowCount", value=None)],
         )
+
+    min_ = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "minValue"
+    )
+    max_ = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "maxValue"
+    )
+
+    status = (
+        TestCaseStatus.Success
+        if min_ <= row_count_value <= max_
+        else TestCaseStatus.Failed
+    )
+    result = f"Found {row_count_value} rows vs. the expected range [{min_}, {max_}]."
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="rowCount", value=str(row_count_value))],
+    )
+
+
+from pandas import DataFrame
+
+
+@table_row_count_to_be_between.register
+def table_row_count_to_be_between_dl(
+    test_case: TestCase,
+    execution_date: datetime,
+    data_frame: DataFrame,
+):
+    column_obj = ColumnBaseModel.col_base_model(
+        data_frame[get_decoded_column(test_case.entityLink.__root__)]
+    )
+    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(data_frame)
 
     min_ = next(
         int(param_value.value)

@@ -18,7 +18,6 @@ from typing import Optional
 
 from pandas import DataFrame
 
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -28,9 +27,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
 from metadata.orm_profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.test_suite.validations.core import validation_enum_registry
-from metadata.utils.connections import create_and_bind_session, get_connection
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.timeout import cls_timeout
 
 logger = test_suite_logger()
 
@@ -87,13 +84,3 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
                 f"TestDefintion registry. Skipping test case {test_case.name.__root__} - {err}"
             )
             return None
-
-    def _create_sampler(self) -> DatalakeSampler:
-        """Create sampler instance"""
-        return DatalakeSampler(
-            session=self.session,
-            table=self.table,
-            profile_sample=self.table_sample_precentage,
-            partition_details=self.table_partition_config,
-            profile_sample_query=self.table_sample_query,
-        )
