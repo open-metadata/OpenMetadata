@@ -163,3 +163,9 @@ class NifiClientWrapper:
 class AmundsenClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class DatalakeGen2Client:
+    def __init__(self, client) -> None:
+        self.client = client

@@ -95,6 +95,7 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    AzureDatalakeConfig,
     DatalakeConnection,
     GCSConfig,
     S3Config,
@@ -1006,6 +1007,9 @@ def _(connection: DatalakeClient) -> None:
             else:
                 connection.client.list_buckets()
 
+        if isinstance(config, AzureDatalakeConfig):
+            connection.client.list_containers(name_starts_with="")
+
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg) from err
@@ -1045,6 +1049,29 @@ def _(config: GCSConfig):
     set_google_credentials(gcs_credentials=config.securityConfig)
     gcs_client = storage.Client()
     return gcs_client
+
+
+@get_datalake_client.register
+def _(config: AzureDatalakeConfig):
+    from azure.identity import ClientSecretCredential
+    from azure.storage.blob import BlobServiceClient
+
+    try:
+        credentials = ClientSecretCredential(
+            config.securityConfig.tenantId,
+            config.securityConfig.clientId,
+            config.securityConfig.clientSecret.get_secret_value(),
+        )
+
+        azure_client = BlobServiceClient(
+            f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
+            credential=credentials,
+        )
+        return azure_client
+
+    except Exception as exc:
+        msg = f"Unknown error connecting with {config.securityConfig}: {exc}."
+        raise SourceConnectionException(msg)
 
 
 @get_connection.register
