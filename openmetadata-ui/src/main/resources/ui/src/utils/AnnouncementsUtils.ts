@@ -20,6 +20,3 @@ export const isActiveAnnouncement = (startTime: number, endTime: number) => {
 
   return currentTime > startTime && currentTime < endTime;
 };
-
-export const announcementInvalidStartTime =
-  'Announcement start time must be earlier than the end time';
