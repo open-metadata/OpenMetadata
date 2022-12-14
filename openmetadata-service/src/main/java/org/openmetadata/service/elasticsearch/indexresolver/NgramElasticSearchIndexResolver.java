@@ -1,6 +1,18 @@
 package org.openmetadata.service.elasticsearch.indexresolver;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.PostConstruct;
+
 public class NgramElasticSearchIndexResolver extends DefaultElasticSearchIndexResolver {
+  private static final Logger LOGGER = LoggerFactory.getLogger(NgramElasticSearchIndexResolver.class);
+
+  @PostConstruct
+  public void onConstruct() {
+    LOGGER.info("Using NgramElasticSearchIndexResolver");
+  }
+
   @Override
   public IndexInfo indexInfo(IndexType type) {
     IndexInfo indexInfo = super.indexInfo(type);
