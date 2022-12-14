@@ -543,11 +543,4 @@ declare module 'Models' {
     id: string;
     state: string;
   }
-
-  export type EntityType =
-    | 'tables'
-    | 'topics'
-    | 'dashboards'
-    | 'pipelines'
-    | 'mlmodels';
 }

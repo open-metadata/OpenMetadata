@@ -28,7 +28,6 @@ import {
   omit,
   toUpper,
 } from 'lodash';
-import { EntityType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
@@ -90,7 +89,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
-    const entityName = toUpper(ENTITY_PATH[tab as EntityType] ?? 'table');
+    const entityName = toUpper(ENTITY_PATH[tab] ?? 'table');
 
     return SearchIndex[entityName as ExploreSearchIndexKey];
   }, [tab]);
