@@ -14,11 +14,16 @@
 import React from 'react';
 jest.mock('recharts', () => ({
   Bar: jest.fn().mockImplementation(() => <div>Bar</div>),
+  Scatter: jest.fn().mockImplementation(() => <div>Scatter</div>),
+  CartesianGrid: jest.fn().mockImplementation(() => <div>CartesianGrid</div>),
   Legend: jest.fn().mockImplementation(() => <div>Legend</div>),
   Tooltip: jest.fn().mockImplementation(() => <div>Tooltip</div>),
   XAxis: jest.fn().mockImplementation(() => <div>XAxis</div>),
   YAxis: jest.fn().mockImplementation(() => <div>YAxis</div>),
   BarChart: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  ComposedChart: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
   ResponsiveContainer: jest
