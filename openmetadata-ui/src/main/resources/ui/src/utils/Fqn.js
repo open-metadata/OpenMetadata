@@ -13,6 +13,7 @@
 
 import antlr4 from 'antlr4';
 import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
+import i18next from 'i18next';
 import SplitListener from '../antlr/SplitListener';
 import FqnLexer from '../generated/antlr/FqnLexer';
 import FqnParser from '../generated/antlr/FqnParser';
@@ -45,7 +46,7 @@ export default class Fqn {
   static quoteName(name) {
     const matcher = /^(")([^"]+)(")$|^(.*)$/.exec(name);
     if (!matcher || matcher[0].length != name.length) {
-      throw 'Invalid name ' + name;
+      throw new Error(`${i18next.t('label.invalid-name')} ${name}`);
     }
 
     // Name matches quoted string "sss".
@@ -63,6 +64,6 @@ export default class Fqn {
       return unquotedName.includes('.') ? '"' + name + '"' : unquotedName;
     }
 
-    throw 'Invalid name ' + name;
+    throw new Error(`${i18next.t('label.invalid-name')} ${name}`);
   }
 }

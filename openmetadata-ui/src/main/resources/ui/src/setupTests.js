@@ -82,3 +82,10 @@ jest.mock('react-i18next', () => ({
   }),
   t: (key) => key,
 }));
+
+/**
+ * mock i18next
+ */
+jest.mock('i18next', () => ({
+  t: jest.fn().mockImplementation((key) => key),
+}));

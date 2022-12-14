@@ -15,16 +15,14 @@ import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppState from '../../../AppState';
 import { postThread } from '../../../axiosAPIs/feedsAPI';
 import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
-import {
-  announcementInvalidStartTime,
-  validateMessages,
-} from '../../../utils/AnnouncementsUtils';
+import { validateMessages } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getTimeZone, getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -57,11 +55,13 @@ const AddAnnouncementModal: FC<Props> = ({
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const { t } = useTranslation();
+
   const handleCreateAnnouncement = async () => {
     const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
     const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
     if (startTime >= endTime) {
-      showErrorToast(announcementInvalidStartTime);
+      showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       const announcementData: CreateThread = {
         from: currentUser?.name as string,
@@ -78,7 +78,7 @@ const AddAnnouncementModal: FC<Props> = ({
         setIsLoading(true);
         const data = await postThread(announcementData);
         if (data) {
-          showSuccessToast('Announcement created successfully!');
+          showSuccessToast(t('message.announcement-created-successfully'));
         }
         onCancel();
       } catch (error) {
@@ -103,7 +103,7 @@ const AddAnnouncementModal: FC<Props> = ({
         htmlType: 'submit',
       }}
       okText="Submit"
-      title="Make an announcement"
+      title={t('label.make-an-announcement')}
       visible={open}
       width={620}
       onCancel={onCancel}>
@@ -114,7 +114,7 @@ const AddAnnouncementModal: FC<Props> = ({
         validateMessages={validateMessages}
         onFinish={handleCreateAnnouncement}>
         <Form.Item
-          label="Title:"
+          label={`${t('label.title')}:`}
           messageVariables={{ fieldName: 'title' }}
           name="title"
           rules={[
@@ -125,7 +125,7 @@ const AddAnnouncementModal: FC<Props> = ({
             },
           ]}>
           <Input
-            placeholder="Announcement title"
+            placeholder={t('label.announcement-title')}
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -133,7 +133,9 @@ const AddAnnouncementModal: FC<Props> = ({
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
-            label={`Start Date: (${getTimeZone()})`}
+            label={t('label.start-date-time-zone', {
+              timeZone: getTimeZone(),
+            })}
             messageVariables={{ fieldName: 'startDate' }}
             name="startDate"
             rules={[
@@ -148,7 +150,9 @@ const AddAnnouncementModal: FC<Props> = ({
             />
           </Form.Item>
           <Form.Item
-            label={`End Date: (${getTimeZone()})`}
+            label={t('label.end-date-time-zone', {
+              timeZone: getTimeZone(),
+            })}
             messageVariables={{ fieldName: 'endtDate' }}
             name="endtDate"
             rules={[
@@ -163,10 +167,10 @@ const AddAnnouncementModal: FC<Props> = ({
             />
           </Form.Item>
         </Space>
-        <Form.Item label="Description:" name="description">
+        <Form.Item label={`${t('label.description')}:`} name="description">
           <RichTextEditor
             initialValue={description}
-            placeHolder="write your announcement"
+            placeHolder={t('label.write-your-announcement-lowercase')}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>
