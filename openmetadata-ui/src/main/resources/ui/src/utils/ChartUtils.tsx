@@ -40,3 +40,15 @@ export const axisTickFormatter = (value: number, tickFormatter?: string) => {
     ? `${value}${tickFormatter}`
     : formatNumberWithComma(value);
 };
+
+export const updateActiveChartFilter = (
+  dataKey: string,
+  prevActiveKeys: string[]
+) => {
+  const updatedData = [...prevActiveKeys, dataKey];
+  if (prevActiveKeys.length && prevActiveKeys.includes(dataKey)) {
+    return prevActiveKeys.filter((activeKey) => activeKey !== dataKey);
+  }
+
+  return updatedData;
+};

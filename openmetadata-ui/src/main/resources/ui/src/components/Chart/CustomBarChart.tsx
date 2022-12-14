@@ -12,13 +12,14 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Legend,
+  LegendProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -27,8 +28,8 @@ import {
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   axisTickFormatter,
-  renderColorfulLegendText,
   tooltipFormatter,
+  updateActiveChartFilter,
 } from '../../utils/ChartUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -40,6 +41,7 @@ const CustomBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const { t } = useTranslation();
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   if (data.length === 0) {
     return (
@@ -56,6 +58,11 @@ const CustomBarChart = ({
       </Row>
     );
   }
+  const handleClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
 
   return (
     <ResponsiveContainer debounce={200} id={`${name}_graph`} minHeight={300}>
@@ -82,12 +89,15 @@ const CustomBarChart = ({
           <Bar
             dataKey={info.dataKey}
             fill={info.color}
+            hide={
+              activeKeys.length ? !activeKeys.includes(info.dataKey) : false
+            }
             key={info.dataKey}
             name={info.title}
             stackId={info.stackId}
           />
         ))}
-        <Legend formatter={renderColorfulLegendText} />
+        <Legend onClick={handleClick} />
       </BarChart>
     </ResponsiveContainer>
   );

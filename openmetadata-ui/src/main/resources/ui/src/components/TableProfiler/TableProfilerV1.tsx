@@ -31,7 +31,10 @@ import { SelectableOption } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
+import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
+import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
 import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
@@ -168,16 +171,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
       label: t('label.table-profile'),
       key: ProfilerDashboardTab.PROFILER,
       disabled: !viewProfiler,
+      icon: <TableProfileIcon />,
     },
     {
       label: t('label.column-profile'),
       key: ProfilerDashboardTab.SUMMARY,
       disabled: !viewProfiler,
+      icon: <ColumnProfileIcon />,
     },
     {
       label: t('label.data-quality'),
       key: ProfilerDashboardTab.DATA_QUALITY,
       disabled: !viewTest,
+      icon: <DataQualityIcon />,
     },
   ];
 
@@ -387,6 +393,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
               }>
               <Button
                 ghost
+                className="flex items-center"
                 data-testid="profiler-setting-btn"
                 disabled={!editTest}
                 icon={

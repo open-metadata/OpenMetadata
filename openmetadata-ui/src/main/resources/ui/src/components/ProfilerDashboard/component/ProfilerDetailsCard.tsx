@@ -12,10 +12,11 @@
  */
 
 import { Card, Col, Row } from 'antd';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CartesianGrid,
   Legend,
+  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -26,8 +27,8 @@ import {
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import {
   axisTickFormatter,
-  renderColorfulLegendText,
   tooltipFormatter,
+  updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
@@ -40,6 +41,13 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   curveType,
 }) => {
   const { data, information } = chartCollection;
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
+
+  const handleClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
 
   return (
     <Card className="tw-rounded-md tw-border">
@@ -52,7 +60,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         </Col>
         <Col span={20}>
           {data.length > 0 ? (
-            <ResponsiveContainer id={`${name}_graph`} minHeight={300}>
+            <ResponsiveContainer
+              debounce={200}
+              id={`${name}_graph`}
+              minHeight={300}>
               <LineChart
                 className="tw-w-full"
                 data={data}
@@ -80,13 +91,18 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 {information.map((info) => (
                   <Line
                     dataKey={info.dataKey}
+                    hide={
+                      activeKeys.length
+                        ? !activeKeys.includes(info.dataKey)
+                        : false
+                    }
                     key={info.dataKey}
                     name={info.title}
                     stroke={info.color}
                     type={curveType ?? 'monotone'}
                   />
                 ))}
-                <Legend formatter={renderColorfulLegendText} />
+                <Legend onClick={handleClick} />
               </LineChart>
             </ResponsiveContainer>
           ) : (

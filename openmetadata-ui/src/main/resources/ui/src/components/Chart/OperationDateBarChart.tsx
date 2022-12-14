@@ -12,21 +12,21 @@
  */
 
 import { Col, Row } from 'antd';
-import { uniqueId } from 'lodash';
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
   CartesianGrid,
   ComposedChart,
   Legend,
+  LegendProps,
   ResponsiveContainer,
   Scatter,
   Tooltip,
   XAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
-import { OPERATION_CHART_LEGEND_PAYLOAD } from '../../constants/profiler.constant';
+import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { formatNumberWithComma } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -37,6 +37,7 @@ const OperationDateBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const { t } = useTranslation();
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   const tooltipFormatter = (
     _value: number,
@@ -44,6 +45,12 @@ const OperationDateBarChart = ({
     data: { payload: Record<string, number> }
   ) => {
     return formatNumberWithComma(data.payload.data);
+  };
+
+  const handleClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
   };
 
   if (data.length === 0) {
@@ -71,24 +78,30 @@ const OperationDateBarChart = ({
         <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <Tooltip formatter={tooltipFormatter} />
         {information.map((info) => (
-          <Scatter
-            dataKey={info.dataKey}
-            fill={info.color}
-            key={uniqueId()}
-            name={info.title}
-          />
-        ))}
-        {information.map((info) => (
           <Bar
             barSize={1}
             dataKey={info.dataKey}
             fill={info.color}
-            key={uniqueId()}
+            hide={
+              activeKeys.length ? !activeKeys.includes(info.dataKey) : false
+            }
+            key={`${info.dataKey}-bar`}
             name={info.title}
             stackId="data"
           />
         ))}
-        <Legend payload={OPERATION_CHART_LEGEND_PAYLOAD} />
+        {information.map((info) => (
+          <Scatter
+            dataKey={info.dataKey}
+            fill={info.color}
+            hide={
+              activeKeys.length ? !activeKeys.includes(info.dataKey) : false
+            }
+            key={`${info.dataKey}-scatter`}
+            name={info.title}
+          />
+        ))}
+        <Legend payloadUniqBy onClick={handleClick} />
       </ComposedChart>
     </ResponsiveContainer>
   );
