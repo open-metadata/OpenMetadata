@@ -141,4 +141,5 @@ export interface PlaceholderProps {
   description?: React.ReactNode;
   button?: React.ReactNode;
   datatestid?: string;
+  doc?: string;
 }

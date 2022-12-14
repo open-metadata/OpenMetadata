@@ -218,7 +218,7 @@ const getLatestPercentage = (
       if (timestamp) {
         return {
           ...raw,
-          timestamp: getFormattedDateFromMilliSeconds(raw.timestamp ?? 0),
+          timestamp,
         };
       }
 
@@ -335,8 +335,6 @@ export const getGraphDataByEntityType = (
 
   const graphData = prepareGraphData(timestamps, filteredData);
   const latestData = last(graphData);
-
-  getLatestPercentage(rawData, dataInsightChartType);
 
   return {
     data: graphData,
