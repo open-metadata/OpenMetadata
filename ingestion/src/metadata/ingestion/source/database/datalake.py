@@ -190,7 +190,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def _list_s3_objects(self, **kwargs) -> Iterable:
         try:
-            pages = self.client.list_objects(Bucket=kwargs["Bucket"]).get(
+            pages = self.client.list_objects(**kwargs).get(
                 "Contents", []
             )
             yield from pages
