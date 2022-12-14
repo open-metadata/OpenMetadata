@@ -466,6 +466,8 @@
     "service-lowercase": "service",
     "query-lowercase": "query",
     "table-lowercase": "table",
+    "schema-field": "Schema field",
+    "enter-field-description": "Enter {{field}} description",
     "partitions": "Partitions",
     "replication-factor": "replication factor",
     "retention-size": "retention-size",

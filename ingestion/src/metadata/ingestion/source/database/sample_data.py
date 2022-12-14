@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate
+#  Copyright 2021 Collate pylint: disable=too-many-lines
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -84,6 +84,7 @@ from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -97,6 +98,7 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
+from metadata.parsers.avro_parser import get_avro_fields, parse_avro_schema
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -663,11 +665,31 @@ class SampleDataSource(
             yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
+        """
+        Ingest Sample Topics
+        """
         for topic in self.topics["topics"]:
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = CreateTopicRequest(**topic)
+            parsed_schema = parse_avro_schema(topic["schemaText"])
+            create_topic = CreateTopicRequest(
+                name=topic["name"],
+                description=topic["description"],
+                partitions=topic["partitions"],
+                retentionSize=topic["retentionSize"],
+                replicationFactor=topic["replicationFactor"],
+                maximumMessageSize=topic["maximumMessageSize"],
+                cleanupPolicies=topic["cleanupPolicies"],
+                messageSchema=Topic(
+                    schemaText=topic["schemaText"],
+                    schemaType=topic["schemaType"],
+                    schemaFields=get_avro_fields(parsed_schema),
+                ),
+                service=EntityReference(
+                    id=self.kafka_service.id, type="messagingService"
+                ),
+            )
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
