@@ -248,6 +248,11 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Add Column test case should work properly', () => {
     goToProfilerTab();
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
+    
     cy.get('[data-testid="add-test-id"]')
       .scrollIntoView()
       .should('be.visible')
@@ -300,6 +305,10 @@ describe('Data Quality and Profiler should work properly', () => {
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
     cy.get('[data-testid="id-test-count"]').should('be.visible').click();
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
     cy.get(`[data-testid="edit-${columnTestName}"]`)
@@ -325,6 +334,10 @@ describe('Data Quality and Profiler should work properly', () => {
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
     cy.get('[data-testid="id-test-count"]').should('be.visible').click();
 
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
