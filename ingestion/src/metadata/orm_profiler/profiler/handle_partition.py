@@ -126,6 +126,10 @@ class partition_filter_handler:
                 # we don't have to add a filter if it has partition field as the query already has a filter
                 if not partition_field:
                     query_results = query_results.filter(partition_filter)
+                if kwargs.get("query_filters_"):
+                    filter_ = _self._build_query_filter(kwargs.get("query_filters_"))
+                    if filter_:
+                        query_results.filter(filter_)
                 return query_results.first() if self.first else query_results.all()
             return func(_self, *args, **kwargs)
 
