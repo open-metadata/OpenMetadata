@@ -73,7 +73,7 @@ const GlobalSettingLeftPanel = () => {
   return menuItems.length ? (
     <LeftPanelCard id="settings">
       <Menu
-        className="global-setting-left-panel"
+        className="custom-menu"
         data-testid="global-setting-left-panel"
         items={menuItems}
         mode="inline"

@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-@icon-color: #515151;
+import { MetricChartType } from '../ProfilerDashboard/profilerDashboard.interface';
 
-.side-panel-icons {
-  color: @icon-color;
+export interface CustomBarChartProps {
+  chartCollection: MetricChartType;
+  name: string;
+  tickFormatter?: string;
 }
