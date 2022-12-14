@@ -54,35 +54,27 @@ def read_json_from_azure(
     """
     Read the json file from the azure container and return a dataframe
     """
-    account_url = (
-        f"abfs://{container_name}@{client.account_name}.dfs.core.windows.net/{key}"
-    )
-    dataframe = pd.read_json(account_url, storage_options=storage_options, typ="series")
+    try:
+        account_url = (
+            f"abfs://{container_name}@{client.account_name}.dfs.core.windows.net/{key}"
+        )
+        dataframe = pd.read_json(
+            account_url, storage_options=storage_options, typ="series"
+        )
 
-    data = _get_json_text(key, dataframe.to_dict())  # pylint: disable=no-member
+        data = _get_json_text(key, dataframe.to_dict())  # pylint: disable=no-member
 
-    if isinstance(data, list):
-        return [pd.DataFrame.from_dict(data[:sample_size])]
-    return [
-        pd.DataFrame.from_dict({key: pd.Series(value) for key, value in data.items()})
-    ]
-
-
-def read_tsv_from_azure(
-    client: Any, key: str, container_name: str, storage_options: dict
-):
-    """
-    Read the tsv file from the container and return a dataframe
-    """
-    dataframe = read_csv_from_azure(
-        client=client,
-        key=key,
-        container_name=container_name,
-        storage_options=storage_options,
-        sep="\t",
-    )
-
-    return dataframe
+        if isinstance(data, list):
+            return [pd.DataFrame.from_dict(data[:sample_size])]
+        return [
+            pd.DataFrame.from_dict(
+                {key: pd.Series(value) for key, value in data.items()}
+            )
+        ]
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error reading parquet file from azure - {exc}")
+        return None
 
 
 def read_parquet_from_azure(
@@ -91,8 +83,13 @@ def read_parquet_from_azure(
     """
     Read the parquet file from the container and return a dataframe
     """
-    account_url = (
-        f"abfs://{container_name}@{client.account_name}.dfs.core.windows.net/{key}"
-    )
-    dataframe = pd.read_parquet(account_url, storage_options=storage_options)
-    return dataframe
+    try:
+        account_url = (
+            f"abfs://{container_name}@{client.account_name}.dfs.core.windows.net/{key}"
+        )
+        dataframe = pd.read_parquet(account_url, storage_options=storage_options)
+        return dataframe
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error reading parquet file from azure - {exc}")
+        return None

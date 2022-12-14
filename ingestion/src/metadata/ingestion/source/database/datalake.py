@@ -433,7 +433,6 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             read_csv_from_azure,
             read_json_from_azure,
             read_parquet_from_azure,
-            read_tsv_from_azure,
         )
 
         try:
@@ -451,7 +450,9 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 )
 
             if key.endswith(".tsv"):
-                return read_tsv_from_azure(client, key, container_name, storage_options)
+                return read_csv_from_azure(
+                    client, key, container_name, storage_options, sep="\t"
+                )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
