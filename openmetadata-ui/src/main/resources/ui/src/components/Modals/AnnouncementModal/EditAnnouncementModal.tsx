@@ -14,11 +14,9 @@
 import { Form, Input, Modal, Space } from 'antd';
 import { observer } from 'mobx-react';
 import React, { FC, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
-import {
-  announcementInvalidStartTime,
-  validateMessages,
-} from '../../../utils/AnnouncementsUtils';
+import { validateMessages } from '../../../utils/AnnouncementsUtils';
 import {
   getLocaleDateFromTimeStamp,
   getTimeZone,
@@ -53,12 +51,13 @@ const EditAnnouncementModal: FC<Props> = ({
   const [description, setDescription] = useState<string>(
     announcement.description || ''
   );
+  const { t } = useTranslation();
 
   const handleConfirm = () => {
     const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
     const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
     if (startTime >= endTime) {
-      showErrorToast(announcementInvalidStartTime);
+      showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       const updatedAnnouncement = {
         ...announcement,
@@ -82,8 +81,8 @@ const EditAnnouncementModal: FC<Props> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
-      okText="Save"
-      title="Edit an announcement"
+      okText={t('label.save')}
+      title={t('label.edit-an-announcement')}
       visible={open}
       width={620}
       onCancel={onCancel}>
@@ -95,7 +94,7 @@ const EditAnnouncementModal: FC<Props> = ({
         validateMessages={validateMessages}
         onFinish={handleConfirm}>
         <Form.Item
-          label="Title:"
+          label={`${t('label.title')}:`}
           messageVariables={{ fieldName: 'title' }}
           name="title"
           rules={[
@@ -106,7 +105,7 @@ const EditAnnouncementModal: FC<Props> = ({
             },
           ]}>
           <Input
-            placeholder="Announcement title"
+            placeholder={t('label.announcement-title')}
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -114,7 +113,9 @@ const EditAnnouncementModal: FC<Props> = ({
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
-            label={`Start Date: (${getTimeZone()})`}
+            label={t('label.start-date-time-zone', {
+              timeZone: getTimeZone(),
+            })}
             messageVariables={{ fieldName: 'startDate' }}
             name="startDate"
             rules={[
@@ -129,7 +130,9 @@ const EditAnnouncementModal: FC<Props> = ({
             />
           </Form.Item>
           <Form.Item
-            label={`End Date: (${getTimeZone()})`}
+            label={t('label.end-date-time-zone', {
+              timeZone: getTimeZone(),
+            })}
             messageVariables={{ fieldName: 'endDate' }}
             name="endDate"
             rules={[
@@ -144,10 +147,10 @@ const EditAnnouncementModal: FC<Props> = ({
             />
           </Form.Item>
         </Space>
-        <Form.Item label="Description:" name="description">
+        <Form.Item label={`${t('label.description')}:`} name="description">
           <RichTextEditor
             initialValue={description}
-            placeHolder="write your announcement"
+            placeHolder={t('label.write-your-announcement-lowercase')}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>

@@ -34,6 +34,7 @@ import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
 } from '../../constants/constants';
+import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -205,6 +206,7 @@ const CustomEntityDetailV1 = () => {
                   </Tooltip>
                 }
                 dataTestId="custom-properties-no-data"
+                doc={CUSTOM_PROPERTIES_DOCS}
                 heading="Property"
                 type="ADD_DATA"
               />

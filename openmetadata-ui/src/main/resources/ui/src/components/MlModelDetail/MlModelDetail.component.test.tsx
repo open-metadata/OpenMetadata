@@ -323,4 +323,30 @@ describe('Test MlModel entity detail component', () => {
 
     expect(customProperties).toBeInTheDocument();
   });
+
+  it('Soft deleted mlmodel should be visible', async () => {
+    const { container } = render(
+      <MlModelDetailComponent
+        {...mockProp}
+        mlModelDetail={{ ...mockData, deleted: true } as Mlmodel}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const entityInfo = await findByText(container, /EntityPageInfo/i);
+    const entityTabs = await findByTestId(container, 'tabs');
+    const entityFeatureList = await findByText(
+      container,
+      /MlModelFeaturesList/i
+    );
+    const entityDescription = await findByText(container, /Description/i);
+
+    expect(detailContainer).toBeInTheDocument();
+    expect(entityInfo).toBeInTheDocument();
+    expect(entityTabs).toBeInTheDocument();
+    expect(entityFeatureList).toBeInTheDocument();
+    expect(entityDescription).toBeInTheDocument();
+  });
 });
