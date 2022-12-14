@@ -18,6 +18,8 @@
 @primary-hover-light: rgba(219, 209, 249);
 @white: #fff;
 @gray: #dde3ea;
+@grey-body: rgb(55, 53, 47);
+@trigger-btn-hover-bg: #efefef;
 
 //font weight
 .font-medium {
@@ -90,6 +92,9 @@
 }
 .border-1 {
   border-width: 1px;
+}
+.border-l {
+  border-left-width: 1px;
 }
 .border-l-2 {
   border-left: 2px;
@@ -272,4 +277,22 @@
   text-overflow: ellipsis;
   display: -webkit-box;
   line-height: 18px;
+}
+
+.heading {
+  font-weight: 500 !important;
+  margin-bottom: 16px !important;
+  color: @grey-body !important;
+}
+
+.quick-filter-dropdown-trigger-btn {
+  padding: 4px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.quick-filter-dropdown-trigger-btn:hover,
+.quick-filter-dropdown-trigger-btn:focus {
+  background-color: @trigger-btn-hover-bg;
 }

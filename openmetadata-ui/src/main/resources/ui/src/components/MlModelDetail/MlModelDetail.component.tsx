@@ -13,6 +13,7 @@
 
 import { Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
@@ -29,6 +30,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
+import { restoreMlmodel } from '../../axiosAPIs/mlModelAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
@@ -52,13 +54,14 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
+  refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -376,6 +379,27 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
+  const handleRestoreMlmodel = async () => {
+    try {
+      await restoreMlmodel(mlModelDetail.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.mlmodel'),
+        }),
+        // Autoclose timer
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.mlmodel'),
+        })
+      );
+    }
+  };
+
   const onFeaturesUpdate = async (features: Mlmodel['mlFeatures']) => {
     await updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
   };
@@ -567,6 +591,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
+          onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}
         />
 

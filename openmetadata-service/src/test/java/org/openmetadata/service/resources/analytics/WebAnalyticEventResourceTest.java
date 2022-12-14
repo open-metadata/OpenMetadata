@@ -2,7 +2,10 @@ package org.openmetadata.service.resources.analytics;
 
 import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -19,6 +22,7 @@ import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -62,27 +66,71 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   }
 
   @Test
-  void put_web_analytic_event_data_200() throws IOException, ParseException {
+  void put_and_delete_web_analytic_event_data_200() throws IOException, ParseException {
+    String dates[] = {"2022-10-11", "2022-10-10", "2022-10-09", "2022-10-08"};
+
+    for (String date : dates) {
+      WebAnalyticEventData webAnalyticEventData =
+          new WebAnalyticEventData()
+              .withTimestamp(TestUtils.dateToTimestamp(date))
+              .withEventType(WebAnalyticEventType.PAGE_VIEW)
+              .withEventData(
+                  new PageViewData()
+                      .withHostname("http://localhost")
+                      .withUserId(UUID.randomUUID())
+                      .withSessionId(UUID.randomUUID()));
+      putWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
+
+      ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
+          getWebAnalyticEventData(
+              WebAnalyticEventType.PAGE_VIEW.value(),
+              TestUtils.dateToTimestamp(date),
+              TestUtils.dateToTimestamp(date),
+              ADMIN_AUTH_HEADERS);
+
+      verifyWebAnalyticEventData(webAnalyticEventDataResultList, List.of(webAnalyticEventData), 1);
+    }
+
+    deleteWebAnalyticEventData(TestUtils.dateToTimestamp("2022-10-11"), authHeaders(BOT_USER.getName()));
+
+    ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
+        getWebAnalyticEventData(
+            WebAnalyticEventType.PAGE_VIEW.value(),
+            TestUtils.dateToTimestamp("2022-10-11"),
+            TestUtils.dateToTimestamp("2022-10-11"),
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(webAnalyticEventDataResultList.getData().size(), 1);
+
+    ResultList<WebAnalyticEventData> emptyWebAnalyticEventDataResultList =
+        getWebAnalyticEventData(
+            WebAnalyticEventType.PAGE_VIEW.value(),
+            TestUtils.dateToTimestamp("2022-10-08"),
+            TestUtils.dateToTimestamp("2022-10-10"),
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(emptyWebAnalyticEventDataResultList.getData().size(), 0);
+  }
+
+  @Test
+  void put_and_delete_web_analytic_event_data_403() throws IOException, ParseException {
     WebAnalyticEventData webAnalyticEventData =
         new WebAnalyticEventData()
-            .withTimestamp(TestUtils.dateToTimestamp("2022-10-11"))
+            .withTimestamp(TestUtils.dateToTimestamp("2022-10-08"))
             .withEventType(WebAnalyticEventType.PAGE_VIEW)
             .withEventData(
                 new PageViewData()
                     .withHostname("http://localhost")
                     .withUserId(UUID.randomUUID())
                     .withSessionId(UUID.randomUUID()));
-
     putWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
 
-    ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
-        getWebAnalyticEventData(
-            WebAnalyticEventType.PAGE_VIEW.value(),
-            TestUtils.dateToTimestamp("2022-10-10"),
-            TestUtils.dateToTimestamp("2022-10-12"),
-            ADMIN_AUTH_HEADERS);
-
-    verifyWebAnalyticEventData(webAnalyticEventDataResultList, List.of(webAnalyticEventData), 1);
+    assertResponse(
+        () ->
+            deleteWebAnalyticEventData(
+                TestUtils.dateToTimestamp("2022-10-11"), authHeaders(USER_WITH_DATA_CONSUMER_ROLE.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_WITH_DATA_CONSUMER_ROLE.getName(), List.of(MetadataOperation.DELETE)));
   }
 
   @Override
@@ -119,6 +167,13 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
       throws HttpResponseException {
     WebTarget target = OpenMetadataApplicationTest.getResource("analytics/webAnalyticEvent/collect");
     TestUtils.put(target, data, OK, authHeaders);
+  }
+
+  public static void deleteWebAnalyticEventData(Long timestamp, Map<String, String> authHeaders) throws IOException {
+    String url =
+        String.format("analytics/webAnalyticEvent/%s/%s/collect", WebAnalyticEventType.PAGE_VIEW.value(), timestamp);
+    WebTarget target = OpenMetadataApplicationTest.getResource(url);
+    TestUtils.delete(target, WebAnalyticEvent.class, authHeaders);
   }
 
   public static ResultList<WebAnalyticEventData> getWebAnalyticEventData(

@@ -16,12 +16,10 @@ import { Popover, Space, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import i18n from 'i18next';
+import { t } from 'i18next';
 import {
   capitalize,
-  differenceWith,
   isEmpty,
-  isEqual,
   isNil,
   isNull,
   isString,
@@ -38,12 +36,12 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import React, { FormEvent } from 'react';
+import React from 'react';
+import { Trans } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
-import { Button } from '../components/buttons/Button/Button';
 import {
   getDayCron,
   getHourCron,
@@ -57,7 +55,6 @@ import {
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
-  TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import {
   UrlEntityCharRegEx,
@@ -65,7 +62,7 @@ import {
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
-import { Ownership } from '../enums/mydata.enum';
+import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -91,7 +88,6 @@ import Fqn from './Fqn';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
-import SVGIcons, { Icons } from './SvgUtils';
 import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -362,41 +358,6 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   setRecentlyViewedData(recentlyViewed.data);
 };
 
-export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
-  return (
-    <>
-      <p>{TITLE_FOR_NON_OWNER_ACTION}</p>
-      {!isClaimOwner ? <p>Claim ownership in Manage </p> : null}
-    </>
-  );
-};
-
-export const getOwnerIds = (
-  filter: Ownership,
-  userDetails: User,
-  nonSecureUserDetails: User
-): Array<string> => {
-  if (filter === Ownership.OWNER) {
-    if (!isEmpty(userDetails)) {
-      return [
-        ...(userDetails.teams?.map((team) => team.id) || []),
-        userDetails.id,
-      ];
-    } else {
-      if (!isEmpty(nonSecureUserDetails)) {
-        return [
-          ...(nonSecureUserDetails.teams?.map((team) => team.id) || []),
-          nonSecureUserDetails.id,
-        ];
-      } else {
-        return [];
-      }
-    }
-  } else {
-    return [userDetails.id || nonSecureUserDetails.id];
-  }
-};
-
 export const getActiveCatClass = (name: string, activeName = '') => {
   return activeName === name ? 'activeCategory' : '';
 };
@@ -406,18 +367,6 @@ export const errorMsg = (value: string) => {
     <div className="tw-mt-1">
       <strong
         className="tw-text-red-500 tw-text-xs tw-italic"
-        data-testid="error-message">
-        {value}
-      </strong>
-    </div>
-  );
-};
-
-export const validMsg = (value: string) => {
-  return (
-    <div className="tw-mt-1">
-      <strong
-        className="tw-text-success tw-text-xs tw-italic"
         data-testid="error-message">
         {value}
       </strong>
@@ -470,14 +419,6 @@ export const getServiceLogo = (
   return null;
 };
 
-export const getSvgArrow = (isActive: boolean) => {
-  return isActive ? (
-    <SVGIcons alt="arrow-down" icon={Icons.ARROW_DOWN_PRIMARY} />
-  ) : (
-    <SVGIcons alt="arrow-right" icon={Icons.ARROW_RIGHT_PRIMARY} />
-  );
-};
-
 export const isValidUrl = (href?: string) => {
   if (!href) {
     return false;
@@ -522,56 +463,11 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
   return `${defaultFields}, ${tabSpecificField}`;
 };
 
-export const restrictFormSubmit = (e: FormEvent) => {
-  e.preventDefault();
-};
-
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
       {capitalize(entityType)} instance for <strong>{fqn}</strong> not found
     </p>
-  );
-};
-
-export const getDocButton = (label: string, url: string, dataTestId = '') => {
-  return (
-    <Button
-      className="tw-group tw-rounded tw-w-full tw-px-3 tw-py-1.5 tw-text-sm"
-      data-testid={dataTestId}
-      href={url}
-      rel="noopener noreferrer"
-      size="custom"
-      tag="a"
-      target="_blank"
-      theme="primary"
-      variant="outlined">
-      <SVGIcons
-        alt="Doc icon"
-        className="tw-align-middle tw-mr-2 group-hover:tw-hidden"
-        icon={Icons.DOC_PRIMARY}
-        width="14"
-      />
-      <SVGIcons
-        alt="Doc icon"
-        className="tw-align-middle tw-mr-2 tw-hidden group-hover:tw-inline-block"
-        icon={Icons.DOC_WHITE}
-        width="14"
-      />
-      <span>{label}</span>
-      <SVGIcons
-        alt="external-link"
-        className="tw-align-middle tw-ml-2 group-hover:tw-hidden"
-        icon={Icons.EXTERNAL_LINK}
-        width="14"
-      />
-      <SVGIcons
-        alt="external-link"
-        className="tw-align-middle tw-ml-2 tw-hidden group-hover:tw-inline-block"
-        icon={Icons.EXTERNAL_LINK_WHITE}
-        width="14"
-      />
-    </Button>
   );
 };
 
@@ -641,7 +537,7 @@ export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
  */
 export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   if (isDeleted) {
-    return `${value} (Deactivated)`;
+    return `${value} (${t('label.deactivated')})`;
   } else {
     return value;
   }
@@ -691,13 +587,14 @@ export const getEntityId = (
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
-    return `Permanently deleting this ${getTitleCase(
-      entity
-    )} will remove its metadata, as well as the metadata of ${dependents} from OpenMetadata permanently.`;
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: getTitleCase(entity),
+      dependents,
+    });
   } else {
-    return `Permanently deleting this ${getTitleCase(
-      entity
-    )} will remove its metadata from OpenMetadata permanently.`;
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: getTitleCase(entity),
+    });
   }
 };
 
@@ -824,13 +721,6 @@ export const getTeamsUser = (
   return;
 };
 
-export const getDiffArray = (
-  compareWith: string[],
-  toCompare: string[]
-): string[] => {
-  return differenceWith(compareWith, toCompare, isEqual);
-};
-
 export const getHostNameFromURL = (url: string) => {
   if (isValidUrl(url)) {
     const domain = new URL(url);
@@ -843,7 +733,7 @@ export const getHostNameFromURL = (url: string) => {
 
 export const commonUserDetailColumns: ColumnsType<User> = [
   {
-    title: 'Username',
+    title: t('label.username'),
     dataIndex: 'username',
     key: 'username',
     render: (_, record) => (
@@ -856,7 +746,7 @@ export const commonUserDetailColumns: ColumnsType<User> = [
     ),
   },
   {
-    title: 'Teams',
+    title: t('label.teams'),
     dataIndex: 'teams',
     key: 'teams',
     render: (_, record) => {
@@ -904,7 +794,7 @@ export const commonUserDetailColumns: ColumnsType<User> = [
     },
   },
   {
-    title: 'Roles',
+    title: t('label.roles'),
     dataIndex: 'roles',
     key: 'roles',
     render: (_, record) => {
@@ -984,7 +874,7 @@ export const getEmptyPlaceholder = () => {
   return (
     <ErrorPlaceHolder size={SIZE.MEDIUM}>
       <Typography.Paragraph>
-        {i18n.t('label.no-data-available')}
+        {t('label.no-data-available')}
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );
@@ -1062,4 +952,49 @@ export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
   return tags.sort((tag1, tag2) =>
     tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
   );
+};
+
+export const Transi18next = ({
+  i18nKey,
+  values,
+  renderElement,
+  ...otherProps
+}: {
+  i18nKey: string;
+  values?: {};
+  renderElement: JSX.Element | HTMLElement;
+}): JSX.Element => (
+  <Trans i18nKey={i18nKey} values={values} {...otherProps}>
+    {renderElement}
+  </Trans>
+);
+
+/**
+ * It returns a link to the documentation for the given filter pattern type
+ * @param {FilterPatternEnum} type - The type of filter pattern.
+ * @returns A string
+ */
+export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
+  switch (type) {
+    case FilterPatternEnum.DATABASE:
+    case FilterPatternEnum.SCHEMA:
+    case FilterPatternEnum.TABLE:
+      return `https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/${FilterPatternEnum.DATABASE}#${type}-filter-pattern`;
+
+    case FilterPatternEnum.DASHBOARD:
+    case FilterPatternEnum.CHART:
+      return 'https://docs.open-metadata.org/connectors/dashboard/metabase#6-configure-metadata-ingestion';
+
+    case FilterPatternEnum.TOPIC:
+      return 'https://docs.open-metadata.org/connectors/messaging/kafka#6-configure-metadata-ingestion';
+
+    case FilterPatternEnum.PIPELINE:
+      return 'https://docs.open-metadata.org/connectors/pipeline/airflow#6-configure-metadata-ingestion';
+
+    case FilterPatternEnum.MLMODEL:
+      return 'https://docs.open-metadata.org/connectors/ml-model/mlflow';
+
+    default:
+      return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
+  }
 };

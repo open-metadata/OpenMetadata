@@ -56,6 +56,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   private static final String DATA_OWNER = "data.owner";
   private static final String USER_NAME = "userName";
   private static final String TEAM = "team";
+  private static final String ENTITY_HREF = "entityHref";
+  private static final String DATA_ENTITY_HREF = "data.entityHref";
   private static final List<String> SUPPORTS_TEAM_FILTER =
       Arrays.asList(
           "TotalEntitiesByType",
@@ -191,13 +193,16 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
         TermsAggregationBuilder ownerTermsAggregationBuilder = AggregationBuilders.terms(OWNER).field(DATA_OWNER);
         TermsAggregationBuilder entityTypeTermsAggregationBuilder =
             AggregationBuilders.terms(ENTITY_TYPE).field(DATA_ENTITY_TYPE);
+        TermsAggregationBuilder entityHrefAggregationBuilder =
+            AggregationBuilders.terms(ENTITY_HREF).field(DATA_ENTITY_HREF);
         SumAggregationBuilder sumEntityPageViewsAggregationBuilder =
             AggregationBuilders.sum(PAGE_VIEWS).field(DATA_VIEWS);
 
         return termsAggregationBuilder
             .subAggregation(sumEntityPageViewsAggregationBuilder)
             .subAggregation(ownerTermsAggregationBuilder)
-            .subAggregation(entityTypeTermsAggregationBuilder);
+            .subAggregation(entityTypeTermsAggregationBuilder)
+            .subAggregation(entityHrefAggregationBuilder);
       case MOST_ACTIVE_USERS:
         termsAggregationBuilder =
             AggregationBuilders.terms(USER_NAME)

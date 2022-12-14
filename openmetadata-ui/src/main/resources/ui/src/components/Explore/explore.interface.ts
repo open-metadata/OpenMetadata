@@ -72,7 +72,8 @@ export interface ExploreProps {
 
 export interface ExploreQuickFilterField {
   key: string;
-  value: string | undefined;
+  label: string;
+  value: string[] | undefined;
 }
 
 export interface ExploreQuickFilterProps {

@@ -42,6 +42,9 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
+  testSuiteName: "critical_metrics_suite",
+  sqlTestCase: "tableCustomSQLQuery",
+  sqlQuery: "Select * from dim_address"
 };
 
 export const SEARCH_ENTITY_TABLE = {
