@@ -190,9 +190,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def _list_s3_objects(self, **kwargs) -> Iterable:
         try:
-            pages = self.client.list_objects(**kwargs).get(
-                "Contents", []
-            )
+            pages = self.client.list_objects(**kwargs).get("Contents", [])
             yield from pages
         except Exception as exc:
             logger.debug(traceback.format_exc())
