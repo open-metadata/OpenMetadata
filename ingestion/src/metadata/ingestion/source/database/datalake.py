@@ -58,10 +58,9 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-DATALAKE_INT_TYPES = {"int64", "INT"}
+DATALAKE_INT_TYPES = {"int64", "INT", "int32"}
 
 DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet", ".json.gz")
-AZURE_SUPPORTED_FILE_TYPES = (".csv", ".parquet", ".json", ".json.gz")
 
 
 class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-methods
@@ -374,22 +373,20 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 columns = self.get_columns(data_frame)
             if isinstance(data_frame, list):
                 columns = self.get_columns(data_frame[0])
-                if columns:
-                    table_request = CreateTableRequest(
-                        name=table_name,
-                        tableType=table_type,
-                        description="",
-                        columns=columns,
-                        tableConstraints=table_constraints
-                        if table_constraints
-                        else None,
-                        databaseSchema=EntityReference(
-                            id=self.context.database_schema.id,
-                            type="databaseSchema",
-                        ),
-                    )
-                    yield table_request
-                    self.register_record(table_request=table_request)
+            if columns:
+                table_request = CreateTableRequest(
+                    name=table_name,
+                    tableType=table_type,
+                    description="",
+                    columns=columns,
+                    tableConstraints=table_constraints if table_constraints else None,
+                    databaseSchema=EntityReference(
+                        id=self.context.database_schema.id,
+                        type="databaseSchema",
+                    ),
+                )
+                yield table_request
+                self.register_record(table_request=table_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
@@ -436,6 +433,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             read_csv_from_azure,
             read_json_from_azure,
             read_parquet_from_azure,
+            read_tsv_from_azure,
         )
 
         try:
@@ -451,6 +449,9 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 return read_parquet_from_azure(
                     client, key, container_name, storage_options
                 )
+
+            if key.endswith(".tsv"):
+                return read_tsv_from_azure(client, key, container_name, storage_options)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -507,7 +508,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     if (
                         hasattr(data_frame[column], "dtypes")
                         and data_frame[column].dtypes.name in DATALAKE_INT_TYPES
-                        and data_frame[column].dtypes.name == "int64"
+                        and data_frame[column].dtypes.name in ("int64", "int32")
                     ):
                         data_type = DataType.INT.value
 
@@ -538,11 +539,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         return table
 
     def check_valid_file_type(self, key_name):
-        if key_name.endswith(
-            AZURE_SUPPORTED_FILE_TYPES
-            if isinstance(self.config.sourceConfig, AzureDatalakeConfig)
-            else DATALAKE_SUPPORTED_FILE_TYPES
-        ):
+        if key_name.endswith(DATALAKE_SUPPORTED_FILE_TYPES):
             return True
         return False
 

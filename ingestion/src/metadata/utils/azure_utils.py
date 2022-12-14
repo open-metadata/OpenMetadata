@@ -68,6 +68,21 @@ def read_json_from_azure(
     ]
 
 
+def read_tsv_from_azure(
+    client: Any, key: str, container_name: str, storage_options: dict
+):
+    """
+    Read the tsv file from the container and return a dataframe
+    """
+    account_url = (
+        f"abfs://{container_name}@{client.account_name}.dfs.core.windows.net/{key}"
+    )
+
+    dataframe = pd.read_csv(account_url, storage_options=storage_options, sep="\t")
+
+    return dataframe
+
+
 def read_parquet_from_azure(
     client: Any, key: str, container_name: str, storage_options: dict
 ):
