@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { getAdvancedFieldDefaultOptions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
+import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
+import {
+  mockAdvancedFieldDefaultOptions,
+  mockAdvancedFieldOptions,
+  mockTagSuggestions,
+  mockUserSuggestions,
+} from './mocks/ExploreQuickFilters.mock';
 
 const mockOnFieldRemove = jest.fn();
 const mockOnAdvanceSearch = jest.fn();
@@ -28,18 +37,84 @@ const mockOnUpdateFilterValues = jest.fn();
 jest.mock('../SearchDropdown/SearchDropdown', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="search-dropdown">SearchDropdown</div>)
+    .mockImplementation(
+      ({ options, searchKey, onChange, onSearch }: SearchDropdownProps) => (
+        <div
+          data-testid={`search-dropdown-${searchKey}`}
+          key={searchKey}
+          title="search-dropdown">
+          {options.map((option) => (
+            <div data-testid={`option-${searchKey}`} key={option}>
+              {option}
+            </div>
+          ))}
+          <div
+            data-testid={`onSearch-${searchKey}`}
+            onClick={() => onSearch('', searchKey)}>
+            onSearch
+          </div>
+          <div
+            data-testid={`onChange-${searchKey}`}
+            onClick={() => onChange([''], searchKey)}>
+            onChange
+          </div>
+        </div>
+      )
+    )
 );
 
 jest.mock('./AdvanceSearchModal.component', () => ({
   AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
 }));
 
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  getAdvancedFieldDefaultOptions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockAdvancedFieldDefaultOptions)),
+  getAdvancedFieldOptions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockAdvancedFieldOptions)),
+  getTagSuggestions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTagSuggestions)),
+  getUserSuggestions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockUserSuggestions)),
+}));
+
 const index = SearchIndex.TABLE;
-const fields = [
-  { key: 'owner.name', value: undefined },
-  { key: 'column_names', value: undefined },
-] as ExploreQuickFilterField[];
+const mockFields: ExploreQuickFilterField[] = [
+  {
+    label: 'Column',
+    key: 'columns.name',
+    value: undefined,
+  },
+  {
+    label: 'Schema',
+    key: 'databaseSchema.name',
+    value: undefined,
+  },
+  {
+    label: 'Database',
+    key: 'database.name',
+    value: undefined,
+  },
+  {
+    label: 'Owner',
+    key: 'owner.name',
+    value: undefined,
+  },
+  {
+    label: 'Tag',
+    key: 'tags.tagFQN',
+    value: undefined,
+  },
+  {
+    label: 'Service',
+    key: 'service.name',
+    value: undefined,
+  },
+];
 
 const onFieldRemove = mockOnFieldRemove;
 const onAdvanceSearch = mockOnAdvanceSearch;
@@ -51,7 +126,7 @@ const onUpdateFilterValues = mockOnUpdateFilterValues;
 
 const mockProps = {
   index,
-  fields,
+  fields: mockFields,
   onFieldRemove,
   onAdvanceSearch,
   onClear,
@@ -63,27 +138,81 @@ const mockProps = {
 
 describe('Test ExploreQuickFilters component', () => {
   it('Should render ExploreQuickFilters component', async () => {
-    const { findAllByTestId } = render(<ExploreQuickFilters {...mockProps} />);
+    const { findAllByTitle } = render(<ExploreQuickFilters {...mockProps} />);
 
-    const fields = await findAllByTestId('search-dropdown');
+    const fields = await findAllByTitle('search-dropdown');
 
     expect(fields).toHaveLength(fields.length);
   });
 
   it('Should call onAdvanceSearch method on click of Advance Search button', async () => {
-    const { findByTestId, findAllByTestId } = render(
+    const { findByTestId, findAllByTitle } = render(
       <ExploreQuickFilters {...mockProps} />
     );
 
-    const fields = await findAllByTestId('search-dropdown');
+    const fields = await findAllByTitle('search-dropdown');
     const advanceSearchButton = await findByTestId('advance-search-button');
 
-    expect(fields).toHaveLength(fields.length);
+    expect(fields).toHaveLength(mockFields.length);
 
     expect(advanceSearchButton).toBeInTheDocument();
 
     fireEvent.click(advanceSearchButton);
 
     expect(onAdvanceSearch).toBeCalled();
+  });
+
+  it('All options should be passed to SearchDropdown component for proper API response', async () => {
+    const { findByTestId, findAllByTestId } = render(
+      <ExploreQuickFilters {...mockProps} />
+    );
+
+    const databaseFieldOnSearch = await findByTestId('onSearch-database.name');
+
+    expect(databaseFieldOnSearch).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(databaseFieldOnSearch);
+    });
+
+    const options = await findAllByTestId('option-database.name');
+
+    expect(options).toHaveLength(
+      mockAdvancedFieldDefaultOptions.data.aggregations['sterms#database.name']
+        .buckets.length
+    );
+  });
+
+  it('No previous options should be present after getAdvancedFieldDefaultOptions API fails', async () => {
+    const { findByTestId, findAllByTestId, queryAllByTestId } = render(
+      <ExploreQuickFilters {...mockProps} />
+    );
+
+    const databaseFieldOnSearch = await findByTestId('onSearch-database.name');
+
+    expect(databaseFieldOnSearch).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(databaseFieldOnSearch);
+    });
+
+    let options = await findAllByTestId('option-database.name');
+
+    expect(options).toHaveLength(
+      mockAdvancedFieldDefaultOptions.data.aggregations['sterms#database.name']
+        .buckets.length
+    );
+
+    (getAdvancedFieldDefaultOptions as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject('not done')
+    );
+
+    await act(async () => {
+      userEvent.click(databaseFieldOnSearch);
+    });
+
+    options = queryAllByTestId('option-database.name');
+
+    expect(options).toHaveLength(0);
   });
 });
