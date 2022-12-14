@@ -12,6 +12,7 @@
  */
 
 import { Topic } from '../../generated/entity/data/topic';
+import { nestedField } from './TopicSchema/TopicSchema.mock';
 
 /* eslint-disable max-len */
 
@@ -20,6 +21,7 @@ export const MESSAGE_SCHEMA = {
     '{"namespace":"openmetadata.kafka","name":"Customer","type":"record","fields":[{"name":"id","type":"string"},{"name":"first_name","type":"string"},{"name":"last_name","type":"string"},{"name":"email","type":"string"},{"name":"address_line_1","type":"string"},{"name":"address_line_2","type":"string"},{"name":"post_code","type":"string"},{"name":"country","type":"string"}]}',
   schemaType: 'Avro',
   schemaFields: [
+    nestedField,
     {
       name: 'id',
       dataType: 'STRING',

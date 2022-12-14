@@ -371,6 +371,7 @@ export function getTableExpandableConfig<
       expandable && (
         <Typography.Text
           className="m-r-xs cursor-pointer"
+          data-testid="expand-icon"
           onClick={(e) => onExpand(record, e)}>
           <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
         </Typography.Text>
