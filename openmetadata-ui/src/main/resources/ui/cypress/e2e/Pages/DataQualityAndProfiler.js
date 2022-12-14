@@ -426,6 +426,10 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
     cy.get('[data-row-key="shop_id"] > :nth-child(1) > a')
       .scrollIntoView()
       .should('be.visible')
