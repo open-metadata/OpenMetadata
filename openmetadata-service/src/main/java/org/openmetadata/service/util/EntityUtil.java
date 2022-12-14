@@ -34,11 +34,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -272,7 +272,7 @@ public final class EntityUtil {
   public static void setFullyQualifiedName(Tag tag) {
     String fqn =
         tag.getParent() == null
-            ? FullyQualifiedName.add(tag.getTagCategory().getName(), tag.getName())
+            ? FullyQualifiedName.add(tag.getClassification().getName(), tag.getName())
             : FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName());
     tag.setFullyQualifiedName(fqn);
   }
@@ -459,10 +459,7 @@ public final class EntityUtil {
   }
 
   public static Column getColumn(Table table, String columnName) {
-    return table.getColumns().stream()
-        .filter(c -> c.getName().equals(columnName))
-        .findFirst()
-        .orElse(null);
+    return table.getColumns().stream().filter(c -> c.getName().equals(columnName)).findFirst().orElse(null);
   }
 
   public static void sortByTagHierarchy(List<Tag> tags) {

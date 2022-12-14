@@ -1,22 +1,22 @@
 {
-  "$id": "https://open-metadata.org/schema/api/tags/createTagCategory.json",
+  "$id": "https://open-metadata.org/schema/api/classification/createClassification.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateTagCategoryRequest",
-  "description": "Create tag category request",
+  "title": "CreateClassification",
+  "description": "Create classification request",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.tags.CreateTagCategory",
+  "javaType": "org.openmetadata.schema.api.classification.CreateClassification",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
     "name": {
-      "$ref": "../../entity/tags/tag.json#/definitions/tagName"
+      "$ref": "../../entity/classification/tag.json#/definitions/tagName"
     },
     "displayName": {
-      "description": "Display Name that identifies this tag category.",
+      "description": "Display Name that identifies this classification.",
       "type": "string"
     },
     "description": {
-      "description": "Description of the tag category",
+      "description": "Description of the classification.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "provider": {

@@ -14,8 +14,8 @@
 package org.openmetadata.service.resources.tags;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TAG_CATEGORY;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -53,14 +53,14 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.tags.CreateTag;
 import org.openmetadata.schema.api.tags.LoadTags;
-import org.openmetadata.schema.entity.tags.Tag;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -95,17 +95,18 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    EntityRepository<EntityInterface> tagCategoryRepository = Entity.getEntityRepository(TAG_CATEGORY);
+    EntityRepository<EntityInterface> classificationRepository = Entity.getEntityRepository(CLASSIFICATION);
     List<LoadTags> loadTagsList =
-        EntityRepository.getEntitiesFromSeedData(TAG_CATEGORY, ".*json/data/tags/.*\\.json$", LoadTags.class);
+        EntityRepository.getEntitiesFromSeedData(CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
-      TagCategory tagCategory = TagCategoryResource.getTagCategory(loadTags.getCreateTagCategory(), ADMIN_USER_NAME);
-      tagCategoryRepository.initializeEntity(tagCategory);
+      Classification classification =
+          ClassificationResource.getClassification(loadTags.getCreateClassification(), ADMIN_USER_NAME);
+      classificationRepository.initializeEntity(classification);
 
       List<Tag> tagsToCreate = new ArrayList<>();
       for (CreateTag createTag : loadTags.getCreateTags()) {
-        createTag.withTagCategory(tagCategory.getName());
-        createTag.withProvider(tagCategory.getProvider());
+        createTag.withClassification(classification.getName());
+        createTag.withProvider(classification.getProvider());
         tagsToCreate.add(getTag(createTag, ADMIN_USER_NAME));
       }
 
@@ -125,7 +126,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "listTags",
       summary = "List Tags",
-      tags = "tags",
+      tags = "classification",
       description =
           "Get a list of tags. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -142,7 +143,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(
               description =
                   "List tags filtered by children of tag identified by fqn given in `parent` parameter. The fqn "
-                      + "can either be tagCategoryName or fqn of a parent tag",
+                      + "can either be classificationName or fqn of a parent tag",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("parent")
           String parent,
@@ -179,7 +180,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "getTagByID",
       summary = "Get a tag",
-      tags = "tags",
+      tags = "classification",
       description = "Get a tag by `id`.",
       responses = {
         @ApiResponse(
@@ -213,7 +214,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "getTagByFQN",
       summary = "Get a tag by name",
-      tags = "tags",
+      tags = "classification",
       description = "Get a tag by name.",
       responses = {
         @ApiResponse(
@@ -246,7 +247,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "listAllTagVersion",
       summary = "List tag versions",
-      tags = "tags",
+      tags = "classification",
       description = "Get a list of all the versions of a tag identified by `id`",
       responses = {
         @ApiResponse(
@@ -267,7 +268,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "getSpecificTagVersion",
       summary = "Get a version of the tags",
-      tags = "tags",
+      tags = "classification",
       description = "Get a version of the tag by given `id`",
       responses = {
         @ApiResponse(
@@ -295,7 +296,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "createTag",
       summary = "Create a tag",
-      tags = "tags",
+      tags = "classification",
       description = "Create a new tag.",
       responses = {
         @ApiResponse(
@@ -315,7 +316,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "patchTag",
       summary = "Update a tag",
-      tags = "tags",
+      tags = "classification",
       description = "Update an existing tag using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -340,7 +341,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "createOrUpdateTag",
       summary = "Create or update a tag",
-      tags = "tags",
+      tags = "classification",
       description = "Create a new tag, if it does not exist or update an existing tag.",
       responses = {
         @ApiResponse(
@@ -360,7 +361,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "deleteTag",
       summary = "Delete a Tag",
-      tags = "tags",
+      tags = "classification",
       description = "Delete a tag by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -387,7 +388,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "restoreTag",
       summary = "Restore a soft deleted Tag.",
-      tags = "tags",
+      tags = "classification",
       description = "Restore a soft deleted Tag.",
       responses = {
         @ApiResponse(
@@ -403,7 +404,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   @Override
   public Tag addHref(UriInfo uriInfo, Tag tag) {
-    Entity.withHref(uriInfo, tag.getTagCategory());
+    Entity.withHref(uriInfo, tag.getClassification());
     Entity.withHref(uriInfo, tag.getParent());
     Entity.withHref(uriInfo, tag.getChildren());
     return tag;
@@ -414,9 +415,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   private Tag getTag(CreateTag create, String updateBy) throws IOException {
-    String parentFQN = create.getParent() != null ? create.getParent() : create.getTagCategory();
-    EntityReference tagCategory =
-        new EntityReference().withFullyQualifiedName(create.getTagCategory()).withType(TAG_CATEGORY);
+    String parentFQN = create.getParent() != null ? create.getParent() : create.getClassification();
+    EntityReference classification =
+        new EntityReference().withFullyQualifiedName(create.getClassification()).withType(CLASSIFICATION);
     EntityReference parent =
         create.getParent() == null
             ? null
@@ -424,7 +425,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return copy(new Tag(), create, updateBy)
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
         .withParent(parent)
-        .withTagCategory(tagCategory)
+        .withClassification(classification)
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

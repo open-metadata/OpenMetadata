@@ -107,6 +107,9 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -114,7 +117,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -131,7 +133,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -235,7 +236,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
 
-  public static TagCategory USER_TAG_CATEGORY;
+  public static Classification USER_TAG_CATEGORY;
   public static Tag ADDRESS_TAG;
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
@@ -914,7 +915,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // The FQN has quote delimited parts if the FQN is hierarchical.
     // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
-    // team, webhook and the entity names that are at the root for FQN like services, TagCategory, and Glossary etc.)
+    // team, webhook and the entity names that are at the root for FQN like services, Classification, and Glossary etc.)
     // No delimiter is expected.
     boolean noHierarchicalName = entity.getFullyQualifiedName().equals(entity.getName());
     assertTrue(noHierarchicalName || entity.getFullyQualifiedName().contains("\""));

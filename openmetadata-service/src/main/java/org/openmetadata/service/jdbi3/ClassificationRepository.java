@@ -21,59 +21,59 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.tags.TagCategoryResource;
+import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
-public class TagCategoryRepository extends EntityRepository<TagCategory> {
-  public TagCategoryRepository(CollectionDAO dao) {
+public class ClassificationRepository extends EntityRepository<Classification> {
+  public ClassificationRepository(CollectionDAO dao) {
     super(
-        TagCategoryResource.TAG_COLLECTION_PATH,
-        Entity.TAG_CATEGORY,
-        TagCategory.class,
-        dao.tagCategoryDAO(),
+        ClassificationResource.TAG_COLLECTION_PATH,
+        Entity.CLASSIFICATION,
+        Classification.class,
+        dao.classificationDAO(),
         dao,
         "",
         "");
   }
 
   @Override
-  public EntityUpdater getUpdater(TagCategory original, TagCategory updated, Operation operation) {
-    return new TagCategoryUpdater(original, updated, operation);
+  public EntityUpdater getUpdater(Classification original, Classification updated, Operation operation) {
+    return new ClassificationUpdater(original, updated, operation);
   }
 
   @Override
-  public TagCategory setFields(TagCategory category, Fields fields) throws IOException {
+  public Classification setFields(Classification category, Fields fields) throws IOException {
     return category.withUsageCount(fields.contains("usageCount") ? getUsageCount(category) : null);
   }
 
   @Override
-  public void prepare(TagCategory entity) {
+  public void prepare(Classification entity) {
     /* Nothing to do */
   }
 
   @Override
-  public void storeEntity(TagCategory category, boolean update) throws IOException {
+  public void storeEntity(Classification category, boolean update) throws IOException {
     store(category, update);
   }
 
   @Override
-  public void storeRelationships(TagCategory entity) {}
+  public void storeRelationships(Classification entity) {}
 
-  private Integer getUsageCount(TagCategory category) {
+  private Integer getUsageCount(Classification category) {
     return daoCollection.tagUsageDAO().getTagCount(TagSource.TAG.ordinal(), category.getName());
   }
 
   @Transaction
-  public TagCategory delete(UriInfo uriInfo, UUID id) throws IOException {
-    TagCategory category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+  public Classification delete(UriInfo uriInfo, UUID id) throws IOException {
+    Classification category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
     checkSystemEntityDeletion(category);
     dao.delete(id.toString());
     daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
@@ -92,8 +92,8 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
     }
   }
 
-  public class TagCategoryUpdater extends EntityUpdater {
-    public TagCategoryUpdater(TagCategory original, TagCategory updated, Operation operation) {
+  public class ClassificationUpdater extends EntityUpdater {
+    public ClassificationUpdater(Classification original, Classification updated, Operation operation) {
       super(original, updated, operation);
     }
 
@@ -105,14 +105,14 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
       updateName(original, updated);
     }
 
-    public void updateName(TagCategory original, TagCategory updated) throws IOException {
+    public void updateName(Classification original, Classification updated) throws IOException {
       if (!original.getName().equals(updated.getName())) {
         if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
         // Category name changed - update tag names starting from category and all the children tags
-        LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
+        LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
         daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());

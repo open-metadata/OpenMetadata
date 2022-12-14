@@ -36,32 +36,37 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.schema.api.tags.CreateTagCategory;
-import org.openmetadata.schema.entity.tags.Tag;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ProviderType;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.tags.TagCategoryResource.TagCategoryList;
+import org.openmetadata.service.resources.tags.ClassificationResource.ClassificationList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-/** Tests not covered here: Tag category and Tag usage counts are covered in TableResourceTest */
+/** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TagCategoryResourceTest extends EntityResourceTest<TagCategory, CreateTagCategory> {
-  public TagCategoryResourceTest() {
-    super(Entity.TAG_CATEGORY, TagCategory.class, TagCategoryList.class, "categories", TagCategoryResource.FIELDS);
+public class ClassificationResourceTest extends EntityResourceTest<Classification, CreateClassification> {
+  public ClassificationResourceTest() {
+    super(
+        Entity.CLASSIFICATION,
+        Classification.class,
+        ClassificationList.class,
+        "categories",
+        ClassificationResource.FIELDS);
     supportsEmptyDescription = false;
   }
 
   @Test
-  void put_tagCategoryInvalidRequest_400(TestInfo test) {
+  void put_classificationInvalidRequest_400(TestInfo test) {
     // Primary tag with missing description
     String newCategoryName = test.getDisplayName().substring(0, 10);
-    CreateTagCategory create = new CreateTagCategory().withName(newCategoryName).withDescription(null);
+    CreateClassification create = new CreateClassification().withName(newCategoryName).withDescription(null);
     assertResponseContains(
         () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
 
@@ -74,22 +79,22 @@ public class TagCategoryResourceTest extends EntityResourceTest<TagCategory, Cre
   }
 
   @Test
-  void delete_systemTagCategory() throws HttpResponseException {
-    TagCategory tagCategory = getEntityByName("Tier", ADMIN_AUTH_HEADERS);
+  void delete_systemClassification() throws HttpResponseException {
+    Classification classification = getEntityByName("Tier", ADMIN_AUTH_HEADERS);
     assertResponse(
-        () -> deleteEntity(tagCategory.getId(), ADMIN_AUTH_HEADERS),
+        () -> deleteEntity(classification.getId(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        CatalogExceptionMessage.systemEntityDeleteNotAllowed(tagCategory.getName(), Entity.TAG_CATEGORY));
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(classification.getName(), Entity.CLASSIFICATION));
   }
 
   @Override
-  public CreateTagCategory createRequest(String name) {
-    return new CreateTagCategory().withName(name).withDescription("description");
+  public CreateClassification createRequest(String name) {
+    return new CreateClassification().withName(name).withDescription("description");
   }
 
   @Override
   public void validateCreatedEntity(
-      TagCategory createdEntity, CreateTagCategory request, Map<String, String> authHeaders)
+      Classification createdEntity, CreateClassification request, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(
         request.getProvider() == null ? ProviderType.USER : request.getProvider(), createdEntity.getProvider());
@@ -97,28 +102,28 @@ public class TagCategoryResourceTest extends EntityResourceTest<TagCategory, Cre
   }
 
   @Override
-  public void compareEntities(TagCategory expected, TagCategory updated, Map<String, String> authHeaders)
+  public void compareEntities(Classification expected, Classification updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(expected.getProvider() == null ? ProviderType.USER : expected.getProvider(), updated.getProvider());
     assertEquals(expected.getMutuallyExclusive(), updated.getMutuallyExclusive());
   }
 
   @Override
-  public TagCategory validateGetWithDifferentFields(TagCategory tagCategory, boolean byName)
+  public Classification validateGetWithDifferentFields(Classification classification, boolean byName)
       throws HttpResponseException {
-    tagCategory =
+    classification =
         byName
-            ? getEntityByName(tagCategory.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(tagCategory.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(tagCategory.getUsageCount());
+            ? getEntityByName(classification.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
+            : getEntity(classification.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(classification.getUsageCount());
 
     String fields = "usageCount";
-    tagCategory =
+    classification =
         byName
-            ? getEntityByName(tagCategory.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(tagCategory.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(tagCategory.getUsageCount());
-    return tagCategory;
+            ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(classification.getUsageCount());
+    return classification;
   }
 
   @Override
@@ -129,13 +134,13 @@ public class TagCategoryResourceTest extends EntityResourceTest<TagCategory, Cre
     assertCommonFieldChange(fieldName, expected, actual);
   }
 
-  public void renameTagCategoryAndCheck(TagCategory tagCategory, String newName) throws IOException {
-    String oldName = tagCategory.getName();
-    String json = JsonUtils.pojoToJson(tagCategory);
-    ChangeDescription change = getChangeDescription(tagCategory.getVersion());
+  public void renameClassificationAndCheck(Classification classification, String newName) throws IOException {
+    String oldName = classification.getName();
+    String json = JsonUtils.pojoToJson(classification);
+    ChangeDescription change = getChangeDescription(classification.getVersion());
     fieldUpdated(change, "name", oldName, newName);
-    tagCategory.setName(newName);
-    TagCategory ret = patchEntityAndCheck(tagCategory, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    classification.setName(newName);
+    Classification ret = patchEntityAndCheck(classification, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Now check all the children are renamed
     // List children glossary terms with this term as the parent and ensure rename

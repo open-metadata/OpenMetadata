@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TAG_CATEGORY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -26,7 +26,7 @@ import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.entity.tags.Tag;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -51,20 +51,20 @@ public class TagRepository extends EntityRepository<Tag> {
     EntityReference parentTerm = Entity.getEntityReferenceByName(entity.getParent());
     entity.setParent(parentTerm);
 
-    // Validate tagCategory
-    EntityReference tagCategory = Entity.getEntityReferenceByName(entity.getTagCategory());
-    entity.setTagCategory(tagCategory);
+    // Validate Classification
+    EntityReference Classification = Entity.getEntityReferenceByName(entity.getClassification());
+    entity.setClassification(Classification);
   }
 
   @Override
   public void storeEntity(Tag tag, boolean update) throws IOException {
-    EntityReference tagCategory = tag.getTagCategory();
+    EntityReference Classification = tag.getClassification();
     EntityReference parent = tag.getParent();
 
-    // Parent and tagCategory are not stored as part of JSON. Build it on the fly based on relationships
-    tag.withTagCategory(null).withParent(null);
+    // Parent and Classification are not stored as part of JSON. Build it on the fly based on relationships
+    tag.withClassification(null).withParent(null);
     store(tag, update);
-    tag.withTagCategory(tagCategory).withParent(parent);
+    tag.withClassification(Classification).withParent(parent);
   }
 
   @Override
@@ -74,7 +74,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeRelationships(Tag entity) {
-    addTagCategoryRelationship(entity);
+    addClassificationRelationship(entity);
     addParentRelationship(entity);
   }
 
@@ -96,7 +96,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public Tag setFields(Tag tag, Fields fields) throws IOException {
-    tag.withTagCategory(getTagCategory(tag)).withParent(getParent(tag));
+    tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     tag.setChildren(fields.contains("children") ? getChildren(tag) : null);
     return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
   }
@@ -125,21 +125,21 @@ public class TagRepository extends EntityRepository<Tag> {
     return getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG, false);
   }
 
-  private EntityReference getTagCategory(Tag tag) throws IOException {
-    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, TAG_CATEGORY, true);
+  private EntityReference getClassification(Tag tag) throws IOException {
+    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, CLASSIFICATION, true);
   }
 
-  private void addTagCategoryRelationship(Tag term) {
-    addRelationship(term.getTagCategory().getId(), term.getId(), TAG_CATEGORY, TAG, Relationship.CONTAINS);
+  private void addClassificationRelationship(Tag term) {
+    addRelationship(term.getClassification().getId(), term.getId(), CLASSIFICATION, TAG, Relationship.CONTAINS);
   }
 
-  private void deleteTagCategoryRelationship(Tag term) {
-    deleteRelationship(term.getTagCategory().getId(), TAG_CATEGORY, term.getId(), TAG, Relationship.CONTAINS);
+  private void deleteClassificationRelationship(Tag term) {
+    deleteRelationship(term.getClassification().getId(), CLASSIFICATION, term.getId(), TAG, Relationship.CONTAINS);
   }
 
-  private void updateTagCategoryRelationship(Tag orig, Tag updated) {
-    deleteTagCategoryRelationship(orig);
-    addTagCategoryRelationship(updated);
+  private void updateClassificationRelationship(Tag orig, Tag updated) {
+    deleteClassificationRelationship(orig);
+    addClassificationRelationship(updated);
   }
 
   private void addParentRelationship(Tag term) {
@@ -189,20 +189,21 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     private void updateParent(Tag original, Tag updated) throws JsonProcessingException {
-      // Can't change parent and tagCategory both at the same time
+      // Can't change parent and Classification both at the same time
       UUID oldParentId = getId(original.getParent());
       UUID newParentId = getId(updated.getParent());
       boolean parentChanged = !Objects.equals(oldParentId, newParentId);
 
-      UUID oldCategoryId = getId(original.getTagCategory());
-      UUID newCategoryId = getId(updated.getTagCategory());
-      boolean tagCategoryChanged = !Objects.equals(oldCategoryId, newCategoryId);
+      UUID oldCategoryId = getId(original.getClassification());
+      UUID newCategoryId = getId(updated.getClassification());
+      boolean ClassificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
 
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      if (tagCategoryChanged) {
-        updateTagCategoryRelationship(original, updated);
-        recordChange("tagCategory", original.getTagCategory(), updated.getTagCategory(), true, entityReferenceMatch);
+      if (ClassificationChanged) {
+        updateClassificationRelationship(original, updated);
+        recordChange(
+            "Classification", original.getClassification(), updated.getClassification(), true, entityReferenceMatch);
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);

@@ -96,7 +96,7 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";
-  public static final String TAG_CATEGORY = "tagCategory";
+  public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
 
