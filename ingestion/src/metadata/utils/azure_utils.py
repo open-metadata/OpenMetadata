@@ -74,11 +74,13 @@ def read_tsv_from_azure(
     """
     Read the tsv file from the container and return a dataframe
     """
-    account_url = (
-        f"abfs://{container_name}@{client.account_name}.dfs.core.windows.net/{key}"
+    dataframe = read_csv_from_azure(
+        client=client,
+        key=key,
+        container_name=container_name,
+        storage_options=storage_options,
+        sep="\t",
     )
-
-    dataframe = pd.read_csv(account_url, storage_options=storage_options, sep="\t")
 
     return dataframe
 
