@@ -101,6 +101,8 @@ class ClientConfig(ConfigModel):
     access_token: Optional[str] = None
     expires_in: Optional[int] = None
     auth_header: Optional[str] = None
+    extra_auth_header: Optional[str] = None
+    extra_auth_header_value: Optional[str] = None
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
     auth_token_mode: Optional[str] = "Bearer"
@@ -156,6 +158,16 @@ class REST:
         headers[
             self.config.auth_header
         ] = f"{self._auth_token_mode} {self.config.access_token}"
+
+        # Include extra auth header if specified,
+        # use Authorization header value if no value is provided
+        if self.config.extra_auth_header:
+            logger.debug(
+                "Extra auth header '%s' provided", self.config.extra_auth_header
+            )
+            headers[self.config.extra_auth_header] = (
+                self.config.extra_auth_header_value or headers[self.config.auth_header]
+            )
 
         opts = {
             "headers": headers,

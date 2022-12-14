@@ -22,6 +22,8 @@ try:
 except ImportError:
     from typing_compat import get_args
 
+from os import getenv
+
 from pydantic import BaseModel
 from requests.utils import quote
 
@@ -194,6 +196,8 @@ class OpenMetadata(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
+            extra_auth_header=getenv("OMETA_HEADER_EXTRA_AUTH_NAME"),
+            extra_auth_header_value=getenv("OMETA_HEADER_EXTRA_AUTH_VALUE"),
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
         )
