@@ -517,7 +517,13 @@
     "recreate-indexes": "Recreate indexes",
     "re-index-elastic-search": "Re-Index Elastic Search",
     "table-profile": "Table Profile",
-    "column-profile": "Column Profile"
+    "column-profile": "Column Profile",
+    "glossary-term": "Glossary Term",
+    "data-assets-report": "Data Assets Report",
+    "web-analytics-report": "Web Analytics Report",
+    "user-analytics-report": "User Analytics Report",
+    "yes": "Yes",
+    "no": "No"
   },
   "message": {
     "service-email-required": "Service account Email is required",
