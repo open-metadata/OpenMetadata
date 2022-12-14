@@ -4,13 +4,11 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-
 public class DefaultElasticSearchIndexResolver implements ElasticSearchIndexResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultElasticSearchIndexResolver.class);
 
-  @PostConstruct
-  public void onConstruct() {
+
+  public DefaultElasticSearchIndexResolver() {
     LOGGER.info("Using DefaultElasticSearchIndexResolver");
   }
 
