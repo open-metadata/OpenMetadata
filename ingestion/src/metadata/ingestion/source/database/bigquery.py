@@ -24,8 +24,8 @@ from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
+from metadata.generated.schema.api.tags.createClassification import (
+    CreateClassificationRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -39,7 +39,7 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -51,7 +51,7 @@ from metadata.generated.schema.security.credentials.gcsCredentials import (
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
@@ -140,7 +140,7 @@ class BigquerySource(CommonDbSourceService):
         _, project_ids = auth.default()
         return project_ids
 
-    def yield_tag(self, _: str) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, _: str) -> Iterable[OMetaTagAndClassification]:
         """
         Build tag context
         :param _:
@@ -160,8 +160,8 @@ class BigquerySource(CommonDbSourceService):
                         parent=taxonomy.name
                     )
                     for tag in policy_tags:
-                        yield OMetaTagAndCategory(
-                            category_name=CreateTagCategoryRequest(
+                        yield OMetaTagAndClassification(
+                            category_name=CreateClassificationRequest(
                                 name=self.service_connection.tagCategoryName,
                                 description="",
                             ),

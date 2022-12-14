@@ -27,8 +27,8 @@ from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
+from metadata.generated.schema.api.tags.createClassification import (
+    CreateClassificationRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -43,7 +43,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -51,7 +51,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
@@ -310,9 +310,9 @@ class AtlasSource(Source):
         ]
         return tags
 
-    def create_tag(self) -> OMetaTagAndCategory:
-        atlas_table_tag = OMetaTagAndCategory(
-            category_name=CreateTagCategoryRequest(
+    def create_tag(self) -> OMetaTagAndClassification:
+        atlas_table_tag = OMetaTagAndClassification(
+            category_name=CreateClassificationRequest(
                 name=ATLAS_TAG_CATEGORY,
                 description="Tags associates with atlas entities",
             ),

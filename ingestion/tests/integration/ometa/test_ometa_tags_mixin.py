@@ -6,20 +6,21 @@ import random
 import unittest
 from unittest import TestCase
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
+from metadata.generated.schema.entity.classification.classification import Classification
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-CATEGORY_NAME = "TestTag"
+CLASSIFICATION_NAME = "TestTag"
 PRIMARY_TAG_NAME = "TestPrimaryTag"
 SECONDARY_TAG_NAME = "TestSecondaryTag"
 
@@ -38,37 +39,43 @@ class OMetaTagMixinPost(TestCase):
     )
     metadata = OpenMetadata(server_config)
 
-    def test_a_create_tag_categories(self):
-        """Test POST category Mixin method"""
+    def test_a_create_classifications(self):
+        """Test POST classification Mixin method"""
 
-        tag_category = CreateTagCategoryRequest(
-            description="test tag", name=CATEGORY_NAME
+        classification = CreateClassificationRequest(
+            description="test tag", name=CLASSIFICATION_NAME
         )
 
-        self.metadata.create_tag_category(tag_category)
+        self.metadata.create_classification(classification)
         assert True
 
-    def test_b_create_primary_tag(self):
+    def test_b_create_tag(self):
         """Test POST primary tag Mixin method"""
 
-        primary_tag_category = CreateTagRequest(
-            name=PRIMARY_TAG_NAME,
+        """TODO:9259 parent needs to be fqn of parent tag. Also where is the tag name?"""
+        create_tag = CreateTagRequest(
+            classification=CLASSIFICATION_NAME,
             description="test tag",
+            parent="TODO"
         )
 
-        self.metadata.create_primary_tag(CATEGORY_NAME, primary_tag_category)
+        self.metadata.create_tag(create_tag)
         assert True
 
     def test_c_create_secondary_tag(self):
         """Test POST secondary tag Mixin method"""
 
-        secondary_tag_category = CreateTagRequest(
+        """TODO:9259 parent needs to be fqn of parent tag"""
+        create_tag = CreateTagRequest(
             name=SECONDARY_TAG_NAME,
+            classification = CLASSIFICATION_NAME,
             description="test tag",
+            parent="TODO"
+
         )
 
-        self.metadata.create_secondary_tag(
-            CATEGORY_NAME, PRIMARY_TAG_NAME, secondary_tag_category
+        self.metadata.create_tag(
+            create_tag
         )
         assert True
 
@@ -86,22 +93,21 @@ class OMetaTagMixinGet(TestCase):
         )
         self.metadata = OpenMetadata(server_config)
 
-    def test_get_tag_category(self):
+    def test_get_classification(self):
         """Test GET primary tag"""
 
-        tag_category = self.metadata.get_tag_category(
-            entity=TagCategory, category_name=CATEGORY_NAME
+        classification = self.metadata.get_classification(
+            entity=Classification, classification_name=CLASSIFICATION_NAME
         )
 
-        self.assertEqual(tag_category.name.__root__, CATEGORY_NAME)
+        self.assertEqual(classification.name.__root__, CLASSIFICATION_NAME)
 
     def test_get_primary_tag(self):
-        """Test GET tag by category"""
+        """Test GET tag by classification"""
 
-        primary_tag = self.metadata.get_primary_tag(
+        primary_tag = self.metadata.get_tag(
             entity=Tag,
-            category_name=CATEGORY_NAME,
-            primary_tag_fqn=PRIMARY_TAG_NAME,
+            tag_fqn=PRIMARY_TAG_NAME, """TODO:9259 needs to be fqn"""
         )
 
         self.assertEqual(primary_tag.name.__root__, PRIMARY_TAG_NAME)
@@ -109,21 +115,19 @@ class OMetaTagMixinGet(TestCase):
     def test_get_secondary_tag(self):
         """Test GET secondary"""
 
-        secondary_tag = self.metadata.get_secondary_tag(
+        secondary_tag = self.metadata.get_tag(
             entity=Tag,
-            category_name=CATEGORY_NAME,
-            primary_tag_fqn=PRIMARY_TAG_NAME,
-            secondary_tag_fqn=SECONDARY_TAG_NAME,
+            secondary_tag_fqn=SECONDARY_TAG_NAME,"""TODO:9259 needs to be fqn"""
         )
 
         self.assertEqual(secondary_tag.name.__root__, SECONDARY_TAG_NAME)
 
-    def test_list_tag_categories(self):
+    def test_list_classifications(self):
         """Test GET list categories Mixin method"""
 
-        tag_categories = self.metadata.list_tag_categories(entity=TagCategory)
+        classifications = self.metadata.list_classifications(entity=Classification)
 
-        self.assertIsNotNone(tag_categories)
+        self.assertIsNotNone(classifications)
 
 
 class OMetaTagMixinPut(TestCase):
@@ -139,42 +143,43 @@ class OMetaTagMixinPut(TestCase):
         )
         self.metadata = OpenMetadata(server_config)
 
-    def test_c_update_tag_category(self):
-        """Test put tag category"""
+    def test_c_update_classification(self):
+        """Test put tag classification"""
 
         rand_name = random.getrandbits(64)
-        updated_tag_category = CreateTagCategoryRequest(
+        updated_classification = CreateClassificationRequest(
             description="test tag", name=f"{rand_name}"
         )
 
-        self.metadata.create_or_update_tag_category(CATEGORY_NAME, updated_tag_category)
+        self.metadata.create_or_update_classification(CLASSIFICATION_NAME, updated_classification)
 
         assert True
 
     def test_b_update_primary_tag(self):
-        """Test put tag category"""
+        """Test put tag classification"""
 
         rand_name = random.getrandbits(64)
         updated_primary_tag = CreateTagRequest(
-            description="test tag", name=f"{rand_name}"
+            description="test tag", name=f"{rand_name}", classification=CLASSIFICATION_NAME
         )
 
-        self.metadata.create_or_update_primary_tag(
-            CATEGORY_NAME, PRIMARY_TAG_NAME, updated_primary_tag
+        self.metadata.create_or_update_tag(
+            updated_primary_tag
         )
 
         assert True
 
     def test_a_update_secondary_tag(self):
-        """Test put tag category"""
+        """Test put tag classification"""
 
         rand_name = random.getrandbits(64)
         updated_secondary_tag = CreateTagRequest(
-            description="test tag", name=f"{rand_name}"
+            """ TODO:9259 change the parent to fqn of the primary_tag"""
+            description="test tag", name=f"{rand_name}", classification=CLASSIFICATION_NAME, parent="TODO"
         )
 
-        self.metadata.update_secondary_tag(
-            CATEGORY_NAME, PRIMARY_TAG_NAME, SECONDARY_TAG_NAME, updated_secondary_tag
+        self.metadata.create_or_update_tag(
+            updated_secondary_tag
         )
 
         assert True

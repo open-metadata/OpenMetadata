@@ -19,8 +19,8 @@ from typing import List, Optional, Type, TypeVar
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
+from metadata.generated.schema.api.tags.createClassification import (
+    CreateClassificationRequest,
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.utils import ometa_logger
@@ -36,10 +36,10 @@ class OMetaTagMixin:
     To be inherited by OpenMetadata
     """
 
-    def list_tag_categories(
+    def list_classifications(
         self, entity: Type[T], fields: Optional[List[str]] = None
     ) -> Optional[List[T]]:
-        """Get list of TagCategory pydantic model
+        """Get list of Classification pydantic model
 
         Args:
             entity: entity class model
@@ -55,143 +55,90 @@ class OMetaTagMixin:
             logger.warning(f"GET {entity.__name__}. Error {err.status_code}: {err}")
             return None
 
-    def create_tag_category(self, tag_category_body: CreateTagCategoryRequest):
-        """Method to create new tag category
+    def create_classification(self, classification_body: CreateClassificationRequest):
+        """Method to create new classification
         Args:
-            tag_category_body (TagCategory): body of the request
+            classification_body (Classification): body of the request
         """
-        path = "/tags"
-        resp = self.client.post(path=path, data=tag_category_body.json())
-        logger.info(f"Created tag category: {resp}")
+        path = "/classifications"
+        resp = self.client.post(path=path, data=classification_body.json())
+        logger.info(f"Created a classification: {resp}")
 
-    def get_tag_category(
-        self, entity: Type[T], category_name: str, fields: Optional[List[str]] = None
+    def get_classification(
+        self, entity: Type[T], classification_name: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
-        """Get tag categories
+        """Get classifications
 
         Args:
             entity: entity class model
-            category_name (str): category name to get info on
+            classification_name (str): classification name to get info on
             fields (List): list of fields to pass with the request
         """
-        path = f"{category_name}"
+        path = f"{classification_name}"
         return self._get(entity=entity, path=path, fields=fields)
 
-    def create_or_update_tag_category(
-        self, category_name: str, tag_category_body: CreateTagCategoryRequest
+    def create_or_update_classification(
+        self, classification_body: CreateClassificationRequest
     ) -> None:
-        """Method to update a tag category
+        """Method to update a classification
         Args:
-            category_name (str): tag category name
-            tag_category_body (TagCategory): body of the request
+            classification_body (Classification): body of the request
         """
-        path = f"/tags/{category_name}"
-        resp = self.client.put(path=path, data=tag_category_body.json())
-        logger.info(f"Updated tag category: {resp}")
+        path = f"/classifications"
+        resp = self.client.put(path=path, data=classification_body.json())
+        logger.info(f"Updated classification: {resp}")
 
-    def create_primary_tag(
-        self, category_name: str, primary_tag_body: CreateTagRequest
+    def create_tag(
+        self, tag_body: CreateTagRequest
     ) -> None:
-        """Method to create a primary tag within a category
+        """Method to create a tag within a classification
         Args:
-            category_name (str): tag category name
-            primary_tag_body (Tag): body of the Tag for the request
+            tag_body (Tag): body of the Tag for the request
         """
-        path = f"/tags/{category_name}"
-        resp = self.client.post(path=path, data=primary_tag_body.json())
-        logger.info(f"Create primary tag in category {category_name}: {resp}")
+        path = f"/tags"
+        resp = self.client.post(path=path, data=tag_body.json())
+        logger.info(f"Created tag : {resp}")
 
-    def get_primary_tag(
+    def get_tag(
         self,
         entity: Type[T],
-        category_name: str,
-        primary_tag_fqn: str,
+        tag_fqn: str,
         fields: Optional[List[str]] = None,
     ) -> Optional[T]:
-        """Get primary tag information
+        """Get tag information
 
         Args:
             entity: entity class model
-            category_name (str): category name to get info on
-            primary_tag_fqn (str): fully qualified name of the primary tag
+            tag_fqn (str): fully qualified name of the tag
             fields (List): list of fields to pass with the request
         """
-        path = f"{category_name}/{primary_tag_fqn}"
+        path = f"{tag_fqn}"
         return self._get(entity=entity, path=path, fields=fields)
 
-    def create_or_update_primary_tag(
+    def create_or_update_tag(
         self,
-        category_name: str,
-        primary_tag_fqn: str,
-        primary_tag_body: CreateTagRequest,
+        tag_body: CreateTagRequest,
     ) -> None:
-        """Update primary tag info
+        """Update tag info
 
         Args:
             entity: entity class model
-            category_name (str): category name to get info on
-            primary_tag_fqn (str): fully qualified name of the primary tag
-            primary_tag_body (Tag): body of the Tag for the request
+            tag_body (Tag): body of the Tag for the request
         """
-        path = f"/tags/{category_name}/{primary_tag_fqn}"
-        resp = self.client.put(path=path, data=primary_tag_body.json())
-        logger.info(f"Updated primary tag: {resp}")
-
-    def create_secondary_tag(
-        self,
-        category_name: str,
-        primary_tag_fqn: str,
-        secondary_tag_body: CreateTagRequest,
-    ) -> None:
-        """Method to create a secondary tag under a primary tag
-        Args:
-            category_name (str): tag category name
-            primary_tag_fqn (str): primary tag fully qualified name
-            secondary_tag_body (Tag): body of the Tag for the request
-        """
-        path = f"/tags/{category_name}/{primary_tag_fqn}"
-        resp = self.client.post(path=path, data=secondary_tag_body.json())
-        logger.info(
-            f"Create secondary tag in category {category_name}"
-            f"under primary tag {primary_tag_fqn}: {resp}"
-        )
-
-    def get_secondary_tag(
-        self,
-        entity: Type[T],
-        category_name: str,
-        primary_tag_fqn: str,
-        secondary_tag_fqn: str,
-        fields: Optional[List[str]] = None,
-    ) -> Optional[T]:
-        """Get secondary tag information
-
-        Args:
-            entity: entity class model
-            category_name (str): category name to get info on
-            primary_tag_fqn (str): fully qualified name of the primary tag
-            secondary_tag_fqn (str): fully qualified name of the secondary tag
-            fields (List): list of fields to pass with the request
-        """
-        path = f"{category_name}/{primary_tag_fqn}/{secondary_tag_fqn}"
-        return self._get(entity=entity, path=path, fields=fields)
+        path = f"/tags"
+        resp = self.client.put(path=path, data=tag_body.json())
+        logger.info(f"Updated tag: {resp}")
 
     def update_secondary_tag(
         self,
-        category_name: str,
-        primary_tag_fqn: str,
-        secondary_tag_fqn: str,
         secondary_tag_body: CreateTagRequest,
     ) -> None:
         """Update secondary tag information
 
         Args:
             entity: entity class model
-            category_name (str): category name to get info on
-            primary_tag_fqn (str): fully qualified name of the primary tag
-            secondary_tag_fqn (str): fully qualified name of the secondary tag
             secondary_tag_body (Tag): body of the Tag for the request
         """
-        path = f"/tags/{category_name}/{primary_tag_fqn}/{secondary_tag_fqn}"
+        path = f"/tags"
         resp = self.client.put(path=path, data=secondary_tag_body.json())
         logger.info(f"Updated secondary tag: {resp}")

@@ -39,7 +39,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import TagCategory
+from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -402,7 +402,7 @@ class ElasticsearchSink(Sink[Entity]):
                     request_timeout=self.config.timeout,
                 )
 
-            if isinstance(record, TagCategory):
+            if isinstance(record, Classification):
                 tag_docs = self._create_tag_es_doc(record)
                 for tag_doc in tag_docs:
                     self.elasticsearch_client.index(
@@ -821,9 +821,10 @@ class ElasticsearchSink(Sink[Entity]):
 
         return glossary_term_doc
 
-    def _create_tag_es_doc(self, tag_category: TagCategory):
+    def _create_tag_es_doc(self, classification: Classification):
         tag_docs = []
-        for tag in tag_category.children:
+        """ TODO:9259 no children under classification. Use similar mechanism as glossary"""
+        for tag in classification.children:
             suggest = [
                 {"input": [tag.name.__root__], "weight": 5},
                 {"input": [tag.fullyQualifiedName], "weight": 10},

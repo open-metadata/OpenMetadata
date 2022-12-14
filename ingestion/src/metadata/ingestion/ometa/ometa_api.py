@@ -58,7 +58,7 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
+from metadata.generated.schema.entity.classification.classification import Tag, Classification
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -282,8 +282,8 @@ class OpenMetadata(
                 Union[
                     Tag,
                     self.get_create_entity_type(Tag),
-                    TagCategory,
-                    self.get_create_entity_type(TagCategory),
+                    Classification,
+                    self.get_create_entity_type(Classification),
                 ]
             ),
         ):
@@ -476,7 +476,6 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
-            .replace("tagcategory", "tagCategory")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
@@ -718,11 +717,12 @@ class OpenMetadata(
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
 
-    def list_tags_by_category(self, category: str) -> List[Tag]:
+    def list_tags_by_classification(self, classification: str) -> List[Tag]:
         """
         List all tags
         """
-        resp = self.client.get(f"{self.get_suffix(Tag)}/{category}")
+        """ TODO:9259 use list tags with parent filter """
+        resp = self.client.get(f"{self.get_suffix(Tag)}/{classification}")
         return [Tag(**d) for d in resp["children"]]
 
     def health_check(self) -> bool:
