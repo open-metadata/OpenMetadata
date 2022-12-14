@@ -30,7 +30,7 @@ class TestCaseDefinition(ConfigModel):
     description: Optional[str] = "Default suite description"
     testDefinitionName: str
     entityLink: EntityLink
-    parameterValues: List[TestCaseParameterValue]
+    parameterValues: Optional[List[TestCaseParameterValue]]
 
 
 class TestSuiteDefinition(ConfigModel):

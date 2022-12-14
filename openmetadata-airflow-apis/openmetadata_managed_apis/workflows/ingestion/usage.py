@@ -11,6 +11,7 @@
 """
 Metadata DAG function builder
 """
+import tempfile
 from pathlib import Path
 
 from airflow import DAG
@@ -21,22 +22,14 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
     metadata_ingestion_workflow,
 )
 
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     BulkSink,
     OpenMetadataWorkflowConfig,
     Processor,
     Stage,
-)
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-import tempfile
-
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
 )
 
 
