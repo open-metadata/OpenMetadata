@@ -14,7 +14,7 @@ CountInSet Metric definition
 """
 # pylint: disable=duplicate-code
 import traceback
-from typing import List, Optional
+from typing import List
 
 from pandas import DataFrame
 from sqlalchemy import case, column
@@ -64,13 +64,13 @@ class CountInSet(StaticMetric):
             return None
 
     @_label
-    def dl_fn(self, data_frame: DataFrame = None):  # pylint: disable=unused-argument
+    def dl_fn(self, data_frame: DataFrame):
         try:
             count = 0
             rows = list(data_frame[self.col.name])
             for value in self.values:
                 if value in rows:
-                   count = rows.count(value) 
+                    count = rows.count(value)
             return count
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

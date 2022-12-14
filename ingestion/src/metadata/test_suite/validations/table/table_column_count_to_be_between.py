@@ -112,7 +112,7 @@ def _(
 
 @table_column_count_to_be_between.register
 def _(
-   runner: DataFrame,
+    runner: DataFrame,
     test_case: TestCase,
     execution_date: Union[datetime, float],
 ) -> TestCaseResult:

@@ -145,9 +145,7 @@ def _(
     )
 
     status = (
-        TestCaseStatus.Success
-        if column_name in column_names
-        else TestCaseStatus.Failed
+        TestCaseStatus.Success if column_name in column_names else TestCaseStatus.Failed
     )
 
     result = (

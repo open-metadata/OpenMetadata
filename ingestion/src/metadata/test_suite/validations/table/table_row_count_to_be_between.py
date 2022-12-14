@@ -29,7 +29,6 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
-from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
