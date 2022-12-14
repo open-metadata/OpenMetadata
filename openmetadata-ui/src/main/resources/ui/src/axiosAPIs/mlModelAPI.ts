@@ -13,15 +13,25 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { RestoreRequestType } from 'Models';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ServicePageData } from '../pages/service';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getMlModelByFQN = async (fqn: string, arrQueryFields: string) => {
-  const url = getURLWithQueryFields(`mlmodels/name/${fqn}`, arrQueryFields);
+export const getMlModelByFQN = async (
+  fqn: string,
+  arrQueryFields: string,
+  include = Include.All
+) => {
+  const url = getURLWithQueryFields(
+    `mlmodels/name/${fqn}`,
+    arrQueryFields,
+    `include=${include}`
+  );
 
   const response = await APIClient.get<Mlmodel>(url);
 
@@ -86,6 +96,15 @@ export const removeFollower = async (mlModelId: string, userId: string) => {
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
   >(`/mlmodels/${mlModelId}/followers/${userId}`, configOptions);
+
+  return response.data;
+};
+
+export const restoreMlmodel = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<Mlmodel>
+  >('/mlmodels/restore', { id });
 
   return response.data;
 };
