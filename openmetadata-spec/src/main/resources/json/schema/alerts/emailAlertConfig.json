@@ -11,7 +11,8 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
     },
     "sendToAdmins": {
       "description": "Send the Mails to Admins",

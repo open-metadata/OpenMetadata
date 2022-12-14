@@ -3,8 +3,9 @@ package org.openmetadata.service.alerts.emailAlert;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
@@ -50,7 +51,7 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
   @Override
   public void sendAlert(ChangeEvent event) {
     try {
-      List<String> receivers = buildReceiversList(event);
+      Set<String> receivers = buildReceiversList(event);
       EmailMessage emailMessage = ChangeEventParser.buildEmailMessage(event);
       for (String email : receivers) {
         EmailUtil.sendChangeEventMail(email, emailMessage);
@@ -62,9 +63,9 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
     }
   }
 
-  private List<String> sendToAdmins() {
+  private Set<String> sendToAdmins() {
     List<User> allUsers = SubjectCache.getInstance().getAllUsers();
-    List<String> emailList = new ArrayList<>();
+    Set<String> emailList = new HashSet<>();
     allUsers.forEach(
         (user) -> {
           if (user.getIsAdmin()) emailList.add(user.getEmail());
@@ -72,16 +73,16 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
     return emailList;
   }
 
-  private List<String> sendToOwners(ChangeEvent changeEvent) {
+  private Set<String> sendToOwners(ChangeEvent changeEvent) {
     return findOwnerOrFollowers(changeEvent, Relationship.OWNS);
   }
 
-  private List<String> sendToFollowers(ChangeEvent changeEvent) {
+  private Set<String> sendToFollowers(ChangeEvent changeEvent) {
     return findOwnerOrFollowers(changeEvent, Relationship.FOLLOWS);
   }
 
-  private List<String> findOwnerOrFollowers(ChangeEvent changeEvent, Relationship relationship) {
-    List<String> emailList = new ArrayList<>();
+  private Set<String> findOwnerOrFollowers(ChangeEvent changeEvent, Relationship relationship) {
+    Set<String> emailList = new HashSet<>();
     try {
       EntityInterface entityInterface = (EntityInterface) changeEvent.getEntity();
       List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
@@ -114,9 +115,9 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
     return emailList;
   }
 
-  private List<String> buildReceiversList(ChangeEvent changeEvent) {
-    List<String> receiverList =
-        emailAlertConfig.getReceivers() == null ? new ArrayList<>() : emailAlertConfig.getReceivers();
+  private Set<String> buildReceiversList(ChangeEvent changeEvent) {
+    Set<String> receiverList =
+        emailAlertConfig.getReceivers() == null ? new HashSet<>() : emailAlertConfig.getReceivers();
 
     // Send to Admins
     if (emailAlertConfig.getSendToAdmins()) {
