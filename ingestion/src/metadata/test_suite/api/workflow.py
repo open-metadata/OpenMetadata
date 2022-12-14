@@ -60,6 +60,7 @@ from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteI
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
+from metadata.utils.connections import get_connection
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
@@ -254,6 +255,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 table_sample_query=table_sample_query,
                 table_partition_config=table_partition_config,
             )
+        self.client = get_connection(service_connection_config).client
         return DataLakeTestSuiteInterface(
             service_connection_config=service_connection_config,
             ometa_client=self.client,
