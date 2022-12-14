@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
+import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
   DataType,
@@ -158,6 +160,38 @@ export const INITIAL_SUM_METRIC_VALUE = {
       title: 'Sum',
       dataKey: 'sum',
       color: '#1890FF',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_ROW_METRIC_VALUE = {
+  information: [
+    {
+      title: t('label.row-count'),
+      dataKey: 'rowCount',
+      color: '#008376',
+    },
+  ],
+  data: [],
+};
+
+export const INITIAL_OPERATION_METRIC_VALUE = {
+  information: [
+    {
+      title: t('label.insert'),
+      dataKey: DMLOperationType.Insert,
+      color: '#008376',
+    },
+    {
+      title: t('label.update'),
+      dataKey: DMLOperationType.Update,
+      color: '#1890FF',
+    },
+    {
+      title: t('label.delete'),
+      dataKey: DMLOperationType.Delete,
+      color: '#7147E8',
     },
   ],
   data: [],

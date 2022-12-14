@@ -8,25 +8,6 @@
   "javaType": "org.openmetadata.schema.entity.data.Topic",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "schemaType": {
-      "description": "Schema type used for the message.",
-      "javaType": "org.openmetadata.schema.type.topic.SchemaType",
-      "enum": ["Avro", "Protobuf", "JSON", "Other"],
-      "javaEnums": [
-        {
-          "name": "Avro"
-        },
-        {
-          "name": "Protobuf"
-        },
-        {
-          "name": "JSON"
-        },
-        {
-          "name": "Other"
-        }
-      ]
-    },
     "cleanupPolicy": {
       "javaType": "org.openmetadata.schema.type.topic.CleanupPolicy",
       "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
@@ -94,13 +75,8 @@
       "description": "Service type where this topic is hosted in.",
       "$ref": "../services/messagingService.json#/definitions/messagingServiceType"
     },
-    "schemaText": {
-      "description": "Schema used for message serialization. Optional as some topics may not have associated schemas.",
-      "type": "string"
-    },
-    "schemaType": {
-      "description": "Schema used for message serialization.",
-      "$ref": "#/definitions/schemaType"
+    "messageSchema": {
+        "$ref": "../../type/schema.json"
     },
     "partitions": {
       "description": "Number of partitions into which the topic is divided.",

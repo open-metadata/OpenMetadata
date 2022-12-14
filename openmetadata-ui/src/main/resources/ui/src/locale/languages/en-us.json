@@ -466,6 +466,8 @@
     "service-lowercase": "service",
     "query-lowercase": "query",
     "table-lowercase": "table",
+    "schema-field": "Schema field",
+    "enter-field-description": "Enter {{field}} description",
     "partitions": "Partitions",
     "replication-factor": "replication factor",
     "retention-size": "retention-size",
@@ -502,11 +504,20 @@
     "search-entity": "Search {{entity}}",
     "more": "More",
     "update": "Update",
+    "deleted": "Deleted {{entity}}",
+    "test-plural": "Tests",
+    "test": "Test",
+    "profiler": "Profiler",
+    "here-lowercase": "here",
+    "insert": "Insert",
+    "update": "Update",
     "entities-plural": "Entities",
     "seconds-plural": "Seconds",
     "flush-interval-secs": "Flush Interval (secs)",
     "recreate-indexes": "Recreate indexes",
-    "re-index-elastic-search": "Re-Index Elastic Search"
+    "re-index-elastic-search": "Re-Index Elastic Search",
+    "table-profile": "Table Profile",
+    "column-profile": "Column Profile"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -621,7 +632,8 @@
     "announcement-invalid-start-time": "Announcement start time must be earlier than the end time",
     "permanently-delete-metadata-and-dependents": "Permanently deleting this {{entityName}} will remove its metadata, as well as the metadata of {{dependents}} from OpenMetadata permanently.",
     "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
-    "announcement-created-successfully": "Announcement created successfully!"
+    "announcement-created-successfully": "Announcement created successfully!",
+    "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation"
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
