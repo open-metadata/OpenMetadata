@@ -50,15 +50,15 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
   },
   {
     value: 'entityReportData',
-    label: 'Entity Data',
+    label: 'Data Assets Report',
   },
   {
     value: 'webAnalyticEntityViewReport',
-    label: 'Web Analytic Entity',
+    label: 'Web Analytics Report',
   },
   {
     value: 'webAnalyticUserActivityReport',
-    label: 'Web Analytic User',
+    label: 'User Analytics Report',
   },
 ];
 

@@ -57,10 +57,7 @@ const ReIndexAllModal = ({
         layout="vertical"
         name="elastic-search-re-index"
         onFinish={onSave}>
-        <Form.Item
-          initialValue={false}
-          label="Recreate indexes"
-          name="recreateIndex">
+        <Form.Item initialValue label="Recreate indexes" name="recreateIndex">
           <Select
             data-testid="re-index-selector"
             options={RECREATE_INDEX_OPTIONS}
