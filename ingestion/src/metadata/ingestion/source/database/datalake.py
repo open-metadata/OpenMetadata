@@ -190,12 +190,13 @@ class DatalakeSource(DatabaseServiceSource):
 
     def _list_s3_objects(self, **kwargs) -> Iterable:
         try:
-            paginator = self.client.get_paginator("list_objects_v2")
-            for page in paginator.paginate(**kwargs):
-                yield from page["Contents"]
+            pages = self.client.list_objects(Bucket=kwargs["Bucket"]).get(
+                "Contents", []
+            )
+            yield from pages
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield s3 object [{page}]: {exc}")
+            logger.warning(f"Unexpected exception to yield s3 object: {exc}")
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
