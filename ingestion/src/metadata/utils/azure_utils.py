@@ -62,7 +62,7 @@ def read_json_from_azure(
             account_url, storage_options=storage_options, typ="series"
         )
 
-        data = _get_json_text(key, dataframe.to_dict())  # pylint: disable=no-member
+        data = _get_json_text(key, dataframe.to_dict())
 
         if isinstance(data, list):
             return [pd.DataFrame.from_dict(data[:sample_size])]
