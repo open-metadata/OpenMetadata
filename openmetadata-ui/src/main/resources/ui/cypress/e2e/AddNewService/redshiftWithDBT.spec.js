@@ -131,8 +131,7 @@ describe('RedShift Ingestion', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="profiler-switch"]').should('be.visible');
-    cy.get('[data-testid="profiler-switch"]').contains('Data Quality').click();
+    cy.get('[data-testid="profiler-tab-left-panel"]').should('be.visible').contains('Data Quality').click();
 
     cy.get(`[data-testid=${DBT.dataQualityTest1}]`)
       .should('exist')

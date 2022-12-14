@@ -34,6 +34,9 @@ jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
+  useParams: jest.fn().mockReturnValue({
+    datasetFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+  }),
 }));
 
 // mock internal imports
