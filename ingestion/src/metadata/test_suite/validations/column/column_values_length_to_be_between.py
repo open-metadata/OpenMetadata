@@ -38,28 +38,6 @@ from metadata.utils.test_suite import get_test_case_param_value
 logger = test_suite_logger()
 
 
-def test_case_status_result(
-    min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
-):
-    return (
-        TestCaseStatus.Success
-        if min_bound <= min_value_length_value_res
-        and max_bound >= max_value_length_value_res
-        else TestCaseStatus.Failed,
-        f"Found minLength={min_value_length_value_res}, maxLength={max_value_length_value_res} vs."
-        + f" the expected minLength={min_bound}, maxLength={max_bound}.",
-    )
-
-
-@singledispatch
-def column_value_length_to_be_between(
-    runner,
-    test_case: TestCase,
-    execution_date: Union[datetime, float],
-):
-    raise NotImplementedError
-
-
 def _return_test_case(
     min_value_length_value_res, max_value_length_value_res, execution_date, test_case
 ):
@@ -94,6 +72,28 @@ def _return_test_case(
             ),
         ],
     )
+
+
+def test_case_status_result(
+    min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
+):
+    return (
+        TestCaseStatus.Success
+        if min_bound <= min_value_length_value_res
+        and max_bound >= max_value_length_value_res
+        else TestCaseStatus.Failed,
+        f"Found minLength={min_value_length_value_res}, maxLength={max_value_length_value_res} vs."
+        + f" the expected minLength={min_bound}, maxLength={max_bound}.",
+    )
+
+
+@singledispatch
+def column_value_length_to_be_between(
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
 
 
 @column_value_length_to_be_between.register

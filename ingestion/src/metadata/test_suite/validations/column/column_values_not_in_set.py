@@ -134,7 +134,7 @@ def _(
         )
     )
     set_count = add_props(values=forbidden_value)(Metrics.COUNT_IN_SET.value)
-    set_count_res = set_count(column_obj).dl_fn()  # pylint: disable=no-member
+    set_count_res = set_count(column_obj).dl_fn(runner)  # pylint: disable=no-member
     status, result = test_case_status_result(set_count_res)
     return TestCaseResult(
         timestamp=execution_date,

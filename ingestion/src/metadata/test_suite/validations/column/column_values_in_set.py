@@ -140,7 +140,7 @@ def _(
     column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
     set_count_res = add_props(values=allowed_value)(Metrics.COUNT_IN_SET.value)(
         column_obj
-    ).dl_fn()
+    ).dl_fn(runner)
     status, result = test_case_status_result(set_count_res)
 
     return TestCaseResult(

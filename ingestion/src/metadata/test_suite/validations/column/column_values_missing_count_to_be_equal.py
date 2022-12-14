@@ -183,7 +183,7 @@ def _(
     )
     if missing_values:
         set_count = add_props(values=missing_values)(Metrics.COUNT_IN_SET.value)
-        null_count_value_res += set_count(column_obj).dl_fn()
+        null_count_value_res += set_count(column_obj).dl_fn(runner)
 
     missing_count_values = next(
         (

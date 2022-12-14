@@ -51,8 +51,8 @@ def test_case_status_result(min_bound, max_bound, sum_value_res):
 @singledispatch
 def column_values_sum_to_be_between(
     runner,
-    test_case: TestCase = None,
-    execution_date: Union[datetime, float] = None,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ):
     raise NotImplementedError
 

@@ -112,9 +112,9 @@ def _(
 
 @table_column_count_to_be_between.register
 def _(
+   runner: DataFrame,
     test_case: TestCase,
     execution_date: Union[datetime, float],
-    runner: DataFrame,
 ) -> TestCaseResult:
     """
     Validate row count metric

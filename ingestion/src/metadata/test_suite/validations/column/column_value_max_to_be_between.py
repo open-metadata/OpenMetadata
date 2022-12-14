@@ -130,9 +130,9 @@ def _(
 
 @column_value_max_to_be_between.register
 def _(
+    runner: DataFrame,
     test_case: TestCase,
     execution_date: Union[datetime, float],
-    runner: DataFrame,
 ):
     """
     Validate Column Values metric

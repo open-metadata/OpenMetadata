@@ -14,7 +14,10 @@ Test Table and Column Tests' validate implementations.
 
 Each test should validate the Success, Failure and Aborted statuses
 """
-
+from metadata.interfaces.datalake.datalake_test_suite_interface import (
+    DataLakeTestSuiteInterface,
+)
+from pandas import DataFrame
 import os
 import unittest
 from datetime import datetime
@@ -56,6 +59,16 @@ TABLE = Table(
 )
 
 TEST_SUITE = TestSuite(name="my_test_suite", description="description")
+DL_DATA = (
+    ["1", "John", "Jo", "John Doe", "johnny b goode", 30],
+    ["2", "Jane", "Ja", "Jone Doe", "Johnny d", 31],
+    ["3", "John", "Joh", "John Doe", None, None],
+) * 10
+
+
+DATALAKE_DATA_FRAME = DataFrame(
+    DL_DATA, columns=["id", "name", "first name", "fullname", "nickname", "age"]
+)
 
 
 class User(Base):
@@ -87,6 +100,8 @@ class testSuiteValidation(unittest.TestCase):
             table_entity=TABLE,
             ometa_client=None,
         )
+    dl_runner = DATALAKE_DATA_FRAME
+
     runner = sqa_profiler_interface.runner
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
@@ -147,10 +162,20 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "8"
         assert res.testResultValue[1].value == "14"
+        assert dl_res.testResultValue[0].value == "4"
+        assert dl_res.testResultValue[1].value == "14"
 
         test_case = TestCase(
             name="my_test_case",
@@ -169,10 +194,20 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "2"
         assert res.testResultValue[1].value == "3"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "2"
+        assert dl_res.testResultValue[1].value == "3"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -189,9 +224,16 @@ class testSuiteValidation(unittest.TestCase):
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
         )
+        dl_res = validation_enum_registry.registry["columnValueLengthsToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
 
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_value_max_to_be_between(self):
         """test column value max to be between"""
@@ -212,9 +254,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueMaxToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "31"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "31.0"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -232,8 +283,16 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueMaxToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
 
     def test_column_value_mean_to_be_between(self):
         """test column value mean to be between"""
@@ -254,9 +313,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueMeanToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "30.5"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "30.5"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -274,8 +342,16 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueMeanToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_value_median_to_be_between(self):
         """test column value median to be between"""
@@ -296,9 +372,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueMedianToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "30.0"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "30.5"
 
     def test_column_value_min_to_be_between(self):
         """test column value min to be between"""
@@ -319,9 +404,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueMinToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "30"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "30.0"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -339,8 +433,16 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueMinToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_value_stddev_to_be_between(self):
         """test column value stddev to be between"""
@@ -361,9 +463,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueStdDevToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "0.25"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "0.512989176042577"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -381,8 +492,16 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValueStdDevToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_value_in_set(self):
         """test column value in set"""
@@ -402,9 +521,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesToBeInSet"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "20"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "20"
 
     def test_column_values_missing_count_to_be_equal(self):
         """test column value missing count to be equal"""
@@ -424,9 +552,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesMissingCount"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "10"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "10"
 
         test_case = TestCase(
             name="my_test_case",
@@ -444,7 +581,14 @@ class testSuiteValidation(unittest.TestCase):
             test_case=test_case,
             execution_date=EXECUTION_DATE.timestamp(),
         )
+
+        dl_res = validation_enum_registry.registry["columnValuesMissingCount"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
         assert res.testResultValue[0].value == "20"
+        assert dl_res.testResultValue[0].value == "20"
 
     def test_column_values_not_in_set(self):
         """test column value not in set"""
@@ -464,9 +608,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesToBeNotInSet"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "20"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "20"
 
     def test_column_sum_to_be_between(self):
         """test column value sum to be between"""
@@ -487,9 +640,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesSumToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "610"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "610.0"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -507,8 +669,16 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesSumToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_values_to_be_between(self):
         """test column value to be between"""
@@ -529,9 +699,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "30"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "30.0"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -549,8 +728,16 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
 
     def test_column_values_to_be_not_null(self):
         """test column value to be not null"""
@@ -567,9 +754,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesToBeNotNull"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "10"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "10"
 
     def test_column_values_to_be_unique(self):
         """test column value to be unique"""
@@ -586,10 +782,20 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["columnValuesToBeUnique"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "20"
         assert res.testResultValue[1].value == "0"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "30"
+        assert dl_res.testResultValue[1].value == "2"
 
     def test_column_values_to_match_regex(self):
         """test column value to match regex"""
@@ -654,9 +860,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableColumnCountToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "6"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "6"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -674,8 +889,16 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableColumnCountToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
 
     def test_table_column_count_to_equal(self):
         """test column value to be equal"""
@@ -693,9 +916,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableColumnCountToEqual"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "6"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "6"
 
     def test_table_column_name_to_exist(self):
         """test column name to exist"""
@@ -713,9 +945,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableColumnNameToExist"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "True"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "True"
 
     def test_column_to_match_set(self):
         """test column names to match set"""
@@ -735,11 +976,23 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableColumnToMatchSet"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert (
             res.testResultValue[0].value
             == "['first name', 'id', 'name', 'fullname', 'nickname', 'age']"
+        )
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert (
+            dl_res.testResultValue[0].value
+            == "['id', 'name', 'first name', 'fullname', 'nickname', 'age']"
         )
 
         test_case = TestCase(
@@ -760,7 +1013,14 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableColumnToMatchSet"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
 
         test_case = TestCase(
             name="my_test_case",
@@ -781,7 +1041,14 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableColumnToMatchSet"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
 
     def test_table_custom_sql_query(self):
         """test custom sql"""
@@ -846,9 +1113,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableRowCountToBeBetween"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "30"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "30"
 
         test_case = TestCase(
             name="my_test_case_two",
@@ -861,8 +1137,11 @@ class testSuiteValidation(unittest.TestCase):
         )
 
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Success
         assert res.testResultValue[0].value == "30"
+        assert dl_res.testCaseStatus == TestCaseStatus.Success
+        assert dl_res.testResultValue[0].value == "30"
 
     def test_table_row_count_to_be_equal(self):
         """test row count to be equal"""
@@ -882,9 +1161,18 @@ class testSuiteValidation(unittest.TestCase):
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
+        dl_res = validation_enum_registry.registry["tableRowCountToEqual"](
+            self.dl_runner,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
         assert isinstance(res, TestCaseResult)
+        assert isinstance(dl_res, TestCaseResult)
         assert res.testCaseStatus == TestCaseStatus.Failed
         assert res.testResultValue[0].value == "30"
+        assert dl_res.testCaseStatus == TestCaseStatus.Failed
+        assert dl_res.testResultValue[0].value == "30"
 
     @classmethod
     def tearDownClass(cls) -> None:

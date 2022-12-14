@@ -36,7 +36,9 @@ logger = test_suite_logger()
 
 @singledispatch
 def table_row_count_to_equal(
-    test_case: TestCase, execution_date: Union[datetime, float], runner
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ):
     raise NotImplementedError
 
@@ -94,10 +96,9 @@ def _(
 
 
 @table_row_count_to_equal.register
-def _(test_case: TestCase, execution_date: Union[datetime, float], runner: DataFrame):
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
-
-    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(runner)
+def _(runner: DataFrame, test_case: TestCase, execution_date: Union[datetime, float]):
+    
+    row_count_value = Metrics.ROW_COUNT.value().dl_fn(runner)
     value = next(
         int(param_value.value)
         for param_value in test_case.parameterValues

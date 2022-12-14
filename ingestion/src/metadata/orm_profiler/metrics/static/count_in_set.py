@@ -64,12 +64,13 @@ class CountInSet(StaticMetric):
             return None
 
     @_label
-    def dl_fn(self, data_frame: Optional[DataFrame]):  # pylint: disable=unused-argument
+    def dl_fn(self, data_frame: DataFrame = None):  # pylint: disable=unused-argument
         try:
             count = 0
+            rows = list(data_frame[self.col.name])
             for value in self.values:
-                if self.col.name in value:
-                    count += 1
+                if value in rows:
+                   count = rows.count(value) 
             return count
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

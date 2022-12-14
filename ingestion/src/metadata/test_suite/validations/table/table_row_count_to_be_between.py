@@ -123,6 +123,5 @@ def _(
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
     """
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
-    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(runner)
+    row_count_value = Metrics.ROW_COUNT.value().dl_fn(runner)
     return _return_test_case(row_count_value, execution_date, test_case)
