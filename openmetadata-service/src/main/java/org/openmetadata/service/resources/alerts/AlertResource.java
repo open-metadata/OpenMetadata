@@ -154,7 +154,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = AlertResource.AlertList.class)))
       })
-  public ResultList<Alert> list(
+  public ResultList<Alert> listAlerts(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Filter alerts by status", schema = @Schema(type = "string", example = "active"))
@@ -204,7 +204,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Alert.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public Alert get(
+  public Alert getAlertById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -234,7 +234,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = AlertActionStatus.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public AlertActionStatus getActionStatus(
+  public AlertActionStatus getAlertActionStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId,
@@ -260,7 +260,8 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = SettingsResource.SettingsList.class)))
       })
-  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public List<EventFilter> getAlertBootstrapFilters(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     return bootStrappedFilters;
   }
@@ -306,7 +307,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Alert.class))),
         @ApiResponse(responseCode = "404", description = "Alert for instance {id} is not found")
       })
-  public Alert getByName(
+  public Alert getAlertByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the alert", schema = @Schema(type = "string")) @PathParam("name") String name,
@@ -333,7 +334,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
             description = "List of alert versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
-  public EntityHistory listVersions(
+  public EntityHistory listAlertVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
@@ -357,7 +358,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
             responseCode = "404",
             description = "Alert for instance {id} and version {version} is " + "not found")
       })
-  public Alert getVersion(
+  public Alert getAlertVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -423,7 +424,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       description = "Update an existing alert using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(
+  public Response patchAlert(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,

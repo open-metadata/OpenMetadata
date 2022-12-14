@@ -94,7 +94,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = AlertActionList.class)))
       })
-  public ResultList<AlertAction> list(
+  public ResultList<AlertAction> listAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Filter alerts action by status", schema = @Schema(type = "string", example = "active"))
@@ -144,7 +144,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AlertAction.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public AlertAction get(
+  public AlertAction getAlertActionById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -172,7 +172,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AlertAction.class))),
         @ApiResponse(responseCode = "404", description = "Alert Action for instance {id} is not found")
       })
-  public AlertAction getByName(
+  public AlertAction getAlertActionByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the alert action", schema = @Schema(type = "string")) @PathParam("name")
@@ -200,7 +200,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
             description = "List of alert versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
-  public EntityHistory listVersions(
+  public EntityHistory listAlertActionVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
@@ -224,7 +224,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
             responseCode = "404",
             description = "Alert for instance {id} and version {version} is " + "not found")
       })
-  public AlertAction getVersion(
+  public AlertAction getAlertActionVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -288,7 +288,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
       description = "Update an existing alert using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patch(
+  public Response patchAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
@@ -320,7 +320,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AlertAction.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
-  public Response deleteAlert(
+  public Response deleteAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
