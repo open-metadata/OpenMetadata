@@ -157,11 +157,28 @@ export const getExplorePathWithInitFilters = (
   return filter ? `${path}?${filter}` : path;
 };
 
+export const getEncodedFqnForGlossary = (fqn: string) => {
+  let uri = encodeURIComponent(fqn);
+  uri = uri.replaceAll('%25', '~');
+
+  return uri;
+};
+
+export const getDecodedFqnForGlossary = (fqn: string) => {
+  let uri = fqn.replaceAll('~', '%25');
+  uri = decodeURIComponent(uri);
+
+  return uri;
+};
+
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+    path = path.replace(
+      PLACEHOLDER_GLOSSARY_NAME,
+      getEncodedFqnForGlossary(fqn)
+    );
   }
 
   return path;

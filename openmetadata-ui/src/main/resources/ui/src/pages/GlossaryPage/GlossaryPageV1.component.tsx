@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, extend, isEmpty } from 'lodash';
+import { cloneDeep, extend, isEmpty, isUndefined } from 'lodash';
 import {
   AssetsDataType,
   FormattedGlossarySuggestion,
@@ -53,6 +53,7 @@ import {
 } from '../../utils/GlossaryUtils';
 import {
   getAddGlossaryTermsPath,
+  getDecodedFqnForGlossary,
   getGlossaryPath,
 } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -64,6 +65,9 @@ export type ModifiedGlossaryData = Glossary & {
 const GlossaryPageV1 = () => {
   const { glossaryName } = useParams<Record<string, string>>();
   const { t } = useTranslation();
+  const [currentGlossary, setCurrentGlossary] = useState<string | undefined>(
+    undefined
+  );
 
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -86,6 +90,12 @@ const GlossaryPageV1 = () => {
     total: 0,
     currPage: 1,
   });
+
+  useEffect(() => {
+    if (!isUndefined(glossaryName)) {
+      setCurrentGlossary(getDecodedFqnForGlossary(glossaryName));
+    }
+  }, [glossaryName]);
 
   const handleChildLoading = (status: boolean) => {
     setIsChildLoading(status);
@@ -141,7 +151,12 @@ const GlossaryPageV1 = () => {
     pos: number[],
     arrGlossary: ModifiedGlossaryData[]
   ) => {
-    getGlossaryTermByFQN(fqn, ['children', 'relatedTerms', 'reviewers', 'tags'])
+    getGlossaryTermByFQN(encodeURIComponent(fqn), [
+      'children',
+      'relatedTerms',
+      'reviewers',
+      'tags',
+    ])
       .then(async (data) => {
         if (data) {
           const clonedGlossaryList = cloneDeep(arrGlossary);
@@ -686,10 +701,10 @@ const GlossaryPageV1 = () => {
    * and existing data list
    */
   const fetchData = () => {
-    if (glossariesList.length) {
-      checkAndFetchDataByFQN(glossariesList, glossaryName);
+    if (glossariesList.length && currentGlossary) {
+      checkAndFetchDataByFQN(glossariesList, currentGlossary);
     } else {
-      fetchGlossaryList(glossaryName);
+      fetchGlossaryList(currentGlossary);
     }
   };
 
@@ -705,7 +720,7 @@ const GlossaryPageV1 = () => {
 
   useEffect(() => {
     fetchData();
-  }, [glossaryName]);
+  }, [currentGlossary]);
 
   return (
     <PageContainerV1>
