@@ -290,12 +290,17 @@ const TopicVersion: FC<TopicVersionProp> = ({
                     {getInfoBadge([
                       {
                         key: 'Schema',
-                        value: (currentVersionData as Topic).schemaType ?? '',
+                        value:
+                          (currentVersionData as Topic).messageSchema
+                            ?.schemaType ?? '',
                       },
                     ])}
                     <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
                       <SchemaEditor
-                        value={(currentVersionData as Topic).schemaText ?? '{}'}
+                        value={
+                          (currentVersionData as Topic).messageSchema
+                            ?.schemaText ?? '{}'
+                        }
                       />
                     </div>
                   </div>

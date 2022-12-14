@@ -44,6 +44,7 @@ base_requirements = {
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
+    "avro-python3==1.10.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -105,8 +106,8 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
-        "avro-python3",
-        "avro",
+        "avro-python3==1.10.2",
+        "avro==1.11.1",
         "grpcio-tools",
         "protobuf",
     },
@@ -114,8 +115,8 @@ plugins: Dict[str, Set[str]] = {
     "redpanda": {
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
-        "avro-python3",
-        "avro",
+        "avro-python3==1.10.2",
+        "avro==1.11.1",
         "grpcio-tools",
         "protobuf",
     },

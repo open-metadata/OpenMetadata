@@ -33,8 +33,6 @@ import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 export interface TopicDetailsProps {
   topicFQN: string;
   version?: string;
-  schemaText: string;
-  schemaType: string;
   partitions: number;
   cleanupPolicies: Array<string>;
   maximumMessageSize: number;
