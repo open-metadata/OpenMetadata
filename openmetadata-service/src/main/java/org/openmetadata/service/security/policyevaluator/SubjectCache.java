@@ -22,7 +22,6 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -43,10 +42,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class SubjectCache {
   private static SubjectCache INSTANCE;
   private static volatile boolean INITIALIZED = false;
-
   protected static LoadingCache<String, SubjectContext> USER_CACHE;
+  protected static LoadingCache<UUID, SubjectContext> USER_CACHE_WIH_ID;
   protected static LoadingCache<UUID, Team> TEAM_CACHE;
-
   protected static EntityRepository<User> USER_REPOSITORY;
   protected static Fields USER_FIELDS;
   protected static EntityRepository<Team> TEAM_REPOSITORY;
@@ -57,6 +55,11 @@ public class SubjectCache {
     if (!INITIALIZED) {
       USER_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new UserLoader());
+      USER_CACHE_WIH_ID =
+          CacheBuilder.newBuilder()
+              .maximumSize(1000)
+              .expireAfterAccess(1, TimeUnit.MINUTES)
+              .build(new UserLoaderWithId());
       TEAM_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new TeamLoader());
       USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
@@ -85,18 +88,14 @@ public class SubjectCache {
 
   public SubjectContext getSubjectContext(UUID userId) throws EntityNotFoundException {
     try {
-      for (Map.Entry<String, SubjectContext> entrySet : USER_CACHE.asMap().entrySet()) {
-        if (entrySet.getValue().getUser().getId().equals(userId)) {
-          return USER_CACHE.get(entrySet.getKey());
-        }
-      }
+      return USER_CACHE_WIH_ID.get(userId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }
-    throw new EntityNotFoundException("UserName does not exist");
   }
 
   public List<User> getAllUsers() throws EntityNotFoundException {
+    // TODO: this needs correction
     List<User> allUsers = new ArrayList<>();
     try {
       for (SubjectContext context : USER_CACHE.asMap().values()) {
@@ -155,6 +154,15 @@ public class SubjectCache {
     @Override
     public SubjectContext load(@CheckForNull String userName) throws IOException {
       User user = USER_REPOSITORY.getByName(null, userName, USER_FIELDS);
+      LOG.info("Loaded user {}:{}", user.getName(), user.getId());
+      return new SubjectContext(user);
+    }
+  }
+
+  static class UserLoaderWithId extends CacheLoader<UUID, SubjectContext> {
+    @Override
+    public SubjectContext load(@CheckForNull UUID uid) throws IOException {
+      User user = USER_REPOSITORY.get(null, uid, USER_FIELDS);
       LOG.info("Loaded user {}:{}", user.getName(), user.getId());
       return new SubjectContext(user);
     }

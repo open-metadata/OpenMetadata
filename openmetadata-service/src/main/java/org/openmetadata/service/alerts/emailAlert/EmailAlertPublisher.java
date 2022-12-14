@@ -14,14 +14,19 @@ import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.AlertsActionPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class EmailAlertPublisher extends AlertsActionPublisher {
@@ -64,12 +69,21 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
   }
 
   private Set<String> sendToAdmins() {
-    List<User> allUsers = SubjectCache.getInstance().getAllUsers();
     Set<String> emailList = new HashSet<>();
-    allUsers.forEach(
-        (user) -> {
-          if (user.getIsAdmin()) emailList.add(user.getEmail());
-        });
+    EntityRepository<User> userEntityRepository = Entity.getEntityRepository(USER);
+    ResultList<User> result;
+    ListFilter listFilter = new ListFilter(Include.ALL);
+    listFilter.addQueryParam("isAdmin", "true");
+    String after = null;
+    try {
+      do {
+        result = userEntityRepository.listAfter(null, userEntityRepository.getFields("email"), listFilter, 50, after);
+        result.getData().forEach((user) -> emailList.add(user.getEmail()));
+        after = result.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Users , Reason", ex);
+    }
     return emailList;
   }
 
