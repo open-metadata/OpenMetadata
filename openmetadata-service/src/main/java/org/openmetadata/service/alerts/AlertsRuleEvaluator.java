@@ -139,36 +139,4 @@ public class AlertsRuleEvaluator {
     }
     return false;
   }
-
-  //  @Function(
-  //      name = "matchAnyUpdatedBy",
-  //      input = "List of comma separated name updating the entity",
-  //      description = "Returns true if the change event entity is updated by given name in list",
-  //      examples = {"matchAnyUpdatedBy('Owner1', 'Owner2')"},
-  //      paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
-  //  public boolean matchAnyUpdatedBy(String... updateByList) {
-  //    if (changeEvent == null || changeEvent.getEntity() == null) {
-  //      return false;
-  //    }
-  //    EntityInterface entity = (EntityInterface) changeEvent.getEntity();
-  //    EntityReference ownerReference = entity.getOwner();
-  //    if (ownerReference != null) {
-  //      if (USER.equals(ownerReference.getType())) {
-  //        User user = SubjectCache.getInstance().getSubjectContext(ownerReference.getId()).getUser();
-  //        for (String name : ownerNameList) {
-  //          if (user.getName().equals(name)) {
-  //            return true;
-  //          }
-  //        }
-  //      } else if (TEAM.equals(ownerReference.getType())) {
-  //        Team team = SubjectCache.getInstance().getTeam(ownerReference.getId());
-  //        for (String name : ownerNameList) {
-  //          if (team.getName().equals(name)) {
-  //            return true;
-  //          }
-  //        }
-  //      }
-  //    }
-  //    return false;
-  //  }
 }
