@@ -60,6 +60,42 @@ def column_value_length_to_be_between(
     raise NotImplementedError
 
 
+def _return_test_case(
+    min_value_length_value_res, max_value_length_value_res, execution_date, test_case
+):
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minLength",
+        float,
+        default=float("-inf"),
+    )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxLength",
+        float,
+        default=float("inf"),
+    )
+
+    status, result = test_case_status_result(
+        min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
+    )
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[
+            TestResultValue(
+                name="minValueLength", value=str(min_value_length_value_res)
+            ),
+            TestResultValue(
+                name="maxValueLength", value=str(max_value_length_value_res)
+            ),
+        ],
+    )
+
+
 @column_value_length_to_be_between.register
 def _(
     runner: QueryRunner,
@@ -132,37 +168,11 @@ def _(
                 TestResultValue(name="maxValueLength", value=None),
             ],
         )
-
-    min_bound = get_test_case_param_value(
-        test_case.parameterValues,  # type: ignore
-        "minLength",
-        float,
-        default=float("-inf"),
-    )
-
-    max_bound = get_test_case_param_value(
-        test_case.parameterValues,  # type: ignore
-        "maxLength",
-        float,
-        default=float("inf"),
-    )
-
-    status, result = test_case_status_result(
-        min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
-    )
-
-    return TestCaseResult(
-        timestamp=execution_date,
-        testCaseStatus=status,
-        result=result,
-        testResultValue=[
-            TestResultValue(
-                name="minValueLength", value=str(min_value_length_value_res)
-            ),
-            TestResultValue(
-                name="maxValueLength", value=str(max_value_length_value_res)
-            ),
-        ],
+    return _return_test_case(
+        min_value_length_value_res,
+        max_value_length_value_res,
+        execution_date,
+        test_case,
     )
 
 
@@ -183,33 +193,9 @@ def _(
 
     min_value_length_value_res = Metrics.MIN_LENGTH.value(column_obj).dl_fn(runner)
     max_value_length_value_res = Metrics.MAX_LENGTH.value(column_obj).dl_fn(runner)
-    min_bound = get_test_case_param_value(
-        test_case.parameterValues,  # type: ignore
-        "minLength",
-        float,
-        default=float("-inf"),
-    )
-
-    max_bound = get_test_case_param_value(
-        test_case.parameterValues,  # type: ignore
-        "maxLength",
-        float,
-        default=float("inf"),
-    )
-    status, result = test_case_status_result(
-        min_bound, max_bound, min_value_length_value_res, max_value_length_value_res
-    )
-
-    return TestCaseResult(
-        timestamp=execution_date,
-        testCaseStatus=status,
-        result=result,
-        testResultValue=[
-            TestResultValue(
-                name="minValueLength", value=str(min_value_length_value_res)
-            ),
-            TestResultValue(
-                name="maxValueLength", value=str(max_value_length_value_res)
-            ),
-        ],
+    return _return_test_case(
+        min_value_length_value_res,
+        max_value_length_value_res,
+        execution_date,
+        test_case,
     )

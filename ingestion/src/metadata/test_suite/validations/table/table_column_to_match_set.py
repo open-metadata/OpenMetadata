@@ -53,6 +53,15 @@ def table_column_to_match_set(
     runner: QueryRunner,
     test_case: TestCase,
     execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_column_to_match_set.register
+def _(
+    runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric

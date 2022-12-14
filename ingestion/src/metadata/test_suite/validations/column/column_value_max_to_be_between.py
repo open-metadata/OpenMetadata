@@ -57,7 +57,7 @@ def column_value_max_to_be_between(
     raise NotImplementedError
 
 
-@column_value_max_to_be_between.register(QueryRunner)
+@column_value_max_to_be_between.register
 def _(
     runner: QueryRunner,
     test_case: TestCase,
@@ -128,7 +128,7 @@ def _(
     )
 
 
-@column_value_max_to_be_between.register(DataFrame)
+@column_value_max_to_be_between.register
 def _(
     test_case: TestCase,
     execution_date: Union[datetime, float],

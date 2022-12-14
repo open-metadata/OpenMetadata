@@ -39,6 +39,15 @@ logger = test_suite_logger()
 
 @singledispatch
 def column_values_to_be_not_null(
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_values_to_be_not_null.register
+def _(
     runner: QueryRunner,
     test_case: TestCase,
     execution_date: Union[datetime, float],

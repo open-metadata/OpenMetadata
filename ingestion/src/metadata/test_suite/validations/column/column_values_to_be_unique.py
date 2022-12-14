@@ -49,6 +49,15 @@ def test_case_status_result(value_count_value_res, unique_count_value_res):
 
 @singledispatch
 def column_values_to_be_unique(
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_values_to_be_unique.register
+def _(
     runner: QueryRunner,
     test_case: TestCase,
     execution_date: Union[datetime, float],

@@ -36,6 +36,15 @@ logger = test_suite_logger()
 
 @singledispatch
 def table_column_count_to_equal(
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_column_count_to_equal.register
+def _(
     runner: QueryRunner,
     test_case: TestCase,
     execution_date: Union[datetime, float],

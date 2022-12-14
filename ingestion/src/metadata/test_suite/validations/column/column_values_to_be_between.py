@@ -50,6 +50,15 @@ def test_case_status_result(min_value_res, max_value_res, min_bound, max_bound):
 
 @singledispatch
 def column_values_to_be_between(
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_values_to_be_between.register
+def _(
     runner: QueryRunner,
     test_case: TestCase,
     execution_date: Union[datetime, float],

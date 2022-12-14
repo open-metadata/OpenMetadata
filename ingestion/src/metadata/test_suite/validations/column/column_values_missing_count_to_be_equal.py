@@ -49,6 +49,15 @@ def test_case_status_result(null_count_value_res, missing_count_values):
 
 @singledispatch
 def column_values_missing_count_to_be_equal(
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_values_missing_count_to_be_equal.register
+def _(
     runner: QueryRunner,
     test_case: TestCase,
     execution_date: Union[datetime, float],

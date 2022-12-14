@@ -49,6 +49,15 @@ def format_column_list(status: TestCaseStatus, cols: List):
 
 @singledispatch
 def table_column_name_to_exist(
+    runner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_column_name_to_exist.register
+def _(
     runner: QueryRunner,
     test_case: TestCase,
     execution_date: Union[datetime, float],
