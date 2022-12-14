@@ -149,6 +149,9 @@
       "oneOf": [
         {
           "$ref": "../entity/events/webhook.json"
+        },
+        {
+          "$ref": "./emailAlertConfig.json"
         }
       ]
     },
