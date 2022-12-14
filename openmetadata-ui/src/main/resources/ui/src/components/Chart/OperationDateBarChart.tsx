@@ -12,9 +12,11 @@
  */
 
 import { Col, Row } from 'antd';
+import { uniqueId } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Bar,
   CartesianGrid,
   ComposedChart,
   Legend,
@@ -24,7 +26,7 @@ import {
   XAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
-import { renderColorfulLegendText } from '../../utils/ChartUtils';
+import { OPERATION_CHART_LEGEND_PAYLOAD } from '../../constants/profiler.constant';
 import { formatNumberWithComma } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -72,11 +74,21 @@ const OperationDateBarChart = ({
           <Scatter
             dataKey={info.dataKey}
             fill={info.color}
-            key={info.dataKey}
+            key={uniqueId()}
             name={info.title}
           />
         ))}
-        <Legend formatter={renderColorfulLegendText} />
+        {information.map((info) => (
+          <Bar
+            barSize={1}
+            dataKey={info.dataKey}
+            fill={info.color}
+            key={uniqueId()}
+            name={info.title}
+            stackId="data"
+          />
+        ))}
+        <Legend payload={OPERATION_CHART_LEGEND_PAYLOAD} />
       </ComposedChart>
     </ResponsiveContainer>
   );

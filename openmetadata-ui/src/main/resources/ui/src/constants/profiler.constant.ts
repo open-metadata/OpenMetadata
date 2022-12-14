@@ -13,6 +13,7 @@
 
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
+import { LegendProps } from 'recharts';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -196,6 +197,30 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
   ],
   data: [],
 };
+// Keep details of below array same as above (INITIAL_OPERATION_METRIC_VALUE)
+export const OPERATION_CHART_LEGEND_PAYLOAD = [
+  {
+    inactive: false,
+    dataKey: 'INSERT',
+    type: 'rect',
+    color: '#008376',
+    value: 'Insert',
+  },
+  {
+    inactive: false,
+    dataKey: 'UPDATE',
+    type: 'rect',
+    color: '#1890FF',
+    value: 'Update',
+  },
+  {
+    inactive: false,
+    dataKey: 'DELETE',
+    type: 'rect',
+    color: '#7147E8',
+    value: 'Delete',
+  },
+] as unknown as LegendProps['payload'];
 
 export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
   {
