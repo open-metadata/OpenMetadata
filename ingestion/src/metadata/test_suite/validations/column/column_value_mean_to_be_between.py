@@ -16,7 +16,10 @@ ColumnValuesToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
+from typing import Union
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -27,6 +30,7 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.column_base_model import fetch_column_obj
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.test_suite import get_test_case_param_value
@@ -34,14 +38,38 @@ from metadata.utils.test_suite import get_test_case_param_value
 logger = test_suite_logger()
 
 
+def test_case_status_result(
+    min_bound,
+    max_bound,
+    mean_value_res,
+):
+    return (
+        TestCaseStatus.Success
+        if min_bound <= mean_value_res <= max_bound
+        else TestCaseStatus.Failed,
+        f"Found mean={mean_value_res:.2f} vs."
+        + f" the expected min={min_bound}, max={max_bound}.",
+    )
+
+
+@singledispatch
 def column_value_mean_to_be_between(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_value_mean_to_be_between.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
-    :param test_case: ColumnValuesToBeBetween
+    :param test_case: columnValueMeanToBeBetween
     :param col_profile: should contain MIN & MAX metrics
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
@@ -94,16 +122,55 @@ def column_value_mean_to_be_between(
         default=float("inf"),
     )
 
-    status = (
-        TestCaseStatus.Success
-        if min_bound <= mean_value_res <= max_bound
-        else TestCaseStatus.Failed
-    )
-    result = (
-        f"Found mean={mean_value_res:.2f} vs."
-        + f" the expected min={min_bound}, max={max_bound}."
+    status, result = test_case_status_result(
+        min_bound,
+        max_bound,
+        mean_value_res,
     )
 
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="mean", value=str(mean_value_res))],
+    )
+
+
+@column_value_mean_to_be_between.register
+def _(
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    """
+    Validate Column Values metric
+    :param test_case: columnValueMeanToBeBetween
+    :param col_profile: should contain MIN & MAX metrics
+    :param execution_date: Datetime when the tests ran
+    :return: TestCaseResult with status and results
+    """
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
+
+    min_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minValueForMeanInCol",
+        float,
+        default=float("-inf"),
+    )
+
+    max_bound = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxValueForMeanInCol",
+        float,
+        default=float("inf"),
+    )
+    mean_value_res = Metrics.MEAN.value(column_obj).dl_fn(runner)
+
+    status, result = test_case_status_result(
+        min_bound,
+        max_bound,
+        mean_value_res,
+    )
     return TestCaseResult(
         timestamp=execution_date,
         testCaseStatus=status,

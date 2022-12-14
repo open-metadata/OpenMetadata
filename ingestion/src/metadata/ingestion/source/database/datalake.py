@@ -63,6 +63,22 @@ DATALAKE_INT_TYPES = {"int64", "INT", "int32"}
 DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet", ".json.gz")
 
 
+def ometa_to_dataframe(config_source, client, table):
+    if isinstance(config_source, GCSConfig):
+        return DatalakeSource.get_gcs_files(
+            client=client,
+            key=table.name.__root__,
+            bucket_name=table.databaseSchema.name,
+        )
+    if isinstance(config_source, S3Config):
+        return DatalakeSource.get_s3_files(
+            client=client,
+            key=table.name.__root__,
+            bucket_name=table.databaseSchema.name,
+        )
+    return None
+
+
 class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-methods
     """
     Implements the necessary methods to extract

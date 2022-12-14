@@ -14,6 +14,7 @@ Unique Count Metric definition
 """
 from typing import Optional
 
+from pandas import DataFrame
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
@@ -65,7 +66,7 @@ class UniqueCount(QueryMetric):
         only_once_cte = only_once.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
 
-    def dl_query(self, data_frame):
+    def dl_query(self, data_frame: DataFrame = None):
         """
         Build the Unique Count metric
         """
