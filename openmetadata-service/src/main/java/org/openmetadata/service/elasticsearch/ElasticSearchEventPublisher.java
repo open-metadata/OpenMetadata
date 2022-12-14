@@ -227,7 +227,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private UpdateRequest applyChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
-    ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexType esIndexType = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
     ChangeDescription changeDescription = event.getChangeDescription();
 
