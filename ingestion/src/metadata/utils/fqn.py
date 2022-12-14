@@ -132,6 +132,7 @@ def _(
     schema_name: Optional[str],
     table_name: str,
     fetch_multiple_entities: bool = False,
+    skip_es_search: bool = False,
 ) -> Union[Optional[str], Optional[List[str]]]:
     """
     Building logic for tables
@@ -142,19 +143,19 @@ def _(
     :param table_name: Table name
     :return:
     """
-    if not service_name or not table_name:
-        raise FQNBuildingException(
-            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+    fqn_search_string = build_es_fqn_search_string(
+        database_name, schema_name, service_name, table_name
+    )
+
+    es_result = (
+        metadata.es_search_from_fqn(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
         )
-
-    fqn_search_string = _build(
-        service_name, database_name or "*", schema_name or "*", table_name
+        if not skip_es_search
+        else None
     )
 
-    es_result = metadata.es_search_from_fqn(
-        entity_type=Table,
-        fqn_search_string=fqn_search_string,
-    )
     entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
@@ -450,3 +451,28 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
     ) = details
 
     return SplitTestCaseFqn(service, database, schema, table, column, test_case)
+
+
+def build_es_fqn_search_string(
+    database_name: str, schema_name, service_name, table_name
+) -> str:
+    """
+    Builds FQN search string for ElasticSearch
+
+    Args:
+        service_name: service name to filter
+        database_name: DB name or None
+        schema_name: schema name or None
+        table_name: table name
+
+    Returns:
+        FQN search string
+    """
+    if not service_name or not table_name:
+        raise FQNBuildingException(
+            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+        )
+    fqn_search_string = _build(
+        service_name, database_name or "*", schema_name or "*", table_name
+    )
+    return fqn_search_string

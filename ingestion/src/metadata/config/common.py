@@ -69,10 +69,8 @@ class YamlConfigurationMechanism(ConfigurationMechanism):
         try:
             config = yaml.safe_load(config_fp)
             return config
-        except yaml.error.YAMLError:
-            raise ConfigurationError(
-                f"YAML Configuration file [{config_fp}] is not a valid YAML"
-            )
+        except yaml.error.YAMLError as exc:
+            raise ConfigurationError(f"YAML Configuration file is not valid \n {exc}")
 
 
 class JsonConfigurationMechanism(ConfigurationMechanism):
@@ -84,10 +82,8 @@ class JsonConfigurationMechanism(ConfigurationMechanism):
         try:
             config = json.load(config_fp)
             return config
-        except json.decoder.JSONDecodeError:
-            raise ConfigurationError(
-                f"JSON Configuration file [{config_fp}] is not a valid JSON"
-            )
+        except json.decoder.JSONDecodeError as exc:
+            raise ConfigurationError(f"JSON Configuration file is not valid \n {exc}")
 
 
 def load_config_file(config_file: pathlib.Path) -> dict:
