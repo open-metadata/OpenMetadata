@@ -49,9 +49,16 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: 'Tag',
   },
   {
-    value:
-      'entityReportData , webAnalyticEntityViewReport, webAnalyticUserActivityReport',
-    label: 'Data Insights',
+    value: 'entityReportData',
+    label: 'Entity Data',
+  },
+  {
+    value: 'webAnalyticEntityViewReport',
+    label: 'Web Analytic Entity',
+  },
+  {
+    value: 'webAnalyticUserActivityReport',
+    label: 'Web Analytic User',
   },
 ];
 
@@ -66,7 +73,9 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
     'team',
     'glossaryTerm',
     'tag',
-    'entityReportData , webAnalyticEntityViewReport, webAnalyticUserActivityReport',
+    'entityReportData',
+    'webAnalyticEntityViewReport',
+    'webAnalyticUserActivityReport',
   ],
   batchSize: 100,
   flushIntervalInSec: 30,

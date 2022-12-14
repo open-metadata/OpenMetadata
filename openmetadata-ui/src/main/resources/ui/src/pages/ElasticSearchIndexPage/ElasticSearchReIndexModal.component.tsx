@@ -72,7 +72,7 @@ const ReIndexAllModal = ({
             onChange={(values) => setEntities(values as string[])}>
             <Row gutter={[16, 16]}>
               {ELASTIC_SEARCH_INDEX_ENTITIES.map((option) => (
-                <Col key={option.value} span={6}>
+                <Col key={option.value} span={8}>
                   <Checkbox value={option.value}>{option.label}</Checkbox>
                 </Col>
               ))}
