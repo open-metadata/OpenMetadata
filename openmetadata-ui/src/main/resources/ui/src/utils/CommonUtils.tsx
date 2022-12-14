@@ -16,7 +16,7 @@ import { Popover, Space, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import i18n from 'i18next';
+import { t } from 'i18next';
 import {
   capitalize,
   isEmpty,
@@ -37,6 +37,7 @@ import {
   RecentlyViewedData,
 } from 'Models';
 import React from 'react';
+import { Trans } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -536,7 +537,7 @@ export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
  */
 export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   if (isDeleted) {
-    return `${value} (Deactivated)`;
+    return `${value} (${t('label.deactivated')})`;
   } else {
     return value;
   }
@@ -586,13 +587,14 @@ export const getEntityId = (
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
-    return `Permanently deleting this ${getTitleCase(
-      entity
-    )} will remove its metadata, as well as the metadata of ${dependents} from OpenMetadata permanently.`;
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: getTitleCase(entity),
+      dependents,
+    });
   } else {
-    return `Permanently deleting this ${getTitleCase(
-      entity
-    )} will remove its metadata from OpenMetadata permanently.`;
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: getTitleCase(entity),
+    });
   }
 };
 
@@ -731,7 +733,7 @@ export const getHostNameFromURL = (url: string) => {
 
 export const commonUserDetailColumns: ColumnsType<User> = [
   {
-    title: 'Username',
+    title: t('label.username'),
     dataIndex: 'username',
     key: 'username',
     render: (_, record) => (
@@ -744,7 +746,7 @@ export const commonUserDetailColumns: ColumnsType<User> = [
     ),
   },
   {
-    title: 'Teams',
+    title: t('label.teams'),
     dataIndex: 'teams',
     key: 'teams',
     render: (_, record) => {
@@ -792,7 +794,7 @@ export const commonUserDetailColumns: ColumnsType<User> = [
     },
   },
   {
-    title: 'Roles',
+    title: t('label.roles'),
     dataIndex: 'roles',
     key: 'roles',
     render: (_, record) => {
@@ -872,7 +874,7 @@ export const getEmptyPlaceholder = () => {
   return (
     <ErrorPlaceHolder size={SIZE.MEDIUM}>
       <Typography.Paragraph>
-        {i18n.t('label.no-data-available')}
+        {t('label.no-data-available')}
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );
@@ -951,6 +953,21 @@ export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
     tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
   );
 };
+
+export const Transi18next = ({
+  i18nKey,
+  values,
+  renderElement,
+  ...otherProps
+}: {
+  i18nKey: string;
+  values?: {};
+  renderElement: JSX.Element | HTMLElement;
+}): JSX.Element => (
+  <Trans i18nKey={i18nKey} values={values} {...otherProps}>
+    {renderElement}
+  </Trans>
+);
 
 /**
  * It returns a link to the documentation for the given filter pattern type

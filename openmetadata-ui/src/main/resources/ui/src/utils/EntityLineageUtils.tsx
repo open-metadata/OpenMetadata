@@ -17,6 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
+import { t } from 'i18next';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
@@ -431,29 +432,12 @@ export const getDataLabel = (
   }
 };
 
-export const getNoLineageDataPlaceholder = () => {
-  return (
-    <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-      <span>
-        Lineage is currently supported for Airflow. To enable lineage collection
-        from Airflow, please follow the documentation
-      </span>
-      <Link
-        className="tw-ml-1"
-        target="_blank"
-        to={{
-          pathname:
-            'https://docs.open-metadata.org/openmetadata/connectors/pipeline/airflow/lineage-backend',
-        }}>
-        here.
-      </Link>
-    </div>
-  );
-};
 export const getDeletedLineagePlaceholder = () => {
   return (
     <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-      <span>Lineage data is not available for deleted entities.</span>
+      <span>
+        {t('message.lineage-data-is-not-available-for-deleted-entities')}
+      </span>
     </div>
   );
 };
@@ -527,9 +511,10 @@ export const getModalBodyText = (selectedEdge: SelectedEdge) => {
     targetEntity = getPartialNameFromFQN(targetFQN || '', ['database']);
   }
 
-  return `Are you sure you want to remove the edge between "${
-    source.displayName ? source.displayName : sourceEntity
-  } and ${target.displayName ? target.displayName : targetEntity}"?`;
+  return t('message.remove-edge-between-source-and-target', {
+    sourceDisplayName: source.displayName ? source.displayName : sourceEntity,
+    targetDisplayName: target.displayName ? target.displayName : targetEntity,
+  });
 };
 
 export const getUniqueFlowElements = (elements: CustomFlow[]) => {
