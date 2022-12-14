@@ -19,7 +19,7 @@ import reprlib
 import traceback
 from datetime import datetime
 from functools import singledispatch
-from typing import List
+from typing import List, Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -50,9 +50,9 @@ def format_column_list(status: TestCaseStatus, cols: List):
 
 @singledispatch
 def table_column_to_match_set(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -123,10 +123,10 @@ def table_column_to_match_set(
 
 
 @table_column_to_match_set.register
-def table_column_to_match_set_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
     """
     Validate row count metric
@@ -138,7 +138,7 @@ def table_column_to_match_set_dl(
     Returns:
         TestCaseResult with status and results
     """
-    column_names = list(data_frame.columns)
+    column_names = list(runner.columns)
     column_name = next(
         param_value.value
         for param_value in test_case.parameterValues

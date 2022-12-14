@@ -17,6 +17,7 @@ import traceback
 from ast import literal_eval
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -48,9 +49,9 @@ def test_case_status_result(null_count_value_res, missing_count_values):
 
 @singledispatch
 def column_values_missing_count_to_be_equal(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -144,10 +145,10 @@ def column_values_missing_count_to_be_equal(
 
 # pylint: disable=abstract-class-instantiated,no-member
 @column_values_missing_count_to_be_equal.register
-def column_values_missing_count_to_be_equal_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
     """
     Validate Column Values metric
@@ -160,8 +161,8 @@ def column_values_missing_count_to_be_equal_dl(
     :return: TestCaseResult with status and results
     """
 
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
-    null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(data_frame)
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
+    null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(runner)
 
     missing_values = next(
         (

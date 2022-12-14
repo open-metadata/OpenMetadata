@@ -16,11 +16,10 @@ from typing import Callable, Optional
 
 import requests
 from flask import Blueprint
+from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
-
-from openmetadata_managed_apis.api.response import ApiResponse
 
 logger = routes_logger()
 

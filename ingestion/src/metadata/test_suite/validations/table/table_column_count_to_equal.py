@@ -17,6 +17,7 @@ TableColumnCountToEqual validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -35,9 +36,9 @@ logger = test_suite_logger()
 
 @singledispatch
 def table_column_count_to_equal(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -81,12 +82,12 @@ def table_column_count_to_equal(
 
 
 @table_column_count_to_equal.register
-def table_column_count_to_equal_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
-    column_count = len(data_frame.columns)
+    column_count = len(runner.columns)
     count = next(
         int(param_value.value)
         for param_value in test_case.parameterValues

@@ -17,6 +17,7 @@ TableRowCountToBeBetween validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 from pandas import DataFrame
 
@@ -36,9 +37,9 @@ logger = test_suite_logger()
 
 @singledispatch
 def table_row_count_to_be_between(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -93,10 +94,10 @@ def table_row_count_to_be_between(
 
 
 @table_row_count_to_be_between.register
-def table_row_count_to_be_between_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
     """
     Validate row count metric
@@ -105,8 +106,8 @@ def table_row_count_to_be_between_dl(
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
     """
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
-    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(data_frame)
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
+    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(runner)
 
     min_ = next(
         int(param_value.value)

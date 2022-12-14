@@ -17,6 +17,7 @@ import traceback
 from ast import literal_eval
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -47,9 +48,18 @@ def test_case_status_result(set_count_res):
 # pylint: disable=abstract-class-instantiated
 @singledispatch
 def column_values_in_set(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@column_values_in_set.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -115,10 +125,10 @@ def column_values_in_set(
 
 # pylint: disable=no-member,abstract-class-instantiated
 @column_values_in_set.register
-def column_values_in_set_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
     allowed_value = next(
         (
@@ -127,7 +137,7 @@ def column_values_in_set_dl(
             if param.name == "allowedValues"
         )
     )
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
     set_count_res = add_props(values=allowed_value)(Metrics.COUNT_IN_SET.value)(
         column_obj
     ).dl_fn()

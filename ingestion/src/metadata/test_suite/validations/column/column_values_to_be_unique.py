@@ -15,6 +15,7 @@ ColumnValuesToBeUnique validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 # pylint: disable=duplicate-code,protected-access
 from pandas import DataFrame
@@ -48,9 +49,9 @@ def test_case_status_result(value_count_value_res, unique_count_value_res):
 
 @singledispatch
 def column_values_to_be_unique(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -116,15 +117,15 @@ def column_values_to_be_unique(
 
 
 @column_values_to_be_unique.register
-def column_values_to_be_unique_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
 
-    value_count_value_res = Metrics.COUNT.value(column_obj).dl_fn(data_frame)
-    unique_count_value_res = Metrics.UNIQUE_COUNT.value(column_obj).dl_query(data_frame)
+    value_count_value_res = Metrics.COUNT.value(column_obj).dl_fn(runner)
+    unique_count_value_res = Metrics.UNIQUE_COUNT.value(column_obj).dl_query(runner)
 
     status, result = test_case_status_result(
         value_count_value_res, unique_count_value_res

@@ -16,7 +16,7 @@ ColumnValuesToBeNotNull validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy import inspect
 from sqlalchemy.exc import CompileError
@@ -66,9 +66,9 @@ def _get_not_match_count(not_like_count, not_regex_count, runner, col) -> Option
 
 @singledispatch
 def column_values_to_not_match_regex(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric

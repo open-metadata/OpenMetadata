@@ -17,6 +17,7 @@ ColumnValuesToBeNotNull validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -38,9 +39,9 @@ logger = test_suite_logger()
 
 @singledispatch
 def column_values_to_be_not_null(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -95,14 +96,14 @@ def column_values_to_be_not_null(
 
 
 @column_values_to_be_not_null.register
-def column_values_to_be_not_null_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
 
-    null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(data_frame)
+    null_count_value_res = Metrics.NULL_COUNT.value(column_obj).dl_fn(runner)
     status, result = (
         TestCaseStatus.Success if null_count_value_res == 0 else TestCaseStatus.Failed,
         f"Found nullCount={null_count_value_res}. It should be 0.",

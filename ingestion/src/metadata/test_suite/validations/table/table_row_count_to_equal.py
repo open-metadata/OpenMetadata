@@ -15,6 +15,7 @@ TableRowCountToEqual validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 # pylint: disable=duplicate-code
 from pandas import DataFrame
@@ -35,9 +36,16 @@ logger = test_suite_logger()
 
 @singledispatch
 def table_row_count_to_equal(
-    test_case: TestCase,
-    execution_date: datetime,
+    test_case: TestCase, execution_date: Union[datetime, float], runner
+):
+    raise NotImplementedError
+
+
+@table_row_count_to_equal.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -86,11 +94,10 @@ def table_row_count_to_equal(
 
 
 @table_row_count_to_equal.register
-def table_row_count_to_equal_dl(
-    test_case: TestCase, execution_date: datetime, data_frame: DataFrame
-):
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
-    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(data_frame)
+def _(test_case: TestCase, execution_date: Union[datetime, float], runner: DataFrame):
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
+
+    row_count_value = Metrics.ROW_COUNT.value(column_obj).dl_fn(runner)
     value = next(
         int(param_value.value)
         for param_value in test_case.parameterValues

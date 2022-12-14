@@ -17,6 +17,7 @@ TableColumnCountToBeBetween validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -36,9 +37,18 @@ logger = test_suite_logger()
 
 @singledispatch
 def table_column_count_to_be_between(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_column_count_to_be_between.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -101,11 +111,11 @@ def table_column_count_to_be_between(
 
 
 @table_column_count_to_be_between.register
-def table_column_count_to_be_between_dl(
+def _(
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
-):
+    execution_date: Union[datetime, float],
+    runner: DataFrame,
+) -> TestCaseResult:
     """
     Validate row count metric
 
@@ -116,7 +126,7 @@ def table_column_count_to_be_between_dl(
     Returns:
         TestCaseResult with status and results
     """
-    column_count = len(data_frame.columns)
+    column_count = len(runner.columns)
     min_ = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore
         "minColValue",

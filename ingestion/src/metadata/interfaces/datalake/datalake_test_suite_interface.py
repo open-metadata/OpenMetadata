@@ -67,9 +67,9 @@ class DataLakeTestSuiteInterface(TestSuiteProtocol):
             return validation_enum_registry.registry[
                 test_case.testDefinition.fullyQualifiedName
             ](
-                test_case,
+                self.data_frame,
+                test_case=test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
-                data_frame=self.data_frame,
             )
         except KeyError as err:
             logger.warning(

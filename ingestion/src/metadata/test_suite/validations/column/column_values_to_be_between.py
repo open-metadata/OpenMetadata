@@ -17,6 +17,7 @@ ColumnValuesToBeBetween validation implementation
 import traceback
 from datetime import datetime
 from functools import singledispatch
+from typing import Union
 
 from pandas import DataFrame
 from sqlalchemy import inspect
@@ -49,9 +50,9 @@ def test_case_status_result(min_value_res, max_value_res, min_bound, max_bound):
 
 @singledispatch
 def column_values_to_be_between(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -131,10 +132,10 @@ def column_values_to_be_between(
 
 
 @column_values_to_be_between.register
-def column_values_to_be_between_dl(
+def _(
+    runner: DataFrame,
     test_case: TestCase,
-    execution_date: datetime,
-    data_frame: DataFrame,
+    execution_date: Union[datetime, float],
 ):
     """
     Validate Column Values metric
@@ -143,7 +144,7 @@ def column_values_to_be_between_dl(
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
     """
-    column_obj = fetch_column_obj(test_case.entityLink.__root__, data_frame)
+    column_obj = fetch_column_obj(test_case.entityLink.__root__, runner)
 
     min_bound = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore
@@ -158,9 +159,9 @@ def column_values_to_be_between_dl(
         float,
         default=float("inf"),
     )
-    min_value_res = Metrics.MIN.value(column_obj).dl_fn(data_frame)
+    min_value_res = Metrics.MIN.value(column_obj).dl_fn(runner)
 
-    max_value_res = Metrics.MAX.value(column_obj).dl_fn(data_frame)
+    max_value_res = Metrics.MAX.value(column_obj).dl_fn(runner)
 
     status, result = test_case_status_result(
         min_value_res, max_value_res, min_bound, max_bound
