@@ -144,7 +144,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       operationId = "listAlerts",
       summary = "List alerts",
       tags = "alerts",
-      description = "Get a list of alerts subscriptions",
+      description = "Get a list of Alerts",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -223,9 +223,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Valid
   @Operation(
       operationId = "getAlertActionStatus",
-      summary = "Get a alert Action status",
+      summary = "Get alert Action status for an alert",
       tags = "alerts",
-      description = "Get a alert actions status by given Id",
+      description = "Get a alert actions status by given Id , and id of the alert it is bound to",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -250,7 +250,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       operationId = "defaultTriggers",
       summary = "List All Default Triggers Config",
       tags = "alerts",
-      description = "Get a List of all OpenMetadata Bootstrapped Filters",
+      description = "Get a List of all OpenMetadata Bootstrapped Alert Filters",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -373,9 +373,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @POST
   @Operation(
       operationId = "createAlert",
-      summary = "Subscribe to a new alert",
+      summary = "Create a new Alert",
       tags = "alerts",
-      description = "Subscribe to a new alert",
+      description = "Create a new Alert",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -447,9 +447,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Valid
   @Operation(
       operationId = "deleteAlert",
-      summary = "Delete a Alert",
+      summary = "Delete an Alert",
       tags = "alerts",
-      description = "Get a alert by given Id",
+      description = "Delete an Alert",
       responses = {
         @ApiResponse(
             responseCode = "200",

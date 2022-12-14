@@ -84,9 +84,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @GET
   @Operation(
       operationId = "listAlertActions",
-      summary = "List alerts actions",
+      summary = "List all alerts actions",
       tags = "alertAction",
-      description = "Get a list of alert action subscriptions",
+      description = "Get a list of all alert actions",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -134,9 +134,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Valid
   @Operation(
       operationId = "getAlertActionByID",
-      summary = "Get a alert",
+      summary = "Get a alert alert action",
       tags = "alertAction",
-      description = "Get a alert by given Id",
+      description = "Get a alert action by given Id",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -193,7 +193,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
       operationId = "listAllAlertVersion",
       summary = "List alert versions",
       tags = "alertAction",
-      description = "Get a list of all the versions of a alert identified by `id`",
+      description = "Get a list of all the versions of a alert action identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -310,9 +310,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   @Valid
   @Operation(
       operationId = "deleteAlert",
-      summary = "Delete a Alert",
+      summary = "Delete a Alert Action",
       tags = "alertAction",
-      description = "Get a alert by given Id",
+      description = "Get a alert action by given Id",
       responses = {
         @ApiResponse(
             responseCode = "200",
