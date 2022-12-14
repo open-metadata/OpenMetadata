@@ -501,7 +501,12 @@
     "mlmodel": "ML Model",
     "search-entity": "Search {{entity}}",
     "more": "More",
-    "update": "Update"
+    "update": "Update",
+    "entities-plural": "Entities",
+    "seconds-plural": "Seconds",
+    "flush-interval-secs": "Flush Interval (secs)",
+    "recreate-indexes": "Recreate indexes",
+    "re-index-elastic-search": "Re-Index Elastic Search"
   },
   "message": {
     "service-email-required": "Service account Email is required",

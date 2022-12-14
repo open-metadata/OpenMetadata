@@ -13,6 +13,7 @@
 
 import { Checkbox, Col, Form, Input, Modal, Row, Select } from 'antd';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ELASTIC_SEARCH_INDEX_ENTITIES,
   ELASTIC_SEARCH_INITIAL_VALUES,
@@ -33,6 +34,7 @@ const ReIndexAllModal = ({
   onSave,
   confirmLoading,
 }: ReIndexAllModalInterface) => {
+  const { t } = useTranslation();
   const [entities, setEntities] = useState<string[]>(
     ELASTIC_SEARCH_INITIAL_VALUES.entities
   );
@@ -48,7 +50,7 @@ const ReIndexAllModal = ({
         htmlType: 'submit',
       }}
       okText="Submit"
-      title="Re-Index Elastic Search"
+      title={t('label.re-index-elastic-search')}
       visible={visible}
       width={650}
       onCancel={onCancel}>
@@ -57,14 +59,20 @@ const ReIndexAllModal = ({
         layout="vertical"
         name="elastic-search-re-index"
         onFinish={onSave}>
-        <Form.Item initialValue label="Recreate indexes" name="recreateIndex">
+        <Form.Item
+          initialValue
+          label={t('label.recreate-indexes')}
+          name="recreateIndex">
           <Select
             data-testid="re-index-selector"
             options={RECREATE_INDEX_OPTIONS}
           />
         </Form.Item>
 
-        <Form.Item initialValue={entities} label="Entities" name="entities">
+        <Form.Item
+          initialValue={entities}
+          label={t('label.entities-plural')}
+          name="entities">
           <Checkbox.Group
             onChange={(values) => setEntities(values as string[])}>
             <Row gutter={[16, 16]}>
@@ -78,19 +86,26 @@ const ReIndexAllModal = ({
         </Form.Item>
         <Form.Item
           initialValue={ELASTIC_SEARCH_INITIAL_VALUES.flushIntervalInSec}
-          label="Flush Interval (secs):"
+          label={t('label.flush-interval-secs')}
           name="flushIntervalInSec">
           <Input
             data-testid="flush-interval-in-sec"
-            placeholder="Enter seconds"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.seconds-plural'),
+            })}
           />
         </Form.Item>
 
         <Form.Item
           initialValue={ELASTIC_SEARCH_INITIAL_VALUES.batchSize}
-          label="Batch Size:"
+          label={`${t('label.batch-size')}:`}
           name="batchSize">
-          <Input data-testid="batch-size" placeholder="Enter batch size" />
+          <Input
+            data-testid="batch-size"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.batch-size'),
+            })}
+          />
         </Form.Item>
       </Form>
     </Modal>
