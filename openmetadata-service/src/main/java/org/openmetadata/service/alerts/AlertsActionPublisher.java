@@ -62,7 +62,10 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
   @Override
   public void onStart() {
     AlertActionStatus currentStatus =
-        new AlertActionStatus().withStatus(AlertActionStatus.Status.ACTIVE).withFailureDetails(new FailureDetails());
+        new AlertActionStatus()
+            .withStatus(AlertActionStatus.Status.ACTIVE)
+            .withFailureDetails(new FailureDetails())
+            .withTimestamp(System.currentTimeMillis());
     setStatus(currentStatus);
     onStartDelegate();
     LOG.info("Alert-lifecycle-onStart {}", alert.getName());
@@ -134,7 +137,8 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
         .withLastFailedStatusCode(statusCode)
         .withLastFailedReason(reason)
         .withNextAttempt(timestamp);
-    AlertActionStatus currentStatus = alertRepository.setStatus(alert.getId(), alertAction.getId(), status, details);
+    AlertActionStatus currentStatus =
+        alertRepository.setStatus(alert.getId(), alertAction.getId(), status, details).withTimestamp(attemptTime);
     alertAction.setStatusDetails(currentStatus);
   }
 
@@ -173,7 +177,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
         // Successfully sent Alert, update Status
         alertAction.getStatusDetails().getFailureDetails().setLastSuccessfulAt(System.currentTimeMillis());
         if (alertAction.getStatusDetails().getStatus() != AlertActionStatus.Status.ACTIVE) {
-          setStatus(AlertActionStatus.Status.ACTIVE, null, null, null, null);
+          setStatus(AlertActionStatus.Status.ACTIVE, System.currentTimeMillis(), null, null, null);
         }
       } catch (Exception ex) {
         LOG.warn("Invalid Exception in Alert {}", alert.getName());

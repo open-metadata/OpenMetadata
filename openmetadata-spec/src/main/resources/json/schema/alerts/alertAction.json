@@ -66,6 +66,9 @@
         },
         "failureDetails": {
           "$ref": "#/definitions/failureDetails"
+        },
+        "timestamp": {
+          "$ref": "../type/basic.json#/definitions/timestamp"
         }
       }
     }
