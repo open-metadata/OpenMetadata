@@ -109,7 +109,7 @@ plugins: Dict[str, Set[str]] = {
         "avro-python3==1.10.2",
         "avro==1.11.1",
         "grpcio-tools",
-        "protobuf==4.21.11",
+        "protobuf",
     },
     "kinesis": {"boto3~=1.19.12"},
     "redpanda": {
@@ -118,7 +118,7 @@ plugins: Dict[str, Set[str]] = {
         "avro-python3==1.10.2",
         "avro==1.11.1",
         "grpcio-tools",
-        "protobuf==4.21.11",
+        "protobuf",
     },
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0"},
