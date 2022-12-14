@@ -68,7 +68,7 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
       } else {
         response = getTarget().post(javax.ws.rs.client.Entity.json(json));
       }
-      LOG.info(
+      LOG.debug(
           "GenericWebhook {}:{}:{} received response {}",
           alert.getName(),
           alertAction.getStatusDetails().getStatus(),
