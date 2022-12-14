@@ -19,3 +19,6 @@ export const TEAMS_DOCS = 'https://docs.open-metadata.org/openmetadata/users';
 
 export const WEBHOOK_DOCS =
   'https://docs.open-metadata.org/developers/webhooks';
+
+export const CUSTOM_PROPERTIES_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-property-to-an-entity';
