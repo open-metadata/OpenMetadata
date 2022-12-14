@@ -24,13 +24,8 @@
       "description": "Link to the messaging service where this topic is hosted in",
       "$ref": "../../type/entityReference.json"
     },
-    "schemaText": {
-      "description": "Schema used for message serialization. Optional as some topics may not have associated schemas.",
-      "type": "string"
-    },
-    "schemaType": {
-      "description": "Schema used for message serialization.",
-      "$ref": "../../entity/data/topic.json#/definitions/schemaType"
+    "messageSchema": {
+      "$ref": "../../type/schema.json"
     },
     "partitions": {
       "description": "Number of partitions into which the topic is divided.",

@@ -11,64 +11,7 @@
  *  limitations under the License.
  */
 
-@primary-color: #7147e8;
-@background-color: #ffffff;
-@left-panel-border-color: rgb(229, 231, 235);
-@box-shadow-color: rgba(0, 0, 0, 0.06);
 @icon-color: #515151;
-@group-title-color: #76746f;
-
-.global-setting-left-panel.ant-menu-root.ant-menu-inline {
-  background: @background-color;
-  border: 0px;
-
-  .ant-menu-item::after {
-    left: 0;
-    right: unset;
-  }
-
-  .ant-menu-item-group:not(:first-child) {
-    border-top: 1px solid @box-shadow-color;
-  }
-
-  .ant-menu-item-group-title {
-    font-size: 12px;
-    padding: 12px 16px;
-    color: @group-title-color;
-  }
-
-  .ant-menu-item-icon + span {
-    margin-left: 16px;
-  }
-
-  .ant-menu-item {
-    height: 30px;
-    line-height: 30px;
-    margin-top: 2px;
-    padding: 0 16px !important;
-  }
-
-  .ant-menu-item:hover,
-  .ant-menu-item-selected {
-    .side-panel-icons {
-      color: @primary-color;
-    }
-  }
-
-  .ant-menu-item-selected {
-    .ant-menu-title-content {
-      font-weight: 600;
-    }
-  }
-
-  .ant-menu-item:not(:last-child) {
-    margin-bottom: 0px;
-  }
-
-  .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
-    border-right: 1px solid @left-panel-border-color;
-  }
-}
 
 .side-panel-icons {
   color: @icon-color;

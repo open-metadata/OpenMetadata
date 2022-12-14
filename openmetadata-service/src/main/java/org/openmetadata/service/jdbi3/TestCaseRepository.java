@@ -83,18 +83,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private void validateTestParameters(
       List<TestCaseParameterValue> parameterValues, List<TestCaseParameter> parameterDefinition) {
-    if (parameterDefinition.isEmpty() && !parameterValues.isEmpty()) {
-      throw new IllegalArgumentException("Parameter Values doesn't match Test Definition Parameters");
-    }
-    Map<String, Object> values = new HashMap<>();
-    for (TestCaseParameterValue testCaseParameterValue : parameterValues) {
-      values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
-    }
-    for (TestCaseParameter parameter : parameterDefinition) {
-      if (Boolean.TRUE.equals(parameter.getRequired())
-          && (!values.containsKey(parameter.getName()) || values.get(parameter.getName()) == null)) {
-        throw new IllegalArgumentException(
-            "Required parameter " + parameter.getName() + " is not passed in parameterValues");
+    if (parameterValues != null) {
+
+      if (parameterDefinition.isEmpty() && !parameterValues.isEmpty()) {
+        throw new IllegalArgumentException("Parameter Values doesn't match Test Definition Parameters");
+      }
+      Map<String, Object> values = new HashMap<>();
+
+      for (TestCaseParameterValue testCaseParameterValue : parameterValues) {
+        values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
+      }
+      for (TestCaseParameter parameter : parameterDefinition) {
+        if (Boolean.TRUE.equals(parameter.getRequired())
+            && (!values.containsKey(parameter.getName()) || values.get(parameter.getName()) == null)) {
+          throw new IllegalArgumentException(
+              "Required parameter " + parameter.getName() + " is not passed in parameterValues");
+        }
       }
     }
   }

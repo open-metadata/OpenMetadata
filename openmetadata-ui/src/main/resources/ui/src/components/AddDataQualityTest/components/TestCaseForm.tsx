@@ -39,7 +39,7 @@ import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
 } from '../../../utils/CommonUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -161,10 +161,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
     return {
       name: value.testName,
-      entityLink: generateEntityLink(
-        getEncodedFqn(decodedEntityFQN, true),
-        isColumnFqn
-      ),
+      entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
       parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: {
         id: value.testTypeId,

@@ -44,6 +44,7 @@ base_requirements = {
     "antlr4-python3-runtime==4.9.2",
     "boto3~=1.19.12",
     "botocore==1.22.12",
+    "avro-python3==1.10.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -105,8 +106,8 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
-        "avro-python3",
-        "avro",
+        "avro-python3==1.10.2",
+        "avro==1.11.1",
         "grpcio-tools",
         "protobuf",
     },
@@ -114,8 +115,8 @@ plugins: Dict[str, Set[str]] = {
     "redpanda": {
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
-        "avro-python3",
-        "avro",
+        "avro-python3==1.10.2",
+        "avro==1.11.1",
         "grpcio-tools",
         "protobuf",
     },
@@ -149,7 +150,7 @@ plugins: Dict[str, Set[str]] = {
     "mlflow": {"mlflow-skinny~=1.26.1"},
     "sklearn": {"scikit-learn==1.0.2"},
     "db2": {"ibm-db-sa==0.3.7"},
-    "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.2.0"},
+    "clickhouse": {"clickhouse-driver==0.2.5", "clickhouse-sqlalchemy==0.2.3"},
     "databricks": {"sqlalchemy-databricks==0.1.0"},
     "singlestore": {"pymysql>=1.0.2"},
     "azure-sso": {"msal~=1.17.0"},
@@ -158,6 +159,12 @@ plugins: Dict[str, Set[str]] = {
     "pinotdb": {"pinotdb~=0.3.11"},
     "nifi": {},
     "domo": {"pydomo~=0.3.0.5"},
+    "datalake-azure": {
+        "azure-storage-blob~=12.14.1",
+        "azure-identity~=1.12.0",
+        "adlfs==2022.2.0",
+        *datalake_common,
+    },
 }
 dev = {
     "datamodel-code-generator==0.13.4",

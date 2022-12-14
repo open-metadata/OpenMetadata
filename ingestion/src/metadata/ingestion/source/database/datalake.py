@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    AzureDatalakeConfig,
     DatalakeConnection,
     GCSConfig,
     S3Config,
@@ -57,12 +58,28 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-DATALAKE_INT_TYPES = {"int64", "INT"}
+DATALAKE_INT_TYPES = {"int64", "INT", "int32"}
 
 DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet", ".json.gz")
 
 
-class DatalakeSource(DatabaseServiceSource):
+def ometa_to_dataframe(config_source, client, table):
+    if isinstance(config_source, GCSConfig):
+        return DatalakeSource.get_gcs_files(
+            client=client,
+            key=table.name.__root__,
+            bucket_name=table.databaseSchema.name,
+        )
+    if isinstance(config_source, S3Config):
+        return DatalakeSource.get_s3_files(
+            client=client,
+            key=table.name.__root__,
+            bucket_name=table.databaseSchema.name,
+        )
+    return None
+
+
+class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-methods
     """
     Implements the necessary methods to extract
     Database metadata from Datalake Source
@@ -176,6 +193,30 @@ class DatalakeSource(DatabaseServiceSource):
             else:
                 yield from self.fetch_s3_bucket_names()
 
+        if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+            yield from self.get_container_names()
+
+    def get_container_names(self) -> Iterable[str]:
+        schema_names = self.client.list_containers(name_starts_with="")
+        for schema in schema_names:
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema["name"],
+            )
+            if filter_by_schema(
+                self.config.sourceConfig.config.schemaFilterPattern,
+                schema_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else schema["name"],
+            ):
+                self.status.filter(schema_fqn, "Container Filtered Out")
+                continue
+
+            yield schema["name"]
+
     def yield_database_schema(
         self, schema_name: str
     ) -> Iterable[CreateDatabaseSchemaRequest]:
@@ -197,7 +238,9 @@ class DatalakeSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield s3 object [{page}]: {exc}")
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(  # pylint: disable=too-many-branches
+        self,
+    ) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Handle table and views.
 
@@ -272,6 +315,41 @@ class DatalakeSource(DatabaseServiceSource):
                         continue
 
                     yield table_name, TableType.Regular
+            if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+                files_names = self.get_tables(container_name=bucket_name)
+                for file in files_names.list_blobs():
+                    file_name = file.name
+                    if "/" in file.name:
+                        table_name = self.standardize_table_name(bucket_name, file_name)
+                        table_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=self.context.database_service.name.__root__,
+                            database_name=self.context.database.name.__root__,
+                            schema_name=self.context.database_schema.name.__root__,
+                            table_name=table_name,
+                        )
+                        if filter_by_table(
+                            self.config.sourceConfig.config.tableFilterPattern,
+                            table_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else table_name,
+                        ):
+                            self.status.filter(
+                                table_fqn,
+                                "Object Filtered Out",
+                            )
+                            continue
+                        if not self.check_valid_file_type(file_name):
+                            logger.debug(
+                                f"Object filtered due to unsupported file type: {file_name}"
+                            )
+                            continue
+                        yield file_name, TableType.Regular
+
+    def get_tables(self, container_name) -> Iterable[any]:
+        tables = self.client.get_container_client(container_name)
+        return tables
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -294,26 +372,37 @@ class DatalakeSource(DatabaseServiceSource):
                 data_frame = self.get_s3_files(
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
+            if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+                connection_args = self.service_connection.configSource.securityConfig
+                storage_options = {
+                    "tenant_id": connection_args.tenantId,
+                    "client_id": connection_args.clientId,
+                    "client_secret": connection_args.clientSecret.get_secret_value(),
+                }
+                data_frame = self.get_azure_files(
+                    client=self.client,
+                    key=table_name,
+                    container_name=schema_name,
+                    storage_options=storage_options,
+                )
             if isinstance(data_frame, DataFrame):
                 columns = self.get_columns(data_frame)
             if isinstance(data_frame, list):
                 columns = self.get_columns(data_frame[0])
-                if columns:
-                    table_request = CreateTableRequest(
-                        name=table_name,
-                        tableType=table_type,
-                        description="",
-                        columns=columns,
-                        tableConstraints=table_constraints
-                        if table_constraints
-                        else None,
-                        databaseSchema=EntityReference(
-                            id=self.context.database_schema.id,
-                            type="databaseSchema",
-                        ),
-                    )
-                    yield table_request
-                    self.register_record(table_request=table_request)
+            if columns:
+                table_request = CreateTableRequest(
+                    name=table_name,
+                    tableType=table_type,
+                    description="",
+                    columns=columns,
+                    tableConstraints=table_constraints if table_constraints else None,
+                    databaseSchema=EntityReference(
+                        id=self.context.database_schema.id,
+                        type="databaseSchema",
+                    ),
+                )
+                yield table_request
+                self.register_record(table_request=table_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
@@ -348,6 +437,43 @@ class DatalakeSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Unexpected exception to get GCS files from [{bucket_name}]: {exc}"
+            )
+        return None
+
+    @staticmethod
+    def get_azure_files(client, key, container_name, storage_options):
+        """
+        Fetch Azure Storage files
+        """
+        from metadata.utils.azure_utils import (  # pylint: disable=import-outside-toplevel
+            read_csv_from_azure,
+            read_json_from_azure,
+            read_parquet_from_azure,
+        )
+
+        try:
+            if key.endswith(".csv"):
+                return read_csv_from_azure(client, key, container_name, storage_options)
+
+            if key.endswith((".json", ".json.gz")):
+                return read_json_from_azure(
+                    client, key, container_name, storage_options
+                )
+
+            if key.endswith(".parquet"):
+                return read_parquet_from_azure(
+                    client, key, container_name, storage_options
+                )
+
+            if key.endswith(".tsv"):
+                return read_csv_from_azure(
+                    client, key, container_name, storage_options, sep="\t"
+                )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected exception get in azure for file [{key}] for {container_name}: {exc}"
             )
         return None
 
@@ -399,7 +525,7 @@ class DatalakeSource(DatabaseServiceSource):
                     if (
                         hasattr(data_frame[column], "dtypes")
                         and data_frame[column].dtypes.name in DATALAKE_INT_TYPES
-                        and data_frame[column].dtypes.name == "int64"
+                        and data_frame[column].dtypes.name in ("int64", "int32")
                     ):
                         data_type = DataType.INT.value
 
