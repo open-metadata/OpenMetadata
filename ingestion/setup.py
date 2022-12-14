@@ -51,6 +51,7 @@ base_requirements = {
     "requests-aws4auth==1.1.2",
     "pymysql>=1.0.2",
     "cached-property==1.5.2",
+    "chardet",
 }
 
 
