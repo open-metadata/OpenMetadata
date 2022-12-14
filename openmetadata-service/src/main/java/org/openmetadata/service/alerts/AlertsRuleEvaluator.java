@@ -22,7 +22,8 @@ public class AlertsRuleEvaluator {
     matchAnySource,
     matchAnyOwnerName,
     matchAnyEntityFqn,
-    matchAnyEntityId
+    matchAnyEntityId,
+    matchAnyEventType
   }
 
   private final ChangeEvent changeEvent;
@@ -114,6 +115,25 @@ public class AlertsRuleEvaluator {
     EntityInterface entity = (EntityInterface) changeEvent.getEntity();
     for (String id : entityIds) {
       if (entity.getId().equals(UUID.fromString(id))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchAnyEventType",
+      input = "List of comma separated eventType",
+      description = "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted', 'entitySoftDeleted')"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchAnyEventType(String... eventTypesList) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
+      return false;
+    }
+    String eventType = changeEvent.getEventType().toString();
+    for (String type : eventTypesList) {
+      if (eventType.equals(type)) {
         return true;
       }
     }

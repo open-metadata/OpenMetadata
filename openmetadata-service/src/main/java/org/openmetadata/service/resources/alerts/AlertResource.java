@@ -54,7 +54,6 @@ import org.openmetadata.schema.entity.alerts.TriggerConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerts.AlertUtil;
 import org.openmetadata.service.jdbi3.AlertRepository;
@@ -259,8 +258,8 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       summary = "Get list of Alert functions used in filtering alert.",
       tags = "alerts",
       description = "Get list of Alert functions used in filtering conditions in alerts")
-  public ResultList<Function> listAlertFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return new FunctionList(AlertUtil.getAlertFilterFunctions());
+  public List<Function> listAlertFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return AlertUtil.getAlertFilterFunctions();
   }
 
   @GET

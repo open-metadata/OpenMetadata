@@ -14,16 +14,8 @@
       "description": "Additional Context",
       "type": "object",
       "properties": {
-        "entities": {
+        "data": {
           "description": "List of Entities",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true
-        },
-        "searchIndexes": {
-          "description": "List of Index to search in elastic search",
           "type": "array",
           "items": {
             "type": "string"

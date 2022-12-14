@@ -1,14 +1,19 @@
 package org.openmetadata.service.alerts;
 
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
 import org.openmetadata.service.Entity;
@@ -65,35 +70,40 @@ public class AlertUtil {
   public static List<Function> getAlertFilterFunctions() {
     List<Function> alertFunctions = new ArrayList<>();
     for (Function func : CollectionRegistry.getInstance().getFunctions(AlertsRuleEvaluator.class)) {
-      switch (func.getParameterInputType()) {
-        case NOT_REQUIRED:
+      AlertsRuleEvaluator.AlertRuleType type = AlertsRuleEvaluator.AlertRuleType.valueOf(func.getName());
+      ParamAdditionalContext paramAdditionalContext = new ParamAdditionalContext();
+      switch (type) {
+        case matchAnySource:
+          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
           break;
-        case READ_FROM_PARAM_CONTEXT:
-          func.setParamAdditionalContext(
-              new ParamAdditionalContext().withEntities(new HashSet<>(Entity.getEntityList())));
+        case matchAnyOwnerName:
+          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
           break;
-        case ALL_INDEX_ELASTIC_SEARCH:
-          Set<String> indexesToSearch = new HashSet<>();
-          for (String entityType : Entity.getEntityList()) {
-            try {
-              ElasticSearchIndexDefinition.ElasticSearchIndexType type =
-                  ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
-              indexesToSearch.add(type.indexName);
-            } catch (RuntimeException ex) {
-              LOG.error("Failing to get Index for EntityType");
-            }
-          }
-          func.setParamAdditionalContext(new ParamAdditionalContext().withSearchIndexes(indexesToSearch));
+        case matchAnyEntityFqn:
+        case matchAnyEntityId:
+          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
           break;
-        case SPECIFIC_INDEX_ELASTIC_SEARCH:
-          Set<String> indexes = new HashSet<>();
-          indexes.add(ElasticSearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX.indexName);
-          indexes.add(ElasticSearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName);
-          func.setParamAdditionalContext(new ParamAdditionalContext().withSearchIndexes(indexes));
+        case matchAnyEventType:
+          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).collect(Collectors.toList());
+          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
           break;
       }
       alertFunctions.add(func);
     }
     return alertFunctions;
+  }
+
+  public static Set<String> getEntitiesIndex(List<String> entities) {
+    Set<String> indexesToSearch = new HashSet<>();
+    for (String entityType : entities) {
+      try {
+        ElasticSearchIndexDefinition.ElasticSearchIndexType type =
+            ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+        indexesToSearch.add(type.indexName);
+      } catch (RuntimeException ex) {
+        LOG.error("Failing to get Index for EntityType");
+      }
+    }
+    return indexesToSearch;
   }
 }
