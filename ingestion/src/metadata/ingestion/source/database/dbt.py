@@ -76,7 +76,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-methods
+class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
     """
     Class defines method to extract metadata from DBT
     """
@@ -147,7 +147,7 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
                     self.metadata,
                     entity_type=Tag,
                     tag_category_name="DBTTags",
-                    tag_name=tag,
+                    tag_name=tag.replace(".",""),
                 ),
                 labelType=LabelType.Automated,
                 state=State.Confirmed,
