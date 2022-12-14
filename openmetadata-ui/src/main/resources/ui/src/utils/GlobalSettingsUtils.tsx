@@ -15,6 +15,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
+import { ReactComponent as BellIcon } from '../../src/assets/svg/alert-bell.svg';
 import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-activity.svg';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
@@ -163,6 +164,11 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <AllActivityIcon className="side-panel-icons" />,
+        },
+        {
+          label: 'Alerts',
+          isProtected: Boolean(isAdminUser),
+          icon: <BellIcon className="side-panel-icons" />,
         },
       ],
     },

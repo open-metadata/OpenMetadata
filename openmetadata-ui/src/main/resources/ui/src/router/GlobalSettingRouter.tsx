@@ -21,6 +21,8 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { TeamType } from '../generated/entity/teams/team';
 import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
+import AddAlertPage from '../pages/AddAlertPage/AddAlertPage';
+import AlertsPage from '../pages/AlertsPage/AlertsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { userPermissions } from '../utils/PermissionsUtils';
 import {
@@ -199,6 +201,26 @@ const GlobalSettingRouter = () => {
         exact
         component={ServicesPage}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingOptions.ALERTS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddAlertPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingOptions.ADD_ALERTS
+        )}
       />
 
       <AdminProtectedRoute
