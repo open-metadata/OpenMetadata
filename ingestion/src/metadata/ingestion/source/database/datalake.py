@@ -79,7 +79,7 @@ def ometa_to_dataframe(config_source, client, table):
     return None
 
 
-class DatalakeSource(DatabaseServiceSource):
+class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-methods
     """
     Implements the necessary methods to extract
     Database metadata from Datalake Source
