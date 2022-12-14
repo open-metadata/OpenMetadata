@@ -74,6 +74,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
   const getFilterOptions = async (value: string, key: string) => {
     setIsOptionsLoading(true);
+    setOptions([]);
     try {
       if (value) {
         await fetchOptions(value, key);
