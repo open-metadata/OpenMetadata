@@ -61,13 +61,13 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/categories")
+@Path("/v1/classifications")
 @Api(value = "Classification resources collection", tags = "Classification resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "categories", order = 4)
+@Collection(name = "classifications", order = 4)
 public class ClassificationResource extends EntityResource<Classification, ClassificationRepository> {
-  public static final String TAG_COLLECTION_PATH = "/v1/categories/";
+  public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
 
   static class ClassificationList extends ResultList<Classification> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
@@ -84,10 +84,10 @@ public class ClassificationResource extends EntityResource<Classification, Class
 
   @GET
   @Operation(
-      operationId = "listTagCategories",
-      summary = "List tag categories",
+      operationId = "listClassifications",
+      summary = "List classifications",
       tags = "classification",
-      description = "Get a list of tag categories.",
+      description = "Get a list of classifications.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -103,16 +103,16 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number tag categories returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(description = "Limit the number classifications returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of tag categories before this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of classifications before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tag categories after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of classifications after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(

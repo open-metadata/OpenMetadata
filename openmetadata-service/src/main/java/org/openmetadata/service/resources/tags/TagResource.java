@@ -54,8 +54,8 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.tags.LoadTags;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
@@ -94,7 +94,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find tag definitions and load tag categories from the json file, if necessary
+    // Find tag definitions and load classifications from the json file, if necessary
     EntityRepository<EntityInterface> classificationRepository = Entity.getEntityRepository(CLASSIFICATION);
     List<LoadTags> loadTagsList =
         EntityRepository.getEntitiesFromSeedData(CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);

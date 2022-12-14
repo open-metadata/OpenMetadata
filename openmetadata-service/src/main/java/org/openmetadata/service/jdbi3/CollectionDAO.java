@@ -1943,7 +1943,7 @@ public interface CollectionDAO {
   interface ClassificationDAO extends EntityDAO<Classification> {
     @Override
     default String getTableName() {
-      return "tag_category";
+      return "classification";
     }
 
     @Override
