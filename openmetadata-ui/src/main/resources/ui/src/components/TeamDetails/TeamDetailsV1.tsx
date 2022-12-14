@@ -43,7 +43,11 @@ import {
   LIST_SIZE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
-import { TEAMS_DOCS } from '../../constants/docs.constants';
+import {
+  POLICY_DOCS,
+  ROLE_DOCS,
+  TEAMS_DOCS,
+} from '../../constants/docs.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -227,6 +231,7 @@ const TeamDetailsV1 = ({
         description,
         button,
         datatestid,
+        doc,
       }: PlaceholderProps) => {
         return (
           <ErrorPlaceHolder
@@ -247,6 +252,7 @@ const TeamDetailsV1 = ({
               )
             }
             description={description}
+            doc={doc}
             heading={heading}
             type="ADD_DATA"
           />
@@ -1219,6 +1225,7 @@ const TeamDetailsV1 = ({
                     disabled: !entityPermissions.EditAll,
                     heading: t('label.role'),
                     datatestid: 'add-role',
+                    doc: ROLE_DOCS,
                   })
                 ) : (
                   <Space
@@ -1266,6 +1273,7 @@ const TeamDetailsV1 = ({
                       }),
                     disabled: !entityPermissions.EditAll,
                     heading: t('label.policies'),
+                    doc: POLICY_DOCS,
                   })
                 ) : (
                   <Space
