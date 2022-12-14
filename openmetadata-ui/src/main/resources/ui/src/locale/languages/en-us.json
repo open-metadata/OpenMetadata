@@ -498,6 +498,7 @@
     "test-suite-status": "Test Suite Status",
     "last-run-result": "Last Run Result",
     "last-run": "Last Run",
+    "mlmodel": "ML Model",
     "search-entity": "Search {{entity}}",
     "more": "More",
     "update": "Update"
