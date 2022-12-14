@@ -636,7 +636,8 @@
     "no-query-available": "No query available",
     "unexpected-response": "Unexpected response from server!",
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
-    "team-moved-error": "Error while moving team"
+    "team-moved-error": "Error while moving team",
+    "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}"
   },
   "url": {}
 }

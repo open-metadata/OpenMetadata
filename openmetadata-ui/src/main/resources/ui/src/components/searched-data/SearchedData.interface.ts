@@ -12,7 +12,6 @@
  */
 
 import { ReactNode } from 'react';
-import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -22,7 +21,10 @@ import {
   SearchHitBody,
   TableSearchSource,
 } from '../../interface/search.interface';
-import { ExploreSearchIndex } from '../Explore/explore.interface';
+import {
+  EntityDetailsType,
+  ExploreSearchIndex,
+} from '../Explore/explore.interface';
 
 type Fields =
   | 'name'
@@ -68,5 +70,8 @@ export interface SearchedDataProps {
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
-  handleSummaryPanelDisplay?: (source: Table) => void;
+  handleSummaryPanelDisplay?: (
+    details: EntityDetailsType,
+    entityType: string
+  ) => void;
 }

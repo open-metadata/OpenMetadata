@@ -15,11 +15,11 @@ import { Col, Divider, Row, Space, Typography } from 'antd';
 import { toLower } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../constants/constants';
-import { getTagValue } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from '../../tags-viewer/tags-viewer';
+import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
+import { getTagValue } from '../../../../../utils/CommonUtils';
+import SVGIcons from '../../../../../utils/SvgUtils';
+import RichTextEditorPreviewer from '../../../../common/rich-text-editor/RichTextEditorPreviewer';
+import TagsViewer from '../../../../tags-viewer/tags-viewer';
 import { BasicColumnInfo, ColumnSummaryProps } from './ColumnSummary.interface';
 
 const { Text, Paragraph } = Typography;

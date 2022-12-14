@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../explore.interface';
+import { Table, TableType } from '../../../../generated/entity/data/table';
 
-export interface EntitySummaryPanelProps {
-  entityDetails: EntityDetailsObjectInterface;
-  handleClosePanel: () => void;
-  showPanel: boolean;
+export interface TableSummaryProps {
+  entityDetails: Table;
+}
+
+export interface BasicTableInfo {
+  Type: TableType | string;
+  Queries: string;
+  Columns: string;
 }

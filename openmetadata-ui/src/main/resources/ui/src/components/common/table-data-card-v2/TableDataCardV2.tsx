@@ -21,12 +21,10 @@ import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
-import { tabsInfo } from '../../../constants/explore.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getEntityId,
@@ -36,6 +34,7 @@ import {
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import { EntityDetailsType } from '../../Explore/explore.interface';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
@@ -50,7 +49,10 @@ export interface TableDataCardPropsV2 {
     value: number;
   }[];
   searchIndex: SearchIndex | EntityType;
-  handleSummaryPanelDisplay?: (source: Table) => void;
+  handleSummaryPanelDisplay?: (
+    details: EntityDetailsType,
+    entityType: string
+  ) => void;
 }
 
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
@@ -122,14 +124,13 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     <div
       className={classNames(
         'data-asset-info-card-container',
-        tab === tabsInfo.table_search_index.path
-          ? 'table-data-card-container'
-          : ''
+        'table-data-card-container'
       )}
       data-testid="table-data-card"
       id={id}
       onClick={() => {
-        handleSummaryPanelDisplay && handleSummaryPanelDisplay(source as Table);
+        handleSummaryPanelDisplay &&
+          handleSummaryPanelDisplay(source as EntityDetailsType, tab);
       }}>
       <div>
         {'databaseSchema' in source && 'database' in source && (

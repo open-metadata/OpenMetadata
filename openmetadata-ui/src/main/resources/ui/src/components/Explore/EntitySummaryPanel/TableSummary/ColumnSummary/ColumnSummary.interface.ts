@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Column, DataType } from '../../../generated/entity/data/table';
-import { TagLabel } from './../../../generated/type/tagLabel';
+import { Column, DataType } from '../../../../../generated/entity/data/table';
+import { TagLabel } from '../../../../../generated/type/tagLabel';
 
 export interface ColumnSummaryProps {
   columns: Column[];

@@ -12,35 +12,29 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Col, Divider, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { SearchIndex } from '../../../enums/search.enum';
-import { TableType } from '../../../generated/entity/data/table';
-import TableDataCardTitle from '../../common/table-data-card-v2/TableDataCardTitle.component';
-import ColumnSummary from '../ColumnSummary/ColumnSummary.component';
-import {
-  BasicTableInfo,
-  EntitySummaryPanelProps,
-} from './EntitySummaryPanel.interface';
+import React, { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import { ExplorePageTabs } from '../../../enums/Explore.enum';
+import { Table } from '../../../generated/entity/data/table';
+import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import './EntitySummaryPanel.style.less';
+import TableSummary from './TableSummary/TableSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
   handleClosePanel,
-  overallSummery,
   showPanel,
 }: EntitySummaryPanelProps) {
-  const { t } = useTranslation();
+  const { tab } = useParams<{ tab: string }>();
 
-  const { tableType, columns, tableQueries } = entityDetails;
-
-  const basicTableInfo: BasicTableInfo = {
-    Type: tableType || TableType.Regular,
-    Queries: tableQueries?.length ? `${tableQueries?.length}` : '-',
-    Columns: columns?.length ? `${columns?.length}` : '-',
-  };
+  const summaryComponent = useMemo(() => {
+    if (entityDetails.entityType === ExplorePageTabs.TABLES) {
+      return <TableSummary entityDetails={entityDetails.details as Table} />;
+    } else {
+      return null;
+    }
+  }, [tab, entityDetails]);
 
   return (
     <div
@@ -48,73 +42,7 @@ export default function EntitySummaryPanel({
         'summary-panel-container',
         showPanel ? 'show-panel' : ''
       )}>
-      <Row className={classNames('m-md')}>
-        <Col span={24}>
-          <TableDataCardTitle
-            searchIndex={SearchIndex.TABLE}
-            source={entityDetails}
-          />
-        </Col>
-        <Col span={24}>
-          <Row>
-            {Object.keys(basicTableInfo).map((fieldName) => (
-              <Col key={fieldName} span={24}>
-                <Row gutter={16}>
-                  <Col className="text-gray" span={10}>
-                    {fieldName}
-                  </Col>
-                  <Col span={12}>
-                    {basicTableInfo[fieldName as keyof BasicTableInfo]}
-                  </Col>
-                </Row>
-              </Col>
-            ))}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text className="section-header">
-            {t('label.profiler-amp-data-quality')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Row gutter={[16, 16]}>
-            {overallSummery.map((field) => (
-              <Col key={field.title} span={10}>
-                <Row>
-                  <Col span={24}>
-                    <Typography.Text className="text-gray">
-                      {field.title}
-                    </Typography.Text>
-                  </Col>
-                  <Col span={24}>
-                    <Typography.Text
-                      className={classNames(
-                        'summary-panel-statistics-count',
-                        field.className
-                      )}>
-                      {field.value}
-                    </Typography.Text>
-                  </Col>
-                </Row>
-              </Col>
-            ))}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text className="section-header">
-            {t('label.schema')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <ColumnSummary columns={columns} />
-        </Col>
-      </Row>
+      {summaryComponent}
       <CloseOutlined className="close-icon" onClick={handleClosePanel} />
     </div>
   );
