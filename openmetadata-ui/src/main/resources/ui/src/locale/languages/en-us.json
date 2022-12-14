@@ -506,7 +506,14 @@
     "more": "More",
     "update": "Update",
     "dashboard-detail-plural-lowercase": "dashboard details",
-    "pipeline-detail-plural-lowercase": "pipeline details"
+    "pipeline-detail-plural-lowercase": "pipeline details",
+    "deleted": "Deleted {{entity}}",
+    "test-plural": "Tests",
+    "test": "Test",
+    "here-lowercase": "here",
+    "insert": "Insert",
+    "table-profile": "Table Profile",
+    "column-profile": "Column Profile"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -621,7 +628,8 @@
     "announcement-invalid-start-time": "Announcement start time must be earlier than the end time",
     "permanently-delete-metadata-and-dependents": "Permanently deleting this {{entityName}} will remove its metadata, as well as the metadata of {{dependents}} from OpenMetadata permanently.",
     "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
-    "announcement-created-successfully": "Announcement created successfully!"
+    "announcement-created-successfully": "Announcement created successfully!",
+    "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation"
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

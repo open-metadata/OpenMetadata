@@ -13,7 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
+import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfile,
   Table,
@@ -160,21 +161,33 @@ export const putTableProfileConfig = async (
 };
 
 export const getTableProfilesList = async (
-  tableId: string,
+  tableFqn: string,
   params?: {
     startTs?: number;
     endTs?: number;
-    limit?: number;
-    before?: string;
-    after?: string;
   }
 ) => {
-  const url = `/tables/${tableId}/tableProfile`;
+  const url = `/tables/${tableFqn}/tableProfile`;
 
-  const response = await APIClient.get<{
-    data: TableProfile[];
-    paging: Paging;
-  }>(url, { params });
+  const response = await APIClient.get<PagingResponse<TableProfile[]>>(url, {
+    params,
+  });
+
+  return response.data;
+};
+
+export const getSystemProfileList = async (
+  tableFqn: string,
+  params?: {
+    startTs?: number;
+    endTs?: number;
+  }
+) => {
+  const url = `/tables/${tableFqn}/systemProfile`;
+
+  const response = await APIClient.get<PagingResponse<SystemProfile[]>>(url, {
+    params,
+  });
 
   return response.data;
 };
