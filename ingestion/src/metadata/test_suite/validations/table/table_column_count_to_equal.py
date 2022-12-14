@@ -16,7 +16,10 @@ TableColumnCountToEqual validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
+from typing import Union
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -31,10 +34,20 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
+@singledispatch
 def table_column_count_to_equal(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_column_count_to_equal.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -60,6 +73,30 @@ def table_column_count_to_equal(
             testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
+    count = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "columnCount"
+    )
+
+    status = TestCaseStatus.Success if column_count == count else TestCaseStatus.Failed
+    result = f"Found {column_count} columns vs. the expected {count}"
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnCount", value=str(column_count))],
+    )
+
+
+@table_column_count_to_equal.register
+def _(
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+):
+    column_count = len(runner.columns)
     count = next(
         int(param_value.value)
         for param_value in test_case.parameterValues
