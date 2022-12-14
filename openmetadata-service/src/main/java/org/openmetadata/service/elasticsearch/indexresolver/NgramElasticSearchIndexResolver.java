@@ -1,5 +1,7 @@
 package org.openmetadata.service.elasticsearch.indexresolver;
 
+import org.elasticsearch.index.query.MultiMatchQueryBuilder;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,6 +10,11 @@ public class NgramElasticSearchIndexResolver extends DefaultElasticSearchIndexRe
 
   public NgramElasticSearchIndexResolver() {
     LOGGER.info("Using NgramElasticSearchIndexResolver");
+  }
+
+  @Override
+  public QueryStringQueryBuilder customizeQuery(QueryStringQueryBuilder builder) {
+    return builder.type(MultiMatchQueryBuilder.Type.PHRASE);
   }
 
   @Override

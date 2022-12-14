@@ -3,9 +3,13 @@ package org.openmetadata.service.elasticsearch;
 import java.lang.reflect.InvocationTargetException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 
 public interface ElasticSearchIndexResolver {
   IndexInfo indexInfo(IndexType type);
+  default QueryStringQueryBuilder customizeQuery(QueryStringQueryBuilder builder) {
+    return builder;
+  }
 
   static ElasticSearchIndexResolver fromClassName(String name) {
     try {
