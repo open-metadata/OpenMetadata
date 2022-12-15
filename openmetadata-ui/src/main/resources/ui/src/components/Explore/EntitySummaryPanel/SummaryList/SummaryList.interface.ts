@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 /*
  *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,16 +12,27 @@
  *  limitations under the License.
  */
 
-import { Column, DataType } from '../../../../../generated/entity/data/table';
-import { TagLabel } from '../../../../../generated/type/tagLabel';
+import { Chart, ChartType } from '../../../../generated/entity/data/chart';
+import {
+  FeatureType,
+  MlFeature,
+} from '../../../../generated/entity/data/mlmodel';
+import { Task } from '../../../../generated/entity/data/pipeline';
+import { Column, DataType } from '../../../../generated/entity/data/table';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 
-export interface ColumnSummaryProps {
-  columns: Column[];
+export interface SummaryListProps {
+  columns?: Column[];
+  charts?: Chart[];
+  tasks?: Task[];
+  mlFeatures?: MlFeature[];
 }
 
 export interface BasicColumnInfo {
+  algorithm?: string;
   name: string;
-  type: DataType;
+  title: ReactNode;
+  type?: DataType | ChartType | FeatureType | string;
   tags?: TagLabel[];
   description?: string;
 }

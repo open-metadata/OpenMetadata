@@ -39,7 +39,7 @@ import {
   OverallTableSummeryType,
   TableTestsType,
 } from '../../../TableProfiler/TableProfiler.interface';
-import ColumnSummary from './ColumnSummary/ColumnSummary.component';
+import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({ entityDetails }: TableSummaryProps) {
@@ -120,7 +120,8 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
       },
       {
         title: 'Column Count',
-        value: TableDetails?.profile?.columnCount ?? 0,
+        value:
+          TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
         title: 'Table Sample %',
@@ -229,7 +230,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <ColumnSummary columns={columns} />
+          <SummaryList columns={columns} />
         </Col>
       </Row>
     </>
