@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS alert_action_def (
     UNIQUE (name)
 );
 
-
 UPDATE dbservice_entity
 SET json = JSON_INSERT(
         JSON_REMOVE(json, '$.connection.config.databaseSchema'),
