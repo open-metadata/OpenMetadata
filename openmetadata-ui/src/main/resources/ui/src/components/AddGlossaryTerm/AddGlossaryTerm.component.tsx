@@ -18,7 +18,7 @@ import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
-import { UrlEntityCharRegExForGlossary } from '../../constants/regex.constants';
+import { specialCharacterRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import {
@@ -190,7 +190,7 @@ const AddGlossaryTerm = ({
   const validateForm = (refs: TermReference[]) => {
     const errMsg = {
       name: !name.trim(),
-      invalidName: UrlEntityCharRegExForGlossary.test(name.trim()),
+      invalidName: specialCharacterRegEx.test(name.trim()),
       invalidReferences: !isValidReferences(refs),
       description: !getDescription()?.trim(),
     };
