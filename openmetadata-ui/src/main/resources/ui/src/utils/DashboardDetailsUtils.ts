@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-
 import { AxiosError } from 'axios';
-import { getChartById } from '../axiosAPIs/chartAPI';
 import i18next from 'i18next';
+import { getChartById } from '../axiosAPIs/chartAPI';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
