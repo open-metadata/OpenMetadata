@@ -234,14 +234,14 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             entity_fqn
         )
         table_partition_config = None
-        table_sample_precentage = None
+        table_sample_percentage = None
         table_sample_query = (
             self._get_profile_query(table_entity)
             if not self._get_profile_sample(table_entity)
             else None
         )
         if not table_sample_query:
-            table_sample_precentage = self._get_profile_sample(table_entity)
+            table_sample_percentage = self._get_profile_sample(table_entity)
             table_partition_config = self._get_partition_details(table_entity)
 
         if not isinstance(service_connection_config, DatalakeConnection):
@@ -251,7 +251,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 ometa_client=self.client,
                 sqa_metadata_obj=sqa_metadata_obj,
                 table_entity=table_entity,
-                table_sample_precentage=table_sample_precentage,
+                table_sample_percentage=table_sample_percentage,
                 table_sample_query=table_sample_query,
                 table_partition_config=table_partition_config,
             )

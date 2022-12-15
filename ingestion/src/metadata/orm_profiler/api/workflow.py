@@ -205,11 +205,27 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         if entity_config:
             return entity_config.profileSample
 
+        if self.source_config.profileSample:
+            return self.source_config.profileSample
+
         if entity.tableProfilerConfig:
             return entity.tableProfilerConfig.profileSample
 
-        if self.source_config.profileSample:
-            return self.source_config.profileSample
+    def get_profile_sample_rows(self, entity: Table) -> Optional[float]:
+        """Get profile sample
+
+        Args:
+            entity: table entity
+        """
+        entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
+        if entity_config:
+            return entity_config.profileSampleRows
+
+        if self.source_config.profileSampleRows:
+            return self.source_config.profileSampleRows
+
+        if entity.tableProfilerConfig:
+            return entity.tableProfilerConfig.profileSampleRows
 
         return None
 
@@ -257,7 +273,10 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,
                 table_entity=self._table_entity,
-                table_sample_precentage=self.get_profile_sample(self._table_entity)
+                table_sample_percentage=self.get_profile_sample(self._table_entity)
+                if not self.get_profile_query(self._table_entity)
+                else None,
+                table_sample_rows=self.get_profile_sample_rows(self._table_entity)
                 if not self.get_profile_query(self._table_entity)
                 else None,
                 table_sample_query=self.get_profile_query(self._table_entity)

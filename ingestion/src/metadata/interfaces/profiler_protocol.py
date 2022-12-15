@@ -37,7 +37,8 @@ class ProfilerInterfaceArgs(BaseModel):
     ometa_client: Optional[OpenMetadata]
     thread_count: Optional[float]
     table_entity: Optional[Union[Table, Any]]
-    table_sample_precentage: Optional[Union[float, int]]
+    table_sample_percentage: Optional[Union[float, int]]
+    table_sample_rows: Optional[int]
     table_sample_query: Optional[Union[int, str]]
     table_partition_config: Optional[PartitionProfilerConfig]
 

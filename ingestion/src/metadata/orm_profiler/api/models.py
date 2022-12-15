@@ -15,7 +15,7 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -43,6 +43,7 @@ class TableConfig(ConfigModel):
 
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[float] = None
+    profileSampleRows: Optional[Union[float, int]] = None
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]

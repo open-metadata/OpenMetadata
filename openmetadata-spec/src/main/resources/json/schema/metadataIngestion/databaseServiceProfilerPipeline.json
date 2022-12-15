@@ -44,8 +44,8 @@
     },
     "profileSampleRows": {
       "description": "No. of rows for data we want to execute the profiler and tests on.",
-      "type": "number",
-      "exclusiveMinimum": 0,
+      "type": "integer",
+      "minimum": 0,
       "default": null
     },
     "threadCount": {

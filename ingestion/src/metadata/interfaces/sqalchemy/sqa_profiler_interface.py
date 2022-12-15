@@ -78,7 +78,8 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         self.session = self.session_factory()
         self.set_session_tag(self.session)
 
-        self.profile_sample = profiler_interface_args.table_sample_precentage
+        self.profile_sample_percentage = profiler_interface_args.table_sample_percentage
+        self.profile_sample_rows = profiler_interface_args.table_sample_rows
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = (
             self.get_partition_details(profiler_interface_args.table_partition_config)
@@ -290,7 +291,8 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             thread_local.sampler = Sampler(
                 session=session,
                 table=table,
-                profile_sample=self.profile_sample,
+                profile_sample_percentage=self.profile_sample_percentage,
+                profile_sample_rows=self.profile_sample_rows,
                 partition_details=self.partition_details,
                 profile_sample_query=self.profile_query,
             )
@@ -412,7 +414,8 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         sampler = Sampler(
             session=self.session,
             table=table,
-            profile_sample=self.profile_sample,
+            profile_sample_percentage=self.profile_sample_percentage,
+            profile_sample_rows=self.profile_sample_rows,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )

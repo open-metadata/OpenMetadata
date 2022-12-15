@@ -37,11 +37,13 @@ class Sampler:
         self,
         session: Optional[Session],
         table: DeclarativeMeta,
-        profile_sample: Optional[float] = None,
+        profile_sample_percentage: Optional[float] = None,
+        profile_sample_rows: Optional[int] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
-        self.profile_sample = profile_sample
+        self.profile_sample_percentage = profile_sample_percentage
+        self.profile_sample_rows = profile_sample_rows
         self.session = session
         self.table = table
         self._partition_details = partition_details
@@ -56,7 +58,7 @@ class Sampler:
                 self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
             )
             .suffix_with(
-                f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
+                f"SAMPLE BERNOULLI ({self.profile_sample_percentage or self.profile_sample_rows or 100})",
                 dialect=Dialects.Snowflake,
             )
             .cte(f"{self.table.__tablename__}_rnd")
@@ -70,7 +72,7 @@ class Sampler:
         if self._profile_sample_query:
             return self._fetch_sample_data_with_query_object()
 
-        if not self.profile_sample:
+        if not self.profile_sample_percentage and not self.profile_sample_rows:
             if self._partition_details:
                 return self._random_sample_for_partitioned_tables()
 
@@ -80,9 +82,14 @@ class Sampler:
         rnd = self.get_sample_query()
 
         # Prepare sampled CTE
+        profile_sample = (
+            self.profile_sample_percentage
+            if self.profile_sample_percentage
+            else self.profile_sample_rows
+        )
         sampled = (
             self.session.query(rnd)
-            .where(rnd.c.random <= self.profile_sample)
+            .where(rnd.c.random <= profile_sample)
             .cte(f"{self.table.__tablename__}_sample")
         )
 
