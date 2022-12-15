@@ -22,6 +22,7 @@ import {
 import { TeamType } from '../generated/entity/teams/team';
 import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import AddAlertPage from '../pages/AddAlertPage/AddAlertPage';
+import AlertDetailsPage from '../pages/AlertDetailsPpage/AlertDetailsPage';
 import AlertsPage from '../pages/AlertsPage/AlertsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { userPermissions } from '../utils/PermissionsUtils';
@@ -210,6 +211,17 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.COLLABORATION,
           GlobalSettingOptions.ALERTS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.COLLABORATION,
+          GlobalSettingOptions.ALERT,
+          true
         )}
       />
 

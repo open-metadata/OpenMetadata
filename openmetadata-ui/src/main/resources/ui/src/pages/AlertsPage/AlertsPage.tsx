@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Typography } from 'antd';
+import { Button, Col, Row, Table, Tag, Tooltip, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { deleteAlert, getAllAlerts } from '../../axiosAPIs/alertsAPI';
+import { Link, useHistory } from 'react-router-dom';
+import { getAllAlerts } from '../../axiosAPIs/alertsAPI';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
@@ -22,6 +24,8 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { AlertAction } from '../../generated/alerts/alertAction';
 import { Alerts } from '../../generated/alerts/alerts';
 import { Paging } from '../../generated/type/paging';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -35,6 +39,8 @@ const AlertsPage = () => {
     total: 0,
   } as Paging);
   const [currentPage, setCurrentPage] = useState(0);
+  const [selectedAlert, setSelectedAlert] = useState<Alerts>();
+  const history = useHistory();
 
   const fetchAlerts = useCallback(async (after?: string) => {
     setLoading(true);
@@ -54,16 +60,16 @@ const AlertsPage = () => {
     fetchAlerts();
   }, []);
 
-  const handleAlertDelete = useCallback(
-    (id: string) => async () => {
-      if (id) {
-        await deleteAlert(id);
+  const handleAlertDelete = useCallback(async () => {
+    if (selectedAlert) {
+      //   await deleteAlert(selectedAlert.id);
 
-        fetchAlerts();
-      }
-    },
-    []
-  );
+      setAlerts((alerts) =>
+        alerts.filter((alert) => alert.id === selectedAlert.id)
+      );
+      setSelectedAlert(undefined);
+    }
+  }, []);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
     if (after) {
@@ -76,54 +82,86 @@ const AlertsPage = () => {
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'displayName',
-        width: '200px',
-        key: 'displayName',
-      },
-      {
-        title: t('label.last-fail'),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
+        render: (name: string, record: Alerts) => (
+          <Link to={`settings/collaboration/alert/${record.id}`}>{name}</Link>
+        ),
       },
       {
-        title: t('label.last-alert-published-at'),
-        dataIndex: 'name',
+        title: t('label.trigger'),
+        dataIndex: 'triggerConfig.type',
         width: '200px',
-        key: 'name',
+        key: 'triggerConfig.type',
+      },
+      {
+        title: t('label.destination'),
+        dataIndex: 'alertActions',
+        width: '200px',
+        key: 'alertActions',
+        render: (actions: AlertAction[]) =>
+          actions.map((action) => <Tag key={action.name}>{action.name}</Tag>),
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
-
         flex: true,
         key: 'description',
       },
 
+      //   {
+      //     title: t('label.status'),
+      //     dataIndex: 'status',
+      //     width: '200px',
+      //     key: 'status',
+      //   },
       {
-        title: t('label.status'),
-        dataIndex: 'status',
-        width: '200px',
-        key: 'status',
-      },
-      {
-        title: '',
+        title: t('label.actions'),
         dataIndex: 'id',
         key: 'id',
-        render: (id: string) => {
+        render: (_: string, record: Alerts) => {
           return (
-            <>
-              <SVGIcons
-                icon={Icons.DELETE_GRADIANT}
-                onClick={handleAlertDelete(id)}
+            <Tooltip placement="bottom" title={t('label.delete')}>
+              <Button
+                data-testid={`alert-delete-${record.name}`}
+                //   disabled={isDisabled}
+                icon={
+                  <SVGIcons
+                    alt={t('label.delete')}
+                    className="tw-w-4"
+                    icon={Icons.DELETE}
+                  />
+                }
+                type="text"
+                onClick={() => setSelectedAlert(record)}
               />
-            </>
+            </Tooltip>
           );
+
+          //   return (
+          //     <SVGIcons
+          //       className="cursor-pointer"
+          //       height={16}
+          //       icon={Icons.DELETE}
+          //       width={16}
+          //       onClick={handleAlertDelete(id)}
+          //     />
+          //   );
         },
       },
     ],
     [handleAlertDelete]
   );
+
+  const handleCreateAlert = () => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.COLLABORATION,
+        GlobalSettingOptions.ADD_ALERTS
+      )
+    );
+  };
 
   return (
     <PageContainerV1>
@@ -134,12 +172,7 @@ const AlertsPage = () => {
               <Typography.Title level={5}>Alerts</Typography.Title>
               <Typography.Text>Alerts body</Typography.Text>
             </div>
-            <Button
-              href={getSettingPath(
-                GlobalSettingsMenuCategory.COLLABORATION,
-                GlobalSettingOptions.ADD_ALERTS
-              )}
-              type="primary">
+            <Button type="primary" onClick={handleCreateAlert}>
               Create Alert
             </Button>
           </div>
@@ -149,18 +182,6 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            expandable={{
-              expandedRowRender: (record) => (
-                <Table
-                  columns={columns}
-                  dataSource={record.alertActions}
-                  rowKey="id"
-                  size="middle"
-                />
-              ),
-              rowExpandable: (record) =>
-                record.alertActions && record.alertActions.length > 0,
-            }}
             loading={loading}
             pagination={false}
             rowKey="id"
@@ -179,6 +200,17 @@ const AlertsPage = () => {
               totalCount={alertsPaging.total}
             />
           )}
+
+          <DeleteWidgetModal
+            afterDeleteAction={handleAlertDelete}
+            entityId={selectedAlert?.id || ''}
+            entityName={selectedAlert?.name || ''}
+            entityType={EntityType.ALERT}
+            visible={Boolean(selectedAlert)}
+            onCancel={() => {
+              setSelectedAlert(undefined);
+            }}
+          />
         </Col>
       </Row>
     </PageContainerV1>

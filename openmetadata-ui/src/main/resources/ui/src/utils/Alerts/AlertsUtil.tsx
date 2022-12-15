@@ -15,6 +15,12 @@ import React from 'react';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook-grey.svg';
+import {
+  COMMON_DROPDOWN_ITEMS,
+  DASHBOARD_DROPDOWN_ITEMS,
+  PIPELINE_DROPDOWN_ITEMS,
+  TABLE_DROPDOWN_ITEMS,
+} from '../../constants/AdvancedSearch.constants';
 import { AlertActionType } from '../../generated/alerts/alertAction';
 
 export const getAlertsActionTypeIcon = (type?: AlertActionType) => {
@@ -29,5 +35,24 @@ export const getAlertsActionTypeIcon = (type?: AlertActionType) => {
     case AlertActionType.GenericWebhook:
     default:
       return <WebhookIcon height={16} width={16} />;
+  }
+};
+
+export const getFilterOptionForEntity = (entity: string) => {
+  switch (entity) {
+    case 'testCase':
+      return [...COMMON_DROPDOWN_ITEMS];
+    case 'table':
+      return [...TABLE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+    case 'dashboard':
+      return [...DASHBOARD_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+    case 'pipeline':
+      return [...PIPELINE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+    case 'mlmodel':
+      return [
+        ...COMMON_DROPDOWN_ITEMS.filter((item) => item.key !== 'service_type'),
+      ];
+    default:
+      return [];
   }
 };

@@ -27,9 +27,26 @@ interface ListAlertsRequestParams {
   include?: string;
 }
 
+export const getAlertsFromId = async (
+  id: string,
+  params?: Pick<ListAlertsRequestParams, 'include'>
+) => {
+  const response = await axiosClient.get<Alerts>(`${BASE_URL}/${id}`, {
+    params: {
+      ...params,
+      include: 'all',
+    },
+  });
+
+  return response.data;
+};
+
 export const getAllAlerts = async (params: ListAlertsRequestParams) => {
   const response = await axiosClient.get<PagingResponse<Alerts[]>>(BASE_URL, {
-    params,
+    params: {
+      ...params,
+      fields: 'alertActions',
+    },
   });
 
   return response.data;
