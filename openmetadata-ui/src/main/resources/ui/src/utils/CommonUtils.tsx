@@ -25,7 +25,6 @@ import {
   isString,
   isUndefined,
   toNumber,
-  toString,
   uniqueId,
 } from 'lodash';
 import {
@@ -59,7 +58,6 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
 import {
-  timeFormatRegex,
   UrlEntityCharRegEx,
   validEmailRegEx,
 } from '../constants/regex.constants';
@@ -705,11 +703,13 @@ export const formatNumberWithComma = (number: number) => {
 export const getStatisticsDisplayValue = (
   number: string | number | undefined
 ) => {
-  if (timeFormatRegex.test(toString(number))) {
+  const displayValue = toNumber(number);
+
+  if (isNaN(displayValue)) {
     return number;
   }
 
-  return formatNumberWithComma(toNumber(number));
+  return formatNumberWithComma(displayValue);
 };
 
 export const formTwoDigitNmber = (number: number) => {
