@@ -57,40 +57,36 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
 
   return (
     <>
-      <Row className="m-md">
+      <Row className="m-md" gutter={[0, 4]}>
         <Col span={24}>
           <TableDataCardTitle
             searchIndex={SearchIndex.MLMODEL}
             source={entityDetails}
           />
-          <Col span={24}>
-            <Row>
-              {Object.keys(basicMlModelInfo).map((fieldName) => {
-                const value =
-                  basicMlModelInfo[fieldName as keyof BasicMlModelInfo];
-                if (value) {
-                  return (
-                    <Col key={fieldName} span={24}>
-                      <Row gutter={16}>
-                        <Col className="text-gray" span={10}>
-                          {fieldName}
-                        </Col>
-                        <Col span={12}>
-                          {
-                            basicMlModelInfo[
-                              fieldName as keyof BasicMlModelInfo
-                            ]
-                          }
-                        </Col>
-                      </Row>
-                    </Col>
-                  );
-                } else {
-                  return null;
-                }
-              })}
-            </Row>
-          </Col>
+        </Col>
+        <Col span={24}>
+          <Row>
+            {Object.keys(basicMlModelInfo).map((fieldName) => {
+              const value =
+                basicMlModelInfo[fieldName as keyof BasicMlModelInfo];
+              if (value) {
+                return (
+                  <Col key={fieldName} span={24}>
+                    <Row gutter={16}>
+                      <Col className="text-gray" span={10}>
+                        {fieldName}
+                      </Col>
+                      <Col span={12}>
+                        {basicMlModelInfo[fieldName as keyof BasicMlModelInfo]}
+                      </Col>
+                    </Row>
+                  </Col>
+                );
+              } else {
+                return null;
+              }
+            })}
+          </Row>
         </Col>
       </Row>
       <Divider className="m-0" />

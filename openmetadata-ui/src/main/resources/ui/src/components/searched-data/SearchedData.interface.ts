@@ -59,6 +59,7 @@ export type SourceType = (
 
 export interface SearchedDataProps {
   children?: ReactNode;
+  selectedEntityName: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
   currentPage: number;
   isLoading?: boolean;

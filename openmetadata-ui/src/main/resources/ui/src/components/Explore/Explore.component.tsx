@@ -320,6 +320,7 @@ const Explore: React.FC<ExploreProps> = ({
                     onChangePage(Number.parseInt(value));
                   }
                 }}
+                selectedEntityName={entityDetails?.details.name || ''}
                 totalValue={searchResults?.hits.total.value ?? 0}
               />
             ) : (

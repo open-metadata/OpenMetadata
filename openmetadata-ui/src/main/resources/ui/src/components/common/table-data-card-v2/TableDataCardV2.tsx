@@ -43,6 +43,7 @@ import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
   id: string;
+  className?: string;
   source: SearchedDataProps['data'][number]['_source'];
   matches?: {
     key: string;
@@ -57,6 +58,7 @@ export interface TableDataCardPropsV2 {
 
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   id,
+  className,
   source,
   matches,
   searchIndex,
@@ -124,7 +126,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     <div
       className={classNames(
         'data-asset-info-card-container',
-        'table-data-card-container'
+        'table-data-card-container',
+        className ? className : ''
       )}
       data-testid="table-data-card"
       id={id}

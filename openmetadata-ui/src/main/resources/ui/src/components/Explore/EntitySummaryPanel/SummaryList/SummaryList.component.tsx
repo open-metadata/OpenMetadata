@@ -38,7 +38,7 @@ export default function SummaryList({
     if (columns) {
       return columns.map((column) => ({
         name: column.name,
-        title: <Text className="column-name">{column.name}</Text>,
+        title: <Text className="entity-title">{column.name}</Text>,
         type: column.dataType,
         tags: column.tags,
         description: column.description,
@@ -49,7 +49,7 @@ export default function SummaryList({
         title: (
           <Link target="_blank" to={{ pathname: chart.chartUrl }}>
             <Space className="m-b-xs">
-              <Text className="text-primary">{getEntityName(chart)}</Text>
+              <Text className="entity-title link">{getEntityName(chart)}</Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
           </Link>
@@ -64,7 +64,7 @@ export default function SummaryList({
         title: (
           <Link target="_blank" to={{ pathname: task.taskUrl }}>
             <Space className="m-b-xs">
-              <Text className="text-primary">{task.name}</Text>
+              <Text className="entity-title link">{task.name}</Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
           </Link>
@@ -77,7 +77,7 @@ export default function SummaryList({
       return mlFeatures.map((feature) => ({
         algorithm: feature.featureAlgorithm,
         name: feature.name || '--',
-        title: <Text className="column-name">{feature.name}</Text>,
+        title: <Text className="entity-title">{feature.name}</Text>,
         type: feature.dataType,
         tags: feature.tags,
         description: feature.description,
@@ -94,10 +94,10 @@ export default function SummaryList({
       ) : (
         formattedColumnsData.map((entity) => (
           <Col key={entity.name} span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               <Col span={24}>{entity.title}</Col>
               <Col span={24}>
-                <Row className="text-xs" gutter={[4, 4]}>
+                <Row className="text-xs font-300" gutter={[4, 4]}>
                   <Col>
                     {entity.type && (
                       <Space size={4}>
@@ -149,7 +149,7 @@ export default function SummaryList({
                 </Row>
               </Col>
               <Col span={24}>
-                <Paragraph className="text-gray">
+                <Paragraph>
                   {entity.description ? (
                     <RichTextEditorPreviewer
                       markdown={entity.description || ''}

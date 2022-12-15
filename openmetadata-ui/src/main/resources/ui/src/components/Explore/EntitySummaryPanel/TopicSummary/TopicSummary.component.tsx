@@ -42,7 +42,7 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
 
   return (
     <>
-      <Row className="m-md">
+      <Row className="m-md" gutter={[0, 4]}>
         <Col span={24}>
           <TableDataCardTitle
             searchIndex={SearchIndex.TOPIC}

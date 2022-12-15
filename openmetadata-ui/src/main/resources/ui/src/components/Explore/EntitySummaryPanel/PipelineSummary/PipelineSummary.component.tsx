@@ -54,35 +54,35 @@ function PipelineSummary({ entityDetails }: PipelineSummaryProps) {
 
   return (
     <>
-      <Row className="m-md">
+      <Row className="m-md" gutter={[0, 4]}>
         <Col span={24}>
           <TableDataCardTitle
             searchIndex={SearchIndex.PIPELINE}
             source={entityDetails}
           />
-          <Col span={24}>
-            <Row gutter={16}>
-              <Col className="text-gray" span={10}>
-                {`${t('label.pipeline')} ${t('label.url-uppercase')}`}
-              </Col>
-              <Col span={12}>
-                <Link
-                  target="_blank"
-                  to={{ pathname: entityDetails.pipelineUrl }}>
-                  <Space align="start">
-                    <Typography.Text className="text-primary">
-                      {entityDetails.name}
-                    </Typography.Text>
-                    <SVGIcons
-                      alt="external-link"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </Space>
-                </Link>
-              </Col>
-            </Row>
-          </Col>
+        </Col>
+        <Col span={24}>
+          <Row gutter={16}>
+            <Col className="text-gray" span={10}>
+              {`${t('label.pipeline')} ${t('label.url-uppercase')}`}
+            </Col>
+            <Col span={12}>
+              <Link
+                target="_blank"
+                to={{ pathname: entityDetails.pipelineUrl }}>
+                <Space align="start">
+                  <Typography.Text className="link">
+                    {entityDetails.name}
+                  </Typography.Text>
+                  <SVGIcons
+                    alt="external-link"
+                    icon="external-link"
+                    width="12px"
+                  />
+                </Space>
+              </Link>
+            </Col>
+          </Row>
         </Col>
       </Row>
       <Divider className="m-0" />

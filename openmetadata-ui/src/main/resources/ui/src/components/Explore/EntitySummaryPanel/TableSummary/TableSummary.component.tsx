@@ -166,7 +166,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
   return (
     <>
-      <Row className={classNames('m-md')}>
+      <Row className={classNames('m-md')} gutter={[0, 4]}>
         <Col span={24}>
           <TableDataCardTitle
             searchIndex={SearchIndex.TABLE}
