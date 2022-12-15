@@ -180,8 +180,6 @@ class CommonDbSourceService(
                 # DB2 connector does not return a str type
                 if type(description) is list:
                     description = description[0]
-                else:
-                    description = description
         return description
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
