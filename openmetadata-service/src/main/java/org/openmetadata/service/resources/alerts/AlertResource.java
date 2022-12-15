@@ -23,7 +23,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -50,6 +53,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateAlert;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
+import org.openmetadata.schema.entity.alerts.EntitySpelFilters;
 import org.openmetadata.schema.entity.alerts.TriggerConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
@@ -76,20 +80,41 @@ import org.openmetadata.service.util.ResultList;
 public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public static final String COLLECTION_PATH = "v1/alerts/";
   private final CollectionDAO.AlertDAO alertDAO;
-  private List<TriggerConfig> bootStrappedFilters;
+  private List<TriggerConfig> bootStrappedFilters = new ArrayList<>();
+  private Map<String, EntitySpelFilters> entitySpelFiltersList = new HashMap<>();
+  static final String FIELDS = "triggerConfig,filteringRules,alertActions";
 
   private void initDefaultTriggersSettings() throws IOException {
-    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/triggerData.json$");
-    if (jsonDataFiles.size() != 1) {
-      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
+    // Load Trigger File
+    List<String> triggerDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/triggerData.json$");
+    if (triggerDataFiles.size() != 1) {
+      LOG.warn("Invalid number of triggerDataFiles Only one expected.");
       return;
     }
-    String jsonDataFile = jsonDataFiles.get(0);
+    String triggerDataFile = triggerDataFiles.get(0);
     try {
-      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), jsonDataFile);
+      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), triggerDataFile);
       bootStrappedFilters = JsonUtils.readObjects(json, TriggerConfig.class);
     } catch (Exception e) {
-      LOG.warn("Failed to initialize the {} from file {}", "filters", jsonDataFile, e);
+      LOG.warn("Failed to initialize the {} from file {}", "filters", triggerDataFile, e);
+    }
+
+    // Load Filter Data
+    List<String> filterDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/filterData.json$");
+    if (filterDataFiles.size() != 1) {
+      LOG.warn("Invalid number of filterDataFiles. Only one expected.");
+      return;
+    }
+    String filterDataFile = filterDataFiles.get(0);
+    try {
+      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), filterDataFile);
+      List<EntitySpelFilters> filters = JsonUtils.readObjects(json, EntitySpelFilters.class);
+      filters.forEach(
+          (spelFilter) -> {
+            entitySpelFiltersList.put(spelFilter.getEntityType(), spelFilter);
+          });
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize the {} from file {}", "filters", filterDataFile, e);
     }
   }
 
@@ -142,14 +167,11 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public ResultList<Alert> listAlerts(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Filter alerts by status", schema = @Schema(type = "string", example = "active"))
-          @QueryParam("status")
-          String statusParam,
       @Parameter(
-              description = "Filter alerts by type",
-              schema = @Schema(type = "string", example = "generic, slack, msteams"))
-          @QueryParam("alertType")
-          String typeParam,
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @Parameter(description = "Limit the number alerts returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -169,9 +191,8 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("status", statusParam).addQueryParam("alertType", typeParam);
-    return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
+    ListFilter filter = new ListFilter(include);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -194,13 +215,18 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, "", include);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -259,7 +285,19 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       tags = "alerts",
       description = "Get list of Alert functions used in filtering conditions in alerts")
   public List<Function> listAlertFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return AlertUtil.getAlertFilterFunctions();
+    return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
+  }
+
+  @GET
+  @Path("/entityFunctions")
+  @Operation(
+      operationId = "listAlertFunctions",
+      summary = "Get list of Alert functions used in filtering alert.",
+      tags = "alerts",
+      description = "Get list of Alert functions used in filtering conditions in alerts")
+  public Map<String, EntitySpelFilters> listEntityAlertFunctions(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return entitySpelFiltersList;
   }
 
   @GET
@@ -297,13 +335,18 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the alert", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, "", include);
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -446,9 +489,17 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public Response deleteAlert(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Recursively delete the alerts. (Default = `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
-    Response response = delete(uriInfo, securityContext, id, false, true);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     dao.deleteAlertAllPublishers(id);
     return response;
   }
