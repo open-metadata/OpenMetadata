@@ -1,4 +1,4 @@
-import { Button, Modal, Space } from 'antd';
+import { Button, Modal, Space, Typography } from 'antd';
 import { delay } from 'lodash';
 import React, { FunctionComponent, useState } from 'react';
 import { JsonTree } from 'react-awesome-query-builder';
@@ -13,6 +13,7 @@ interface Props {
   searchIndex: SearchIndex;
   onChangeJsonTree: (tree?: JsonTree) => void;
   jsonTree?: JsonTree;
+  onAppliedFilterChange: (value: string) => void;
 }
 
 export const AdvancedSearchModal: FunctionComponent<Props> = ({
@@ -22,6 +23,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
   searchIndex,
   onChangeJsonTree,
   jsonTree,
+  onAppliedFilterChange,
 }: Props) => {
   const [queryFilter, setQueryFilter] = useState<
     Record<string, unknown> | undefined
@@ -62,9 +64,13 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       title={t('label.advanced-search')}
       visible={visible}
       width={950}>
+      <Typography.Text data-testid="advanced-search-message">
+        {t('message.advanced-search-message')}
+      </Typography.Text>
       <AdvancedSearch
         jsonTree={jsonTree}
         searchIndex={searchIndex}
+        onAppliedFilterChange={onAppliedFilterChange}
         onChangeJsonTree={(nTree) => onChangeJsonTree(nTree)}
         onChangeQueryFilter={setQueryFilter}
       />

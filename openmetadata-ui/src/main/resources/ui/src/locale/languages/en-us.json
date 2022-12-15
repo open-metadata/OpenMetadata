@@ -512,7 +512,8 @@
     "insert": "Insert",
     "update": "Update",
     "table-profile": "Table Profile",
-    "column-profile": "Column Profile"
+    "column-profile": "Column Profile",
+    "applied-advanced-search": "Applied advanced search"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -628,7 +629,8 @@
     "permanently-delete-metadata-and-dependents": "Permanently deleting this {{entityName}} will remove its metadata, as well as the metadata of {{dependents}} from OpenMetadata permanently.",
     "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
     "announcement-created-successfully": "Announcement created successfully!",
-    "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation"
+    "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation",
+    "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

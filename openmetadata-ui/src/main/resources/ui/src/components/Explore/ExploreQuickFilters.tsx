@@ -15,6 +15,7 @@ import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { FC, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getAdvancedFieldDefaultOptions,
   getAdvancedFieldOptions,
@@ -33,6 +34,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   index,
   onFieldValueSelect,
 }) => {
+  const { t } = useTranslation();
   const [options, setOptions] = useState<string[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
@@ -112,7 +114,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         className="tw-text-primary tw-self-center tw-cursor-pointer"
         data-testid="advance-search-button"
         onClick={onAdvanceSearch}>
-        Advance Search
+        {t('label.advanced-search')}
       </span>
     </Space>
   );
