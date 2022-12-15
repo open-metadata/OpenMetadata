@@ -128,7 +128,7 @@ const CustomControls: FC<ControlProps> = ({
   const nodeOptions = useMemo(
     () =>
       [lineageData.entity, ...(lineageData.nodes || [])].map((node) => ({
-        label: node.fullyQualifiedName || node.name || '',
+        label: node.displayName || node.name || '',
         value: node.id,
       })),
     [lineageData]
