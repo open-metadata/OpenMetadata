@@ -28,7 +28,7 @@ import {
   omit,
   toUpper,
 } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
@@ -128,13 +128,13 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
-  const handleSummaryPanelDisplay = (
-    details: EntityDetailsType,
-    entityType: string
-  ) => {
-    setShowSummaryPanel(true);
-    setEntityDetails({ details, entityType });
-  };
+  const handleSummaryPanelDisplay = useCallback(
+    (details: EntityDetailsType, entityType: string) => {
+      setShowSummaryPanel(true);
+      setEntityDetails({ details, entityType });
+    },
+    []
+  );
 
   const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
     const terms = [] as Array<Record<string, unknown>>;

@@ -71,8 +71,6 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
             tableTests.results,
             test.testCaseResult?.testCaseStatus || ''
           );
-
-          return;
         }
       });
       setTableTests(tableTests);
@@ -145,7 +143,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     ];
   }, [TableDetails, tableTests]);
 
-  const { tableType, columns, tableQueries } = TableDetails as Table;
+  const { tableType, columns, tableQueries } = TableDetails;
 
   const basicTableInfo: BasicTableInfo = useMemo(
     () => ({
