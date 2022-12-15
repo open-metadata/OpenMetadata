@@ -27,6 +27,7 @@ import {
   YAxis,
 } from 'recharts';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   TIER_BAR_COLOR_MAP,
@@ -111,7 +112,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
       {data.length ? (
         <ResponsiveContainer debounce={1} minHeight={400}>
           <LineChart data={data} margin={BAR_CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
             <XAxis dataKey="timestamp" />
             <YAxis />
             <Tooltip content={<CustomTooltip />} />

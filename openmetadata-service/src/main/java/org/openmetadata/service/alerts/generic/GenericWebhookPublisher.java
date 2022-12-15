@@ -29,7 +29,7 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
   public GenericWebhookPublisher(Alert alert, AlertAction alertAction, CollectionDAO dao) {
     super(alert, alertAction, dao);
     if (alertAction.getAlertActionType() == AlertAction.AlertActionType.GENERIC_WEBHOOK) {
-      webhook = (Webhook) alertAction.getAlertActionConfig();
+      webhook = JsonUtils.convertValue(alertAction.getAlertActionConfig(), Webhook.class);
       ClientBuilder clientBuilder = ClientBuilder.newBuilder();
       clientBuilder.connectTimeout(alertAction.getTimeout(), TimeUnit.SECONDS);
       clientBuilder.readTimeout(alertAction.getReadTimeout(), TimeUnit.SECONDS);
