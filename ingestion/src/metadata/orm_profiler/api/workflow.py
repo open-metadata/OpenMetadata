@@ -93,6 +93,7 @@ class ProfilerInterfaceInstantiationError(Exception):
     """Raise when interface cannot be instantiated"""
 
 
+# pylint: disable=too-many-public-methods
 class ProfilerWorkflow(WorkflowStatusMixin):
     """
     Configure and run the ORM profiler
@@ -210,6 +211,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         if entity.tableProfilerConfig:
             return entity.tableProfilerConfig.profileSample
+        return None
 
     def get_profile_sample_rows(self, entity: Table) -> Optional[float]:
         """Get profile sample

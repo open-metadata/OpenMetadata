@@ -115,7 +115,8 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         return Sampler(
             session=self.session,
             table=self.table,
-            profile_sample=self.table_sample_percentage,
+            profile_sample_percentage=self.table_sample_percentage,
+            profile_sample_rows=None,
             partition_details=self.table_partition_config,
             profile_sample_query=self.table_sample_query,
         )

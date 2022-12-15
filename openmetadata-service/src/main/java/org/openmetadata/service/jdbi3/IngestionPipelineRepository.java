@@ -16,10 +16,8 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -196,11 +194,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public IngestionPipeline checkProfileSampleType(IngestionPipeline ingestionPipeline) throws IOException {
     if (ingestionPipeline.getPipelineType().value().equals("profiler")) {
       JSONObject origSourceConfig =
-              new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+          new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
       if (origSourceConfig.has("profileSample") && origSourceConfig.has("profileSampleRows")) {
         //        Default to percentage
         JSONObject newSourceConfig =
-                new JSONObject().put("config", origSourceConfig.put("profileSampleRows", (Integer) null));
+            new JSONObject().put("config", origSourceConfig.put("profileSampleRows", (Integer) null));
         SourceConfig sc = JsonUtils.readValue(newSourceConfig.toString(), SourceConfig.class);
         ingestionPipeline.setSourceConfig(sc);
         return ingestionPipeline;
