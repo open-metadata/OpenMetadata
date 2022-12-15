@@ -25,10 +25,6 @@ jobs:
   maven-build:
     runs-on: ubuntu-latest
     steps:
-
-      # - name: Check trigger type
-      #   if: ${{ env.input == '' }}
-      #   run: echo "input=0.13.0" >> $GITHUB_ENV
       
       - name: Checkout
         uses: actions/checkout@v3
@@ -38,20 +34,18 @@ jobs:
         with:
           java-version: 11
       
-      - name: Setup Test Containers Properties
+      - name: Install antlr cli
         run: |
           sudo make install_antlr_cli
-          echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
-      - name: Build PR with Maven
+      - name: Build OpenMetadata Server Application
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
           mvn versions:set -DnewVersion=0.13.0
-          mvn -DskipTests clean install
+          mvn -DskipTests clean package
 
-      - name: Upload openmetadata application
+      - name: Upload OpenMetadata application to Artifact
         uses: actions/upload-artifact@v3
         with:
           name: openmetadata-binary
@@ -67,12 +61,12 @@ jobs:
         id: check_trigger
         run: echo "GITHUB_RELEASE_TAG=0.13.0" >> $GITHUB_OUTPUT
         
-      - name: Download application
+      - name: Download application from Artifiact
         uses: actions/download-artifact@v2
         with:
           name: openmetadata-binary
 
-      - name: Get release
+      - name: Get release data
         id: get_release
         uses: bruceadams/get-release@v1.3.2
         env:
@@ -95,19 +89,19 @@ jobs:
     needs: maven-build
     steps:
 
-      - name: Attach to Release
+      - name: Fetch Release Data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: attach_release
         run: |
           echo "UPLOAD_URL=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/open-metadata/OpenMetadata/releases/tags/${{ inputs.GITHUB_RELEASE_TAG }}  | jq .upload_url | tr -d '"' )" >> $GITHUB_OUTPUT
 
-      - name: Download application
+      - name: Download application from Artifact
         uses: actions/download-artifact@v2
         with:
           name: openmetadata-binary
 
-      - name: Upload release asset
+      - name: Upload app to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -121,7 +115,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
-    needs: [maven-build]
+    if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
+    needs: [release-project-event-workflow_dispatch, release-project-event-release]  
     steps:
       - name: Check trigger type
         id: check_trigger
