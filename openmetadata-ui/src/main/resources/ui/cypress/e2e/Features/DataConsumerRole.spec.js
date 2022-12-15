@@ -104,18 +104,6 @@ const ID = {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
     button: 'add-field-button',
   },
-  webhooks: {
-    testid: '[data-menu-id*="webhook"]',
-    button: 'add-webhook-button',
-  },
-  slack: {
-    testid: '[data-menu-id*="slack"]',
-    button: 'add-webhook-button',
-  },
-  msTeams: {
-    testid: '[data-menu-id*="msTeams"]',
-    button: 'add-webhook-button',
-  },
   bots: {
     testid: '[data-menu-id*="bots"]',
     button: 'add-bot',
