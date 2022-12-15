@@ -147,7 +147,7 @@ const getSearchLabel = (itemLabel: string, searchKey: string) => {
 export const getSearchDropdownLabels = (
   optionsArray: string[],
   checked: boolean,
-  searchKey: string
+  searchKey = ''
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
     return optionsArray.map((option) => ({
