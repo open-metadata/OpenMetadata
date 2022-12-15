@@ -30,3 +30,14 @@ CREATE TABLE IF NOT EXISTS alert_action_def (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+
+CREATE TABLE IF NOT EXISTS data_report_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') STORED NOT NULL,
+    dataReportType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.dataReportType') STORED NOT NULL,
+    endpointType VARCHAR(50) GENERATED ALWAYS AS (json ->> '$.endpointType') STORED NOT NULL,
+    scheduleConfig VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.scheduleConfig') STORED NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (name)
+);
