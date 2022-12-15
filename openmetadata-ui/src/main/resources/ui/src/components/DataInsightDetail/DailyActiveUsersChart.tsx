@@ -13,10 +13,12 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
+  Legend,
+  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -25,6 +27,7 @@ import {
   YAxis,
 } from 'recharts';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
@@ -36,6 +39,7 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import {
   CustomTooltip,
   getFormattedActiveUsersData,
+  renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
@@ -53,6 +57,11 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { t } = useTranslation();
+
+  const { data, total } = useMemo(
+    () => getFormattedActiveUsersData(dailyActiveUsers),
+    [dailyActiveUsers]
+  );
 
   const fetchPageViewsByEntities = async () => {
     setIsLoading(true);
@@ -94,10 +103,17 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
       }>
       {dailyActiveUsers.length ? (
         <ResponsiveContainer debounce={1} minHeight={400}>
-          <LineChart
-            data={getFormattedActiveUsersData(dailyActiveUsers)}
-            margin={BAR_CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" />
+          <LineChart data={data} margin={BAR_CHART_MARGIN}>
+            <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
+            <Legend
+              align="left"
+              content={() =>
+                renderLegend({ payload: [] } as LegendProps, `${total}`)
+              }
+              layout="vertical"
+              verticalAlign="top"
+              wrapperStyle={{ left: '0px', top: '0px' }}
+            />
             <XAxis dataKey="timestamp" />
             <YAxis />
             <Tooltip content={<CustomTooltip />} />

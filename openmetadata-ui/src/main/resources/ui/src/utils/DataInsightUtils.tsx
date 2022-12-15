@@ -415,13 +415,21 @@ export const getTeamFilter = (suggestionValues: ListValues = []) => {
   }));
 };
 
-export const getFormattedActiveUsersData = (activeUsers: DailyActiveUsers[]) =>
-  activeUsers.map((user) => ({
+export const getFormattedActiveUsersData = (
+  activeUsers: DailyActiveUsers[]
+) => {
+  const formattedData = activeUsers.map((user) => ({
     ...user,
     timestamp: user.timestamp
       ? getFormattedDateFromMilliSeconds(user.timestamp)
       : '',
   }));
+
+  return {
+    data: formattedData,
+    total: last(formattedData)?.activeUsers,
+  };
+};
 
 export const getEntitiesChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
