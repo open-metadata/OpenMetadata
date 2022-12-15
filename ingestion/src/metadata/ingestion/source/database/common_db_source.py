@@ -178,7 +178,7 @@ class CommonDbSourceService(
             if hasattr(table_info, "text"):
                 description = table_info["text"]
                 # DB2 connector does not return a str type
-                if type(description) is list:
+                if isinstance(description, list):
                     description = description[0]
         return description
 
