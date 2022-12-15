@@ -48,10 +48,10 @@ public class DataReportJob implements Job {
     Long scheduleTime = currentTime - timeDifference;
 
     try {
-      // Aggregate date for Description
+      // Aggregate data for Description
       String descriptionUrl = buildDescriptionUrl(repository, client, scheduleTime, currentTime);
+      // Aggregate data for Owner
       String ownerUrl = buildOwnerUrl(repository, client, scheduleTime, currentTime);
-      //  repository.
       for (String email : dataReport.getEndpointConfiguration().getRecipientMails()) {
         EmailUtil.getInstance()
             .sendDataInsightEmailNotificationToUser(
