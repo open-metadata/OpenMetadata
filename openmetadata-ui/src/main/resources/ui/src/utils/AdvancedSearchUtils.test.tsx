@@ -23,7 +23,7 @@ import {
 
 describe('AdvancedSearchUtils tests', () => {
   it('Function getSearchDropdownLabels should return menuItems for passed options', () => {
-    const resultMenuItems = getSearchDropdownLabels(mockOptionsArray, true);
+    const resultMenuItems = getSearchDropdownLabels(mockOptionsArray, true, '');
 
     expect(resultMenuItems).toHaveLength(4);
   });
@@ -31,7 +31,8 @@ describe('AdvancedSearchUtils tests', () => {
   it('Function getSearchDropdownLabels should return an empty array if passed 1st argument as other than array', () => {
     const resultMenuItems = getSearchDropdownLabels(
       '' as unknown as string[],
-      true
+      true,
+      ''
     );
 
     expect(resultMenuItems).toHaveLength(0);
