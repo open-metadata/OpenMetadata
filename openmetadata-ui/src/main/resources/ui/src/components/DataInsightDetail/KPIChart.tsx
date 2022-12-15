@@ -39,7 +39,7 @@ import {
   getListKpiResult,
   getListKPIs,
 } from '../../axiosAPIs/KpiAPI';
-import { ROUTES } from '../../constants/constants';
+import { GRAPH_BACKGROUND_COLOR, ROUTES } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
@@ -214,7 +214,10 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
               <Col span={19}>
                 <ResponsiveContainer debounce={1} minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid
+                      stroke={GRAPH_BACKGROUND_COLOR}
+                      vertical={false}
+                    />
                     <XAxis dataKey="timestamp" />
                     <YAxis />
                     <Tooltip
