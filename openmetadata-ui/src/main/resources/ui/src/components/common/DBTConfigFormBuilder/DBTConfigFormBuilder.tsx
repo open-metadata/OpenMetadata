@@ -12,11 +12,12 @@
  */
 
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import { FormSubmitType } from '../../../enums/form.enum';
 import {
   DBTBucketDetails,
   DbtConfig,
   SCredentials,
-} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../../../generated/metadataIngestion/dbtPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
@@ -39,6 +40,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   handleSourceChange,
   onCancel,
   onSubmit,
+  formType,
+  ingestionName,
+  handleIngestionName,
 }: DBTConfigFormProps) => {
   const [dbtConfig, setDbtConfig] = useState<DbtConfig>(data);
 
@@ -238,6 +242,25 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
 
   return (
     <Fragment>
+      <Field>
+        <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+          Name
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          Name that identifies this configuration instance uniquely.
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="name"
+          disabled={formType === FormSubmitType.EDIT}
+          id="name"
+          name="name"
+          type="text"
+          value={ingestionName}
+          onChange={(e) => handleIngestionName(e.target.value)}
+        />
+        {getSeparator('')}
+      </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbt-source">
           DBT Configuration Source

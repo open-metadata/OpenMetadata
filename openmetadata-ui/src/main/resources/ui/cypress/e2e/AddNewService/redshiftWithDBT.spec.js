@@ -22,8 +22,7 @@ import {
     visitEntityDetailsPage
 } from '../../common/common';
 import {
-    API_SERVICE, DBT, HTTP_CONFIG_SOURCE,
-    SERVICE_TYPE
+    API_SERVICE, DBT, SERVICE_TYPE
 } from '../../constants/constants';
 import { REDSHIFT } from '../../constants/service.constants';
 
@@ -57,24 +56,24 @@ describe('RedShift Ingestion', () => {
         .click();
     };
 
-    const configureDBT = () => {
-      cy.contains('Configure DBT Model').should('be.visible');
-      cy.get('[data-testid="dbt-source"]')
-        .should('be.visible')
-        .select('HTTP Config Source');
-      cy.get('[data-testid="catalog-url"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .type(HTTP_CONFIG_SOURCE.DBT_CATALOG_HTTP_PATH);
-      cy.get('[data-testid="manifest-url"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .type(HTTP_CONFIG_SOURCE.DBT_MANIFEST_HTTP_PATH);
-      cy.get('[data-testid="run-result-file"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .type(HTTP_CONFIG_SOURCE.DBT_RUN_RESTLTS_FILE_PATH);
-    };
+    // const configureDBT = () => {
+    //   cy.contains('Configure DBT Model').should('be.visible');
+    //   cy.get('[data-testid="dbt-source"]')
+    //     .should('be.visible')
+    //     .select('HTTP Config Source');
+    //   cy.get('[data-testid="catalog-url"]')
+    //     .scrollIntoView()
+    //     .should('be.visible')
+    //     .type(HTTP_CONFIG_SOURCE.DBT_CATALOG_HTTP_PATH);
+    //   cy.get('[data-testid="manifest-url"]')
+    //     .scrollIntoView()
+    //     .should('be.visible')
+    //     .type(HTTP_CONFIG_SOURCE.DBT_MANIFEST_HTTP_PATH);
+    //   cy.get('[data-testid="run-result-file"]')
+    //     .scrollIntoView()
+    //     .should('be.visible')
+    //     .type(HTTP_CONFIG_SOURCE.DBT_RUN_RESTLTS_FILE_PATH);
+    // };
 
     testServiceCreationAndIngestion(
       REDSHIFT.serviceType,
@@ -83,7 +82,7 @@ describe('RedShift Ingestion', () => {
       REDSHIFT.serviceName,
       'database',
       true,
-      configureDBT
+    //   configureDBT
     );
   });
 

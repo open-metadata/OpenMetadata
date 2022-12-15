@@ -34,9 +34,9 @@ import {
   IngestionPipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  DatabaseServiceMetadataPipelineClass,
   DbtConfig,
-} from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+  DbtPipelineClass,
+} from '../../generated/metadataIngestion/dbtPipeline';
 import {
   getCurrentUserId,
   getIngestionFrequency,
@@ -88,7 +88,7 @@ const AddIngestion = ({
     return serviceData.serviceType === MetadataServiceType.OpenMetadata;
   }, [serviceCategory]);
   const showDBTConfig = useMemo(() => {
-    return isDatabaseService && pipelineType === PipelineType.Metadata;
+    return isDatabaseService && pipelineType === PipelineType.Dbt;
   }, [isDatabaseService, pipelineType]);
 
   const [saveState, setSaveState] = useState<LoadingState>('initial');
@@ -144,22 +144,21 @@ const AddIngestion = ({
     )
   );
   const configData = useMemo(
-    () =>
-      (data?.sourceConfig.config as DatabaseServiceMetadataPipelineClass)
-        ?.dbtConfigSource,
+    () => (data?.sourceConfig.config as DbtPipelineClass)?.dbtConfigSource,
     [data]
   );
   const [dbtConfigSource, setDbtConfigSource] = useState<DbtConfig | undefined>(
-    showDBTConfig ? (configData as DbtConfig) : undefined
+    configData as DbtConfig
   );
 
   const sourceTypeData = useMemo(
     () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
     [configData]
   );
-  const [dbtConfigSourceType, setDbtConfigSourceType] = useState<
-    DBT_SOURCES | undefined
-  >(showDBTConfig ? sourceTypeData.sourceType : undefined);
+  const [dbtConfigSourceType, setDbtConfigSourceType] = useState<DBT_SOURCES>(
+    sourceTypeData.sourceType
+  );
+
   const [gcsConfigType, setGcsConfigType] = useState<GCS_CONFIG | undefined>(
     showDBTConfig ? sourceTypeData.gcsType : undefined
   );
@@ -442,12 +441,6 @@ const AddIngestion = ({
   const getMetadataIngestionFields = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
-        const DatabaseConfigData = {
-          ...(showDBTConfig
-            ? escapeBackwardSlashChar({ dbtConfigSource } as ConfigClass)
-            : undefined),
-        };
-
         return {
           useFqnForFiltering: useFqnFilter,
           includeViews: includeView,
@@ -466,7 +459,6 @@ const AddIngestion = ({
           ),
           markDeletedTables,
           markAllDeletedTables,
-          ...DatabaseConfigData,
           type: ConfigType.DatabaseMetadata,
         };
       }
@@ -557,6 +549,16 @@ const AddIngestion = ({
           threadCount: threadCount,
         };
       }
+
+      case PipelineType.Dbt: {
+        return {
+          ...escapeBackwardSlashChar({
+            dbtConfigSource,
+          } as ConfigClass),
+          type: ConfigType.Dbt,
+        };
+      }
+
       case PipelineType.ElasticSearchReindex:
       case PipelineType.DataInsight: {
         return metadataToESConfig
@@ -693,7 +695,9 @@ const AddIngestion = ({
   };
   const getExcludedSteps = () => {
     const excludedSteps = [];
-    if (!showDBTConfig) {
+    if (showDBTConfig) {
+      excludedSteps.push(1);
+    } else {
       excludedSteps.push(2);
     }
     if (!isServiceTypeOpenMetadata) {
@@ -779,14 +783,17 @@ const AddIngestion = ({
 
         {activeIngestionStep === 2 && (
           <DBTConfigFormBuilder
-            cancelText="Back"
+            cancelText="Cancel"
             data={dbtConfigSource || {}}
+            formType={status}
             gcsType={gcsConfigType}
             handleGcsTypeChange={(type) => setGcsConfigType(type)}
+            handleIngestionName={(val) => setIngestionName(val)}
             handleSourceChange={(src) => setDbtConfigSourceType(src)}
+            ingestionName={ingestionName}
             okText="Next"
             source={dbtConfigSourceType}
-            onCancel={handlePrev}
+            onCancel={handleCancelClick}
             onSubmit={(dbtConfigData) => {
               setDbtConfigSource(dbtConfigData);
               handleNext();
