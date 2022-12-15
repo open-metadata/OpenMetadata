@@ -3,8 +3,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
@@ -22,6 +27,8 @@ import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorFactory;
+import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
@@ -111,6 +118,32 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   @Override
   public void storeRelationships(DataInsightChart entity) throws IOException {
     storeOwner(entity, entity.getOwner());
+  }
+
+  public SearchRequest buildSearchRequest(
+      Long startTs,
+      Long endTs,
+      String tier,
+      String team,
+      DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      String dataReportIndex) {
+    SearchSourceBuilder searchSourceBuilder =
+        buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
+    AbstractAggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
+    searchSourceBuilder.aggregation(aggregationBuilder);
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    SearchRequest searchRequest = new SearchRequest(dataReportIndex);
+    searchRequest.source(searchSourceBuilder);
+    return searchRequest;
+  }
+
+  public DataInsightChartResult processDataInsightChartResult(
+      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
+      throws ParseException {
+    DataInsightAggregatorInterface processor =
+        DataInsightAggregatorFactory.createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
+    return processor.process();
   }
 
   public SearchSourceBuilder buildQueryFilter(

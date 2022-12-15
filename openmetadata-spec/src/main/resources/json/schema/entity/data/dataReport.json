@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/reportData.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataReport",
+  "description": "Data Report",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.DataReport",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "dataReportType": {
+      "description": "Type of DataReport - dataInsight",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.DataReportType",
+      "enum": ["dataInsight"],
+      "javaEnums": [
+        {
+          "name": "DataInsight"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier for a result.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this data insight chart.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this data insight chart.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the Pipeline.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "dataReportType": {
+      "description": "Type of report",
+      "$ref": "#/definitions/dataReportType"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "scheduleConfig": {
+      "description": "Scheduler Interval for the data report in cron format.",
+      "type": "string"
+    },
+    "endpointType": {
+      "description": "Define the type via which the data report to be sent.",
+      "type": "string"
+    },
+    "endpointConfiguration": {
+      "description": "Endpoint Config",
+      "$ref": "../../email/emailConfig.json"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this report.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    }
+  },
+  "required": ["name", "dataReportType", "scheduleConfig", "endpointType", "endpointConfiguration"],
+  "additionalProperties": false
+}

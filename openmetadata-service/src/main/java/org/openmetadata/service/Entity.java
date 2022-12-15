@@ -87,6 +87,7 @@ public final class Entity {
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
   public static final String REPORT = "report";
+  public static final String DATA_REPORT = "dataReport";
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
   public static final String BOT = "bot";

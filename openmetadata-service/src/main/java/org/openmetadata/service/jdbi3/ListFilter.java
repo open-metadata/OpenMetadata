@@ -48,6 +48,7 @@ public class ListFilter {
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
+    condition = addCondition(condition, getDataReportTypeCondition(tableName));
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -92,6 +93,11 @@ public class ListFilter {
     return webhookType == null ? "" : getWebhookTypePrefixCondition(tableName, escape(webhookType));
   }
 
+  public String getDataReportTypeCondition(String tableName) {
+    String dataChartType = queryParams.get("dataReportType");
+    return dataChartType == null ? "" : getDataReportTypePrefixCondition(tableName, escape(dataChartType));
+  }
+
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     if (fqnPrefix.contains("_") || fqnPrefix.contains("-")) {
       fqnPrefix = format(fqnPrefix);
@@ -105,6 +111,12 @@ public class ListFilter {
     return tableName == null
         ? String.format("webhookType LIKE '%s%%'", typePrefix)
         : String.format("%s.webhookType LIKE '%s%%'", tableName, typePrefix);
+  }
+
+  private String getDataReportTypePrefixCondition(String tableName, String typePrefix) {
+    return tableName == null
+        ? String.format("dataReportType LIKE '%s%%'", typePrefix)
+        : String.format("%s.dataReportType LIKE '%s%%'", tableName, typePrefix);
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {

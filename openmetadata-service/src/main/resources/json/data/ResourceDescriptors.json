@@ -498,5 +498,14 @@
       "ViewAll",
       "EditDescription"
     ]
+  },
+  {
+    "name" : "dataReport",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
   }
 ]

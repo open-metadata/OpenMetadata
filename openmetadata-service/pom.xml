@@ -410,6 +410,17 @@
       <artifactId>diff-match-patch</artifactId>
       <version>${diffMatch.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.googlecode.charts4j</groupId>
+      <artifactId>charts4j</artifactId>
+      <version>1.3</version>
+    </dependency>
+    <!-- Quartz Core -->
+    <dependency>
+      <groupId>org.quartz-scheduler</groupId>
+      <artifactId>quartz</artifactId>
+      <version>2.3.2</version>
+    </dependency>
   </dependencies>
 
   <build>

@@ -11,6 +11,8 @@ import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -55,12 +57,14 @@ public class EmailUtil {
   private static final String INVITE_SUBJECT = "Welcome to %s";
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
   private static final String TEST_SUBJECT = "%s : Test Result Notification";
+  private static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
 
   public static final String CHANGE_EVENT_TEMPLATE = "changeEvent.ftl";
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
   public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
   public static final String TEST_NOTIFICATION_TEMPLATE = "testResultStatus.ftl";
+  public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport.ftl";
   private static EmailUtil INSTANCE;
   private static SmtpSettings DEFAULT_SMTP_SETTINGS;
   private static Mailer MAILER;
@@ -177,6 +181,26 @@ public class EmailUtil {
       templatePopulator.put("fieldNewValue", thread.getTask().getSuggestion());
       templatePopulator.put("taskLink", taskLink);
 
+      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    }
+  }
+
+  public void sendDataInsightEmailNotificationToUser(
+      String email,
+      String viewReportLink,
+      String entityDescriptionImageUrl,
+      String ownerShipImageUrl,
+      String supportUrl,
+      String subject,
+      String templateFilePath)
+      throws IOException, TemplateException {
+    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put("adminName", email.split("@")[0]);
+      templatePopulator.put("viewReportLink", viewReportLink);
+      templatePopulator.put("entityDescriptionImageUrl", entityDescriptionImageUrl);
+      templatePopulator.put("ownerShipImageUrl", ownerShipImageUrl);
+      templatePopulator.put("supportUrl", supportUrl);
       sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     }
   }
@@ -316,6 +340,11 @@ public class EmailUtil {
 
   public String getTestResultSubject() {
     return String.format(TEST_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+  }
+
+  public String getDataInsightReportSubject() {
+    return String.format(
+        REPORT_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity(), new SimpleDateFormat("dd-MM-yy").format(new Date()));
   }
 
   public String getEmailingEntity() {
