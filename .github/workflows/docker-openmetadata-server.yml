@@ -24,8 +24,6 @@ on:
 jobs:
   maven-build:
     runs-on: ubuntu-latest
-    env:
-      input: ${{ github.event.inputs.github_release_tag }}
     steps:
 
       # - name: Check trigger type
