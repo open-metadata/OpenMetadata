@@ -50,14 +50,14 @@ import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
 
 @Slf4j
-@Path("/v1/dataReport")
+@Path("/v1/dataReports")
 @Api(value = "Reports collection", tags = "Data Reports collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dataReport")
+@Collection(name = "dataReports")
 public class DataReportResource extends EntityResource<DataReport, DataReportRepository> {
 
-  public static final String COLLECTION_PATH = "v1/dataReport/";
+  public static final String COLLECTION_PATH = "v1/dataReports/";
   public static final String DATA_INSIGHT_EMAIL_JOB = "dataInsightEmailJob";
   public static final String EMAIL_REPORT = "emailReport";
   public static final String CRON_TRIGGER = "dataInsightEmailTrigger";

@@ -1,6 +1,5 @@
 package org.openmetadata.service.events;
 
-import static java.time.temporal.TemporalAdjusters.previous;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE;
 import static org.openmetadata.service.Entity.DATA_REPORT;
@@ -11,9 +10,7 @@ import static org.openmetadata.service.resources.dataReports.DataReportResource.
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.DayOfWeek;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -45,12 +42,11 @@ public class DataReportJob implements Job {
     RestHighLevelClient client =
         (RestHighLevelClient) jobExecutionContext.getJobDetail().getJobDataMap().get(ES_REST_CLIENT);
     DataReport dataReport = (DataReport) jobExecutionContext.getJobDetail().getJobDataMap().get(DATA_REPORT);
-    //    Date nextFireTime = jobExecutionContext.getTrigger().getNextFireTime();
-    //    Long currentTime = Instant.now().toEpochMilli();
-    //    Long timeDifference = nextFireTime.getTime() - currentTime;
-    //    Long scheduleTime = currentTime - timeDifference;
-    Long scheduleTime = LocalDateTime.now().with(previous(DayOfWeek.SUNDAY)).toEpochSecond(ZoneOffset.UTC) * 1000;
-    Long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) * 1000;
+    Date nextFireTime = jobExecutionContext.getTrigger().getNextFireTime();
+    Long currentTime = Instant.now().toEpochMilli();
+    Long timeDifference = nextFireTime.getTime() - currentTime;
+    Long scheduleTime = currentTime - timeDifference;
+
     try {
       // Aggregate date for Description
       String descriptionUrl = buildDescriptionUrl(repository, client, scheduleTime, currentTime);
@@ -118,7 +114,6 @@ public class DataReportJob implements Job {
         dateMap.put(justDate, listChartType);
       }
     }
-    sortedDataMap.putAll(dateMap);
     return GraphUtil.buildDescriptionImageUrl(dateMap, entityType);
   }
 
