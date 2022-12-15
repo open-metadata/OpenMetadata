@@ -13,6 +13,7 @@ WHERE name = 'mostViewedEntities';
 -- Remove DBT source config
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,dbtConfigSource}';
+
 DROP TABLE webhook_entity;
 
 CREATE TABLE IF NOT EXISTS alert_entity (
