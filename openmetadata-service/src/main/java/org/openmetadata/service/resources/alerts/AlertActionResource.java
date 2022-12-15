@@ -97,9 +97,6 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public ResultList<AlertAction> listAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Filter alerts action by status", schema = @Schema(type = "string", example = "active"))
-          @QueryParam("status")
-          String statusParam,
       @Parameter(
               description = "Filter alerts action by type",
               schema = @Schema(type = "string", example = "generic, slack, msteams"))
@@ -124,8 +121,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter =
-        new ListFilter(Include.ALL).addQueryParam("status", statusParam).addQueryParam("alertActionType", typeParam);
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("alertActionType", typeParam);
     return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
@@ -323,9 +319,13 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public Response deleteAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, true);
+    return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   public AlertAction getAlertAction(CreateAlertAction create, String user) throws IOException {

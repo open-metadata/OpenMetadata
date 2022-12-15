@@ -4,15 +4,17 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
@@ -67,8 +69,8 @@ public class AlertUtil {
     }
   }
 
-  public static List<Function> getAlertFilterFunctions() {
-    List<Function> alertFunctions = new ArrayList<>();
+  public static Map<String, Function> getAlertFilterFunctions() {
+    Map<String, Function> alertFunctions = new HashMap<>();
     for (Function func : CollectionRegistry.getInstance().getFunctions(AlertsRuleEvaluator.class)) {
       AlertsRuleEvaluator.AlertRuleType type = AlertsRuleEvaluator.AlertRuleType.valueOf(func.getName());
       ParamAdditionalContext paramAdditionalContext = new ParamAdditionalContext();
@@ -87,8 +89,12 @@ public class AlertUtil {
           List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).collect(Collectors.toList());
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
           break;
+        case matchTestResult:
+          List<String> testResultStatus =
+              Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).collect(Collectors.toList());
+          func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
       }
-      alertFunctions.add(func);
+      alertFunctions.put(func.getName(), func);
     }
     return alertFunctions;
   }

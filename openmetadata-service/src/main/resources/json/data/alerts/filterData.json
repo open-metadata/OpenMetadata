@@ -1,0 +1,405 @@
+[
+  {
+    "entityType" : "all",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType",
+      "matchTestResult",
+      "matchUpdatedBy"
+    ]
+  },
+  {
+    "entityType" : "bot",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType": "chart",
+    "supportedFunctions": [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "dashboard",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "dashboardService",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "database",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "databaseSchema",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "databaseService",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "glossary",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "glossaryTerm",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "ingestionPipeline",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "location",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "messagingService",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "metrics",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "mlmodel",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "mlmodelService",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "pipeline",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "pipelineService",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "policy",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "report",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "role",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "storageService",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "table",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "tag",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "tagCategory",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "team",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "topic",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "user",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "events",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "feed",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "testSuite",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "testDefinition",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "testCase",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType",
+      "matchTestResult"
+    ]
+  },
+  {
+    "entityType" : "type",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "webAnalyticEvent",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "dataInsightChart",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "kpi",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "metadataService",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "alert",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  },
+  {
+    "entityType" : "alertAction",
+    "supportedFunctions" : [
+      "matchAnySource",
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEntityId",
+      "matchAnyEventType"
+    ]
+  }
+]
