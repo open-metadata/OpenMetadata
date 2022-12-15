@@ -9,27 +9,119 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: docker-openmetadata-server docker
+name: docker-openmetadata-server release app
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Input tag"
+      GITHUB_RELEASE_TAG:
+        description: "Github Release Tag"
+        required: true
+      DOCKER_RELEASE_TAG:
+        description: "Docker Release Tag"
         required: true
   release:
     types: [published]
-
 jobs:
+  maven-build:
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      
+      - name: Install antlr cli
+        run: |
+          sudo make install_antlr_cli
+
+      - name: Build OpenMetadata Server Application
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn -DskipTests clean package
+
+      - name: Upload OpenMetadata application to Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openmetadata-binary
+          path: /home/runner/work/OpenMetadata/OpenMetadata/openmetadata-dist/target/*.tar.gz
+ 
+  release-project-event-release:
+    if: github.event_name == 'release'
+    name: Release app with release event
+    runs-on: ubuntu-latest
+    needs: maven-build
+    steps:
+      - name: Check trigger type
+        id: check_trigger
+        run: echo "GITHUB_RELEASE_TAG=0.13.0" >> $GITHUB_OUTPUT
+        
+      - name: Download application from Artifiact
+        uses: actions/download-artifact@v2
+        with:
+          name: openmetadata-binary
+
+      - name: Get release data
+        id: get_release
+        uses: bruceadams/get-release@v1.3.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload app tar to Github Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./openmetadata-${{ steps.check_trigger.outputs.GITHUB_RELEASE_TAG }}.tar.gz
+          asset_name: openmetadata-${{ steps.check_trigger.outputs.GITHUB_RELEASE_TAG }}.tar.gz
+          asset_content_type: application/tar.gz
+          
+  release-project-event-workflow_dispatch:
+    if: github.event_name == 'workflow_dispatch'
+    name: Release app with workflow_dispatch event
+    runs-on: ubuntu-latest
+    needs: maven-build
+    steps:
+
+      - name: Fetch Release Data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: attach_release
+        run: |
+          echo "UPLOAD_URL=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/open-metadata/OpenMetadata/releases/tags/${{ inputs.GITHUB_RELEASE_TAG }}  | jq .upload_url | tr -d '"' )" >> $GITHUB_OUTPUT
+
+      - name: Download application from Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: openmetadata-binary
+
+      - name: Upload app to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_path: ./openmetadata-${{ inputs.GITHUB_RELEASE_TAG }}.tar.gz
+          upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
+          asset_name: openmetadata-${{ inputs.GITHUB_RELEASE_TAG }}.tar.gz
+          asset_content_type: application/tar.gz
+
   push_to_docker_hub:
     runs-on: ubuntu-latest
     env:
-      input: ${{ github.event.inputs.tag }}
-      
+      DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
+    if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
+    needs: [release-project-event-workflow_dispatch, release-project-event-release]  
     steps:
       - name: Check trigger type
-        if: ${{ env.input == '' }}
-        run: echo "input=0.12.0" >> $GITHUB_ENV
-    
+        id: check_trigger
+        if: ${{ env.DOCKER_RELEASE_TAG == '' }} 
+        run: echo "DOCKER_RELEASE_TAG=0.13.0" >> $GITHUB_ENV
+
       - name: Check out the Repo
         uses: actions/checkout@v3
 
@@ -51,6 +143,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
-          # Update tags before every release
-          tags: 'openmetadata/server:${{ env.input }},openmetadata/server:latest'
+
+          tags: 'openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest'
           file: ./docker/metadata/Dockerfile

@@ -137,9 +137,17 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   return <></>;
 };
 
+const getSearchLabel = (itemLabel: string, searchKey: string) => {
+  const regex = new RegExp(searchKey, 'gi');
+  const result = itemLabel.replace(regex, `<mark>${searchKey}</mark>`);
+
+  return result;
+};
+
 export const getSearchDropdownLabels = (
   optionsArray: string[],
-  checked: boolean
+  checked: boolean,
+  searchKey = ''
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
     return optionsArray.map((option) => ({
@@ -151,7 +159,11 @@ export const getSearchDropdownLabels = (
             ellipsis
             className="dropdown-option-label"
             title={option}>
-            {option}
+            <span
+              dangerouslySetInnerHTML={{
+                __html: getSearchLabel(option, searchKey),
+              }}
+            />
           </Typography.Text>
         </Space>
       ),

@@ -13,23 +13,22 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
   LegendProps,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
 } from 'recharts';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
-  BAR_SIZE,
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -38,6 +37,7 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import {
   CustomTooltip,
   getGraphDataByEntityType,
@@ -56,6 +56,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
     useState<DataInsightChartResult>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   const { data, entities, total } = useMemo(() => {
     return getGraphDataByEntityType(
@@ -85,6 +86,12 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
     }
   };
 
+  const handleLegendClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
+
   useEffect(() => {
     fetchTotalEntitiesDescriptionByType();
   }, [chartFilter]);
@@ -110,29 +117,30 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
           debounce={1}
           id="description-summary-graph"
           minHeight={400}>
-          <BarChart data={data} margin={BAR_CHART_MARGIN}>
-            <CartesianGrid strokeDasharray="3 3" />
+          <LineChart data={data} margin={BAR_CHART_MARGIN}>
+            <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
             <XAxis dataKey="timestamp" />
             <Tooltip content={<CustomTooltip isPercentage />} />
             <Legend
               align="left"
               content={(props) =>
-                renderLegend(props as LegendProps, `${total}%`)
+                renderLegend(props as LegendProps, `${total}%`, activeKeys)
               }
               layout="vertical"
               verticalAlign="top"
-              wrapperStyle={{ left: '0px' }}
+              wrapperStyle={{ left: '0px', top: '0px' }}
+              onClick={handleLegendClick}
             />
             {entities.map((entity) => (
-              <Bar
-                barSize={BAR_SIZE}
+              <Line
                 dataKey={entity}
-                fill={ENTITIES_BAR_COLO_MAP[entity]}
-                key={uniqueId()}
-                stackId="description"
+                hide={activeKeys.length ? !activeKeys.includes(entity) : false}
+                key={entity}
+                stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                type="monotone"
               />
             ))}
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       ) : (
         <EmptyGraphPlaceholder />

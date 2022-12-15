@@ -41,12 +41,14 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   options,
   searchKey,
   selectedKeys,
+  highlight = false,
   onChange,
   onSearch,
 }) => {
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState('');
   const [selectedOptions, setSelectedOptions] =
     useState<string[]>(selectedKeys);
 
@@ -54,7 +56,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Separating selected options to show on top
     const selectedOptionKeys =
-      getSearchDropdownLabels(selectedOptions, true) || [];
+      getSearchDropdownLabels(
+        selectedOptions,
+        true,
+        highlight ? searchText : ''
+      ) || [];
 
     // Filtering out unselected options
     const unselectedOptions = options.filter(
@@ -63,7 +69,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
     // Labels for unselected options
     const otherOptions =
-      getSearchDropdownLabels(unselectedOptions, false) || [];
+      getSearchDropdownLabels(
+        unselectedOptions,
+        false,
+        highlight ? searchText : ''
+      ) || [];
 
     return [...selectedOptionKeys, ...otherOptions];
   }, [options, selectedOptions]);
@@ -88,7 +98,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // handle search
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-
+    setSearchText(value);
     onSearch(value, searchKey);
   };
 

@@ -13,13 +13,6 @@
       "items": {
         "$ref": "./alertFilterRules.json"
       }
-    },
-    "alertActions": {
-      "description": "A set of filter rules associated with the Alert.",
-      "type": "array",
-      "items": {
-        "$ref": "./alertFilterRules.json"
-      }
     }
   },
   "properties": {
@@ -87,6 +80,6 @@
       "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["id", "name", "triggerConfig", "alertActions"],
+  "required": ["id", "name", "triggerConfig"],
   "additionalProperties": false
 }
