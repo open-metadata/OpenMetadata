@@ -373,6 +373,7 @@
     "tag-lowercase": "tag",
     "service": "Service",
     "chart": "Chart",
+    "chart-plural": "Charts",
     "task": "Task",
     "add-entity": "Add {{entity}}",
     "deleted-team-action": "{{action}} Deleted Team",
@@ -523,6 +524,8 @@
     "search-entity": "Search {{entity}}",
     "more": "More",
     "update": "Update",
+    "dashboard-detail-plural-lowercase": "dashboard details",
+    "pipeline-detail-plural-lowercase": "pipeline details",
     "reply-in-conversation": "Reply in conversation",
     "older-reply-lowercase": "older reply",
     "older-replies-lowercase": "older replies",
@@ -674,7 +677,8 @@
     "no-query-available": "No query available",
     "unexpected-response": "Unexpected response from server!",
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
-    "team-moved-error": "Error while moving team"
+    "team-moved-error": "Error while moving team",
+    "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}"
   },
   "url": {}
 }
