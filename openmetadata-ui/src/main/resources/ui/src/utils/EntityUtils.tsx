@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import { Bucket, LeafNodes, LineagePos } from 'Models';
 import React, { Fragment } from 'react';
@@ -113,7 +114,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service,
           url: getServiceDetailsPath(
             service,
@@ -122,7 +123,7 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Database',
+          name: i18next.t('label.database'),
           value: database,
           url: getDatabaseDetailsPath(
             getPartialNameFromTableFQN(
@@ -134,7 +135,7 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Schema',
+          name: i18next.t('label.schema'),
           value: schema,
           url: getDatabaseSchemaDetailsPath(
             getPartialNameFromTableFQN(
@@ -146,33 +147,33 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: 'Usage',
+          name: i18next.t('label.usage'),
           value: usage,
           isLink: false,
         },
         {
-          name: 'Queries',
+          name: i18next.t('label.query-plural'),
           value: `${queries} past week`,
           isLink: false,
         },
         {
-          name: 'Columns',
+          name: i18next.t('label.columns-plural'),
           value: columns ? columns.length : '--',
           isLink: false,
         },
         {
-          name: 'Rows',
+          name: i18next.t('label.row-plural'),
           value: profile && profile?.rowCount ? profile.rowCount : '--',
           isLink: false,
         },
@@ -188,7 +189,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
@@ -197,18 +198,18 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: `${serviceType} url`,
+          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
           value: fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string,
           url: pipelineUrl as string,
           isLink: true,
@@ -231,7 +232,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: 'Service',
+          name: i18next.t('label.service'),
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
@@ -240,18 +241,18 @@ export const getEntityOverview = (
           isLink: true,
         },
         {
-          name: 'Owner',
+          name: i18next.t('label.owner'),
           value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: owner ? owner.type === 'team' : false,
         },
         {
-          name: 'Tier',
+          name: i18next.t('label.tier'),
           value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
-          name: `${serviceType} url`,
+          name: `${serviceType} ${i18next.t('label.url-lowercase')}`,
           value:
             displayName ||
             (fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string),

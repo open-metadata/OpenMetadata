@@ -233,10 +233,10 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         try:
             paginator = self.client.get_paginator("list_objects_v2")
             for page in paginator.paginate(**kwargs):
-                yield from page["Contents"]
+                yield from page.get("Contents", [])
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield s3 object [{page}]: {exc}")
+            logger.warning(f"Unexpected exception to yield s3 object: {exc}")
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,

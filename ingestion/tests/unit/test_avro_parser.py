@@ -73,14 +73,15 @@ class AvroParserTests(TestCase):
     parsed_schema = parse_avro_schema(sample_avro_schema)
 
     def test_schema_name(self):
-        self.assertEqual(self.parsed_schema.name, "Order")
-        self.assertEqual(self.parsed_schema.namespace, "example.avro")
+        self.assertEqual(self.parsed_schema[0].name.__root__, "Order")
 
     def test_schema_type(self):
-        self.assertEqual(self.parsed_schema.type, "record")
+        self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_field_names(self):
-        field_names = {str(field.name) for field in self.parsed_schema.fields}
+        field_names = {
+            str(field.name.__root__) for field in self.parsed_schema[0].children
+        }
         self.assertEqual(
             field_names,
             {
@@ -98,5 +99,7 @@ class AvroParserTests(TestCase):
         )
 
     def test_field_types(self):
-        field_types = {str(field.type) for field in self.parsed_schema.fields}
-        self.assertEqual(field_types, {'"int"', '"string"', '"double"'})
+        field_types = {
+            str(field.dataType.name) for field in self.parsed_schema[0].children
+        }
+        self.assertEqual(field_types, {"INT", "STRING", "DOUBLE"})
