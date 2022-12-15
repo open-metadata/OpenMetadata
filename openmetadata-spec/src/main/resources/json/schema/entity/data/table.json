@@ -578,7 +578,13 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "maximum": 100,
-          "default": null
+          "default": 0
+        },
+        "profileSampleRows": {
+          "description": "No. of rows for data we want to execute the profiler and tests on.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
@@ -622,6 +628,12 @@
           "exclusiveMinimum": 0,
           "maximum": 100,
           "default": null
+        },
+        "profileSampleRows": {
+          "description": "No. of rows for data we want to execute the profiler and tests on.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0
         },
         "columnCount": {
           "description": "No.of columns in the table.",

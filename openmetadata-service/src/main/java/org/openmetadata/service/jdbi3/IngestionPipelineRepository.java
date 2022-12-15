@@ -194,16 +194,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public IngestionPipeline checkProfileSampleType(IngestionPipeline ingestionPipeline) throws IOException {
-    if (Objects.equals(ingestionPipeline.getPipelineType().value(), "profiler")) {
+    if (ingestionPipeline.getPipelineType().value().equals("profiler")) {
       JSONObject origSourceConfig =
-          new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-      ObjectMapper objMapper = new ObjectMapper();
-
+              new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
       if (origSourceConfig.has("profileSample") && origSourceConfig.has("profileSampleRows")) {
         //        Default to percentage
         JSONObject newSourceConfig =
-            new JSONObject().put("config", origSourceConfig.put("profileSampleRows", (Integer) null));
-        SourceConfig sc = objMapper.readValue(newSourceConfig.toString(), SourceConfig.class);
+                new JSONObject().put("config", origSourceConfig.put("profileSampleRows", (Integer) null));
+        SourceConfig sc = JsonUtils.readValue(newSourceConfig.toString(), SourceConfig.class);
         ingestionPipeline.setSourceConfig(sc);
         return ingestionPipeline;
       }
