@@ -77,12 +77,6 @@ jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (label: string) => label,
-  }),
-}));
-
 describe('Test Roles Details Page', () => {
   it('Should render the detail component', async () => {
     render(<RolesDetailPage />);
