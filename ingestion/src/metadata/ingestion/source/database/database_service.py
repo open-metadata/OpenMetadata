@@ -27,10 +27,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
@@ -175,11 +171,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_location",
                 consumer=["storage_service"],
                 nullable=True,
-            ),
-            NodeStage(
-                type_=DataModelLink,
-                processor="yield_datamodel",
-                ack_sink=False,
             ),
             NodeStage(
                 type_=TableLocationLink,
@@ -344,52 +335,6 @@ class DatabaseServiceSource(
         fetch all schema names without any filtering.
         """
         yield from self.get_database_schema_names()
-
-    def yield_datamodel(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[DataModelLink]:
-        """
-        Gets the current table being processed, fetches its data model
-        and sends it ot the sink
-        """
-
-        table_name, _ = table_name_and_type
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
-            table_name=table_name,
-        )
-
-        # datamodel = self.get_data_model(table_fqn)
-        datamodel = None
-        dbt_tag_labels = None
-        if datamodel:
-            logger.info("Processing DBT Tags")
-            dbt_tag_labels = datamodel.tags
-            if not dbt_tag_labels:
-                dbt_tag_labels = []
-            for column in datamodel.columns:
-                if column.tags:
-                    dbt_tag_labels.extend(column.tags)
-            if dbt_tag_labels:
-                for tag_label in dbt_tag_labels:
-                    yield OMetaTagAndCategory(
-                        category_name=CreateTagCategoryRequest(
-                            name="DBTTags",
-                            description="",
-                        ),
-                        category_details=CreateTagRequest(
-                            name=tag_label.tagFQN.__root__.split(".")[1],
-                            description="DBT Tags",
-                        ),
-                    )
-            yield DataModelLink(
-                fqn=table_fqn,
-                datamodel=datamodel,
-            )
 
     def yield_table_location_link(
         self,

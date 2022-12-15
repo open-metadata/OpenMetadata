@@ -12,7 +12,6 @@
 DBT source methods.
 """
 import traceback
-from abc import ABC
 from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
@@ -76,7 +75,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-methods
+class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
     """
     Class defines method to extract metadata from DBT
     """
@@ -105,6 +104,7 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
         """
         By default, there's nothing to prepare
         """
+        # By default for DBT nothing is required to be prepared
 
     def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
         """
@@ -147,7 +147,7 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
                     self.metadata,
                     entity_type=Tag,
                     tag_category_name="DBTTags",
-                    tag_name=tag,
+                    tag_name=tag.replace(".", ""),
                 ),
                 labelType=LabelType.Automated,
                 state=State.Confirmed,
@@ -267,7 +267,7 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception creating DBT tags: {exc}")
 
-    def yield_data_models(self, dbt_files: DbtFiles) -> DataModelLink:
+    def yield_data_models(self, dbt_files: DbtFiles) -> Iterable[DataModelLink]:
         """
         Yield the data models
         """
@@ -453,7 +453,9 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
 
         return columns
 
-    def create_dbt_lineage(self, data_model_link: DataModelLink) -> AddLineageRequest:
+    def create_dbt_lineage(
+        self, data_model_link: DataModelLink
+    ) -> Iterable[AddLineageRequest]:
         """
         Method to process DBT lineage from upstream nodes
         """
@@ -500,7 +502,7 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
 
     def create_dbt_query_lineage(
         self, data_model_link: DataModelLink
-    ) -> AddLineageRequest:
+    ) -> Iterable[AddLineageRequest]:
         """
         Method to process DBT lineage from queries
         """
@@ -569,7 +571,9 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
                     f"Failed to parse the node {data_model_link.fqn.__root__} to update dbt desctiption: {exc}"
                 )
 
-    def create_dbt_tests_suite(self, dbt_test: dict) -> CreateTestSuiteRequest:
+    def create_dbt_tests_suite(
+        self, dbt_test: dict
+    ) -> Iterable[CreateTestSuiteRequest]:
         """
         Method to add the DBT tests suites
         """
@@ -591,7 +595,7 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
 
     def create_dbt_tests_suite_definition(
         self, dbt_test: dict
-    ) -> CreateTestDefinitionRequest:
+    ) -> Iterable[CreateTestDefinitionRequest]:
         """
         AMethod to add DBT test definitions
         """
@@ -620,7 +624,7 @@ class DbtSource(DbtServiceSource, ABC):  # pylint: disable=too-many-public-metho
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Failed to parse the node to capture tests {err}")
 
-    def create_dbt_test_case(self, dbt_test: dict) -> CreateTestCaseRequest:
+    def create_dbt_test_case(self, dbt_test: dict) -> Iterable[CreateTestCaseRequest]:
         """
         After test suite and test definitions have been processed, add the tests cases info
         """
