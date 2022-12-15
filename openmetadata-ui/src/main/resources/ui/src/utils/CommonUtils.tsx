@@ -24,6 +24,8 @@ import {
   isNull,
   isString,
   isUndefined,
+  toNumber,
+  toString,
   uniqueId,
 } from 'lodash';
 import {
@@ -57,6 +59,7 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
 import {
+  timeFormatRegex,
   UrlEntityCharRegEx,
   validEmailRegEx,
 } from '../constants/regex.constants';
@@ -692,6 +695,21 @@ export const showPagination = (paging: Paging) => {
 
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
+};
+
+/**
+ * If the number is a time format, return the number, otherwise format the number with commas
+ * @param {number} number - The number to be formatted.
+ * @returns A function that takes a number and returns a string.
+ */
+export const getStatisticsDisplayValue = (
+  number: string | number | undefined
+) => {
+  if (timeFormatRegex.test(toString(number))) {
+    return number;
+  }
+
+  return formatNumberWithComma(toNumber(number));
 };
 
 export const formTwoDigitNmber = (number: number) => {

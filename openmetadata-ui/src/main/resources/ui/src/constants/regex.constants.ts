@@ -25,3 +25,6 @@ export const nameWithSpace = /\s/g;
 
 export const passwordRegex =
   /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,16}$/g;
+
+export const timeFormatRegex =
+  /^(2[+-]?[0-3]|[01]?[0-9]*[.])?[0-9]+:?([+-]?[0-5]?[0-9]*[.])?[0-9]+:?([+-]?([0-5]*[.])?[0-9]+)+$/;
