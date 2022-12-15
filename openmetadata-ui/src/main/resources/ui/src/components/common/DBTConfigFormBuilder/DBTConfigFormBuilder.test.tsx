@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
+import i18n from 'i18next';
 import React from 'react';
 import { FormSubmitType } from '../../../enums/form.enum';
 import DBTConfigFormBuilder from './DBTConfigFormBuilder';
@@ -153,8 +154,8 @@ const mockIngestionName = jest.fn();
 
 const mockProps = {
   data: mockData,
-  okText: 'Next',
-  cancelText: 'Cancel',
+  okText: i18n.t('label.next'),
+  cancelText: i18n.t('label.cancel'),
   gcsType: GCS_CONFIG.GCSValues,
   handleGcsTypeChange: mockCatalogChange,
   handleSourceChange: mockManifestChange,
@@ -162,7 +163,7 @@ const mockProps = {
   onSubmit: mockSubmit,
   formType: FormSubmitType.ADD,
   handleIngestionName: mockIngestionName,
-  ingestionName: 'DBT',
+  ingestionName: i18n.t('label.dbt'),
 };
 
 describe('Test DBT Config Form Builder', () => {

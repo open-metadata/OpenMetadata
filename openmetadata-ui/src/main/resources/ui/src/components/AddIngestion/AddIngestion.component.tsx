@@ -14,6 +14,7 @@
 import { isEmpty, isUndefined, trim } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
@@ -81,6 +82,7 @@ const AddIngestion = ({
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
+  const { t } = useTranslation();
   const isDatabaseService = useMemo(() => {
     return serviceCategory === ServiceCategory.DATABASE_SERVICES;
   }, [serviceCategory]);
@@ -783,7 +785,7 @@ const AddIngestion = ({
 
         {activeIngestionStep === 2 && (
           <DBTConfigFormBuilder
-            cancelText="Cancel"
+            cancelText={t('label.cancel')}
             data={dbtConfigSource || {}}
             formType={status}
             gcsType={gcsConfigType}
@@ -791,7 +793,7 @@ const AddIngestion = ({
             handleIngestionName={(val) => setIngestionName(val)}
             handleSourceChange={(src) => setDbtConfigSourceType(src)}
             ingestionName={ingestionName}
-            okText="Next"
+            okText={t('label.next')}
             source={dbtConfigSourceType}
             onCancel={handleCancelClick}
             onSubmit={(dbtConfigData) => {
@@ -819,7 +821,9 @@ const AddIngestion = ({
             }
             repeatFrequency={repeatFrequency}
             status={saveState}
-            submitButtonLabel={isUndefined(data) ? 'Add & Deploy' : 'Submit'}
+            submitButtonLabel={
+              isUndefined(data) ? t('label.add-deploy') : t('label.submit')
+            }
             onBack={handlePrev}
             onDeploy={handleScheduleIntervalDeployClick}
           />

@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FormSubmitType } from '../../../enums/form.enum';
 import {
   DBTBucketDetails,
@@ -19,7 +21,6 @@ import {
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
-import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
 import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
@@ -44,6 +45,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   ingestionName,
   handleIngestionName,
 }: DBTConfigFormProps) => {
+  const { t } = useTranslation();
   const [dbtConfig, setDbtConfig] = useState<DbtConfig>(data);
 
   const updateDbtConfig = (
@@ -207,27 +209,24 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         return (
           <Fragment>
             <span data-testid="dbt-source-none">
-              No source selected for DBT Configuration.
+              {t('label.no-selected-dbt')}
             </span>
             {getSeparator('')}
             <Field className="tw-flex tw-justify-end">
               <Button
-                className="tw-mr-2"
+                className="m-r-xs"
                 data-testid="back-button"
-                size="regular"
-                theme="primary"
-                variant="text"
+                type="link"
                 onClick={onCancel}>
-                <span>{cancelText}</span>
+                {cancelText}
               </Button>
 
               <Button
+                className="font-medium p-x-md p-y-xxs h-auto rounded-6"
                 data-testid="submit-btn"
-                size="regular"
-                theme="primary"
-                variant="contained"
+                type="primary"
                 onClick={() => onSubmit()}>
-                <span>{okText}</span>
+                {okText}
               </Button>
             </Field>
           </Fragment>
@@ -244,10 +243,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     <Fragment>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-          Name
+          {t('label.name')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          Name that identifies this configuration instance uniquely.
+          {t('message.instance-identifier')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -263,17 +262,17 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbt-source">
-          DBT Configuration Source
+          {t('label.dbt-Configuration-source')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          Available sources to fetch DBT catalog and manifest files.
+          {t('message.fetch-dbt-files')}
         </p>
         <select
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="dbt-source"
           id="dbt-source"
           name="dbt-source"
-          placeholder="Select DBT Source"
+          placeholder={t('label.select-dbt-source')}
           value={source}
           onChange={(e) => {
             handleSourceChange &&

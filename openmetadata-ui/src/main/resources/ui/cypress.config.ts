@@ -6,7 +6,7 @@ export default defineConfig({
   viewportWidth: 1240,
   viewportHeight: 660,
   watchForFileChanges: false,
-  defaultCommandTimeout: 50000,
+  defaultCommandTimeout: 5000,
   videoUploadOnPasses: false,
   chromeWebSecurity: false,
   numTestsKeptInMemory: 0,
@@ -17,7 +17,7 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    baseUrl: 'http://localhost:3000',
+    baseUrl: 'http://localhost:8585',
     specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
   },
 });

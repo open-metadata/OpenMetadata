@@ -56,25 +56,6 @@ describe('RedShift Ingestion', () => {
         .click();
     };
 
-    // const configureDBT = () => {
-    //   cy.contains('Configure DBT Model').should('be.visible');
-    //   cy.get('[data-testid="dbt-source"]')
-    //     .should('be.visible')
-    //     .select('HTTP Config Source');
-    //   cy.get('[data-testid="catalog-url"]')
-    //     .scrollIntoView()
-    //     .should('be.visible')
-    //     .type(HTTP_CONFIG_SOURCE.DBT_CATALOG_HTTP_PATH);
-    //   cy.get('[data-testid="manifest-url"]')
-    //     .scrollIntoView()
-    //     .should('be.visible')
-    //     .type(HTTP_CONFIG_SOURCE.DBT_MANIFEST_HTTP_PATH);
-    //   cy.get('[data-testid="run-result-file"]')
-    //     .scrollIntoView()
-    //     .should('be.visible')
-    //     .type(HTTP_CONFIG_SOURCE.DBT_RUN_RESTLTS_FILE_PATH);
-    // };
-
     testServiceCreationAndIngestion(
       REDSHIFT.serviceType,
       connectionInput,
@@ -82,7 +63,6 @@ describe('RedShift Ingestion', () => {
       REDSHIFT.serviceName,
       'database',
       true,
-    //   configureDBT
     );
   });
 
