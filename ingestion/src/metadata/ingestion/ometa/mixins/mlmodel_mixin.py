@@ -79,10 +79,10 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 AddLineageRequest(
                     description="MlModel uses FeatureSource",
                     edge=EntitiesEdge(
-                        fromEntity=self.get_entity_reference(
+                        fromEntity=entity_ref,
+                        toEntity=self.get_entity_reference(
                             entity=MlModel, fqn=model.fullyQualifiedName
                         ),
-                        toEntity=entity_ref,
                     ),
                 )
             )
