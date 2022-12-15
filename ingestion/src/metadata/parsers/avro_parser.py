@@ -17,7 +17,7 @@ import traceback
 from typing import List, Optional
 
 import avro.schema as avroschema
-from avro.schema import ArraySchema, RecordSchema
+from avro.schema import ArraySchema
 
 from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
@@ -25,13 +25,20 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def parse_avro_schema(schema: str) -> Optional[RecordSchema]:
+def parse_avro_schema(schema: str) -> Optional[List[FieldModel]]:
     """
     Method to parse the avro schema
     """
     try:
         parsed_schema = avroschema.parse(schema)
-        return parsed_schema
+        field_models = [
+            FieldModel(
+                name=parsed_schema.name,
+                dataType=str(parsed_schema.type).upper(),
+                children=get_avro_fields(parsed_schema),
+            )
+        ]
+        return field_models
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(f"Unable to parse the avro schema: {exc}")
@@ -40,7 +47,7 @@ def parse_avro_schema(schema: str) -> Optional[RecordSchema]:
 
 def get_avro_fields(parsed_schema) -> Optional[List[FieldModel]]:
     """
-    Recursively convert the parsed schema into required pydantic models
+    Recursively convert the parsed schema into required models
     """
     field_models = []
 
