@@ -286,7 +286,7 @@ const TeamDetailsV1 = ({
                 disabled={!entityPermissions.EditAll}
                 icon={
                   <SVGIcons
-                    alt="Remove"
+                    alt={t('label.remove')}
                     className="tw-w-4 tw-mb-2.5"
                     icon={Icons.ICON_REMOVE}
                   />
@@ -554,7 +554,7 @@ const TeamDetailsV1 = ({
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
-          entity: 'User Permissions',
+          entity: t('label.user-permissions'),
         })
       );
     } finally {
@@ -639,7 +639,9 @@ const TeamDetailsV1 = ({
   );
 
   const restoreIcon = useMemo(
-    () => <SVGIcons alt="Restore" icon={Icons.RESTORE} width="16px" />,
+    () => (
+      <SVGIcons alt={t('label.restore')} icon={Icons.RESTORE} width="16px" />
+    ),
     [currentTeam.isJoinable]
   );
 
@@ -1366,7 +1368,7 @@ const TeamDetailsV1 = ({
           okText={t('label.confirm')}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity?.record),
-          })} ${t('label.from')} ${getEntityName(currentTeam)}`}
+          })} ${t('label.from-lowercase')} ${getEntityName(currentTeam)}`}
           visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
@@ -1380,7 +1382,7 @@ const TeamDetailsV1 = ({
             {t('label.sure-to-remove')}{' '}
             {`${getEntityName(
               selectedEntity.record
-            )} t('label.from') ${getEntityName(currentTeam)}?`}
+            )} t('label.from-lowercase') ${getEntityName(currentTeam)}?`}
           </Typography.Text>
         </Modal>
       )}

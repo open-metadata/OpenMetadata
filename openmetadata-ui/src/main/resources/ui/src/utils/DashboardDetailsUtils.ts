@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { getChartById } from '../axiosAPIs/chartAPI';
+import i18next from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
@@ -23,21 +24,21 @@ ${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS},${TabSpecificField
 
 export const dashboardDetailsTabs = [
   {
-    name: 'Details',
+    name: i18next.t('label.details'),
     path: 'details',
   },
   {
-    name: 'Activity Feeds & Tasks',
+    name: i18next.t('label.activity-feed-and-task-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Lineage',
+    name: i18next.t('label.lineage'),
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Custom Properties',
+    name: i18next.t('label.custom-properties'),
     path: 'custom_properties',
   },
 ];

@@ -108,6 +108,12 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockReturnValue(''),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (label: string) => label,
+  }),
+}));
+
 describe('Test Policy details page', () => {
   it('Should render the policy details page component', async () => {
     render(<PoliciesDetailPage />);
@@ -118,11 +124,11 @@ describe('Test Policy details page', () => {
 
     const description = await screen.findByTestId('description-data');
 
-    const rulesTab = await screen.findByText('Rules');
+    const rulesTab = await screen.findByText('label.rules');
 
-    const rolesTab = await screen.findByText('Roles');
+    const rolesTab = await screen.findByText('label.roles');
 
-    const teamsTab = await screen.findByText('Teams');
+    const teamsTab = await screen.findByText('label.teams');
 
     expect(container).toBeInTheDocument();
 
