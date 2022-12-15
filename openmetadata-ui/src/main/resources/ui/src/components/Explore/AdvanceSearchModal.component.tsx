@@ -13,6 +13,7 @@ interface Props {
   searchIndex: SearchIndex;
   onChangeJsonTree: (tree?: JsonTree) => void;
   jsonTree?: JsonTree;
+  onAppliedFilterChange: (value: string) => void;
 }
 
 export const AdvancedSearchModal: FunctionComponent<Props> = ({
@@ -22,6 +23,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
   searchIndex,
   onChangeJsonTree,
   jsonTree,
+  onAppliedFilterChange,
 }: Props) => {
   const [queryFilter, setQueryFilter] = useState<
     Record<string, unknown> | undefined
@@ -68,6 +70,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       <AdvancedSearch
         jsonTree={jsonTree}
         searchIndex={searchIndex}
+        onAppliedFilterChange={onAppliedFilterChange}
         onChangeJsonTree={(nTree) => onChangeJsonTree(nTree)}
         onChangeQueryFilter={setQueryFilter}
       />

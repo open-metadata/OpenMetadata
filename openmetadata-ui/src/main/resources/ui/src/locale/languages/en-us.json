@@ -512,7 +512,8 @@
     "insert": "Insert",
     "update": "Update",
     "table-profile": "Table Profile",
-    "column-profile": "Column Profile"
+    "column-profile": "Column Profile",
+    "applied-advanced-search": "Applied advanced search"
   },
   "message": {
     "service-email-required": "Service account Email is required",

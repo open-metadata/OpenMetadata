@@ -11,17 +11,10 @@
  *  limitations under the License.
  */
 
-import { JsonTree } from 'react-awesome-query-builder';
-import { SearchIndex } from '../../enums/search.enum';
+@gray-color: #dde3ea;
 
-export interface AdvancedSearchProps {
-  jsonTree: JsonTree | undefined;
-  searchIndex: SearchIndex;
-  onChangeJsonTree: (tree: JsonTree) => void;
-  onChangeQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined
-  ) => void;
-  onAppliedFilterChange: (value: string) => void;
+.advanced-filter-text {
+  background: @gray-color;
+  border-radius: 4px;
+  padding: 4px 8px;
 }
-
-export type FilterObject = Record<string, string[]>;
