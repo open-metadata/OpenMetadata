@@ -801,6 +801,10 @@
     "tablePartition": {
       "$ref": "#/definitions/tablePartition"
     },
+    "retentionPeriod": {
+      "description": "Retention period in seconds.",
+      "type": "number"
+    },
     "owner": {
       "description": "Owner of this table.",
       "$ref": "../../type/entityReference.json",
