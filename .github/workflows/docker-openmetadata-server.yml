@@ -77,7 +77,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./openmetadata-${{ steps.check_trigger.outputs.GITHUB_RELEASE_TAG }}-SNAPSHOT.tar.gz
+          asset_path: ./openmetadata-${{ steps.check_trigger.outputs.GITHUB_RELEASE_TAG }}.tar.gz
           asset_name: openmetadata-${{ steps.check_trigger.outputs.GITHUB_RELEASE_TAG }}.tar.gz
           asset_content_type: application/tar.gz
           
@@ -105,7 +105,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_path: ./openmetadata-${{ inputs.GITHUB_RELEASE_TAG }}-SNAPSHOT.tar.gz
+          asset_path: ./openmetadata-${{ inputs.GITHUB_RELEASE_TAG }}.tar.gz
           upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
           asset_name: openmetadata-${{ inputs.GITHUB_RELEASE_TAG }}.tar.gz
           asset_content_type: application/tar.gz
