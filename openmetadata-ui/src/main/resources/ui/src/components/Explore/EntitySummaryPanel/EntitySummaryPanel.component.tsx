@@ -37,24 +37,32 @@ export default function EntitySummaryPanel({
   const { tab } = useParams<{ tab: string }>();
 
   const summaryComponent = useMemo(() => {
-    if (entityDetails.entityType === ExplorePageTabs.TABLES) {
-      return <TableSummary entityDetails={entityDetails.details as Table} />;
-    } else if (entityDetails.entityType === ExplorePageTabs.TOPICS) {
-      return <TopicSummary entityDetails={entityDetails.details as Topic} />;
-    } else if (entityDetails.entityType === ExplorePageTabs.DASHBOARDS) {
-      return (
-        <DashboardSummary entityDetails={entityDetails.details as Dashboard} />
-      );
-    } else if (entityDetails.entityType === ExplorePageTabs.PIPELINES) {
-      return (
-        <PipelineSummary entityDetails={entityDetails.details as Pipeline} />
-      );
-    } else if (entityDetails.entityType === ExplorePageTabs.MLMODELS) {
-      return (
-        <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
-      );
-    } else {
-      return null;
+    switch (entityDetails.entityType) {
+      case ExplorePageTabs.TABLES:
+        return <TableSummary entityDetails={entityDetails.details as Table} />;
+
+      case ExplorePageTabs.TOPICS:
+        return <TopicSummary entityDetails={entityDetails.details as Topic} />;
+
+      case ExplorePageTabs.DASHBOARDS:
+        return (
+          <DashboardSummary
+            entityDetails={entityDetails.details as Dashboard}
+          />
+        );
+
+      case ExplorePageTabs.PIPELINES:
+        return (
+          <PipelineSummary entityDetails={entityDetails.details as Pipeline} />
+        );
+
+      case ExplorePageTabs.MLMODELS:
+        return (
+          <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
+        );
+
+      default:
+        return null;
     }
   }, [tab, entityDetails]);
 

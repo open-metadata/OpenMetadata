@@ -35,6 +35,7 @@
     "success": "Success",
     "aborted": "Aborted",
     "failed": "Failed",
+    "passed": "Passed",
     "row-count": "Row Count",
     "column-count": "Column Count",
     "table-sample": "Table Sample",

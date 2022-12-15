@@ -1,4 +1,3 @@
-import { ReactNode } from 'react';
 /*
  *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +11,7 @@ import { ReactNode } from 'react';
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { Chart, ChartType } from '../../../../generated/entity/data/chart';
 import {
   FeatureType,

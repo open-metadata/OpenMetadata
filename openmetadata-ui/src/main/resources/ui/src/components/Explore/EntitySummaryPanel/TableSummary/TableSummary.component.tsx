@@ -113,30 +113,30 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
   const overallSummary: OverallTableSummeryType[] = useMemo(() => {
     return [
       {
-        title: 'Row Count',
+        title: t('label.row-count'),
         value: formatNumberWithComma(TableDetails?.profile?.rowCount ?? 0),
       },
       {
-        title: 'Column Count',
+        title: t('label.column-count'),
         value:
           TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
-        title: 'Table Sample %',
+        title: `${t('label.table-sample')} %`,
         value: `${TableDetails?.profile?.profileSample ?? 100}%`,
       },
       {
-        title: 'Tests Passed',
+        title: `${t('label.test-plural')} ${t('label.passed')}`,
         value: formTwoDigitNmber(tableTests.results.success),
         className: 'success',
       },
       {
-        title: 'Tests Aborted',
+        title: `${t('label.test-plural')} ${t('label.aborted')}`,
         value: formTwoDigitNmber(tableTests.results.aborted),
         className: 'aborted',
       },
       {
-        title: 'Tests Failed',
+        title: `${t('label.test-plural')} ${t('label.failed')}`,
         value: formTwoDigitNmber(tableTests.results.failed),
         className: 'failed',
       },
