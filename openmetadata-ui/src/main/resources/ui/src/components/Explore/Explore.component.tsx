@@ -41,6 +41,7 @@ import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import { AdvancedSearchModal } from './AdvanceSearchModal.component';
+import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
   EntityDetailsObjectInterface,
@@ -82,6 +83,12 @@ const Explore: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<{ details: EntityDetailsType; entityType: string }>();
+
+  const [appliedFilterSQLFormat, setAppliedFilterSQLFormat] =
+    useState<string>('');
+
+  const handleAppliedFilterChange = (value: string) =>
+    setAppliedFilterSQLFormat(value);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -289,6 +296,15 @@ const Explore: React.FC<ExploreProps> = ({
               onFieldValueSelect={handleAdvanceFieldValueSelect}
             />
           </Col>
+          {appliedFilterSQLFormat && (
+            <Col span={24}>
+              <AppliedFilterText
+                filterText={appliedFilterSQLFormat}
+                onEdit={() => setShowAdvanceSearchModal(true)}
+              />
+            </Col>
+          )}
+
           <Col span={24}>
             {!loading ? (
               <SearchedData
@@ -321,6 +337,7 @@ const Explore: React.FC<ExploreProps> = ({
         jsonTree={advancedSearchJsonTree}
         searchIndex={searchIndex}
         visible={showAdvanceSearchModal}
+        onAppliedFilterChange={handleAppliedFilterChange}
         onCancel={() => setShowAdvanceSearchModal(false)}
         onChangeJsonTree={onChangeAdvancedSearchJsonTree}
         onSubmit={onChangeAdvancedSearchQueryFilter}
