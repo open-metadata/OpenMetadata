@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELAS
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.UUID;
@@ -12,8 +13,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
@@ -23,7 +27,9 @@ public class AlertsRuleEvaluator {
     matchAnyOwnerName,
     matchAnyEntityFqn,
     matchAnyEntityId,
-    matchAnyEventType
+    matchAnyEventType,
+    matchTestResult,
+    matchUpdatedBy
   }
 
   private final ChangeEvent changeEvent;
@@ -134,6 +140,53 @@ public class AlertsRuleEvaluator {
     String eventType = changeEvent.getEventType().toString();
     for (String type : eventTypesList) {
       if (eventType.equals(type)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchTestResult",
+      input = "List of comma separated eventType",
+      description = "Returns true if the change event entity being accessed has following entityId from the List.",
+      examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchTestResult(String... testResults) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
+      return false;
+    }
+    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
+      // in case the entity is not test case return since the filter doesn't apply
+      return true;
+    }
+    for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
+      if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
+        TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
+        TestCaseStatus status = testCaseResult.getTestCaseStatus();
+        for (String givenStatus : testResults) {
+          if (givenStatus.equals(status.value())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchUpdatedBy",
+      input = "List of comma separated updated by users",
+      description = "Returns true if the change event entity is updated by the mentioned users",
+      examples = {"matchUpdatedBy('user1', 'user2')"},
+      paramInputType = READ_FROM_PARAM_CONTEXT)
+  public boolean matchUpdatedBy(String... updatedByUserList) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
+      return false;
+    }
+    String entityUpdatedBy = changeEvent.getUserName();
+    for (String name : updatedByUserList) {
+      if (name.equals(entityUpdatedBy)) {
         return true;
       }
     }

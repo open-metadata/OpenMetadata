@@ -1,12 +1,13 @@
+import i18next from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const databaseDetailsTabs = [
   {
-    name: 'Schemas',
+    name: i18next.t('label.schemas'),
     path: 'schemas',
   },
   {
-    name: 'Activity Feeds',
+    name: i18next.t('label.activity-feeds'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },

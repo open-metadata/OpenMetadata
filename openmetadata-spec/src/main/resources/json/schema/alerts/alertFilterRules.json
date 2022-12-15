@@ -30,6 +30,6 @@
       "$ref" : "../type/basic.json#/definitions/expression"
     }
   },
-  "required": ["name", "effect", "condition"],
+  "required": ["effect", "condition"],
   "additionalProperties": false
 }
