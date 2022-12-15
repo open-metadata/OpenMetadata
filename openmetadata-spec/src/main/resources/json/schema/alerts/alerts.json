@@ -87,6 +87,6 @@
       "$ref": "../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["id", "name", "triggerConfig", "alertAction"],
+  "required": ["id", "name", "triggerConfig", "alertActions"],
   "additionalProperties": false
 }

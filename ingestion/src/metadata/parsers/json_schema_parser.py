@@ -15,35 +15,69 @@ Utils module to parse the jsonschema
 
 import json
 import traceback
-from typing import Optional
+from enum import Enum
+from typing import List, Optional
 
+from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-def parse_json_schema(schema_text: str) -> Optional[dict]:
+class JsonSchemaDataTypes(Enum):
+    """
+    Enum for Json Schema Datatypes
+    """
+
+    STRING = "string"
+    FLOAT = "number"
+    INT = "integer"
+    BOOLEAN = "boolean"
+    NULL = "null"
+    RECORD = "object"
+    ARRAY = "array"
+
+
+def parse_json_schema(schema_text: str) -> Optional[List[FieldModel]]:
     """
     Method to parse the jsonschema
     """
     try:
         json_schema_data = json.loads(schema_text)
-        properties = json_schema_data.get("properties")
-        parsed_schema = {}
-        parsed_schema["name"] = json_schema_data.get("title")
-        parsed_schema["type"] = json_schema_data.get("type")
-        parsed_schema["fields"] = []
-
-        for key, value in properties.items():
-            field = {
-                "name": key,
-                "type": value.get("type"),
-                "description": value.get("description"),
-            }
-            parsed_schema["fields"].append(field)
-
-        return parsed_schema
+        field_models = [
+            FieldModel(
+                name=json_schema_data.get("title", "default"),
+                dataType=JsonSchemaDataTypes(json_schema_data.get("type")).name,
+                description=json_schema_data.get("description"),
+                children=get_json_schema_fields(json_schema_data.get("properties")),
+            )
+        ]
+        return field_models
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(f"Unable to parse the jsonschema: {exc}")
     return None
+
+
+def get_json_schema_fields(properties) -> Optional[List[FieldModel]]:
+    """
+    Recursively convert the parsed schema into required models
+    """
+    field_models = []
+    for key, value in properties.items():
+        try:
+            field_models.append(
+                FieldModel(
+                    name=value.get("title", key),
+                    dataType=JsonSchemaDataTypes(value.get("type")).name,
+                    description=value.get("description"),
+                    children=get_json_schema_fields(value.get("properties"))
+                    if value.get("type") == "object"
+                    else None,
+                )
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to parse the json schema into models: {exc}")
+
+    return field_models

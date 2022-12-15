@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
+import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Typography } from 'antd';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { upperCase } from 'lodash';
+import { isEmpty, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
@@ -356,3 +360,23 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
       return '';
   }
 };
+
+export function getTableExpandableConfig<
+  T extends { children?: T[] }
+>(): ExpandableConfig<T> {
+  const expandableConfig: ExpandableConfig<T> = {
+    rowExpandable: (record: T) => !isEmpty(record.children),
+
+    expandIcon: ({ expanded, onExpand, expandable, record }) =>
+      expandable && (
+        <Typography.Text
+          className="m-r-xs cursor-pointer"
+          data-testid="expand-icon"
+          onClick={(e) => onExpand(record, e)}>
+          <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+        </Typography.Text>
+      ),
+  };
+
+  return expandableConfig;
+}

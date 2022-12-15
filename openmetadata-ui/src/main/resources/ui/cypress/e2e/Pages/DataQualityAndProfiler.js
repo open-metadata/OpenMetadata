@@ -201,7 +201,7 @@ describe('Data Quality and Profiler should work properly', () => {
     const testName = `${TEAM_ENTITY}_${NEW_TABLE_TEST_CASE.type}`;
     goToProfilerTab();
 
-    cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
+    cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Data Quality')
       .should('be.visible')
       .click();
@@ -229,7 +229,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     goToProfilerTab();
 
-    cy.get('[data-testid="profiler-switch"] > :nth-child(2)')
+    cy.get('[data-testid="profiler-tab-left-panel"]')
       .contains('Data Quality')
       .should('be.visible')
       .click();
@@ -260,6 +260,11 @@ describe('Data Quality and Profiler should work properly', () => {
 
   it('Add Column test case should work properly', () => {
     goToProfilerTab();
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
+    
     cy.get('[data-testid="add-test-id"]')
       .scrollIntoView()
       .should('be.visible')
@@ -309,6 +314,10 @@ describe('Data Quality and Profiler should work properly', () => {
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
     cy.get('[data-testid="id-test-count"]').should('be.visible').click();
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
     cy.get(`[data-testid="edit-${columnTestName}"]`)
@@ -334,6 +343,10 @@ describe('Data Quality and Profiler should work properly', () => {
     interceptURL('GET', '/api/v1/testCase?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
     cy.get('[data-testid="id-test-count"]').should('be.visible').click();
 
     cy.get(`[data-testid="${columnTestName}"]`).should('be.visible');
@@ -413,6 +426,10 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     interceptURL('GET', '/api/v1/tables/*/columnProfile?*', 'getProfilerInfo');
 
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Column Profile')
+    .should('be.visible')
+    .click();
     cy.get('[data-row-key="shop_id"] > :nth-child(1) > a')
       .scrollIntoView()
       .should('be.visible')

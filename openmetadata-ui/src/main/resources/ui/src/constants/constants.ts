@@ -12,7 +12,6 @@
  */
 
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
-import { WebhookType } from '../generated/api/events/createWebhook';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -27,6 +26,7 @@ export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
+export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
@@ -366,15 +366,6 @@ export const getDatabaseSchemaDetailsPath = (
   return path;
 };
 
-export const getAddWebhookPath = (webhookType?: WebhookType) => {
-  let path = webhookType ? ROUTES.ADD_WEBHOOK_WITH_TYPE : ROUTES.ADD_WEBHOOK;
-  if (webhookType) {
-    path = path.replace(PLACEHOLDER_WEBHOOK_TYPE, webhookType);
-  }
-
-  return path;
-};
-
 export const getTopicDetailsPath = (topicFQN: string, tab?: string) => {
   let path = tab ? ROUTES.TOPIC_DETAILS_WITH_TAB : ROUTES.TOPIC_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN);
@@ -521,7 +512,7 @@ export const configOptions = {
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
 
-export const ENTITY_PATH = {
+export const ENTITY_PATH: Record<string, string> = {
   tables: 'table',
   topics: 'topic',
   dashboards: 'dashboard',

@@ -63,6 +63,7 @@ import {
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
+import { Field } from '../generated/api/data/createTopic';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -566,6 +567,7 @@ export const getEntityName = (
     | Bot
     | Kpi
     | TagCategory
+    | Field
 ) => {
   return entity?.displayName || entity?.name || '';
 };

@@ -66,6 +66,9 @@
         },
         "failureDetails": {
           "$ref": "#/definitions/failureDetails"
+        },
+        "timestamp": {
+          "$ref": "../type/basic.json#/definitions/timestamp"
         }
       }
     }
@@ -146,6 +149,9 @@
       "oneOf": [
         {
           "$ref": "../entity/events/webhook.json"
+        },
+        {
+          "$ref": "./emailAlertConfig.json"
         }
       ]
     },

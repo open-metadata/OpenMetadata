@@ -29,6 +29,9 @@ from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -49,10 +52,15 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.datalake import ometa_to_dataframe
+from metadata.interfaces.datalake.datalake_test_suite_interface import (
+    DataLakeTestSuiteInterface,
+)
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
+from metadata.utils.connections import get_connection
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
@@ -87,6 +95,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
+        self.client = create_ometa_client(self.metadata_config)
         self.metadata = OpenMetadata(self.metadata_config)
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
@@ -218,25 +227,42 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         """
         return get_partition_details(entity)
 
-    def _create_runner_interface(self, entity_fqn: str, sqa_metadata_obj: MetaData):
-        """create the interface to execute test against SQA sources"""
+    def _create_runner_interface(self, entity_fqn: str):
+        """create the interface to execute test against sources"""
         table_entity = self._get_table_entity_from_test_case(entity_fqn)
-        return SQATestSuiteInterface(
-            service_connection_config=self._get_service_connection_from_test_case(
-                entity_fqn
-            ),
-            ometa_client=create_ometa_client(self.metadata_config),
-            sqa_metadata_obj=sqa_metadata_obj,
-            table_entity=table_entity,
-            table_sample_precentage=self._get_profile_sample(table_entity)
-            if not self._get_profile_query(table_entity)
-            else None,
-            table_sample_query=self._get_profile_query(table_entity)
+        service_connection_config = self._get_service_connection_from_test_case(
+            entity_fqn
+        )
+        table_partition_config = None
+        table_sample_precentage = None
+        table_sample_query = (
+            self._get_profile_query(table_entity)
             if not self._get_profile_sample(table_entity)
-            else None,
-            table_partition_config=self._get_partition_details(table_entity)
-            if not self._get_profile_query(table_entity)
-            else None,
+            else None
+        )
+        if not table_sample_query:
+            table_sample_precentage = self._get_profile_sample(table_entity)
+            table_partition_config = self._get_partition_details(table_entity)
+
+        if not isinstance(service_connection_config, DatalakeConnection):
+            sqa_metadata_obj = MetaData()
+            return SQATestSuiteInterface(
+                service_connection_config=service_connection_config,
+                ometa_client=self.client,
+                sqa_metadata_obj=sqa_metadata_obj,
+                table_entity=table_entity,
+                table_sample_precentage=table_sample_precentage,
+                table_sample_query=table_sample_query,
+                table_partition_config=table_partition_config,
+            )
+        self.client = get_connection(service_connection_config).client
+        return DataLakeTestSuiteInterface(
+            service_connection_config=service_connection_config,
+            ometa_client=self.client,
+            data_frame=ometa_to_dataframe(
+                service_connection_config.configSource, self.client, table_entity
+            )[0],
+            table_entity=table_entity,
         )
 
     def _create_data_tests_runner(self, sqa_interface):
@@ -357,7 +383,9 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                             testSuite=self.metadata.get_entity_reference(
                                 entity=TestSuite, fqn=test_suite.name
                             ),
-                            parameterValues=list(test_case_to_create.parameterValues),
+                            parameterValues=list(test_case_to_create.parameterValues)
+                            if test_case_to_create.parameterValues
+                            else None,
                         )
                     )
                 )
@@ -400,11 +428,8 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         unique_entity_fqns = self._get_unique_entities_from_test_cases(test_cases)
 
         for entity_fqn in unique_entity_fqns:
-            sqa_metadata_obj = MetaData()
             try:
-                runner_interface = self._create_runner_interface(
-                    entity_fqn, sqa_metadata_obj
-                )
+                runner_interface = self._create_runner_interface(entity_fqn)
                 data_test_runner = self._create_data_tests_runner(runner_interface)
 
                 for test_case in self._filter_test_cases_for_entity(
