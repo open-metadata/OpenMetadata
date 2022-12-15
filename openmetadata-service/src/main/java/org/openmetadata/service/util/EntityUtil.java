@@ -40,6 +40,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.type.CustomProperty;
@@ -51,7 +52,9 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FailureDetails;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlHyperParameter;
@@ -145,6 +148,14 @@ public final class EntityUtil {
               && entityReferenceMatch.test(ref1.getPropertyType(), ref2.getPropertyType());
 
   public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
+
+  public static final BiPredicate<Field, Field> filedMatch =
+      (field1, field2) ->
+          field1.getName().equalsIgnoreCase(field2.getName())
+              && field1.getDataType() == field2.getDataType();
+
+  public static final BiPredicate<Field, Field> filedNameMatch =
+      (field1, field2) -> field1.getName().equalsIgnoreCase(field2.getName());
 
   private EntityUtil() {}
 
@@ -373,6 +384,16 @@ public final class EntityUtil {
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);
+  }
+
+  /** Return schema field name of format "schemaFields".fieldName.fieldName */
+  public static String getSchemaField(Topic topic, Field field, String fieldName) {
+    // Remove table FQN from column FQN to get the local name
+    String localColumnName =
+        EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("schemaFields", localColumnName)
+        : FullyQualifiedName.build("schemaFields", localColumnName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */
