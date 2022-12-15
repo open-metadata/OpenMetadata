@@ -98,7 +98,10 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
-from metadata.parsers.avro_parser import get_avro_fields, parse_avro_schema
+from metadata.parsers.schema_parsers import (
+    InvalidSchemaTypeException,
+    schema_parser_config_registry,
+)
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -672,7 +675,15 @@ class SampleDataSource(
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            parsed_schema = parse_avro_schema(topic["schemaText"])
+            schema_type = topic["schemaType"].lower()
+
+            load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
+            if not load_parser_fn:
+                raise InvalidSchemaTypeException(
+                    f"Cannot find {schema_type} in parser providers registry."
+                )
+            schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
+
             create_topic = CreateTopicRequest(
                 name=topic["name"],
                 description=topic["description"],
@@ -684,7 +695,7 @@ class SampleDataSource(
                 messageSchema=Topic(
                     schemaText=topic["schemaText"],
                     schemaType=topic["schemaType"],
-                    schemaFields=get_avro_fields(parsed_schema),
+                    schemaFields=schema_fields,
                 ),
                 service=EntityReference(
                     id=self.kafka_service.id, type="messagingService"
