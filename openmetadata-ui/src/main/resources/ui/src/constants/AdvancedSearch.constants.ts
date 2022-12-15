@@ -101,10 +101,11 @@ export const emptyJsonTree: JsonTree = {
         [QbUtils.uuid()]: {
           type: 'rule',
           properties: {
-            field: null,
+            // owner is common field , so setting owner as default field here
+            field: 'owner.name',
             operator: null,
             value: [],
-            valueSrc: [],
+            valueSrc: ['value'],
           },
         },
       },
@@ -147,34 +148,12 @@ const commonQueryBuilderFields: Fields = {
     defaultValue: true,
   },
 
-  owner: {
+  'owner.name': {
     label: 'Owner',
-    type: '!struct',
-    subfields: {
-      name: {
-        label: 'username',
-        type: 'select',
-        mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: autocomplete([SearchIndex.USER, SearchIndex.TEAM]),
-        },
-      },
-      displayName: {
-        label: 'name',
-        type: 'text',
-        mainWidgetProps,
-      },
-      type: {
-        label: 'type',
-        type: 'select',
-        mainWidgetProps,
-        fieldSettings: {
-          listValues: [
-            { value: 'user', title: 'User' },
-            { value: 'team', title: 'Team' },
-          ],
-        },
-      },
+    type: 'select',
+    mainWidgetProps,
+    fieldSettings: {
+      asyncFetch: autocomplete([SearchIndex.USER, SearchIndex.TEAM]),
     },
   },
 
@@ -201,23 +180,12 @@ const commonQueryBuilderFields: Fields = {
  * Fields specific to services
  */
 const serviceQueryBuilderFields: Fields = {
-  service: {
+  'service.name': {
     label: 'Service',
-    type: '!struct',
-    subfields: {
-      name: {
-        label: 'name',
-        type: 'select',
-        mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SERVICE),
-        },
-      },
-      deleted: {
-        label: 'deleted',
-        type: 'boolean',
-        defaultValue: true,
-      },
+    type: 'select',
+    mainWidgetProps,
+    fieldSettings: {
+      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SERVICE),
     },
   },
 };
@@ -226,77 +194,30 @@ const serviceQueryBuilderFields: Fields = {
  * Fields specific to tables
  */
 const tableQueryBuilderFields: Fields = {
-  database: {
+  'database.name': {
     label: 'Database',
-    type: '!struct',
-    subfields: {
-      name: {
-        label: 'name',
-        type: 'select',
-        mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.DATABASE),
-        },
-      },
-      deleted: {
-        label: 'deleted',
-        type: 'boolean',
-        defaultValue: true,
-      },
-    },
-  },
-
-  databaseSchema: {
-    label: 'Database Schema',
-    type: '!struct',
-    subfields: {
-      name: {
-        label: 'name',
-        type: 'select',
-        mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SCHEMA),
-        },
-      },
-      deleted: {
-        label: 'deleted',
-        type: 'boolean',
-        defaultValue: true,
-      },
-    },
-  },
-
-  name: {
-    label: 'Table',
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.ROOT),
+      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.DATABASE),
     },
   },
 
-  columns: {
+  'databaseSchema.name': {
+    label: 'Database Schema',
+    type: 'select',
+    mainWidgetProps,
+    fieldSettings: {
+      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SCHEMA),
+    },
+  },
+
+  'columns.name': {
     label: 'Column',
-    type: '!struct',
-    subfields: {
-      name: {
-        label: 'name',
-        type: 'select',
-        mainWidgetProps,
-        fieldSettings: {
-          asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.COLUMN),
-        },
-      },
-      dataType: {
-        label: 'data type',
-        type: 'text',
-        mainWidgetProps,
-      },
-      constraint: {
-        label: 'constraint',
-        type: 'text',
-        mainWidgetProps,
-      },
+    type: 'select',
+    mainWidgetProps,
+    fieldSettings: {
+      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.COLUMN),
     },
   },
 };
@@ -305,78 +226,82 @@ const tableQueryBuilderFields: Fields = {
  * Overriding default configurations.
  * Basic attributes that fields inherit from.
  */
-const initialConfigWithoutFields: BasicConfig = {
-  ...BaseConfig,
-  types: {
-    ...BaseConfig.types,
-    multiselect: {
-      ...BaseConfig.types.multiselect,
-      widgets: {
-        ...BaseConfig.types.multiselect.widgets,
-        // Adds the "Contains" and "Not contains" options for fields with type multiselect
-        text: {
-          operators: ['like', 'not_like'],
+const getInitialConfigWithoutFields = () => {
+  const initialConfigWithoutFields: BasicConfig = {
+    ...BaseConfig,
+    types: {
+      ...BaseConfig.types,
+      multiselect: {
+        ...BaseConfig.types.multiselect,
+        widgets: {
+          ...BaseConfig.types.multiselect.widgets,
+          // Adds the "Contains" and "Not contains" options for fields with type multiselect
+          text: {
+            operators: ['like', 'not_like'],
+          },
         },
+        // Removes NULL check operators
+        excludeOperators: ['is_null', 'is_not_null'],
+        // Limits source to user input values, not other fields
+        valueSources: ['value'],
       },
-      // Removes NULL check operators
-      excludeOperators: ['is_null', 'is_not_null'],
-      // Limits source to user input values, not other fields
-      valueSources: ['value'],
-    },
-    select: {
-      ...BaseConfig.types.select,
-      widgets: {
-        ...BaseConfig.types.select.widgets,
-        text: {
-          operators: ['like', 'not_like'],
+      select: {
+        ...BaseConfig.types.select,
+        widgets: {
+          ...BaseConfig.types.select.widgets,
+          text: {
+            operators: ['like', 'not_like'],
+          },
         },
+        excludeOperators: ['is_null', 'is_not_null'],
+        valueSources: ['value'],
       },
-      excludeOperators: ['is_null', 'is_not_null'],
-      valueSources: ['value'],
+      text: {
+        ...BaseConfig.types.text,
+        valueSources: ['value'],
+      },
     },
-    text: {
-      ...BaseConfig.types.text,
-      valueSources: ['value'],
+    widgets: {
+      ...BaseConfig.widgets,
+      multiselect: {
+        ...BaseConfig.widgets.multiselect,
+        showSearch: true,
+        showCheckboxes: true,
+        useAsyncSearch: true,
+        useLoadMore: false,
+      },
+      select: {
+        ...BaseConfig.widgets.select,
+        showSearch: true,
+        showCheckboxes: true,
+        useAsyncSearch: true,
+        useLoadMore: false,
+      },
+      text: {
+        ...BaseConfig.widgets.text,
+      },
     },
-  },
-  widgets: {
-    ...BaseConfig.widgets,
-    multiselect: {
-      ...BaseConfig.widgets.multiselect,
-      showSearch: true,
-      showCheckboxes: true,
-      useAsyncSearch: true,
-      useLoadMore: false,
+    operators: {
+      ...BaseConfig.operators,
+      like: {
+        ...BaseConfig.operators.like,
+        elasticSearchQueryType: 'wildcard',
+      },
     },
-    select: {
-      ...BaseConfig.widgets.select,
-      showSearch: true,
-      showCheckboxes: true,
-      useAsyncSearch: true,
-      useLoadMore: false,
+    settings: {
+      ...BaseConfig.settings,
+      showLabels: true,
+      canReorder: false,
+      renderSize: 'medium',
+      fieldLabel: i18next.t('label.field-plural') + ':',
+      operatorLabel: i18next.t('label.condition') + ':',
+      showNot: false,
+      valueLabel: i18next.t('label.criteria') + ':',
+      renderButton: renderAdvanceSearchButtons,
     },
-    text: {
-      ...BaseConfig.widgets.text,
-    },
-  },
-  operators: {
-    ...BaseConfig.operators,
-    like: {
-      ...BaseConfig.operators.like,
-      elasticSearchQueryType: 'wildcard',
-    },
-  },
-  settings: {
-    ...BaseConfig.settings,
-    showLabels: true,
-    canReorder: false,
-    renderSize: 'medium',
-    fieldLabel: i18next.t('label.field-plural') + ':',
-    operatorLabel: i18next.t('label.condition') + ':',
-    showNot: false,
-    valueLabel: i18next.t('label.criteria') + ':',
-    renderButton: renderAdvanceSearchButtons,
-  },
+  };
+
+  return initialConfigWithoutFields;
 };
 
 /**
@@ -388,7 +313,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
   switch (searchIndex) {
     case SearchIndex.MLMODEL:
       return {
-        ...initialConfigWithoutFields,
+        ...getInitialConfigWithoutFields(),
         fields: {
           ...commonQueryBuilderFields,
           ...serviceQueryBuilderFields,
@@ -397,7 +322,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
 
     case SearchIndex.PIPELINE:
       return {
-        ...initialConfigWithoutFields,
+        ...getInitialConfigWithoutFields(),
         fields: {
           ...commonQueryBuilderFields,
           ...serviceQueryBuilderFields,
@@ -406,7 +331,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
 
     case SearchIndex.DASHBOARD:
       return {
-        ...initialConfigWithoutFields,
+        ...getInitialConfigWithoutFields(),
         fields: {
           ...commonQueryBuilderFields,
           ...serviceQueryBuilderFields,
@@ -415,7 +340,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
 
     case SearchIndex.TABLE:
       return {
-        ...initialConfigWithoutFields,
+        ...getInitialConfigWithoutFields(),
         fields: {
           ...commonQueryBuilderFields,
           ...serviceQueryBuilderFields,
@@ -425,7 +350,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
 
     case SearchIndex.TOPIC:
       return {
-        ...initialConfigWithoutFields,
+        ...getInitialConfigWithoutFields(),
         fields: {
           ...commonQueryBuilderFields,
           ...serviceQueryBuilderFields,
@@ -434,7 +359,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
 
     default:
       return {
-        ...initialConfigWithoutFields,
+        ...getInitialConfigWithoutFields(),
         fields: {
           ...commonQueryBuilderFields,
         },

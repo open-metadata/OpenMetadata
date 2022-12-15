@@ -65,7 +65,7 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
   'Tier.Tier3': '#66B5AD',
   'Tier.Tier4': '#8D6AF1',
   'Tier.Tier5': '#699994',
-  'No Tier': '#6A86EB',
+  NoTier: '#6A86EB',
 };
 
 export const DAY_FILTER = [
