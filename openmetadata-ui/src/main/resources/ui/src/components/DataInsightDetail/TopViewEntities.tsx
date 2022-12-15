@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -67,9 +68,11 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         title: t('label.data-asset'),
         dataIndex: 'entityFqn',
         key: 'dataAsset',
-        render: (entityFqn: string) => (
-          <Typography.Text>{getDecodedFqn(entityFqn)}</Typography.Text>
-        ),
+        render: (entityFqn: string, record: MostViewedEntities) => {
+          const { pathname } = new URL(record.entityHref || '');
+
+          return <Link to={pathname || '#'}>{getDecodedFqn(entityFqn)}</Link>;
+        },
       },
       {
         title: t('label.owner'),
