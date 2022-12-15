@@ -13,15 +13,14 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
   LegendProps,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -30,7 +29,6 @@ import {
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import {
   BAR_CHART_MARGIN,
-  BAR_SIZE,
   TIER_BAR_COLOR_MAP,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -39,6 +37,7 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import {
   CustomTooltip,
   getGraphDataByTierType,
@@ -57,6 +56,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
     useState<DataInsightChartResult>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   const { data, tiers, total } = useMemo(() => {
     return getGraphDataByTierType(totalEntitiesByTier?.data ?? []);
@@ -82,6 +82,12 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
     }
   };
 
+  const handleLegendClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
+
   useEffect(() => {
     fetchTotalEntitiesByTier();
   }, [chartFilter]);
@@ -104,7 +110,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
       }>
       {data.length ? (
         <ResponsiveContainer debounce={1} minHeight={400}>
-          <BarChart data={data} margin={BAR_CHART_MARGIN}>
+          <LineChart data={data} margin={BAR_CHART_MARGIN}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="timestamp" />
             <YAxis />
@@ -112,22 +118,23 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
             <Legend
               align="left"
               content={(props) =>
-                renderLegend(props as LegendProps, `${total}`)
+                renderLegend(props as LegendProps, `${total}`, activeKeys)
               }
               layout="vertical"
               verticalAlign="top"
-              wrapperStyle={{ left: '0px' }}
+              wrapperStyle={{ left: '0px', top: '0px' }}
+              onClick={handleLegendClick}
             />
             {tiers.map((tier) => (
-              <Bar
-                barSize={BAR_SIZE}
+              <Line
                 dataKey={tier}
-                fill={TIER_BAR_COLOR_MAP[tier]}
-                key={uniqueId()}
-                stackId="tier"
+                hide={activeKeys.length ? !activeKeys.includes(tier) : false}
+                key={tier}
+                stroke={TIER_BAR_COLOR_MAP[tier]}
+                type="monotone"
               />
             ))}
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       ) : (
         <EmptyGraphPlaceholder />
