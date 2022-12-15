@@ -163,18 +163,6 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="elasticsearch"]',
     url: `${BASE_URL}/settings/eventPublishers/elasticsearch`,
   },
-  webhooks: {
-    testid: '[data-menu-id*="webhook"]',
-    url: `${BASE_URL}/settings/integrations/webhook`,
-  },
-  slack: {
-    testid: '[data-menu-id*="slack"]',
-    url: `${BASE_URL}/settings/integrations/slack`,
-  },
-  msTeams: {
-    testid: '[data-menu-id*="msTeams"]',
-    url: `${BASE_URL}/settings/integrations/msTeams`,
-  },
   bots: {
     testid: '[data-menu-id*="bots"]',
     url: `${BASE_URL}/settings/integrations/bots`,

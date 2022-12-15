@@ -466,7 +466,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.addTestCaseResult(uriInfo, fqn, testCaseResult).toResponse();
+    return dao.addTestCaseResult(securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
+        .toResponse();
   }
 
   @GET
@@ -531,7 +532,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.deleteTestCaseResult(fqn, timestamp).toResponse();
+    return dao.deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp).toResponse();
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) throws IOException {

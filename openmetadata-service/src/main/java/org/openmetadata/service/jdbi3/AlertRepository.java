@@ -44,13 +44,22 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class AlertRepository extends EntityRepository<Alert> {
   public static final String COLLECTION_PATH = "/v1/alerts";
+  static final String ALERT_PATCH_FIELDS = "triggerConfig,filteringRules,alertActions";
+  static final String ALERT_UPDATE_FIELDS = "triggerConfig,filteringRules,alertActions";
 
   // Alert is mapped to different publisher
   private static final ConcurrentHashMap<UUID, List<AlertsActionPublisher>> alertPublisherMap =
       new ConcurrentHashMap<>();
 
   public AlertRepository(CollectionDAO dao) {
-    super(AlertResource.COLLECTION_PATH, Entity.ALERT, Alert.class, dao.alertDAO(), dao, "", "");
+    super(
+        AlertResource.COLLECTION_PATH,
+        Entity.ALERT,
+        Alert.class,
+        dao.alertDAO(),
+        dao,
+        ALERT_PATCH_FIELDS,
+        ALERT_UPDATE_FIELDS);
   }
 
   @Override
@@ -90,7 +99,7 @@ public class AlertRepository extends EntityRepository<Alert> {
     storeOwner(entity, entity.getOwner());
     // Store Alert to AlertAction RelationShip
     for (EntityReference actionRef : entity.getAlertActions()) {
-      addRelationship(entity.getId(), actionRef.getId(), ALERT, ALERT_ACTION, Relationship.CONTAINS);
+      addRelationship(entity.getId(), actionRef.getId(), ALERT, ALERT_ACTION, Relationship.USES);
     }
   }
 
@@ -143,6 +152,14 @@ public class AlertRepository extends EntityRepository<Alert> {
     return currentStatus;
   }
 
+  public void removeAlertStatus(UUID alertId, UUID alertActionId) {
+    daoCollection.entityExtensionTimeSeriesDao().delete(alertId.toString(), alertActionId.toString());
+  }
+
+  public void removeAllAlertStatus(UUID alertId) {
+    daoCollection.entityExtensionTimeSeriesDao().deleteAll(alertId.toString());
+  }
+
   public void setStatus(UUID alertId, UUID alertActionId, AlertActionStatus status) throws IOException {
     daoCollection
         .entityExtensionTimeSeriesDao()
@@ -152,78 +169,51 @@ public class AlertRepository extends EntityRepository<Alert> {
   @SneakyThrows
   public void updateAlertActionPublishers(Alert alert) {
     // Delete existing alert action publisher and create with the updated Alert
-    Alert storedAlert = get(null, alert.getId(), getFields("*"));
-    if (alert.getAlertActions().equals(storedAlert.getAlertActions())) {
-      EntityRepository<AlertAction> alertActionEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
-      for (EntityReference alertActionRef : alert.getAlertActions()) {
-        AlertAction action =
-            alertActionEntityRepository.get(null, alertActionRef.getId(), alertActionEntityRepository.getFields("*"));
-        if (Boolean.TRUE.equals(action.getEnabled())) {
-          // If there was a previous alert action either in disabled state or stopped due
-          // to errors, update it and restart publishing
-          AlertsActionPublisher previousPublisher = getAlertActionPublisher(alert.getId(), action);
-          if (previousPublisher == null) {
-            addAlertActionPublisher(alert, action);
-            return;
-          }
-
-          // Update the existing publisher
-          AlertActionStatus.Status status = previousPublisher.getAlertAction().getStatusDetails().getStatus();
-          previousPublisher.updateAlertWithAlertAction(alert, action);
-          if (status != AlertActionStatus.Status.ACTIVE && status != AlertActionStatus.Status.AWAITING_RETRY) {
-            // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
-            BatchEventProcessor<EventPubSub.ChangeEventHolder> processor =
-                EventPubSub.addEventHandler(previousPublisher);
-            previousPublisher.setProcessor(processor);
-            LOG.info("Webhook publisher restarted for {}", alert.getName());
-          }
-        } else {
-          deleteAlertActionPublisher(alert.getId(), action);
-        }
-      }
-    } else {
-      // if some alerts are removed or added
-      deleteAlertAllPublishers(alert.getId());
-      addAlertActionPublishers(alert);
-    }
+    // if some alerts are removed or added
+    deleteAlertAllPublishers(alert.getId());
+    addAlertActionPublishers(alert);
   }
 
   public void deleteAlertActionPublisher(UUID alertId, AlertAction action) throws InterruptedException {
     List<AlertsActionPublisher> alertPublishers = alertPublisherMap.get(alertId);
-    int position = -1;
-    for (int i = 0; i < alertPublishers.size(); i++) {
-      AlertsActionPublisher alertsActionPublisher = alertPublishers.get(i);
-      if (alertsActionPublisher.getAlertAction().getId().equals(action.getId())) {
-        alertsActionPublisher.getProcessor().halt();
-        alertsActionPublisher.awaitShutdown();
-        EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
-        LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
-        position = i;
-        break;
+    if (alertPublishers != null) {
+      int position = -1;
+      for (int i = 0; i < alertPublishers.size(); i++) {
+        AlertsActionPublisher alertsActionPublisher = alertPublishers.get(i);
+        if (alertsActionPublisher.getAlertAction().getId().equals(action.getId())) {
+          alertsActionPublisher.getProcessor().halt();
+          alertsActionPublisher.awaitShutdown();
+          EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
+          LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
+          position = i;
+          break;
+        }
       }
-    }
-    if (position != -1) {
-      alertPublishers.remove(position);
-      alertPublisherMap.put(alertId, alertPublishers);
+      if (position != -1) {
+        alertPublishers.remove(position);
+        removeAlertStatus(alertId, action.getId());
+        alertPublisherMap.put(alertId, alertPublishers);
+      }
     }
   }
 
   public void deleteAlertAllPublishers(UUID alertId) throws InterruptedException {
     List<AlertsActionPublisher> alertPublishers = alertPublisherMap.get(alertId);
-    for (AlertsActionPublisher alertsActionPublisher : alertPublishers) {
-      if (alertsActionPublisher != null) {
+    if (alertPublishers != null) {
+      for (AlertsActionPublisher alertsActionPublisher : alertPublishers) {
         alertsActionPublisher.getProcessor().halt();
         alertsActionPublisher.awaitShutdown();
         EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
         LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
       }
+      alertPublisherMap.clear();
+      removeAllAlertStatus(alertId);
     }
-    alertPublisherMap.clear();
   }
 
   private List<EntityReference> getAlertActions(Alert entity) throws IOException {
     List<CollectionDAO.EntityRelationshipRecord> testCases =
-        findTo(entity.getId(), ALERT, Relationship.CONTAINS, ALERT_ACTION);
+        findTo(entity.getId(), ALERT, Relationship.USES, ALERT_ACTION);
     return EntityUtil.getEntityReferences(testCases);
   }
 
@@ -256,7 +246,7 @@ public class AlertRepository extends EntityRepository<Alert> {
           "alertActions",
           ALERT,
           original.getId(),
-          Relationship.CONTAINS,
+          Relationship.USES,
           ALERT_ACTION,
           new ArrayList<>(original.getAlertActions()),
           new ArrayList<>(updated.getAlertActions()),
