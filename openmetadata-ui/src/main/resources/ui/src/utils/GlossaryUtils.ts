@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty } from 'lodash';
 import { FormattedGlossarySuggestion } from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
@@ -230,7 +231,7 @@ export const updateGlossaryListBySearchedTerms = (
 export const getActionsList = () => {
   return [
     {
-      name: 'Add Term',
+      name: t('label.add-term'),
       value: 'add_term',
     },
   ];
