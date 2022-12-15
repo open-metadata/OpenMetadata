@@ -73,6 +73,10 @@ class AWSClient:
         if self.config is not None:
             logger.info(f"Getting AWS client for service [{service_name}]")
             session = self._get_session()
+            if self.config.endPointURL is not None:
+                return session.client(
+                    service_name=service_name, endpoint_url=self.config.endPointURL
+                )
             return session.client(service_name=service_name)
 
         logger.info(f"Getting AWS default client for service [{service_name}]")
@@ -81,6 +85,10 @@ class AWSClient:
 
     def get_resource(self, service_name: str) -> Any:
         session = self._get_session()
+        if self.config.endPointURL is not None:
+            return session.resource(
+                service_name=service_name, endpoint_url=self.config.endPointURL
+            )
         return session.resource(service_name=service_name)
 
     def get_dynamo_client(self) -> DynamoClient:
