@@ -13,13 +13,6 @@
       "items": {
         "$ref": "./alertFilterRules.json"
       }
-    },
-    "alertActions": {
-      "description": "A set of filter rules associated with the Alert.",
-      "type": "array",
-      "items": {
-        "$ref": "./alertFilterRules.json"
-      }
     }
   },
   "properties": {
