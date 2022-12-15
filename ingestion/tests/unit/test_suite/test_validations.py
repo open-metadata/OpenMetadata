@@ -33,9 +33,6 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.datalake.datalake_test_suite_interface import (
-    DataLakeTestSuiteInterface,
-)
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.test_suite.validations.core import validation_enum_registry
 
