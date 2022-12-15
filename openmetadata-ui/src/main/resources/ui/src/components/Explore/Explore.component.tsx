@@ -279,7 +279,7 @@ const Explore: React.FC<ExploreProps> = ({
 
       <div
         style={{
-          marginRight: showSummaryPanel ? '390px' : '',
+          marginRight: showSummaryPanel ? '400px' : '', // Margin given equal to summary panel width
         }}>
         <Row gutter={[16, 16]}>
           <Col span={24}>

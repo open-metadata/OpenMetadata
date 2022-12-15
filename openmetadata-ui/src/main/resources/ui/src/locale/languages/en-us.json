@@ -373,6 +373,7 @@
     "tag-lowercase": "tag",
     "service": "Service",
     "chart": "Chart",
+    "chart-plural": "Charts",
     "task": "Task",
     "add-entity": "Add {{entity}}",
     "deleted-team-action": "{{action}} Deleted Team",
@@ -503,7 +504,9 @@
     "mlmodel": "ML Model",
     "search-entity": "Search {{entity}}",
     "more": "More",
-    "update": "Update"
+    "update": "Update",
+    "dashboard-detail-plural-lowercase": "dashboard details",
+    "pipeline-detail-plural-lowercase": "pipeline details"
   },
   "message": {
     "service-email-required": "Service account Email is required",

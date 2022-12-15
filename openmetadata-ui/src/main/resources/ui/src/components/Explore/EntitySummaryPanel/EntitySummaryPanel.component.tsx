@@ -16,10 +16,18 @@ import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
+import { Topic } from '../../../generated/entity/data/topic';
+import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import './EntitySummaryPanel.style.less';
+import MlModelSummary from './MlModelSummary/MlModelSummary.component';
+import PipelineSummary from './PipelineSummary/PipelineSummary.component';
 import TableSummary from './TableSummary/TableSummary.component';
+import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -31,6 +39,20 @@ export default function EntitySummaryPanel({
   const summaryComponent = useMemo(() => {
     if (entityDetails.entityType === ExplorePageTabs.TABLES) {
       return <TableSummary entityDetails={entityDetails.details as Table} />;
+    } else if (entityDetails.entityType === ExplorePageTabs.TOPICS) {
+      return <TopicSummary entityDetails={entityDetails.details as Topic} />;
+    } else if (entityDetails.entityType === ExplorePageTabs.DASHBOARDS) {
+      return (
+        <DashboardSummary entityDetails={entityDetails.details as Dashboard} />
+      );
+    } else if (entityDetails.entityType === ExplorePageTabs.PIPELINES) {
+      return (
+        <PipelineSummary entityDetails={entityDetails.details as Pipeline} />
+      );
+    } else if (entityDetails.entityType === ExplorePageTabs.MLMODELS) {
+      return (
+        <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
+      );
     } else {
       return null;
     }
