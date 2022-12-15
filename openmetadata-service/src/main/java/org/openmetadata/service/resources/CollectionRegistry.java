@@ -162,7 +162,8 @@ public final class CollectionRegistry {
               .withName(annotation.name())
               .withInput(annotation.input())
               .withDescription(annotation.description())
-              .withExamples(List.of(annotation.examples()));
+              .withExamples(List.of(annotation.examples()))
+              .withParameterInputType(annotation.paramInputType());
       functionList.add(function);
       functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
 

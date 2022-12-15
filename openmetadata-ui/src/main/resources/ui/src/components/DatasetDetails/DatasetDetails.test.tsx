@@ -422,7 +422,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,
+      <DatasetDetails {...DatasetDetailsProps} activeTab={2} />,
       {
         wrapper: MemoryRouter,
       }

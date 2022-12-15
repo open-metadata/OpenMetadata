@@ -15,7 +15,7 @@ ColumnValuesToBeNotNull validation implementation
 # pylint: disable=duplicate-code
 import traceback
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy import inspect
 from sqlalchemy.exc import CompileError
@@ -62,9 +62,9 @@ def _get_match_count(like_count, regex_count, runner, col) -> Optional[int]:
 
 
 def column_values_to_match_regex(
-    test_case: TestCase,
-    execution_date: datetime,
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate Column Values metric

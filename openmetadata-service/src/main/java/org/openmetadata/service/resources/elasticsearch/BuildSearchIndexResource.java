@@ -264,7 +264,7 @@ public class BuildSearchIndexResource {
     listener.allowTotalRequestUpdate();
 
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
 
     if (Boolean.TRUE.equals(createRequest.getRecreateIndex())) {
       // Delete index

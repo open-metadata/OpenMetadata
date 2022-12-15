@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CurveType } from 'recharts/types/shape/Curve';
 import { ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import {
   Column,
@@ -34,6 +35,7 @@ export type MetricChartType = {
   information: {
     title: string;
     dataKey: string;
+    stackId?: string;
     color: string;
     latestValue?: string | number;
   }[];
@@ -44,6 +46,7 @@ export interface ProfilerDetailsCardProps {
   chartCollection: MetricChartType;
   name: string;
   tickFormatter?: string;
+  curveType?: CurveType;
 }
 
 export enum ProfilerDashboardTab {
@@ -91,4 +94,10 @@ export interface DataQualityTabProps {
 
 export interface TestSummaryProps {
   data: TestCase;
+}
+
+export interface ProfilerLatestValueProps {
+  information: MetricChartType['information'];
+  tickFormatter?: string;
+  stringValue?: boolean;
 }
