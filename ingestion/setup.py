@@ -45,8 +45,8 @@ base_requirements = {
     "boto3~=1.19.12",
     "botocore==1.22.12",
     "avro-python3==1.10.2",
-    "grpcio-tools==1.51.1",
-    "protobuf==4.21.11",
+    "grpcio-tools",
+    "protobuf",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -110,8 +110,8 @@ plugins: Dict[str, Set[str]] = {
         "fastavro>=1.2.0",
         "avro-python3==1.10.2",
         "avro==1.11.1",
-        "grpcio-tools==1.51.1",
-        "protobuf==4.21.11",
+        "grpcio-tools",
+        "protobuf",
     },
     "kinesis": {"boto3~=1.19.12"},
     "redpanda": {
@@ -119,8 +119,8 @@ plugins: Dict[str, Set[str]] = {
         "fastavro>=1.2.0",
         "avro-python3==1.10.2",
         "avro==1.11.1",
-        "grpcio-tools==1.51.1",
-        "protobuf==4.21.11",
+        "grpcio-tools",
+        "protobuf",
     },
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0"},
