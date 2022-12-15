@@ -15,6 +15,7 @@ import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
+import i18next from 'i18next';
 import { isEqual } from 'lodash';
 import {
   EntityFieldThreadCount,
@@ -112,10 +113,15 @@ export const getReplyText = (
   singular?: string,
   plural?: string
 ) => {
-  if (count === 0) return 'Reply in conversation';
-  if (count === 1) return `${count} ${singular ? singular : 'older reply'}`;
+  if (count === 0) return i18next.t('label.reply-in-conversation');
+  if (count === 1)
+    return `${count} ${
+      singular ? singular : i18next.t('label.older-reply-lowercase')
+    }`;
 
-  return `${count} ${plural ? plural : 'older replies'}`;
+  return `${count} ${
+    plural ? plural : i18next.t('label.older-replies-lowercase')
+  }`;
 };
 
 export const getEntityFieldThreadCounts = (
@@ -481,10 +487,10 @@ export const updateThreadData = (
 
 export const getFeedAction = (type: ThreadType) => {
   if (type === ThreadType.Task) {
-    return 'created a task';
+    return i18next.t('label.created-a-task-lowercase');
   }
 
-  return 'posted on';
+  return i18next.t('label.posted-on-lowercase');
 };
 
 export const prepareFeedLink = (entityType: string, entityFQN: string) => {
@@ -553,11 +559,11 @@ export const getFeedPanelHeaderText = (
 ) => {
   switch (threadType) {
     case ThreadType.Announcement:
-      return 'Announcement';
+      return i18next.t('label.announcement');
     case ThreadType.Task:
-      return 'Task';
+      return i18next.t('label.task');
     case ThreadType.Conversation:
     default:
-      return 'Conversation';
+      return i18next.t('label.Conversation');
   }
 };

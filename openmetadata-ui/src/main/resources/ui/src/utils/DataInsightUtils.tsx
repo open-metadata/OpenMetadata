@@ -28,7 +28,11 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
-import { PLACEHOLDER_ROUTE_TAB, ROUTES } from '../constants/constants';
+import {
+  GRAYED_OUT_COLOR,
+  PLACEHOLDER_ROUTE_TAB,
+  ROUTES,
+} from '../constants/constants';
 import {
   ENTITIES_SUMMARY_LIST,
   KPI_DATE_PICKER_FORMAT,
@@ -56,7 +60,11 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
     DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
   ].includes(dataInsightChartType);
 
-export const renderLegend = (legendData: LegendProps, latest: string) => {
+export const renderLegend = (
+  legendData: LegendProps,
+  latest: string,
+  activeKeys = [] as string[]
+) => {
   const { payload = [] } = legendData;
 
   return (
@@ -65,21 +73,36 @@ export const renderLegend = (legendData: LegendProps, latest: string) => {
         Latest
       </Typography.Text>
       <Typography
-        className="font-semibold text-2xl"
-        style={{ margin: '5px 0px' }}>
+        className="font-bold text-lg"
+        style={{ margin: '0px 0px 16px' }}>
         {latest}
       </Typography>
       <ul className="mr-2">
-        {payload.map((entry, index) => (
-          <li
-            className="recharts-legend-item d-flex items-center"
-            key={`item-${index}`}>
-            <Surface className="mr-2" height={14} version="1.1" width={14}>
-              <rect fill={entry.color} height="14" rx="2" width="14" />
-            </Surface>
-            <span>{entry.value}</span>
-          </li>
-        ))}
+        {payload.map((entry, index) => {
+          const isActive =
+            activeKeys.length === 0 || activeKeys.includes(entry.value);
+
+          return (
+            <li
+              className="recharts-legend-item d-flex items-center m-t-xss"
+              key={`item-${index}`}
+              onClick={(e) =>
+                legendData.onClick && legendData.onClick({ ...entry, ...e })
+              }>
+              <Surface className="mr-2" height={14} version="1.1" width={14}>
+                <rect
+                  fill={isActive ? entry.color : GRAYED_OUT_COLOR}
+                  height="14"
+                  rx="2"
+                  width="14"
+                />
+              </Surface>
+              <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
+                {entry.value}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </>
   );

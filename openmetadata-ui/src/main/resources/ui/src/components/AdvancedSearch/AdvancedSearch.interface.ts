@@ -21,6 +21,7 @@ export interface AdvancedSearchProps {
   onChangeQueryFilter: (
     queryFilter: Record<string, unknown> | undefined
   ) => void;
+  onAppliedFilterChange: (value: string) => void;
 }
 
 export type FilterObject = Record<string, string[]>;
