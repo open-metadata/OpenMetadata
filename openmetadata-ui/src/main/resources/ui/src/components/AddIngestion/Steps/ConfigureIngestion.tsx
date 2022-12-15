@@ -87,14 +87,14 @@ const ConfigureIngestion = ({
   onCancel,
   onNext,
   formType,
-  profileSampleRow,
+  profileSampleRows,
   onProfileSampleRowChange,
 }: ConfigureIngestionProps) => {
   const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
   const [selectedProfileSampleType, setSelectedProfileSampleType] =
     useState<ProfileSampleType>(
-      profileSampleRow
+      profileSampleRows
         ? ProfileSampleType.SAMPLE_ROW
         : ProfileSampleType.SAMPLE_PERCENTAGE
     );
@@ -203,7 +203,7 @@ const ConfigureIngestion = ({
                 placeholder={t('label.please-enter-value', {
                   value: t('label.row-count-lowercase'),
                 })}
-                value={profileSampleRow}
+                value={profileSampleRows}
                 onChange={(value) =>
                   onProfileSampleRowChange(value ?? undefined)
                 }

@@ -75,7 +75,7 @@ export interface ConfigureIngestionProps {
   markAllDeletedTables?: boolean;
   enableDebugLog: boolean;
   profileSample?: number;
-  profileSampleRow?: number;
+  profileSampleRows?: number;
   ingestSampleData: boolean;
   useFqnFilter: boolean;
   pipelineType: PipelineType;

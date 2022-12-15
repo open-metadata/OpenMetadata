@@ -6,7 +6,9 @@
   "description": "This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
@@ -104,7 +106,12 @@
       "javaType": "org.openmetadata.schema.type.ColumnConstraint",
       "description": "This enum defines the type for column constraint.",
       "type": "string",
-      "enum": ["NULL", "NOT_NULL", "UNIQUE", "PRIMARY_KEY"],
+      "enum": [
+        "NULL",
+        "NOT_NULL",
+        "UNIQUE",
+        "PRIMARY_KEY"
+      ],
       "default": null,
       "additionalProperties": false
     },
@@ -116,7 +123,11 @@
       "properties": {
         "constraintType": {
           "type": "string",
-          "enum": ["UNIQUE", "PRIMARY_KEY", "FOREIGN_KEY"]
+          "enum": [
+            "UNIQUE",
+            "PRIMARY_KEY",
+            "FOREIGN_KEY"
+          ]
         },
         "columns": {
           "description": "List of column names corresponding to the constraint.",
@@ -248,7 +259,10 @@
           "default": null
         }
       },
-      "required": ["name", "dataType"],
+      "required": [
+        "name",
+        "dataType"
+      ],
       "additionalProperties": false
     },
     "joinedWith": {
@@ -262,7 +276,10 @@
           "type": "integer"
         }
       },
-      "required": ["fullyQualifiedName", "joinCount"],
+      "required": [
+        "fullyQualifiedName",
+        "joinCount"
+      ],
       "additionalProperties": false
     },
     "columnJoins": {
@@ -415,21 +432,41 @@
         "min": {
           "description": "Minimum value in a column.",
           "oneOf": [
-            { "type": "number" },
-            { "type": "integer" },
-            { "$ref": "../../type/basic.json#/definitions/dateTime" },
-            { "$ref": "../../type/basic.json#/definitions/time" },
-            { "$ref": "../../type/basic.json#/definitions/date" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "$ref": "../../type/basic.json#/definitions/dateTime"
+            },
+            {
+              "$ref": "../../type/basic.json#/definitions/time"
+            },
+            {
+              "$ref": "../../type/basic.json#/definitions/date"
+            }
           ]
         },
         "max": {
           "description": "Maximum value in a column.",
           "oneOf": [
-            { "type": "number" },
-            { "type": "integer" },
-            { "$ref": "../../type/basic.json#/definitions/dateTime" },
-            { "$ref": "../../type/basic.json#/definitions/time" },
-            { "$ref": "../../type/basic.json#/definitions/date" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "$ref": "../../type/basic.json#/definitions/dateTime"
+            },
+            {
+              "$ref": "../../type/basic.json#/definitions/time"
+            },
+            {
+              "$ref": "../../type/basic.json#/definitions/date"
+            }
           ]
         },
         "minLength": {
@@ -483,7 +520,10 @@
           "default": null
         }
       },
-      "required": ["name", "timestamp"],
+      "required": [
+        "name",
+        "timestamp"
+      ],
       "additionalProperties": false
     },
     "dmlOperationType": {
@@ -511,7 +551,7 @@
         },
         "rowsAffected": {
           "description": "Number of rows affected.",
-          "type":"integer"
+          "type": "integer"
         }
       }
     },
@@ -551,7 +591,10 @@
         "partitionIntervalType": {
           "description": "type of partition interval",
           "type": "string",
-          "enum": ["TIME-UNIT", "INGESTION-TIME"]
+          "enum": [
+            "TIME-UNIT",
+            "INGESTION-TIME"
+          ]
         },
         "partitionInterval": {
           "description": "The interval to use for the partitioning",
@@ -560,7 +603,12 @@
         "partitionIntervalUnit": {
           "description": "unit used for the partition interval",
           "type": "string",
-          "enum": ["YEAR", "MONTH", "DAY", "HOUR"]
+          "enum": [
+            "YEAR",
+            "MONTH",
+            "DAY",
+            "HOUR"
+          ]
         },
         "partitionValues": {
           "description": "unit used for the partition interval",
@@ -576,15 +624,14 @@
         "profileSample": {
           "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
           "type": "number",
-          "exclusiveMinimum": 0,
           "maximum": 100,
-          "default": 0
+          "default": null
         },
         "profileSampleRows": {
           "description": "No. of rows for data we want to execute the profiler and tests on.",
           "type": "number",
-          "exclusiveMinimum": 0,
-          "default": 0
+          "minimum": 0,
+          "default": null
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
@@ -625,15 +672,14 @@
         "profileSample": {
           "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
           "type": "number",
-          "exclusiveMinimum": 0,
           "maximum": 100,
           "default": null
         },
         "profileSampleRows": {
           "description": "No. of rows for data we want to execute the profiler and tests on.",
           "type": "number",
-          "exclusiveMinimum": 0,
-          "default": 0
+          "minimum": 0,
+          "default": null
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -644,7 +690,9 @@
           "type": "number"
         }
       },
-      "required": ["timestamp"],
+      "required": [
+        "timestamp"
+      ],
       "additionalProperties": false
     },
     "sqlQuery": {
@@ -662,7 +710,7 @@
         },
         "users": {
           "description": "List of users who ran this query.",
-          "type":"array",
+          "type": "array",
           "items": {
             "$ref": "../../type/entityReference.json"
           },
@@ -686,7 +734,9 @@
     },
     "modelType": {
       "$comment": "Currently only DBT model type is supported",
-      "enum": ["DBT"],
+      "enum": [
+        "DBT"
+      ],
       "javaEnums": [
         {
           "name": "DBT"
@@ -749,7 +799,10 @@
           "$ref": "../../type/basic.json#/definitions/dateTime"
         }
       },
-      "required": ["modelType", "sql"],
+      "required": [
+        "modelType",
+        "sql"
+      ],
       "additionalProperties": false
     }
   },
@@ -904,6 +957,10 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
-  "required": ["id", "name", "columns"],
+  "required": [
+    "id",
+    "name",
+    "columns"
+  ],
   "additionalProperties": false
 }

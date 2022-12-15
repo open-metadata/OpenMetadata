@@ -55,6 +55,7 @@ base_requirements = {
     "pymysql>=1.0.2",
     "cached-property==1.5.2",
     "chardet",
+    "pandas==1.3.5",
 }
 
 
