@@ -44,3 +44,6 @@ where serviceType in ('Db2');
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,dbtConfigSource}';
 
+UPDATE pipeline_service_entity
+SET json = json::jsonb #- '{connection,config,configSource}'
+WHERE serviceType = 'Dagster';

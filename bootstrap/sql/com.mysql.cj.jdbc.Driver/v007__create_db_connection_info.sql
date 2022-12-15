@@ -47,3 +47,6 @@ SET json = JSON_INSERT(
 -- Remove DBT source config
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json ,'$.sourceConfig.config.dbtConfigSource');
+UPDATE pipeline_service_entity 
+SET json = JSON_REMOVE(json, '$.connection.config.configSource')
+WHERE serviceType = 'Dagster';  
