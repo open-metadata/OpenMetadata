@@ -101,10 +101,11 @@ export const emptyJsonTree: JsonTree = {
         [QbUtils.uuid()]: {
           type: 'rule',
           properties: {
-            field: null,
+            // owner is common field , so setting owner as default field here
+            field: 'owner.name',
             operator: null,
             value: [],
-            valueSrc: [],
+            valueSrc: ['value'],
           },
         },
       },
