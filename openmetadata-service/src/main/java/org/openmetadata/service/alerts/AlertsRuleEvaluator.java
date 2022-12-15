@@ -184,8 +184,7 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
-    EntityInterface entity = (EntityInterface) changeEvent.getEntity();
-    String entityUpdatedBy = entity.getUpdatedBy();
+    String entityUpdatedBy = changeEvent.getUserName();
     for (String name : updatedByUserList) {
       if (name.equals(entityUpdatedBy)) {
         return true;
