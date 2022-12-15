@@ -206,11 +206,15 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         if entity_config:
             return entity_config.profileSample
 
+        if (
+            hasattr(entity, "tableProfilerConfig")
+            and hasattr(entity.tableProfilerConfig, "profileSample")
+            and entity.tableProfilerConfig.profileSample
+        ):
+            return entity.tableProfilerConfig.profileSample
+
         if self.source_config.profileSample:
             return self.source_config.profileSample
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.profileSample
         return None
 
     def get_profile_sample_rows(self, entity: Table) -> Optional[float]:
@@ -223,11 +227,14 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         if entity_config:
             return entity_config.profileSampleRows
 
+        if (
+            hasattr(entity, "tableProfilerConfig")
+            and hasattr(entity.tableProfilerConfig, "profileSampleRows")
+            and entity.tableProfilerConfig.profileSampleRows
+        ):
+            return entity.tableProfilerConfig.profileSampleRows
         if self.source_config.profileSampleRows:
             return self.source_config.profileSampleRows
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.profileSampleRows
 
         return None
 

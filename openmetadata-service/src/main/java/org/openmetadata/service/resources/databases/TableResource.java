@@ -601,7 +601,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    table.setProfile(dao.getLatestTableProfile(table.getFullyQualifiedName()).getProfile());
     return addHref(uriInfo, table.withTableProfilerConfig(dao.getTableProfilerConfig(table)));
   }
 
