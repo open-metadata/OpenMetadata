@@ -13,14 +13,14 @@
 
 import { TagsCategory } from '../pages/tags/tagsTypes';
 import {
+  createClassification,
   createTag,
-  createTagCategory,
+  deleteClassification,
   deleteTag,
-  deleteTagCategory,
-  getCategory,
+  getClassification,
   getTags,
+  updateClassification,
   updateTag,
-  updateTagCategory,
 } from './tagAPI';
 
 jest.mock('../utils/APIUtils', () => ({
@@ -61,50 +61,56 @@ describe('API functions should work properly', () => {
     expect(data).toEqual(`get_request/tags?fields=querry`);
   });
 
-  it('getCategory function should work properly', async () => {
-    const result = await getCategory('categoryName', 'querry');
+  it('getClassification function should work properly', async () => {
+    const result = await getClassification('categoryName', 'querry');
 
-    expect(result).toEqual(`get_request/tags/categoryName?fields=querry`);
+    expect(result).toEqual(
+      `get_request/classifications/name/categoryName?fields=querry`
+    );
   });
 
-  it('deleteTagCategory function should work properly', async () => {
-    const result = await deleteTagCategory('categoryId');
+  it('deleteClassification function should work properly', async () => {
+    const result = await deleteClassification('classificationId');
 
-    expect(result).toEqual(`delete_request/tags/categoryId`);
+    expect(result).toEqual(`delete_request/classifications/classificationId`);
   });
 
+  // TODO:9259 deleting tag with classificationId?
   it('deleteTag function should work properly', async () => {
-    const result = await deleteTag('testCategory', 'categoryId');
+    const result = await deleteTag('classificationId');
 
-    expect(result).toEqual(`delete_request/tags/testCategory/categoryId`);
+    expect(result).toEqual(`delete_request/tags/classificationId`);
   });
 
-  it('createTagCategory function should work properly', async () => {
+  it('createClassification function should work properly', async () => {
     const mockPostData = { name: 'testCategory' } as TagsCategory;
-    const result = await createTagCategory(mockPostData);
-
-    expect(result).toEqual({ url: `post_request/tags`, data: mockPostData });
-  });
-
-  it('createTag function should work properly', async () => {
-    const mockPostData = { name: 'newTag' } as TagsCategory;
-    const result = await createTag('testCategory', mockPostData);
+    const result = await createClassification(mockPostData);
 
     expect(result).toEqual({
-      url: `post_request/tags/testCategory`,
+      url: `post_request/classifications`,
       data: mockPostData,
     });
   });
 
-  it('updateTagCategory function should work properly', async () => {
+  it('createTag function should work properly', async () => {
+    const mockPostData = { name: 'newTag' } as TagsCategory;
+    const result = await createTag(mockPostData);
+
+    expect(result).toEqual({
+      url: `post_request/tags`,
+      data: mockPostData,
+    });
+  });
+
+  it('updateClassification function should work properly', async () => {
     const mockUpdateData = {
       name: 'testCategory',
       description: 'newDescription',
     };
-    const result = await updateTagCategory('testCategory', mockUpdateData);
+    const result = await updateClassification(mockUpdateData);
 
     expect(result).toEqual({
-      url: `put_request/tags/testCategory`,
+      url: `put_request/classifications`,
       data: mockUpdateData,
     });
   });
@@ -114,10 +120,10 @@ describe('API functions should work properly', () => {
       name: 'tagName',
       description: 'newDescription',
     };
-    const result = await updateTag('testCategory', 'tagName', mockUpdateData);
+    const result = await updateTag(mockUpdateData);
 
     expect(result).toEqual({
-      url: `put_request/tags/testCategory/tagName`,
+      url: `put_request/tags`,
       data: mockUpdateData,
     });
   });

@@ -1915,31 +1915,6 @@ public interface CollectionDAO {
     }
   }
 
-  interface WebhookDAO extends EntityDAO<Webhook> {
-    @Override
-    default String getTableName() {
-      return "webhook_entity";
-    }
-
-    @Override
-    default Class<Webhook> getEntityClass() {
-      return Webhook.class;
-    }
-
-    @Override
-    default String getNameColumn() {
-      return "name";
-    }
-
-    @Override
-    default boolean supportsSoftDelete() {
-      return false;
-    }
-
-    @SqlQuery("SELECT json FROM <table>")
-    List<String> listAllWebhooks(@Define("table") String table);
-  }
-
   interface ClassificationDAO extends EntityDAO<Classification> {
     @Override
     default String getTableName() {

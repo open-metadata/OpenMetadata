@@ -24,14 +24,12 @@ import { flatten } from 'lodash';
 import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Classification } from '../../../generated/entity/classification/classification';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import {
-  TagCategory,
-  TagClass,
-} from '../../../generated/entity/tags/tagCategory';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { fetchGlossaryTerms } from '../../../utils/GlossaryUtils';
-import { getTagCategories } from '../../../utils/TagsUtils';
+import { getClassifications } from '../../../utils/TagsUtils';
 import EntityPageInfo from './EntityPageInfo';
 
 const mockEntityFieldThreads = [
@@ -193,13 +191,13 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(() => Promise.resolve({ data: mockTagList })),
+  getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
   getTaglist: jest.fn((categories) => {
-    const children = categories.map((category: TagCategory) => {
+    const children = categories.map((category: Classification) => {
       return category.children || [];
     });
     const allChildren = flatten(children);
-    const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
+    const tagList = (allChildren as unknown as Tag[]).map((tag) => {
       return tag?.fullyQualifiedName || '';
     });
 
@@ -588,7 +586,7 @@ describe('Test EntityPageInfo component', () => {
   });
 
   it('Check if only glossary terms are present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+    (getClassifications as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
     const { getByTestId, findByText, queryByText } = render(
@@ -613,7 +611,7 @@ describe('Test EntityPageInfo component', () => {
 
   it('Check that tags and glossary terms are not present', async () => {
     await act(async () => {
-      (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+      (getClassifications as jest.Mock).mockImplementationOnce(() =>
         Promise.reject()
       );
       (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>

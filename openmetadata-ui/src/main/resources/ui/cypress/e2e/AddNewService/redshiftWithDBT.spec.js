@@ -149,7 +149,7 @@ describe('RedShift Ingestion', () => {
     //Verify DBT tag category is added
     cy.get('[data-testid="tag-name"]')
       .should('be.visible')
-      .should('contain', DBT.tagCategory);
+      .should('contain', DBT.classification);
 
     cy.get('.ant-table-row')
       .should('be.visible')
@@ -162,7 +162,7 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="entity-tags"]')
       .should('exist')
       .should('be.visible')
-      .should('contain', `${DBT.tagCategory}.${DBT.tagName}`);
+      .should('contain', `${DBT.classification}.${DBT.tagName}`);
     //Verify DBT tab is present
     cy.get('[data-testid="DBT"]').should('exist').should('be.visible');
     cy.get('[data-testid="DBT"]').click();

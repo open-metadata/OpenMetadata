@@ -250,7 +250,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
   const tagCategoryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(
-        ResourceEntity.TAG_CATEGORY,
+        ResourceEntity.CLASSIFICATION,
         permissions
       ),
 

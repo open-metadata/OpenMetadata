@@ -49,7 +49,7 @@ import {
   makeData,
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import {
   getRequestDescriptionPath,
   getRequestTagsPath,
@@ -103,7 +103,7 @@ const EntityTable = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
         if (

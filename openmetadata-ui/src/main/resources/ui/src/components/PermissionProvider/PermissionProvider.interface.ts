@@ -53,7 +53,7 @@ export enum ResourceEntity {
   STORAGE_SERVICE = 'storageService',
   TABLE = 'table',
   TAG = 'tag',
-  TAG_CATEGORY = 'tagCategory',
+  CLASSIFICATION = 'classification',
   TEAM = 'team',
   TEST_CASE = 'testCase',
   TEST_DEFINITION = 'testDefinition',
