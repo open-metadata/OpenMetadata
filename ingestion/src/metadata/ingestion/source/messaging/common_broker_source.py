@@ -37,9 +37,10 @@ from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
 )
-from metadata.parsers.avro_parser import parse_avro_schema
-from metadata.parsers.json_schema_parser import parse_json_schema
-from metadata.parsers.protobuf_parser import ProtobufParser, ProtobufParserConfig
+from metadata.parsers.schema_parsers import (
+    InvalidSchemaTypeException,
+    schema_parser_config_registry,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -104,47 +105,26 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             self.add_properties_to_topic_from_resource(topic, topic_config_resource)
 
             if topic_schema is not None:
-                if topic_schema.schema_type.lower() == SchemaType.Avro.value.lower():
-                    topic.messageSchema = (
-                        Topic(
-                            schemaText=topic_schema.schema_str,
-                            schemaType=SchemaType.Avro.name,
-                            schemaFields=parse_avro_schema(topic_schema.schema_str),
-                        ),
+                schema_type = topic_schema.schema_type.lower()
+                load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
+                if not load_parser_fn:
+                    raise InvalidSchemaTypeException(
+                        f"Cannot find {schema_type} in parser providers registry."
                     )
+                schema_fields = load_parser_fn(
+                    topic_details.topic_name, topic_schema.schema_str
+                )
+
+                topic.messageSchema = (
+                    Topic(
+                        schemaText=topic_schema.schema_str,
+                        schemaType=SchemaType(topic_schema.schema_type).value,
+                        schemaFields=schema_fields,
+                    ),
+                )
+                if topic_schema.schema_type.lower() == SchemaType.Avro.value.lower():
                     if self.generate_sample_data:
                         topic.sampleData = self._get_sample_data(topic.name)
-                elif (
-                    topic_schema.schema_type.lower() == SchemaType.Protobuf.name.lower()
-                ):
-                    protobuf_parser = ProtobufParser(
-                        config=ProtobufParserConfig(
-                            schema_name=topic_details.topic_name,
-                            schema_text=topic_schema.schema_str,
-                        )
-                    )
-                    topic.messageSchema = (
-                        Topic(
-                            schemaText=topic_schema.schema_str,
-                            schemaType=SchemaType.Protobuf.name,
-                            schemaFields=protobuf_parser.parse_protobuf_schema(),
-                        ),
-                    )
-                elif topic_schema.schema_type.lower() == SchemaType.JSON.name.lower():
-                    topic.messageSchema = (
-                        Topic(
-                            schemaText=topic_schema.schema_str,
-                            schemaType=SchemaType.JSON.name,
-                            schemaFields=parse_json_schema(topic_schema.schema_str),
-                        ),
-                    )
-                else:
-                    topic.messageSchema = (
-                        Topic(
-                            schemaText=topic_schema.schema_str,
-                            schemaType=SchemaType.Other.name,
-                        ),
-                    )
 
             self.status.topic_scanned(topic.name.__root__)
             yield topic

@@ -84,7 +84,7 @@ from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import SchemaType, Topic
+from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -98,9 +98,10 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import TableLocationLink
-from metadata.parsers.avro_parser import parse_avro_schema
-from metadata.parsers.json_schema_parser import parse_json_schema
-from metadata.parsers.protobuf_parser import ProtobufParser, ProtobufParserConfig
+from metadata.parsers.schema_parsers import (
+    InvalidSchemaTypeException,
+    schema_parser_config_registry,
+)
 from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -674,18 +675,15 @@ class SampleDataSource(
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            schema_fields = None
-            if topic["schemaType"].lower() == SchemaType.Avro.value.lower():
-                schema_fields = parse_avro_schema(topic["schemaText"])
-            elif topic["schemaType"].lower() == SchemaType.JSON.name.lower():
-                schema_fields = parse_json_schema(topic["schemaText"])
-            elif topic["schemaType"].lower() == SchemaType.Protobuf.name.lower():
-                protobuf_parser = ProtobufParser(
-                    config=ProtobufParserConfig(
-                        schema_name=topic["name"], schema_text=topic["schemaText"]
-                    )
+            schema_type = topic["schemaType"].lower()
+
+            load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
+            if not load_parser_fn:
+                raise InvalidSchemaTypeException(
+                    f"Cannot find {schema_type} in parser providers registry."
                 )
-                schema_fields = protobuf_parser.parse_protobuf_schema()
+            schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
+
             create_topic = CreateTopicRequest(
                 name=topic["name"],
                 description=topic["description"],

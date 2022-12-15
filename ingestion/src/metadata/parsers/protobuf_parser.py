@@ -61,9 +61,9 @@ class ProtobufDataTypes(Enum):
     def __repr__(self):
         value = ", ".join([repr(v) for v in self._all_values])
         return (
-            f"<"
+            f"<"  # pylint: disable=no-member
             f"{self.__class__.__name__,}"
-            f"{self._name_}"  # pylint: disable=no-member
+            f"{self._name_}"
             f"{value}"
             f">"
         )
