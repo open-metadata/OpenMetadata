@@ -60,6 +60,7 @@ class Dialects(Enum):
     AzureSQL = "azuresql"
     SingleStore = "singlestore"
     SQLite = "sqlite"
+    IbmDbSa = "ibm_db_sa"
 
 
 # Sometimes we want to skip certain types for computing metrics.

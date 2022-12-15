@@ -30,3 +30,12 @@ CREATE TABLE IF NOT EXISTS alert_action_def (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+
+UPDATE dbservice_entity
+SET json = jsonb_set(json, '{connection,config,database}', json#>'{connection,config,databaseSchema}')
+where serviceType in ('Db2')
+  and json#>'{connection,config,databaseSchema}' is not null;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,databaseSchema}'
+where serviceType in ('Db2');
