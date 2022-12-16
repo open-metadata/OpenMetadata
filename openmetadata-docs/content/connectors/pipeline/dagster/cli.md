@@ -52,18 +52,8 @@ source:
   serviceConnection:
     config:
       type: Dagster
-        # For Local Connection
-        # hostPort: http://locahost:3000/
-        
-        # For Cloud Connection
-        host: "https://<yourorghere>.dagster.cloud/prod"
+        host: "https://<yourorghere>.dagster.cloud/prod" # or http://127.0.0.1:3000
         token: token
-      dbConnection:
-        type: name of database service
-        username: db username
-        password: db password
-        databaseSchema: database name 
-        hostPort: host and port for database
   sourceConfig:
     config:
       type: PipelineMetadata
@@ -90,24 +80,20 @@ workflowConfig:
 
 <Note>
 
-If dagster is deployed on `localhost` and entering `https://localhost:3000` into hostPort gives a connection refused error, please enter `https://127.0.0.1:3000` into the hostPort and try again.
+If dagster is deployed on `localhost` and entering `https://localhost:3000` into host gives a connection refused error, please enter `https://127.0.0.1:3000` into the host and try again.
 
 </Note>
 
-- **dbConnection**
-    - **type**: Name of the Database Service
-    - Local Dagster
-      - **hostPort**: host and port for database connection
-    - Cloud Dagster
-      - **host** : host for connection
-      - **token**: token for connection
+- **ServiceConnection**
+  - **Host**: Host of the dagster eg.`https://localhost:300` or `https://127.0.0.1:3000` or `https://<yourorghere>.dagster.cloud/prod`
+  - **Token** : Need pass token if connecting to `dagster cloud` instance
 
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
 
 - `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
-- `pipelineFilterPattern` and `chartFilterPattern`: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `pipelineFilterPattern` : Note that the `pipelineFilterPattern` support regex as include or exclude. E.g.,
 
 ```yaml
 pipelineFilterPattern:
