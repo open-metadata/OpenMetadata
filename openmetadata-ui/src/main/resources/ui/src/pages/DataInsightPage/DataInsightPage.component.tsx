@@ -82,6 +82,7 @@ const DataInsightPage = () => {
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const [selectedDaysFilter, setSelectedDaysFilter] = useState(DEFAULT_DAYS);
 
   const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
 
@@ -108,6 +109,7 @@ const DataInsightPage = () => {
   };
 
   const handleDaysChange = (days: number) => {
+    setSelectedDaysFilter(days);
     setChartFilter((previous) => ({
       ...previous,
       startTs: getPastDaysDateTimeMillis(days),
@@ -294,19 +296,30 @@ const DataInsightPage = () => {
         {activeTab === DataInsightTabs.DATA_ASSETS && (
           <>
             <Col span={24}>
-              <TotalEntityInsight chartFilter={chartFilter} />
+              <TotalEntityInsight
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
               <DescriptionInsight
                 chartFilter={chartFilter}
                 kpi={descriptionKpi}
+                selectedDays={selectedDaysFilter}
               />
             </Col>
             <Col span={24}>
-              <OwnerInsight chartFilter={chartFilter} kpi={ownerKpi} />
+              <OwnerInsight
+                chartFilter={chartFilter}
+                kpi={ownerKpi}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
-              <TierInsight chartFilter={chartFilter} />
+              <TierInsight
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
           </>
         )}
@@ -316,10 +329,16 @@ const DataInsightPage = () => {
               <TopViewEntities chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <PageViewsByEntitiesChart chartFilter={chartFilter} />
+              <PageViewsByEntitiesChart
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
-              <DailyActiveUsersChart chartFilter={chartFilter} />
+              <DailyActiveUsersChart
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
               <TopActiveUsers chartFilter={chartFilter} />

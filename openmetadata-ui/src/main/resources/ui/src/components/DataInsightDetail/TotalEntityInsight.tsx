@@ -55,9 +55,10 @@ import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
+  selectedDays: number;
 }
 
-const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
+const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [totalEntitiesByType, setTotalEntitiesByType] =
     useState<DataInsightChartResult>();
 
@@ -65,7 +66,7 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
-  const { data, entities, total } = useMemo(() => {
+  const { data, entities, total, relativePercentage } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesByType?.data ?? [],
       DataInsightChartType.TotalEntitiesByType
@@ -134,7 +135,16 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
             <Legend
               align="left"
               content={(props) =>
-                renderLegend(props as LegendProps, `${total}`, activeKeys)
+                renderLegend(
+                  props as LegendProps,
+                  `${total}`,
+                  activeKeys,
+                  true,
+                  {
+                    changeInValue: relativePercentage,
+                    duration: selectedDays,
+                  }
+                )
               }
               layout="vertical"
               verticalAlign="top"

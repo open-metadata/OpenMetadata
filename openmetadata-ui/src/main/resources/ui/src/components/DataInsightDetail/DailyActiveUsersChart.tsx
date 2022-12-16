@@ -47,9 +47,10 @@ import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
+  selectedDays: number;
 }
 
-const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
+const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [dailyActiveUsers, setDailyActiveUsers] = useState<DailyActiveUsers[]>(
     []
   );
@@ -58,7 +59,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
 
   const { t } = useTranslation();
 
-  const { data, total } = useMemo(
+  const { data, total, relativePercentage } = useMemo(
     () => getFormattedActiveUsersData(dailyActiveUsers),
     [dailyActiveUsers]
   );
@@ -108,7 +109,16 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
             <Legend
               align="left"
               content={() =>
-                renderLegend({ payload: [] } as LegendProps, `${total}`)
+                renderLegend(
+                  { payload: [] } as LegendProps,
+                  `${total}`,
+                  [],
+                  true,
+                  {
+                    changeInValue: relativePercentage,
+                    duration: selectedDays,
+                  }
+                )
               }
               layout="vertical"
               verticalAlign="top"

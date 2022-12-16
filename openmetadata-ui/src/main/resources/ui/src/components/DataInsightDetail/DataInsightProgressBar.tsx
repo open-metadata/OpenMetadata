@@ -13,9 +13,11 @@
 
 import { Progress, Typography } from 'antd';
 import classNames from 'classnames';
+import { isNil } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import ChangeInValueIndicator from './ChangeInValueIndicator';
 
 interface DataInsightProgressBarProps {
   width?: number;
@@ -28,6 +30,8 @@ interface DataInsightProgressBarProps {
   successValue?: number | string;
   startValue?: number | string;
   suffix?: string;
+  changeInValue?: number;
+  duration?: number;
 }
 
 const DataInsightProgressBar = ({
@@ -41,6 +45,8 @@ const DataInsightProgressBar = ({
   successValue = 100,
   showLabel = true,
   showSuccessInfo = false,
+  changeInValue,
+  duration,
 }: DataInsightProgressBarProps) => {
   const { t } = useTranslation();
 
@@ -79,6 +85,16 @@ const DataInsightProgressBar = ({
           <SVGIcons className="m-l-xs" icon={Icons.SUCCESS_BADGE} />
         )}
       </div>
+
+      {changeInValue && !isNil(changeInValue) ? (
+        <ChangeInValueIndicator
+          changeInValue={changeInValue}
+          duration={duration}
+          suffix={suffix}
+        />
+      ) : (
+        ''
+      )}
     </div>
   );
 };

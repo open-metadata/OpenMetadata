@@ -61,9 +61,10 @@ import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 interface Props {
   chartFilter: ChartFilter;
   kpi: Kpi | undefined;
+  selectedDays: number;
 }
 
-const OwnerInsight: FC<Props> = ({ chartFilter, kpi }) => {
+const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
   const [totalEntitiesOwnerByType, setTotalEntitiesOwnerByType] =
     useState<DataInsightChartResult>();
 
@@ -71,7 +72,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi }) => {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
-  const { data, entities, total } = useMemo(() => {
+  const { data, entities, total, relativePercentage } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesOwnerByType?.data ?? [],
       DataInsightChartType.PercentageOfEntitiesWithOwnerByType
@@ -140,7 +141,9 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi }) => {
         </>
       }>
       <DataInsightProgressBar
+        changeInValue={relativePercentage}
         className="m-b-md"
+        duration={selectedDays}
         progress={Number(total)}
         target={targetValue}
         width={250}
@@ -157,7 +160,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi }) => {
             <Legend
               align="left"
               content={(props) =>
-                renderLegend(props as LegendProps, total, activeKeys, true)
+                renderLegend(props as LegendProps, total, activeKeys, false)
               }
               layout="vertical"
               verticalAlign="top"

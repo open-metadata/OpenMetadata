@@ -61,9 +61,10 @@ import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 interface Props {
   chartFilter: ChartFilter;
   kpi: Kpi | undefined;
+  selectedDays: number;
 }
 
-const DescriptionInsight: FC<Props> = ({ chartFilter, kpi }) => {
+const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
   const [totalEntitiesDescriptionByType, setTotalEntitiesDescriptionByType] =
     useState<DataInsightChartResult>();
 
@@ -71,7 +72,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi }) => {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
-  const { data, entities, total } = useMemo(() => {
+  const { data, entities, total, relativePercentage } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesDescriptionByType?.data ?? [],
       DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
@@ -141,7 +142,9 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi }) => {
         </>
       }>
       <DataInsightProgressBar
+        changeInValue={relativePercentage}
         className="m-b-md"
+        duration={selectedDays}
         progress={Number(total)}
         target={targetValue}
         width={250}

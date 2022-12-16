@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { t } from 'i18next';
 import {
+  first,
   groupBy,
   isEmpty,
   isInteger,
+  isNil,
   isString,
   isUndefined,
   last,
@@ -28,6 +30,7 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem, ListValues } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import ChangeInValueIndicator from '../components/DataInsightDetail/ChangeInValueIndicator';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -64,23 +67,37 @@ export const renderLegend = (
   legendData: LegendProps,
   latest: string | number,
   activeKeys = [] as string[],
-  showLatestValue = true
+  showLatestValue = true,
+  changeInValueIndicator?: {
+    changeInValue: number;
+    duration?: number;
+    suffix?: string;
+  }
 ) => {
   const { payload = [] } = legendData;
 
   return (
     <>
       {showLatestValue && (
-        <>
+        <Space direction="vertical" size={0} style={{ margin: '0px 0px 16px' }}>
           <Typography.Text className="data-insight-label-text">
             Latest
           </Typography.Text>
-          <Typography
-            className="font-bold text-lg"
-            style={{ margin: '0px 0px 16px' }}>
+          <Typography.Text className="font-bold text-lg">
             {latest}
-          </Typography>
-        </>
+          </Typography.Text>
+          {changeInValueIndicator &&
+          changeInValueIndicator.changeInValue &&
+          !isNil(changeInValueIndicator.changeInValue) ? (
+            <ChangeInValueIndicator
+              changeInValue={changeInValueIndicator.changeInValue}
+              duration={changeInValueIndicator.duration}
+              suffix={changeInValueIndicator.suffix ?? '%'}
+            />
+          ) : (
+            ''
+          )}
+        </Space>
       )}
       <ul className="mr-2">
         {payload.map((entry, index) => {
@@ -294,6 +311,62 @@ const getLatestPercentage = (
  *
  * @param rawData raw chart data
  * @param dataInsightChartType chart type
+ * @returns old percentage for the chart
+ */
+const getOldestPercentage = (
+  rawData: DataInsightChartResult['data'] = [],
+  dataInsightChartType: DataInsightChartType
+) => {
+  let totalEntityCount = 0;
+  let totalEntityWithDescription = 0;
+  let totalEntityWithOwner = 0;
+
+  const modifiedData = rawData
+    .map((raw) => {
+      const timestamp = raw.timestamp;
+      if (timestamp) {
+        return {
+          ...raw,
+          timestamp,
+        };
+      }
+
+      return;
+    })
+    .filter(Boolean);
+
+  const sortedData = sortBy(modifiedData, 'timestamp');
+  const groupDataByTimeStamp = groupBy(sortedData, 'timestamp');
+  const oldestData = first(sortedData);
+  if (oldestData) {
+    const oldestChartRecords = groupDataByTimeStamp[oldestData.timestamp];
+
+    oldestChartRecords.forEach((record) => {
+      totalEntityCount += record?.entityCount ?? 0;
+      totalEntityWithDescription += record?.completedDescription ?? 0;
+      totalEntityWithOwner += record?.hasOwner ?? 0;
+    });
+    switch (dataInsightChartType) {
+      case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+        return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
+          2
+        );
+
+      case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+        return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
+
+      default:
+        return 0;
+    }
+  }
+
+  return 0;
+};
+
+/**
+ *
+ * @param rawData raw chart data
+ * @param dataInsightChartType chart type
  * @returns formatted chart for graph
  */
 const getGraphFilteredData = (
@@ -371,6 +444,19 @@ export const getGraphDataByEntityType = (
 
   const graphData = prepareGraphData(timestamps, filteredData);
   const latestData = last(graphData);
+  const oldData = first(graphData);
+  const latestPercentage = toNumber(
+    isPercentageGraph
+      ? getLatestPercentage(rawData, dataInsightChartType)
+      : getLatestCount(latestData)
+  );
+  const oldestPercentage = toNumber(
+    isPercentageGraph
+      ? getOldestPercentage(rawData, dataInsightChartType)
+      : getLatestCount(oldData)
+  );
+
+  const relativePercentage = latestPercentage - oldestPercentage;
 
   return {
     data: graphData,
@@ -378,6 +464,9 @@ export const getGraphDataByEntityType = (
     total: isPercentageGraph
       ? getLatestPercentage(rawData, dataInsightChartType)
       : getLatestCount(latestData),
+    relativePercentage: isPercentageGraph
+      ? relativePercentage
+      : (relativePercentage / oldestPercentage) * 100,
   };
 };
 
@@ -412,12 +501,15 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   });
 
   const graphData = prepareGraphData(timestamps, filteredData);
-  const latestData = last(graphData);
+  const latestData = getLatestCount(last(graphData));
+  const oldestData = getLatestCount(first(graphData));
+  const relativePercentage = latestData - oldestData;
 
   return {
     data: graphData,
     tiers,
-    total: getLatestCount(latestData),
+    total: latestData,
+    relativePercentage,
   };
 };
 
@@ -438,9 +530,15 @@ export const getFormattedActiveUsersData = (
       : '',
   }));
 
+  const latestCount = Number(last(formattedData)?.activeUsers);
+  const oldestCount = Number(first(formattedData)?.activeUsers);
+
+  const relativePercentage = ((latestCount - oldestCount) / oldestCount) * 100;
+
   return {
     data: formattedData,
-    total: last(formattedData)?.activeUsers,
+    total: latestCount,
+    relativePercentage,
   };
 };
 

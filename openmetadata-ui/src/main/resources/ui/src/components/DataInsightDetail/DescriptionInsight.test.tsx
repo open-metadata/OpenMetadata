@@ -65,6 +65,7 @@ describe('Test DescriptionInsight Component', () => {
         <DescriptionInsight
           chartFilter={INITIAL_CHART_FILTER}
           kpi={undefined}
+          selectedDays={30}
         />
       );
       const card = screen.getByTestId('entity-description-percentage-card');

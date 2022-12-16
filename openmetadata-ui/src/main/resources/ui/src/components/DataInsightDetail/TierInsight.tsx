@@ -56,9 +56,10 @@ import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
+  selectedDays: number;
 }
 
-const TierInsight: FC<Props> = ({ chartFilter }) => {
+const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [totalEntitiesByTier, setTotalEntitiesByTier] =
     useState<DataInsightChartResult>();
 
@@ -66,7 +67,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
-  const { data, tiers, total } = useMemo(() => {
+  const { data, tiers, total, relativePercentage } = useMemo(() => {
     return getGraphDataByTierType(totalEntitiesByTier?.data ?? []);
   }, [totalEntitiesByTier]);
 
@@ -123,7 +124,9 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
         </>
       }>
       <DataInsightProgressBar
+        changeInValue={relativePercentage}
         className="m-b-md"
+        duration={selectedDays}
         progress={Number(total)}
         width={250}
       />

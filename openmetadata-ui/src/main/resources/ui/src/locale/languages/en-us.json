@@ -551,7 +551,8 @@
     "select-dbt-source": "Select DBT Source",
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
-    "latest": "Latest"
+    "latest": "Latest",
+    "days-change-lowercase": "{{days}}-days change"
   },
   "message": {
     "service-email-required": "Service account Email is required",
