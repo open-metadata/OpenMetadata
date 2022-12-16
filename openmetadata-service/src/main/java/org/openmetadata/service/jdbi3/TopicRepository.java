@@ -252,7 +252,7 @@ public class TopicRepository extends EntityRepository<Topic> {
             "schemaFields",
             original.getMessageSchema().getSchemaFields(),
             updated.getMessageSchema().getSchemaFields(),
-            EntityUtil.fieldMatch);
+            EntityUtil.schemaFieldMatch);
       }
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);

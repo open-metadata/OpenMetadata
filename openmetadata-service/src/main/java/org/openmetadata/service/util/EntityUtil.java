@@ -148,7 +148,7 @@ public final class EntityUtil {
 
   public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
-  public static final BiPredicate<Field, Field> fieldMatch =
+  public static final BiPredicate<Field, Field> schemaFieldMatch =
       (field1, field2) ->
           field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
 
@@ -384,11 +384,10 @@ public final class EntityUtil {
   /** Return schema field name of format "schemaFields".fieldName.fieldName */
   public static String getSchemaField(Topic topic, Field field, String fieldName) {
     // Remove topic FQN from schemaField FQN to get the local name
-    String localColumnName =
-        EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
+    String localFieldName = EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
     return fieldName == null
-        ? FullyQualifiedName.build("schemaFields", localColumnName)
-        : FullyQualifiedName.build("schemaFields", localColumnName, fieldName);
+        ? FullyQualifiedName.build("schemaFields", localFieldName)
+        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */
