@@ -36,3 +36,10 @@ CREATE TABLE IF NOT EXISTS alert_action_def (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+        JSON_REMOVE(json, '$.connection.config.databaseSchema'),
+        '$.connection.config.database',
+        JSON_EXTRACT(json, '$.connection.config.databaseSchema')
+    ) where serviceType in ('Db2');

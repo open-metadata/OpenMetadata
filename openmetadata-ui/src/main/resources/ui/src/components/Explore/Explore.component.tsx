@@ -60,6 +60,7 @@ import {
   TableTestsType,
 } from '../TableProfiler/TableProfiler.interface';
 import { AdvancedSearchModal } from './AdvanceSearchModal.component';
+import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
   ExploreProps,
@@ -103,6 +104,12 @@ const Explore: React.FC<ExploreProps> = ({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+
+  const [appliedFilterSQLFormat, setAppliedFilterSQLFormat] =
+    useState<string>('');
+
+  const handleAppliedFilterChange = (value: string) =>
+    setAppliedFilterSQLFormat(value);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -382,6 +389,15 @@ const Explore: React.FC<ExploreProps> = ({
               onFieldValueSelect={handleAdvanceFieldValueSelect}
             />
           </Col>
+          {appliedFilterSQLFormat && (
+            <Col span={24}>
+              <AppliedFilterText
+                filterText={appliedFilterSQLFormat}
+                onEdit={() => setShowAdvanceSearchModal(true)}
+              />
+            </Col>
+          )}
+
           <Col span={24}>
             {!loading ? (
               <SearchedData
@@ -421,6 +437,7 @@ const Explore: React.FC<ExploreProps> = ({
         jsonTree={advancedSearchJsonTree}
         searchIndex={searchIndex}
         visible={showAdvanceSearchModal}
+        onAppliedFilterChange={handleAppliedFilterChange}
         onCancel={() => setShowAdvanceSearchModal(false)}
         onChangeJsonTree={onChangeAdvancedSearchJsonTree}
         onSubmit={onChangeAdvancedSearchQueryFilter}

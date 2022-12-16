@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
@@ -19,41 +20,41 @@ ${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecifi
 
 export const datasetTableTabs = [
   {
-    name: 'Schema',
+    name: i18next.t('label.schema'),
     path: 'schema',
   },
   {
-    name: 'Activity Feeds & Tasks',
+    name: i18next.t('label.activity-feed-and-task-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Sample Data',
+    name: i18next.t('label.sample-data'),
     path: 'sample_data',
   },
   {
-    name: 'Queries',
+    name: i18next.t('label.query-plural'),
     path: 'table_queries',
   },
   {
-    name: 'Profiler',
+    name: i18next.t('label.profiler'),
     path: 'profiler',
   },
   {
-    name: 'Data Quality',
+    name: i18next.t('label.data-quality'),
     path: 'data-quality',
   },
   {
-    name: 'Lineage',
+    name: i18next.t('label.lineage'),
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'DBT',
+    name: i18next.t('label.dbt-uppercase'),
     path: 'dbt',
   },
   {
-    name: 'Custom Properties',
+    name: i18next.t('label.custom-properties'),
     path: 'custom_properties',
   },
 ];

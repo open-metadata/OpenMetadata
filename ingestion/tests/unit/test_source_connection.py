@@ -512,21 +512,13 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(singleStore_conn_obj)
 
     def test_db2_url(self):
-        # connection arguments without db
-        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000"
-        db2_conn_obj = Db2Connection(
-            scheme=Db2Scheme.db2_ibm_db,
-            username="openmetadata_user",
-            hostPort="localhost:50000",
-        )
-        assert expected_url == get_connection_url(db2_conn_obj)
-
         # connection arguments with db
-        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000"
+        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000/testdb"
         db2_conn_obj = Db2Connection(
+            scheme=Db2Scheme.db2_ibm_db,
             username="openmetadata_user",
             hostPort="localhost:50000",
-            scheme=Db2Scheme.db2_ibm_db,
+            database="testdb",
         )
         assert expected_url == get_connection_url(db2_conn_obj)
 
@@ -720,6 +712,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:443",
             connectionArguments=None,
             scheme=Db2Scheme.db2_ibm_db,
+            database="testdb",
         )
         assert expected_args == get_connection_args(db2_conn_obj)
 
@@ -731,6 +724,7 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:443",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=Db2Scheme.db2_ibm_db,
+            database="testdb",
         )
         assert expected_args == get_connection_args(db2_conn_obj)
 

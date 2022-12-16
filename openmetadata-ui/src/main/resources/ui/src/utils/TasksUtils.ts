@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
+import { t } from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
 import { getUserSuggestions } from '../axiosAPIs/miscAPI';
@@ -311,11 +312,11 @@ export const fetchEntityDetail = (
 
 export const TASK_ACTION_LIST = [
   {
-    label: 'Accept Suggestion',
+    label: t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
   },
   {
-    label: 'Edit & Accept Suggestion',
+    label: t('label.edit-amp-accept-suggestion'),
     key: TaskActionMode.EDIT,
   },
 ];

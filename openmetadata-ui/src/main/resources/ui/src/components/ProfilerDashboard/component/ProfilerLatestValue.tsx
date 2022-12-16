@@ -13,7 +13,7 @@
 
 import { Space, Statistic, Typography } from 'antd';
 import React from 'react';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import { getStatisticsDisplayValue } from '../../../utils/CommonUtils';
 import { ProfilerLatestValueProps } from '../profilerDashboard.interface';
 
 import '../profilerDashboard.less';
@@ -37,7 +37,7 @@ const ProfilerLatestValue = ({
           value={
             tickFormatter || stringValue
               ? `${info.latestValue}${tickFormatter ?? ''}`
-              : formatNumberWithComma(Number(info.latestValue))
+              : getStatisticsDisplayValue(info.latestValue)
           }
           valueStyle={{ color: info.color, fontSize: '18px', fontWeight: 700 }}
         />
