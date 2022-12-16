@@ -192,6 +192,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       onOpenChange={(visible) => {
         visible && onSearch('', searchKey);
         setIsDropDownOpen(visible);
+        setSearchText('');
       }}>
       <Button className="quick-filter-dropdown-trigger-btn">
         <Space data-testid="search-dropdown" size={4}>
