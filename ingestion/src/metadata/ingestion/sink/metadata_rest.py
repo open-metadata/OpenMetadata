@@ -177,6 +177,9 @@ class MetadataRestSink(Sink[Entity]):
             self.metadata.ingest_table_data_model(
                 table=table, data_model=datamodel_link.datamodel
             )
+            logger.debug(
+                f"Successfully ingested DataModel for {table.fullyQualifiedName.__root__}"
+            )
         else:
             logger.warning(
                 f"Could not find any entity by Table FQN [{datamodel_link.fqn}] when adding DBT models."

@@ -1,7 +1,5 @@
 package org.openmetadata.service.alerts;
 
-import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.entity.alerts.TriggerConfig;
 import org.openmetadata.schema.filter.EventFilter;
 import org.openmetadata.schema.filter.Filters;
@@ -21,8 +18,6 @@ import org.openmetadata.service.events.EventPublisher;
 import org.openmetadata.service.events.errors.RetriableException;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.util.FilterUtil;
-import org.springframework.expression.Expression;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public abstract class AbstractAlertPublisher implements EventPublisher {
@@ -74,7 +69,7 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     }
 
     // Evaluate ChangeEvent Alert Filtering
-    if (!evaluateAlertConditions(changeEvent)) {
+    if (!AlertUtil.evaluateAlertConditions(changeEvent, alert.getFilteringRules())) {
       return;
     }
 
@@ -119,21 +114,5 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
       // Use Trigger Specific Settings
       return filter.isEmpty() || FilterUtil.shouldProcessRequest(changeEvent, filter);
     }
-  }
-
-  private boolean evaluateAlertConditions(ChangeEvent changeEvent) {
-    boolean result = false;
-    for (AlertFilterRule rule : alert.getFilteringRules()) {
-      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-      Expression expression = parseExpression(rule.getCondition());
-      if (rule.getEffect() == AlertFilterRule.Effect.ALLOW) {
-        result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
-      } else if (rule.getEffect() == AlertFilterRule.Effect.DENY) {
-        result = Boolean.FALSE.equals(expression.getValue(evaluationContext, Boolean.class));
-      }
-      LOG.debug("Alert evaluated as Result : {}", result);
-    }
-    return result;
   }
 }

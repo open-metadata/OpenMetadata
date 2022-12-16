@@ -268,4 +268,74 @@ describe('Search DropDown Component', () => {
 
     expect(dropdownMenu).toBeNull();
   });
+
+  it('The selected options should be checked correctly each time popover renders', async () => {
+    render(<SearchDropdown {...mockProps} />);
+
+    const dropdownButton = await screen.findByTestId('search-dropdown');
+
+    // Dropdown menu should not be present
+
+    let dropdownMenu = screen.queryByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeNull();
+
+    // Click on dropdown button
+
+    await act(async () => {
+      userEvent.click(dropdownButton);
+    });
+
+    // Dropdown menu should render and checkbox for user1 should be checked as it is passed in 'selectedKeys'
+
+    dropdownMenu = await screen.findByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+
+    let option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).toBeChecked();
+
+    // Uncheck the 'user1' checkbox
+
+    await act(async () => {
+      userEvent.click(option1Checkbox);
+    });
+
+    // Check if 'user1' options is unselected
+
+    option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).not.toBeChecked();
+
+    // Close the dropdown without updating the changes and check if dropdown is closed.
+
+    const closeButton = await screen.findByTestId('update-btn');
+
+    expect(closeButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(closeButton);
+    });
+
+    dropdownMenu = screen.queryByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeNull();
+
+    // Open the dropdown again.
+
+    await act(async () => {
+      userEvent.click(dropdownButton);
+    });
+
+    dropdownMenu = await screen.findByTestId('drop-down-menu');
+
+    expect(dropdownMenu).toBeInTheDocument();
+
+    // Checkbox for 'user1' option should already be checked.
+
+    option1Checkbox = await screen.findByTestId('User 1-checkbox');
+
+    expect(option1Checkbox).toBeChecked();
+  });
 });

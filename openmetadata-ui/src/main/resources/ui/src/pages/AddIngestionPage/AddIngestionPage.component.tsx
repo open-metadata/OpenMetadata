@@ -240,6 +240,12 @@ const AddIngestionPage = () => {
     ]);
   }, [serviceCategory, ingestionType, serviceData]);
 
+  useEffect(() => {
+    if (ingestionType === PipelineType.Dbt) {
+      setActiveIngestionStep(2);
+    }
+  }, [ingestionType]);
+
   const renderAddIngestionPage = () => {
     if (isLoading) {
       return <Loader />;

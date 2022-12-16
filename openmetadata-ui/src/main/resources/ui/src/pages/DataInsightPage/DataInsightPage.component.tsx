@@ -246,15 +246,23 @@ const DataInsightPage = () => {
             </Space>
           </Card>
         </Col>
-        <Col span={24}>
-          <DataInsightSummary
-            chartFilter={chartFilter}
-            onScrollToChart={handleScrollToChart}
-          />
-        </Col>
-        <Col span={24}>
-          <KPIChart chartFilter={chartFilter} />
-        </Col>
+
+        {/* Do not show summary for KPIs */}
+        {tab !== DataInsightTabs.KPIS && (
+          <Col span={24}>
+            <DataInsightSummary
+              chartFilter={chartFilter}
+              onScrollToChart={handleScrollToChart}
+            />
+          </Col>
+        )}
+
+        {/* Do not show KPIChart for app analytics */}
+        {tab !== DataInsightTabs.APP_ANALYTICS && (
+          <Col span={24}>
+            <KPIChart chartFilter={chartFilter} />
+          </Col>
+        )}
         {activeTab === DataInsightTabs.DATA_ASSETS && (
           <>
             <Col span={24}>

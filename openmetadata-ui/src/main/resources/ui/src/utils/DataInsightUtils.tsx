@@ -84,10 +84,18 @@ export const renderLegend = (
 
           return (
             <li
-              className="recharts-legend-item d-flex items-center m-t-xss"
+              className="recharts-legend-item d-flex items-center m-t-xss cursor-pointer"
               key={`item-${index}`}
               onClick={(e) =>
                 legendData.onClick && legendData.onClick({ ...entry, ...e })
+              }
+              onMouseEnter={(e) =>
+                legendData.onMouseEnter &&
+                legendData.onMouseEnter({ ...entry, ...e })
+              }
+              onMouseLeave={(e) =>
+                legendData.onMouseLeave &&
+                legendData.onMouseLeave({ ...entry, ...e })
               }>
               <Surface className="mr-2" height={14} version="1.1" width={14}>
                 <rect
@@ -391,7 +399,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
 
       return {
         timestamp: timestamp,
-        [tiering]: data.entityCount,
+        [tiering]: (data?.entityCountFraction || 0) * 100,
       };
     }
 

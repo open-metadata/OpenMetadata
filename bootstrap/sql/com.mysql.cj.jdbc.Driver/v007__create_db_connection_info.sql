@@ -43,3 +43,7 @@ SET json = JSON_INSERT(
         '$.connection.config.database',
         JSON_EXTRACT(json, '$.connection.config.databaseSchema')
     ) where serviceType in ('Db2');
+
+-- Remove DBT source config
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json ,'$.sourceConfig.config.dbtConfigSource');

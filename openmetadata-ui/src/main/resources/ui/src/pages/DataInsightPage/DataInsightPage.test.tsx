@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { DataInsightTabs } from '../../interface/data-insight.interface';
 import DataInsightPage from './DataInsightPage.component';
+
+let activeTab = DataInsightTabs.DATA_ASSETS;
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
-  useParams: jest.fn().mockReturnValue({ tab: 'data-assets' }),
+  useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
 
 jest.mock('../../components/containers/PageLayoutV1', () =>
@@ -120,5 +124,29 @@ describe('Test DataInsightPage Component', () => {
     expect(tierInsight).toBeInTheDocument();
 
     expect(totalEntityInsight).toBeInTheDocument();
+  });
+
+  it('Should not render the KPI chart for app analytics', async () => {
+    activeTab = DataInsightTabs.APP_ANALYTICS;
+
+    await act(async () => {
+      render(<DataInsightPage />, { wrapper: MemoryRouter });
+    });
+
+    const kpiChart = screen.queryByTestId('kpi-chart');
+
+    expect(kpiChart).toBeNull();
+  });
+
+  it('Should not render the insights summary for KPIs', async () => {
+    activeTab = DataInsightTabs.KPIS;
+
+    await act(async () => {
+      render(<DataInsightPage />, { wrapper: MemoryRouter });
+    });
+
+    const dataInsightsSummary = screen.queryByTestId('data-insight-summary');
+
+    expect(dataInsightsSummary).toBeNull();
   });
 });

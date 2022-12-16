@@ -1,0 +1,12 @@
+[
+  {
+    "name": "ActivityFeedAlertAction",
+    "enabled": "true",
+    "alertActionType": "ActivityFeed",
+    "alertActionConfig": {
+      "name": "ActivityFeedAlertAction",
+      "description": "Controls the Activity Displayed on the Feeds Page"
+    },
+    "provider" : "system"
+  }
+]
