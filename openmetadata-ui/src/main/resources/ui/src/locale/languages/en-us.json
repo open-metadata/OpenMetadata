@@ -523,6 +523,8 @@
     "search-entity": "Search {{entity}}",
     "more": "More",
     "update": "Update",
+    "add-category": "Add Category",
+    "add-tag-category": "Add Tag Category",
     "reply-in-conversation": "Reply in conversation",
     "older-reply-lowercase": "older reply",
     "older-replies-lowercase": "older replies",
