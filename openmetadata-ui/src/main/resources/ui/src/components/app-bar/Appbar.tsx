@@ -190,7 +190,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <div className="tw-text-grey-muted tw-text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
           <Typography.Paragraph
-            className="ant-typography-ellipsis-custom font-medium"
+            className="ant-typography-ellipsis-custom font-normal"
             ellipsis={{ tooltip: true }}
             key={i}>
             {userRole}
@@ -246,7 +246,7 @@ const Appbar: React.FC = (): JSX.Element => {
             <span className="tw-text-grey-muted tw-text-xs">Teams</span>
             {teams.map((t, i) => (
               <Typography.Paragraph
-                className="ant-typography-ellipsis-custom text-xs"
+                className="ant-typography-ellipsis-custom text-sm"
                 ellipsis={{ tooltip: true }}
                 key={i}>
                 <Link to={getTeamAndUserDetailsPath(t.name as string)}>

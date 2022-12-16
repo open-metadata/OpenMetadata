@@ -30,6 +30,7 @@ import IconAnnouncementsBasicPrimary from '../assets/svg/announcements-basic-pri
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
 import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
 import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
+import IconAnnouncementsYellow from '../assets/svg/announcements-yellow.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownLight from '../assets/svg/arrow-down-light.svg';
@@ -340,6 +341,7 @@ export const Icons = {
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
   ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
   ANNOUNCEMENT_PRIMARY: 'icon-announcement-primary',
+  ANNOUNCEMENT_YELLOW: 'icon-announcement-yellow',
   ANNOUNCEMENT_BASIC_PRIMARY: 'icon-announcement-basic-primary',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
@@ -909,6 +911,10 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.ANNOUNCEMENT_PURPLE:
       IconComponent = IconAnnouncementsPurple;
+
+      break;
+    case Icons.ANNOUNCEMENT_YELLOW:
+      IconComponent = IconAnnouncementsYellow;
 
       break;
     case Icons.ANNOUNCEMENT_BLACK:

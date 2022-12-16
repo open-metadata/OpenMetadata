@@ -86,6 +86,7 @@ const GlossaryTermsV1 = ({
       name: 'Assets',
       isProtected: false,
       position: 2,
+      count: assetData.total,
     },
   ];
 
