@@ -541,7 +541,8 @@
     "insert": "Insert",
     "table-profile": "Table Profile",
     "column-profile": "Column Profile",
-    "applied-advanced-search": "Applied advanced search"
+    "applied-advanced-search": "Applied advanced search",
+    "select-data-assets": "Select Data Assets"
   },
   "message": {
     "service-email-required": "Service account Email is required",

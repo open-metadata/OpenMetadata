@@ -56,3 +56,20 @@ export const getFilterOptionForEntity = (entity: string) => {
       return [];
   }
 };
+
+export const getFunctionDisplayName = (func: string): string => {
+  switch (func) {
+    case 'matchAnyEntityFqn':
+      return 'Entity FQN';
+    case 'matchAnyOwnerName':
+      return 'Owner';
+    case 'matchAnyEventType':
+      return 'Event type';
+    case 'matchTestResult':
+      return 'Test Results';
+    case 'matchAnySource':
+    case 'matchAnyEntityId':
+    default:
+      return '';
+  }
+};

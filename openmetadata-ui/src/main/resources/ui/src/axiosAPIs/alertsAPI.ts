@@ -15,6 +15,7 @@ import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { AlertActionType, Status } from '../generated/alerts/alertAction';
 import { Alerts, TriggerConfig } from '../generated/alerts/alerts';
+import { EntitySpelFilters } from '../generated/alerts/entitySpelFilters';
 import { Function } from '../generated/type/function';
 
 const BASE_URL = '/alerts';
@@ -66,6 +67,14 @@ export const deleteAlert = async (id: string) => {
 
 export const getFilterFunctions = async () => {
   const response = await axiosClient.get<Function[]>(`${BASE_URL}/functions`);
+
+  return response.data;
+};
+
+export const getEntityFilterFunctions = async () => {
+  const response = await axiosClient.get<Record<string, EntitySpelFilters>>(
+    `${BASE_URL}/entityFunctions`
+  );
 
   return response.data;
 };
