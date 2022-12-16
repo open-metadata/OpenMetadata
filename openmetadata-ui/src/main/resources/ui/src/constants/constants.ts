@@ -27,6 +27,10 @@ export const TEXT_BODY_COLOR = '#37352F';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
+export const GRAYED_OUT_COLOR = '#CCCCCC';
+
+export const DEFAULT_CHART_OPACITY = 1;
+export const HOVER_CHART_OPACITY = 0.5;
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 

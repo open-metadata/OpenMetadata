@@ -81,7 +81,7 @@
     "sure-to-remove": "Etes-vous sûr de vouloir supprimer le",
     "confirm": "Confirmer",
     "remove-entity": "Supprimer {{entity}}",
-    "from": "de",
+    "from-lowercase": "de",
     "add": "Ajouter",
     "add-policy": "Ajouter une Police",
     "go-back": "Retour en arrière",
