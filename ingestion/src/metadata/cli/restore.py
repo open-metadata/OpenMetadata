@@ -33,7 +33,9 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
         failed_queries = 0
         all_queries = file.readlines()
         print_ansi_encoded_string(
-            color=ANSI.GREEN, bold=False, message=f"Queries to process for restore: {len(all_queries)}"
+            color=ANSI.GREEN,
+            bold=False,
+            message=f"Queries to process for restore: {len(all_queries)}",
         )
 
         for query in all_queries:
@@ -47,11 +49,15 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
             except Exception as err:
                 failed_queries += 1
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error processing the following query while restoring - {err}")
+                logger.warning(
+                    f"Error processing the following query while restoring - {err}"
+                )
                 logger.warning(clean_query)
 
         print_ansi_encoded_string(
-            color=ANSI.GREEN, bold=False, message=f"Restore finished. {failed_queries} queries failed."
+            color=ANSI.GREEN,
+            bold=False,
+            message=f"Restore finished. {failed_queries} queries failed.",
         )
 
 

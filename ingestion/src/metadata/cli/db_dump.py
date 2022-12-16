@@ -46,7 +46,7 @@ def single_quote_wrap(raw: str) -> str:
     """
     Add single quote wrap to string. From `str` to `'str'`
     """
-    return "\'" + raw + "\'"
+    return f"'{raw}'"
 
 
 @singledispatch
@@ -66,8 +66,12 @@ def _(column_raw: Optional[Union[dict, list]]) -> str:
     """
     return (
         single_quote_wrap(
-            json.dumps(column_raw, default=str)  # If we don't know how to serialize, convert to str
-        ) if column_raw is not None else "null"
+            json.dumps(
+                column_raw, default=str
+            )  # If we don't know how to serialize, convert to str
+        )
+        if column_raw is not None
+        else "null"
     )
 
 
