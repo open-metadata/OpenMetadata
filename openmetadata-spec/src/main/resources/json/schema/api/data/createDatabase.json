@@ -20,6 +20,14 @@
       "description": "Description of the database instance. What it has and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "tags": {
+      "description": "Tags for this Database Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "owner": {
       "description": "Owner of this database",
       "$ref": "../../type/entityReference.json"

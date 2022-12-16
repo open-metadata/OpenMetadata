@@ -40,7 +40,8 @@ UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,databaseSchema}'
 where serviceType in ('Db2');
 
--- Remove DBT source config
+DELETE from openmetadata_settings where configType = 'activityFeedFilterSetting';
+
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,dbtConfigSource}';
 

@@ -138,6 +138,14 @@
       "description": "References to pipelines deployed for this dashboard service.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "tags": {
+      "description": "Tags for this Dashboard Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "owner": {
       "description": "Owner of this dashboard service.",
       "$ref": "../../type/entityReference.json"

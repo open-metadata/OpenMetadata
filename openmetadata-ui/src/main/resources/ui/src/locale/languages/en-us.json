@@ -678,7 +678,8 @@
     "instance-identifier": "Name that identifies this configuration instance uniquely.",
     "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files.",
     "profile-sample-percentage-message": "Set the Profiler value as percentage",
-    "profile-sample-row-count-message": " Set the Profiler value as row count"
+    "profile-sample-row-count-message": " Set the Profiler value as row count",
+    "no-profiler-enabled-summary-message": "Profiler is not enabled for the table."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

@@ -130,6 +130,11 @@ public class AlertRepository extends EntityRepository<Alert> {
       return;
     }
 
+    // Activity Feed AlertAction Cannot be Created
+    if (alertAction.getAlertActionType() == AlertAction.AlertActionType.ACTIVITY_FEED) {
+      LOG.info("Activity Feed Alert Action cannot be created.");
+      return;
+    }
     // Create AlertAction Publisher
     AlertsActionPublisher publisher = AlertUtil.getAlertPublisher(alert, alertAction, daoCollection);
     BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
@@ -215,16 +220,6 @@ public class AlertRepository extends EntityRepository<Alert> {
     List<CollectionDAO.EntityRelationshipRecord> testCases =
         findTo(entity.getId(), ALERT, Relationship.USES, ALERT_ACTION);
     return EntityUtil.getEntityReferences(testCases);
-  }
-
-  private AlertsActionPublisher getAlertActionPublisher(UUID alertID, AlertAction alertAction) {
-    List<AlertsActionPublisher> publishers = alertPublisherMap.get(alertID);
-    for (AlertsActionPublisher publisher : publishers) {
-      if (alertAction.equals(publisher.getAlertAction())) {
-        return publisher;
-      }
-    }
-    return null;
   }
 
   public AlertActionStatus getAlertActionStatus(UUID alertID, UUID alertActionId) throws IOException {

@@ -1,23 +1,15 @@
 package org.openmetadata.service.alerts;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.entity.alerts.TriggerConfig;
-import org.openmetadata.schema.filter.EventFilter;
-import org.openmetadata.schema.filter.Filters;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.EventPublisher;
 import org.openmetadata.service.events.errors.RetriableException;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
-import org.openmetadata.service.util.FilterUtil;
 
 @Slf4j
 public abstract class AbstractAlertPublisher implements EventPublisher {
@@ -31,8 +23,6 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
   protected int currentBackoffTime = BACKOFF_NORMAL;
   protected final List<ChangeEvent> batch = new ArrayList<>();
 
-  protected final ConcurrentHashMap<String, Map<EventType, Filters>> filter = new ConcurrentHashMap<>();
-
   protected final Alert alert;
 
   protected final AlertAction alertAction;
@@ -42,19 +32,6 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     this.alert = alert;
     this.alertAction = alertAction;
     this.batchSize = alertAction.getBatchSize();
-    updateFilter(alert.getTriggerConfig().getEventFilters());
-  }
-
-  protected void updateFilter(List<EventFilter> filterList) {
-    filterList.forEach(
-        (entityFilter) -> {
-          String entityType = entityFilter.getEntityType();
-          Map<EventType, Filters> entityBasicFilterMap = new HashMap<>();
-          if (entityFilter.getFilters() != null) {
-            entityFilter.getFilters().forEach((f) -> entityBasicFilterMap.put(f.getEventType(), f));
-          }
-          filter.put(entityType, entityBasicFilterMap);
-        });
   }
 
   @Override
@@ -64,7 +41,7 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     ChangeEvent changeEvent = changeEventHolder.get();
 
     // Evaluate Alert Trigger Config
-    if (!shouldTriggerAlert(changeEvent)) {
+    if (!AlertUtil.shouldTriggerAlert(changeEvent.getEntityType(), alert.getTriggerConfig())) {
       return;
     }
 
@@ -103,16 +80,6 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
       currentBackoffTime = BACKOFF_1_HOUR;
     } else if (currentBackoffTime == BACKOFF_1_HOUR) {
       currentBackoffTime = BACKOFF_24_HOUR;
-    }
-  }
-
-  private boolean shouldTriggerAlert(ChangeEvent changeEvent) {
-    // OpenMetadataWide Setting apply to all ChangeEvents
-    if (alert.getTriggerConfig().getType() == TriggerConfig.AlertTriggerType.OPEN_METADATA_WIDE) {
-      return true;
-    } else {
-      // Use Trigger Specific Settings
-      return filter.isEmpty() || FilterUtil.shouldProcessRequest(changeEvent, filter);
     }
   }
 }
