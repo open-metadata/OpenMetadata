@@ -85,7 +85,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     DatabaseList() {}
   }
 
-  static final String FIELDS = "owner,databaseSchemas,usageSummary,location";
+  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags";
 
   @GET
   @Operation(

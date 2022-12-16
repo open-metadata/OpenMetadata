@@ -19,7 +19,6 @@
         "airflowConfiguration",
         "fernetConfiguration",
         "slackEventPublishers",
-        "activityFeedFilterSetting",
         "secretsManagerConfiguration",
         "sandboxModeEnabled",
         "slackChat",

@@ -51,6 +51,7 @@ import {
   ExploreSearchIndex,
   ExploreSearchIndexKey,
 } from './explore.interface';
+import './Explore.style.less';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
@@ -208,6 +209,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   return (
     <PageLayoutV1
+      className="explore-page-container"
       leftPanel={
         <Card
           className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
@@ -282,58 +284,62 @@ const Explore: React.FC<ExploreProps> = ({
           />
         ))}
       </Tabs>
-
-      <div
-        style={{
-          marginRight: showSummaryPanel ? '400px' : '', // Margin given equal to summary panel width
-        }}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <ExploreQuickFilters
-              fields={selectedQuickFilters}
-              index={searchIndex}
-              onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
-              onFieldValueSelect={handleAdvanceFieldValueSelect}
-            />
-          </Col>
-          {appliedFilterSQLFormat && (
+      <Row gutter={[8, 0]} wrap={false}>
+        <Col className="searched-data-container" flex="auto">
+          <Row gutter={[16, 16]}>
             <Col span={24}>
-              <AppliedFilterText
-                filterText={appliedFilterSQLFormat}
-                onEdit={() => setShowAdvanceSearchModal(true)}
+              <ExploreQuickFilters
+                fields={selectedQuickFilters}
+                index={searchIndex}
+                onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
+                onFieldValueSelect={handleAdvanceFieldValueSelect}
               />
             </Col>
-          )}
-
-          <Col span={24}>
-            {!loading ? (
-              <SearchedData
-                isFilterSelected
-                showResultCount
-                currentPage={page}
-                data={searchResults?.hits.hits ?? []}
-                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                paginate={(value) => {
-                  if (isNumber(value)) {
-                    onChangePage(value);
-                  } else if (!isNaN(Number.parseInt(value))) {
-                    onChangePage(Number.parseInt(value));
-                  }
-                }}
-                selectedEntityName={entityDetails?.details.name || ''}
-                totalValue={searchResults?.hits.total.value ?? 0}
-              />
-            ) : (
-              <Loader />
+            {appliedFilterSQLFormat && (
+              <Col span={24}>
+                <AppliedFilterText
+                  filterText={appliedFilterSQLFormat}
+                  onEdit={() => setShowAdvanceSearchModal(true)}
+                />
+              </Col>
             )}
+
+            <Col span={24}>
+              {!loading ? (
+                <SearchedData
+                  isFilterSelected
+                  showResultCount
+                  currentPage={page}
+                  data={searchResults?.hits.hits ?? []}
+                  handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                  isSummaryPanelVisible={showSummaryPanel}
+                  paginate={(value) => {
+                    if (isNumber(value)) {
+                      onChangePage(value);
+                    } else if (!isNaN(Number.parseInt(value))) {
+                      onChangePage(Number.parseInt(value));
+                    }
+                  }}
+                  selectedEntityName={entityDetails?.details.name || ''}
+                  totalValue={searchResults?.hits.total.value ?? 0}
+                />
+              ) : (
+                <Loader />
+              )}
+            </Col>
+          </Row>
+        </Col>
+        {showSummaryPanel && (
+          <Col flex="400px">
+            <EntitySummaryPanel
+              entityDetails={
+                entityDetails || ({} as EntityDetailsObjectInterface)
+              }
+              handleClosePanel={handleClosePanel}
+            />
           </Col>
-        </Row>
-      </div>
-      <EntitySummaryPanel
-        entityDetails={entityDetails || ({} as EntityDetailsObjectInterface)}
-        handleClosePanel={handleClosePanel}
-        showPanel={showSummaryPanel}
-      />
+        )}
+      </Row>
       <AdvancedSearchModal
         jsonTree={advancedSearchJsonTree}
         searchIndex={searchIndex}

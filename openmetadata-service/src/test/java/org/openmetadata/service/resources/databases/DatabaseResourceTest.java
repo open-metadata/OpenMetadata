@@ -125,7 +125,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertListNull(
         database.getOwner(), database.getDatabaseSchemas(), database.getUsageSummary(), database.getLocation());
 
-    fields = "owner,databaseSchemas,usageSummary,location";
+    fields = "owner,databaseSchemas,usageSummary,location,tags";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

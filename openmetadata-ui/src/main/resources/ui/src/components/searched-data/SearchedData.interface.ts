@@ -66,6 +66,7 @@ export interface SearchedDataProps {
   paginate: (value: string | number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
+  isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
   searchText?: string;
   showOnboardingTemplate?: boolean;
