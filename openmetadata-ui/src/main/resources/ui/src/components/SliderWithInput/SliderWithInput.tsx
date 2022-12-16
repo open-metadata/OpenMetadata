@@ -37,6 +37,7 @@ const SliderWithInput = ({
       </Col>
       <Col span={4}>
         <InputNumber
+          data-testid="slider-input"
           formatter={(value) => `${value}%`}
           max={100}
           min={0}
