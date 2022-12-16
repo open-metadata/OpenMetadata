@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerts.emailAlert.EmailMessage;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;
@@ -55,6 +56,8 @@ public class EmailUtil {
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
   private static final String TEST_SUBJECT = "%s : Test Result Notification";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
+
+  public static final String CHANGE_EVENT_TEMPLATE = "changeEvent.ftl";
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
   public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
   public static final String TEST_NOTIFICATION_TEMPLATE = "testResultStatus.ftl";
@@ -257,6 +260,32 @@ public class EmailUtil {
                 EmailUtil.INVITE_RANDOM_PWD);
       } catch (Exception ex) {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
+      }
+    }
+  }
+
+  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMesssage) {
+    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+      Map<String, String> templatePopulator = new HashMap<>();
+      templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
+      templatePopulator.put("updatedBy", emailMesssage.getUpdatedBy());
+      templatePopulator.put("entityUrl", emailMesssage.getEntityUrl());
+      StringBuilder buff = new StringBuilder();
+      for (String cmessage : emailMesssage.getChangeMessage()) {
+        buff.append(cmessage);
+        buff.append("\n");
+      }
+      templatePopulator.put("changeMessage", buff.toString());
+      try {
+        EmailUtil.getInstance()
+            .sendMail(
+                EmailUtil.getInstance().getEmailInviteSubject(),
+                templatePopulator,
+                receiverMail,
+                EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+                EmailUtil.CHANGE_EVENT_TEMPLATE);
+      } catch (Exception ex) {
+        LOG.error("Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
       }
     }
   }

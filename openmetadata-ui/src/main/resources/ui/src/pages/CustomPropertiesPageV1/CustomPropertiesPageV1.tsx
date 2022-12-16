@@ -15,7 +15,6 @@ import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
@@ -55,7 +54,7 @@ const CustomEntityDetailV1 = () => {
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
 
-  const tabAttributePath = ENTITY_PATH[tab.toLowerCase() as EntityType];
+  const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
 
   const { getEntityPermission } = usePermissionProvider();
 

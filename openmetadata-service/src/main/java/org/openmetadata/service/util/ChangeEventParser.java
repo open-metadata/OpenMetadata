@@ -51,10 +51,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerts.emailAlert.EmailMessage;
+import org.openmetadata.service.alerts.msteams.TeamsMessage;
+import org.openmetadata.service.alerts.slack.SlackAttachment;
+import org.openmetadata.service.alerts.slack.SlackMessage;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.slack.SlackAttachment;
-import org.openmetadata.service.slack.SlackMessage;
-import org.openmetadata.service.slack.TeamsMessage;
 
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
@@ -78,7 +79,8 @@ public final class ChangeEventParser {
   public enum PUBLISH_TO {
     FEED,
     SLACK,
-    TEAMS
+    TEAMS,
+    EMAIL
   }
 
   public static String getBold(PUBLISH_TO publishTo) {
@@ -174,6 +176,8 @@ public final class ChangeEventParser {
         return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
       } else if (publishTo == PUBLISH_TO.TEAMS) {
         return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, event.getEntityType(), fqn);
+      } else if (publishTo == PUBLISH_TO.EMAIL) {
+        return String.format("%s://%s/%s/%s", scheme, host, event.getEntityType(), fqn);
       }
     }
     return "";
@@ -200,6 +204,23 @@ public final class ChangeEventParser {
     }
     slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
     return slackMessage;
+  }
+
+  public static EmailMessage buildEmailMessage(ChangeEvent event) {
+    EmailMessage emailMessage = new EmailMessage();
+    emailMessage.setUserName(event.getUserName());
+    if (event.getEntity() != null) {
+      emailMessage.setUpdatedBy(event.getUserName());
+      emailMessage.setEntityUrl(getEntityUrl(PUBLISH_TO.EMAIL, event));
+    }
+    Map<EntityLink, String> messages =
+        getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
+    List<String> changeMessage = new ArrayList<>();
+    for (Entry<EntityLink, String> entry : messages.entrySet()) {
+      changeMessage.add(entry.getValue());
+    }
+    emailMessage.setChangeMessage(changeMessage);
+    return emailMessage;
   }
 
   public static TeamsMessage buildTeamsMessage(ChangeEvent event) {

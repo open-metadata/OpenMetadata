@@ -20,11 +20,12 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import grpc_tools.protoc
 from pydantic import BaseModel
 
+from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.helpers import snake_to_camel
 from metadata.utils.logger import ingestion_logger
 
@@ -36,44 +37,36 @@ class ProtobufDataTypes(Enum):
     Enum for Protobuf Datatypes
     """
 
-    # Field type unknown.
-    TYPE_UNKNOWN = 0
-    # Field type double.
-    TYPE_DOUBLE = 1
-    # Field type float.
-    TYPE_FLOAT = 2
-    # Field type int64.
-    TYPE_INT64 = 3
-    # Field type uint64.
-    TYPE_UINT64 = 4
-    # Field type int32.
-    TYPE_INT32 = 5
-    # Field type fixed64.
-    TYPE_FIXED64 = 6
-    # Field type fixed32.
-    TYPE_FIXED32 = 7
-    # Field type bool.
+    ERROR = 0
+    DOUBLE = 1
+    FLOAT = 2
+    INT = 3, 4, 5, 13, 17, 18
+    FIXED = 6, 7, 15, 16
     TYPE_BOOL = 8
-    # Field type string.
-    TYPE_STRING = 9
-    # Field type group. Proto2 syntax only, and deprecated.
-    TYPE_GROUP = 10
-    # Field type message.
-    TYPE_MESSAGE = 11
-    # Field type bytes.
-    TYPE_BYTES = 12
-    # Field type uint32.
-    TYPE_UINT32 = 13
-    # Field type enum.
-    TYPE_ENUM = 14
-    # Field type sfixed32.
-    TYPE_SFIXED32 = 15
-    # Field type sfixed64.
-    TYPE_SFIXED64 = 16
-    # Field type sint32.
-    TYPE_SINT32 = 17
-    # Field type sint64.
-    TYPE_SINT64 = 18
+    STRING = 9
+    UNION = 10
+    RECORD = 11
+    BYTES = 12
+    ENUM = 14
+
+    def __new__(cls, *values):
+        obj = object.__new__(cls)
+        # first value is canonical value
+        obj._value_ = values[0]
+        for other_value in values[1:]:
+            cls._value2member_map_[other_value] = obj
+        obj._all_values = values
+        return obj
+
+    def __repr__(self):
+        value = ", ".join([repr(v) for v in self._all_values])
+        return (
+            f"<"  # pylint: disable=no-member
+            f"{self.__class__.__name__,}"
+            f"{self._name_}"
+            f"{value}"
+            f">"
+        )
 
 
 class ProtobufParserConfig(BaseModel):
@@ -172,7 +165,7 @@ class ProtobufParser:
             )
         return None
 
-    def parse_protobuf_schema(self) -> Optional[dict]:
+    def parse_protobuf_schema(self) -> Optional[List[FieldModel]]:
         """
         Method to parse the protobuf schema
         """
@@ -183,28 +176,47 @@ class ProtobufParser:
                 proto_path=proto_path, file_path=file_path
             )
 
-            # processing the object and parsing the schema
-            parsed_schema = {}
-            parsed_schema["name"] = instance.DESCRIPTOR.name
-            parsed_schema["full_name"] = instance.DESCRIPTOR.full_name
-            parsed_schema["fields"] = []
-
-            for field in instance.DESCRIPTOR.fields:
-                field_dict = {
-                    "name": field.name,
-                    "full_name": field.full_name,
-                    "type": ProtobufDataTypes(field.type).name,
-                }
-                parsed_schema["fields"].append(field_dict)
+            field_models = [
+                FieldModel(
+                    name=instance.DESCRIPTOR.name,
+                    dataType="RECORD",
+                    children=self.get_protobuf_fields(instance.DESCRIPTOR.fields),
+                )
+            ]
 
             # Clean up the tmp folder
             if Path(self.config.base_file_path).exists():
                 shutil.rmtree(self.config.base_file_path)
 
-            return parsed_schema
+            return field_models
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Unable to parse protobuf schema for {self.config.schema_name}: {exc}"
             )
         return None
+
+    def get_protobuf_fields(self, fields) -> Optional[List[FieldModel]]:
+        """
+        Recursively convert the parsed schema into required models
+        """
+        field_models = []
+
+        for field in fields:
+            try:
+                field_models.append(
+                    FieldModel(
+                        name=field.name,
+                        dataType=ProtobufDataTypes(field.type).name,
+                        children=self.get_protobuf_fields(field.message_type.fields)
+                        if field.type == 11
+                        else None,
+                    )
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unable to parse the protobuf schema into models: {exc}"
+                )
+
+        return field_models

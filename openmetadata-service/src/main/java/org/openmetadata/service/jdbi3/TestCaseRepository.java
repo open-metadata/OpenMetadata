@@ -83,18 +83,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private void validateTestParameters(
       List<TestCaseParameterValue> parameterValues, List<TestCaseParameter> parameterDefinition) {
-    if (parameterDefinition.isEmpty() && !parameterValues.isEmpty()) {
-      throw new IllegalArgumentException("Parameter Values doesn't match Test Definition Parameters");
-    }
-    Map<String, Object> values = new HashMap<>();
-    for (TestCaseParameterValue testCaseParameterValue : parameterValues) {
-      values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
-    }
-    for (TestCaseParameter parameter : parameterDefinition) {
-      if (Boolean.TRUE.equals(parameter.getRequired())
-          && (!values.containsKey(parameter.getName()) || values.get(parameter.getName()) == null)) {
-        throw new IllegalArgumentException(
-            "Required parameter " + parameter.getName() + " is not passed in parameterValues");
+    if (parameterValues != null) {
+
+      if (parameterDefinition.isEmpty() && !parameterValues.isEmpty()) {
+        throw new IllegalArgumentException("Parameter Values doesn't match Test Definition Parameters");
+      }
+      Map<String, Object> values = new HashMap<>();
+
+      for (TestCaseParameterValue testCaseParameterValue : parameterValues) {
+        values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
+      }
+      for (TestCaseParameter parameter : parameterDefinition) {
+        if (Boolean.TRUE.equals(parameter.getRequired())
+            && (!values.containsKey(parameter.getName()) || values.get(parameter.getName()) == null)) {
+          throw new IllegalArgumentException(
+              "Required parameter " + parameter.getName() + " is not passed in parameterValues");
+        }
       }
     }
   }
@@ -129,8 +133,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> addTestCaseResult(UriInfo uriInfo, String fqn, TestCaseResult testCaseResult)
-      throws IOException {
+  public RestUtil.PutResponse<?> addTestCaseResult(
+      String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) throws IOException {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
@@ -161,13 +165,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
-    ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
+    ChangeEvent changeEvent =
+        getChangeEvent(updatedBy, withHref(uriInfo, testCase), change, entityType, testCase.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> deleteTestCaseResult(String fqn, Long timestamp) throws IOException {
+  public RestUtil.PutResponse<?> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) throws IOException {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
     TestCaseResult storedTestCaseResult =
@@ -180,7 +185,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       testCase.setTestCaseResult(storedTestCaseResult);
       ChangeDescription change = deleteTestCaseChangeDescription(testCase.getVersion(), storedTestCaseResult);
-      ChangeEvent changeEvent = getChangeEvent(testCase, change, entityType, testCase.getVersion());
+      ChangeEvent changeEvent = getChangeEvent(updatedBy, testCase, change, entityType, testCase.getVersion());
       return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
@@ -203,7 +208,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+      String updatedBy, EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withEntity(updated)
         .withChangeDescription(change)
@@ -211,7 +216,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(updated.getUpdatedBy())
+        .withUserName(updatedBy)
         .withTimestamp(System.currentTimeMillis())
         .withCurrentVersion(updated.getVersion())
         .withPreviousVersion(prevVersion);

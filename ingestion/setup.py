@@ -45,6 +45,8 @@ base_requirements = {
     "boto3~=1.19.12",
     "botocore==1.22.12",
     "avro-python3==1.10.2",
+    "grpcio-tools",
+    "protobuf",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -150,7 +152,7 @@ plugins: Dict[str, Set[str]] = {
     "mlflow": {"mlflow-skinny~=1.26.1"},
     "sklearn": {"scikit-learn==1.0.2"},
     "db2": {"ibm-db-sa==0.3.7"},
-    "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.2.0"},
+    "clickhouse": {"clickhouse-driver==0.2.5", "clickhouse-sqlalchemy==0.2.3"},
     "databricks": {"sqlalchemy-databricks==0.1.0"},
     "singlestore": {"pymysql>=1.0.2"},
     "azure-sso": {"msal~=1.17.0"},
