@@ -24,7 +24,7 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import React, { ChangeEvent, FC, useMemo, useState } from 'react';
+import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
 import {
@@ -43,6 +43,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   selectedKeys,
   highlight = false,
   onChange,
+  onGetInitialOptions,
   onSearch,
 }) => {
   const { t } = useTranslation();
@@ -119,6 +120,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     [selectedOptions]
   );
 
+  useEffect(() => {
+    setSelectedOptions(selectedKeys);
+  }, [isDropDownOpen, selectedKeys]);
+
   return (
     <Dropdown
       destroyPopupOnHide
@@ -188,9 +193,12 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}
+      transitionName=""
       trigger={['click']}
       onOpenChange={(visible) => {
-        visible && onSearch('', searchKey);
+        const shouldGetInitialOptions = visible && onGetInitialOptions;
+
+        shouldGetInitialOptions && onGetInitialOptions(searchKey);
         setIsDropDownOpen(visible);
       }}>
       <Button className="quick-filter-dropdown-trigger-btn">
