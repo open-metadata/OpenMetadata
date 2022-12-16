@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { FormSubmitType } from '../../../enums/form.enum';
 import {
   DbtConfig,
   GCSCredentialsValues,
   SCredentials,
-} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../../../generated/metadataIngestion/dbtPipeline';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export interface DBTFormCommonProps {
@@ -26,11 +27,14 @@ export interface DBTFormCommonProps {
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
+  formType: FormSubmitType;
   data: DbtConfig;
   gcsType?: GCS_CONFIG;
   source?: DBT_SOURCES;
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;
   handleSourceChange?: (src: DBT_SOURCES) => void;
+  ingestionName: string;
+  handleIngestionName: (value: string) => void;
 }
 
 export type DbtConfigCloud = Pick<

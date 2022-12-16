@@ -29,6 +29,7 @@ import {
 } from '../components/PermissionProvider/PermissionProvider.interface';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
+  addDBTIngestionGuide,
   addLineageIngestionGuide,
   addMetadataIngestionGuide,
   addProfilerIngestionGuide,
@@ -509,6 +510,11 @@ export const getServiceIngestionStepGuide = (
 
         break;
       }
+      case IngestionPipelineType.Dbt: {
+        guide = addDBTIngestionGuide.find((item) => item.step === step);
+
+        break;
+      }
       case IngestionPipelineType.Metadata:
       default: {
         guide = addMetadataIngestionGuide.find((item) => item.step === step);
@@ -569,9 +575,11 @@ export const getIngestionName = (
   type: IngestionPipelineType
 ) => {
   if (
-    [IngestionPipelineType.Profiler, IngestionPipelineType.Metadata].includes(
-      type
-    )
+    [
+      IngestionPipelineType.Profiler,
+      IngestionPipelineType.Metadata,
+      IngestionPipelineType.Dbt,
+    ].includes(type)
   ) {
     return `${serviceName}_${type}_${cryptoRandomString({
       length: 8,

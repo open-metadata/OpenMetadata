@@ -274,6 +274,12 @@ const EditIngestionPage = () => {
     ]);
   }, [serviceCategory, ingestionType, serviceData]);
 
+  useEffect(() => {
+    if (ingestionType === PipelineType.Dbt) {
+      setActiveIngestionStep(2);
+    }
+  }, [ingestionType]);
+
   const renderEditIngestionPage = () => {
     if (isLoading) {
       return <Loader />;

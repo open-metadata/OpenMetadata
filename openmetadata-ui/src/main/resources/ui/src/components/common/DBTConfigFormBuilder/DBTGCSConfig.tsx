@@ -25,7 +25,7 @@ import {
   DbtConfig,
   GCSCredentialsValues,
   SCredentials,
-} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../../../generated/metadataIngestion/dbtPipeline';
 import jsonData from '../../../jsons/en';
 import {
   errorMsg,

@@ -545,7 +545,12 @@
     "insert": "Insert",
     "table-profile": "Table Profile",
     "column-profile": "Column Profile",
-    "applied-advanced-search": "Applied advanced search"
+    "applied-advanced-search": "Applied advanced search",
+    "add-deploy": "Add & Deploy",
+    "dbt-Configuration-source": "DBT Configuration Source",
+    "select-dbt-source": "Select DBT Source",
+    "no-selected-dbt": "No source selected for DBT Configuration.",
+    "dbt": "DBT"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -662,7 +667,9 @@
     "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
     "announcement-created-successfully": "Announcement created successfully!",
     "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation",
-    "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions."
+    "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions.",
+    "instance-identifier": "Name that identifies this configuration instance uniquely.",
+    "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
