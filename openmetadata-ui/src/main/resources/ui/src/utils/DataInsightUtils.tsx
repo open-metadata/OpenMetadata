@@ -62,21 +62,26 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 
 export const renderLegend = (
   legendData: LegendProps,
-  latest: string,
-  activeKeys = [] as string[]
+  latest: string | number,
+  activeKeys = [] as string[],
+  showLatestValue = true
 ) => {
   const { payload = [] } = legendData;
 
   return (
     <>
-      <Typography.Text className="data-insight-label-text">
-        Latest
-      </Typography.Text>
-      <Typography
-        className="font-bold text-lg"
-        style={{ margin: '0px 0px 16px' }}>
-        {latest}
-      </Typography>
+      {showLatestValue && (
+        <>
+          <Typography.Text className="data-insight-label-text">
+            Latest
+          </Typography.Text>
+          <Typography
+            className="font-bold text-lg"
+            style={{ margin: '0px 0px 16px' }}>
+            {latest}
+          </Typography>
+        </>
+      )}
       <ul className="mr-2">
         {payload.map((entry, index) => {
           const isActive =
@@ -399,7 +404,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
 
       return {
         timestamp: timestamp,
-        [tiering]: (data?.entityCountFraction || 0) * 100,
+        [tiering]: ((data?.entityCountFraction || 0) * 100).toFixed(2),
       };
     }
 

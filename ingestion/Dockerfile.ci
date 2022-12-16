@@ -69,6 +69,9 @@ WORKDIR /home/airflow/ingestion
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
+# remove all airflow providers except for docker
+RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xargs pip uninstall -y
+
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 

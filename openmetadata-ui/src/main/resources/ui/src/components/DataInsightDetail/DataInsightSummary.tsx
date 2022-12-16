@@ -174,12 +174,12 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
         {tab === DataInsightTabs.DATA_ASSETS && (
-          <div data-testid="data-assets-summary">
+          <>
             {/* summary of entity charts */}
             {entitiesSummaryList.map((summary) => (
               <Col
                 className="summary-card-item"
-                data-testid={`summary-item-${summary.id}`}
+                data-testid="data-assets-summary"
                 key={summary.id}
                 span={6}
                 onClick={() => onScrollToChart(summary.id)}>
@@ -188,19 +188,22 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 </Typography.Text>
                 <Typography className="font-semibold text-2xl m--ml-0.5">
                   {summary.latest}
-                  {summary.id.startsWith('Percentage') ? '%' : ''}
+                  {summary.id.startsWith('Percentage') ||
+                  summary.id.includes(DataInsightChartType.TotalEntitiesByTier)
+                    ? '%'
+                    : ''}
                 </Typography>
               </Col>
             ))}
-          </div>
+          </>
         )}
         {tab === DataInsightTabs.APP_ANALYTICS && (
-          <div data-testid="app-analytics-summary">
+          <>
             {/* summary for web charts */}
             {webSummaryList.map((summary) => (
               <Col
                 className="summary-card-item"
-                data-testid={`summary-item-${summary.id}`}
+                data-testid="app-analytics-summary"
                 key={summary.id}
                 span={6}
                 onClick={() => onScrollToChart(summary.id)}>
@@ -237,7 +240,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 </UserPopOverCard>
               </Col>
             )}
-          </div>
+          </>
         )}
       </Row>
     </Card>
