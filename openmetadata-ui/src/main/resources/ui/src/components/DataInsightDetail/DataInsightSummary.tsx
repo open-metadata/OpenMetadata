@@ -17,6 +17,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getTeamByName } from '../../axiosAPIs/teamsAPI';
 import { getUserPath } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,
@@ -28,6 +29,7 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
+import { Team } from '../../generated/entity/teams/team';
 import {
   ChartFilter,
   DataInsightTabs,
@@ -60,6 +62,10 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   const [mostActiveUser, setMostActiveUser] = useState<MostActiveUsers>();
 
+  const [OrganizationDetails, setOrganizationDetails] = useState<Team>(
+    {} as Team
+  );
+
   const entitiesSummaryList = useMemo(
     () => getEntitiesChartSummary(entitiesCharts),
     [entitiesCharts]
@@ -71,6 +77,11 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   );
 
   const { t } = useTranslation();
+
+  const fetchOrganizationDetails = async () => {
+    const data = await getTeamByName('Organization');
+    setOrganizationDetails(data);
+  };
 
   const fetchEntitiesChartData = async () => {
     setIsLoading(true);
@@ -157,6 +168,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   };
 
   useEffect(() => {
+    fetchOrganizationDetails();
     fetchEntitiesChartData();
     fetchMostActiveUser();
     fetchWebChartData();
@@ -169,7 +181,10 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
       loading={isLoading}
       title={
         <Typography.Title level={5}>
-          {t('label.data-insight-summary')}
+          {t('label.data-insight-summary', {
+            organization:
+              OrganizationDetails.displayName || t('label.openMetadata'),
+          })}
         </Typography.Title>
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>

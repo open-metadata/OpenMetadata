@@ -176,7 +176,7 @@
     "pipeline": "Pipeline",
     "dashboard": "Dashboard",
     "find-in-table": "Find in table",
-    "data-insight-summary": "OpenMetadata health at a glance",
+    "data-insight-summary": "{{organization}} health at a glance",
     "data-insight-description-summary": "Percentage of Data Assets with Description",
     "data-insight-owner-summary": "Percentage of Data Assets with Owners",
     "data-insight-tier-summary": "Total Data Assets by Tier",
@@ -552,7 +552,8 @@
     "select-dbt-source": "Select DBT Source",
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
-    "latest": "Latest"
+    "latest": "Latest",
+    "openMetadata": "OpenMetadata"
   },
   "message": {
     "service-email-required": "Service account Email is required",
