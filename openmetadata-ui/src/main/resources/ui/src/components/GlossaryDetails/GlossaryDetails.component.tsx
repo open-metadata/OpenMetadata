@@ -136,7 +136,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
       searchFormattedUsersAndTeams(searchQuery, from)
         .then((res) => {
           const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams));
+          setListOwners(getOwnerList(users, teams, false, searchQuery));
         })
         .catch(() => {
           setListOwners([]);
@@ -154,7 +154,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
       suggestFormattedUsersAndTeams(qSearchText)
         .then((res) => {
           const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams));
+          setListOwners(getOwnerList(users, teams, false, qSearchText));
         })
         .catch(() => {
           setListOwners([]);
