@@ -8,7 +8,7 @@
     "alertTriggerType": {
         "description": "Type of alert trigger.",
         "type": "string",
-        "enum": ["OpenMetadataWide", "EntitySpecific"]
+        "enum": ["AllDataAssets", "SpecificDataAsset"]
     },
     "triggerConfig": {
       "description": "Defines a Trigger information.",
@@ -18,12 +18,13 @@
         "type": {
           "$ref": "#/definitions/alertTriggerType"
         },
-        "eventFilters": {
+        "entities": {
           "description": "Endpoint to receive the webhook events over POST requests.",
           "type": "array",
           "items": {
-            "$ref": "../type/changeEvent.json#/definitions/eventFilter"
-          }
+            "type" : "string"
+          },
+          "uniqueItems": true
         }
       },
       "required": ["type"],
