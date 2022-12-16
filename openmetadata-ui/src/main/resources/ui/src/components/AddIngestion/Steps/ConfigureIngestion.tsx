@@ -185,20 +185,18 @@ const ConfigureIngestion = ({
   const getTimeoutSeconds = () => {
     return (
       <div>
-        <label>Timeout Seconds </label>
+        <label>Timeout in Seconds </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          This is an optional number that sets the timeout in seconds for the
-          profiler run against 1 table. If the database engine timeout is
-          greater than the timeout set in the profiler workflow, the profiler
-          will wait for any pending queries to terminated before stopping the
-          computation for a table.
+          Optional number setting the timeout in seconds for the profiler. If
+          the timeout is reached the profiler will wait for any pending queries
+          to terminated its execution.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding tw-w-24"
           data-testid="timeoutSeconds"
           id="timeoutSeconds"
           name="timeoutSeconds"
-          placeholder=""
+          placeholder="43200"
           type="number"
           value={timeoutSeconds}
           onChange={(e) => handleTimeoutSeconds(parseInt(e.target.value))}
