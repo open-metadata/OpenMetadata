@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { toString } from 'lodash';
 import React from 'react';
 import { LegendProps } from 'recharts';
-import { formatNumberWithComma } from './CommonUtils';
+import { getStatisticsDisplayValue } from './CommonUtils';
 
 export const tooltipFormatter = (
   value: string | number,
@@ -25,7 +26,7 @@ export const tooltipFormatter = (
     <>
       {tickFormatter
         ? `${numValue.toFixed(2)}${tickFormatter}`
-        : formatNumberWithComma(numValue)}
+        : getStatisticsDisplayValue(numValue)}
     </>
   );
 };
@@ -38,7 +39,7 @@ export const renderColorfulLegendText: LegendProps['formatter'] = (
 export const axisTickFormatter = (value: number, tickFormatter?: string) => {
   return tickFormatter
     ? `${value}${tickFormatter}`
-    : formatNumberWithComma(value);
+    : toString(getStatisticsDisplayValue(value));
 };
 
 export const updateActiveChartFilter = (

@@ -2,11 +2,14 @@ package org.openmetadata.service.security.policyevaluator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.util.JsonPatchUtils;
 
 /** OperationContext for Access Control Policy */
@@ -55,17 +58,37 @@ public class OperationContext {
     return getOperations("View", exclude);
   }
 
+  public static List<MetadataOperation> getEditOperations(MetadataOperation... exclude) {
+    return getOperations("Edit", exclude);
+  }
+
   private static List<MetadataOperation> getOperations(String startsWith, MetadataOperation... exclude) {
-    List<MetadataOperation> list = new ArrayList<>();
-    List<MetadataOperation> excludeList = new ArrayList<>(List.of(exclude));
+    List<MetadataOperation> list = CommonUtil.listOf(MetadataOperation.values());
+    return getOperations(list, startsWith, exclude);
+  }
+
+  public static List<MetadataOperation> getOperations(
+      String entityType, String startsWith, MetadataOperation... exclude) {
+    List<MetadataOperation> list = ResourceRegistry.getResourceDescriptor(entityType).getOperations();
+    return getOperations(list, startsWith, exclude);
+  }
+
+  private static List<MetadataOperation> getOperations(
+      List<MetadataOperation> list, String startsWith, MetadataOperation... exclude) {
+    List<MetadataOperation> excludeList = CommonUtil.listOf(exclude);
     if (!excludeList.isEmpty()) {
-      excludeList.add(MetadataOperation.ALL); // If any operation is excluded then 'All' operation is excluded
+      list.remove(MetadataOperation.ALL); // If any operation is excluded then 'All' operation is also excluded
     }
-    for (MetadataOperation operation : MetadataOperation.values()) {
-      if (!excludeList.contains(operation) && operation.value().startsWith(startsWith)) {
-        list.add(operation);
+
+    for (MetadataOperation e : excludeList) {
+      list.remove(e);
+      if (isViewOperation(e)) { // Any view operation is excluded, then 'VIEW_ALL' is also excluded
+        list.remove(MetadataOperation.VIEW_ALL);
+      } else if (isEditOperation(e)) { // Any edit operation is excluded, then 'EDIT_ALL' is also excluded
+        list.remove(MetadataOperation.EDIT_ALL);
       }
     }
-    return list;
+    // Only include operation name that starts with given string filter out the others
+    return list.stream().filter(operation -> operation.value().startsWith(startsWith)).collect(Collectors.toList());
   }
 }
