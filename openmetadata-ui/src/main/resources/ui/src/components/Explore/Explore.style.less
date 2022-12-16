@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../explore.interface';
+.explore-page-container {
+  padding-right: 0px !important;
 
-export interface EntitySummaryPanelProps {
-  entityDetails: EntityDetailsObjectInterface;
-  handleClosePanel: () => void;
+  .searched-data-container {
+    margin-top: 16px;
+    margin-right: 8px;
+  }
+
+  .ant-tabs-top > .ant-tabs-nav {
+    margin-bottom: 0px;
+    margin-right: 8px;
+  }
 }

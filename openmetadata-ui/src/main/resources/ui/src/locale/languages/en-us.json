@@ -669,7 +669,8 @@
     "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation",
     "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions.",
     "instance-identifier": "Name that identifies this configuration instance uniquely.",
-    "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files."
+    "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files.",
+    "no-profiler-enabled-summary-message": "Profiler is not enabled for the table."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

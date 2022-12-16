@@ -32,7 +32,6 @@ import TopicSummary from './TopicSummary/TopicSummary.component';
 export default function EntitySummaryPanel({
   entityDetails,
   handleClosePanel,
-  showPanel,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
 
@@ -67,11 +66,7 @@ export default function EntitySummaryPanel({
   }, [tab, entityDetails]);
 
   return (
-    <div
-      className={classNames(
-        'summary-panel-container',
-        showPanel ? 'show-panel' : ''
-      )}>
+    <div className={classNames('summary-panel-container')}>
       {summaryComponent}
       <CloseOutlined className="close-icon" onClick={handleClosePanel} />
     </div>
