@@ -107,7 +107,8 @@ local dump file and the one in the cloud.
 
 ### Uploading to Azure Blob
 
-To run this, make sure to have loginn Azure CLI as environment variables with permissions to the Blob that you'd like to point to. Afterwards,
+
+To run this, make sure to have Azure CLI configured with permissions to the Blob that you'd like to point to. Afterwards,
 we can just use `--upload <account_url> <container> <folder>` to have the CLI upload the file. In this case, you'll get both the
 local dump file and the one in the cloud.
 
