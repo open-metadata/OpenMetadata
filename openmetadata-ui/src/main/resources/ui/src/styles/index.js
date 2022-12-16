@@ -26,6 +26,7 @@ import './components/react-awesome-query.less';
 import './components/size.less';
 import './components/step.less';
 import './fonts.css';
+import './fonts.less';
 import './modal.less';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';

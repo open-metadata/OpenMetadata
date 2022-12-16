@@ -104,7 +104,7 @@ const ResetPassword = () => {
             </Col>
 
             <Col className="mt-12 text-center" span={24}>
-              <Typography.Text className="tw-text-xl text-semi-bold tw-text-grey-muted">
+              <Typography.Text className="tw-text-xl font-medium tw-text-grey-muted">
                 Reset your Password
               </Typography.Text>
             </Col>

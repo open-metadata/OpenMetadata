@@ -51,9 +51,7 @@ export default function ColumnSummary({ columns }: ColumnSummaryProps) {
                 <Space className="text-xs" size={4}>
                   <Space size={4}>
                     <Text className="text-gray">{`${t('label.type')}:`}</Text>
-                    <Text className="text-semi-bold">
-                      {toLower(column.type)}
-                    </Text>
+                    <Text className="font-medium">{toLower(column.type)}</Text>
                   </Space>
                   {column.tags?.length !== 0 && (
                     <>

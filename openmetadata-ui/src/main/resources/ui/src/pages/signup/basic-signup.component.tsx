@@ -76,7 +76,7 @@ const BasicSignUp = () => {
         <div className="tw-w-5/12">
           <div className="mt-4 tw-text-center flex-center flex-col">
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text className="mt-8 w-80 tw-text-xl text-semi-bold tw-text-grey-muted">
+            <Typography.Text className="mt-8 w-80 tw-text-xl font-medium tw-text-grey-muted">
               Centralized Metadata Store, Discover, Collaborate and get your
               Data Right
             </Typography.Text>
