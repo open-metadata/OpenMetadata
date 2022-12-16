@@ -312,7 +312,7 @@ public class BuildSearchIndexResource {
       UriInfo uriInfo, UUID startedBy, String entityType, CreateEventPublisherJob createRequest) {
 
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
 
     if (Boolean.TRUE.equals(createRequest.getRecreateIndex())) {
       // Delete index
@@ -368,7 +368,7 @@ public class BuildSearchIndexResource {
     EventPublisherJob latestJob = JsonUtils.readValue(reindexJobString, EventPublisherJob.class);
     Long lastUpdateTime = latestJob.getTimestamp();
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        elasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     for (EntityInterface entity : entities) {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));

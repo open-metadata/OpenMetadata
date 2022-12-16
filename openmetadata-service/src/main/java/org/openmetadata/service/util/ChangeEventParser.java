@@ -605,10 +605,8 @@ public final class ChangeEventParser {
     String spanAddClose = getAddMarkerClose(publishTo);
     String spanRemove = getRemoveMarker(publishTo);
     String spanRemoveClose = getRemoveMarkerClose(publishTo);
-    if (diff != null) {
-      diff = replaceMarkers(diff, addMarker, spanAdd, spanAddClose);
-      diff = replaceMarkers(diff, removeMarker, spanRemove, spanRemoveClose);
-    }
+    diff = replaceMarkers(diff, addMarker, spanAdd, spanAddClose);
+    diff = replaceMarkers(diff, removeMarker, spanRemove, spanRemoveClose);
     return diff;
   }
 

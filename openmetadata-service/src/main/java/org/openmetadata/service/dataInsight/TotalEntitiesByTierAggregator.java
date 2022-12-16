@@ -26,8 +26,8 @@ public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterfac
   @Override
   List<TotalEntitiesByTier> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
-    List<TotalEntitiesByTier> data = new ArrayList();
-    List<Double> entityCount = new ArrayList();
+    List<TotalEntitiesByTier> data = new ArrayList<>();
+    List<Double> entityCount = new ArrayList<>();
 
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
@@ -45,13 +45,11 @@ public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterfac
       }
     }
 
-    double totalEntities = entityCount.stream().mapToDouble(v -> v.doubleValue()).sum();
+    double totalEntities = entityCount.stream().mapToDouble(v -> v).sum();
 
-    data.stream()
-        .forEach(
-            (el) -> {
-              el.withEntityCountFraction(el.getEntityCount() / totalEntities);
-            });
+    for (TotalEntitiesByTier el : data) {
+      el.withEntityCountFraction(el.getEntityCount() / totalEntities);
+    }
 
     return data;
   }

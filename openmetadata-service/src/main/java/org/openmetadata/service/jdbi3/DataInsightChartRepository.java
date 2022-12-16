@@ -94,7 +94,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
-  public void prepare(DataInsightChart entity) throws IOException {
+  public void prepare(DataInsightChart entity) {
     /* Nothing to do */
   }
 
@@ -109,7 +109,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
-  public void storeRelationships(DataInsightChart entity) throws IOException {
+  public void storeRelationships(DataInsightChart entity) {
     storeOwner(entity, entity.getOwner());
   }
 
