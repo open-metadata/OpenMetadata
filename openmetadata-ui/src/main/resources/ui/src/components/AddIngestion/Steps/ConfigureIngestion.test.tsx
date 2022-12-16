@@ -94,6 +94,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleShowFilter: jest.fn(),
   onCancel: jest.fn(),
   onNext: jest.fn(),
+  onProfileSampleRowChange: jest.fn(),
+  profileSampleRows: 1,
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   enableDebugLog: false,
   handleEnableDebugLog: jest.fn(),
