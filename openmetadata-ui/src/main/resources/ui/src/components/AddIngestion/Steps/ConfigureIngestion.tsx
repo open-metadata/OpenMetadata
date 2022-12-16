@@ -14,8 +14,9 @@
 import { Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { Fragment, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfileSampleType } from '../../../enums/Profiler.enum';
@@ -99,22 +100,6 @@ const ConfigureIngestion = ({
         : ProfileSampleType.SAMPLE_PERCENTAGE
     );
 
-  const profileSampleOptions = useMemo(
-    () => [
-      {
-        label: t('label.profile-sample-by-percentage') + ' (%)',
-        key: ProfileSampleType.SAMPLE_PERCENTAGE,
-        value: ProfileSampleType.SAMPLE_PERCENTAGE,
-      },
-      {
-        label: t('label.profile-sample-by-row-count'),
-        key: ProfileSampleType.SAMPLE_ROW,
-        value: ProfileSampleType.SAMPLE_ROW,
-      },
-    ],
-    []
-  );
-
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
     setSelectedProfileSampleType(value);
     if (value === ProfileSampleType.SAMPLE_PERCENTAGE) {
@@ -164,20 +149,24 @@ const ConfigureIngestion = ({
     return (
       <>
         <Form.Item
+          className="m-t-sm"
           initialValue={selectedProfileSampleType}
-          label={t('label.profile-sample-type')}
+          label={t('label.profile-sample', {
+            type: 'Type',
+          })}
           name="profileSample">
           <Select
             data-testid="profile-sample"
-            options={profileSampleOptions}
+            options={PROFILE_SAMPLE_OPTIONS}
             value={selectedProfileSampleType}
             onChange={handleProfileSampleTypeChange}
           />
         </Form.Item>
         <Form.Item
-          label={t('label.profile-sample-value')}
-          // If we provide class its internally prioritizing internal css
-          labelCol={{ style: { paddingBottom: '4px' } }}
+          className="m-b-xs"
+          label={t('label.profile-sample', {
+            type: 'Value',
+          })}
           name="profile-sample-value">
           {selectedProfileSampleType ===
             ProfileSampleType.SAMPLE_PERCENTAGE && (
@@ -201,7 +190,7 @@ const ConfigureIngestion = ({
                 data-testid="metric-number-input"
                 min={0}
                 placeholder={t('label.please-enter-value', {
-                  value: t('label.row-count-lowercase'),
+                  name: t('label.row-count-lowercase'),
                 })}
                 value={profileSampleRows}
                 onChange={(value) =>

@@ -138,7 +138,7 @@
     "exclude": "Exclude",
     "enable-column-profile": "Enable column profile",
     "profile-sample-query": "Profile Sample Query",
-    "profile-sample-percentage": "Profile Sample %",
+    "profile-sample": "Profile Sample {{type}}",
     "save": "Save",
     "all": "All",
     "run": "Run",
@@ -185,6 +185,7 @@
     "data-insight-total-entity-summary": "Total Data Assets",
     "user": "User",
     "team": "Team",
+    "percentage": "Percentage",
     "most-recent-session": "Most Recent Session",
     "total-session": "Total Sessions",
     "average-session": "Avg. Session Time",
@@ -545,7 +546,10 @@
     "insert": "Insert",
     "table-profile": "Table Profile",
     "column-profile": "Column Profile",
-    "applied-advanced-search": "Applied advanced search"
+    "applied-advanced-search": "Applied advanced search",
+    "row-count-lowercase": "row count",
+    "row": "Row",
+    "please-enter-value": "Please enter {{name}} value"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -662,7 +666,9 @@
     "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
     "announcement-created-successfully": "Announcement created successfully!",
     "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation",
-    "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions."
+    "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions.",
+    "profile-sample-percentage-message": "Set the Profiler value as percentage",
+    "profile-sample-row-count-message": " Set the Profiler value as row count"
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

@@ -134,6 +134,24 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
   };
+
+  const getProfileSampleValue = () => {
+    let value;
+    if (profile?.profileSample) {
+      value = `${profile?.profileSample ?? 100}%`;
+    } else if (profile?.profileSampleRows) {
+      value = `${profile?.profileSampleRows} ${
+        profile?.profileSampleRows.toString().length > 1
+          ? t('label.row-plural')
+          : t('label.row')
+      } `;
+    } else {
+      value = '100%';
+    }
+
+    return value;
+  };
+
   const overallSummery: OverallTableSummeryType[] = useMemo(() => {
     return [
       {
@@ -145,8 +163,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
         value: profile?.columnCount ?? 0,
       },
       {
-        title: `${t('label.column-count')} %`,
-        value: `${profile?.profileSample ?? 100}%`,
+        title: `${t('label.profile-sample', { type: '' })}`,
+        value: getProfileSampleValue(),
       },
       {
         title: t('label.success'),

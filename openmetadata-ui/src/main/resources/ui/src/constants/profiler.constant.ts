@@ -14,6 +14,7 @@
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
+import { ProfileSampleType } from '../enums/Profiler.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
@@ -265,3 +266,16 @@ export const INTERVAL_UNIT_OPTIONS = Object.values(PartitionIntervalUnit).map(
     label: value,
   })
 );
+
+export const PROFILE_SAMPLE_OPTIONS = [
+  {
+    label: t('label.percentage'),
+    key: ProfileSampleType.SAMPLE_PERCENTAGE,
+    value: ProfileSampleType.SAMPLE_PERCENTAGE,
+  },
+  {
+    label: t('label.row-count'),
+    key: ProfileSampleType.SAMPLE_ROW,
+    value: ProfileSampleType.SAMPLE_ROW,
+  },
+];
