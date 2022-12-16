@@ -62,7 +62,10 @@ describe('Test DescriptionInsight Component', () => {
   it('Should render the graph', async () => {
     await act(async () => {
       const { container } = render(
-        <DescriptionInsight chartFilter={INITIAL_CHART_FILTER} />
+        <DescriptionInsight
+          chartFilter={INITIAL_CHART_FILTER}
+          kpi={undefined}
+        />
       );
       const card = screen.getByTestId('entity-description-percentage-card');
 
