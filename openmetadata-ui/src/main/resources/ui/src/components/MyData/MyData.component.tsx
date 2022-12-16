@@ -175,10 +175,6 @@ const MyData: React.FC<MyDataProps> = ({
     );
   }, [ownedData, followedData, pendingTaskCount]);
 
-  const getLoader = () => {
-    return isFeedLoading ? <Loader /> : null;
-  };
-
   const fetchMoreFeed = (
     isElementInView: boolean,
     pagingObj: Paging,
@@ -195,7 +191,7 @@ const MyData: React.FC<MyDataProps> = ({
   };
 
   useEffect(() => {
-    fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
+    fetchMoreFeed(Boolean(isInView), paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
 
   useEffect(() => {
@@ -243,12 +239,12 @@ const MyData: React.FC<MyDataProps> = ({
           ) : (
             !isFeedLoading && <Onboarding />
           )}
+          {isFeedLoading ? <Loader /> : null}
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {getLoader()}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
           {/* Add spacer to work infinite scroll smoothly */}
           <div className="tw-p-4" />
         </Fragment>
