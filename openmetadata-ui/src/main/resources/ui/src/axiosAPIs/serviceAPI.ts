@@ -35,11 +35,13 @@ export const getServices = async (serviceName: string, limit?: number) => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
-    searchParams.set('limit', `${limit}`);
+    searchParams.append('limit', `${limit}`);
   }
 
-  const strSearchParams = searchParams.toString();
-  url += strSearchParams ? `?${strSearchParams}` : '';
+  const isPaging =
+    serviceName.includes('after') || serviceName.includes('before');
+
+  url += isPaging ? `&${searchParams}` : `?${searchParams}`;
 
   const response = await APIClient.get<ServiceResponse>(url);
 

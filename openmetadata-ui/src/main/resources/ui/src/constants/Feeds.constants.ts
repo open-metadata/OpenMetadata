@@ -62,6 +62,6 @@ export enum EntityField {
   TASKS = 'tasks',
 }
 
-export const ANNOUNCEMENT_BG = '#FCF6FC';
-export const ANNOUNCEMENT_BORDER = 'rgba(176, 42, 172, 0.6)';
+export const ANNOUNCEMENT_BG = '#FFFDF8';
+export const ANNOUNCEMENT_BORDER = '#FFC143';
 export const TASK_BORDER = '#C6B5F6';

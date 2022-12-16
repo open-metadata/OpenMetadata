@@ -11,21 +11,19 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import './Badge.less';
-
-const AnnouncementBadge = () => {
-  return (
-    <div className="announcement-badge-container">
-      <SVGIcons
-        alt="announcement"
-        className="announcement-badge"
-        icon={Icons.ANNOUNCEMENT_YELLOW}
-      />
-      <span className="announcement-content">Announcement</span>
-    </div>
-  );
-};
-
-export default AnnouncementBadge;
+.anchor-drop-down {
+  --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  position: absolute;
+  transform-origin: top right;
+  z-index: 9999;
+  right: 0px;
+  margin-top: 0.5rem;
+  min-width: max-content;
+  border-radius: 0.375rem;
+  width: 10rem;
+  padding: 0.3rem;
+  background-color: #ffffff;
+  box-shadow: 0 0 #0000, 0 0 #0000, 0 0 #0000, 0 0 #0000, var(--shadow);
+  outline: 0.09rem solid #0000000d;
+}

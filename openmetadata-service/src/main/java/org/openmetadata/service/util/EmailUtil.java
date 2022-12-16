@@ -45,7 +45,6 @@ public class EmailUtil {
   public static final String DEFAULT_EXPIRATION_TIME = "60";
   public static final String PASSWORD = "password";
   public static final String APPLICATION_LOGIN_LINK = "applicationLoginLink";
-
   public static final String PASSWORD_RESET_TEMPLATE_FILE = "reset-link.ftl";
   // Account Change Status
   private static final String ACCOUNT_STATUS_SUBJECT = "%s: Change in Account Status";
@@ -53,6 +52,8 @@ public class EmailUtil {
   public static final String ACTION_STATUS_KEY = "actionStatus";
   public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change.ftl";
   private static final String INVITE_SUBJECT = "Welcome to %s";
+  private static final String CHANGE_EVENT_UPDATE = "Change Event Update from %s";
+
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
   private static final String TEST_SUBJECT = "%s : Test Result Notification";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
@@ -279,7 +280,7 @@ public class EmailUtil {
       try {
         EmailUtil.getInstance()
             .sendMail(
-                EmailUtil.getInstance().getEmailInviteSubject(),
+                EmailUtil.getInstance().getChangeEventTemplate(),
                 templatePopulator,
                 receiverMail,
                 EmailUtil.EMAIL_TEMPLATE_BASEPATH,
@@ -308,6 +309,10 @@ public class EmailUtil {
 
   public String getEmailInviteSubject() {
     return String.format(INVITE_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+  }
+
+  public String getChangeEventTemplate() {
+    return String.format(CHANGE_EVENT_UPDATE, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
   }
 
   public String getTaskAssignmentSubject() {

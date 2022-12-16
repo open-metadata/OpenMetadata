@@ -599,7 +599,7 @@ const TeamDetailsV1 = ({
   }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
 
   useEffect(() => {
-    isGroupType && setCurrentTab(2);
+    setCurrentTab(isGroupType ? 2 : 1);
   }, [isGroupType]);
 
   useEffect(() => {

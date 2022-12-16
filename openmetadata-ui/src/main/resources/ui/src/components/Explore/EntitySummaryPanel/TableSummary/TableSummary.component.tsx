@@ -14,7 +14,7 @@
 import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -110,7 +110,11 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     }
   };
 
-  const overallSummary: OverallTableSummeryType[] = useMemo(() => {
+  const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
+    if (isUndefined(TableDetails.profile)) {
+      return undefined;
+    }
+
     return [
       {
         title: t('label.row-count'),
@@ -189,6 +193,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         </Col>
       </Row>
       <Divider className="m-0" />
+
       <Row className={classNames('m-md')} gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text className="section-header">
@@ -196,28 +201,34 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <Row gutter={[16, 16]}>
-            {overallSummary.map((field) => (
-              <Col key={field.title} span={10}>
-                <Row>
-                  <Col span={24}>
-                    <Typography.Text className="text-gray">
-                      {field.title}
-                    </Typography.Text>
-                  </Col>
-                  <Col span={24}>
-                    <Typography.Text
-                      className={classNames(
-                        'summary-panel-statistics-count',
-                        field.className
-                      )}>
-                      {field.value}
-                    </Typography.Text>
-                  </Col>
-                </Row>
-              </Col>
-            ))}
-          </Row>
+          {isUndefined(overallSummary) ? (
+            <Typography.Text>
+              {t('message.no-profiler-enabled-summary-message')}
+            </Typography.Text>
+          ) : (
+            <Row gutter={[16, 16]}>
+              {overallSummary.map((field) => (
+                <Col key={field.title} span={10}>
+                  <Row>
+                    <Col span={24}>
+                      <Typography.Text className="text-gray">
+                        {field.title}
+                      </Typography.Text>
+                    </Col>
+                    <Col span={24}>
+                      <Typography.Text
+                        className={classNames(
+                          'summary-panel-statistics-count',
+                          field.className
+                        )}>
+                        {field.value}
+                      </Typography.Text>
+                    </Col>
+                  </Row>
+                </Col>
+              ))}
+            </Row>
+          )}
         </Col>
       </Row>
       <Divider className="m-0" />

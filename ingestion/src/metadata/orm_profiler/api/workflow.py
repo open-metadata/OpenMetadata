@@ -266,6 +266,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 table_partition_config=self.get_partition_details(self._table_entity)
                 if not self.get_profile_query(self._table_entity)
                 else None,
+                timeout_seconds=self.source_config.timeoutSeconds,
             )
             if isinstance(service_connection_config, DatalakeConnection):
                 return DataLakeProfilerInterface(self._profiler_interface_args)

@@ -87,28 +87,6 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     return alertAction;
   }
 
-  public synchronized void updateAlertWithAlertAction(Alert updatedAlert, AlertAction updatedAlertAction) {
-    currentBackoffTime = BACKOFF_NORMAL;
-    // Alert Update
-    alert.setDescription(updatedAlert.getDescription());
-    updateTriggerConfig(updatedAlert);
-    alert.setFilteringRules(updatedAlert.getFilteringRules());
-    alert.setAlertActions(updatedAlert.getAlertActions());
-
-    // AlertAction Update
-    alertAction.setDescription(updatedAlertAction.getDescription());
-    alertAction.setReadTimeout(updatedAlertAction.getReadTimeout());
-    alertAction.setTimeout(updatedAlertAction.getTimeout());
-    alertAction.setBatchSize(updatedAlertAction.getBatchSize());
-  }
-
-  public synchronized void updateTriggerConfig(Alert updatedAlert) {
-    // Update Trigger Config and Filtering
-    alert.setTriggerConfig(updatedAlert.getTriggerConfig());
-    filter.clear();
-    updateFilter(alert.getTriggerConfig().getEventFilters());
-  }
-
   protected void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
       throws IOException, InterruptedException {
     if (!attemptTime.equals(alertAction.getStatusDetails().getFailureDetails().getLastFailedAt())) {

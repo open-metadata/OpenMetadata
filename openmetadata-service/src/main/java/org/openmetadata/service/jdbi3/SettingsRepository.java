@@ -13,19 +13,12 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
-
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.filter.Filters;
 import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.service.filter.FilterRegistry;
-import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -79,18 +72,6 @@ public class SettingsRepository {
     }
   }
 
-  public Response updateEntityFilter(String entityType, List<Filters> filters) {
-    Settings oldValue = getConfigWithKey(SettingsType.ACTIVITY_FEED_FILTER_SETTING.toString());
-    // all existing filters
-    try {
-      updateSetting(FilterUtil.updateEntityFilter(oldValue, entityType, filters));
-      return (new RestUtil.PutResponse<>(Response.Status.OK, oldValue, RestUtil.ENTITY_UPDATED)).toResponse();
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS + ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
-  }
-
   public Response createNewSetting(Settings setting) {
     try {
       updateSetting(setting);
@@ -119,10 +100,6 @@ public class SettingsRepository {
     try {
       dao.getSettingsDAO()
           .insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
-      if (setting.getConfigType().equals(ACTIVITY_FEED_FILTER_SETTING)) {
-        FilterRegistry.add(FilterUtil.getEventFilterFromSettings(setting));
-        SettingsCache.getInstance().putSettings(setting);
-      }
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }

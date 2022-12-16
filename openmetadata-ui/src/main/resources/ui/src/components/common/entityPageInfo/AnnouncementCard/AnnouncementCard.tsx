@@ -35,7 +35,7 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
       <Space align="start" size={12}>
         <SVGIcons
           alt="announcement"
-          icon={Icons.ANNOUNCEMENT_BLACK}
+          icon={Icons.ANNOUNCEMENT_YELLOW}
           width="24px"
         />
         <div>

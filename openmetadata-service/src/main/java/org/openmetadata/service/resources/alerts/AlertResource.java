@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.alerts;
 
+import static org.openmetadata.service.alerts.AlertUtil.getDefaultAlertTriggers;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -85,25 +87,10 @@ import org.openmetadata.service.util.ResultList;
 public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public static final String COLLECTION_PATH = "v1/alerts/";
   private final CollectionDAO daoCollection;
-  private List<TriggerConfig> bootStrappedFilters = new ArrayList<>();
   private final Map<String, EntitySpelFilters> entitySpelFiltersList = new HashMap<>();
   static final String FIELDS = "triggerConfig,filteringRules,alertActions";
 
   private void initAlerts() throws IOException {
-    // Load Trigger File
-    List<String> triggerDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/triggerData.json$");
-    if (triggerDataFiles.size() != 1) {
-      LOG.warn("Invalid number of triggerDataFiles Only one expected.");
-      return;
-    }
-    String triggerDataFile = triggerDataFiles.get(0);
-    try {
-      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), triggerDataFile);
-      bootStrappedFilters = JsonUtils.readObjects(json, TriggerConfig.class);
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the {} from file {}", "filters", triggerDataFile, e);
-    }
-
     // Load Filter Data
     List<String> filterDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/filterData.json$");
     if (filterDataFiles.size() != 1) {
@@ -148,7 +135,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
     List<String> listAllAlerts = daoCollection.alertDAO().listAllAlerts(daoCollection.alertDAO().getTableName());
     List<Alert> alertList = JsonUtils.readObjects(listAllAlerts, Alert.class);
     for (Alert alert : alertList) {
-      if (alert.getName().equals(activityFeedAlert.getName())) {
+      if (!alert.getName().equals(activityFeedAlert.getName())) {
         dao.addAlertActionPublishers(alert);
       }
     }
@@ -305,7 +292,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public List<TriggerConfig> getAlertBootstrapFilters(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return bootStrappedFilters;
+    return getDefaultAlertTriggers();
   }
 
   @GET
