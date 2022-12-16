@@ -26,7 +26,7 @@ The CLI comes bundled in the base `openmetadata-ingestion` Python package. You c
 pip install openmetadata-ingestion
 ```
 
-One of the `backup` features is to upload the generated backup to cloud storage (currently supporting S3). To use this,
+One of the `backup` features is to upload the generated backup to cloud storage (currently supporting S3 and Azure Blob). To use this,
 you can instead install the package with the backup plugin:
 
 ```commandline
@@ -64,30 +64,26 @@ After the installation, we can take a look at the different options to run the C
 
 ```commandline
 > metadata backup --help
-Usage: metadata backup [OPTIONS]
+usage: metadata backup [-h] -H HOST -u USER -p PASSWORD -d DATABASE [--port PORT] [--output OUTPUT] [--upload-destination-type {AWS,AZURE}]
+                       [--upload UPLOAD UPLOAD UPLOAD] [-o OPTIONS] [-a ARGUMENTS] [-s SCHEMA]
 
-  Run a backup for the metadata DB. Uses a custom dump strategy for
-  OpenMetadata tables.
-
-  We can pass as many connection options as required with `-o <opt1>, -o
-  <opt2> [...]` Same with connection arguments `-a <arg1>, -a <arg2> [...]`
-
-  To run the upload, provide the information as `--upload endpoint bucket key`
-  and properly configure the environment variables AWS_ACCESS_KEY_ID &
-  AWS_SECRET_ACCESS_KEY
-
-Options:
-  -h, --host TEXT               Host that runs the database  [required]
-  -u, --user TEXT               User to run the backup  [required]
-  -p, --password TEXT           Credentials for the user  [required]
-  -d, --database TEXT           Database to backup  [required]
-  --port TEXT                   Database service port
-  --output PATH                 Local path to store the backup
-  --upload <TEXT TEXT TEXT>...  S3 endpoint, bucket & key to upload the backup
-                                file
-  -o, --options TEXT
-  -a, --arguments TEXT
-  --help                        Show this message and exit.
+options:
+  -h, --help            show this help message and exit
+  -H HOST, --host HOST  Host that runs the database
+  -u USER, --user USER  User to run the backup
+  -p PASSWORD, --password PASSWORD
+                        Credentials for the user
+  -d DATABASE, --database DATABASE
+                        Database to backup
+  --port PORT           Database service port
+  --output OUTPUT       Local path to store the backup
+  --upload-destination-type {AWS,AZURE}
+                        AWS or AZURE
+  --upload UPLOAD UPLOAD UPLOAD
+                        S3 endpoint, bucket & key to upload the backup file
+  -o OPTIONS, --options OPTIONS
+  -a ARGUMENTS, --arguments ARGUMENTS
+  -s SCHEMA, --schema SCHEMA
 ```
 
 ### Database Connection
@@ -104,9 +100,15 @@ date each backup was generated. We can also specify an output path, which we'll 
 
 ### Uploading to S3
 
-We currently support uploading the backup files to S3. To run this, make sure to have `AWS_ACCESS_KEY_ID` and
+To run this, make sure to have `AWS_ACCESS_KEY_ID` and
 `AWS_SECRET_ACCESS_KEY` as environment variables with permissions to the bucket that you'd like to point to. Afterwards,
 we can just use `--upload <endpoint> <bucket> <key>` to have the CLI upload the file. In this case, you'll get both the
+local dump file and the one in the cloud.
+
+### Uploading to Azure Blob
+
+To run this, make sure to have loginn Azure CLI as environment variables with permissions to the Blob that you'd like to point to. Afterwards,
+we can just use `--upload <account_url> <container> <folder>` to have the CLI upload the file. In this case, you'll get both the
 local dump file and the one in the cloud.
 
 ### Connection Options and Arguments
@@ -134,11 +136,12 @@ We can do a test locally preparing some containers:
    export AWS_SECRET_ACCESS_KEY=minioadmin
    ```
 
-An example CLI call will look as:
+An example of S3 CLI call will look as:
 
 ```commandline
 metadata backup -u openmetadata_user -p openmetadata_password \
-    -h localhost -d openmetadata_db --output=dir1/dir2 \
+    -H localhost -d openmetadata_db --output=dir1/dir2 \
+    --upload-destination-type AWS \
     --upload http://localhost:9000 my-bucket backup/
 ```
 
@@ -153,6 +156,22 @@ Uploading dir1/dir2/openmetadata_202201250823_backup.sql to http://localhost:900
 If we now head to the minio console and check the `my-backup` bucket, we'll see our SQL dump in there.
 
 <Image src="/images/deployment/backup/minio-example.png" alt="minio"/>
+
+An example of Azure Blob CLI call will look as:
+
+```commandline
+metadata backup -u openmetadata_user -p openmetadata_password \
+    -H localhost -d openmetadata_db --output=dir1/dir2 \
+    --upload-destination-type AZURE \
+    --upload https://container.blob.core.windows.net/ container-name Folder-name/
+```
+And we'll get the following output:
+
+```commandline
+Creating OpenMetadata backup for localhost:3306/openmetadata_db...
+Backup stored locally under openmetadata_202212161559_backup.sql
+Uploading openmetadata_202212161559_backup.sql to https://container.blob.core.windows.net//container-name...
+```
 <br/>
 <br/>
 
@@ -206,7 +225,7 @@ The CLI will give messages like this `Backup restored from openmetadata_20220930
 An example CLI call will look as:
 
 ```commandline
-metadata restore -u openmetadata_user -p openmetadata_password -h localhost -d openmetadata_db --input openmetadata_202209301715_backup.sql
+metadata restore -u openmetadata_user -p openmetadata_password -H localhost -d openmetadata_db --input openmetadata_202209301715_backup.sql
 ```
 
 And we'll get the following output:
