@@ -7,13 +7,9 @@ import org.slf4j.LoggerFactory;
 public class DefaultElasticSearchIndexResolver implements ElasticSearchIndexResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultElasticSearchIndexResolver.class);
 
-
-  public DefaultElasticSearchIndexResolver() {
-    LOGGER.info("Using DefaultElasticSearchIndexResolver");
-  }
-
   @Override
   public IndexInfo indexInfo(IndexType type) {
+    LOGGER.debug("Using DefaultElasticSearchIndexResolver");
     switch (type) {
       case TABLE_SEARCH_INDEX:
         return new IndexInfo("table_search_index", "/elasticsearch/table_index_mapping.json");

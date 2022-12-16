@@ -198,6 +198,7 @@ public class SearchResource {
     }
 
     SearchSourceBuilder searchSourceBuilder;
+    query = this.indexResolver.customizeQueryString(query);
 
     switch (index) {
       case "topic_search_index":
@@ -397,8 +398,8 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-            QueryBuilders.queryStringQuery(query).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(QueryBuilders.queryStringQuery(query).lenient(true));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
@@ -412,7 +413,7 @@ public class SearchResource {
             .field("columns.description", 1.0f)
             .field("columns.children.name", 2.0f)
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+            .fuzziness(Fuzziness.AUTO));
     FieldValueFactorFunctionBuilder boostScoreBuilder =
         ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count").missing(1).factor(4);
     FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
@@ -438,8 +439,9 @@ public class SearchResource {
     hb.field(highlightColumnChildren);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
+    HighlightBuilder customizedHb = this.indexResolver.customizeHighlight(hb);
     SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+        new SearchSourceBuilder().query(queryBuilder).highlighter(customizedHb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
@@ -480,7 +482,7 @@ public class SearchResource {
             .field("charts.name", 2.0f)
             .field("charts.description")
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+            .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -508,7 +510,7 @@ public class SearchResource {
             .field("tasks.name", 2.0f)
             .field("tasks.description")
             .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+            .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -575,14 +577,16 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true));
     return searchBuilder(queryBuilder, null, from, size);
   }
 
