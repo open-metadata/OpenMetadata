@@ -155,7 +155,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == 1
 
         table_profile = self.metadata.get_profile_data(
             'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
