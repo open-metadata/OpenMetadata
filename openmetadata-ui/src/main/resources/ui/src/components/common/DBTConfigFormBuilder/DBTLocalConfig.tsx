@@ -12,7 +12,7 @@
  */
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { DbtConfig } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
   errorMsg,
   getSeparator,

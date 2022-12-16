@@ -32,6 +32,9 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerts.ActivityFeedAlertCache;
+import org.openmetadata.service.alerts.AlertUtil;
+import org.openmetadata.service.filter.FilterRegistry;
 
 @Slf4j
 public class FilterUtil {
@@ -63,6 +66,19 @@ public class FilterUtil {
       }
     }
     return false;
+  }
+
+  public static boolean shouldProcessRequest(ChangeEvent event) {
+    // Check Trigger Conditions
+    if (!shouldProcessRequest(event, FilterRegistry.getAllFilters())) {
+      return false;
+    }
+    // Check Spel Conditions
+    if (!AlertUtil.evaluateAlertConditions(
+        event, ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules())) {
+      return false;
+    }
+    return true;
   }
 
   private static boolean handleTestCaseFilter(ChangeEvent changeEvent, Filters sf) {

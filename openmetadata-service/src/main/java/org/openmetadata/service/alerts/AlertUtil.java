@@ -14,7 +14,9 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
@@ -28,6 +30,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public class AlertUtil {
@@ -48,6 +51,8 @@ public class AlertUtil {
       case EMAIL:
         publisher = new EmailAlertPublisher(alert, alertAction, daoCollection);
         break;
+      case ACTIVITY_FEED:
+        throw new IllegalArgumentException("Cannot create Activity Feed as Publisher.");
       default:
         throw new IllegalArgumentException("Invalid Alert Action Specified.");
     }
@@ -111,5 +116,21 @@ public class AlertUtil {
       }
     }
     return indexesToSearch;
+  }
+
+  public static boolean evaluateAlertConditions(ChangeEvent changeEvent, List<AlertFilterRule> alertFilterRules) {
+    boolean result = false;
+    for (AlertFilterRule rule : alertFilterRules) {
+      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
+      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+      Expression expression = parseExpression(rule.getCondition());
+      if (rule.getEffect() == AlertFilterRule.Effect.ALLOW) {
+        result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+      } else if (rule.getEffect() == AlertFilterRule.Effect.DENY) {
+        result = Boolean.FALSE.equals(expression.getValue(evaluationContext, Boolean.class));
+      }
+      LOG.debug("Alert evaluated as Result : {}", result);
+    }
+    return result;
   }
 }

@@ -21,12 +21,10 @@ import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
-import { tabsInfo } from '../../../constants/explore.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getEntityId,
@@ -36,6 +34,7 @@ import {
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import { EntityDetailsType } from '../../Explore/explore.interface';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
@@ -44,17 +43,22 @@ import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
   id: string;
+  className?: string;
   source: SearchedDataProps['data'][number]['_source'];
   matches?: {
     key: string;
     value: number;
   }[];
   searchIndex: SearchIndex | EntityType;
-  handleSummaryPanelDisplay?: (source: Table) => void;
+  handleSummaryPanelDisplay?: (
+    details: EntityDetailsType,
+    entityType: string
+  ) => void;
 }
 
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   id,
+  className,
   source,
   matches,
   searchIndex,
@@ -122,14 +126,14 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     <div
       className={classNames(
         'data-asset-info-card-container',
-        tab === tabsInfo.table_search_index.path
-          ? 'table-data-card-container'
-          : ''
+        'table-data-card-container',
+        className ? className : ''
       )}
       data-testid="table-data-card"
       id={id}
       onClick={() => {
-        handleSummaryPanelDisplay && handleSummaryPanelDisplay(source as Table);
+        handleSummaryPanelDisplay &&
+          handleSummaryPanelDisplay(source as EntityDetailsType, tab);
       }}>
       <div>
         {'databaseSchema' in source && 'database' in source && (
@@ -143,7 +147,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
             className="tw-inline tw-h-5"
             src={serviceTypeLogo(source.serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2 w-9/10">
             <TableDataCardTitle
               handleLinkClick={handleLinkClick}
               id={id}

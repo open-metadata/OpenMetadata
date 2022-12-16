@@ -46,6 +46,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
           "profiler_task",
           PipelineType.LINEAGE.toString(),
           "lineage_task",
+          PipelineType.DBT.toString(),
+          "dbt_task",
           PipelineType.USAGE.toString(),
           "usage_task",
           PipelineType.TEST_SUITE.toString(),

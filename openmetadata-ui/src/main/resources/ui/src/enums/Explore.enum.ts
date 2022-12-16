@@ -15,3 +15,11 @@ export enum QueryFilterFieldsEnum {
   MUST = 'must',
   SHOULD = 'should',
 }
+
+export enum ExplorePageTabs {
+  TABLES = 'tables',
+  TOPICS = 'topics',
+  DASHBOARDS = 'dashboards',
+  PIPELINES = 'pipelines',
+  MLMODELS = 'mlmodels',
+}

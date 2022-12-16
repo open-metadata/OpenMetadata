@@ -51,6 +51,12 @@
       "oneOf": [
         {
           "$ref": "../../entity/events/webhook.json"
+        },
+        {
+          "$ref": "../emailAlertConfig.json"
+        },
+        {
+          "$ref": "../alertAction.json#/definitions/activityFeedAlertActionConfig"
         }
       ]
     }

@@ -13,18 +13,15 @@
 
 package org.openmetadata.service.filter;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.filter.EventFilter;
 import org.openmetadata.schema.filter.Filters;
-import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.util.FilterUtil;
+import org.openmetadata.service.alerts.ActivityFeedAlertCache;
 
 public class FilterRegistry {
   private static final ConcurrentHashMap<String, Map<EventType, Filters>> FILTERS_MAP = new ConcurrentHashMap<>();
@@ -47,23 +44,9 @@ public class FilterRegistry {
     }
   }
 
-  public static List<Map<EventType, Filters>> listAllFilters() {
-    List<Map<EventType, Filters>> filterList = new ArrayList<>();
-    FILTERS_MAP.forEach((key, value) -> filterList.add(value));
-    return filterList;
-  }
-
-  public static List<String> listAllEntitiesHavingFilter() {
-    return List.copyOf(FILTERS_MAP.keySet());
-  }
-
-  public static Map<EventType, Filters> getFilterForEntity(String key) {
-    return FILTERS_MAP.get(key);
-  }
-
-  public static Map<String, Map<EventType, Filters>> getAllFilters() throws IOException {
-    Settings settings = SettingsCache.getInstance().getEventFilters();
-    add(FilterUtil.getEventFilterFromSettings(settings));
+  public static Map<String, Map<EventType, Filters>> getAllFilters() {
+    Alert alert = ActivityFeedAlertCache.getInstance().getActivityFeedAlert();
+    add(alert.getTriggerConfig().getEventFilters());
     return FILTERS_MAP;
   }
 }
