@@ -17,7 +17,7 @@ import {
   DBTBucketDetails,
   DbtConfig,
   SCredentials,
-} from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../../../generated/metadataIngestion/dbtPipeline';
 import {
   errorMsg,
   getSeparator,

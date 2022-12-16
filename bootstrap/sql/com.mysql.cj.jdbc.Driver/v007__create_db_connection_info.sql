@@ -44,5 +44,7 @@ SET json = JSON_INSERT(
         JSON_EXTRACT(json, '$.connection.config.databaseSchema')
     ) where serviceType in ('Db2');
 
-
 DELETE from openmetadata_settings where configType = 'activityFeedFilterSetting';
+
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json ,'$.sourceConfig.config.dbtConfigSource');
