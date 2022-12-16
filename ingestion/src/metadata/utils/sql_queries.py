@@ -354,7 +354,7 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
         db.NAME database_name,
         t.text query_text,
         s.last_execution_time start_time,
-        DATEADD(ms, s.total_elapsed_time, s.last_execution_time) end_time,
+        DATEADD(s, s.total_elapsed_time/1000, s.last_execution_time) end_time,
         NULL schema_name,
         NULL query_type,
         NULL user_name,
