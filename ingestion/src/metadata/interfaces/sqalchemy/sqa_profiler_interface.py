@@ -408,7 +408,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
                 except concurrent.futures.TimeoutError as exc:
                     pool.shutdown39(wait=True, cancel_futures=True)
                     logger.debug(traceback.format_exc())
-                    logger.info(f"Operation was cancelled due to TimeoutError - {exc}")
+                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
                     raise concurrent.futures.TimeoutError
 
         return profile_results
