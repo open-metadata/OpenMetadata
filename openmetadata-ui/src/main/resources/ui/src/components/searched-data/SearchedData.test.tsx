@@ -89,6 +89,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
@@ -110,6 +111,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
@@ -131,6 +133,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
@@ -151,6 +154,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
@@ -171,6 +175,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         showOnboardingTemplate
         currentPage={0}
         data={[]}
@@ -191,6 +196,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={[]}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}

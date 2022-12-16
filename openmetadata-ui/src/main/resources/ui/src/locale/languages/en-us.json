@@ -672,7 +672,8 @@
     "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions.",
     "profiler-timeout-seconds-message": "Optional number setting the timeout in seconds for the profiler. If the timeout is reached the profiler will wait for any pending queries to terminated its execution.",
     "instance-identifier": "Name that identifies this configuration instance uniquely.",
-    "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files."
+    "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files.",
+    "no-profiler-enabled-summary-message": "Profiler is not enabled for the table."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
