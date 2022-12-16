@@ -85,6 +85,7 @@ public class AlertUtil {
         case matchAnySource:
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
           break;
+        case matchUpdatedBy:
         case matchAnyOwnerName:
           func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
           break;
