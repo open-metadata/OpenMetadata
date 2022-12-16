@@ -15,7 +15,6 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import DataInsightSummary from './DataInsightSummary';
 
@@ -55,12 +54,7 @@ describe('Test DataInsightSummary Component', () => {
 
     const summaryCard = screen.getByTestId('summary-card');
 
-    const totalEntitiesByType = screen.getByTestId(
-      `summary-item-${DataInsightChartType.TotalEntitiesByType}`
-    );
-
     expect(summaryCard).toBeInTheDocument();
-    expect(totalEntitiesByType).toBeInTheDocument();
   });
 
   it('Should render only the data assets summary', async () => {
@@ -74,9 +68,11 @@ describe('Test DataInsightSummary Component', () => {
       );
     });
 
-    const dataAssetSummary = await screen.findByTestId('data-assets-summary');
+    const dataAssetSummary = await screen.findAllByTestId(
+      'data-assets-summary'
+    );
 
-    expect(dataAssetSummary).toBeInTheDocument();
+    expect(dataAssetSummary).toHaveLength(4);
 
     // should not render the app analytics summary
     expect(screen.queryByTestId('app-analytics-summary')).toBeNull();
@@ -95,11 +91,11 @@ describe('Test DataInsightSummary Component', () => {
       );
     });
 
-    const appAnalyticsSummary = await screen.findByTestId(
+    const appAnalyticsSummary = await screen.findAllByTestId(
       'app-analytics-summary'
     );
 
-    expect(appAnalyticsSummary).toBeInTheDocument();
+    expect(appAnalyticsSummary).toHaveLength(2);
 
     // should not render the data assets summary
     expect(screen.queryByTestId('data-assets-summary')).toBeNull();
