@@ -21,7 +21,6 @@ from typing import Optional, Tuple
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
 from metadata.utils.ansi import ANSI, print_ansi_encoded_string
-from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger
 
@@ -107,7 +106,14 @@ def upload_backup_aws(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
 
-def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
+def upload_backup_azure(
+    account_url: str,
+    container: str,
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
+    file: Path,
+) -> None:
     """
     Upload the mysqldump backup file.
 
@@ -118,18 +124,20 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
 
     try:
         # pylint: disable=import-outside-toplevel
-        from azure.identity import DefaultAzureCredential
+        from azure.identity import ClientSecretCredential
         from azure.storage.blob import BlobServiceClient
 
-        default_credential = DefaultAzureCredential()
-        # Create the BlobServiceClient object
-        blob_service_client = BlobServiceClient(
-            account_url, credential=default_credential
+        credentials = ClientSecretCredential(
+            tenant_id=tenant_id,
+            client_id=client_id,
+            client_secret=client_secret,
         )
+        # Create the BlobServiceClient object
+        blob_service_client = BlobServiceClient(account_url, credential=credentials)
     except ModuleNotFoundError as err:
         logger.debug(traceback.format_exc())
         logger.error(
-            "Trying to import DefaultAzureCredential to run the backup upload."
+            "Trying to import ClientSecretCredential to run the backup upload."
         )
         raise err
 
@@ -145,7 +153,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         )
 
         # Upload the created file
-        with open(file=file.absolute, mode="rb", encoding=UTF_8) as data:
+        with open(file=file, mode="rb") as data:
             blob_client.upload_blob(data)
 
     except ValueError as err:
@@ -162,7 +170,8 @@ def run_backup(
     common_backup_obj_instance: BackupRestoreArgs,
     output: Optional[str],
     upload_destination_type: Optional[UploadDestinationType],
-    upload: Optional[Tuple[str, str, str]],
+    upload_s3: Optional[Tuple[str, str, str]],
+    upload_azure: Optional[Tuple[str, str, str]],
 ) -> None:
     """
     Run `mysqldump` to MySQL database and store the
@@ -190,11 +199,14 @@ def run_backup(
         color=ANSI.GREEN, bold=False, message=f"Backup stored locally under {out}"
     )
 
-    if upload:
-        if upload_destination_type == UploadDestinationType.AWS.value:
-            endpoint, bucket, key = upload
+    if upload_s3:
+        if upload_destination_type.title() == UploadDestinationType.AWS.value:
+            endpoint, bucket, key = upload_s3
             upload_backup_aws(endpoint, bucket, key, out)
-        elif upload_destination_type == UploadDestinationType.AZURE.value:
-            # only need two parameters from upload, key would be null
-            account_url, container, key = upload
-            upload_backup_azure(account_url, container, out)
+    if upload_azure:
+        if upload_destination_type.title() == UploadDestinationType.AZURE.value:
+
+            account_url, container, tenant_id, client_id, client_secret = upload_azure
+            upload_backup_azure(
+                account_url, container, tenant_id, client_id, client_secret, out
+            )
