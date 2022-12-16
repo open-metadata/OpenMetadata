@@ -38,7 +38,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             icon={isActive ? 'chevron-down' : 'chevron-right'}
           />
         </span>
-        <Typography.Text className="text-semi-bold m-y-0">
+        <Typography.Text className="font-medium m-y-0">
           {t('label.source-plural')}
         </Typography.Text>
       </Space>

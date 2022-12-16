@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,21 +11,40 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import './Badge.less';
+//font weight
+.font-normal {
+  font-weight: 400;
+}
+.font-medium {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-bold {
+  font-weight: 700;
+}
 
-const AnnouncementBadge = () => {
-  return (
-    <div className="announcement-badge-container">
-      <SVGIcons
-        alt="announcement"
-        className="announcement-badge"
-        icon={Icons.ANNOUNCEMENT_YELLOW}
-      />
-      <span className="announcement-content">Announcement</span>
-    </div>
-  );
-};
+// font size
+.text-xs {
+  font-size: 12px;
+}
+.text-lg {
+  font-size: 18px;
+}
+.text-sm {
+  font-size: 14px;
+}
+.text-base {
+  font-size: 1rem /* 16px */;
+  line-height: 1.5rem /* 24px */;
+}
+.text-xl {
+  font-size: 1.25rem /* 20px */;
+  line-height: 1.75rem /* 28px */;
+}
 
-export default AnnouncementBadge;
+.text-2xl {
+  font-size: 1.5rem /* 24px */;
+  line-height: 2rem /* 32px */;
+}

@@ -34,11 +34,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  getLatestKpiResult,
-  getListKpiResult,
-  getListKPIs,
-} from '../../axiosAPIs/KpiAPI';
+import { getLatestKpiResult, getListKpiResult } from '../../axiosAPIs/KpiAPI';
 import { GRAPH_BACKGROUND_COLOR, ROUTES } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
@@ -63,31 +59,20 @@ import KPILatestResults from './KPILatestResults';
 
 interface Props {
   chartFilter: ChartFilter;
+  kpiList: Array<Kpi>;
 }
 
-const KPIChart: FC<Props> = ({ chartFilter }) => {
+const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
   const history = useHistory();
-  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
-
-  const fetchKpiList = async () => {
-    try {
-      setIsLoading(true);
-      const response = await getListKPIs();
-      setKpiList(response.data);
-    } catch (_err) {
-      setKpiList([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchKpiResults = async () => {
     setIsLoading(true);
@@ -166,10 +151,6 @@ const KPIChart: FC<Props> = ({ chartFilter }) => {
 
     return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
   }, [kpiResults, kpiList]);
-
-  useEffect(() => {
-    fetchKpiList();
-  }, []);
 
   useEffect(() => {
     setKpiResults([]);

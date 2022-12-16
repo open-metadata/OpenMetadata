@@ -21,7 +21,6 @@ from typing import Optional, Tuple
 from metadata.cli.db_dump import dump
 from metadata.cli.utils import get_engine
 from metadata.utils.ansi import ANSI, print_ansi_encoded_string
-from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger
 
@@ -145,7 +144,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
         )
 
         # Upload the created file
-        with open(file=file.absolute, mode="rb", encoding=UTF_8) as data:
+        with open(file=file, mode="rb") as data:
             blob_client.upload_blob(data)
 
     except ValueError as err:
@@ -191,10 +190,10 @@ def run_backup(
     )
 
     if upload:
-        if upload_destination_type == UploadDestinationType.AWS.value:
+        if upload_destination_type.title() == UploadDestinationType.AWS.value:
             endpoint, bucket, key = upload
             upload_backup_aws(endpoint, bucket, key, out)
-        elif upload_destination_type == UploadDestinationType.AZURE.value:
+        elif upload_destination_type.title() == UploadDestinationType.AZURE.value:
             # only need two parameters from upload, key would be null
             account_url, container, key = upload
             upload_backup_azure(account_url, container, out)

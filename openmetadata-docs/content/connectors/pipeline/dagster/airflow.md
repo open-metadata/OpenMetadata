@@ -52,18 +52,8 @@ source:
   serviceConnection:
     config:
       type: Dagster
-        # For Local Connection
-        # hostPort: http://locahost:3000/
-        
-        # For Cloud Connection
-        host: "https://<yourorghere>.dagster.cloud/prod"
+        host: "https://<yourorghere>.dagster.cloud/prod" # or http://127.0.0.1:3000
         token: token
-      dbConnection:
-        type: name of database service
-        username: db username
-        password: db password
-        databaseSchema: database name 
-        hostPort: host and port for database
   sourceConfig:
     config:
       type: PipelineMetadata
@@ -88,7 +78,7 @@ workflowConfig:
 #### Source Configuration - Service Connection
 
 
-- **hostPort**: host and port for dagster pipeline
+- **host**: host and port for dagster pipeline
 
 <Note>
 
@@ -96,13 +86,9 @@ If dagster is deployed on `localhost` and entering `https://localhost:3000` into
 
 </Note>
 
-- **dbConnection**
-    - **type**: Name of the Database Service
-    - Local Dagster
-      - **hostPort**: host and port for database connection
-    - Cloud Dagster
-      - **host** : host for connection
-      - **token**: token for connection
+- **ServiceConnection**
+  - **Host**: Host of the dagster eg.`https://localhost:300` or `https://127.0.0.1:3000` or `https://<yourorghere>.dagster.cloud/prod`
+  - **Token** : Need pass token if connecting to `dagster cloud` instance
 
 #### Source Configuration - Source Config
 

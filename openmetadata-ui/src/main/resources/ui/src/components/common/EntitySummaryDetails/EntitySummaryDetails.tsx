@@ -198,7 +198,7 @@ const EntitySummaryDetails = ({
             {data.key
               ? displayVal
                 ? data.showLabel
-                  ? `${t(`label.${toLower(data.key)}`)} : `
+                  ? `${t(`label.${toLower(data.key)}`)} - `
                   : null
                 : `${t('label.no-entity', {
                     entity: t(`label.${toLower(data.key)}`),

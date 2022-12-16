@@ -44,7 +44,7 @@ const EntityList: FunctionComponent<Prop> = ({
 }: Prop) => {
   return (
     <Fragment>
-      <Text className="text-600" type="secondary">
+      <Text className="font-semibold" type="secondary">
         {headerText}
       </Text>
       {entityList.length

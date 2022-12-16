@@ -13,6 +13,7 @@
 Test Profiler behavior
 """
 import os
+from concurrent.futures import TimeoutError
 from datetime import datetime, timezone
 from unittest import TestCase
 from unittest.mock import patch
@@ -229,6 +230,28 @@ class ProfilerTest(TestCase):
                     )
                 )
             )
+
+    def test_profiler_with_timeout(self):
+        """check timeout is properly used"""
+
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                profiler_interface_args=ProfilerInterfaceArgs(
+                    service_connection_config=self.sqlite_conn,
+                    table_entity=self.table_entity,
+                    ometa_client=None,
+                    timeout_seconds=0,
+                )
+            )
+
+        simple = DefaultProfiler(
+            profiler_interface=sqa_profiler_interface,
+        )
+
+        with pytest.raises(TimeoutError):
+            simple.compute_metrics()
 
     @classmethod
     def tearDownClass(cls) -> None:
