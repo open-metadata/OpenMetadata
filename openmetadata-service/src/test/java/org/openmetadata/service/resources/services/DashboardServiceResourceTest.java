@@ -217,7 +217,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
-    fields = "owner,tags";
+    fields = "owner";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
