@@ -12,7 +12,9 @@
  */
 
 import { t } from 'i18next';
+import { TopicConfigObjectInterface } from '../components/TopicDetails/TopicDetails.interface';
 import { TabSpecificField } from '../enums/entity.enum';
+import { Topic } from '../generated/entity/data/topic';
 
 export const topicDetailsTabs = [
   {
@@ -76,4 +78,16 @@ export const getCurrentTopicTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const getConfigObject = (
+  topicDetails: Topic
+): TopicConfigObjectInterface => {
+  return {
+    Partitions: topicDetails.partitions,
+    'Replication Factor': topicDetails.replicationFactor,
+    'Retention Size': topicDetails.retentionSize,
+    'CleanUp Policies': topicDetails.cleanupPolicies,
+    'Max Message Size': topicDetails.maximumMessageSize,
+  };
 };
