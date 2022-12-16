@@ -45,8 +45,7 @@ base_requirements = {
     "boto3~=1.19.12",
     "botocore==1.22.12",
     "avro-python3==1.10.2",
-    "grpcio-tools",
-    "protobuf",
+    "grpcio-tools==1.48.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -54,7 +53,7 @@ base_requirements = {
     "requests-aws4auth==1.1.2",
     "pymysql>=1.0.2",
     "cached-property==1.5.2",
-    "chardet",
+    "chardet==4.0.0",
 }
 
 
