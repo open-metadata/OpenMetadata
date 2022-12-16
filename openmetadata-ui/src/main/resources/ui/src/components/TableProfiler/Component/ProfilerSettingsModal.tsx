@@ -290,10 +290,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             </Row>
           </div>
         </Col>
-        <Col
-          className="flex-column"
-          data-testid="sql-editor-container"
-          span={24}>
+        <Col data-testid="sql-editor-container" span={24}>
           <p className="tw-mb-1.5">{t('label.profile-sample-query')} </p>
           <CodeMirror
             className="profiler-setting-sql-editor"
