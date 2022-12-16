@@ -28,5 +28,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["dbtCatalogHttpPath", "dbtManifestHttpPath"]
+  "required": ["dbtManifestHttpPath"]
 }

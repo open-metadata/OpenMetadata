@@ -27,7 +27,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
-import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
@@ -143,12 +143,12 @@ public abstract class ExternalSecretsManagerTest {
     IngestionPipeline expectedIngestionPipeline =
         new IngestionPipeline()
             .withName("my-pipeline")
-            .withPipelineType(PipelineType.METADATA)
+            .withPipelineType(PipelineType.DBT)
             .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
             .withSourceConfig(
                 new SourceConfig()
                     .withConfig(
-                        new DatabaseServiceMetadataPipeline()
+                        new DbtPipeline()
                             .withDbtConfigSource(
                                 new DbtS3Config()
                                     .withDbtSecurityConfig(
@@ -159,7 +159,7 @@ public abstract class ExternalSecretsManagerTest {
     IngestionPipeline ingestionPipeline =
         new IngestionPipeline()
             .withName("my-pipeline")
-            .withPipelineType(PipelineType.METADATA)
+            .withPipelineType(PipelineType.DBT)
             .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
             .withSourceConfig(
                 new SourceConfig()
@@ -176,20 +176,18 @@ public abstract class ExternalSecretsManagerTest {
         secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, decrypt);
 
     if (decrypt) {
-      DatabaseServiceMetadataPipeline expectedDbPipeline =
-          ((DatabaseServiceMetadataPipeline) expectedIngestionPipeline.getSourceConfig().getConfig());
-      DatabaseServiceMetadataPipeline actualDbPipeline =
-          ((DatabaseServiceMetadataPipeline) actualIngestionPipeline.getSourceConfig().getConfig());
-      ((DbtS3Config) expectedDbPipeline.getDbtConfigSource())
+      DbtPipeline expectedDbtPipeline = ((DbtPipeline) expectedIngestionPipeline.getSourceConfig().getConfig());
+      DbtPipeline actualDbtPipeline = ((DbtPipeline) actualIngestionPipeline.getSourceConfig().getConfig());
+      ((DbtS3Config) expectedDbtPipeline.getDbtConfigSource())
           .getDbtSecurityConfig()
           .setAwsSecretAccessKey(
               "secret:/openmetadata/pipeline/my-pipeline/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
-      ((DbtS3Config) actualDbPipeline.getDbtConfigSource())
+      ((DbtS3Config) actualDbtPipeline.getDbtConfigSource())
           .getDbtSecurityConfig()
           .setAwsSecretAccessKey(
               Fernet.getInstance()
                   .decrypt(
-                      ((DbtS3Config) actualDbPipeline.getDbtConfigSource())
+                      ((DbtS3Config) actualDbtPipeline.getDbtConfigSource())
                           .getDbtSecurityConfig()
                           .getAwsSecretAccessKey()));
     }

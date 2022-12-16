@@ -93,6 +93,7 @@ describe('Test SearchedData Component', () => {
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}
       />,
       {
@@ -113,6 +114,7 @@ describe('Test SearchedData Component', () => {
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}
       />,
       {
@@ -133,6 +135,7 @@ describe('Test SearchedData Component', () => {
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}>
         <p>hello world</p>
       </SearchedData>,
@@ -152,6 +155,7 @@ describe('Test SearchedData Component', () => {
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={11}>
         <p>hello world</p>
       </SearchedData>,
@@ -172,6 +176,7 @@ describe('Test SearchedData Component', () => {
         data={[]}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={0}
       />,
       {
@@ -190,6 +195,7 @@ describe('Test SearchedData Component', () => {
         data={[]}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={0}
       />,
       {

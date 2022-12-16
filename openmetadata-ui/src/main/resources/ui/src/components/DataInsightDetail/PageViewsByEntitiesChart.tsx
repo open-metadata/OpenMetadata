@@ -13,6 +13,7 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,7 +28,11 @@ import {
   YAxis,
 } from 'recharts';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
-import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+} from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   ENTITIES_BAR_COLO_MAP,
@@ -56,6 +61,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const { data, entities, total } = useMemo(() => {
     return getGraphDataByEntityType(
@@ -88,6 +94,13 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter }) => {
     setActiveKeys((prevActiveKeys) =>
       updateActiveChartFilter(event.dataKey, prevActiveKeys)
     );
+  };
+
+  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
+    setActiveMouseHoverKey(event.dataKey);
+  };
+  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
+    setActiveMouseHoverKey('');
   };
 
   useEffect(() => {
@@ -126,13 +139,24 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter }) => {
               verticalAlign="top"
               wrapperStyle={{ left: '0px', top: '0px' }}
               onClick={handleLegendClick}
+              onMouseEnter={handleLegendMouseEnter}
+              onMouseLeave={handleLegendMouseLeave}
             />
             {entities.map((entity) => (
               <Line
                 dataKey={entity}
-                hide={activeKeys.length ? !activeKeys.includes(entity) : false}
+                hide={
+                  activeKeys.length && entity !== activeMouseHoverKey
+                    ? !activeKeys.includes(entity)
+                    : false
+                }
                 key={entity}
                 stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                strokeOpacity={
+                  isEmpty(activeMouseHoverKey) || entity === activeMouseHoverKey
+                    ? DEFAULT_CHART_OPACITY
+                    : HOVER_CHART_OPACITY
+                }
                 type="monotone"
               />
             ))}

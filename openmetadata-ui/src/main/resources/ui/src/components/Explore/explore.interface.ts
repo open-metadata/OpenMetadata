@@ -14,6 +14,11 @@
 import { DefaultOptionType } from 'antd/lib/select';
 import { JsonTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../enums/search.enum';
+import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Table } from '../../generated/entity/data/table';
+import { Topic } from '../../generated/entity/data/topic';
 import { SearchResponse } from '../../interface/search.interface';
 import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
 
@@ -90,4 +95,11 @@ export interface SearchInputProps {
   handleSearch: (value: string) => void;
   handleSelect: (value: string) => void;
   handleClear: () => void;
+}
+
+export type EntityDetailsType = Table | Topic | Dashboard | Pipeline | Mlmodel;
+
+export interface EntityDetailsObjectInterface {
+  details: EntityDetailsType;
+  entityType: string;
 }

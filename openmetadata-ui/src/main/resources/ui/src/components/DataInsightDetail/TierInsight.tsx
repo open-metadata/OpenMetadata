@@ -13,6 +13,7 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,7 +28,11 @@ import {
   YAxis,
 } from 'recharts';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
-import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+} from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   TIER_BAR_COLOR_MAP,
@@ -58,6 +63,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const { data, tiers, total } = useMemo(() => {
     return getGraphDataByTierType(totalEntitiesByTier?.data ?? []);
@@ -88,6 +94,12 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
       updateActiveChartFilter(event.dataKey, prevActiveKeys)
     );
   };
+  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
+    setActiveMouseHoverKey(event.dataKey);
+  };
+  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
+    setActiveMouseHoverKey('');
+  };
 
   useEffect(() => {
     fetchTotalEntitiesByTier();
@@ -115,23 +127,34 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
             <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
             <XAxis dataKey="timestamp" />
             <YAxis />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip isPercentage />} />
             <Legend
               align="left"
               content={(props) =>
-                renderLegend(props as LegendProps, `${total}`, activeKeys)
+                renderLegend(props as LegendProps, `${total}%`, activeKeys)
               }
               layout="vertical"
               verticalAlign="top"
               wrapperStyle={{ left: '0px', top: '0px' }}
               onClick={handleLegendClick}
+              onMouseEnter={handleLegendMouseEnter}
+              onMouseLeave={handleLegendMouseLeave}
             />
             {tiers.map((tier) => (
               <Line
                 dataKey={tier}
-                hide={activeKeys.length ? !activeKeys.includes(tier) : false}
+                hide={
+                  activeKeys.length && tier !== activeMouseHoverKey
+                    ? !activeKeys.includes(tier)
+                    : false
+                }
                 key={tier}
                 stroke={TIER_BAR_COLOR_MAP[tier]}
+                strokeOpacity={
+                  isEmpty(activeMouseHoverKey) || tier === activeMouseHoverKey
+                    ? DEFAULT_CHART_OPACITY
+                    : HOVER_CHART_OPACITY
+                }
                 type="monotone"
               />
             ))}
