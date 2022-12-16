@@ -105,6 +105,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleDatasetServiceName: jest.fn(),
   threadCount: 5,
   handleThreadCount: jest.fn(),
+  timeoutSeconds: 43200,
+  handleTimeoutSeconds: jest.fn(),
   useFqnFilter: false,
   onUseFqnFilterClick: jest.fn(),
 };

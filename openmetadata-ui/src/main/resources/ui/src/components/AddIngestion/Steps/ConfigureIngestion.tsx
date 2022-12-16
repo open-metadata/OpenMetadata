@@ -62,6 +62,7 @@ const ConfigureIngestion = ({
   queryLogDuration,
   stageFileLocation,
   threadCount,
+  timeoutSeconds,
   resultLimit,
   enableDebugLog,
   profileSample,
@@ -83,6 +84,7 @@ const ConfigureIngestion = ({
   handleStageFileLocation,
   handleResultLimit,
   handleThreadCount,
+  handleTimeoutSeconds,
   useFqnFilter,
   onUseFqnFilterClick,
   onCancel,
@@ -176,7 +178,9 @@ const ConfigureIngestion = ({
               </Typography.Paragraph>
               <SliderWithInput
                 value={profileSample || 0}
-                onChange={(value) => handleProfileSample(value ?? undefined)}
+                onChange={(value: number) =>
+                  handleProfileSample(value ?? undefined)
+                }
               />
             </>
           )}
@@ -221,6 +225,27 @@ const ConfigureIngestion = ({
           type="number"
           value={threadCount}
           onChange={(e) => handleThreadCount(parseInt(e.target.value))}
+        />
+      </div>
+    );
+  };
+
+  const getTimeoutSeconds = () => {
+    return (
+      <div>
+        <label>{t('label.profiler-timeout-seconds-label')}</label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          {t('message.profiler-timeout-seconds-message')}
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
+          data-testid="timeoutSeconds"
+          id="timeoutSeconds"
+          name="timeoutSeconds"
+          placeholder="43200"
+          type="number"
+          value={timeoutSeconds}
+          onChange={(e) => handleTimeoutSeconds(parseInt(e.target.value))}
         />
       </div>
     );
@@ -705,6 +730,8 @@ const ConfigureIngestion = ({
         {getProfileSample()}
         {getSeparator('')}
         {getThreadCount()}
+        {getSeparator('')}
+        {getTimeoutSeconds()}
         {getSeparator('')}
         {getIngestSampleToggle(
           'Ingest Sample Data',

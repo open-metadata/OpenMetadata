@@ -91,6 +91,7 @@ export interface ConfigureIngestionProps {
   queryLogDuration: number;
   stageFileLocation: string;
   resultLimit: number;
+  timeoutSeconds: number;
   handleIngestionName: (value: string) => void;
   handleDatasetServiceName: (value: string[]) => void;
   handleDescription?: (value: string) => void;
@@ -111,6 +112,7 @@ export interface ConfigureIngestionProps {
   handleStageFileLocation: (value: string) => void;
   handleResultLimit: (value: number) => void;
   handleThreadCount: (value: number) => void;
+  handleTimeoutSeconds: (value: number) => void;
   onCancel: () => void;
   onNext: () => void;
 }

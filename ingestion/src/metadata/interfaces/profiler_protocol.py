@@ -41,6 +41,7 @@ class ProfilerInterfaceArgs(BaseModel):
     table_sample_rows: Optional[int]
     table_sample_query: Optional[Union[int, str]]
     table_partition_config: Optional[PartitionProfilerConfig]
+    timeout_seconds: Optional[int]
 
     class Config:
         arbitrary_types_allowed = True

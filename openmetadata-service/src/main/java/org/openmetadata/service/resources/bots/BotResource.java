@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.bots;
 
+import static org.openmetadata.service.util.UserUtil.getRoleForBot;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -95,7 +96,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
       // Add role corresponding to the bot to the user
       // we need to set a mutable list here
-      user.setRoles(Arrays.asList(RoleResource.getRole(getRoleForBot(bot.getName()))));
+      user.setRoles(getRoleForBot(bot.getName()));
       user = UserUtil.addOrUpdateBotUser(user, config);
 
       bot.withId(UUID.randomUUID())
@@ -118,19 +119,6 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         botUser.setRoles(List.of(ingestionBotRole));
         dao.addRelationship(botUser.getId(), ingestionBotRole.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
       }
-    }
-  }
-
-  private static String getRoleForBot(String botName) {
-    switch (botName) {
-      case Entity.INGESTION_BOT_NAME:
-        return Entity.INGESTION_BOT_ROLE;
-      case Entity.QUALITY_BOT_NAME:
-        return Entity.QUALITY_BOT_ROLE;
-      case Entity.PROFILER_BOT_NAME:
-        return Entity.PROFILER_BOT_ROLE;
-      default:
-        throw new IllegalArgumentException("No role found for the bot " + botName);
     }
   }
 
@@ -421,6 +409,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), EntityUtil.Fields.EMPTY_FIELDS);
       throw new IllegalArgumentException(
           String.format("Bot user [%s] is already used by [%s] bot", botUser.getName(), bot.getName()));
+    }
+    // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
+    if (originalBot != null) {
+      bot.setProvider(originalBot.getProvider());
     }
     return bot;
   }

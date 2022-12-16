@@ -13,6 +13,7 @@ import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECT
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -27,11 +28,13 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
@@ -218,5 +221,23 @@ public final class UserUtil {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
     }
+  }
+
+  public static List<EntityReference> getRoleForBot(String botName) {
+    String botRole;
+    switch (botName) {
+      case Entity.INGESTION_BOT_NAME:
+        botRole = Entity.INGESTION_BOT_ROLE;
+        break;
+      case Entity.QUALITY_BOT_NAME:
+        botRole = Entity.QUALITY_BOT_ROLE;
+        break;
+      case Entity.PROFILER_BOT_NAME:
+        botRole = Entity.PROFILER_BOT_ROLE;
+        break;
+      default:
+        throw new IllegalArgumentException("No role found for the bot " + botName);
+    }
+    return Arrays.asList(RoleResource.getRole(botRole));
   }
 }

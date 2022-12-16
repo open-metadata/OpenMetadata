@@ -13,8 +13,10 @@
 Database Dumping utility for the metadata CLI
 """
 
+import json
+from functools import singledispatch
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Union
 
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
@@ -40,12 +42,36 @@ STATEMENT_TRUNCATE = "TRUNCATE TABLE {table};\n"
 STATEMENT_ALL_NEW = "SELECT {cols} FROM {table}"
 
 
-def clean_col(column_raw: str) -> str:
+def single_quote_wrap(raw: str) -> str:
     """
-    Prepare the column to be inserted to MySQL
+    Add single quote wrap to string. From `str` to `'str'`
+    """
+    return f"'{raw}'"
+
+
+@singledispatch
+def clean_col(column_raw: Optional[Union[dict, str]]) -> str:
+    return single_quote_wrap(str(column_raw)) if column_raw is not None else "null"
+
+
+@clean_col.register(dict)
+@clean_col.register(list)
+def _(column_raw: Optional[Union[dict, list]]) -> str:
+    """
+    Prepare the JSON column to be inserted to MySQL
+
+    Handle:
+    - quotes
+    - True/False values
     """
     return (
-        repr(str(column_raw)).replace('"', '\\"') if column_raw is not None else "null"
+        single_quote_wrap(
+            json.dumps(
+                column_raw, default=str
+            )  # If we don't know how to serialize, convert to str
+        )
+        if column_raw is not None
+        else "null"
     )
 
 
