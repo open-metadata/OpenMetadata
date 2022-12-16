@@ -45,6 +45,11 @@
       "description": "Number of threads to use during metric computations",
       "type": "number",
       "default": 5
+    },
+    "timeoutSeconds": {
+      "description": "Profiler Timeout in Seconds",
+      "type": "integer",
+      "default": 43200
     }
   },
   "additionalProperties": false
