@@ -210,15 +210,9 @@ def backup_args(parser: argparse.ArgumentParser):
         default=None,
     )
     parser.add_argument(
-        "--upload-s3",
+        "--upload",
         help="S3 endpoint, bucket & key to upload the backup file",
         nargs=3,
-        default=None,
-    )
-    parser.add_argument(
-        "--upload-azure",
-        help="Account-url, Container, Tenant-id, Client-id & Client-secret to upload the backup file",
-        nargs=5,
         default=None,
     )
     parser.add_argument("-o", "--options", default=None, action="append")
@@ -391,8 +385,7 @@ def metadata(args=None):
             ),
             output=contains_args.get("output"),
             upload_destination_type=contains_args.get("upload_destination_type"),
-            upload_s3=contains_args.get("upload_s3"),
-            upload_azure=contains_args.get("upload_azure"),
+            upload=contains_args.get("upload"),
         )
     if metadata_workflow == MetadataCommands.RESTORE.value:
         run_restore(
