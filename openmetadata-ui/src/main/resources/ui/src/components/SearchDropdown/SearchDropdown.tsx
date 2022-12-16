@@ -24,6 +24,7 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
@@ -196,9 +197,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       transitionName=""
       trigger={['click']}
       onOpenChange={(visible) => {
-        const shouldGetInitialOptions = visible && onGetInitialOptions;
-
-        shouldGetInitialOptions && onGetInitialOptions(searchKey);
+        visible &&
+          !isUndefined(onGetInitialOptions) &&
+          onGetInitialOptions(searchKey);
         setIsDropDownOpen(visible);
       }}>
       <Button className="quick-filter-dropdown-trigger-btn">
