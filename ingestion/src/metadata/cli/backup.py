@@ -160,7 +160,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
 def run_backup(
     common_backup_obj_instance: BackupRestoreArgs,
     output: Optional[str],
-    upload_destination_type: Optional[str],
+    upload_destination_type: Optional[UploadDestinationType],
     upload: Optional[Tuple[str, str, str]],
 ) -> None:
     """
