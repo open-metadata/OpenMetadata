@@ -57,6 +57,7 @@ const ConfigureIngestion = ({
   queryLogDuration,
   stageFileLocation,
   threadCount,
+  timeoutSeconds,
   resultLimit,
   enableDebugLog,
   profileSample,
@@ -78,6 +79,7 @@ const ConfigureIngestion = ({
   handleStageFileLocation,
   handleResultLimit,
   handleThreadCount,
+  handleTimeoutSeconds,
   useFqnFilter,
   onUseFqnFilterClick,
   onCancel,
@@ -175,6 +177,31 @@ const ConfigureIngestion = ({
           type="number"
           value={threadCount}
           onChange={(e) => handleThreadCount(parseInt(e.target.value))}
+        />
+      </div>
+    );
+  };
+
+  const getTimeoutSeconds = () => {
+    return (
+      <div>
+        <label>Timeout Seconds </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          This is an optional number that sets the timeout in seconds for the
+          profiler run against 1 table. If the database engine timeout is
+          greater than the timeout set in the profiler workflow, the profiler
+          will wait for any pending queries to terminated before stopping the
+          computation for a table.
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
+          data-testid="timeoutSeconds"
+          id="timeoutSeconds"
+          name="timeoutSeconds"
+          placeholder=""
+          type="number"
+          value={timeoutSeconds}
+          onChange={(e) => handleTimeoutSeconds(parseInt(e.target.value))}
         />
       </div>
     );
@@ -659,6 +686,8 @@ const ConfigureIngestion = ({
         {getProfileSample()}
         {getSeparator('')}
         {getThreadCount()}
+        {getSeparator('')}
+        {getTimeoutSeconds()}
         {getSeparator('')}
         {getIngestSampleToggle(
           'Ingest Sample Data',

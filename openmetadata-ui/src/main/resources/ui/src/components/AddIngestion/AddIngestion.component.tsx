@@ -196,6 +196,9 @@ const AddIngestion = ({
   const [threadCount, setThreadCount] = useState(
     (data?.sourceConfig.config as ConfigClass)?.threadCount ?? 5
   );
+  const [timeoutSeconds, setTimeoutSeconds] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.timeoutSeconds ?? 43200
+  );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
       (data?.sourceConfig.config as ConfigClass)?.dashboardFilterPattern ??
@@ -555,6 +558,7 @@ const AddIngestion = ({
           generateSampleData: ingestSampleData,
           profileSample: profileSample,
           threadCount: threadCount,
+          timeoutSeconds: timeoutSeconds,
         };
       }
       case PipelineType.ElasticSearchReindex:
@@ -743,6 +747,7 @@ const AddIngestion = ({
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
             handleThreadCount={setThreadCount}
+            handleTimeoutSeconds={setTimeoutSeconds}
             includeLineage={includeLineage}
             includeTags={includeTag}
             includeView={includeView}
@@ -769,6 +774,7 @@ const AddIngestion = ({
             stageFileLocation={stageFileLocation}
             tableFilterPattern={tableFilterPattern}
             threadCount={threadCount}
+            timeoutSeconds={timeoutSeconds}
             topicFilterPattern={topicFilterPattern}
             useFqnFilter={useFqnFilter}
             onCancel={handleCancelClick}
