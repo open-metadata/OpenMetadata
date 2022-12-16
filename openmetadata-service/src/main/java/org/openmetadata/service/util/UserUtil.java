@@ -18,8 +18,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.api.configuration.airflow.AuthConfiguration;
 import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -140,58 +140,57 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     User originalUser = retrieveWithAuthMechanism(user);
-    // the user did not have an auth mechanism
+    AirflowConfiguration airflowConfig = openMetadataApplicationConfig.getAirflowConfiguration();
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
-    if (authMechanism == null) {
-      AuthenticationConfiguration authConfig = openMetadataApplicationConfig.getAuthenticationConfiguration();
-      AirflowConfiguration airflowConfig = openMetadataApplicationConfig.getAirflowConfiguration();
+    // the user did not have an auth mechanism and auth config is present
+    if (authConfigPresent(airflowConfig) && authMechanism == null) {
+      AuthConfiguration authConfig = airflowConfig.getAuthConfig();
+      String currentAuthProvider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
       // if the auth provider is "openmetadata" in the configuration set JWT as auth mechanism
-      if ("openmetadata".equals(airflowConfig.getAuthProvider()) && !"basic".equals(authConfig.getProvider())) {
-        OpenMetadataJWTClientConfig jwtClientConfig = airflowConfig.getAuthConfig().getOpenmetadata();
+      if ("openmetadata".equals(airflowConfig.getAuthProvider()) && !"basic".equals(currentAuthProvider)) {
+        OpenMetadataJWTClientConfig jwtClientConfig = authConfig.getOpenmetadata();
         authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(jwtClientConfig, user));
-      } else {
-        // Otherwise, set auth mechanism from airflow configuration
         // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
-        if (airflowConfig.getAuthConfig() != null && !"basic".equals(authConfig.getProvider())) {
-          switch (authConfig.getProvider()) {
-            case "no-auth":
-              break;
-            case "azure":
-              authMechanism =
-                  buildAuthMechanism(SSO, buildAuthMechanismConfig(AZURE, airflowConfig.getAuthConfig().getAzure()));
-              break;
-            case "google":
-              authMechanism =
-                  buildAuthMechanism(SSO, buildAuthMechanismConfig(GOOGLE, airflowConfig.getAuthConfig().getGoogle()));
-              break;
-            case "okta":
-              authMechanism =
-                  buildAuthMechanism(SSO, buildAuthMechanismConfig(OKTA, airflowConfig.getAuthConfig().getOkta()));
-              break;
-            case "auth0":
-              authMechanism =
-                  buildAuthMechanism(SSO, buildAuthMechanismConfig(AUTH_0, airflowConfig.getAuthConfig().getAuth0()));
-              break;
-            case "custom-oidc":
-              authMechanism =
-                  buildAuthMechanism(
-                      SSO, buildAuthMechanismConfig(CUSTOM_OIDC, airflowConfig.getAuthConfig().getCustomOidc()));
-              break;
-            default:
-              throw new IllegalArgumentException(
-                  String.format(
-                      "Unexpected auth provider [%s] for bot [%s]", authConfig.getProvider(), user.getName()));
-          }
-        } else if ("basic".equals(authConfig.getProvider())) {
-          authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
+      } else if (!"basic".equals(currentAuthProvider)) {
+        switch (currentAuthProvider) {
+          case "no-auth":
+            break;
+          case "azure":
+            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(AZURE, authConfig.getAzure()));
+            break;
+          case "google":
+            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(GOOGLE, authConfig.getGoogle()));
+            break;
+          case "okta":
+            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(OKTA, authConfig.getOkta()));
+            break;
+          case "auth0":
+            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(AUTH_0, authConfig.getAuth0()));
+            break;
+          case "custom-oidc":
+            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(CUSTOM_OIDC, authConfig.getCustomOidc()));
+            break;
+          default:
+            throw new IllegalArgumentException(
+                String.format("Unexpected auth provider [%s] for bot [%s]", currentAuthProvider, user.getName()));
         }
+      } else {
+        authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
+      }
+    } else {
+      // if auth config not present in airflow configuration and the user did not have an auth mechanism
+      if (authMechanism == null) {
+        authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
       }
     }
     user.setAuthenticationMechanism(authMechanism);
     user.setDescription(user.getDescription());
     user.setDisplayName(user.getDisplayName());
-    user.setUpdatedBy(ADMIN_USER_NAME);
-    return UserUtil.addOrUpdateUser(user);
+    return addOrUpdateUser(user);
+  }
+
+  private static boolean authConfigPresent(AirflowConfiguration airflowConfig) {
+    return airflowConfig != null && airflowConfig.getAuthConfig() != null;
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {

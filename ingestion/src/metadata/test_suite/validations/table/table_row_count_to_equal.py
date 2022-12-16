@@ -12,10 +12,13 @@
 """
 TableRowCountToEqual validation implementation
 """
-# pylint: disable=duplicate-code
-
 import traceback
 from datetime import datetime
+from functools import singledispatch
+from typing import Union
+
+# pylint: disable=duplicate-code
+from pandas import DataFrame
 
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -30,10 +33,20 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
+@singledispatch
 def table_row_count_to_equal(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_row_count_to_equal.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -62,6 +75,29 @@ def table_row_count_to_equal(
             testResultValue=[TestResultValue(name="rowCount", value=None)],
         )
 
+    value = next(
+        int(param_value.value)
+        for param_value in test_case.parameterValues
+        if param_value.name == "value"
+    )
+
+    status = (
+        TestCaseStatus.Success if row_count_value == value else TestCaseStatus.Failed
+    )
+    result = f"Found {row_count_value} rows vs. the expected {value}"
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="rowCount", value=str(row_count_value))],
+    )
+
+
+@table_row_count_to_equal.register
+def _(runner: DataFrame, test_case: TestCase, execution_date: Union[datetime, float]):
+
+    row_count_value = Metrics.ROW_COUNT.value().dl_fn(runner)
     value = next(
         int(param_value.value)
         for param_value in test_case.parameterValues

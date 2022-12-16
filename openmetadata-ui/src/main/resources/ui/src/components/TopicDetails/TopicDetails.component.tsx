@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -50,6 +51,7 @@ import { getLineageViewPath } from '../../utils/RouterUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getConfigObject } from '../../utils/TopicDetailsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -69,6 +71,7 @@ import {
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
+import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
@@ -77,8 +80,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   maximumMessageSize,
   replicationFactor,
   retentionSize,
-  schemaText,
-  schemaType,
   topicTags,
   activeTab,
   entityName,
@@ -190,15 +191,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     ];
   };
 
-  const getConfigObject = () => {
-    return {
-      Partitions: partitions,
-      'Replication Factor': replicationFactor,
-      'Retention Size': retentionSize,
-      'CleanUp Policies': cleanupPolicies,
-      'Max Message Size': maximumMessageSize,
-    };
-  };
   const tabs = [
     {
       name: t('label.schema'),
@@ -452,6 +444,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const handleSchemaFieldsUpdate = async (
+    updatedMessageSchema: Topic['messageSchema']
+  ) => {
+    try {
+      await settingsUpdateHandler({
+        ...topicDetails,
+        messageSchema: updatedMessageSchema,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
@@ -561,14 +566,27 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       />
                     </div>
                   </div>
-                  {schemaText ? (
+                  {!isEmpty(topicDetails.messageSchema?.schemaFields) ? (
                     <Fragment>
-                      {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                      <div
-                        className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
-                        data-testid="schema">
-                        <SchemaEditor value={schemaText} />
-                      </div>
+                      {getInfoBadge([
+                        {
+                          key: 'Schema',
+                          value: topicDetails.messageSchema?.schemaType ?? '',
+                        },
+                      ])}
+                      <TopicSchemaFields
+                        className="mt-4"
+                        hasDescriptionEditAccess={
+                          topicPermissions.EditAll ||
+                          topicPermissions.EditDescription
+                        }
+                        hasTagEditAccess={
+                          topicPermissions.EditAll || topicPermissions.EditTags
+                        }
+                        isReadOnly={Boolean(deleted)}
+                        messageSchema={topicDetails.messageSchema}
+                        onUpdate={handleSchemaFieldsUpdate}
+                      />
                     </Fragment>
                   ) : (
                     <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
@@ -606,7 +624,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               )}
               {activeTab === 4 && (
                 <div data-testid="config">
-                  <SchemaEditor value={JSON.stringify(getConfigObject())} />
+                  <SchemaEditor
+                    value={JSON.stringify(getConfigObject(topicDetails))}
+                  />
                 </div>
               )}
               {activeTab === 5 && (

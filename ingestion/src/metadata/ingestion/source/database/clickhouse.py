@@ -155,13 +155,6 @@ def get_pk_constraint(
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
-):
-    return {"text": None}
-
-
-@reflection.cache
 def get_view_definition(
     self, connection, view_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
@@ -184,7 +177,6 @@ ClickHouseDialect.get_pk_constraint = get_pk_constraint
 ClickHouseDialect._get_column_type = (  # pylint: disable=protected-access
     _get_column_type
 )
-ClickHouseDialect.get_table_comment = get_table_comment
 RequestsTransport.execute = execute
 ClickHouseDialect.get_view_definition = get_view_definition
 

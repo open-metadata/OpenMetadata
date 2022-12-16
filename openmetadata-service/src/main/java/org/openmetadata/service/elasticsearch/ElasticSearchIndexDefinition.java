@@ -190,7 +190,7 @@ public class ElasticSearchIndexDefinition {
     return new String(in.readAllBytes());
   }
 
-  public ElasticSearchIndexType getIndexMappingByEntityType(String type) {
+  public static ElasticSearchIndexType getIndexMappingByEntityType(String type) {
     if (type.equalsIgnoreCase(Entity.TABLE)) {
       return ElasticSearchIndexType.TABLE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {

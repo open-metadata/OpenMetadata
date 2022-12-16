@@ -5,6 +5,27 @@
   "description": "Functions used for writing SpEL expression based conditions",
   "type" : "object",
   "javaType": "org.openmetadata.schema.type.Function",
+  "definitions": {
+    "parameterType": {
+      "type": "string",
+      "enum": ["NotRequired", "AllIndexElasticSearch", "SpecificIndexElasticSearch", "ReadFromParamContext"]
+    },
+    "paramAdditionalContext": {
+      "description": "Additional Context",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "List of Entities",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "name" : {
       "description": "Name of the function.",
@@ -21,6 +42,15 @@
     "examples" : {
       "description": "Examples of the function to help users author conditions.",
       "type" : "array"
+    },
+    "parameterInputType": {
+      "description": "List of receivers to send mail to",
+      "$ref": "#/definitions/parameterType"
+    },
+    "paramAdditionalContext": {
+      "$ref": "#/definitions/paramAdditionalContext"
     }
-  }
+
+  },
+  "additionalProperties": false
 }

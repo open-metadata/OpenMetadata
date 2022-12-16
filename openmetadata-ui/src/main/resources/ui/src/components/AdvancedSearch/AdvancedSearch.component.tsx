@@ -30,6 +30,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   onChangeJsonTree,
   onChangeQueryFilter,
   searchIndex,
+  onAppliedFilterChange,
 }) => {
   const [config, setConfig] = useState<Config>(getQbConfigs(searchIndex));
 
@@ -40,13 +41,12 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
   useEffect(() => setConfig(getQbConfigs(searchIndex)), [searchIndex]);
 
-  useEffect(
-    () =>
-      onChangeQueryFilter({
-        query: elasticSearchFormat(immutableTree, config),
-      }),
-    [immutableTree, config]
-  );
+  useEffect(() => {
+    onAppliedFilterChange(QbUtils.sqlFormat(immutableTree, config) ?? '');
+    onChangeQueryFilter({
+      query: elasticSearchFormat(immutableTree, config),
+    });
+  }, [immutableTree, config]);
 
   return (
     <Query

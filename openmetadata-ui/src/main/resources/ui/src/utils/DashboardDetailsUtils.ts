@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
+import i18next from 'i18next';
+import { getChartById } from '../axiosAPIs/chartAPI';
 import { TabSpecificField } from '../enums/entity.enum';
+import { Dashboard } from '../generated/entity/data/dashboard';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
@@ -20,21 +24,21 @@ ${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS},${TabSpecificField
 
 export const dashboardDetailsTabs = [
   {
-    name: 'Details',
+    name: i18next.t('label.details'),
     path: 'details',
   },
   {
-    name: 'Activity Feeds & Tasks',
+    name: i18next.t('label.activity-feed-and-task-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: 'Lineage',
+    name: i18next.t('label.lineage'),
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: 'Custom Properties',
+    name: i18next.t('label.custom-properties'),
     path: 'custom_properties',
   },
 ];
@@ -72,4 +76,25 @@ export const sortTagsForCharts = (charts: ChartType[]) => {
     ...chart,
     tags: sortTagsCaseInsensitive(chart.tags || []),
   }));
+};
+
+export const fetchCharts = async (charts: Dashboard['charts']) => {
+  let chartsData: ChartType[] = [];
+  let promiseArr: Array<Promise<ChartType>> = [];
+  try {
+    if (charts?.length) {
+      promiseArr = charts.map((chart) => getChartById(chart.id, ['tags']));
+      const res = await Promise.allSettled(promiseArr);
+
+      if (res.length) {
+        chartsData = res
+          .filter((chart) => chart.status === 'fulfilled')
+          .map((chart) => (chart as PromiseFulfilledResult<ChartType>).value);
+      }
+    }
+  } catch (err) {
+    throw new Error((err as AxiosError).message);
+  }
+
+  return chartsData;
 };

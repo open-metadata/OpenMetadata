@@ -17,6 +17,8 @@ export interface SearchDropdownProps {
   options: string[];
   searchKey: string;
   selectedKeys: string[];
+  highlight?: boolean;
   onChange: (values: string[], searchKey: string) => void;
+  onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
 }

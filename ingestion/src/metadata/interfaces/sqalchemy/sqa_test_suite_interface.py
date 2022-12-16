@@ -150,9 +150,9 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
             return validation_enum_registry.registry[
                 test_case.testDefinition.fullyQualifiedName
             ](
-                test_case,
+                self.runner,
+                test_case=test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
-                runner=self.runner,
             )
         except KeyError as err:
             logger.warning(

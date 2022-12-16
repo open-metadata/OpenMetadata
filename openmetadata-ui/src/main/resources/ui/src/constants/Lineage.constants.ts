@@ -25,8 +25,8 @@ export const entityData = [
 export const POSITION_X = 150;
 export const POSITION_Y = 60;
 
-export const NODE_WIDTH = 600;
-export const NODE_HEIGHT = 70;
+export const NODE_WIDTH = 400;
+export const NODE_HEIGHT = 50;
 export const EXPANDED_NODE_HEIGHT = 300;
 
 export const ELEMENT_DELETE_STATE = {

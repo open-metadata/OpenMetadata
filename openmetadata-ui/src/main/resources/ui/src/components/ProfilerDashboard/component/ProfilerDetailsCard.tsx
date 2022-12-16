@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Statistic } from 'antd';
-import React from 'react';
+import { Card, Col, Row } from 'antd';
+import React, { useState } from 'react';
 import {
+  CartesianGrid,
   Legend,
+  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -22,32 +24,28 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
+import {
+  axisTickFormatter,
+  tooltipFormatter,
+  updateActiveChartFilter,
+} from '../../../utils/ChartUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
+import ProfilerLatestValue from './ProfilerLatestValue';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   chartCollection,
   tickFormatter,
   name,
+  curveType,
 }) => {
   const { data, information } = chartCollection;
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
-  const renderColorfulLegendText = (
-    value: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entry: any
-  ) => <span style={{ color: entry?.color }}>{value}</span>;
-
-  const tooltipFormatter = (value: string | number | (string | number)[]) => {
-    const numValue = value as number;
-
-    return (
-      <>
-        {tickFormatter
-          ? `${numValue.toFixed(2)}${tickFormatter}`
-          : formatNumberWithComma(numValue)}
-      </>
+  const handleClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
     );
   };
 
@@ -55,28 +53,22 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
     <Card className="tw-rounded-md tw-border">
       <Row gutter={[16, 16]}>
         <Col span={4}>
-          <Space direction="vertical" size={16}>
-            {information.map((info) => (
-              <Statistic
-                key={info.title}
-                title={<span className="tw-text-grey-body">{info.title}</span>}
-                value={
-                  tickFormatter
-                    ? `${info.latestValue}${tickFormatter}`
-                    : formatNumberWithComma(info.latestValue as number)
-                }
-                valueStyle={{ color: info.color }}
-              />
-            ))}
-          </Space>
+          <ProfilerLatestValue
+            information={information}
+            tickFormatter={tickFormatter}
+          />
         </Col>
         <Col span={20}>
           {data.length > 0 ? (
-            <ResponsiveContainer id={`${name}_graph`} minHeight={300}>
+            <ResponsiveContainer
+              debounce={200}
+              id={`${name}_graph`}
+              minHeight={300}>
               <LineChart
                 className="tw-w-full"
                 data={data}
                 margin={{ left: 16 }}>
+                <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                 <XAxis
                   dataKey="name"
                   padding={{ left: 16, right: 16 }}
@@ -88,20 +80,29 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   padding={{ top: 16, bottom: 16 }}
                   tick={{ fontSize: 12 }}
                   tickFormatter={(props) =>
-                    tickFormatter ? `${props}${tickFormatter}` : props
+                    axisTickFormatter(props, tickFormatter)
                   }
                 />
-                <Tooltip formatter={tooltipFormatter} />
+                <Tooltip
+                  formatter={(value: number) =>
+                    tooltipFormatter(value, tickFormatter)
+                  }
+                />
                 {information.map((info) => (
                   <Line
                     dataKey={info.dataKey}
+                    hide={
+                      activeKeys.length
+                        ? !activeKeys.includes(info.dataKey)
+                        : false
+                    }
                     key={info.dataKey}
                     name={info.title}
                     stroke={info.color}
-                    type="monotone"
+                    type={curveType ?? 'monotone'}
                   />
                 ))}
-                <Legend formatter={renderColorfulLegendText} />
+                <Legend onClick={handleClick} />
               </LineChart>
             </ResponsiveContainer>
           ) : (

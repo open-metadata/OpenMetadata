@@ -16,7 +16,10 @@ TableColumnCountToBeBetween validation implementation
 
 import traceback
 from datetime import datetime
+from functools import singledispatch
+from typing import Union
 
+from pandas import DataFrame
 from sqlalchemy import inspect
 
 from metadata.generated.schema.tests.basic import (
@@ -32,10 +35,20 @@ from metadata.utils.test_suite import get_test_case_param_value
 logger = test_suite_logger()
 
 
+@singledispatch
 def table_column_count_to_be_between(
+    runner,
     test_case: TestCase,
-    execution_date: datetime,
+    execution_date: Union[datetime, float],
+):
+    raise NotImplementedError
+
+
+@table_column_count_to_be_between.register
+def _(
     runner: QueryRunner,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
 ) -> TestCaseResult:
     """
     Validate row count metric
@@ -68,6 +81,52 @@ def table_column_count_to_be_between(
             testResultValue=[TestResultValue(name="columnCount", value=None)],
         )
 
+    min_ = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "minColValue",
+        int,
+        default=float("-inf"),
+    )
+
+    max_ = get_test_case_param_value(
+        test_case.parameterValues,  # type: ignore
+        "maxColValue",
+        int,
+        default=float("inf"),
+    )
+
+    status = (
+        TestCaseStatus.Success
+        if min_ <= column_count <= max_
+        else TestCaseStatus.Failed
+    )
+    result = f"Found {column_count} column vs. the expected range [{min_}, {max_}]."
+
+    return TestCaseResult(
+        timestamp=execution_date,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=[TestResultValue(name="columnCount", value=column_count)],
+    )
+
+
+@table_column_count_to_be_between.register
+def _(
+    runner: DataFrame,
+    test_case: TestCase,
+    execution_date: Union[datetime, float],
+) -> TestCaseResult:
+    """
+    Validate row count metric
+
+    Args:
+        test_case: test case type to be ran. Used to dispatch
+        table_profile: table profile results
+        execution_date: datetime of the test execution
+    Returns:
+        TestCaseResult with status and results
+    """
+    column_count = len(runner.columns)
     min_ = get_test_case_param_value(
         test_case.parameterValues,  # type: ignore
         "minColValue",

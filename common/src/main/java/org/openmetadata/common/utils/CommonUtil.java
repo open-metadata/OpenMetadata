@@ -190,6 +190,9 @@ public final class CommonUtil {
   /** Return list of entiries that are modifiable for performing sort and other operations */
   @SafeVarargs
   public static <T> List<T> listOf(T... entries) {
+    if (entries == null) {
+      return Collections.emptyList();
+    }
     return new ArrayList<>(List.of(entries));
   }
 }

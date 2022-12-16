@@ -480,5 +480,23 @@
       "EditDisplayName",
       "EditCustomFields"
     ]
+  },
+  {
+    "name" : "alert",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
+  },
+  {
+    "name" : "alertAction",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditDescription"
+    ]
   }
 ]

@@ -20,11 +20,6 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
     metadata_ingestion_workflow,
 )
 
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )

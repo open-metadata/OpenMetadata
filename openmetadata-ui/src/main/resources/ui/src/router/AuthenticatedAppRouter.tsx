@@ -117,9 +117,6 @@ const EditConnectionFormPage = withSuspenseFallback(
       import('../pages/EditConnectionFormPage/EditConnectionFormPage.component')
   )
 );
-const AddWebhookPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/AddWebhookPage/AddWebhookPage.component'))
-);
 
 const CreateUserPage = withSuspenseFallback(
   React.lazy(() => import('../pages/CreateUserPage/CreateUserPage.component'))
@@ -146,9 +143,6 @@ const EditIngestionPage = withSuspenseFallback(
   React.lazy(
     () => import('../pages/EditIngestionPage/EditIngestionPage.component')
   )
-);
-const EditWebhookPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/EditWebhookPage/EditWebhookPage.component'))
 );
 const EntityVersionPage = withSuspenseFallback(
   React.lazy(
@@ -371,7 +365,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
-      <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
       <AdminProtectedRoute
         exact
         component={GlossaryPageV1}
@@ -424,12 +417,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddGlossaryTermPage}
         path={ROUTES.ADD_GLOSSARY_TERMS}
       />
-      <Route
-        exact
-        component={AddWebhookPage}
-        path={ROUTES.ADD_WEBHOOK_WITH_TYPE}
-      />
-      <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
 
       <AdminProtectedRoute
         exact

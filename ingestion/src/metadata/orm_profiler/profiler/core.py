@@ -32,7 +32,6 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
-from metadata.interfaces.datalake.datalake_profiler_interface import ColumnBaseModel
 from metadata.interfaces.profiler_protocol import ProfilerProtocol
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.metrics.core import (
@@ -47,6 +46,7 @@ from metadata.orm_profiler.metrics.core import (
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE, NOT_COMPUTE_OM
+from metadata.utils.column_base_model import ColumnBaseModel
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()

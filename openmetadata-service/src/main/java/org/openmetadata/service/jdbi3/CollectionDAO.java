@@ -55,6 +55,8 @@ import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.alerts.Alert;
+import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Database;
@@ -94,7 +96,6 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
-import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.service.Entity;
@@ -182,6 +183,9 @@ public interface CollectionDAO {
   BotDAO botDAO();
 
   @CreateSqlObject
+  AlertDAO alertDAO();
+
+  @CreateSqlObject
   PolicyDAO policyDAO();
 
   @CreateSqlObject
@@ -217,14 +221,17 @@ public interface CollectionDAO {
   @CreateSqlObject
   ChangeEventDAO changeEventDAO();
 
-  @CreateSqlObject
-  WebhookDAO webhookDAO();
+  //  @CreateSqlObject
+  //  WebhookDAO webhookDAO();
 
   @CreateSqlObject
   TypeEntityDAO typeEntityDAO();
 
   @CreateSqlObject
   TestDefinitionDAO testDefinitionDAO();
+
+  @CreateSqlObject
+  AlertActionDAO alertActionDAO();
 
   @CreateSqlObject
   TestSuiteDAO testSuiteDAO();
@@ -1495,6 +1502,26 @@ public interface CollectionDAO {
     }
   }
 
+  interface AlertDAO extends EntityDAO<Alert> {
+    @Override
+    default String getTableName() {
+      return "alert_entity";
+    }
+
+    @Override
+    default Class<Alert> getEntityClass() {
+      return Alert.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+
+    @SqlQuery("SELECT json FROM <table>")
+    List<String> listAllAlerts(@Define("table") String table);
+  }
+
   interface ChartDAO extends EntityDAO<Chart> {
     @Override
     default String getTableName() {
@@ -1791,31 +1818,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
-  }
-
-  interface WebhookDAO extends EntityDAO<Webhook> {
-    @Override
-    default String getTableName() {
-      return "webhook_entity";
-    }
-
-    @Override
-    default Class<Webhook> getEntityClass() {
-      return Webhook.class;
-    }
-
-    @Override
-    default String getNameColumn() {
-      return "name";
-    }
-
-    @Override
-    default boolean supportsSoftDelete() {
-      return false;
-    }
-
-    @SqlQuery("SELECT json FROM <table>")
-    List<String> listAllWebhooks(@Define("table") String table);
   }
 
   interface TagCategoryDAO extends EntityDAO<TagCategory> {
@@ -2811,6 +2813,23 @@ public interface CollectionDAO {
     @Override
     default Class<TestSuite> getEntityClass() {
       return TestSuite.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface AlertActionDAO extends EntityDAO<AlertAction> {
+    @Override
+    default String getTableName() {
+      return "alert_action_def";
+    }
+
+    @Override
+    default Class<AlertAction> getEntityClass() {
+      return AlertAction.class;
     }
 
     @Override

@@ -17,53 +17,35 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card, Col, Row, Tabs } from 'antd';
-import { AxiosError } from 'axios';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
   isNil,
   isNumber,
+  isUndefined,
   lowerCase,
   noop,
   omit,
-  toLower,
   toUpper,
 } from 'lodash';
-import { EntityType } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
-import { getListTestCase } from '../../axiosAPIs/testAPI';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import SearchedData from '../../components/searched-data/SearchedData';
-import { API_RES_MAX_SIZE, ENTITY_PATH } from '../../constants/constants';
+import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
-import { INITIAL_TEST_RESULT_SUMMARY } from '../../constants/profiler.constant';
-import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { Table } from '../../generated/entity/data/table';
-import { Include } from '../../generated/type/include';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import {
-  formatNumberWithComma,
-  formTwoDigitNmber,
-  getCountBadge,
-} from '../../utils/CommonUtils';
-import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
-import { generateEntityLink } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
-import { Entities } from '../AddWebhook/WebhookConstants';
+import { getCountBadge } from '../../utils/CommonUtils';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
-import {
-  OverallTableSummeryType,
-  TableTestsType,
-} from '../TableProfiler/TableProfiler.interface';
 import { AdvancedSearchModal } from './AdvanceSearchModal.component';
+import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
+  EntityDetailsObjectInterface,
+  EntityDetailsType,
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
@@ -98,13 +80,15 @@ const Explore: React.FC<ExploreProps> = ({
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
-  const { t } = useTranslation();
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
-  const [entityDetails, setEntityDetails] = useState<Table>();
-  const [tableTests, setTableTests] = useState<TableTestsType>({
-    tests: [],
-    results: INITIAL_TEST_RESULT_SUMMARY,
-  });
+  const [entityDetails, setEntityDetails] =
+    useState<{ details: EntityDetailsType; entityType: string }>();
+
+  const [appliedFilterSQLFormat, setAppliedFilterSQLFormat] =
+    useState<string>('');
+
+  const handleAppliedFilterChange = (value: string) =>
+    setAppliedFilterSQLFormat(value);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -112,7 +96,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
-    const entityName = toUpper(ENTITY_PATH[tab as EntityType] ?? 'table');
+    const entityName = toUpper(ENTITY_PATH[tab] ?? 'table');
 
     return SearchIndex[entityName as ExploreSearchIndexKey];
   }, [tab]);
@@ -144,98 +128,13 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
-  const overallSummery: OverallTableSummeryType[] = useMemo(() => {
-    return [
-      {
-        title: 'Row Count',
-        value: formatNumberWithComma(entityDetails?.profile?.rowCount ?? 0),
-      },
-      {
-        title: 'Column Count',
-        value: entityDetails?.profile?.columnCount ?? 0,
-      },
-      {
-        title: 'Table Sample %',
-        value: `${entityDetails?.profile?.profileSample ?? 100}%`,
-      },
-      {
-        title: 'Tests Passed',
-        value: formTwoDigitNmber(tableTests.results.success),
-        className: 'success',
-      },
-      {
-        title: 'Tests Aborted',
-        value: formTwoDigitNmber(tableTests.results.aborted),
-        className: 'aborted',
-      },
-      {
-        title: 'Tests Failed',
-        value: formTwoDigitNmber(tableTests.results.failed),
-        className: 'failed',
-      },
-    ];
-  }, [entityDetails, tableTests]);
-
-  const fetchProfilerData = async (source: Table) => {
-    try {
-      const res = await getTableDetailsByFQN(
-        encodeURIComponent(source?.fullyQualifiedName || ''),
-        `${TabSpecificField.TABLE_PROFILE},${TabSpecificField.TABLE_QUERIES}`
-      );
-      const { profile, tableQueries } = res;
-      setEntityDetails((prev) => {
-        if (prev) {
-          return { ...prev, profile, tableQueries };
-        } else {
-          return {} as Table;
-        }
-      });
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', {
-          entity: `profile details for table ${source?.name || ''}`,
-        })
-      );
-    }
-  };
-
-  const fetchAllTests = async (source: Table) => {
-    try {
-      const { data } = await getListTestCase({
-        fields: 'testCaseResult,entityLink,testDefinition,testSuite',
-        entityLink: generateEntityLink(source?.fullyQualifiedName || ''),
-        includeAllTests: true,
-        limit: API_RES_MAX_SIZE,
-        include: Include.Deleted,
-      });
-      const tableTests: TableTestsType = {
-        tests: [],
-        results: { ...INITIAL_TEST_RESULT_SUMMARY },
-      };
-      data.forEach((test) => {
-        if (test.entityFQN === source?.fullyQualifiedName) {
-          tableTests.tests.push(test);
-
-          updateTestResults(
-            tableTests.results,
-            test.testCaseResult?.testCaseStatus || ''
-          );
-
-          return;
-        }
-      });
-      setTableTests(tableTests);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleSummaryPanelDisplay = (source: Table) => {
-    setShowSummaryPanel(true);
-    fetchAllTests(source);
-    fetchProfilerData(source);
-    setEntityDetails(source);
-  };
+  const handleSummaryPanelDisplay = useCallback(
+    (details: EntityDetailsType, entityType: string) => {
+      setShowSummaryPanel(true);
+      setEntityDetails({ details, entityType });
+    },
+    []
+  );
 
   const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
     const terms = [] as Array<Record<string, unknown>>;
@@ -293,6 +192,19 @@ const Explore: React.FC<ExploreProps> = ({
       dropdownItems.map((item) => ({ ...item, value: undefined }))
     );
   }, [searchIndex]);
+
+  useEffect(() => {
+    if (
+      !isUndefined(searchResults) &&
+      searchResults?.hits?.hits[0] &&
+      searchResults?.hits?.hits[0]._index === searchIndex
+    ) {
+      handleSummaryPanelDisplay(
+        searchResults?.hits?.hits[0]._source as EntityDetailsType,
+        tab
+      );
+    }
+  }, [tab, searchResults]);
 
   return (
     <PageLayoutV1
@@ -373,7 +285,7 @@ const Explore: React.FC<ExploreProps> = ({
 
       <div
         style={{
-          marginRight: showSummaryPanel ? '390px' : '',
+          marginRight: showSummaryPanel ? '400px' : '', // Margin given equal to summary panel width
         }}>
         <Row gutter={[16, 16]}>
           <Col span={24}>
@@ -384,6 +296,15 @@ const Explore: React.FC<ExploreProps> = ({
               onFieldValueSelect={handleAdvanceFieldValueSelect}
             />
           </Col>
+          {appliedFilterSQLFormat && (
+            <Col span={24}>
+              <AppliedFilterText
+                filterText={appliedFilterSQLFormat}
+                onEdit={() => setShowAdvanceSearchModal(true)}
+              />
+            </Col>
+          )}
+
           <Col span={24}>
             {!loading ? (
               <SearchedData
@@ -391,11 +312,7 @@ const Explore: React.FC<ExploreProps> = ({
                 showResultCount
                 currentPage={page}
                 data={searchResults?.hits.hits ?? []}
-                handleSummaryPanelDisplay={
-                  tab === toLower(Entities.table)
-                    ? handleSummaryPanelDisplay
-                    : undefined
-                }
+                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                 paginate={(value) => {
                   if (isNumber(value)) {
                     onChangePage(value);
@@ -403,6 +320,7 @@ const Explore: React.FC<ExploreProps> = ({
                     onChangePage(Number.parseInt(value));
                   }
                 }}
+                selectedEntityName={entityDetails?.details.name || ''}
                 totalValue={searchResults?.hits.total.value ?? 0}
               />
             ) : (
@@ -411,18 +329,16 @@ const Explore: React.FC<ExploreProps> = ({
           </Col>
         </Row>
       </div>
-      {tab === toLower(Entities.table) && (
-        <EntitySummaryPanel
-          entityDetails={entityDetails || ({} as Table)}
-          handleClosePanel={handleClosePanel}
-          overallSummery={overallSummery}
-          showPanel={showSummaryPanel}
-        />
-      )}
+      <EntitySummaryPanel
+        entityDetails={entityDetails || ({} as EntityDetailsObjectInterface)}
+        handleClosePanel={handleClosePanel}
+        showPanel={showSummaryPanel}
+      />
       <AdvancedSearchModal
         jsonTree={advancedSearchJsonTree}
         searchIndex={searchIndex}
         visible={showAdvanceSearchModal}
+        onAppliedFilterChange={handleAppliedFilterChange}
         onCancel={() => setShowAdvanceSearchModal(false)}
         onChangeJsonTree={onChangeAdvancedSearchJsonTree}
         onSubmit={onChangeAdvancedSearchQueryFilter}

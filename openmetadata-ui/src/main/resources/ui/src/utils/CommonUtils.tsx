@@ -24,6 +24,7 @@ import {
   isNull,
   isString,
   isUndefined,
+  toNumber,
   uniqueId,
 } from 'lodash';
 import {
@@ -63,6 +64,7 @@ import {
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
+import { Field } from '../generated/api/data/createTopic';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -566,6 +568,7 @@ export const getEntityName = (
     | Bot
     | Kpi
     | TagCategory
+    | Field
 ) => {
   return entity?.displayName || entity?.name || '';
 };
@@ -690,6 +693,23 @@ export const showPagination = (paging: Paging) => {
 
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
+};
+
+/**
+ * If the number is a time format, return the number, otherwise format the number with commas
+ * @param {number} number - The number to be formatted.
+ * @returns A function that takes a number and returns a string.
+ */
+export const getStatisticsDisplayValue = (
+  number: string | number | undefined
+) => {
+  const displayValue = toNumber(number);
+
+  if (isNaN(displayValue)) {
+    return number;
+  }
+
+  return formatNumberWithComma(displayValue);
 };
 
 export const formTwoDigitNmber = (number: number) => {

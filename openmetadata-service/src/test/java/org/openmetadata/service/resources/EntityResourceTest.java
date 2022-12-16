@@ -137,7 +137,6 @@ import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
-import org.openmetadata.service.resources.events.WebhookResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
@@ -349,18 +348,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
-      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-      webhookResourceTest.startWebhookSubscription();
-      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
+      //      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+      //      webhookResourceTest.startWebhookSubscription();
+      //      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
     }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
     if (runWebhookTests) {
-      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-      webhookResourceTest.validateWebhookEvents();
-      webhookResourceTest.validateWebhookEntityEvents(entityType);
+      //      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+      //      webhookResourceTest.validateWebhookEvents();
+      //      webhookResourceTest.validateWebhookEntityEvents(entityType);
     }
     delete_recursiveTest();
   }
@@ -1584,7 +1583,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return getCollection().path("/name/" + name);
   }
 
-  protected final WebTarget getRestoreResource(UUID id) {
+  protected final WebTarget getRestoreResource() {
     return getCollection().path("/restore");
   }
 
@@ -1649,6 +1648,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     updated.setOwner(reduceEntityReference(updated.getOwner()));
     String updatedEntityJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
+    return patchEntity(id, patch, authHeaders);
+  }
+
+  public final T patchEntity(UUID id, JsonPatch patch, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
@@ -1699,7 +1702,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final T restoreEntity(RestoreEntity restore, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getRestoreResource(restore.getId());
+    WebTarget target = getRestoreResource();
     return TestUtils.put(target, restore, entityClass, status, authHeaders);
   }
 

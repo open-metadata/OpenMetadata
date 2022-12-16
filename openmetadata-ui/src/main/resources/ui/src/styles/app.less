@@ -22,6 +22,9 @@
 @trigger-btn-hover-bg: #efefef;
 
 //font weight
+.font-300 {
+  font-weight: 300;
+}
 .font-medium {
   font-weight: 500;
 }
@@ -248,6 +251,9 @@
 .font-semibold {
   font-weight: 600;
 }
+.font-bold {
+  font-weight: 700;
+}
 
 .transform-180 {
   transform: rotate(180deg);
@@ -279,6 +285,28 @@
   line-height: 18px;
 }
 
+/* Opacity CSS start */
+
+.opacity-0 {
+  opacity: 0;
+}
+.opacity-100 {
+  opacity: 1;
+}
+
+/* Opacity CSS end */
+
+/* Group CSS Start */
+
+.custom-group {
+  &:hover {
+    .group-hover-opacity-100 {
+      opacity: 1;
+    }
+  }
+}
+
+/* Group CSS End*/
 .heading {
   font-weight: 500 !important;
   margin-bottom: 16px !important;

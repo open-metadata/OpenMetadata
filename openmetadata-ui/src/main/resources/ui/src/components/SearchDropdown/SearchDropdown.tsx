@@ -24,7 +24,8 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import React, { ChangeEvent, FC, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
 import {
@@ -41,12 +42,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   options,
   searchKey,
   selectedKeys,
+  highlight = false,
   onChange,
+  onGetInitialOptions,
   onSearch,
 }) => {
   const { t } = useTranslation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState('');
   const [selectedOptions, setSelectedOptions] =
     useState<string[]>(selectedKeys);
 
@@ -54,7 +58,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Separating selected options to show on top
     const selectedOptionKeys =
-      getSearchDropdownLabels(selectedOptions, true) || [];
+      getSearchDropdownLabels(
+        selectedOptions,
+        true,
+        highlight ? searchText : ''
+      ) || [];
 
     // Filtering out unselected options
     const unselectedOptions = options.filter(
@@ -63,7 +71,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
     // Labels for unselected options
     const otherOptions =
-      getSearchDropdownLabels(unselectedOptions, false) || [];
+      getSearchDropdownLabels(
+        unselectedOptions,
+        false,
+        highlight ? searchText : ''
+      ) || [];
 
     return [...selectedOptionKeys, ...otherOptions];
   }, [options, selectedOptions]);
@@ -88,7 +100,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // handle search
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-
+    setSearchText(value);
     onSearch(value, searchKey);
   };
 
@@ -108,6 +120,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     () => selectedOptions.length > 1,
     [selectedOptions]
   );
+
+  useEffect(() => {
+    setSelectedOptions(selectedKeys);
+  }, [isDropDownOpen, selectedKeys]);
 
   return (
     <Dropdown
@@ -178,9 +194,12 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}
+      transitionName=""
       trigger={['click']}
       onOpenChange={(visible) => {
-        visible && onSearch('', searchKey);
+        visible &&
+          !isUndefined(onGetInitialOptions) &&
+          onGetInitialOptions(searchKey);
         setIsDropDownOpen(visible);
       }}>
       <Button className="quick-filter-dropdown-trigger-btn">

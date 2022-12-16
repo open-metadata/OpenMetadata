@@ -301,10 +301,6 @@ jest.mock(
       )
 );
 
-jest.mock('../../utils/EntityVersionUtils', () => ({
-  getFeedSummary: jest.fn().mockImplementation(() => <p>EntityVersionUtils</p>),
-}));
-
 jest.mock('../../utils/ServiceUtils', () => ({
   getAllServices: jest
     .fn()

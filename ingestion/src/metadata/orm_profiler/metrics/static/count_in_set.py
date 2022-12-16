@@ -16,6 +16,7 @@ CountInSet Metric definition
 import traceback
 from typing import List
 
+from pandas import DataFrame
 from sqlalchemy import case, column
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -63,5 +64,15 @@ class CountInSet(StaticMetric):
             return None
 
     @_label
-    def dl_fn(self):
-        return self.fn()
+    def dl_fn(self, data_frame: DataFrame):
+        try:
+            count = 0
+            rows = list(data_frame[self.col.name])
+            for value in self.values:
+                if value in rows:
+                    count = rows.count(value)
+            return count
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
+            return None
