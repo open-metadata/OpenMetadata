@@ -43,3 +43,6 @@ SET json = JSON_INSERT(
         '$.connection.config.database',
         JSON_EXTRACT(json, '$.connection.config.databaseSchema')
     ) where serviceType in ('Db2');
+
+
+DELETE from openmetadata_settings where configType = 'activityFeedFilterSetting';

@@ -99,7 +99,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private static final String DATABASE_NAME = "database.name";
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
-    super(esConfig.getBatchSize(), new ArrayList<>());
+    super(esConfig.getBatchSize());
     this.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();

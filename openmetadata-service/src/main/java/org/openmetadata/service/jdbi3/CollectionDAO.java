@@ -17,11 +17,9 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -83,7 +81,6 @@ import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.filter.EventFilter;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -2975,7 +2972,7 @@ public interface CollectionDAO {
     enum OrderBy {
       ASC,
       DESC
-    };
+    }
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -3165,9 +3162,6 @@ public interface CollectionDAO {
       Object value;
       try {
         switch (configType) {
-          case ACTIVITY_FEED_FILTER_SETTING:
-            value = JsonUtils.readValue(json, new TypeReference<ArrayList<EventFilter>>() {});
-            break;
           case TASK_NOTIFICATION_CONFIGURATION:
             value = JsonUtils.readValue(json, TaskNotificationConfiguration.class);
             break;

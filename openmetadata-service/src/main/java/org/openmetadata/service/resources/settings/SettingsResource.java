@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.settings;
 
-import static org.openmetadata.schema.settings.SettingsType.ACTIVITY_FEED_FILTER_SETTING;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,7 +30,6 @@ import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -44,17 +41,13 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.filter.EventFilter;
-import org.openmetadata.schema.filter.Filters;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.filter.FilterRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SettingsRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -71,7 +64,6 @@ import org.openmetadata.service.util.ResultList;
 public class SettingsResource {
   private final SettingsRepository settingsRepository;
   private final Authorizer authorizer;
-  private List<EventFilter> bootStrappedFilters;
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -91,18 +83,10 @@ public class SettingsResource {
       settings.forEach(
           (setting) -> {
             try {
-              if (setting.getConfigType() == ACTIVITY_FEED_FILTER_SETTING) {
-                bootStrappedFilters = FilterUtil.getEventFilterFromSettings(setting);
-              }
               Settings storedSettings = settingsRepository.getConfigWithKey(setting.getConfigType().toString());
               if (storedSettings == null) {
                 // Only in case a config doesn't exist in DB we insert it
                 settingsRepository.createNewSetting(setting);
-                storedSettings = setting;
-              }
-              // Only Filter Setting allowed
-              if (storedSettings.getConfigType().equals(ACTIVITY_FEED_FILTER_SETTING)) {
-                FilterRegistry.add(FilterUtil.getEventFilterFromSettings(storedSettings));
               }
             } catch (Exception ex) {
               LOG.debug("Fetching from DB failed ", ex);
@@ -145,44 +129,6 @@ public class SettingsResource {
   }
 
   @GET
-  @Path("/bootstrappedFilters")
-  @Operation(
-      operationId = "listBootstrappedFilter",
-      summary = "List All BootStrapped Filters",
-      tags = "settings",
-      description = "Get a List of all OpenMetadata Bootstrapped Filters",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of Settings",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
-      })
-  public List<EventFilter> getBootstrapFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
-    return bootStrappedFilters;
-  }
-
-  @POST
-  @Path("/resetFilters")
-  @Operation(
-      operationId = "resetFilters",
-      summary = "Reset filters to initial state",
-      tags = "settings",
-      description = "Reset filters to it's initial state",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of Filters",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SettingsList.class)))
-      })
-  public Response resetFilters(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
-    Settings settings =
-        new Settings().withConfigType(ACTIVITY_FEED_FILTER_SETTING).withConfigValue(bootStrappedFilters);
-    return settingsRepository.createNewSetting(settings);
-  }
-
-  @GET
   @Path("/{settingName}")
   @Operation(
       operationId = "getSetting",
@@ -219,29 +165,6 @@ public class SettingsResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Settings settingName) {
     authorizer.authorizeAdmin(securityContext);
     return settingsRepository.createOrUpdate(settingName);
-  }
-
-  @PUT
-  @Path("/filter/{entityName}/add")
-  @Operation(
-      operationId = "createOrUpdateEntityFilter",
-      summary = "Create or Update Entity Filter",
-      tags = "settings",
-      description = "Create or Update Entity Filter",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Settings",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Filters.class)))
-      })
-  public Response createOrUpdateEventFilters(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Entity Name for Filter to Update", schema = @Schema(type = "string"))
-          @PathParam("entityName")
-          String entityName,
-      @Valid List<Filters> newFilter) {
-    return settingsRepository.updateEntityFilter(entityName, newFilter);
   }
 
   @PATCH
