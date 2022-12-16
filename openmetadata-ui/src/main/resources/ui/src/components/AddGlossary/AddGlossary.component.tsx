@@ -19,7 +19,7 @@ import { EditorContentRef, EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
-import { UrlEntityCharRegEx } from '../../constants/regex.constants';
+import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -108,7 +108,7 @@ const AddGlossary = ({
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
-      invalidName: UrlEntityCharRegEx.test(name.trim()),
+      invalidName: allowedNameRegEx.test(name),
       description: !getDescription()?.trim(),
     };
     setShowErrorMsg(errMsg);

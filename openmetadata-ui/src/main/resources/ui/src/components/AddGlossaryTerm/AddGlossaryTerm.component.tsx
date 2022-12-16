@@ -18,6 +18,7 @@ import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import {
@@ -25,12 +26,7 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/type/entityReference';
-import {
-  errorMsg,
-  isUrlFriendlyName,
-  isValidUrl,
-  requiredField,
-} from '../../utils/CommonUtils';
+import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import { Button } from '../buttons/Button/Button';
@@ -194,7 +190,7 @@ const AddGlossaryTerm = ({
   const validateForm = (refs: TermReference[]) => {
     const errMsg = {
       name: !name.trim(),
-      invalidName: !isUrlFriendlyName(name.trim()),
+      invalidName: allowedNameRegEx.test(name),
       invalidReferences: !isValidReferences(refs),
       description: !getDescription()?.trim(),
     };
