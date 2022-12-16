@@ -150,7 +150,7 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.26.1"},
     "sklearn": {"scikit-learn==1.0.2"},
-    "db2": {"ibm-db-sa==0.3.7"},
+    "db2": {"ibm-db-sa==0.3.8"},
     "clickhouse": {"clickhouse-driver==0.2.5", "clickhouse-sqlalchemy==0.2.3"},
     "databricks": {"sqlalchemy-databricks==0.1.0"},
     "singlestore": {"pymysql>=1.0.2"},
