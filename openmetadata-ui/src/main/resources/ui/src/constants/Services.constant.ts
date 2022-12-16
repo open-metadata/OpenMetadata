@@ -218,6 +218,7 @@ export const DEF_UI_SCHEMA = {
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsDBTExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
 };
 
