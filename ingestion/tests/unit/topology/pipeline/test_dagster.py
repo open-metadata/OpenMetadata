@@ -48,12 +48,7 @@ mock_dagster_config = {
         "type": "dagster",
         "serviceName": "dagster_source",
         "serviceConnection": {
-            "config": {
-                "type": "Dagster",
-                "configSource": {
-                    "hostPort": "http://lolhost:3000",
-                },
-            }
+            "config": {"type": "Dagster", "host": "http://lolhost:3000"}
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
