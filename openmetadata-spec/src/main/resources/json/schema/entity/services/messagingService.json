@@ -105,6 +105,14 @@
       "description": "References to pipelines deployed for this messaging service to extract topic configs and schemas.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "tags": {
+      "description": "Tags for this Message Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
