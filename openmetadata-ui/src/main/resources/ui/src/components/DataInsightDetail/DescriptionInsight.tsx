@@ -25,6 +25,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from 'recharts';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
 import {
@@ -41,8 +42,12 @@ import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import {
+  axisTickFormatter,
+  updateActiveChartFilter,
+} from '../../utils/ChartUtils';
 import {
   CustomTooltip,
   getGraphDataByEntityType,
@@ -50,13 +55,15 @@ import {
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
+import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
+  kpi: Kpi | undefined;
 }
 
-const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
+const DescriptionInsight: FC<Props> = ({ chartFilter, kpi }) => {
   const [totalEntitiesDescriptionByType, setTotalEntitiesDescriptionByType] =
     useState<DataInsightChartResult>();
 
@@ -72,6 +79,14 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
   }, [totalEntitiesDescriptionByType]);
 
   const { t } = useTranslation();
+
+  const targetValue = useMemo(() => {
+    if (kpi?.targetDefinition) {
+      return Number(kpi.targetDefinition[0].value) * 100;
+    }
+
+    return undefined;
+  }, [kpi]);
 
   const fetchTotalEntitiesDescriptionByType = async () => {
     setIsLoading(true);
@@ -125,6 +140,12 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
+      <DataInsightProgressBar
+        className="m-b-md"
+        progress={Number(total)}
+        target={targetValue}
+        width={250}
+      />
       {data.length ? (
         <ResponsiveContainer
           debounce={1}
@@ -133,11 +154,14 @@ const DescriptionInsight: FC<Props> = ({ chartFilter }) => {
           <LineChart data={data} margin={BAR_CHART_MARGIN}>
             <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
             <XAxis dataKey="timestamp" />
+            <YAxis
+              tickFormatter={(value: number) => axisTickFormatter(value, '%')}
+            />
             <Tooltip content={<CustomTooltip isPercentage />} />
             <Legend
               align="left"
               content={(props) =>
-                renderLegend(props as LegendProps, `${total}%`, activeKeys)
+                renderLegend(props as LegendProps, total, activeKeys, false)
               }
               layout="vertical"
               verticalAlign="top"

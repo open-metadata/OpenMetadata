@@ -51,6 +51,7 @@ import {
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
+import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
@@ -121,6 +122,11 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
+      <DataInsightProgressBar
+        className="m-b-md"
+        progress={Number(total)}
+        width={250}
+      />
       {data.length ? (
         <ResponsiveContainer debounce={1} minHeight={400}>
           <LineChart data={data} margin={BAR_CHART_MARGIN}>
@@ -131,7 +137,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
             <Legend
               align="left"
               content={(props) =>
-                renderLegend(props as LegendProps, `${total}%`, activeKeys)
+                renderLegend(props as LegendProps, total, activeKeys, false)
               }
               layout="vertical"
               verticalAlign="top"

@@ -23,8 +23,9 @@ import {
   Typography,
 } from 'antd';
 import { t } from 'i18next';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
@@ -49,6 +50,7 @@ import {
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
 import {
   ChartFilter,
@@ -79,8 +81,24 @@ const DataInsightPage = () => {
   const [activeTab, setActiveTab] = useState(DataInsightTabs.DATA_ASSETS);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
+  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
 
   const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
+
+  const { descriptionKpi, ownerKpi } = useMemo(() => {
+    return {
+      descriptionKpi: kpiList.find(
+        (kpi) =>
+          kpi.dataInsightChart.name ===
+          DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
+      ),
+      ownerKpi: kpiList.find(
+        (kpi) =>
+          kpi.dataInsightChart.name ===
+          DataInsightChartType.PercentageOfEntitiesWithOwnerByType
+      ),
+    };
+  }, [kpiList]);
 
   const handleTierChange = (tiers: string[] = []) => {
     setChartFilter((previous) => ({
@@ -137,6 +155,15 @@ const DataInsightPage = () => {
     }
   };
 
+  const fetchKpiList = async () => {
+    try {
+      const response = await getListKPIs({ fields: 'dataInsightChart' });
+      setKpiList(response.data);
+    } catch (_err) {
+      setKpiList([]);
+    }
+  };
+
   const handleScrollToChart = (chartType: DataInsightChartType) => {
     if (ENTITIES_CHARTS.includes(chartType)) {
       history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
@@ -162,6 +189,7 @@ const DataInsightPage = () => {
 
   useEffect(() => {
     fetchDefaultTeamOptions();
+    fetchKpiList();
   }, []);
 
   useEffect(() => {
@@ -260,7 +288,7 @@ const DataInsightPage = () => {
         {/* Do not show KPIChart for app analytics */}
         {tab !== DataInsightTabs.APP_ANALYTICS && (
           <Col span={24}>
-            <KPIChart chartFilter={chartFilter} />
+            <KPIChart chartFilter={chartFilter} kpiList={kpiList} />
           </Col>
         )}
         {activeTab === DataInsightTabs.DATA_ASSETS && (
@@ -269,10 +297,13 @@ const DataInsightPage = () => {
               <TotalEntityInsight chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <DescriptionInsight chartFilter={chartFilter} />
+              <DescriptionInsight
+                chartFilter={chartFilter}
+                kpi={descriptionKpi}
+              />
             </Col>
             <Col span={24}>
-              <OwnerInsight chartFilter={chartFilter} />
+              <OwnerInsight chartFilter={chartFilter} kpi={ownerKpi} />
             </Col>
             <Col span={24}>
               <TierInsight chartFilter={chartFilter} />
