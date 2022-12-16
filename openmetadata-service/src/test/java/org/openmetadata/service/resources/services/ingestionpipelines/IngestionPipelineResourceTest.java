@@ -17,7 +17,6 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -54,10 +53,13 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
@@ -155,11 +157,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
       IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders) {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
-    if (Entity.DATABASE_SERVICE.equals(updated.getService().getType())) {
-      assertNull(
-          JsonUtils.convertValue(updated.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class)
-              .getDbtConfigSource());
-    }
   }
 
   @Override
@@ -594,6 +591,33 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     updateAndCheckEntity(
         request.withDescription("newDescription").withOwner(USER1_REF), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertNotNull(change);
+  }
+
+  @Test
+  void post_dbtPipeline_configIsEncrypted(TestInfo test) throws IOException {
+    AWSCredentials awsCredentials =
+        new AWSCredentials()
+            .withAwsAccessKeyId("123456789")
+            .withAwsSecretAccessKey("asdfqwer1234")
+            .withAwsRegion("eu-west-2");
+    DbtPipeline dbtPipeline =
+        new DbtPipeline().withDbtConfigSource(new DbtS3Config().withDbtSecurityConfig(awsCredentials));
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.DBT)
+            .withSourceConfig(new SourceConfig().withConfig(dbtPipeline))
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription(null)
+            .withOwner(null);
+    IngestionPipeline ingestion = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    DbtPipeline actualDbtPipeline = JsonUtils.convertValue(ingestion.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtS3Config actualDbtS3Config = JsonUtils.convertValue(actualDbtPipeline.getDbtConfigSource(), DbtS3Config.class);
+    assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsAccessKeyId(), awsCredentials.getAwsAccessKeyId());
+    assertEquals(actualDbtS3Config.getDbtSecurityConfig().getAwsRegion(), awsCredentials.getAwsRegion());
+    assertEquals(
+        actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey(),
+        "secret:/openmetadata/pipeline/ingestionpipeline_post_dbtpipeline_configisencrypted/sourceconfig/config/dbtconfigsource/dbtsecurityconfig/awssecretaccesskey");
   }
 
   private IngestionPipeline updateIngestionPipeline(

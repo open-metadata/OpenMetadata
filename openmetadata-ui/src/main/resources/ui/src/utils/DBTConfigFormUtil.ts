@@ -44,7 +44,7 @@ import {
   DbtConfig,
   GCSCredentialsValues,
   SCredentials,
-} from '../generated/metadataIngestion/databaseServiceMetadataPipeline';
+} from '../generated/metadataIngestion/dbtPipeline';
 import { FormValidationRules } from '../interface/genericForm.interface';
 import jsonData from '../jsons/en';
 import { isValidEmail, isValidUrl } from './CommonUtils';

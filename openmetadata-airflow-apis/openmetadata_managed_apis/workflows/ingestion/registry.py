@@ -16,6 +16,7 @@ Add a function for each type from PipelineType
 from openmetadata_managed_apis.workflows.ingestion.data_insight import (
     build_data_insight_dag,
 )
+from openmetadata_managed_apis.workflows.ingestion.dbt import build_dbt_dag
 from openmetadata_managed_apis.workflows.ingestion.es_reindex import (
     build_es_reindex_dag,
 )
@@ -37,6 +38,7 @@ build_registry = enum_register()
 build_registry.add(PipelineType.metadata.value)(build_metadata_dag)
 build_registry.add(PipelineType.usage.value)(build_usage_dag)
 build_registry.add(PipelineType.lineage.value)(build_lineage_dag)
+build_registry.add(PipelineType.dbt.value)(build_dbt_dag)
 build_registry.add(PipelineType.profiler.value)(build_profiler_dag)
 build_registry.add(PipelineType.TestSuite.value)(build_test_suite_dag)
 build_registry.add(PipelineType.dataInsight.value)(build_data_insight_dag)

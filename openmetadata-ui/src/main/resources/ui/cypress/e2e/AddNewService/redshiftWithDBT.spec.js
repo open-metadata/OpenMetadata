@@ -14,16 +14,13 @@
 import {
     deleteCreatedService,
     editOwnerforCreatedService,
-    goToAddNewServicePage,
-    interceptURL,
-    testServiceCreationAndIngestion,
+    goToAddNewServicePage, handleIngestionRetry, interceptURL, scheduleIngestion, testServiceCreationAndIngestion,
     updateDescriptionForIngestedTables,
     verifyResponseStatusCode,
     visitEntityDetailsPage
 } from '../../common/common';
 import {
-    API_SERVICE, DBT, HTTP_CONFIG_SOURCE,
-    SERVICE_TYPE
+    API_SERVICE, DBT, HTTP_CONFIG_SOURCE, SERVICE_TYPE
 } from '../../constants/constants';
 import { REDSHIFT } from '../../constants/service.constants';
 
@@ -57,8 +54,59 @@ describe('RedShift Ingestion', () => {
         .click();
     };
 
-    const configureDBT = () => {
-      cy.contains('Configure DBT Model').should('be.visible');
+    testServiceCreationAndIngestion(
+      REDSHIFT.serviceType,
+      connectionInput,
+      addIngestionInput,
+      REDSHIFT.serviceName,
+      'database',
+      true,
+    );
+  });
+
+  it('Update table description and verify description after re-run', () => {
+    updateDescriptionForIngestedTables(
+      REDSHIFT.serviceName,
+      REDSHIFT.tableName,
+      REDSHIFT.description,
+      SERVICE_TYPE.Database,
+      'tables'
+    );
+  });
+
+  it('Add DBT ingestion', () => {
+    interceptURL('GET', 'api/v1/teams/name/Organization?fields=*', 'getSettingsPage');
+    interceptURL("POST", "/api/v1/services/ingestionPipelines/deploy/*", "deployIngestion");
+    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click({ force: true });
+    verifyResponseStatusCode('@getSettingsPage', 200);
+    // Services page
+    interceptURL('GET', '/api/v1/services/*', 'getServices');
+  
+    cy.get('[data-testid="settings-left-panel"]')
+        .contains(SERVICE_TYPE.Database,)
+        .should('be.visible')
+        .click();
+  
+    verifyResponseStatusCode('@getServices', 200);
+    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
+    cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
+      .should('exist')
+      .click();
+    cy.get('[data-testid="tabs"]').should('exist');
+    cy.wait('@ingestionData');
+    cy.get('[data-testid="Ingestions"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="ingestion-details-container"]').should('exist');
+    cy.get('[data-testid="add-new-ingestion-button"]')
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="list-item"]')
+      .contains('Add Dbt Ingestion')
+      .click();
+      //Add DBT ingestion
+      cy.contains('Add Dbt Ingestion').should('be.visible');
       cy.get('[data-testid="dbt-source"]')
         .should('be.visible')
         .select('HTTP Config Source');
@@ -74,18 +122,20 @@ describe('RedShift Ingestion', () => {
         .scrollIntoView()
         .should('be.visible')
         .type(HTTP_CONFIG_SOURCE.DBT_RUN_RESTLTS_FILE_PATH);
-    };
+      
+      cy.get('[data-testid="submit-btn"]').should('be.visible').click();
 
-    testServiceCreationAndIngestion(
-      REDSHIFT.serviceType,
-      connectionInput,
-      addIngestionInput,
-      REDSHIFT.serviceName,
-      'database',
-      true,
-      configureDBT
-    );
-  });
+      scheduleIngestion();
+
+      cy.wait("@deployIngestion").then(() => {
+        cy.get('[data-testid="view-service-button"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
+
+        handleIngestionRetry('database', true, 0, 'dbt'); 
+      });
+});
 
   it('Validate DBT is ingested properly', () => {
     //Verify DBT tags
@@ -141,16 +191,6 @@ describe('RedShift Ingestion', () => {
       .should('exist')
       .should('be.visible')
       .should('contain', DBT.dataQualityTest2);
-  });
-
-  it('Update table description and verify description after re-run', () => {
-    updateDescriptionForIngestedTables(
-      REDSHIFT.serviceName,
-      REDSHIFT.tableName,
-      REDSHIFT.description,
-      SERVICE_TYPE.Database,
-      'tables'
-    );
   });
 
   it('Edit and validate owner', () => {

@@ -27,10 +27,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
@@ -71,9 +67,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.dbt_source import DBTMixin
 from metadata.utils import fqn
-from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
@@ -126,9 +120,6 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["database"],
         post_process=[
-            "process_dbt_lineage_and_descriptions",
-            "create_dbt_tests_suite_definition",
-            "create_dbt_test_cases",
             "yield_view_lineage",
         ],
     )
@@ -182,11 +173,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
             NodeStage(
-                type_=DataModelLink,
-                processor="yield_datamodel",
-                ack_sink=False,
-            ),
-            NodeStage(
                 type_=TableLocationLink,
                 processor="yield_table_location_link",
                 ack_sink=False,
@@ -216,7 +202,7 @@ class SQLSourceStatus(SourceStatus):
 
 
 class DatabaseServiceSource(
-    DBTMixin, TopologyRunnerMixin, Source, ABC
+    TopologyRunnerMixin, Source, ABC
 ):  # pylint: disable=too-many-public-methods
     """
     Base class for Database Services.
@@ -237,31 +223,8 @@ class DatabaseServiceSource(
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)
 
-    # Initialize DBT structures for all Databases
-    data_models = {}
-    dbt_tests = {}
-
-    def __init__(self):
-
-        if (
-            hasattr(self.source_config.dbtConfigSource, "dbtSecurityConfig")
-            and self.source_config.dbtConfigSource.dbtSecurityConfig is None
-        ):
-            logger.info("dbtConfigSource is not configured")
-            self.dbt_catalog = None
-            self.dbt_manifest = None
-            self.dbt_run_results = None
-            self.data_models = {}
-        else:
-            dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
-            if dbt_details:
-                self.dbt_catalog = dbt_details[0] if len(dbt_details) == 3 else None
-                self.dbt_manifest = dbt_details[1] if len(dbt_details) == 3 else None
-                self.dbt_run_results = dbt_details[2] if len(dbt_details) == 3 else None
-                self.data_models = {}
-
     def prepare(self):
-        self._parse_data_model()
+        pass
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -372,52 +335,6 @@ class DatabaseServiceSource(
         fetch all schema names without any filtering.
         """
         yield from self.get_database_schema_names()
-
-    def yield_datamodel(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[DataModelLink]:
-        """
-        Gets the current table being processed, fetches its data model
-        and sends it ot the sink
-        """
-
-        table_name, _ = table_name_and_type
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
-            table_name=table_name,
-        )
-
-        datamodel = self.get_data_model(table_fqn)
-
-        dbt_tag_labels = None
-        if datamodel:
-            logger.info("Processing DBT Tags")
-            dbt_tag_labels = datamodel.tags
-            if not dbt_tag_labels:
-                dbt_tag_labels = []
-            for column in datamodel.columns:
-                if column.tags:
-                    dbt_tag_labels.extend(column.tags)
-            if dbt_tag_labels:
-                for tag_label in dbt_tag_labels:
-                    yield OMetaTagAndCategory(
-                        category_name=CreateTagCategoryRequest(
-                            name="DBTTags",
-                            description="",
-                        ),
-                        category_details=CreateTagRequest(
-                            name=tag_label.tagFQN.__root__.split(".")[1],
-                            description="DBT Tags",
-                        ),
-                    )
-            yield DataModelLink(
-                fqn=table_fqn,
-                datamodel=datamodel,
-            )
 
     def yield_table_location_link(
         self,

@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.METADATA;
+import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.DBT;
 
 import java.util.List;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
@@ -30,7 +30,6 @@ import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
-import org.openmetadata.service.Entity;
 
 public class IngestionPipelineBuilder {
 
@@ -53,17 +52,12 @@ public class IngestionPipelineBuilder {
    * @return ingestion pipeline with concrete classes
    */
   public static IngestionPipeline build(IngestionPipeline ingestionPipeline) {
-    if (METADATA.equals(ingestionPipeline.getPipelineType())
-        && ingestionPipeline.getService().getType().equals(Entity.DATABASE_SERVICE)
-        && ingestionPipeline.getSourceConfig() != null) {
-      DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
-          JsonUtils.convertValue(
-              ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
+    if (DBT.equals(ingestionPipeline.getPipelineType())) {
+      DbtPipeline dbtPipeline =
+          JsonUtils.convertValue(ingestionPipeline.getSourceConfig().getConfig(), DbtPipeline.class);
       ingestionPipeline
           .getSourceConfig()
-          .setConfig(
-              databaseServiceMetadataPipeline.withDbtConfigSource(
-                  buildDbtConfigSource(databaseServiceMetadataPipeline.getDbtConfigSource())));
+          .setConfig(dbtPipeline.withDbtConfigSource(buildDbtConfigSource(dbtPipeline.getDbtConfigSource())));
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline
