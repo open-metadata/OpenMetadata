@@ -51,5 +51,6 @@
         "$ref": "#/definitions/operation"
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

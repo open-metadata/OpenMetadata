@@ -54,6 +54,7 @@ jest.mock('./Component/ColumnProfileTable', () => {
 jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   formTwoDigitNmber: jest.fn(),
+  getStatisticsDisplayValue: jest.fn(),
 }));
 
 jest.mock('../../axiosAPIs/testAPI', () => ({
