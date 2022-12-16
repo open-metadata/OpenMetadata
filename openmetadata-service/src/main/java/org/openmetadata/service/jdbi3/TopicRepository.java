@@ -15,14 +15,20 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -35,6 +41,7 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.topics.TopicResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -201,7 +208,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   private void applyTags(List<Field> fields) {
-    // Add column level tags by adding tag to column relationship
+    // Add field level tags by adding tag to field relationship
     for (Field field : fields) {
       applyTags(field.getTags(), field.getFullyQualifiedName());
       if (field.getChildren() != null) {
@@ -241,6 +248,11 @@ public class TopicRepository extends EntityRepository<Topic> {
             "schema.schemaType",
             original.getMessageSchema().getSchemaType(),
             updated.getMessageSchema().getSchemaType());
+        updateSchemaFields(
+            "schemaFields",
+            original.getMessageSchema().getSchemaFields(),
+            updated.getMessageSchema().getSchemaFields(),
+            EntityUtil.schemaFieldMatch);
       }
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);
@@ -256,6 +268,81 @@ public class TopicRepository extends EntityRepository<Topic> {
           added,
           deleted,
           CleanupPolicy::equals);
+    }
+
+    private void updateSchemaFields(
+        String fieldName, List<Field> origFields, List<Field> updatedFields, BiPredicate<Field, Field> fieldMatch)
+        throws IOException {
+      List<Field> deletedFields = new ArrayList<>();
+      List<Field> addedFields = new ArrayList<>();
+      recordListChange(fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);
+      // carry forward tags and description if deletedFields matches added field
+      Map<String, Field> addedFieldMap =
+          addedFields.stream().collect(Collectors.toMap(Field::getName, Function.identity()));
+
+      for (Field deleted : deletedFields) {
+        if (addedFieldMap.containsKey(deleted.getName())) {
+          Field addedField = addedFieldMap.get(deleted.getName());
+          if (nullOrEmpty(addedField.getDescription()) && nullOrEmpty(deleted.getDescription())) {
+            addedField.setDescription(deleted.getDescription());
+          }
+          if (nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())) {
+            addedField.setTags(deleted.getTags());
+          }
+        }
+      }
+
+      // Delete tags related to deleted fields
+      deletedFields.forEach(deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+
+      // Add tags related to newly added fields
+      for (Field added : addedFields) {
+        applyTags(added.getTags(), added.getFullyQualifiedName());
+      }
+
+      // Carry forward the user generated metadata from existing fields to new fields
+      for (Field updated : updatedFields) {
+        // Find stored field matching name, data type and ordinal position
+        Field stored = origFields.stream().filter(c -> fieldMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New field added
+          continue;
+        }
+
+        updateFieldDescription(stored, updated);
+        updateFieldDisplayName(stored, updated);
+        updateTags(
+            stored.getFullyQualifiedName(),
+            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+            stored.getTags(),
+            updated.getTags());
+
+        if (updated.getChildren() != null && stored.getChildren() != null) {
+          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
+          updateSchemaFields(childrenFieldName, stored.getChildren(), updated.getChildren(), fieldMatch);
+        }
+      }
+
+      majorVersionChange = majorVersionChange || !deletedFields.isEmpty();
+    }
+
+    private void updateFieldDescription(Field origField, Field updatedField) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+        // Revert the non-empty field description if being updated by a bot
+        updatedField.setDescription(origField.getDescription());
+        return;
+      }
+      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      recordChange(field, origField.getDescription(), updatedField.getDescription());
+    }
+
+    private void updateFieldDisplayName(Field origField, Field updatedField) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origField.getDescription()) && updatedByBot()) {
+        // Revert the non-empty field description if being updated by a bot
+        updatedField.setDisplayName(origField.getDisplayName());
+        return;
+      }
+      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
     }
   }
 }
