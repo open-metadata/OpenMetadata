@@ -35,7 +35,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
 import { UserDetails } from '../../components/Users/Users.interface';
-import { LIST_SIZE } from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -123,7 +123,7 @@ const UserPage = () => {
         ? `owner.id:${userData.id}`
         : `followers:${userData.id}`,
       entity.currPage,
-      LIST_SIZE,
+      PAGE_SIZE,
       ``,
       '',
       '',

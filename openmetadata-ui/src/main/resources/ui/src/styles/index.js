@@ -27,6 +27,7 @@ import './components/size.less';
 import './components/slider.less';
 import './components/step.less';
 import './fonts.css';
+import './fonts.less';
 import './modal.less';
 import './myDataDetailsTemp.css';
 import './slick-carousel.scss';
