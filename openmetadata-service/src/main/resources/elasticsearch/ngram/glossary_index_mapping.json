@@ -47,7 +47,6 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "ngram_text_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
