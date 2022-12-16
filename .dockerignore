@@ -1,0 +1,8 @@
+dist
+.idea
+.github
+.run
+build
+target
+**/target
+!openmetadata-dist/target
