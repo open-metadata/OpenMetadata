@@ -58,16 +58,26 @@ replacing it with whatever comes from the SQL script.
 
 </Note>
 
+
+<Note>
+
+Running the backup or restore commands with version 0.12.3 or lower? The host parameter is `-h`.
+
+For 0.13 or higher, `-h` is the flag used for the help command. Pass the host via `-H`.
+
+</Note>
+
 ## Backup CLI
 
 After the installation, we can take a look at the different options to run the CLI:
 
 ```commandline
-> metadata backup --help
-usage: metadata backup [-h] -H HOST -u USER -p PASSWORD -d DATABASE [--port PORT] [--output OUTPUT] [--upload-destination-type {AWS,AZURE}]
-                       [--upload UPLOAD UPLOAD UPLOAD] [-o OPTIONS] [-a ARGUMENTS] [-s SCHEMA]
+> metadata backup -h
+usage: metadata backup [-h] -H HOST -u USER -p PASSWORD -d DATABASE [--port PORT] [--output OUTPUT] 
+                       [--upload-destination-type {AWS,AZURE}] [--upload UPLOAD UPLOAD UPLOAD] [-o OPTIONS] [-a ARGUMENTS]
+                       [-s SCHEMA]
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -H HOST, --host HOST  Host that runs the database
   -u USER, --user USER  User to run the backup
@@ -142,7 +152,6 @@ An example of S3 CLI call will look as:
 ```commandline
 metadata backup -u openmetadata_user -p openmetadata_password \
     -H localhost -d openmetadata_db --output=dir1/dir2 \
-    --upload-destination-type AWS \
     --upload http://localhost:9000 my-bucket backup/
 ```
 
@@ -192,29 +201,23 @@ The restore CLI needs to be used with `openmetadata-ingestion` version 0.12.1 or
 After the installation, we can take a look at the different options to run the CLI:
 
 ```commandline
-> metadata restore --help
-Usage: metadata restore [OPTIONS]
+> metadata restore -h
+usage: metadata restore [-h] -H HOST -u USER -p PASSWORD -d DATABASE [--port PORT] --input INPUT [-o OPTIONS] 
+                        [-a ARGUMENTS] [-s SCHEMA]
 
-  Run a restore for the metadata DB.
-
-  We can pass as many connection options as required with `-o <opt1>, -o
-  <opt2> [...]` Same with connection arguments `-a <arg1>, -a <arg2> [...]`
-
-  If `-s` or `--schema` is provided, we will trigger a Postgres Restore
-  instead of a MySQL restore. This is the value of the schema containing the
-  OpenMetadata tables.
-
-Options:
-  -h, --host TEXT       Host that runs the database  [required]
-  -u, --user TEXT       User to run the restore backup  [required]
-  -p, --password TEXT   Credentials for the user  [required]
-  -d, --database TEXT   Database to restore  [required]
-  --port TEXT           Database service port
-  --input PATH          Local backup file path for restore  [required]
-  -o, --options TEXT
-  -a, --arguments TEXT
-  -s, --schema TEXT
-  --help                Show this message and exit.
+optional arguments:
+  -h, --help            show this help message and exit
+  -H HOST, --host HOST  Host that runs the database
+  -u USER, --user USER  User to run the restore backup
+  -p PASSWORD, --password PASSWORD
+                        Credentials for the user
+  -d DATABASE, --database DATABASE
+                        Database to restore
+  --port PORT           Database service port
+  --input INPUT         Local backup file path for restore
+  -o OPTIONS, --options OPTIONS
+  -a ARGUMENTS, --arguments ARGUMENTS
+  -s SCHEMA, --schema SCHEMA
 ```
 
 ### Output
