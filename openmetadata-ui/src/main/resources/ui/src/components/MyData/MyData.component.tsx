@@ -63,7 +63,7 @@ const MyData: React.FC<MyDataProps> = ({
 }: MyDataProps): React.ReactElement => {
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-  const [feedFilter, setFeedFilter] = useState(FeedFilter.ALL);
+  const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
 
   const getLeftPanel = () => {
@@ -215,7 +215,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   // Check if feedFilter or ThreadType filter is applied or not
   const filtersApplied = useMemo(
-    () => feedFilter === FeedFilter.ALL && !threadType,
+    () => feedFilter === FeedFilter.OWNER && !threadType,
     [feedFilter, threadType]
   );
 

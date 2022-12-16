@@ -33,7 +33,7 @@ import { getRoles } from '../../axiosAPIs/rolesAPIV1';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import {
   getUserPath,
-  LIST_SIZE,
+  PAGE_SIZE,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../constants/constants';
@@ -924,11 +924,11 @@ const Users = ({
                   />
                 </div>
               ))}
-              {entityData.total > LIST_SIZE && entityData.data.length > 0 && (
+              {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
                 <NextPrevious
                   isNumberBased
                   currentPage={entityData.currPage}
-                  pageSize={LIST_SIZE}
+                  pageSize={PAGE_SIZE}
                   paging={{} as Paging}
                   pagingHandler={
                     tabNumber === 3
