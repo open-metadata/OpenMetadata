@@ -24,10 +24,10 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   createTag,
@@ -120,6 +120,7 @@ const TagsPage = () => {
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [currentCategoryName, setCurrentCategoryName] = useState<string>('');
 
+  const { t } = useTranslation();
   const createCategoryPermission = useMemo(
     () =>
       checkPermission(
@@ -517,8 +518,8 @@ const TagsPage = () => {
               <Tooltip
                 title={
                   createCategoryPermission
-                    ? 'Add Category'
-                    : NO_PERMISSION_FOR_ACTION
+                    ? t('label.add-category')
+                    : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
@@ -529,7 +530,7 @@ const TagsPage = () => {
                     setErrorDataCategory(undefined);
                   }}>
                   <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                  <span>Add Tag</span>
+                  <span>{t('label.add-tag-category')}</span>
                 </button>
               </Tooltip>
             </div>
