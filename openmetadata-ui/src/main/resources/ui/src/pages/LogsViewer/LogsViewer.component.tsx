@@ -85,6 +85,10 @@ const LogsViewer = () => {
           setLogs(logs.concat(res.data?.lineage_task || ''));
 
           break;
+        case PipelineType.Dbt:
+          setLogs(logs.concat(res.data?.dbt_task || ''));
+
+          break;
         case PipelineType.TestSuite:
           setLogs(logs.concat(res.data?.test_suite_task || ''));
 

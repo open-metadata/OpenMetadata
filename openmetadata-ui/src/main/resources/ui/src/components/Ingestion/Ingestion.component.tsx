@@ -138,6 +138,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
       config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
       config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+      config.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
       (config as MetadataConnection).supportsDataInsightExtraction &&
         pipelineType.push(PipelineType.DataInsight);
       (config as MetadataConnection)
@@ -149,6 +150,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         PipelineType.Usage,
         PipelineType.Lineage,
         PipelineType.Profiler,
+        PipelineType.Dbt,
       ];
     }
 
@@ -176,6 +178,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       PipelineType.Usage,
       PipelineType.Lineage,
       PipelineType.Profiler,
+      PipelineType.Dbt,
     ];
   };
 
