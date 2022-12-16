@@ -278,6 +278,14 @@
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "tags": {
+      "description": "Tags for this Database Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"

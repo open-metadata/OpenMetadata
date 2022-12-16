@@ -26,6 +26,14 @@
     "connection": {
       "$ref": "../../entity/services/messagingService.json#/definitions/messagingConnection"
     },
+    "tags": {
+      "description": "Tags for this Messaging Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "owner": {
       "description": "Owner of this messaging service.",
       "$ref": "../../type/entityReference.json"

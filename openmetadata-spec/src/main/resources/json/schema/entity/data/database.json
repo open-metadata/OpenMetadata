@@ -27,6 +27,14 @@
       "description": "Description of the database instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "tags": {
+      "description": "Tags for this Database.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
