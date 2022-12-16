@@ -336,13 +336,13 @@ public class PipelineServiceResource
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @RequestBody(
-          description = "JsonPatch with array of operations",
-          content =
-          @Content(
-              mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-              examples = {
-                  @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-              }))
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
           JsonPatch patch)
       throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
