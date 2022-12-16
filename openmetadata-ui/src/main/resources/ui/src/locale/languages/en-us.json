@@ -546,6 +546,7 @@
     "table-profile": "Table Profile",
     "column-profile": "Column Profile",
     "applied-advanced-search": "Applied advanced search",
+    "profiler-timeout-seconds-label": "Timeout in Seconds",
     "add-deploy": "Add & Deploy",
     "dbt-Configuration-source": "DBT Configuration Source",
     "select-dbt-source": "Select DBT Source",
@@ -669,6 +670,7 @@
     "announcement-created-successfully": "Announcement created successfully!",
     "no-profiler-message": "Data Profiler is an optional configuration in Ingestion. Please enable the data profiler by following the documentation",
     "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions.",
+    "profiler-timeout-seconds-message": "Optional number setting the timeout in seconds for the profiler. If the timeout is reached the profiler will wait for any pending queries to terminated its execution.",
     "instance-identifier": "Name that identifies this configuration instance uniquely.",
     "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files."
   },

@@ -14,6 +14,7 @@
 import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -57,6 +58,7 @@ const ConfigureIngestion = ({
   queryLogDuration,
   stageFileLocation,
   threadCount,
+  timeoutSeconds,
   resultLimit,
   enableDebugLog,
   profileSample,
@@ -78,6 +80,7 @@ const ConfigureIngestion = ({
   handleStageFileLocation,
   handleResultLimit,
   handleThreadCount,
+  handleTimeoutSeconds,
   useFqnFilter,
   onUseFqnFilterClick,
   onCancel,
@@ -85,6 +88,7 @@ const ConfigureIngestion = ({
   formType,
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
+  const { t } = useTranslation();
 
   const getIngestSampleToggle = (label: string, desc: string) => {
     return (
@@ -175,6 +179,27 @@ const ConfigureIngestion = ({
           type="number"
           value={threadCount}
           onChange={(e) => handleThreadCount(parseInt(e.target.value))}
+        />
+      </div>
+    );
+  };
+
+  const getTimeoutSeconds = () => {
+    return (
+      <div>
+        <label>{t('label.profiler-timeout-seconds-label')}</label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          {t('message.profiler-timeout-seconds-message')}
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
+          data-testid="timeoutSeconds"
+          id="timeoutSeconds"
+          name="timeoutSeconds"
+          placeholder="43200"
+          type="number"
+          value={timeoutSeconds}
+          onChange={(e) => handleTimeoutSeconds(parseInt(e.target.value))}
         />
       </div>
     );
@@ -659,6 +684,8 @@ const ConfigureIngestion = ({
         {getProfileSample()}
         {getSeparator('')}
         {getThreadCount()}
+        {getSeparator('')}
+        {getTimeoutSeconds()}
         {getSeparator('')}
         {getIngestSampleToggle(
           'Ingest Sample Data',

@@ -39,6 +39,7 @@ from metadata.utils.connections import (
     create_and_bind_thread_safe_session,
     get_connection,
 )
+from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -85,6 +86,8 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
             if not self.profile_query
             else None
         )
+
+        self.timeout_seconds = profiler_interface_args.timeout_seconds
 
     @staticmethod
     def _session_factory(service_connection_config):
@@ -369,35 +372,45 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
         """get all profiler metrics"""
         logger.info(f"Computing metrics with {self._thread_count} threads.")
         profile_results = {"table": dict(), "columns": defaultdict(dict)}
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self._thread_count
-        ) as executor:
+        with CustomThreadPoolExecutor(max_workers=self._thread_count) as pool:
             futures = [
-                executor.submit(
+                pool.submit(
                     self.compute_metrics_in_thread,
                     *metric_func,
                 )
                 for metric_func in metric_funcs
             ]
 
-        for future in concurrent.futures.as_completed(futures):
-            profile, column, metric_type = future.result()
-            if metric_type != MetricTypes.System.value and not isinstance(
-                profile, dict
-            ):
-                profile = dict()
-            if metric_type == MetricTypes.Table.value:
-                profile_results["table"].update(profile)
-            elif metric_type == MetricTypes.System.value:
-                profile_results["system"] = profile
-            else:
-                profile_results["columns"][column].update(
-                    {
-                        "name": column,
-                        "timestamp": datetime.now(tz=timezone.utc).timestamp(),
-                        **profile,
-                    }
-                )
+            for future in futures:
+                if future.cancelled():
+                    continue
+
+                try:
+                    profile, column, metric_type = future.result(
+                        timeout=self.timeout_seconds
+                    )
+                    if metric_type != MetricTypes.System.value and not isinstance(
+                        profile, dict
+                    ):
+                        profile = dict()
+                    if metric_type == MetricTypes.Table.value:
+                        profile_results["table"].update(profile)
+                    elif metric_type == MetricTypes.System.value:
+                        profile_results["system"] = profile
+                    else:
+                        profile_results["columns"][column].update(
+                            {
+                                "name": column,
+                                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                                **profile,
+                            }
+                        )
+                except concurrent.futures.TimeoutError as exc:
+                    pool.shutdown39(wait=True, cancel_futures=True)
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
+                    raise concurrent.futures.TimeoutError
+
         return profile_results
 
     def fetch_sample_data(self, table) -> TableData:
