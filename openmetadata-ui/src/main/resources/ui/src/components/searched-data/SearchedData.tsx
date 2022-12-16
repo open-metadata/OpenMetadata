@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -44,6 +45,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   totalValue,
   isFilterSelected,
   searchText,
+  selectedEntityName,
   handleSummaryPanelDisplay,
 }) => {
   const highlightSearchResult = () => {
@@ -90,6 +92,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       return (
         <div className="tw-mb-3" key={index}>
           <TableDataCardV2
+            className={classNames(
+              name === selectedEntityName ? 'highlight-card' : ''
+            )}
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}

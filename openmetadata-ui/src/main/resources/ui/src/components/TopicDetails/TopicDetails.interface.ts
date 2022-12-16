@@ -20,7 +20,11 @@ import {
 } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
+import {
+  CleanupPolicy,
+  Topic,
+  TopicSampleData,
+} from '../../generated/entity/data/topic';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -87,4 +91,12 @@ export interface TopicDetailsProps {
     isNodeLoading: LoadingNodeState;
   };
   onExtensionUpdate: (updatedTopic: Topic) => Promise<void>;
+}
+
+export interface TopicConfigObjectInterface {
+  Partitions: number;
+  'Replication Factor'?: number;
+  'Retention Size'?: number;
+  'CleanUp Policies'?: CleanupPolicy[];
+  'Max Message Size'?: number;
 }

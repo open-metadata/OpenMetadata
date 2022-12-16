@@ -10,18 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@border-color: #dce3ec;
-@background-color: #ffffff;
-@highlidghted-border-color: #1890ff;
 
-.data-asset-info-card-container {
-  border: 1px solid @border-color;
-  border-radius: 6px;
-  background-color: @background-color;
-  padding: 12px;
+import { Table, TableType } from '../../../../generated/entity/data/table';
+
+export interface TableSummaryProps {
+  entityDetails: Table;
 }
 
-.highlight-card,
-.table-data-card-container:hover {
-  border: 1px solid @highlidghted-border-color;
+export interface BasicTableInfo {
+  Type: TableType | string;
+  Queries: string;
+  Columns: string;
 }

@@ -474,7 +474,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionColumnName"
                   rules={[
                     {
-                      required: isPartitionDisabled || enablePartition,
+                      required: enablePartition,
                       message: t('message.column-name-required'),
                     },
                   ]}>
@@ -482,7 +482,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     allowClear
                     className="w-full"
                     data-testid="column-name"
-                    disabled={isPartitionDisabled || !enablePartition}
+                    disabled={!enablePartition}
                     options={partitionColumnOptions}
                     placeholder={t('message.select-column-name')}
                     size="middle"
@@ -503,7 +503,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionIntervalType"
                   rules={[
                     {
-                      required: isPartitionDisabled || enablePartition,
+                      required: enablePartition,
                       message: t('message.interval-type-required'),
                     },
                   ]}>
@@ -511,7 +511,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     allowClear
                     className="w-full"
                     data-testid="interval-type"
-                    disabled={isPartitionDisabled || !enablePartition}
+                    disabled={!enablePartition}
                     options={INTERVAL_TYPE_OPTIONS}
                     placeholder={t('message.select-type-required')}
                     size="middle"
@@ -530,14 +530,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionInterval"
                   rules={[
                     {
-                      required: isPartitionDisabled || enablePartition,
+                      required: enablePartition,
                       message: t('message.interval-required'),
                     },
                   ]}>
                   <InputNumber
                     className="w-full"
                     data-testid="interval-required"
-                    disabled={isPartitionDisabled || !enablePartition}
+                    disabled={!enablePartition}
                     placeholder={t('message.enter-interval')}
                     size="middle"
                   />
@@ -557,7 +557,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   name="partitionIntervalUnit"
                   rules={[
                     {
-                      required: isPartitionDisabled || enablePartition,
+                      required: enablePartition,
                       message: t('message.interval-unit-required'),
                     },
                   ]}>
@@ -565,7 +565,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     allowClear
                     className="w-full"
                     data-testid="select-interval-unit"
-                    disabled={isPartitionDisabled || !enablePartition}
+                    disabled={!enablePartition}
                     options={INTERVAL_UNIT_OPTIONS}
                     placeholder={t('message.select-interval-unit')}
                     size="middle"
