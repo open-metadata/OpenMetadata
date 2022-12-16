@@ -188,7 +188,10 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 </Typography.Text>
                 <Typography className="font-semibold text-2xl m--ml-0.5">
                   {summary.latest}
-                  {summary.id.startsWith('Percentage') ? '%' : ''}
+                  {summary.id.startsWith('Percentage') ||
+                  summary.id.includes(DataInsightChartType.TotalEntitiesByTier)
+                    ? '%'
+                    : ''}
                 </Typography>
               </Col>
             ))}
