@@ -411,7 +411,7 @@ class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
                     logger.info(f"Operation was cancelled due to TimeoutError - {exc}")
                     raise concurrent.futures.TimeoutError
 
-            return profile_results
+        return profile_results
 
     def fetch_sample_data(self, table) -> TableData:
         """Fetch sample data from database
