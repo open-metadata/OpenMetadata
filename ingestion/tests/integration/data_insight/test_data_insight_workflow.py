@@ -35,7 +35,7 @@ from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent impo
     PageViewData,
 )
 from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
-    CreateKpiRequest,
+    CreateKPIRequest,
 )
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.dataInsightChartResult import (
@@ -142,7 +142,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         completed_description_chart = cls.metadata.get_by_name(
             DataInsightChart, "PercentageOfEntitiesWithDescriptionByType", fields="*"
         )
-        create = CreateKpiRequest(
+        create = CreateKPIRequest(
             name="CompletedDescription",
             dataInsightChart=EntityReference(
                 type="dataInsightChart", id=completed_description_chart.id

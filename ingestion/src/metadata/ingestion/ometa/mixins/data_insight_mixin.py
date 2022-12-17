@@ -24,7 +24,7 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
 from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
-    CreateKpiRequest,
+    CreateKPIRequest,
 )
 from metadata.generated.schema.dataInsight.dataInsightChartResult import (
     DataInsightChartResult,
@@ -145,7 +145,7 @@ class DataInisghtMixin:
 
         return [KpiResult(**data) for data in resp["data"]]
 
-    def create_kpi(self, create: CreateKpiRequest) -> KPI:
+    def create_kpi(self, create: CreateKPIRequest) -> KPI:
         resp = self.client.post("/kpi", create.json())
 
         return KPI.parse_obj(resp)
