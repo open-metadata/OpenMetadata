@@ -552,8 +552,7 @@
     "select-dbt-source": "Select DBT Source",
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
-    "latest": "Latest",
-    "openMetadata": "OpenMetadata"
+    "latest": "Latest"
   },
   "message": {
     "service-email-required": "Service account Email is required",

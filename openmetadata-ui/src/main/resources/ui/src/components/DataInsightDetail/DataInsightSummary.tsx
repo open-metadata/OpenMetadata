@@ -34,6 +34,7 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
+import { getEntityName } from '../../utils/CommonUtils';
 import {
   getEntitiesChartSummary,
   getWebChartSummary,
@@ -62,9 +63,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   const [mostActiveUser, setMostActiveUser] = useState<MostActiveUsers>();
 
-  const [OrganizationDetails, setOrganizationDetails] = useState<Team>(
-    {} as Team
-  );
+  const [OrganizationDetails, setOrganizationDetails] = useState<Team>();
 
   const entitiesSummaryList = useMemo(
     () => getEntitiesChartSummary(entitiesCharts),
@@ -79,8 +78,12 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const { t } = useTranslation();
 
   const fetchOrganizationDetails = async () => {
-    const data = await getTeamByName('Organization');
-    setOrganizationDetails(data);
+    try {
+      const data = await getTeamByName('Organization');
+      setOrganizationDetails(data);
+    } catch (err) {
+      // for this API do not show the toast message
+    }
   };
 
   const fetchEntitiesChartData = async () => {
@@ -183,7 +186,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
         <Typography.Title level={5}>
           {t('label.data-insight-summary', {
             organization:
-              OrganizationDetails.displayName || t('label.openMetadata'),
+              getEntityName(OrganizationDetails) || t('label.open-metadata'),
           })}
         </Typography.Title>
       }>
