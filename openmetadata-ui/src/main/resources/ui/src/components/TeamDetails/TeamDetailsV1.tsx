@@ -65,7 +65,6 @@ import {
 } from '../../interface/teamsAndUsers.interface';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import {
-  commonUserDetailColumns,
   getEntityName,
   getTierFromEntityInfo,
   hasEditAccess,
@@ -100,6 +99,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
 import { getTabs, searchTeam } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
