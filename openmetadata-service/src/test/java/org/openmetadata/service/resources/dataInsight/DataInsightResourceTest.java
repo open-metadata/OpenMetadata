@@ -7,7 +7,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.Map;
-import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
@@ -40,7 +39,7 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
   }
 
   @Test
-  void post_data_insight_4x(TestInfo test) throws IOException {
+  void post_data_insight_4x(TestInfo test) {
     assertResponseContains(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -57,28 +56,23 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
 
   @Override
   public void validateCreatedEntity(
-      DataInsightChart createdEntity, CreateDataInsightChart request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      DataInsightChart createdEntity, CreateDataInsightChart request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
 
   @Override
-  public void compareEntities(DataInsightChart expected, DataInsightChart updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(DataInsightChart expected, DataInsightChart updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getFullyQualifiedName(), updated.getFullyQualifiedName());
     assertEquals(expected.getDescription(), updated.getDescription());
   }
 
   @Override
-  public DataInsightChart validateGetWithDifferentFields(DataInsightChart entity, boolean byName)
-      throws HttpResponseException {
+  public DataInsightChart validateGetWithDifferentFields(DataInsightChart entity, boolean byName) {
     return null;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    return;
-  }
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 }

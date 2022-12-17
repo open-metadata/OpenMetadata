@@ -5,6 +5,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import lombok.NonNull;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
@@ -26,7 +27,7 @@ public class LoginAttemptCache {
             .expireAfterWrite(accessBlockTime, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
-                  public Integer load(String key) {
+                  public Integer load(@NonNull String key) {
                     return 0;
                   }
                 });
@@ -41,7 +42,7 @@ public class LoginAttemptCache {
             .expireAfterWrite(blockTimeInSec, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
-                  public Integer load(String key) {
+                  public Integer load(@NonNull String key) {
                     return 0;
                   }
                 });

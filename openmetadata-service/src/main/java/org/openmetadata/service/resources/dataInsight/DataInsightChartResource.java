@@ -457,7 +457,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @NonNull
           @QueryParam("endTs")
           Long endTs)
-      throws IOException, ParseException, ClassNotFoundException {
+      throws IOException, ParseException {
 
     SearchSourceBuilder searchSourceBuilder =
         dao.buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
