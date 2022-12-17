@@ -113,27 +113,29 @@ const UserPage = () => {
       .finally(() => setIsLoading(false));
   };
 
-  const fetchEntities = (
+  const fetchEntities = async (
     fetchOwnedEntities = false,
     handleEntity: Dispatch<SetStateAction<AssetsDataType>>
   ) => {
     const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
-    searchData(
-      fetchOwnedEntities
-        ? `owner.id:${userData.id}`
-        : `followers:${userData.id}`,
-      entity.currPage,
-      PAGE_SIZE,
-      ``,
-      '',
-      '',
-      myDataSearchIndex
-    )
-      .then((res) => {
-        const hits = res?.data?.hits?.hits as SearchEntityHits;
+    if (userData.id) {
+      try {
+        const response = await searchData(
+          fetchOwnedEntities
+            ? `owner.id:${userData.id}`
+            : `followers:${userData.id}`,
+          entity.currPage,
+          PAGE_SIZE,
+          ``,
+          '',
+          '',
+          myDataSearchIndex
+        );
+        const hits = response.data.hits.hits as SearchEntityHits;
+
         if (hits?.length > 0) {
           const data = formatDataResponse(hits);
-          const total = res.data.hits.total.value;
+          const total = response.data.hits.total.value;
           handleEntity({
             data,
             total,
@@ -148,15 +150,15 @@ const UserPage = () => {
             currPage: entity.currPage,
           });
         }
-      })
-      .catch((err: AxiosError) => {
+      } catch (error) {
         showErrorToast(
-          err,
+          error as AxiosError,
           t('server.entity-fetch-error', {
             entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
           })
         );
-      });
+      }
+    }
   };
 
   const handleFollowingEntityPaginate = (page: string | number) => {
