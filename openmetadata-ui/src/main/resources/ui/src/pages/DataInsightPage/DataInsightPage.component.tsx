@@ -24,6 +24,7 @@ import {
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
@@ -150,8 +151,7 @@ const DataInsightPage = () => {
         const response = await fetchTeamSuggestions(query, PAGE_SIZE);
         setTeamOptions((prev) => ({
           ...prev,
-
-          options: getTeamFilter(response.values),
+          options: getTeamFilter(response.values as ListItem[]),
         }));
       } catch (_error) {
         // we will not show the toast error message for suggestion API
@@ -173,7 +173,7 @@ const DataInsightPage = () => {
         ),
       }));
     } else {
-      setTeamOptions((prev) => ({
+      setTierOptions((prev) => ({
         ...prev,
         options: defaultTierOptions,
       }));

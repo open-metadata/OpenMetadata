@@ -26,7 +26,7 @@ import {
 } from 'lodash';
 import moment from 'moment';
 import React from 'react';
-import { ListItem, ListValues } from 'react-awesome-query-builder';
+import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import {
   GRAYED_OUT_COLOR,
@@ -421,10 +421,8 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   };
 };
 
-export const getTeamFilter = (suggestionValues: ListValues = []): string[] => {
-  return (suggestionValues as ListItem[]).map(
-    (suggestion: ListItem) => suggestion.value
-  );
+export const getTeamFilter = (suggestionValues: ListItem[]): string[] => {
+  return suggestionValues.map((suggestion) => suggestion.value);
 };
 
 export const getFormattedActiveUsersData = (
