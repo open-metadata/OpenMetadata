@@ -23,6 +23,6 @@ export enum OwnerType {
 }
 
 export enum CreatePasswordGenerator {
-  AutomatciGenerate = 'AUTOMATIC_GENERATE',
+  AutomaticGenerate = 'AUTOMATIC_GENERATE',
   CreatePassword = 'CREATE_PASSWORD',
 }
