@@ -36,6 +36,7 @@ export const getAlertsFromId = async (
     params: {
       ...params,
       include: 'all',
+      fields: 'alertActions',
     },
   });
 

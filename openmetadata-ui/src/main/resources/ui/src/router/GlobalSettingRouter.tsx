@@ -21,7 +21,6 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { TeamType } from '../generated/entity/teams/team';
 import AddAlertPage from '../pages/AddAlertPage/AddAlertPage';
-import AlertDetailsPage from '../pages/AlertDetailsPpage/AlertDetailsPage';
 import AlertsPage from '../pages/AlertsPage/AlertsPage';
 import TeamsPage from '../pages/teams/TeamsPage';
 import { userPermissions } from '../utils/PermissionsUtils';
@@ -200,15 +199,14 @@ const GlobalSettingRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={AlertDetailsPage}
+        component={AddAlertPage}
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.COLLABORATION,
-          GlobalSettingOptions.ALERT,
+          GlobalSettingOptions.EDIT_ALERTS,
           true
         )}
       />
-
       <AdminProtectedRoute
         exact
         component={AddAlertPage}

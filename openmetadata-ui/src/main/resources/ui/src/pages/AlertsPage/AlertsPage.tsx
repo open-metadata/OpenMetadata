@@ -14,11 +14,11 @@ import { Button, Col, Row, Table, Tag, Tooltip, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getAllAlerts } from '../../axiosAPIs/alertsAPI';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
+import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -26,10 +26,11 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { AlertAction } from '../../generated/alerts/alertAction';
-import { Alerts } from '../../generated/alerts/alerts';
+import { Alerts, ProviderType } from '../../generated/alerts/alerts';
 import { Paging } from '../../generated/type/paging';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,6 @@ const AlertsPage = () => {
   } as Paging);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedAlert, setSelectedAlert] = useState<Alerts>();
-  const history = useHistory();
 
   const fetchAlerts = useCallback(async (after?: string) => {
     setLoading(true);
@@ -49,8 +49,10 @@ const AlertsPage = () => {
 
       setAlerts(data);
       setAlertsPaging(paging);
-      // eslint-disable-next-line no-empty
     } catch (error) {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.alert-plural') })
+      );
     } finally {
       setLoading(false);
     }
@@ -61,14 +63,7 @@ const AlertsPage = () => {
   }, []);
 
   const handleAlertDelete = useCallback(async () => {
-    if (selectedAlert) {
-      //   await deleteAlert(selectedAlert.id);
-
-      setAlerts((alerts) =>
-        alerts.filter((alert) => alert.id === selectedAlert.id)
-      );
-      setSelectedAlert(undefined);
-    }
+    fetchAlerts();
   }, []);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
@@ -85,9 +80,6 @@ const AlertsPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (name: string, record: Alerts) => (
-          <Link to={`settings/collaboration/alert/${record.id}`}>{name}</Link>
-        ),
       },
       {
         title: t('label.trigger'),
@@ -109,72 +101,61 @@ const AlertsPage = () => {
         flex: true,
         key: 'description',
       },
-
-      //   {
-      //     title: t('label.status'),
-      //     dataIndex: 'status',
-      //     width: '200px',
-      //     key: 'status',
-      //   },
       {
         title: t('label.actions'),
         dataIndex: 'id',
         key: 'id',
-        render: (_: string, record: Alerts) => {
+        render: (id: string, record: Alerts) => {
           return (
-            <Tooltip placement="bottom" title={t('label.delete')}>
-              <Button
-                data-testid={`alert-delete-${record.name}`}
-                //   disabled={isDisabled}
-                icon={
-                  <SVGIcons
-                    alt={t('label.delete')}
-                    className="tw-w-4"
-                    icon={Icons.DELETE}
+            <>
+              <Tooltip placement="bottom" title={t('label.edit')}>
+                <Link to={`edit/${id}`}>
+                  <Button
+                    data-testid={`alert-edit-${record.name}`}
+                    icon={<SVGIcons className="tw-w-4" icon={Icons.EDIT} />}
+                    type="text"
                   />
-                }
-                type="text"
-                onClick={() => setSelectedAlert(record)}
-              />
-            </Tooltip>
+                </Link>
+              </Tooltip>
+              <Tooltip placement="bottom" title={t('label.delete')}>
+                <Button
+                  data-testid={`alert-delete-${record.name}`}
+                  disabled={record.provider === ProviderType.System}
+                  icon={<SVGIcons className="tw-w-4" icon={Icons.DELETE} />}
+                  type="text"
+                  onClick={() => setSelectedAlert(record)}
+                />
+              </Tooltip>
+            </>
           );
-
-          //   return (
-          //     <SVGIcons
-          //       className="cursor-pointer"
-          //       height={16}
-          //       icon={Icons.DELETE}
-          //       width={16}
-          //       onClick={handleAlertDelete(id)}
-          //     />
-          //   );
         },
       },
     ],
     [handleAlertDelete]
   );
 
-  const handleCreateAlert = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.COLLABORATION,
-        GlobalSettingOptions.ADD_ALERTS
-      )
-    );
-  };
-
   return (
-    <PageContainerV1>
+    <>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
             <div>
-              <Typography.Title level={5}>Alerts</Typography.Title>
-              <Typography.Text>Alerts body</Typography.Text>
+              <Typography.Title level={5}>
+                {t('label.alert-plural')}
+              </Typography.Title>
+              <Typography.Text>
+                {t('message.alert-description')}
+              </Typography.Text>
             </div>
-            <Button type="primary" onClick={handleCreateAlert}>
-              Create Alert
-            </Button>
+            <Link
+              to={getSettingPath(
+                GlobalSettingsMenuCategory.COLLABORATION,
+                GlobalSettingOptions.ADD_ALERTS
+              )}>
+              <Button type="primary">
+                {t('label.create-entity', { entity: 'alert' })}
+              </Button>
+            </Link>
           </div>
         </Col>
         <Col span={24}>
@@ -182,7 +163,7 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            loading={loading}
+            loading={{ spinning: loading, indicator: <Loader /> }}
             pagination={false}
             rowKey="id"
             size="middle"
@@ -213,7 +194,7 @@ const AlertsPage = () => {
           />
         </Col>
       </Row>
-    </PageContainerV1>
+    </>
   );
 };
 

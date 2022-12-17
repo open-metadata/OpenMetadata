@@ -44,8 +44,8 @@ export enum GlobalSettingOptions {
   ACTIVITY_FEED = 'activityFeed',
   ELASTIC_SEARCH = 'elasticSearch',
   ALERTS = 'alerts',
-  ALERT = 'alert',
   ADD_ALERTS = 'add-alerts',
+  EDIT_ALERTS = 'edit',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

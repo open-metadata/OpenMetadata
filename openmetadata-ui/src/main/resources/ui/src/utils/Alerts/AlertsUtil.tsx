@@ -12,8 +12,10 @@
  */
 
 import React from 'react';
-import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
-import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
+import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
+import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
+import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams-grey.svg';
+import { ReactComponent as SlackIcon } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook-grey.svg';
 import {
   COMMON_DROPDOWN_ITEMS,
@@ -30,8 +32,9 @@ export const getAlertsActionTypeIcon = (type?: AlertActionType) => {
     case AlertActionType.MSTeamsWebhook:
       return <MSTeamsIcon height={16} width={16} />;
     case AlertActionType.Email:
-      // TODO: update below with EMail icon
-      return <MSTeamsIcon height={16} width={16} />;
+      return <MailIcon height={16} width={16} />;
+    case AlertActionType.ActivityFeed:
+      return <AllActivityIcon height={16} width={16} />;
     case AlertActionType.GenericWebhook:
     default:
       return <WebhookIcon height={16} width={16} />;
@@ -60,13 +63,15 @@ export const getFilterOptionForEntity = (entity: string) => {
 export const getFunctionDisplayName = (func: string): string => {
   switch (func) {
     case 'matchAnyEntityFqn':
-      return 'Entity FQN';
+      return 'Match FQN';
     case 'matchAnyOwnerName':
-      return 'Owner';
+      return 'Match Owner';
     case 'matchAnyEventType':
-      return 'Event type';
+      return 'Match Event Type';
     case 'matchTestResult':
-      return 'Test Results';
+      return 'Match Test Results';
+    case 'matchUpdatedBy':
+      return 'Match Updated By';
     case 'matchAnySource':
     case 'matchAnyEntityId':
     default:
