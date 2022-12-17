@@ -421,11 +421,10 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   };
 };
 
-export const getTeamFilter = (suggestionValues: ListValues = []) => {
-  return (suggestionValues as ListItem[]).map((suggestion: ListItem) => ({
-    label: suggestion.title,
-    value: suggestion.value,
-  }));
+export const getTeamFilter = (suggestionValues: ListValues = []): string[] => {
+  return (suggestionValues as ListItem[]).map(
+    (suggestion: ListItem) => suggestion.value
+  );
 };
 
 export const getFormattedActiveUsersData = (
