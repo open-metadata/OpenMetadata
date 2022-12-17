@@ -47,7 +47,9 @@ class Sampler:
             self.profile_sample = (
                 profile_sample.get("profile_sample") if profile_sample else None
             )
-            self.profile_sample_type = profile_sample.get("profile_sample_type")
+            self.profile_sample_type = profile_sample.get(
+                "profile_sample_type", ProfileSampleType.percentage
+            )
         self.session = session
         self.table = table
         self._partition_details = partition_details

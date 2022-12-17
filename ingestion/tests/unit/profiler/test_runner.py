@@ -59,7 +59,9 @@ class RunnerTest(TestCase):
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
-    sampler = Sampler(session=session, table=User, profile_sample=50.0)
+    sampler = Sampler(
+        session=session, table=User, profile_sample={"profile_sample": 50.0}
+    )
     sample = sampler.random_sample()
 
     raw_runner = QueryRunner(session=session, table=User, sample=sample)
