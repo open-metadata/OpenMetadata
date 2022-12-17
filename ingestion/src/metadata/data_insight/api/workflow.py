@@ -40,7 +40,7 @@ from metadata.data_insight.processor.web_analytic_report_data_processor import (
 from metadata.data_insight.runner.kpi_runner import KpiRunner
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
-from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.dataInsight.kpi.kpi import KPI
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -114,14 +114,14 @@ class DataInsightWorkflow(WorkflowStatusMixin):
             self.es_sink = cast(ElasticsearchSink, self.es_sink)
 
     @staticmethod
-    def _is_kpi_active(entity: Kpi) -> bool:
+    def _is_kpi_active(entity: KPI) -> bool:
         """Check if a KPI is active
 
         Args:
-            entity (Kpi): KPI entity
+            entity (KPI): KPI entity
 
         Returns:
-            Kpi:
+            KPI:
         """
 
         start_date = entity.startDate.__root__
@@ -139,15 +139,15 @@ class DataInsightWorkflow(WorkflowStatusMixin):
 
         return False
 
-    def _get_kpis(self) -> list[Kpi]:
+    def _get_kpis(self) -> list[KPI]:
         """get the list of KPIs and return the active ones
 
         Returns:
             _type_: _description_
         """
 
-        kpis: EntityList[Kpi] = self.metadata.list_entities(
-            entity=Kpi, fields="*"  # type: ignore
+        kpis: EntityList[KPI] = self.metadata.list_entities(
+            entity=KPI, fields="*"  # type: ignore
         )
 
         return [kpi for kpi in kpis.entities if self._is_kpi_active(kpi)]

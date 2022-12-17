@@ -24,7 +24,7 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
     DataInsightChartResult,
 )
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
-from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.dataInsight.kpi.kpi import KPI
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -43,12 +43,12 @@ class KpiRunner:
     """KPI runner class
 
     Attrs:
-        kpis: list[Kpi]
+        kpis: list[KPI]
         metadata: OpenMetadata
         processor_status: SourceStatus
     """
 
-    def __init__(self, kpis: list[Kpi], metadata: OpenMetadata) -> None:
+    def __init__(self, kpis: list[KPI], metadata: OpenMetadata) -> None:
         self.kpis = kpis
 
         self.metadata = metadata

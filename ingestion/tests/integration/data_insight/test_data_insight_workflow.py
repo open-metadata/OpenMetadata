@@ -43,7 +43,7 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
     DataInsightChartType,
 )
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
-from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.dataInsight.kpi.kpi import KPI
 from metadata.generated.schema.dataInsight.type.dailyActiveUsers import DailyActiveUsers
 from metadata.generated.schema.dataInsight.type.pageViewsByEntities import (
     PageViewsByEntities,
@@ -302,13 +302,13 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        kpis: list[Kpi] = cls.metadata.list_entities(
-            entity=Kpi, fields="*"  # type: ignore
+        kpis: list[KPI] = cls.metadata.list_entities(
+            entity=KPI, fields="*"  # type: ignore
         ).entities
 
         for kpi in kpis:
             cls.metadata.delete(
-                entity=Kpi,
+                entity=KPI,
                 entity_id=kpi.id,
                 hard_delete=True,
                 recursive=True,
