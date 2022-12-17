@@ -2,6 +2,7 @@
   "label": {
     "name": "Name",
     "type": "Type",
+    "email": "Email",
     "description": "Description",
     "docs": "Docs",
     "date-filter": "Date Filter",
@@ -409,6 +410,7 @@
     "ms-teams": "MS Teams",
     "ms-team": "MS Team",
     "bot": "Bot",
+    "bot-plural": "Bots",
     "policy-name": "Policy name",
     "add-new-policy": "Add New Policy",
     "policies": "Policies",
@@ -552,7 +554,16 @@
     "select-dbt-source": "Select DBT Source",
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
-    "latest": "Latest"
+    "latest": "Latest",
+    "create": "Create",
+    "admin": "Admin",
+    "generate": "Generate",
+    "password-type": "{{type}} Password",
+    "automatically-generate": "Automatically Generate",
+    "create-entity": "Create {{entity}}",
+    "domain": "Domain",
+    "private-key": "PrivateKey",
+    "service-email": "Service account Email"
   },
   "message": {
     "service-email-required": "Service account Email is required",
