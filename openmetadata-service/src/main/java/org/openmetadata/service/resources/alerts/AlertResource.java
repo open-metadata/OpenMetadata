@@ -482,6 +482,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       throws IOException {
     Alert alert = getAlert(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, alert);
+    AlertsPublisherManager.getInstance().updateAlertActionPublishers(alert);
     return response;
   }
 

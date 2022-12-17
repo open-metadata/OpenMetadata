@@ -24,6 +24,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -618,5 +619,27 @@ public final class ChangeEventParser {
       index++;
     }
     return diff;
+  }
+
+  public static Set<String> getUpdatedField(ChangeEvent event) {
+    Set<String> fields = new HashSet<>();
+    ChangeDescription description = event.getChangeDescription();
+    if (description != null) {
+      List<FieldChange> fieldChanges = new ArrayList<>();
+      fieldChanges.addAll(description.getFieldsAdded());
+      fieldChanges.addAll(description.getFieldsUpdated());
+      fieldChanges.addAll(description.getFieldsDeleted());
+      fieldChanges.forEach(
+          (field) -> {
+            String fieldName = field.getName();
+            if (fieldName.contains(".")) {
+              String[] tokens = fieldName.split("\\.");
+              fields.add(tokens[tokens.length - 1]);
+            } else {
+              fields.add(fieldName);
+            }
+          });
+    }
+    return fields;
   }
 }

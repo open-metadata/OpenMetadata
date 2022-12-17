@@ -52,8 +52,10 @@ public class AlertsPublisherManager {
 
   public List<AlertAction> getAllAlertActions(UUID id) {
     List<AlertAction> alertActions = new ArrayList<>();
-    for (AlertsActionPublisher publisher : alertPublisherMap.get(id).values()) {
-      alertActions.add(publisher.getAlertAction());
+    if (alertActions != null) {
+      for (AlertsActionPublisher publisher : alertPublisherMap.get(id).values()) {
+        alertActions.add(publisher.getAlertAction());
+      }
     }
     return alertActions;
   }
