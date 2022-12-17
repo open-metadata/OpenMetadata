@@ -55,6 +55,7 @@ public class SlackWebhookEventPublisher extends AlertsActionPublisher {
     try {
       SlackMessage slackMessage = ChangeEventParser.buildSlackMessage(event);
       Response response = target.post(javax.ws.rs.client.Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
+      // Successfully sent Alert, update Status
       if (response.getStatus() >= 300 && response.getStatus() < 400) {
         // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
         setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
@@ -63,6 +64,8 @@ public class SlackWebhookEventPublisher extends AlertsActionPublisher {
         setNextBackOff();
         setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
         Thread.sleep(currentBackoffTime);
+      } else if (response.getStatus() == 200) {
+        setSuccessStatus(System.currentTimeMillis());
       }
     } catch (Exception e) {
       LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
