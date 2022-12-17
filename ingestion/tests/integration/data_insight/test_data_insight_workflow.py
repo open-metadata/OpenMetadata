@@ -34,7 +34,7 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent import (
     PageViewData,
 )
-from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
+from metadata.generated.schema.api.dataInsight.kpi.createKPIRequest import (
     CreateKPIRequest,
 )
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
