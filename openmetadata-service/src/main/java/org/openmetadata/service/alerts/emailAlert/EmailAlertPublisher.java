@@ -3,6 +3,7 @@ package org.openmetadata.service.alerts.emailAlert;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -54,15 +55,17 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
   }
 
   @Override
-  public void sendAlert(ChangeEvent event) {
+  public void sendAlert(ChangeEvent event) throws IOException, InterruptedException {
     try {
       Set<String> receivers = buildReceiversList(event);
       EmailMessage emailMessage = ChangeEventParser.buildEmailMessage(event);
       for (String email : receivers) {
         EmailUtil.sendChangeEventMail(email, emailMessage);
       }
+      setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
       LOG.error("Failed to publish event {} to email due to {} ", event, e.getMessage());
+      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
       throw new EventPublisherException(
           String.format("Failed to publish event %s to email due to %s ", event, e.getMessage()));
     }

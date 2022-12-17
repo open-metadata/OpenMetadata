@@ -65,6 +65,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerts.ActivityFeedAlertCache;
 import org.openmetadata.service.alerts.AlertUtil;
+import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.jdbi3.AlertRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -136,7 +137,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
     List<Alert> alertList = JsonUtils.readObjects(listAllAlerts, Alert.class);
     for (Alert alert : alertList) {
       if (!alert.getName().equals(activityFeedAlert.getName())) {
-        dao.addAlertActionPublishers(alert);
+        AlertsPublisherManager.getInstance().addAlertActionPublishers(alert);
       }
     }
   }
@@ -267,10 +268,34 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId,
-      @Parameter(description = "alertAction Id", schema = @Schema(type = "UUID")) @PathParam("alertId")
+      @Parameter(description = "alertAction Id", schema = @Schema(type = "UUID")) @PathParam("actionId")
           UUID alertActionId)
       throws IOException {
     return dao.getAlertActionStatus(alertId, alertActionId);
+  }
+
+  @GET
+  @Path("/allAlertAction/{alertId}")
+  @Valid
+  @Operation(
+      operationId = "getAllAlertActionForAlert",
+      summary = "Get all alert Action of an alert",
+      tags = "alerts",
+      description = "Get all alert Action of alert by given Id , and id of the alert it is bound to",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity events",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AlertActionStatus.class))),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public List<AlertAction> getAllAlertActionForAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId)
+      throws IOException {
+    return AlertsPublisherManager.getInstance().getAllAlertActions(alertId);
   }
 
   @GET
@@ -435,7 +460,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       throws IOException {
     Alert alert = getAlert(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, alert);
-    dao.addAlertActionPublishers(alert);
+    AlertsPublisherManager.getInstance().addAlertActionPublishers(alert);
     return response;
   }
 
@@ -457,7 +482,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       throws IOException {
     Alert alert = getAlert(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, alert);
-    dao.updateAlertActionPublishers((Alert) response.getEntity());
+    AlertsPublisherManager.getInstance().updateAlertActionPublishers(alert);
     return response;
   }
 
@@ -485,7 +510,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
           JsonPatch patch)
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    dao.updateAlertActionPublishers((Alert) response.getEntity());
+    AlertsPublisherManager.getInstance().updateAlertActionPublishers((Alert) response.getEntity());
     return response;
   }
 
@@ -518,7 +543,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
-    dao.deleteAlertAllPublishers(id);
+    AlertsPublisherManager.getInstance().deleteAlertAllPublishers(id);
     return response;
   }
 

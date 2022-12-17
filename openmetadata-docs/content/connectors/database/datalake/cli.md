@@ -66,6 +66,12 @@ pip3 install "openmetadata-ingestion[datalake-s3]"
 pip3 install "openmetadata-ingestion[datalake-gcs]"
 ```
 
+#### Azure installation
+
+```bash
+pip3 install "openmetadata-ingestion[datalake-azure]"
+```
+
 #### If version <0.13
 
 You will be installing the requirements together for S3 and GCS
@@ -180,7 +186,49 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **clientX509CertUrl**
 * **bucketName**: name of the bucket in GCS
 * **Prefix**: prefix in gcs bucket
-* **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+
+This is a sample config for Datalake using Azure:
+
+```yaml
+# Datalake with Azure 
+
+source:
+  type: datalake
+  serviceName: local_datalake
+  serviceConnection:
+    config:
+      type: Datalake
+      configSource:      
+        securityConfig: 
+          clientId: client-id
+          clientSecret: client-secret
+          tenantId: tenant-id
+          accountName: account-name
+      prefix: prefix
+  sourceConfig:
+    config:
+      tableFilterPattern:
+        includes:
+        - ''
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+#### Source Configuration - Service Connection using Azure
+
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/credentials/azureCredentials.json).
+
+- **Client ID** : Client ID of the data storage account
+- **Client Secret** : Client Secret of the account
+- **Tenant ID** : Tenant ID under which the data storage account falls
+- **Account Name** : Account Name of the data Storage
+
+**schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 #### Source Configuration - Source Config
 
