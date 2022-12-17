@@ -171,6 +171,11 @@ workflowConfig:
     authProvider: "<OpenMetadata auth provider>"
 ```
 
+- `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
+- `includeTables`: true or false, to ingest table data. Default is true.
+- `includeViews`: true or false, to ingest views definitions.
+- `databaseFilterPattern`, `schemaFilterPattern`, `tableFilternPattern`: Note that the they support regex as include or exclude. E.g.,
+
 
 #### Source Configuration - Service Connection using GCS
 
@@ -240,13 +245,17 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 - **Tenant ID** : Tenant ID under which the data storage account falls
 - **Account Name** : Account Name of the data Storage
 
-**schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+**schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` can be used to filter `container` and `tableFilterPattern` can be used to filter `files` and both support regex as `include` or `exclude`. E.g.,
 
 ```yaml
+schemaFilterPattern:
+ includes:
+  - container1
+  excludes:
+  - container2
 tableFilterPattern:
   includes:
-    - users
-    - type_test
+    - *json
 ```
 
 #### Sink Configuration
