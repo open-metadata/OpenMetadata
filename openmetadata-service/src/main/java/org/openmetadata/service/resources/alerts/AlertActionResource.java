@@ -13,58 +13,14 @@
 
 package org.openmetadata.service.resources.alerts;
 
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.ExternalDocumentation;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.events.CreateAlertAction;
-import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
+
 import org.openmetadata.service.alerts.AlertsPublisherManager;
-import org.openmetadata.service.jdbi3.AlertActionRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.policies.PolicyResource;
-import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.resources.alerts.AlertActionResource.AlertActionList;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/alertAction")

@@ -1,27 +1,11 @@
 package org.openmetadata.service.alerts;
 
-import static org.openmetadata.schema.type.Relationship.CONTAINS;
-import static org.openmetadata.service.Entity.ALERT;
-import static org.openmetadata.service.Entity.ALERT_ACTION;
-
-import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.alerts.Alert;
-import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.entity.alerts.AlertActionStatus;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.EventPubSub;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AlertsPublisherManager {

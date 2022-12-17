@@ -13,19 +13,9 @@
 
 package org.openmetadata.service.alerts;
 
-import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.alerts.Alert;
-import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.entity.alerts.AlertActionStatus;
-import org.openmetadata.schema.type.FailureDetails;
-import org.openmetadata.service.events.EventPubSub;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.resources.events.EventResource;
 
 /**
  * AlertsPublisher publishes events to the alert endpoint using POST http requests/ Email. There is one instance of

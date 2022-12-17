@@ -1,21 +1,10 @@
 package org.openmetadata.service.alerts.slack;
 
 import java.util.concurrent.TimeUnit;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Invocation;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.alerts.Alert;
-import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Webhook;
+
+import javax.swing.event.ChangeEvent;
+
 import org.openmetadata.service.alerts.AlertsActionPublisher;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.resources.events.EventResource;
-import org.openmetadata.service.util.ChangeEventParser;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SlackWebhookEventPublisher extends AlertsActionPublisher {

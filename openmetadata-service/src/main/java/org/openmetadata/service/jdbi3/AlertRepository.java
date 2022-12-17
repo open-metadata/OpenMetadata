@@ -13,32 +13,18 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Relationship.CONTAINS;
-import static org.openmetadata.service.Entity.ALERT;
-import static org.openmetadata.service.Entity.ALERT_ACTION;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
 import java.io.IOException;
+import java.rmi.server.Operation;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.entity.alerts.Alert;
-import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.entity.alerts.AlertActionStatus;
-import org.openmetadata.schema.entity.alerts.AlertFilterRule;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.alerts.AlertUtil;
+
 import org.openmetadata.service.alerts.AlertsPublisherManager;
+import org.openmetadata.service.jdbi3.AlertRepository.AlertUpdater;
 import org.openmetadata.service.resources.alerts.AlertResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AlertRepository extends EntityRepository<Alert> {

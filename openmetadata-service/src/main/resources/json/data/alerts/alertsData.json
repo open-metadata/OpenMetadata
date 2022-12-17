@@ -19,6 +19,6 @@
         "condition": "matchAnyFieldChange('usageSummary')"
       }
     ],
-    "provider" : "system"
+    "provider": "system"
   }
 ]
