@@ -177,7 +177,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   style={{ marginBottom: '4px' }}>
                   {t('label.assigned-entity', {
                     entity: t('label.tier'),
-                  })}
+                  })}{' '}
                   %
                 </Typography.Paragraph>
                 <DataInsightProgressBar
