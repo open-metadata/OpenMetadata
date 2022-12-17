@@ -39,6 +39,7 @@ describe('Test ModalWithMarkdownEditor Component', () => {
   it('Component should render', () => {
     const { container } = render(
       <ModalWithMarkdownEditor
+        visible
         header="Test"
         placeholder="Test placeholder"
         value={mockValue}
@@ -54,6 +55,7 @@ describe('Test ModalWithMarkdownEditor Component', () => {
   it('Component should have same header as provided', () => {
     const { container } = render(
       <ModalWithMarkdownEditor
+        visible
         header="Test"
         placeholder="Test placeholder"
         value={mockValue}
@@ -69,6 +71,7 @@ describe('Test ModalWithMarkdownEditor Component', () => {
   it('on click of cancel button, onCancel callback should call', () => {
     const { container } = render(
       <ModalWithMarkdownEditor
+        visible
         header="Test"
         placeholder="Test placeholder"
         value={mockValue}

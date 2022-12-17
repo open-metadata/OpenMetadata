@@ -562,6 +562,7 @@
     "alert-plural": "Alerts",
     "select-field": "Select {{field}}",
     "filter-plural": "Filters",
+    "task-lowercase": "task",
     "create": "Create",
     "admin": "Admin",
     "generate": "Generate",

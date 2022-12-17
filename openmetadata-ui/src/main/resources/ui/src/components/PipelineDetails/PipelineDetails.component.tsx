@@ -214,10 +214,6 @@ const PipelineDetails = ({
     [tasks]
   );
 
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-
   const fetchResourcePermission = useCallback(async () => {
     try {
       const entityPermission = await getEntityPermission(
@@ -870,7 +866,6 @@ const PipelineDetails = ({
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
-                  onEntityFieldSelect={onEntityFieldSelect}
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
               </Col>
@@ -1015,10 +1010,11 @@ const PipelineDetails = ({
           header={`${t('label.edit-entity', { entity: t('label.task') })}: "${
             editTask.task.displayName || editTask.task.name
           }"`}
-          placeholder={t('label.type-field-name', {
-            fieldName: t('label.description'),
+          placeholder={t('label.enter-field-description', {
+            field: t('label.task-lowercase'),
           })}
           value={editTask.task.description || ''}
+          visible={Boolean(editTask)}
           onCancel={closeEditTaskModal}
           onSave={onTaskUpdate}
         />
