@@ -275,7 +275,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   }
 
   @GET
-  @Path("/{alertId}")
+  @Path("/allAlertAction/{alertId}")
   @Valid
   @Operation(
       operationId = "getAllAlertActionForAlert",
