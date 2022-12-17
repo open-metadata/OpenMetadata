@@ -12,7 +12,6 @@
  */
 package org.openmetadata.service.monitoring;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
@@ -31,7 +30,7 @@ public class EventMonitorPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(EventResource.ChangeEventList events) throws EventPublisherException, JsonProcessingException {
+  public void publish(EventResource.ChangeEventList events) throws EventPublisherException {
     for (ChangeEvent event : events.getData()) {
       String entityType = event.getEntityType();
       if (Entity.INGESTION_PIPELINE.equals(entityType)) {

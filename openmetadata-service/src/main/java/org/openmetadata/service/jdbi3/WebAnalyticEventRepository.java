@@ -73,7 +73,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Transaction
-  public void deleteWebAnalyticEventData(WebAnalyticEventType name, Long timestamp) throws IOException {
+  public void deleteWebAnalyticEventData(WebAnalyticEventType name, Long timestamp) {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .deleteBeforeExclusive(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);

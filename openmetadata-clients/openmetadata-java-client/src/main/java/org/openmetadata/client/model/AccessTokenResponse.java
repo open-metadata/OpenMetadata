@@ -55,7 +55,7 @@ public class AccessTokenResponse {
    *
    * @return ExpiresIn
    */
-  @Schema(description = "")
+  @Schema()
   public Long getExpiresIn() {
     return expiresIn;
   }
@@ -74,7 +74,7 @@ public class AccessTokenResponse {
    *
    * @return AccessToken
    */
-  @Schema(description = "")
+  @Schema()
   public String getAccessToken() {
     return accessToken;
   }
@@ -93,7 +93,7 @@ public class AccessTokenResponse {
    *
    * @return Scope
    */
-  @Schema(description = "")
+  @Schema()
   public String getScope() {
     return scope;
   }
