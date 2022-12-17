@@ -25,10 +25,10 @@ public class TotalEntitiesAggregator extends DataInsightAggregatorInterface<Tota
   }
 
   @Override
-  List aggregate() throws ParseException {
+  List<TotalEntitiesByType> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
-    List<TotalEntitiesByType> data = new ArrayList();
-    List<Double> entityCount = new ArrayList();
+    List<TotalEntitiesByType> data = new ArrayList<>();
+    List<Double> entityCount = new ArrayList<>();
 
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
@@ -46,13 +46,11 @@ public class TotalEntitiesAggregator extends DataInsightAggregatorInterface<Tota
       }
     }
 
-    double totalEntities = entityCount.stream().mapToDouble(v -> v.doubleValue()).sum();
+    double totalEntities = entityCount.stream().mapToDouble(v -> v).sum();
 
-    data.stream()
-        .forEach(
-            (el) -> {
-              el.withEntityCountFraction(el.getEntityCount() / totalEntities);
-            });
+    for (TotalEntitiesByType el : data) {
+      el.withEntityCountFraction(el.getEntityCount() / totalEntities);
+    }
 
     return data;
   }

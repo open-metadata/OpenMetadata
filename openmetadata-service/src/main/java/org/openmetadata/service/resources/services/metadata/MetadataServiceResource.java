@@ -72,7 +72,7 @@ public class MetadataServiceResource
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
   public static final String FIELDS = "pipelines,owner,tags";
 
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     registerMetadataServices(config);
   }
 

@@ -89,7 +89,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Test
-  void post_testWithInvalidValues_4xx(TestInfo test) throws HttpResponseException {
+  void post_testWithInvalidValues_4xx() {
     String uuid = "Test2" + UUID.randomUUID();
     CreateKpiRequest create1 = createRequest(uuid);
     create1.withDataInsightChart(USER1_REF);
@@ -109,7 +109,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Test
-  void createUpdate_tests_200(TestInfo test) throws IOException {
+  void createUpdate_tests_200() throws IOException {
     CreateKpiRequest create = createRequest("Test" + UUID.randomUUID());
     Kpi createdKpi = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     createdKpi = getEntity(createdKpi.getId(), KpiResource.FIELDS, ADMIN_AUTH_HEADERS);
@@ -250,8 +250,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Override
-  public void validateCreatedEntity(Kpi createdEntity, CreateKpiRequest request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Kpi createdEntity, CreateKpiRequest request, Map<String, String> authHeaders) {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getStartDate(), createdEntity.getStartDate());
     assertEquals(request.getEndDate(), createdEntity.getEndDate());
@@ -325,7 +324,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Override
-  public void compareEntities(Kpi expected, Kpi updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Kpi expected, Kpi updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(expected, updated, getPrincipalName(authHeaders));
     assertEquals(expected.getStartDate(), updated.getStartDate());
     assertEquals(expected.getEndDate(), updated.getEndDate());
@@ -335,16 +334,14 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Override
-  public Kpi validateGetWithDifferentFields(Kpi entity, boolean byName) throws HttpResponseException {
+  public Kpi validateGetWithDifferentFields(Kpi entity, boolean byName) {
     // TODO:
     return null;
   }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
+    if (expected == actual) {}
     // TODO fix this
   }
 }

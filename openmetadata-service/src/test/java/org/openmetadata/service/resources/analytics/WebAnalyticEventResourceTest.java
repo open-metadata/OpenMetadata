@@ -67,7 +67,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
 
   @Test
   void put_and_delete_web_analytic_event_data_200() throws IOException, ParseException {
-    String dates[] = {"2022-10-11", "2022-10-10", "2022-10-09", "2022-10-08"};
+    String[] dates = {"2022-10-11", "2022-10-10", "2022-10-09", "2022-10-08"};
 
     for (String date : dates) {
       WebAnalyticEventData webAnalyticEventData =
