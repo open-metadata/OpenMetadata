@@ -38,7 +38,7 @@ import {
   KPI_DATE_PICKER_FORMAT,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
-import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
+import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKPIRequest';
 import {
   DataInsightChartResult,
   DataInsightChartType,

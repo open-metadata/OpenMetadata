@@ -47,9 +47,9 @@ import {
 } from '../../constants/DataInsight.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  CreateKpiRequest,
+  CreateKPIRequest,
   KpiTargetType,
-} from '../../generated/api/dataInsight/kpi/createKpiRequest';
+} from '../../generated/api/dataInsight/kpi/createKPIRequest';
 import {
   ChartDataType,
   ChartParameterValues,
@@ -171,7 +171,7 @@ const AddKPIPage = () => {
 
     const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
 
-    const formData: CreateKpiRequest = {
+    const formData: CreateKPIRequest = {
       dataInsightChart: {
         id: values.dataInsightChart,
         type: EntityType.DATA_INSIGHT_CHART,

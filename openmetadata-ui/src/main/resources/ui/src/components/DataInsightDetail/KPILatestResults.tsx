@@ -2,7 +2,7 @@ import { Space, Typography } from 'antd';
 import { toNumber, uniqueId } from 'lodash';
 
 import React, { FC, useMemo } from 'react';
-import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
+import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKPIRequest';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getNumberOfDaysForTimestamp } from '../../utils/TimeUtils';

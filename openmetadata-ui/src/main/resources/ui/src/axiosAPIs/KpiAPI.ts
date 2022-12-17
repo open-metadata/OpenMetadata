@@ -13,7 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
+import { CreateKPIRequest } from '../generated/api/dataInsight/kpi/createKPIRequest';
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { Include } from '../generated/type/include';
 import APIClient from './index';
@@ -38,16 +38,16 @@ export const getListKPIs = async (params?: ListParams) => {
 
   return response.data;
 };
-export const postKPI = async (data: CreateKpiRequest) => {
-  const response = await APIClient.post<CreateKpiRequest, AxiosResponse<Kpi>>(
+export const postKPI = async (data: CreateKPIRequest) => {
+  const response = await APIClient.post<CreateKPIRequest, AxiosResponse<Kpi>>(
     '/kpi',
     data
   );
 
   return response.data;
 };
-export const putKPI = async (data: CreateKpiRequest) => {
-  const response = await APIClient.put<CreateKpiRequest, AxiosResponse<Kpi>>(
+export const putKPI = async (data: CreateKPIRequest) => {
+  const response = await APIClient.put<CreateKPIRequest, AxiosResponse<Kpi>>(
     '/kpi',
     data
   );
