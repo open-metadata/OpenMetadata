@@ -26,10 +26,7 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import {
-  commonUserDetailColumns,
-  getEntityName,
-} from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -37,6 +34,7 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
+import { commonUserDetailColumns } from '../Users/Users.util';
 import './usersList.less';
 
 interface UserListV1Props {
@@ -117,7 +115,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      ...commonUserDetailColumns,
+      ...commonUserDetailColumns(),
       {
         title: t('label.actions'),
         dataIndex: 'actions',
@@ -261,6 +259,7 @@ const UserListV1: FC<UserListV1Props> = ({
             indicator: <Loader size="small" />,
           }}
           pagination={false}
+          rowKey="id"
           size="small"
         />
       </Col>

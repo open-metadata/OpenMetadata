@@ -190,7 +190,7 @@ def run_backup(
     )
 
     if upload:
-        if upload_destination_type.title() == UploadDestinationType.AWS.value:
+        if upload_destination_type == UploadDestinationType.AWS.value:
             endpoint, bucket, key = upload
             upload_backup_aws(endpoint, bucket, key, out)
         elif upload_destination_type.title() == UploadDestinationType.AZURE.value:

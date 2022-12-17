@@ -28,7 +28,7 @@ import {
 } from 'lodash';
 import moment from 'moment';
 import React from 'react';
-import { ListItem, ListValues } from 'react-awesome-query-builder';
+import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import ChangeInValueIndicator from '../components/DataInsightDetail/ChangeInValueIndicator';
 import {
@@ -516,11 +516,8 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   };
 };
 
-export const getTeamFilter = (suggestionValues: ListValues = []) => {
-  return (suggestionValues as ListItem[]).map((suggestion: ListItem) => ({
-    label: suggestion.title,
-    value: suggestion.value,
-  }));
+export const getTeamFilter = (suggestionValues: ListItem[]): string[] => {
+  return suggestionValues.map((suggestion) => suggestion.value);
 };
 
 export const getFormattedActiveUsersData = (

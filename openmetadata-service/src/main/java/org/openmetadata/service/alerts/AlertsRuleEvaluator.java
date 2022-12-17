@@ -1,12 +1,14 @@
 package org.openmetadata.service.alerts;
 
 import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -19,6 +21,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.util.ChangeEventParser;
 
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -29,7 +32,8 @@ public class AlertsRuleEvaluator {
     matchAnyEntityId,
     matchAnyEventType,
     matchTestResult,
-    matchUpdatedBy
+    matchUpdatedBy,
+    matchAnyFieldChange
   }
 
   private final ChangeEvent changeEvent;
@@ -101,7 +105,7 @@ public class AlertsRuleEvaluator {
     }
     EntityInterface entity = (EntityInterface) changeEvent.getEntity();
     for (String name : entityNames) {
-      if (entity.getName().equals(name)) {
+      if (entity.getFullyQualifiedName().equals(name)) {
         return true;
       }
     }
@@ -187,6 +191,25 @@ public class AlertsRuleEvaluator {
     String entityUpdatedBy = changeEvent.getUserName();
     for (String name : updatedByUserList) {
       if (name.equals(entityUpdatedBy)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
+      name = "matchAnyFieldChange",
+      input = "List of comma separated fields change",
+      description = "Returns true if the change event entity is updated by the mentioned users",
+      examples = {"matchAnyFieldChange('fieldName1', 'fieldName')"},
+      paramInputType = NOT_REQUIRED)
+  public boolean matchAnyFieldChange(String... fieldChangeUpdate) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
+      return false;
+    }
+    Set<String> fields = ChangeEventParser.getUpdatedField(changeEvent);
+    for (String name : fieldChangeUpdate) {
+      if (fields.contains(name)) {
         return true;
       }
     }

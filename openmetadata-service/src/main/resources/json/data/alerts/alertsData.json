@@ -48,6 +48,11 @@
         "name": "DisableIngestionActivityFeedData",
         "effect": "deny",
         "condition": "matchUpdatedBy('ingestion-bot')"
+      },
+      {
+        "name": "DisableUsageSummaryFromActivityFeed",
+        "effect": "deny",
+        "condition": "matchAnyFieldChange('usageSummary')"
       }
     ],
     "provider" : "system"
