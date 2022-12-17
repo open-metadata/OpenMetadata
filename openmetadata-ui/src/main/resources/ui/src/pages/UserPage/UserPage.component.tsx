@@ -39,6 +39,7 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { UserProfileTab } from '../../enums/user.enum';
 import {
   Post,
   Thread,
@@ -54,7 +55,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const { t } = useTranslation();
-  const { username, tab } = useParams<{ [key: string]: string }>();
+  const { username, tab = UserProfileTab.ACTIVITY } =
+    useParams<{ [key: string]: string }>();
   const { search } = useLocation();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -340,7 +342,13 @@ const UserPage = () => {
   }, [username]);
 
   useEffect(() => {
-    if (userData.id) {
+    const isActivityTabs = [
+      UserProfileTab.ACTIVITY,
+      UserProfileTab.TASKS,
+    ].includes(tab as UserProfileTab);
+
+    // only make feed api call if active tab is either activity or tasks
+    if (userData.id && isActivityTabs) {
       const threadType =
         tab === 'tasks' ? ThreadType.Task : ThreadType.Conversation;
 
@@ -360,19 +368,16 @@ const UserPage = () => {
   }, [tab]);
 
   useEffect(() => {
-    if (!isEmpty(userData)) {
-      fetchEntities(true, setOwnedEntities);
+    if (tab === UserProfileTab.FOLLOWING) {
       fetchEntities(false, setFollowingEntities);
     }
-  }, [userData]);
+  }, [followingEntities.currPage, tab, userData]);
 
   useEffect(() => {
-    fetchEntities(false, setFollowingEntities);
-  }, [followingEntities.currPage]);
-
-  useEffect(() => {
-    fetchEntities(true, setOwnedEntities);
-  }, [ownedEntities.currPage]);
+    if (tab === UserProfileTab.MY_DATA) {
+      fetchEntities(true, setOwnedEntities);
+    }
+  }, [ownedEntities.currPage, tab, userData]);
 
   useEffect(() => {
     setCurrentLoggedInUser(AppState.getCurrentUserDetails());
