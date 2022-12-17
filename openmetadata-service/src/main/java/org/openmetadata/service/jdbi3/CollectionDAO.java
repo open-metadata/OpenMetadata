@@ -17,9 +17,11 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -86,7 +88,9 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.SQLQuery;
 import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
@@ -394,6 +398,71 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@Bind("id") String id, @Bind("extension") String extension);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "select count(*) from entity_extension d, json_table(d.json, '$[*]' columns ("
+                + "  vote double path '$.vote', "
+                + "  query varchar(200) path '$.query',"
+                + "  users json path '$.users',"
+                + "  checksum varchar(200) path '$.checksum',"
+                + "  duration double path '$.duration',"
+                + "  queryDate varchar(200) path '$.queryDate'"
+                + "  )"
+                + ""
+                + ") as j where d.id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select count(*) from entity_extension as ee , jsonb_to_recordset(ee.json) as x (vote decimal,query varchar,users json,checksum varchar,duration decimal,queryDate varchar) where ee.id = :id ",
+        connectionType = POSTGRES)
+    int getTotalQueriesCount(@Bind("id") String id);
+
+    @RegisterRowMapper(SqlQueryMapper.class)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select j.* from entity_extension d, json_table(d.json, '$[*]' columns ("
+                + "  vote Double path '$.vote', "
+                + "  query varchar(200) path '$.query',"
+                + "  users json path '$.users',"
+                + "  checksum varchar(200) path '$.checksum',"
+                + "  duration Double path '$.duration',"
+                + "  queryDate varchar(200) path '$.queryDate'"
+                + "  )"
+                + ") as j where d.id = :id AND d.extension = :extension And query > :after order by query LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select x.* from entity_extension as ee , jsonb_to_recordset(ee.json) as x (vote decimal,query varchar,users json,checksum varchar,duration decimal,queryDate varchar) where ee.id = :id and ee.extension = :extension and query > :after order by query LIMIT :limit ",
+        connectionType = POSTGRES)
+    List<SQLQuery> getExtensionPagination(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
+
+    @RegisterRowMapper(SqlQueryMapper.class)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select j.* from entity_extension d, json_table(d.json, '$[*]' columns ("
+                + "  vote Double path '$.vote',"
+                + "  query varchar(200) path '$.query',"
+                + "  users json path '$.users',"
+                + "  checksum varchar(200) path '$.checksum',"
+                + "  duration Double path '$.duration',"
+                + "  queryDate varchar(200) path '$.queryDate'"
+                + "  )"
+                + ") as j where d.id = :id AND d.extension = :extension And query < :before order by query LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select x.* from entity_extension as ee , jsonb_to_recordset(ee.json) as x (vote decimal,query varchar,users json,checksum varchar,duration decimal,queryDate varchar) where ee.id = :id and ee.extension = :extension and query < : before order by query LIMIT :limit ",
+        connectionType = POSTGRES)
+    List<SQLQuery> listBeforeTableQueries(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -435,6 +504,26 @@ public interface CollectionDAO {
     @Override
     public ExtensionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new ExtensionRecord(rs.getString("extension"), rs.getString("json"));
+    }
+  }
+
+  class SqlQueryMapper implements RowMapper<SQLQuery> {
+    @Override
+    public SQLQuery map(ResultSet rs, StatementContext ctx) throws SQLException {
+      List<EntityReference> users = new ArrayList<>();
+      String json = rs.getString("users");
+      try {
+        users = JsonUtils.readValue(json, new TypeReference<ArrayList<EntityReference>>() {});
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return new SQLQuery()
+          .withVote(rs.getDouble("vote"))
+          .withQuery(rs.getString("query"))
+          .withUsers(users)
+          .withChecksum(rs.getString("checksum"))
+          .withDuration(rs.getDouble("duration"))
+          .withQueryDate(rs.getString("queryDate"));
     }
   }
 
