@@ -11,11 +11,38 @@
  *  limitations under the License.
  */
 
-import { AlertActionType } from '../../generated/alerts/alertAction';
-import { getAlertsActionTypeIcon } from './AlertsUtil';
+import { getFunctionDisplayName } from './AlertsUtil';
 
 describe('AlertsUtil tests', () => {
-  it('getAlertsActionTypeIcon should return svg icon', () => {
-    expect(getAlertsActionTypeIcon(AlertActionType.Email)).toBe('');
+  it('getFunctionDisplayName should return correct text for matchAnyEntityFqn', () => {
+    expect(getFunctionDisplayName('matchAnyEntityFqn')).toBe('Match FQN');
+  });
+
+  it('getFunctionDisplayName should return correct text for matchAnyOwnerName', () => {
+    expect(getFunctionDisplayName('matchAnyOwnerName')).toBe('Match Owner');
+  });
+
+  it('getFunctionDisplayName should return correct text for matchAnyEventType', () => {
+    expect(getFunctionDisplayName('matchAnyEventType')).toBe(
+      'Match Event Type'
+    );
+  });
+
+  it('getFunctionDisplayName should return correct text for matchTestResult', () => {
+    expect(getFunctionDisplayName('matchTestResult')).toBe(
+      'Match Test Results'
+    );
+  });
+
+  it('getFunctionDisplayName should return correct text for matchUpdatedBy', () => {
+    expect(getFunctionDisplayName('matchUpdatedBy')).toBe('Match Updated By');
+  });
+
+  it('getFunctionDisplayName should return correct text for matchAnySource', () => {
+    expect(getFunctionDisplayName('matchAnySource')).toBe('');
+  });
+
+  it('getFunctionDisplayName should return correct text for matchAnyEntityId', () => {
+    expect(getFunctionDisplayName('matchAnyEntityId')).toBe('');
   });
 });
