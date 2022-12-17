@@ -14,7 +14,6 @@
 import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FunctionComponent, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
@@ -52,7 +51,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
       }
     };
 
-    return ReactDOM.createPortal(
+    return (
       <Modal
         centered
         destroyOnClose
@@ -85,7 +84,6 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
           placeHolder={placeholder}
           ref={markdownRef}
         />
-      </Modal>,
-      document.body
+      </Modal>
     );
   };
