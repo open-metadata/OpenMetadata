@@ -362,7 +362,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: 'SecretKey is required',
+                  message: t('label.field-required', {
+                    field: t('label.secret-key'),
+                  }),
                 },
               ]}>
               <Input.Password
@@ -395,7 +397,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.secret-key-required'),
+                  message: t('label.field-required', {
+                    field: t('label.secret-key'),
+                  }),
                 },
               ]}>
               <Input.Password
@@ -412,7 +416,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.client-id-required'),
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
@@ -429,7 +435,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.domain-required'),
+                  message: t('label.field-required', {
+                    field: t('label.domain'),
+                  }),
                 },
               ]}>
               <Input
@@ -452,7 +460,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.client-secret-required'),
+                  message: t('label.field-required', {
+                    field: t('label.client-secret'),
+                  }),
                 },
               ]}>
               <Input.Password
@@ -469,7 +479,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.client-id-required'),
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
@@ -486,7 +498,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.authority-required'),
+                  message: t('label.field-required', {
+                    field: t('label.authority'),
+                  }),
                 },
               ]}>
               <Input
@@ -521,18 +535,20 @@ const CreateUser = ({
         return (
           <>
             <Form.Item
-              label={t('label.privateKey')}
+              label={t('label.private-key')}
               name="privateKey"
               rules={[
                 {
                   required: true,
-                  message: t('message.privateKey-required'),
+                  message: t('label.field-required', {
+                    field: t('label.private-key'),
+                  }),
                 },
               ]}>
               <Input.Password
                 data-testid="privateKey"
                 name="privateKey"
-                placeholder={t('label.privateKey')}
+                placeholder={t('label.private-key')}
                 value={ssoClientConfig?.privateKey}
                 onChange={handleOnChange}
               />
@@ -543,7 +559,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.client-id-required'),
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
@@ -560,7 +578,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.org-url-required'),
+                  message: t('label.field-required', {
+                    field: t('label.org-url'),
+                  }),
                 },
               ]}>
               <Input
@@ -578,7 +598,9 @@ const CreateUser = ({
                 {
                   required: true,
                   type: 'email',
-                  message: t('message.service-email-required'),
+                  message: t('label.field-required', {
+                    field: t('label.service-email'),
+                  }),
                 },
               ]}>
               <Input
@@ -610,7 +632,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.secret-key-required'),
+                  message: t('label.field-required', {
+                    field: t('label.secret-key'),
+                  }),
                 },
               ]}>
               <Input.Password
@@ -627,7 +651,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.client-id-required'),
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
@@ -644,7 +670,9 @@ const CreateUser = ({
               rules={[
                 {
                   required: true,
-                  message: t('label.token-endpoint-required'),
+                  message: t('label.field-required', {
+                    field: t('label.token-end-point'),
+                  }),
                 },
               ]}>
               <Input
@@ -740,7 +768,9 @@ const CreateUser = ({
                     validator: () => {
                       if (!authMechanism) {
                         return Promise.reject(
-                          t('label.auth-mechanism-required')
+                          t('label.field-required', {
+                            field: t('label.auth-mechanism'),
+                          })
                         );
                       }
 
@@ -769,7 +799,9 @@ const CreateUser = ({
                       validator: () => {
                         if (!tokenExpiry) {
                           return Promise.reject(
-                            t('label.token-expiration-required')
+                            t('label.field-required', {
+                              field: t('label.token-expiration'),
+                            })
                           );
                         }
 

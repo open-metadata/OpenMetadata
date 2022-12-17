@@ -152,13 +152,10 @@
     "for": "for",
     "are-you-sure": "Are you sure?",
     "select-token-expiration": "Select Token Expiration",
-    "token-expiration-required": "Token Expiration is required",
     "token-expiration": "Token Expiration",
     "select-auth-mechanism": "Select Auth Mechanism",
     "auth-mechanism": "Auth Mechanism",
-    "auth-mechanism-required": "Auth Mechanism is required",
     "token-end-point": "TokenEndpoint",
-    "token-endpoint-required": "TokenEndpoint is required",
     "client-id": "ClientId",
     "secret-key": "Secret Key",
     "scopes": "Scopes",
@@ -565,7 +562,8 @@
     "automatically-generate": "Automatically Generate",
     "create-entity": "Create {{entity}}",
     "domain": "Domain",
-    "privateKey": "PrivateKey"
+    "private-key": "PrivateKey",
+    "service-email": "Service account Email"
   },
   "message": {
     "service-email-required": "Service account Email is required",
