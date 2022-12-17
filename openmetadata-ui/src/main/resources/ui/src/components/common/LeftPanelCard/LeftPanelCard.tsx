@@ -12,6 +12,7 @@
  */
 
 import { Card } from 'antd';
+import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React from 'react';
 import { LeftPanelCardProps } from './LeftPanelCard.interface';
@@ -19,7 +20,10 @@ import { LeftPanelCardProps } from './LeftPanelCard.interface';
 const LeftPanelCard = ({ children, id, className }: LeftPanelCardProps) => {
   return (
     <Card
-      className={`${className} left-panel-card tw-h-full page-layout-v1-left-panel page-layout-v1-vertical-scroll`}
+      className={classNames(
+        className,
+        'left-panel-card tw-h-full page-layout-v1-left-panel page-layout-v1-vertical-scroll'
+      )}
       data-testid={`${lowerCase(id)}-left-panel`}>
       <div>{children}</div>
     </Card>
