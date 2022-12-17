@@ -555,6 +555,7 @@
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
     "latest": "Latest",
+    "task-lowercase": "task",
     "create": "Create",
     "admin": "Admin",
     "generate": "Generate",
