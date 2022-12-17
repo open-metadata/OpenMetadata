@@ -69,6 +69,7 @@ import {
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
 import './GlossaryV1.style.less';
+import GlossaryV1Skeleton from './GlossaryV1Skeleton.component';
 
 const { Title } = Typography;
 
@@ -334,12 +335,14 @@ const GlossaryV1 = ({
   const fetchLeftPanel = () => {
     return (
       <LeftPanelCard id="glossary">
-        <div className="tw-h-full tw-py-2">
-          <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
-            <h6 className="tw-heading tw-text-sm tw-font-semibold">Glossary</h6>
-          </div>
-          <div>
-            {treeData.length ? (
+        <GlossaryV1Skeleton loading={treeData.length === 0}>
+          <div className="tw-h-full tw-py-2">
+            <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
+              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+                {t('label.glossary')}
+              </h6>
+            </div>
+            <div>
               <Fragment>
                 <div className="tw-px-3 tw-mb-2">
                   <Searchbar
@@ -352,8 +355,8 @@ const GlossaryV1 = ({
                   <Tooltip
                     title={
                       createGlossaryPermission
-                        ? 'Add Glossary'
-                        : NO_PERMISSION_FOR_ACTION
+                        ? t('label.add-glossary')
+                        : t('message.no-permission-for-action')
                     }>
                     <button
                       className="tw-mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
@@ -361,16 +364,20 @@ const GlossaryV1 = ({
                       disabled={!createGlossaryPermission}
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                      <span>Add Glossary</span>
+                      <span>{t('label.add-glossary')}</span>
                     </button>
                   </Tooltip>
                 </div>
                 {isSearchResultEmpty ? (
                   <p className="tw-text-grey-muted tw-text-center">
                     {searchText ? (
-                      <span>{`No Glossary found for "${searchText}"`}</span>
+                      <span>
+                        {t('label.no-glossary-found-for-searchText', {
+                          searchText,
+                        })}
+                      </span>
                     ) : (
-                      <span>No Glossary found</span>
+                      <span>{t('label.no-glossary-found')}</span>
                     )}
                   </p>
                 ) : (
@@ -389,11 +396,9 @@ const GlossaryV1 = ({
                   />
                 )}
               </Fragment>
-            ) : (
-              <Loader />
-            )}
+            </div>
           </div>
-        </div>
+        </GlossaryV1Skeleton>
       </LeftPanelCard>
     );
   };

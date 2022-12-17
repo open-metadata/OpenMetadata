@@ -103,3 +103,7 @@ export interface EntityDetailsObjectInterface {
   details: EntityDetailsType;
   entityType: string;
 }
+export interface ExploreSkeletonInterface {
+  children: JSX.Element;
+  loading: boolean;
+}

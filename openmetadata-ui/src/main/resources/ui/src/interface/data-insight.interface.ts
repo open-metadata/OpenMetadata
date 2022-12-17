@@ -61,3 +61,8 @@ export type KpiDates = {
 };
 
 export type ChartValue = string | number | undefined;
+
+export interface DataInsightsLeftPanelSkeletonInterface {
+  loading?: boolean;
+  children: JSX.Element;
+}

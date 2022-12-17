@@ -11,19 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
-import { lowerCase } from 'lodash';
-import React from 'react';
-import { LeftPanelCardProps } from './LeftPanelCard.interface';
+import { HTMLAttributes } from 'react';
 
-const LeftPanelCard = ({ children, id, classes }: LeftPanelCardProps) => {
-  return (
-    <Card
-      className={`${classes} left-panel-card tw-h-full page-layout-v1-left-panel page-layout-v1-vertical-scroll`}
-      data-testid={`${lowerCase(id)}-left-panel`}>
-      <div>{children}</div>
-    </Card>
-  );
-};
-
-export default LeftPanelCard;
+export interface LeftPanelCardProps extends HTMLAttributes<HTMLDivElement> {
+  children: React.ReactElement | string;
+  id: string;
+  classes?: string;
+}

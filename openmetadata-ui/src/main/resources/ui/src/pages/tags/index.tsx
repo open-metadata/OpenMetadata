@@ -82,6 +82,7 @@ import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
+import TagsLeftPanelSkeleton from './TagsLeftPanelSkeleton.component';
 
 type DeleteTagDetailsType = {
   id: string;
@@ -509,61 +510,63 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <LeftPanelCard id="tags">
-        <div className="tw-py-2" data-testid="data-summary-container">
-          <div className="tw-px-3">
-            <h6 className="tw-heading tw-text-sm tw-font-semibold">
-              Tag Categories
-            </h6>
-            <div className="tw-mb-3">
-              <Tooltip
-                title={
-                  createCategoryPermission
-                    ? t('label.add-category')
-                    : t('message.no-permission-for-action')
-                }>
-                <button
-                  className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
-                  data-testid="add-category"
-                  disabled={!createCategoryPermission}
-                  onClick={() => {
-                    setIsAddingCategory((prevState) => !prevState);
-                    setErrorDataCategory(undefined);
-                  }}>
-                  <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                  <span>{t('label.add-tag-category')}</span>
-                </button>
-              </Tooltip>
-            </div>
-          </div>
-
-          {categories &&
-            categories.map((category: TagCategory) => (
-              <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
-                  category.name,
-                  currentCategory?.name
-                )}`}
-                data-testid="side-panel-category"
-                key={category.name}
-                onClick={() => {
-                  history.push(getTagPath(category.name));
-                }}>
-                <Typography.Paragraph
-                  className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
-                  data-testid="tag-name"
-                  ellipsis={{ rows: 1, tooltip: true }}>
-                  {getEntityName(category as unknown as EntityReference)}
-                </Typography.Paragraph>
-                {getCountBadge(
-                  currentCategory?.name === category.name
-                    ? currentCategory.children?.length
-                    : category.children?.length || 0,
-                  'tw-self-center',
-                  currentCategory?.name === category.name
-                )}
+        <TagsLeftPanelSkeleton loading={isLoading}>
+          <div className="tw-py-2" data-testid="data-summary-container">
+            <div className="tw-px-3">
+              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+                {t('label.tag-categories')}
+              </h6>
+              <div className="tw-mb-3">
+                <Tooltip
+                  title={
+                    createCategoryPermission
+                      ? t('label.add-category')
+                      : t('message.no-permission-for-action')
+                  }>
+                  <button
+                    className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
+                    data-testid="add-category"
+                    disabled={!createCategoryPermission}
+                    onClick={() => {
+                      setIsAddingCategory((prevState) => !prevState);
+                      setErrorDataCategory(undefined);
+                    }}>
+                    <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                    <span>{t('label.add-tag-category')}</span>
+                  </button>
+                </Tooltip>
               </div>
-            ))}
-        </div>
+            </div>
+
+            {categories &&
+              categories.map((category: TagCategory) => (
+                <div
+                  className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
+                    category.name,
+                    currentCategory?.name
+                  )}`}
+                  data-testid="side-panel-category"
+                  key={category.name}
+                  onClick={() => {
+                    history.push(getTagPath(category.name));
+                  }}>
+                  <Typography.Paragraph
+                    className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
+                    data-testid="tag-name"
+                    ellipsis={{ rows: 1, tooltip: true }}>
+                    {getEntityName(category as unknown as EntityReference)}
+                  </Typography.Paragraph>
+                  {getCountBadge(
+                    currentCategory?.name === category.name
+                      ? currentCategory.children?.length
+                      : category.children?.length || 0,
+                    'tw-self-center',
+                    currentCategory?.name === category.name
+                  )}
+                </div>
+              ))}
+          </div>
+        </TagsLeftPanelSkeleton>
       </LeftPanelCard>
     );
   };

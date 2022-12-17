@@ -53,6 +53,7 @@ import {
 } from './explore.interface';
 import './Explore.style.less';
 import ExploreQuickFilters from './ExploreQuickFilters';
+import ExploreSkeleton from './ExploreSkeleton.component';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -214,14 +215,20 @@ const Explore: React.FC<ExploreProps> = ({
         <Card
           className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
           data-testid="data-summary-container">
-          <FacetFilter
-            aggregations={omit(searchResults?.aggregations, 'entityType')}
-            filters={postFilter}
-            showDeleted={showDeleted}
-            onChangeShowDeleted={onChangeShowDeleted}
-            onClearFilter={onChangePostFilter}
-            onSelectHandler={handleFacetFilterChange}
-          />
+          <ExploreSkeleton
+            loading={
+              isUndefined(searchResults?.aggregations) &&
+              isUndefined(postFilter)
+            }>
+            <FacetFilter
+              aggregations={omit(searchResults?.aggregations, 'entityType')}
+              filters={postFilter}
+              showDeleted={showDeleted}
+              onChangeShowDeleted={onChangeShowDeleted}
+              onClearFilter={onChangePostFilter}
+              onSelectHandler={handleFacetFilterChange}
+            />
+          </ExploreSkeleton>
         </Card>
       }>
       <Tabs
