@@ -263,7 +263,7 @@ const TeamDetailsV1 = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      ...commonUserDetailColumns,
+      ...commonUserDetailColumns(),
       {
         title: t('label.actions'),
         dataIndex: 'actions',

@@ -117,7 +117,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      ...commonUserDetailColumns,
+      ...commonUserDetailColumns(),
       {
         title: t('label.actions'),
         dataIndex: 'actions',
@@ -261,6 +261,7 @@ const UserListV1: FC<UserListV1Props> = ({
             indicator: <Loader size="small" />,
           }}
           pagination={false}
+          rowKey="id"
           size="small"
         />
       </Col>

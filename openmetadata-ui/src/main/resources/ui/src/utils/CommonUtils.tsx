@@ -751,7 +751,7 @@ export const getHostNameFromURL = (url: string) => {
   }
 };
 
-export const commonUserDetailColumns: ColumnsType<User> = [
+export const commonUserDetailColumns = (): ColumnsType<User> => [
   {
     title: t('label.username'),
     dataIndex: 'username',
