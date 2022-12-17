@@ -205,7 +205,7 @@ def backup_args(parser: argparse.ArgumentParser):
     )
     parser.add_argument(
         "--upload-destination-type",
-        help="AWS or AZURE",
+        help="AWS or Azure",
         choices=UploadDestinationType.__members__,
         default=None,
     )

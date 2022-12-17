@@ -74,7 +74,7 @@ After the installation, we can take a look at the different options to run the C
 ```commandline
 > metadata backup -h
 usage: metadata backup [-h] -H HOST -u USER -p PASSWORD -d DATABASE [--port PORT] [--output OUTPUT] 
-                       [--upload-destination-type {AWS,AZURE}] [--upload UPLOAD UPLOAD UPLOAD] [-o OPTIONS] [-a ARGUMENTS]
+                       [--upload-destination-type {AWS,Azure}] [--upload UPLOAD UPLOAD UPLOAD] [-o OPTIONS] [-a ARGUMENTS]
                        [-s SCHEMA]
 
 optional arguments:
@@ -87,8 +87,8 @@ optional arguments:
                         Database to backup
   --port PORT           Database service port
   --output OUTPUT       Local path to store the backup
-  --upload-destination-type {AWS,AZURE}
-                        AWS or AZURE
+  --upload-destination-type {AWS,Azure}
+                        AWS or Azure
   --upload UPLOAD UPLOAD UPLOAD
                         S3 endpoint, bucket & key to upload the backup file
   -o OPTIONS, --options OPTIONS
@@ -172,7 +172,7 @@ An example of Azure Blob CLI call will look as:
 ```commandline
 metadata backup -u openmetadata_user -p openmetadata_password \
     -H localhost -d openmetadata_db --output=dir1/dir2 \
-    --upload-destination-type AZURE \
+    --upload-destination-type Azure \
     --upload https://container.blob.core.windows.net/ container-name Folder-name/
 ```
 And we'll get the following output:

@@ -27,7 +27,7 @@ from metadata.utils.logger import cli_logger
 
 class UploadDestinationType(Enum):
     AWS = "AWS"
-    AZURE = "Azure"
+    Azure = "Azure"
 
 
 logger = cli_logger()
@@ -190,10 +190,10 @@ def run_backup(
     )
 
     if upload:
-        if upload_destination_type.title() == UploadDestinationType.AWS.value:
+        if upload_destination_type == UploadDestinationType.AWS.value:
             endpoint, bucket, key = upload
             upload_backup_aws(endpoint, bucket, key, out)
-        elif upload_destination_type.title() == UploadDestinationType.AZURE.value:
+        elif upload_destination_type == UploadDestinationType.Azure.value:
             # only need two parameters from upload, key would be null
             account_url, container, key = upload
             upload_backup_azure(account_url, container, out)
