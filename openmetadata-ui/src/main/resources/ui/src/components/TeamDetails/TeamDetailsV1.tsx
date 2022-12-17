@@ -48,6 +48,7 @@ import {
   ROLE_DOCS,
   TEAMS_DOCS,
 } from '../../constants/docs.constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -92,6 +93,7 @@ import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import PageHeader from '../header/PageHeader.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -1042,6 +1044,9 @@ const TeamDetailsV1 = ({
     <div
       className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
       data-testid="team-details-container">
+      <div className="m-b-sm">
+        <PageHeader data={PAGE_HEADERS.TEAMS} />
+      </div>
       {!isEmpty(currentTeam) ? (
         <Fragment>
           {!isOrganization && (

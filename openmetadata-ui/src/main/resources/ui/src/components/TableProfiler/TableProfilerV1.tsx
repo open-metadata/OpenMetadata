@@ -28,7 +28,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { SelectableOption } from 'Models';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
@@ -38,6 +38,7 @@ import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profi
 import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
   INITIAL_TEST_RESULT_SUMMARY,
   PROFILER_FILTER_RANGE,
@@ -56,6 +57,7 @@ import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import PageHeader from '../header/PageHeader.component';
 import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import { ProfilerDashboardTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
@@ -109,6 +111,16 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
 
     return testCaseStatus;
   }, []);
+
+  const getPageHeader = useCallback(() => {
+    if (isProfiler) {
+      return PAGE_HEADERS.TABLE_PROFILE;
+    } else if (isDataQuality) {
+      return PAGE_HEADERS.DATA_QUALITY;
+    } else {
+      return PAGE_HEADERS.COLUMN_PROFILE;
+    }
+  }, [isProfiler, isDataQuality]);
 
   const testCaseTypeOption = useMemo(() => {
     const testCaseStatus: SelectableOption[] = Object.entries(TestType).map(
@@ -317,100 +329,109 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
         <Space
           className="tab-details-container w-full h-min-full"
           direction="vertical">
-          <Space className="m-b-md w-full justify-end">
-            {isDataQuality && (
-              <>
-                <Form.Item
-                  className="m-0"
-                  label={t('label.deleted', {
-                    entity: t('label.test-plural'),
-                  })}>
-                  <Switch
-                    checked={deleted}
-                    onClick={handleDeletedTestCaseClick}
-                  />
-                </Form.Item>
-                <Form.Item className="m-0 w-40" label={t('label.type')}>
+          <Row className="m-b-md">
+            <Col span={9}>
+              <PageHeader data={getPageHeader()} />
+            </Col>
+            <Col span={15}>
+              <Space align="center" className="w-full justify-end">
+                {isDataQuality && (
+                  <>
+                    <Form.Item
+                      className="m-0"
+                      label={t('label.deleted', {
+                        entity: t('label.test-plural'),
+                      })}>
+                      <Switch
+                        checked={deleted}
+                        onClick={handleDeletedTestCaseClick}
+                      />
+                    </Form.Item>
+                    <Form.Item className="m-0 w-40" label={t('label.type')}>
+                      <Select
+                        options={testCaseTypeOption}
+                        value={selectedTestType}
+                        onChange={handleTestCaseTypeChange}
+                      />
+                    </Form.Item>
+                    <Form.Item className="m-0 w-40" label={t('label.status')}>
+                      <Select
+                        options={testCaseStatusOption}
+                        value={selectedTestCaseStatus}
+                        onChange={handleTestCaseStatusChange}
+                      />
+                    </Form.Item>
+                  </>
+                )}
+
+                {isProfiler && (
                   <Select
-                    options={testCaseTypeOption}
-                    value={selectedTestType}
-                    onChange={handleTestCaseTypeChange}
+                    className="tw-w-32"
+                    options={timeRangeOption}
+                    value={selectedTimeRange}
+                    onChange={handleTimeRangeChange}
                   />
-                </Form.Item>
-                <Form.Item className="m-0 w-40" label={t('label.status')}>
-                  <Select
-                    options={testCaseStatusOption}
-                    value={selectedTestCaseStatus}
-                    onChange={handleTestCaseStatusChange}
-                  />
-                </Form.Item>
-              </>
-            )}
+                )}
 
-            {isProfiler && (
-              <Select
-                className="tw-w-32"
-                options={timeRangeOption}
-                value={selectedTimeRange}
-                onChange={handleTimeRangeChange}
-              />
-            )}
+                <Tooltip
+                  title={
+                    editTest
+                      ? t('label.add-entity', {
+                          entity: t('label.test'),
+                        })
+                      : t('message.no-permission-for-action')
+                  }>
+                  <Link
+                    to={
+                      editTest
+                        ? getAddDataQualityTableTestPath(
+                            ProfilerDashboardType.TABLE,
+                            `${table?.fullyQualifiedName}`
+                          )
+                        : '#'
+                    }>
+                    <Button
+                      className="rounded-4"
+                      data-testid="profiler-add-table-test-btn"
+                      disabled={!editTest}
+                      type="primary">
+                      {t('label.add-entity', {
+                        entity: t('label.test'),
+                      })}
+                    </Button>
+                  </Link>
+                </Tooltip>
 
-            <Tooltip
-              title={
-                editTest
-                  ? t('label.add-entity', {
-                      entity: t('label.test'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Link
-                to={
-                  editTest
-                    ? getAddDataQualityTableTestPath(
-                        ProfilerDashboardType.TABLE,
-                        `${table?.fullyQualifiedName}`
-                      )
-                    : '#'
-                }>
-                <Button
-                  className="rounded-4"
-                  data-testid="profiler-add-table-test-btn"
-                  disabled={!editTest}
-                  type="primary">
-                  {t('label.add-entity', {
-                    entity: t('label.test'),
-                  })}
-                </Button>
-              </Link>
-            </Tooltip>
-
-            <Tooltip
-              title={
-                editTest
-                  ? t('label.settings')
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                ghost
-                className="flex items-center"
-                data-testid="profiler-setting-btn"
-                disabled={!editTest}
-                icon={
-                  <SVGIcons
-                    alt="setting"
-                    className="mr-2"
+                <Tooltip
+                  title={
+                    editTest
+                      ? t('label.settings')
+                      : t('message.no-permission-for-action')
+                  }>
+                  <Button
+                    ghost
+                    className="flex items-center"
+                    data-testid="profiler-setting-btn"
+                    disabled={!editTest}
                     icon={
-                      editTest ? Icons.SETTINGS_PRIMERY : Icons.SETTINGS_GRAY
+                      <SVGIcons
+                        alt="setting"
+                        className="mr-2"
+                        icon={
+                          editTest
+                            ? Icons.SETTINGS_PRIMERY
+                            : Icons.SETTINGS_GRAY
+                        }
+                      />
                     }
-                  />
-                }
-                type="primary"
-                onClick={() => handleSettingModal(true)}>
-                {t('label.settings')}
-              </Button>
-            </Tooltip>
-          </Space>
+                    type="primary"
+                    onClick={() => handleSettingModal(true)}>
+                    {t('label.settings')}
+                  </Button>
+                </Tooltip>
+              </Space>
+            </Col>
+          </Row>
 
           {isUndefined(profile) && (
             <div
