@@ -34,6 +34,7 @@ import {
   FilterPattern,
   IngestionPipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import {
   DbtConfig,
   DbtPipelineClass,
@@ -191,11 +192,12 @@ const AddIngestion = ({
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
   );
-  const [profileSamplePercentage, setProfileSamplePercentage] = useState(
+  const [profileSample, setProfileSample] = useState(
     (data?.sourceConfig.config as ConfigClass)?.profileSample
   );
-  const [profileSampleRowCount, setProfileSampleRowCount] = useState(
-    (data?.sourceConfig.config as ConfigClass)?.profileSampleRows
+  const [profileSampleType, setProfileSampleType] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.profileSampleType ||
+      ProfileSampleType.Percentage
   );
   const [threadCount, setThreadCount] = useState(
     (data?.sourceConfig.config as ConfigClass)?.threadCount ?? 5
@@ -553,8 +555,8 @@ const AddIngestion = ({
 
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
-          profileSample: profileSamplePercentage,
-          profileSampleRows: profileSampleRowCount,
+          profileSample: profileSample,
+          profileSampleType: profileSampleType,
           threadCount: threadCount,
           timeoutSeconds: timeoutSeconds,
         };
@@ -751,7 +753,8 @@ const AddIngestion = ({
               setMarkAllDeletedTables((pre) => !pre)
             }
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
-            handleProfileSample={(val) => setProfileSamplePercentage(val)}
+            handleProfileSample={(val) => setProfileSample(val)}
+            handleProfileSampleType={(val) => setProfileSampleType(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={setResultLimit}
             handleShowFilter={handleShowFilter}
@@ -768,8 +771,8 @@ const AddIngestion = ({
             mlModelFilterPattern={mlModelFilterPattern}
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
-            profileSample={profileSamplePercentage}
-            profileSampleRows={profileSampleRowCount}
+            profileSample={profileSample}
+            profileSampleType={profileSampleType}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}
@@ -790,9 +793,6 @@ const AddIngestion = ({
             useFqnFilter={useFqnFilter}
             onCancel={handleCancelClick}
             onNext={handleNext}
-            onProfileSampleRowChange={(val) =>
-              setProfileSampleRowCount(val ?? undefined)
-            }
             onUseFqnFilterClick={() => setUseFqnFilter((pre) => !pre)}
           />
         )}

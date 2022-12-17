@@ -43,7 +43,7 @@ import {
   PROFILER_FILTER_RANGE,
 } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
-import { Table } from '../../generated/entity/data/table';
+import { ProfileSampleType, Table } from '../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import { Include } from '../../generated/type/include';
@@ -137,11 +137,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
 
   const getProfileSampleValue = () => {
     let value;
-    if (profile?.profileSample) {
+    if (profile?.profileSampleType == ProfileSampleType.Percentage) {
       value = `${profile?.profileSample ?? 100}%`;
-    } else if (profile?.profileSampleRows) {
-      value = `${profile?.profileSampleRows} ${
-        profile?.profileSampleRows.toString().length > 1
+    } else if (profile?.profileSampleType == ProfileSampleType.Rows) {
+      value = `${profile?.profileSample} ${
+        profile?.profileSampleType.toString().length > 1
           ? t('label.row-plural')
           : t('label.row')
       } `;

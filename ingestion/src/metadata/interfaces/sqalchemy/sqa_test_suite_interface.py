@@ -52,7 +52,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
         sqa_metadata_obj: Optional[MetaData] = None,
-        table_sample_percentage: float = None,
+        table_sample_profile: float = None,
         table_sample_query: str = None,
         table_partition_config: dict = None,
         table_entity: Table = None,
@@ -67,7 +67,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
 
         self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
 
-        self.table_sample_percentage = table_sample_percentage
+        self.table_sample_profile = table_sample_profile
         self.table_sample_query = table_sample_query
         self.table_partition_config = (
             self.get_partition_details(table_partition_config)
@@ -115,7 +115,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         return Sampler(
             session=self.session,
             table=self.table,
-            profile_sample_percentage=self.table_sample_percentage,
+            profile_sample=self.table_sample_profile,
             profile_sample_rows=None,
             partition_details=self.table_partition_config,
             profile_sample_query=self.table_sample_query,

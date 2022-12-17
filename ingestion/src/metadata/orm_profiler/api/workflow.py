@@ -196,7 +196,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         return None
 
-    def get_profile_sample(self, entity: Table) -> Optional[float]:
+    def get_profile_sample(self, entity: Table) -> Optional[tuple]:
         """Get profile sample
 
         Args:
@@ -204,38 +204,26 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
         if entity_config:
-            return entity_config.profileSample
+            return {
+                "profile_sample": entity_config.profileSample,
+                "profile_sample_type": entity_config.profileSampleType,
+            }
 
         if (
             hasattr(entity, "tableProfilerConfig")
             and hasattr(entity.tableProfilerConfig, "profileSample")
             and entity.tableProfilerConfig.profileSample
         ):
-            return entity.tableProfilerConfig.profileSample
+            return {
+                "profile_sample": entity.tableProfilerConfig.profileSample,
+                "profile_sample_type": entity.tableProfilerConfig.profileSampleType,
+            }
 
         if self.source_config.profileSample:
-            return self.source_config.profileSample
-        return None
-
-    def get_profile_sample_rows(self, entity: Table) -> Optional[float]:
-        """Get profile sample
-
-        Args:
-            entity: table entity
-        """
-        entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-        if entity_config:
-            return entity_config.profileSampleRows
-
-        if (
-            hasattr(entity, "tableProfilerConfig")
-            and hasattr(entity.tableProfilerConfig, "profileSampleRows")
-            and entity.tableProfilerConfig.profileSampleRows
-        ):
-            return entity.tableProfilerConfig.profileSampleRows
-        if self.source_config.profileSampleRows:
-            return self.source_config.profileSampleRows
-
+            return {
+                "profile_sample": self.source_config.profileSample,
+                "profile_sample_type": self.source_config.profileSampleType,
+            }
         return None
 
     def get_profile_query(self, entity: Table) -> Optional[str]:
@@ -282,10 +270,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,
                 table_entity=self._table_entity,
-                table_sample_percentage=self.get_profile_sample(self._table_entity)
-                if not self.get_profile_query(self._table_entity)
-                else None,
-                table_sample_rows=self.get_profile_sample_rows(self._table_entity)
+                table_sample_profile=self.get_profile_sample(self._table_entity)
                 if not self.get_profile_query(self._table_entity)
                 else None,
                 table_sample_query=self.get_profile_query(self._table_entity)

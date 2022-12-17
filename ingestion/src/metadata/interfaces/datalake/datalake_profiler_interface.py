@@ -61,7 +61,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             else None
         )
 
-        self.profile_sample = profiler_interface_args.table_sample_percentage
+        self.profile_sample = profiler_interface_args.table_sample_profile
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = None
         self._table = profiler_interface_args.table_entity

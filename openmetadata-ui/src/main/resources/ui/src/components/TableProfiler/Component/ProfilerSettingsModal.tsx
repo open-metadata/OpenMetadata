@@ -44,10 +44,10 @@ import {
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_PARTITION_TYPE,
 } from '../../../constants/profiler.constant';
-import { ProfileSampleType } from '../../../enums/Profiler.enum';
 import {
   ColumnProfilerConfig,
   PartitionProfilerConfig,
+  ProfileSampleType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
 import jsonData from '../../../jsons/en';
@@ -76,8 +76,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const [enablePartition, setEnablePartition] = useState(false);
   const [partitionData, setPartitionData] = useState<PartitionProfilerConfig>();
-  const [selectedProfileSampleType, setSelectedProfileSampleType] =
-    useState<ProfileSampleType>(ProfileSampleType.SAMPLE_PERCENTAGE);
+  const [selectedProfileSampleType, setSelectedProfileSampleType] = useState<
+    ProfileSampleType | undefined
+  >(ProfileSampleType.Percentage);
 
   const selectOptions = useMemo(() => {
     return columns.map(({ name }) => ({
@@ -130,23 +131,26 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       partitioning,
       profileQuery,
       profileSample,
-      profileSampleRows,
+      profileSampleType,
       excludeColumns,
     } = tableProfilerConfig;
-
-    const profileSampleType = profileSampleRows
-      ? ProfileSampleType.SAMPLE_ROW
-      : ProfileSampleType.SAMPLE_PERCENTAGE;
-
     setSqlQuery(profileQuery || '');
-    setProfileSample(profileSample || 100);
+    setProfileSample(profileSample);
     setExcludeCol(excludeColumns || []);
-    setSelectedProfileSampleType(profileSampleType);
+    setSelectedProfileSampleType(
+      profileSampleType || ProfileSampleType.Percentage
+    );
 
+    const profileSampleTypeCheck =
+      profileSampleType === ProfileSampleType.Percentage;
     form.setFieldsValue({
       profileSampleType,
-      profileSampleRowCount: profileSampleRows,
-      profileSamplePercentage: profileSample || 100,
+      profileSamplePercentage: profileSampleTypeCheck
+        ? profileSample || 100
+        : 100,
+      profileSampleRows: !profileSampleTypeCheck
+        ? profileSample || 100
+        : undefined,
     });
 
     if (includeColumns && includeColumns?.length > 0) {
@@ -210,17 +214,19 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const handleSave: FormProps['onFinish'] = async (data) => {
     setIsLoading(true);
-    const {
-      profileSamplePercentage,
-      profileSampleRowCount,
-      profileSampleType,
-    } = data;
+    const { profileSamplePercentage, profileSampleRows, profileSampleType } =
+      data;
+
     const profileConfig: TableProfilerConfig = {
       excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
       profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-      ...(profileSampleType === ProfileSampleType.SAMPLE_PERCENTAGE
-        ? { profileSample: profileSamplePercentage }
-        : { profileSampleRows: profileSampleRowCount }),
+      ...{
+        profileSample:
+          profileSampleType === ProfileSampleType.Percentage
+            ? profileSamplePercentage
+            : profileSampleRows,
+        profileSampleType: profileSampleType,
+      },
       includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
         ? getIncludesColumns()
         : undefined,
@@ -250,7 +256,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       setIsLoading(false);
     }
   };
-
   const handleCancel = () => {
     data && updateInitialConfig(data);
     onVisibilityChange(false);
@@ -290,8 +295,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             data-testid="configure-ingestion-container"
             form={form}
             initialValues={{
-              profileSampleType: ProfileSampleType.SAMPLE_PERCENTAGE,
-              profileSamplePercentage: 100,
+              profileSampleType: selectedProfileSampleType,
+              profileSamplePercentage: profileSample || 100,
             }}
             layout="vertical">
             <Form.Item
@@ -303,12 +308,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 className="w-full"
                 data-testid="profile-sample"
                 options={PROFILE_SAMPLE_OPTIONS}
-                onChange={(value) => setSelectedProfileSampleType(value)}
+                onChange={setSelectedProfileSampleType}
               />
             </Form.Item>
 
-            {selectedProfileSampleType ===
-            ProfileSampleType.SAMPLE_PERCENTAGE ? (
+            {selectedProfileSampleType === ProfileSampleType.Percentage ? (
               <Form.Item
                 className="m-b-0"
                 label={t('label.profile-sample', {
@@ -327,7 +331,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 label={t('label.profile-sample', {
                   type: 'Value',
                 })}
-                name="profileSampleRowCount">
+                name="profileSampleRows">
                 <InputNumber
                   className="w-full"
                   data-testid="metric-number-input"

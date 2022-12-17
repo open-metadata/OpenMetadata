@@ -124,7 +124,7 @@ class SampleTest(TestCase):
         generate a random subset of data
         """
         sampler = Sampler(
-            session=self.session, table=User, profile_sample_percentage=50.0
+            session=self.session, table=User, profile_sample=50.0
         )
         random_sample = sampler.random_sample()
         res = self.session.query(func.count()).select_from(random_sample).first()
@@ -143,7 +143,7 @@ class SampleTest(TestCase):
                 ProfilerInterfaceArgs(
                     service_connection_config=self.sqlite_conn,
                     table_entity=self.table_entity,
-                    table_sample_percentage=50,
+                    table_sample_profile=50,
                     ometa_client=None,
                 )
             )
@@ -186,7 +186,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_percentage=50,
+                        table_sample_profile=50,
                         ometa_client=None,
                     )
                 ),
@@ -208,7 +208,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_percentage=50,
+                        table_sample_profile=50,
                         ometa_client=None,
                     )
                 ),

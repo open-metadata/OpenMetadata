@@ -30,6 +30,8 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.orm_profiler.profiler.models import ProfilerDef
 
+from metadata.generated.schema.entity.data.table import ProfileSampleType
+
 
 class ColumnConfig(ConfigModel):
     """Column config for profiler"""
@@ -43,7 +45,7 @@ class TableConfig(ConfigModel):
 
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[float] = None
-    profileSampleRows: Optional[Union[float, int]] = None
+    profileSampleType: Optional[ProfileSampleType] = None
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]

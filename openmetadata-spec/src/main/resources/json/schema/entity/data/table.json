@@ -10,6 +10,15 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
+    "profileSampleType": {
+      "description": "Type of Profile Sample (percentage or rows)",
+      "type": "string",
+      "enum": [
+        "percentage",
+        "rows"
+      ],
+      "default": "percentage"
+    },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
@@ -627,11 +636,8 @@
           "maximum": 100,
           "default": null
         },
-        "profileSampleRows": {
-          "description": "No. of rows for data we want to execute the profiler and tests on.",
-          "type": "integer",
-          "minimum": 0,
-          "default": null
+        "profileSampleType": {
+          "$ref": "#/definitions/profileSampleType"
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
@@ -675,11 +681,8 @@
           "maximum": 100,
           "default": null
         },
-        "profileSampleRows": {
-          "description": "No. of rows for data we want to execute the profiler and tests on.",
-          "type": "integer",
-          "minimum": 0,
-          "default": null
+        "profileSampleType": {
+          "$ref": "#/definitions/profileSampleType"
         },
         "columnCount": {
           "description": "No.of columns in the table.",

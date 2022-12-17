@@ -191,22 +191,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public IngestionPipeline checkProfileSampleType(IngestionPipeline ingestionPipeline) throws IOException {
-    if (ingestionPipeline.getPipelineType().value().equals("profiler")) {
-      JSONObject origSourceConfig =
-          new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-      if (origSourceConfig.has("profileSample") && origSourceConfig.has("profileSampleRows")) {
-        //        Default to percentage
-        JSONObject newSourceConfig =
-            new JSONObject().put("config", origSourceConfig.put("profileSampleRows", (Integer) null));
-        SourceConfig sc = JsonUtils.readValue(newSourceConfig.toString(), SourceConfig.class);
-        ingestionPipeline.setSourceConfig(sc);
-        return ingestionPipeline;
-      }
-    }
-
-    return ingestionPipeline;
-  }
 
   public ResultList<PipelineStatus> listPipelineStatus(String ingestionPipelineFQN, Long startTs, Long endTs)
       throws IOException {
