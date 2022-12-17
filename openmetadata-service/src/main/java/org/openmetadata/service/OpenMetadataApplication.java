@@ -130,7 +130,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     registerAuthorizer(catalogConfig, environment);
 
     // Register Authenticator
-    registerAuthenticator(catalogConfig, jdbi);
+    registerAuthenticator(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -276,7 +276,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig, Jdbi jdbi) {
+  private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
       case "basic":

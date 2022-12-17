@@ -25,13 +25,13 @@ public class DailyActiveUsersAggregator extends DataInsightAggregatorInterface<D
   @Override
   List<DailyActiveUsers> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
-    List<DailyActiveUsers> data = new ArrayList();
+    List<DailyActiveUsers> data = new ArrayList<>();
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
-      Long activeUsers = timestampBucket.getDocCount();
+      long activeUsers = timestampBucket.getDocCount();
 
-      data.add(new DailyActiveUsers().withTimestamp(timestamp).withActiveUsers(activeUsers.intValue()));
+      data.add(new DailyActiveUsers().withTimestamp(timestamp).withActiveUsers((int) activeUsers));
     }
 
     return data;

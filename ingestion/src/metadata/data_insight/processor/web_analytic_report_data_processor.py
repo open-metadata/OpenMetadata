@@ -129,7 +129,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 entity = self.metadata.get_by_name(
                     ENTITIES[entity_obj.entity_type],
                     fqn=entity_obj.fqn,
-                    fields=["tags"],
+                    fields=["*"],
                 )
 
                 try:
