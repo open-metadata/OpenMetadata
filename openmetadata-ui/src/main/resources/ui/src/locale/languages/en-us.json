@@ -552,7 +552,8 @@
     "select-dbt-source": "Select DBT Source",
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
-    "latest": "Latest"
+    "latest": "Latest",
+    "task-lowercase": "task"
   },
   "message": {
     "service-email-required": "Service account Email is required",
