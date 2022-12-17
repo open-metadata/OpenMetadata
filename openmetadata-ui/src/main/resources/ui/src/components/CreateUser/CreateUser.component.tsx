@@ -26,7 +26,8 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, trim } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
@@ -76,6 +77,7 @@ const CreateUser = ({
   onSave,
   forceBot,
 }: CreateUserProps) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const { authConfig } = useAuthContext();
   const markdownRef = useRef<EditorContentRef>();
@@ -93,7 +95,7 @@ const CreateUser = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordGenerator, setPasswordGenerator] = useState(
-    CreatePasswordGenerator.AutomatciGenerate
+    CreatePasswordGenerator.AutomaticGenerate
   );
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
@@ -111,17 +113,22 @@ const CreateUser = ({
     [authConfig]
   );
 
-  const slashedBreadcrumbList = [
-    {
-      name: forceBot ? 'Bots' : 'Users',
-      url: forceBot ? getBotsPagePath() : getUsersPagePath(),
-    },
-    {
-      name: `Create ${forceBot ? 'Bot' : 'User'}`,
-      url: '',
-      activeTitle: true,
-    },
-  ];
+  const slashedBreadcrumbList = useMemo(
+    () => [
+      {
+        name: forceBot ? t('label.bot-plural') : t('label.users'),
+        url: forceBot ? getBotsPagePath() : getUsersPagePath(),
+      },
+      {
+        name: `${t('label.create')} ${
+          forceBot ? t('label.bot') : t('label.user')
+        }`,
+        url: '',
+        activeTitle: true,
+      },
+    ],
+    [forceBot]
+  );
 
   /**
    * Handle on change event
@@ -279,7 +286,6 @@ const CreateUser = ({
     });
   };
 
-  //   *******  Generate Random Passwprd  *****
   const generateRandomPassword = async () => {
     setIsPasswordGenerating(true);
     try {
@@ -300,7 +306,7 @@ const CreateUser = ({
    */
   const handleSave = () => {
     const isPasswordGenerated =
-      passwordGenerator === CreatePasswordGenerator.AutomatciGenerate;
+      passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
     const validRole = selectedRoles.filter(
       (id) => !isUndefined(id)
     ) as string[];
@@ -351,27 +357,29 @@ const CreateUser = ({
         return (
           <>
             <Form.Item
-              label="SecretKey"
+              label={t('label.secret-key')}
               name="secretKey"
               rules={[
                 {
                   required: true,
-                  message: 'SecretKey is required',
+                  message: t('label.field-required', {
+                    field: t('label.secret-key'),
+                  }),
                 },
               ]}>
               <Input.Password
                 data-testid="secretKey"
                 name="secretKey"
-                placeholder="secretKey"
+                placeholder={t('label.secret-key')}
                 value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
-            <Form.Item label="Audience" name="audience">
+            <Form.Item label={t('label.audience')} name="audience">
               <Input
                 data-testid="audience"
                 name="audience"
-                placeholder="audience"
+                placeholder={t('label.audience')}
                 value={ssoClientConfig?.audience}
                 onChange={handleOnChange}
               />
@@ -384,52 +392,58 @@ const CreateUser = ({
         return (
           <>
             <Form.Item
-              label="SecretKey"
+              label={t('label.secret-key')}
               name="secretKey"
               rules={[
                 {
                   required: true,
-                  message: 'SecretKey is required',
+                  message: t('label.field-required', {
+                    field: t('label.secret-key'),
+                  }),
                 },
               ]}>
               <Input.Password
                 data-testid="secretKey"
                 name="secretKey"
-                placeholder="secretKey"
+                placeholder={t('label.secret-key')}
                 value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.client-id')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.client-id')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Domain"
+              label={t('label.domain')}
               name="domain"
               rules={[
                 {
                   required: true,
-                  message: 'Domain is required',
+                  message: t('label.field-required', {
+                    field: t('label.domain'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="domain"
                 name="domain"
-                placeholder="domain"
+                placeholder={t('label.domain')}
                 value={ssoClientConfig?.domain}
                 onChange={handleOnChange}
               />
@@ -441,69 +455,75 @@ const CreateUser = ({
         return (
           <>
             <Form.Item
-              label="ClientSecret"
+              label={t('label.client-secret')}
               name="clientSecret"
               rules={[
                 {
                   required: true,
-                  message: 'ClientSecret is required',
+                  message: t('label.field-required', {
+                    field: t('label.client-secret'),
+                  }),
                 },
               ]}>
               <Input.Password
                 data-testid="clientSecret"
                 name="clientSecret"
-                placeholder="clientSecret"
+                placeholder={t('label.client-secret')}
                 value={ssoClientConfig?.clientSecret}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.client-id')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.client-id')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Authority"
+              label={t('label.authority')}
               name="authority"
               rules={[
                 {
                   required: true,
-                  message: 'Authority is required',
+                  message: t('label.field-required', {
+                    field: t('label.authority'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="authority"
                 name="authority"
-                placeholder="authority"
+                placeholder={t('label.authority')}
                 value={ssoClientConfig?.authority}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Scopes"
+              label={t('label.scopes')}
               name="scopes"
               rules={[
                 {
                   required: true,
-                  message: 'Scopes is required',
+                  message: t('label.scopes-comma-separated'),
                 },
               ]}>
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder="Scopes value comma separated"
+                placeholder={t('label.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
@@ -515,79 +535,87 @@ const CreateUser = ({
         return (
           <>
             <Form.Item
-              label="PrivateKey"
+              label={t('label.private-key')}
               name="privateKey"
               rules={[
                 {
                   required: true,
-                  message: 'PrivateKey is required',
+                  message: t('label.field-required', {
+                    field: t('label.private-key'),
+                  }),
                 },
               ]}>
               <Input.Password
                 data-testid="privateKey"
                 name="privateKey"
-                placeholder="privateKey"
+                placeholder={t('label.private-key')}
                 value={ssoClientConfig?.privateKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.client-id')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.client-id')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="OrgURL"
+              label={t('label.org-url')}
               name="orgURL"
               rules={[
                 {
                   required: true,
-                  message: 'OrgURL is required',
+                  message: t('label.field-required', {
+                    field: t('label.org-url'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="orgURL"
                 name="orgURL"
-                placeholder="orgURL"
+                placeholder={t('label.org-url')}
                 value={ssoClientConfig?.orgURL}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="Email"
+              label={t('label.email')}
               name="oktaEmail"
               rules={[
                 {
                   required: true,
                   type: 'email',
-                  message: 'Service account Email is required',
+                  message: t('label.field-required', {
+                    field: t('label.service-email'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder="Okta Service account Email"
+                placeholder={t('label.okta-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
             </Form.Item>
-            <Form.Item label="Scopes" name="scopes">
+            <Form.Item label={t('label.scopes')} name="scopes">
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder="Scopes value comma separated"
+                placeholder={t('label.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
@@ -599,52 +627,58 @@ const CreateUser = ({
         return (
           <>
             <Form.Item
-              label="SecretKey"
+              label={t('label.secret-key')}
               name="secretKey"
               rules={[
                 {
                   required: true,
-                  message: 'SecretKey is required',
+                  message: t('label.field-required', {
+                    field: t('label.secret-key'),
+                  }),
                 },
               ]}>
               <Input.Password
                 data-testid="secretKey"
                 name="secretKey"
-                placeholder="secretKey"
+                placeholder={t('label.secret-key')}
                 value={ssoClientConfig?.secretKey}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="ClientId"
+              label={t('label.client-id')}
               name="clientId"
               rules={[
                 {
                   required: true,
-                  message: 'ClientId is required',
+                  message: t('label.field-required', {
+                    field: t('label.client-id'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="clientId"
                 name="clientId"
-                placeholder="clientId"
+                placeholder={t('label.client-id')}
                 value={ssoClientConfig?.clientId}
                 onChange={handleOnChange}
               />
             </Form.Item>
             <Form.Item
-              label="TokenEndpoint"
+              label={t('label.token-end-point')}
               name="tokenEndpoint"
               rules={[
                 {
                   required: true,
-                  message: 'TokenEndpoint is required',
+                  message: t('label.field-required', {
+                    field: t('label.token-end-point'),
+                  }),
                 },
               ]}>
               <Input
                 data-testid="tokenEndpoint"
                 name="tokenEndpoint"
-                placeholder="tokenEndpoint"
+                placeholder={t('label.token-end-point')}
                 value={ssoClientConfig?.tokenEndpoint}
                 onChange={handleOnChange}
               />
@@ -658,6 +692,10 @@ const CreateUser = ({
     }
   };
 
+  useEffect(() => {
+    generateRandomPassword();
+  }, []);
+
   return (
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
@@ -665,7 +703,9 @@ const CreateUser = ({
       layout={PageLayoutType['2ColRTL']}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">
-          Create {forceBot ? 'Bot' : 'User'}
+          {t('label.create-entity', {
+            entity: forceBot ? t('label.bot') : t('label.user'),
+          })}
         </h6>
         <Form
           form={form}
@@ -674,7 +714,7 @@ const CreateUser = ({
           validateMessages={{ required: '${label} is required' }}
           onFinish={handleSave}>
           <Form.Item
-            label="Email"
+            label={t('label.email')}
             name="email"
             rules={[
               {
@@ -703,16 +743,16 @@ const CreateUser = ({
             <Input
               data-testid="email"
               name="email"
-              placeholder="email"
+              placeholder={t('label.email')}
               value={email}
               onChange={handleOnChange}
             />
           </Form.Item>
-          <Form.Item label="Display Name" name="displayName">
+          <Form.Item label={t('label.display-name')} name="displayName">
             <Input
               data-testid="displayName"
               name="displayName"
-              placeholder="displayName"
+              placeholder={t('label.display-name')}
               value={displayName}
               onChange={handleOnChange}
             />
@@ -720,14 +760,18 @@ const CreateUser = ({
           {forceBot && (
             <>
               <Form.Item
-                label="Auth Mechanism"
+                label={t('label.auth-mechanism')}
                 name="auth-mechanism"
                 rules={[
                   {
                     required: true,
                     validator: () => {
                       if (!authMechanism) {
-                        return Promise.reject('Auth Mechanism is required');
+                        return Promise.reject(
+                          t('label.field-required', {
+                            field: t('label.auth-mechanism'),
+                          })
+                        );
                       }
 
                       return Promise.resolve();
@@ -738,7 +782,7 @@ const CreateUser = ({
                   className="w-full"
                   data-testid="auth-mechanism"
                   defaultValue={authMechanism}
-                  placeholder="Select Auth Mechanism"
+                  placeholder={t('label.select-auth-mechanism')}
                   onChange={(value) => setAuthMechanism(value)}>
                   {getAuthMechanismTypeOptions(authConfig).map((option) => (
                     <Option key={option.value}>{option.label}</Option>
@@ -747,14 +791,18 @@ const CreateUser = ({
               </Form.Item>
               {authMechanism === AuthType.Jwt && (
                 <Form.Item
-                  label="Token Expiration"
+                  label={t('label.token-expiration')}
                   name="token-expiration"
                   rules={[
                     {
                       required: true,
                       validator: () => {
                         if (!tokenExpiry) {
-                          return Promise.reject('Token Expiration is required');
+                          return Promise.reject(
+                            t('label.field-required', {
+                              field: t('label.token-expiration'),
+                            })
+                          );
                         }
 
                         return Promise.resolve();
@@ -765,7 +813,7 @@ const CreateUser = ({
                     className="w-full"
                     data-testid="token-expiry"
                     defaultValue={tokenExpiry}
-                    placeholder="Select Token Expiration"
+                    placeholder={t('label.select-token-expiration')}
                     onChange={(value) => setTokenExpiry(value)}>
                     {getJWTTokenExpiryOptions().map((option) => (
                       <Option key={option.value}>{option.label}</Option>
@@ -776,7 +824,7 @@ const CreateUser = ({
               {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
             </>
           )}
-          <Form.Item label="Description" name="description">
+          <Form.Item label={t('label.description')} name="description">
             <RichTextEditor initialValue={description} ref={markdownRef} />
           </Form.Item>
 
@@ -788,11 +836,13 @@ const CreateUser = ({
                     name="passwordGenerator"
                     value={passwordGenerator}
                     onChange={handleOnChange}>
-                    <Radio value={CreatePasswordGenerator.AutomatciGenerate}>
-                      Automatic Generate
+                    <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
+                      {t('label.automatically-generate')}
                     </Radio>
                     <Radio value={CreatePasswordGenerator.CreatePassword}>
-                      Create Password
+                      {t('label.password-type', {
+                        type: t('label.create'),
+                      })}
                     </Radio>
                   </Radio.Group>
 
@@ -800,7 +850,7 @@ const CreateUser = ({
                   CreatePasswordGenerator.CreatePassword ? (
                     <div className="m-t-sm">
                       <Form.Item
-                        label="Password"
+                        label={t('label.password')}
                         name="password"
                         rules={[
                           {
@@ -813,20 +863,26 @@ const CreateUser = ({
                         ]}>
                         <Input.Password
                           name="password"
-                          placeholder="Enter a Password"
+                          placeholder={t('label.password-type', {
+                            type: t('label.enter'),
+                          })}
                           value={password}
                           onChange={handleOnChange}
                         />
                       </Form.Item>
 
                       <Form.Item
-                        label="Confirm Password"
+                        label={t('label.password-type', {
+                          type: t('label.confirm'),
+                        })}
                         name="confirmPassword"
                         rules={[
                           {
                             validator: (_, value) => {
                               if (value !== password) {
-                                return Promise.reject("Password doesn't match");
+                                return Promise.reject(
+                                  t('label.password-not-match')
+                                );
                               }
 
                               return Promise.resolve();
@@ -835,7 +891,9 @@ const CreateUser = ({
                         ]}>
                         <Input.Password
                           name="confirmPassword"
-                          placeholder="Confirm Password"
+                          placeholder={t('label.password-type', {
+                            type: t('label.confirm'),
+                          })}
                           value={confirmPassword}
                           onChange={handleOnChange}
                         />
@@ -844,7 +902,9 @@ const CreateUser = ({
                   ) : (
                     <div className="m-t-sm">
                       <Form.Item
-                        label="Generated Password"
+                        label={t('label.password-type', {
+                          type: t('label.generate'),
+                        })}
                         name="generatedPassword"
                         rules={[
                           {
@@ -863,7 +923,7 @@ const CreateUser = ({
                                   <Loader size="small" type="default" />
                                 ) : (
                                   <SVGIcons
-                                    alt="generate"
+                                    alt={t('label.generate')}
                                     icon={Icons.SYNC}
                                     width="16"
                                   />
@@ -885,17 +945,17 @@ const CreateUser = ({
                   )}
                 </>
               )}
-              <Form.Item label="Teams" name="teams">
+              <Form.Item label={t('label.teams')} name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
-              <Form.Item label="Roles" name="roles">
+              <Form.Item label={t('label.roles')} name="roles">
                 <DropDown
                   className={classNames('tw-bg-white', {
                     'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
                   })}
                   dataTestId="roles-dropdown"
                   dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-                  label="Roles"
+                  label={t('label.roles')}
                   selectedItems={selectedRoles as Array<string>}
                   type="checkbox"
                   onSelect={(_e, value) => selectedRolesHandler(value)}
@@ -904,7 +964,7 @@ const CreateUser = ({
 
               <Form.Item>
                 <Space>
-                  <span>Admin</span>
+                  <span> {t('label.admin')}</span>
                   <Switch
                     checked={isAdmin}
                     data-testid="admin"
@@ -920,7 +980,7 @@ const CreateUser = ({
 
           <Space className="w-full tw-justify-end" size={4}>
             <Button data-testid="cancel-user" type="link" onClick={onCancel}>
-              Cancel
+              {t('label.cancel')}
             </Button>
             <>
               {saveState === 'waiting' ? (
@@ -937,7 +997,7 @@ const CreateUser = ({
                   form="create-user-bot-form"
                   htmlType="submit"
                   type="primary">
-                  Create
+                  {t('label.create')}
                 </Button>
               )}
             </>

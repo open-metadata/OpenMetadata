@@ -2,6 +2,7 @@ package org.openmetadata.service.alerts.generic;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerts.AlertsActionPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -60,7 +62,8 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
   public void sendAlert(ChangeEvent event) throws EventPublisherException, IOException, InterruptedException {
     long attemptTime = System.currentTimeMillis();
     try {
-      String json = JsonUtils.pojoToJson(event);
+      EventResource.ChangeEventList list = new EventResource.ChangeEventList(List.of(event), null, null, 1);
+      String json = JsonUtils.pojoToJson(list);
       Response response;
       if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
         String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
@@ -74,6 +77,7 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
           alertAction.getStatusDetails().getStatus(),
           batch.size(),
           response.getStatusInfo());
+      // Successfully sent Alert, update Status
       if (response.getStatus() >= 300 && response.getStatus() < 400) {
         // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
         setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
@@ -82,12 +86,14 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
         setNextBackOff();
         setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
         Thread.sleep(currentBackoffTime);
+      } else if (response.getStatus() == 200) {
+        setSuccessStatus(System.currentTimeMillis());
       }
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
       if (cause != null && cause.getClass() == UnknownHostException.class) {
         LOG.warn("Invalid webhook {} endpoint {}", webhook.getName(), webhook.getEndpoint());
-        setErrorStatus(attemptTime, null, "UnknownHostException");
+        setErrorStatus(attemptTime, Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), "UnknownHostException");
       } else {
         LOG.debug("Exception occurred while publishing webhook", ex);
       }

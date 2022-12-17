@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,9 @@
  *  limitations under the License.
  */
 
-export enum UserType {
-  USERS = 'users',
-  ADMINS = 'admins',
-  BOTS = 'bots',
-}
-
-export enum OwnerType {
-  USER = 'user',
-  TEAM = 'team',
-}
-
-export enum CreatePasswordGenerator {
-  AutomaticGenerate = 'AUTOMATIC_GENERATE',
-  CreatePassword = 'CREATE_PASSWORD',
-}
+export type TeamStateType = {
+  defaultOptions: string[];
+  selectedOptions: string[];
+  options: string[];
+};
+export type TierStateType = Omit<TeamStateType, 'defaultOptions'>;

@@ -122,14 +122,18 @@ public class AlertUtil {
   }
 
   public static boolean evaluateAlertConditions(ChangeEvent changeEvent, List<AlertFilterRule> alertFilterRules) {
-    boolean result;
-    String completeCondition = buildCompleteCondition(alertFilterRules);
-    AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-    StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-    Expression expression = parseExpression(completeCondition);
-    result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
-    LOG.debug("Alert evaluated as Result : {}", result);
-    return result;
+    if (alertFilterRules.size() > 0) {
+      boolean result;
+      String completeCondition = buildCompleteCondition(alertFilterRules);
+      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
+      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+      Expression expression = parseExpression(completeCondition);
+      result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+      LOG.debug("Alert evaluated as Result : {}", result);
+      return result;
+    } else {
+      return true;
+    }
   }
 
   public static String buildCompleteCondition(List<AlertFilterRule> alertFilterRules) {

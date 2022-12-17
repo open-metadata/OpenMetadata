@@ -12,8 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Popover, Space, Tag, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -25,7 +24,6 @@ import {
   isString,
   isUndefined,
   toNumber,
-  uniqueId,
 } from 'lodash';
 import {
   CurrentState,
@@ -39,7 +37,6 @@ import {
 } from 'Models';
 import React from 'react';
 import { Trans } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
@@ -87,8 +84,6 @@ import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
-import { LIST_CAP } from './PermissionsUtils';
-import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
@@ -750,118 +745,6 @@ export const getHostNameFromURL = (url: string) => {
     return '';
   }
 };
-
-export const commonUserDetailColumns: ColumnsType<User> = [
-  {
-    title: t('label.username'),
-    dataIndex: 'username',
-    key: 'username',
-    render: (_, record) => (
-      <Link
-        className="hover:tw-underline tw-cursor-pointer"
-        data-testid={record.name}
-        to={getUserPath(record.fullyQualifiedName || record.name)}>
-        {getEntityName(record)}
-      </Link>
-    ),
-  },
-  {
-    title: t('label.teams'),
-    dataIndex: 'teams',
-    key: 'teams',
-    render: (_, record) => {
-      const listLength = record.teams?.length ?? 0;
-      const hasMore = listLength > LIST_CAP;
-
-      if (isUndefined(record.teams) || isEmpty(record.teams)) {
-        return <>No Team</>;
-      } else {
-        return (
-          <Space wrap data-testid="policy-link" size={4}>
-            {record.teams.slice(0, LIST_CAP).map((team) => (
-              <Link
-                className="hover:tw-underline tw-cursor-pointer"
-                key={uniqueId()}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
-                {getEntityName(team)}
-              </Link>
-            ))}
-            {hasMore && (
-              <Popover
-                className="tw-cursor-pointer"
-                content={
-                  <Space wrap size={4}>
-                    {record.teams.slice(LIST_CAP).map((team) => (
-                      <Link
-                        className="hover:tw-underline tw-cursor-pointer"
-                        key={uniqueId()}
-                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
-                        {getEntityName(team)}
-                      </Link>
-                    ))}
-                  </Space>
-                }
-                overlayClassName="tw-w-40 tw-text-center"
-                trigger="click">
-                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
-              </Popover>
-            )}
-          </Space>
-        );
-      }
-    },
-  },
-  {
-    title: t('label.roles'),
-    dataIndex: 'roles',
-    key: 'roles',
-    render: (_, record) => {
-      const listLength = record.roles?.length ?? 0;
-      const hasMore = listLength > LIST_CAP;
-
-      if (isUndefined(record.roles) || isEmpty(record.roles)) {
-        return <>No Role</>;
-      } else {
-        return (
-          <Space wrap data-testid="policy-link" size={4}>
-            {record.roles.slice(0, LIST_CAP).map((role) => (
-              <Link
-                className="hover:tw-underline tw-cursor-pointer"
-                key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
-                {getEntityName(role)}
-              </Link>
-            ))}
-            {hasMore && (
-              <Popover
-                className="tw-cursor-pointer"
-                content={
-                  <Space wrap size={4}>
-                    {record.roles.slice(LIST_CAP).map((role) => (
-                      <Link
-                        className="hover:tw-underline tw-cursor-pointer"
-                        key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
-                        {getEntityName(role)}
-                      </Link>
-                    ))}
-                  </Space>
-                }
-                overlayClassName="tw-w-40 tw-text-center"
-                trigger="click">
-                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
-              </Popover>
-            )}
-          </Space>
-        );
-      }
-    },
-  },
-];
 
 export const getOwnerValue = (owner: EntityReference) => {
   switch (owner?.type) {
