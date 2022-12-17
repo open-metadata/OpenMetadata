@@ -101,7 +101,7 @@ public class AlertsRuleEvaluator {
     }
     EntityInterface entity = (EntityInterface) changeEvent.getEntity();
     for (String name : entityNames) {
-      if (entity.getName().equals(name)) {
+      if (entity.getFullyQualifiedName().equals(name)) {
         return true;
       }
     }

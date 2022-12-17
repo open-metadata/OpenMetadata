@@ -62,6 +62,8 @@ public class MSTeamsWebhookPublisher extends AlertsActionPublisher {
         setNextBackOff();
         setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
         Thread.sleep(currentBackoffTime);
+      } else if (response.getStatus() == 200) {
+        setSuccessStatus(System.currentTimeMillis());
       }
     } catch (Exception e) {
       LOG.error("Failed to publish event {} to msteams due to {} ", event, e.getMessage());
