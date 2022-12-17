@@ -62,7 +62,9 @@ import { EntitySpelFilters } from '../../generated/alerts/entitySpelFilters';
 import { Function } from '../../generated/type/function';
 import {
   getAlertsActionTypeIcon,
+  getDisplayNameForTriggerType,
   getFunctionDisplayName,
+  StyledCard,
 } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -206,10 +208,6 @@ const AddAlertPage = () => {
           }),
           (error as AxiosError).message
         );
-        showErrorToast(
-          `Unable to create alert.`,
-          (error as AxiosError).message
-        );
       }
     } catch (error) {
       showErrorToast(
@@ -260,7 +258,9 @@ const AddAlertPage = () => {
               <AsyncSelect
                 api={getEntityByFQN}
                 mode="multiple"
-                placeholder="Search by FQN"
+                placeholder={t('label.search-by-type', {
+                  type: t('label.fqn-uppercase'),
+                })}
                 showArrow={false}
               />
             </Form.Item>
@@ -276,7 +276,9 @@ const AddAlertPage = () => {
               <AsyncSelect
                 api={getUsersAndTeamsOptions}
                 mode="multiple"
-                placeholder="Search by Owner"
+                placeholder={t('label.search-by-type', {
+                  type: getFunctionDisplayName(condition),
+                })}
               />
             </Form.Item>
           );
@@ -288,6 +290,7 @@ const AddAlertPage = () => {
           return (
             <Form.Item className="w-full" name={[name, 'condition']}>
               <Select
+                showArrow
                 mode="multiple"
                 options={
                   func.paramAdditionalContext?.data?.map((d) => ({
@@ -295,7 +298,10 @@ const AddAlertPage = () => {
                     value: d,
                   })) ?? []
                 }
-                placeholder="Select Event Type"
+                placeholder={t('label.select-field', {
+                  field: getFunctionDisplayName(condition),
+                })}
+                showSearch={false}
               />
             </Form.Item>
           );
@@ -338,25 +344,6 @@ const AddAlertPage = () => {
     [defaultTriggers, trigger]
   );
 
-  // React component which will be septate out next
-  const StyledCard = ({
-    heading,
-    subHeading,
-  }: {
-    heading: string;
-    subHeading: string;
-  }) => {
-    return (
-      <Card bodyStyle={{ background: '#DDE3EA' }} bordered={false}>
-        <Typography.Text>{heading}</Typography.Text>
-        <br />
-        <Typography.Text className="text-xs text-grey-muted">
-          {subHeading}
-        </Typography.Text>
-      </Card>
-    );
-  };
-
   return (
     <>
       <Row gutter={[16, 16]}>
@@ -372,17 +359,18 @@ const AddAlertPage = () => {
           <Form<Alerts>
             className="alerts-notification-form"
             form={form}
-            layout="vertical"
             onFinish={handleSave}>
             <Card loading={loadingCount > 0}>
               <Form.Item
                 label={t('label.name')}
+                labelCol={{ span: 24 }}
                 name="name"
                 rules={[{ required: true }]}>
                 <Input />
               </Form.Item>
               <Form.Item
                 label={t('label.description')}
+                labelCol={{ span: 24 }}
                 name="description"
                 rules={[{ required: true }]}>
                 <Input.TextArea />
@@ -400,12 +388,10 @@ const AddAlertPage = () => {
                         initialValue={AlertTriggerType.AllDataAssets}
                         name={['triggerConfig', 'type']}>
                         <Select
-                          notFoundContent="No relevant filters found"
                           options={defaultTriggers.map((trigger) => ({
-                            label: trigger.type,
+                            label: getDisplayNameForTriggerType(trigger.type),
                             value: trigger.type,
                           }))}
-                          style={{ width: '100%' }}
                         />
                       </Form.Item>
                       {selectedTrigger?.type ===
@@ -413,7 +399,7 @@ const AddAlertPage = () => {
                         <Form.Item name={['triggerConfig', 'entities']}>
                           <Select
                             showArrow
-                            className="tw-w-full"
+                            className="w-full"
                             mode="multiple"
                             options={
                               selectedTrigger.entities?.map((entity) => ({
@@ -431,7 +417,7 @@ const AddAlertPage = () => {
                 <Col span={8}>
                   <Space className="w-full" direction="vertical" size={16}>
                     <StyledCard
-                      heading={t('label.filter')}
+                      heading={t('label.filter-plural')}
                       subHeading={t('message.alerts-filter-description')}
                     />
 
@@ -440,7 +426,7 @@ const AddAlertPage = () => {
                         <>
                           {fields.map(({ key, name }) => (
                             <div key={`filteringRules-${key}`}>
-                              <div className="d-flex" style={{ gap: '10px' }}>
+                              <div className="d-flex gap-1">
                                 <div className="flex-1">
                                   <Form.Item key={key} name={[name, 'name']}>
                                     <Select
@@ -482,7 +468,7 @@ const AddAlertPage = () => {
                                   icon={
                                     <SVGIcons
                                       alt={t('label.delete')}
-                                      className="tw-w-4"
+                                      className="w-4"
                                       icon={Icons.DELETE}
                                     />
                                   }
@@ -560,30 +546,44 @@ const AddAlertPage = () => {
                                       'alertActionConfig',
                                       'endpoint',
                                     ]}>
-                                    <Input placeholder="Endpoint URL: http(s)://www.example.com" />
+                                    <Input
+                                      placeholder={
+                                        t('label.endpoint-url') +
+                                        ': ' +
+                                        'http(s)://www.example.com'
+                                      }
+                                    />
                                   </Form.Item>
-                                  <Space className="justify-between w-full">
-                                    <Form.Item name={[name, 'enabled']}>
-                                      Advance config: <Switch />
-                                    </Form.Item>
-                                  </Space>
 
+                                  <Form.Item
+                                    label={t('label.advanced-config')}
+                                    name={[name, 'enabled']}
+                                    valuePropName="checked">
+                                    <Switch />
+                                  </Form.Item>
                                   {get(
                                     alertActions,
-                                    `.${name}.enabled`,
+                                    `${name}.enabled`,
                                     false
                                   ) && (
                                     <>
                                       <Space className="w-full" size={16}>
                                         <Form.Item
+                                          initialValue={10}
                                           label="Batch Size"
+                                          labelCol={{ span: 24 }}
                                           name={[name, 'batchSize']}>
                                           <Input defaultValue={10} />
                                         </Form.Item>
                                         <Form.Item
-                                          label="Connection Timeout (s):"
+                                          colon
+                                          initialValue={10}
+                                          label={`${t(
+                                            'label.connection-timeout-plural-optional'
+                                          )}`}
+                                          labelCol={{ span: 24 }}
                                           name={[name, 'timeout']}>
-                                          <Input defaultValue={10} />
+                                          <Input />
                                         </Form.Item>
                                       </Space>
                                       <Form.Item
@@ -594,7 +594,9 @@ const AddAlertPage = () => {
                                           'alertActionConfig',
                                           'secretKey',
                                         ]}>
-                                        <Input placeholder="Secret key" />
+                                        <Input
+                                          placeholder={t('label.secret-key')}
+                                        />
                                       </Form.Item>
                                     </>
                                   )}
@@ -604,7 +606,7 @@ const AddAlertPage = () => {
                                   icon={
                                     <SVGIcons
                                       alt={t('label.delete')}
-                                      className="tw-w-4"
+                                      className="w-4"
                                       icon={Icons.DELETE}
                                     />
                                   }
@@ -632,7 +634,7 @@ const AddAlertPage = () => {
                     </Form.List>
                   </Space>
                 </Col>
-                <Col className=" footer" span={24}>
+                <Col className="footer" span={24}>
                   <Button onClick={() => history.goBack()}>
                     {t('label.cancel')}
                   </Button>

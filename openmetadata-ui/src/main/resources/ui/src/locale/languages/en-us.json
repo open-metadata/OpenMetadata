@@ -570,7 +570,13 @@
     "create-entity": "Create {{entity}}",
     "domain": "Domain",
     "private-key": "PrivateKey",
-    "service-email": "Service account Email"
+    "service-email": "Service account Email",
+    "search-by-type": "Search by {{type}}",
+    "fqn-uppercase": "FQN",
+    "event-type": "Event Type",
+    "connection-timeout-plural-optional": "Connection Timeout (s)",
+    "all-data-assets": "All Data Assets",
+    "specific-data-assets": "Specific Data Assets"
   },
   "message": {
     "service-email-required": "Service account Email is required",

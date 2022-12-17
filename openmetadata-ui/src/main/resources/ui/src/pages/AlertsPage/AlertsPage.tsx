@@ -28,6 +28,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { AlertAction } from '../../generated/alerts/alertAction';
 import { Alerts, ProviderType } from '../../generated/alerts/alerts';
 import { Paging } from '../../generated/type/paging';
+import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -83,9 +84,10 @@ const AlertsPage = () => {
       },
       {
         title: t('label.trigger'),
-        dataIndex: 'triggerConfig.type',
+        dataIndex: ['triggerConfig', 'type'],
         width: '200px',
         key: 'triggerConfig.type',
+        render: getDisplayNameForTriggerType,
       },
       {
         title: t('label.destination'),
@@ -104,6 +106,7 @@ const AlertsPage = () => {
       {
         title: t('label.actions'),
         dataIndex: 'id',
+        width: 120,
         key: 'id',
         render: (id: string, record: Alerts) => {
           return (
@@ -144,7 +147,7 @@ const AlertsPage = () => {
                 {t('label.alert-plural')}
               </Typography.Title>
               <Typography.Text>
-                {t('message.alert-description')}
+                {t('message.alerts-description')}
               </Typography.Text>
             </div>
             <Link

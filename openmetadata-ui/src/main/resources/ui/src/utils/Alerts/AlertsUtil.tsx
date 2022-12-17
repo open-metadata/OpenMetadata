@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Card, Typography } from 'antd';
+import i18next from 'i18next';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -18,6 +20,7 @@ import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams-grey.sv
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook-grey.svg';
 import { AlertActionType } from '../../generated/alerts/alertAction';
+import { AlertTriggerType } from '../../generated/alerts/alerts';
 
 export const getAlertsActionTypeIcon = (type?: AlertActionType) => {
   switch (type) {
@@ -38,18 +41,45 @@ export const getAlertsActionTypeIcon = (type?: AlertActionType) => {
 export const getFunctionDisplayName = (func: string): string => {
   switch (func) {
     case 'matchAnyEntityFqn':
-      return 'Match FQN';
+      return i18next.t('label.fqn-uppercase');
     case 'matchAnyOwnerName':
-      return 'Match Owner';
+      return i18next.t('label.owner');
     case 'matchAnyEventType':
-      return 'Match Event Type';
+      return i18next.t('label.event-type');
     case 'matchTestResult':
-      return 'Match Test Results';
+      return i18next.t('label.test-results');
     case 'matchUpdatedBy':
-      return 'Match Updated By';
+      return i18next.t('label.updated-by');
     case 'matchAnySource':
     case 'matchAnyEntityId':
     default:
       return '';
+  }
+};
+
+export const StyledCard = ({
+  heading,
+  subHeading,
+}: {
+  heading: string;
+  subHeading: string;
+}) => {
+  return (
+    <Card bordered={false} className="bg-grey">
+      <Typography.Text>{heading}</Typography.Text>
+      <br />
+      <Typography.Text className="text-xs text-grey-muted">
+        {subHeading}
+      </Typography.Text>
+    </Card>
+  );
+};
+
+export const getDisplayNameForTriggerType = (type: AlertTriggerType) => {
+  switch (type) {
+    case AlertTriggerType.AllDataAssets:
+      return i18next.t('label.all-data-assets');
+    case AlertTriggerType.SpecificDataAsset:
+      return i18next.t('label.specific-data-assets');
   }
 };

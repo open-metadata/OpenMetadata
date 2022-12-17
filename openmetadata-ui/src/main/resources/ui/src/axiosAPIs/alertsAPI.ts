@@ -55,7 +55,7 @@ export const getAllAlerts = async (params: ListAlertsRequestParams) => {
 };
 
 export const createAlert = async (alert: Alerts) => {
-  const response = await axiosClient.post<Alerts>(`/alerts`, alert);
+  const response = await axiosClient.post<Alerts>(BASE_URL, alert);
 
   return response.data;
 };
