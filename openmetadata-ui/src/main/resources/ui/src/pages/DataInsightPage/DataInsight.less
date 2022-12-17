@@ -17,6 +17,7 @@
 @box-shadow-color: rgba(0, 0, 0, 0.06);
 @icon-color: #515151;
 @group-title-color: #76746f;
+@summary-card-bg-hover: #f0f1f3;
 
 .data-insight-select-dropdown {
   min-width: 136px;
@@ -116,5 +117,23 @@
     left: 0;
     border-right: 2px solid #1890ff;
     border-radius: 4px;
+  }
+}
+
+.custom-data-insight-legend {
+  display: flex;
+  gap: 4px;
+
+  .custom-data-insight-legend-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: @text-grey-muted;
+
+    &:hover {
+      background: @summary-card-bg-hover;
+    }
   }
 }

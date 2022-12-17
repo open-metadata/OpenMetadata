@@ -553,7 +553,13 @@
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
     "latest": "Latest",
-    "days-change-lowercase": "{{days}}-days change"
+    "days-change-lowercase": "{{days}}-days change",
+    "total-entity": "Total {{entity}}",
+    "assets": "Assets",
+    "completed-description": "Completed Description",
+    "assigned-entity": "Assigned {{entity}}",
+    "total-assets-view": "Total Assets View",
+    "total-active-user": "Total Active User"
   },
   "message": {
     "service-email-required": "Service account Email is required",

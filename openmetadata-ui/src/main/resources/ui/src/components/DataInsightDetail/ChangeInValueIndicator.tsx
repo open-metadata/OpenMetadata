@@ -29,7 +29,7 @@ const ChangeInValueIndicator = ({
   const { t } = useTranslation();
 
   return (
-    <Typography.Paragraph className="data-insight-label-text">
+    <Typography.Paragraph className="data-insight-label-text text-xs">
       <Typography.Text type={changeInValue >= 0 ? 'success' : 'danger'}>
         {changeInValue >= 0 ? '+' : ''}
         {changeInValue.toFixed(2)}

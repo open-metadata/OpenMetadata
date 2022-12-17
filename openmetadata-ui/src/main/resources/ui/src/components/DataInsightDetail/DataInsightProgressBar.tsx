@@ -32,9 +32,11 @@ interface DataInsightProgressBarProps {
   suffix?: string;
   changeInValue?: number;
   duration?: number;
+  showEndValueAsLabel?: boolean;
 }
 
 const DataInsightProgressBar = ({
+  showEndValueAsLabel = false,
   width,
   progress,
   className,
@@ -74,7 +76,7 @@ const DataInsightProgressBar = ({
               )}
               <span>
                 {successValue}
-                {suffix}
+                {showEndValueAsLabel ? '' : suffix}
               </span>
             </>
           )}

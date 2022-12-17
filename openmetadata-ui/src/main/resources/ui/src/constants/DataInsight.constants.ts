@@ -23,8 +23,8 @@ import {
 
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
-  right: 30,
-  left: 20,
+  right: 20,
+  left: 10,
   bottom: 5,
 };
 

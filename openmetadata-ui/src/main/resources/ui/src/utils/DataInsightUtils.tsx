@@ -99,14 +99,14 @@ export const renderLegend = (
           )}
         </Space>
       )}
-      <ul className="mr-2">
+      <ul className="custom-data-insight-legend">
         {payload.map((entry, index) => {
           const isActive =
             activeKeys.length === 0 || activeKeys.includes(entry.value);
 
           return (
             <li
-              className="recharts-legend-item d-flex items-center m-t-xss cursor-pointer"
+              className="recharts-legend-item custom-data-insight-legend-item"
               key={`item-${index}`}
               onClick={(e) =>
                 legendData.onClick && legendData.onClick({ ...entry, ...e })
@@ -119,7 +119,7 @@ export const renderLegend = (
                 legendData.onMouseLeave &&
                 legendData.onMouseLeave({ ...entry, ...e })
               }>
-              <Surface className="mr-2" height={14} version="1.1" width={14}>
+              <Surface className="m-r-xss" height={14} version="1.1" width={14}>
                 <rect
                   fill={isActive ? entry.color : GRAYED_OUT_COLOR}
                   height="14"
@@ -443,7 +443,7 @@ export const getGraphDataByEntityType = (
   );
 
   const graphData = prepareGraphData(timestamps, filteredData);
-  const latestData = last(graphData);
+  const latestData = last(graphData) as Record<string, number>;
   const oldData = first(graphData);
   const latestPercentage = toNumber(
     isPercentageGraph
@@ -467,6 +467,8 @@ export const getGraphDataByEntityType = (
     relativePercentage: isPercentageGraph
       ? relativePercentage
       : (relativePercentage / oldestPercentage) * 100,
+    latestData,
+    isPercentageGraph,
   };
 };
 
@@ -510,6 +512,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
     tiers,
     total: latestData,
     relativePercentage,
+    latestData: last(graphData) as Record<string, number>,
   };
 };
 
