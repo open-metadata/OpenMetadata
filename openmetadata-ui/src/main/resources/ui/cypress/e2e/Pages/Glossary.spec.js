@@ -24,85 +24,85 @@ import {
 } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
-cy.get('[data-testid="breadcrumb-link"]')
-  .should('exist')
-  .and('be.visible')
-  .contains(NEW_GLOSSARY.name)
-  .should('exist');
-cy.get('[data-testid="add-new-tag-button"]').should('be.visible').click();
+  cy.get('[data-testid="breadcrumb-link"]')
+    .should('exist')
+    .and('be.visible')
+    .contains(NEW_GLOSSARY.name)
+    .should('exist');
+  cy.get('[data-testid="add-new-tag-button"]').should('be.visible').click();
 
-cy.contains('Add Glossary Term').should('be.visible');
-cy.get('[data-testid="name"]')
-  .scrollIntoView()
-  .should('be.visible')
-  .type(term.name);
-cy.get(descriptionBox)
-  .scrollIntoView()
-  .should('be.visible')
-  .type(term.description);
-cy.get('[data-testid="synonyms"]')
-  .scrollIntoView()
-  .should('be.visible')
-  .type(term.synonyms);
+  cy.contains('Add Glossary Term').should('be.visible');
+  cy.get('[data-testid="name"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(term.name);
+  cy.get(descriptionBox)
+    .scrollIntoView()
+    .should('be.visible')
+    .type(term.description);
+  cy.get('[data-testid="synonyms"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(term.synonyms);
 
-cy.get('[data-testid="references"] > .tw-flex > .button-comp')
-  .scrollIntoView()
-  .should('be.visible')
-  .click();
+  cy.get('[data-testid="references"] > .tw-flex > .button-comp')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
-cy.get('#name-0').scrollIntoView().should('be.visible').type('test');
-cy.get('#url-0')
-  .scrollIntoView()
-  .should('be.visible')
-  .type('https://test.com');
+  cy.get('#name-0').scrollIntoView().should('be.visible').type('test');
+  cy.get('#url-0')
+    .scrollIntoView()
+    .should('be.visible')
+    .type('https://test.com');
 
-interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
-cy.get('[data-testid="save-glossary-term"]')
-  .scrollIntoView()
-  .should('be.visible')
-  .click();
-verifyResponseStatusCode('@createGlossaryTerms', 201);
+  interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
+  cy.get('[data-testid="save-glossary-term"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  verifyResponseStatusCode('@createGlossaryTerms', 201);
 
-cy.get('[data-testid="glossary-left-panel"]').contains(term.name).should('be.visible');
+  cy.get('[data-testid="glossary-left-panel"]').contains(term.name).should('be.visible');
 };
 
 const deleteGlossary = ({ name }) => {
-verifyResponseStatusCode('@getGlossaryTerms', 200);
-cy.get('[data-testid="glossary-left-panel"]').contains(name).should('be.visible').click();
-cy.wait(500);
-cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
+  verifyResponseStatusCode('@getGlossaryTerms', 200);
+  cy.get('[data-testid="glossary-left-panel"]').contains(name).should('be.visible').click();
+  cy.wait(500);
+  cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
 
-cy.get('[data-testid="manage-button"]').should('be.visible').click();
-cy.get('[data-testid="delete-button"]')
-  .scrollIntoView()
-  .should('be.visible')
-  .click();
+  cy.get('[data-testid="manage-button"]').should('be.visible').click();
+  cy.get('[data-testid="delete-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
-cy.get('[data-testid="delete-confirmation-modal"]').should('exist').then(() => {
-  cy.get('[role="dialog"]').should('be.visible');
-  cy.get('[data-testid="modal-header"]').should('be.visible');
-})
-cy.get('[data-testid="modal-header"]').should('be.visible').should('contain', `Delete ${name}`);
-cy.get('[data-testid="confirmation-text-input"]')
-  .should('be.visible')
-  .type(DELETE_TERM);
+  cy.get('[data-testid="delete-confirmation-modal"]').should('exist').then(() => {
+    cy.get('[role="dialog"]').should('be.visible');
+    cy.get('[data-testid="modal-header"]').should('be.visible');
+  })
+  cy.get('[data-testid="modal-header"]').should('be.visible').should('contain', `Delete ${name}`);
+  cy.get('[data-testid="confirmation-text-input"]')
+    .should('be.visible')
+    .type(DELETE_TERM);
 
-cy.get('[data-testid="confirm-button"]')
-  .should('be.visible')
-  .should('not.disabled')
-  .click();
+  cy.get('[data-testid="confirm-button"]')
+    .should('be.visible')
+    .should('not.disabled')
+    .click();
 
-toastNotification('Glossary term deleted successfully!')
-cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
-cy.get('[data-testid="glossary-left-panel"]').should('be.visible').should('not.contain', name)
+  toastNotification('Glossary term deleted successfully!')
+  cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
+  cy.get('[data-testid="glossary-left-panel"]').should('be.visible').should('not.contain', name)
 };
 
 const goToAssetsTab = (term) => {
-cy.get('[data-testid="glossary-left-panel"]').should('be.visible').contains(term).click();
-cy.wait(500);
-cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
-cy.get('[data-testid="Assets"]').should('be.visible').click();
-cy.get('[data-testid="Assets"]').should('have.class', 'active');
+  cy.get('[data-testid="glossary-left-panel"]').should('be.visible').contains(term).click();
+  cy.wait(500);
+  cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
+  cy.get('[data-testid="Assets"]').should('be.visible').click();
+  cy.get('[data-testid="Assets"]').should('have.class', 'active');
 };
 
 describe('Glossary page should work properly', () => {
