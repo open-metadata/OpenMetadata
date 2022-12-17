@@ -887,14 +887,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SQLQuery sqlQuery,
-      @DefaultValue("3") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
+      @Valid SQLQuery sqlQuery)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
