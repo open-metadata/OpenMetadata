@@ -32,8 +32,3 @@ export enum AddGlossaryError {
   NAME_INVALID = 'name invalid',
   DESCRIPTION_REQUIRED = 'description required',
 }
-
-export interface GlossaryV1SkeletonInterface {
-  loading: boolean;
-  children: JSX.Element;
-}

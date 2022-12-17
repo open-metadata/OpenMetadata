@@ -13,10 +13,10 @@
 
 import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
+import { SkeletonInterface } from 'Models';
 import React from 'react';
-import { ExploreSkeletonInterface } from './explore.interface';
 
-const ExploreSkeleton = ({ children, loading }: ExploreSkeletonInterface) => {
+const ExploreSkeleton = ({ children, loading }: SkeletonInterface) => {
   const mockData = Array.from({ length: 6 }, (_, index) => {
     return {
       name: index,

@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, ReactNode } from 'react';
 
 export interface LeftPanelCardProps extends HTMLAttributes<HTMLDivElement> {
-  children: React.ReactElement | string;
+  children: ReactNode;
   id: string;
-  classes?: string;
 }

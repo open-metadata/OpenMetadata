@@ -13,15 +13,10 @@
 
 import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
+import { SkeletonInterface } from 'Models';
 import React from 'react';
 
-const TagsLeftPanelSkeleton = ({
-  loading,
-  children,
-}: {
-  loading?: boolean;
-  children: JSX.Element;
-}) => {
+const TagsLeftPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
   const tagsMock = Array.from({ length: 10 }, (_, index) => index + 1);
 
   return loading ? (

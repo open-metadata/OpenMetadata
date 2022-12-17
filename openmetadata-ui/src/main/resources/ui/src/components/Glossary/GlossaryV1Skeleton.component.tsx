@@ -13,13 +13,10 @@
 
 import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
+import { SkeletonInterface } from 'Models';
 import React from 'react';
-import { GlossaryV1SkeletonInterface } from '../AddGlossary/AddGlossary.interface';
 
-const GlossaryV1Skeleton = ({
-  loading,
-  children,
-}: GlossaryV1SkeletonInterface) => {
+const GlossaryV1Skeleton = ({ loading, children }: SkeletonInterface) => {
   const glossaryMock = Array.from({ length: 10 }, (_, index) => index + 1);
 
   return loading ? (

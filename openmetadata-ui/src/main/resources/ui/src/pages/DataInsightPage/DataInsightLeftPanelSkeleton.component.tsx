@@ -13,14 +13,15 @@
 
 import { Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
+import { SkeletonInterface } from 'Models';
 import React from 'react';
-import { DataInsightsLeftPanelSkeletonInterface } from '../../interface/data-insight.interface';
+
 import { dataInsightsSkeletonMock } from './DataInsight.mock';
 
 const DataInsightsLeftPanelSkeleton = ({
   loading,
   children,
-}: DataInsightsLeftPanelSkeletonInterface) => {
+}: SkeletonInterface) => {
   return loading ? (
     <div className="m-b-md p-xs">
       {dataInsightsSkeletonMock.map(() => (

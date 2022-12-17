@@ -543,4 +543,9 @@ declare module 'Models' {
     id: string;
     state: string;
   }
+
+  export interface SkeletonInterface {
+    loading: boolean;
+    children: JSX.Element;
+  }
 }
