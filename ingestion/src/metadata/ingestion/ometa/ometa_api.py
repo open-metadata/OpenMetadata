@@ -30,7 +30,7 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
-from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.dataInsight.kpi.kpi import KPI
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -400,7 +400,7 @@ class OpenMetadata(
 
         if issubclass(
             entity,
-            Kpi,
+            KPI,
         ):
             return "/kpi"
 
