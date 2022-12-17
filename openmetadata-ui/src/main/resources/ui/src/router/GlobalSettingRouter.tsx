@@ -20,7 +20,6 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { TeamType } from '../generated/entity/teams/team';
-import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
 import AddAlertPage from '../pages/AddAlertPage/AddAlertPage';
 import AlertDetailsPage from '../pages/AlertDetailsPpage/AlertDetailsPage';
 import AlertsPage from '../pages/AlertsPage/AlertsPage';
@@ -170,21 +169,6 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
-        // Currently we don't have any permission related to ActivityFeed settings page
-        // update below once we have it
-        component={ActivityFeedSettingsPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.FEED,
-          permissions
-        )}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.COLLABORATION,
-          GlobalSettingOptions.ACTIVITY_FEED
         )}
       />
 

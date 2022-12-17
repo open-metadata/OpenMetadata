@@ -129,6 +129,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "tags": {
+      "description": "Tags for this Pipeline Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"

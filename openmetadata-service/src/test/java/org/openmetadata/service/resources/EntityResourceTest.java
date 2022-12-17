@@ -730,11 +730,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!supportsSoftDelete) {
       return;
     }
+    // Create an entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
+    Double previousVersion = entity.getVersion();
+
+    // Soft-delete the entity
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
     EntityHistory history = getVersionList(entity.getId(), ADMIN_AUTH_HEADERS);
-    T latestVersion = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
+
+    // Get all the entity version
+    entity = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
+    assertEquals(EntityUtil.nextVersion(previousVersion), entity.getVersion());
+
+    // Get the deleted entity version from versions API
     getVersion(entity.getId(), entity.getVersion(), ADMIN_AUTH_HEADERS);
   }
 

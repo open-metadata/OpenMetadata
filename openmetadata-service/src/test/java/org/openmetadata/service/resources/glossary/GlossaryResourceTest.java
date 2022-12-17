@@ -33,14 +33,12 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateTagLabel;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -73,11 +71,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   public GlossaryResourceTest() {
     // TODO add system glossary
     super(Entity.GLOSSARY, Glossary.class, GlossaryResource.GlossaryList.class, "glossaries", GlossaryResource.FIELDS);
-  }
-
-  @BeforeAll
-  public void setup(TestInfo test) throws IOException, URISyntaxException {
-    super.setup(test);
     supportsEmptyDescription = false;
   }
 
