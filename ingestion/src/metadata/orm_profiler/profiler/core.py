@@ -495,8 +495,12 @@ class Profiler(Generic[TMetric]):
                 timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                profileSample=self.profiler_interface.profile_sample.get('profile_sample'),
-                profileSampleType=self.profiler_interface.profile_sample.get('profile_sample_type').value,
+                profileSample=self.profiler_interface.profile_sample.get(
+                    "profile_sample"
+                ),
+                profileSampleType=self.profiler_interface.profile_sample.get(
+                    "profile_sample_type"
+                ).value,
             )
             if self._system_results:
                 system_profile = [

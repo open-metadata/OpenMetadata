@@ -46,7 +46,7 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 thread_local = threading.local()
 
-# pylint: disable=too-many-instance-attributes
+
 class SQAProfilerInterface(SQAInterfaceMixin, ProfilerProtocol):
     """
     Interface to interact with registry supporting

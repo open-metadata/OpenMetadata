@@ -123,9 +123,7 @@ class SampleTest(TestCase):
         The random sampler should be able to
         generate a random subset of data
         """
-        sampler = Sampler(
-            session=self.session, table=User, profile_sample=50.0
-        )
+        sampler = Sampler(session=self.session, table=User, profile_sample=50.0)
         random_sample = sampler.random_sample()
         res = self.session.query(func.count()).select_from(random_sample).first()
         assert res[0] < 30

@@ -17,9 +17,8 @@ from typing import Dict, Optional, Union
 from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
-from metadata.generated.schema.entity.data.table import ProfileSampleType
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects

@@ -15,7 +15,7 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -24,13 +24,12 @@ from metadata.generated.schema.api.data.createTableProfile import (
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
+    ProfileSampleType,
     Table,
     TableData,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.orm_profiler.profiler.models import ProfilerDef
-
-from metadata.generated.schema.entity.data.table import ProfileSampleType
 
 
 class ColumnConfig(ConfigModel):
