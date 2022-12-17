@@ -100,14 +100,6 @@ public class ElasticSearchIndexDefinition {
     }
   }
 
-  public boolean checkIndexExistsOrCreate(ElasticSearchIndexType indexType) {
-    boolean exists = elasticSearchIndexes.get(indexType) == ElasticSearchIndexStatus.CREATED;
-    if (!exists) {
-      exists = createIndex(indexType);
-    }
-    return exists;
-  }
-
   public boolean createIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);

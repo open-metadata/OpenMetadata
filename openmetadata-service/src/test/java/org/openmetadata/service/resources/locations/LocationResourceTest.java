@@ -21,7 +21,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -34,7 +33,6 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateLocation;
@@ -52,11 +50,6 @@ import org.openmetadata.service.util.TestUtils;
 public class LocationResourceTest extends EntityResourceTest<Location, CreateLocation> {
   public LocationResourceTest() {
     super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS);
-  }
-
-  @BeforeAll
-  public void setup(TestInfo test) throws IOException, URISyntaxException {
-    super.setup(test);
   }
 
   @Override
