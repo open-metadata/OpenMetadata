@@ -495,13 +495,19 @@ class Profiler(Generic[TMetric]):
                 timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                profileSample=self.profiler_interface.profile_sample.get(
-                    "profile_sample"
-                ),
-                profileSampleType=self.profiler_interface.profile_sample.get(
-                    "profile_sample_type"
-                ).value,
             )
+            if (
+                hasattr(self.profiler_interface, "profile_sample")
+                and self.profiler_interface.profile_sample
+            ):
+                table_profile.profileSample = (
+                    self.profiler_interface.profile_sample.get("profile_sample"),
+                )
+                table_profile.profileSampleType = (
+                    self.profiler_interface.profile_sample.get(
+                        "profile_sample_type"
+                    ).value,
+                )
             if self._system_results:
                 system_profile = [
                     SystemProfile(**system_result)

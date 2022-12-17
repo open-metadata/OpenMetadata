@@ -143,7 +143,7 @@ class SampleTest(TestCase):
                 ProfilerInterfaceArgs(
                     service_connection_config=self.sqlite_conn,
                     table_entity=self.table_entity,
-                    table_sample_profile=50,
+                    table_sample_profile={"profile_sample": 50},
                     ometa_client=None,
                 )
             )
@@ -186,7 +186,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_profile=50,
+                        table_sample_profile={"profile_sample": 50},
                         ometa_client=None,
                     )
                 ),
@@ -208,7 +208,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_profile=50,
+                        table_sample_profile={"profile_sample": 50},
                         ometa_client=None,
                     )
                 ),

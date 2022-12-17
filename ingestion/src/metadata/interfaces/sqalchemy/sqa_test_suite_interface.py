@@ -52,7 +52,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
         sqa_metadata_obj: Optional[MetaData] = None,
-        table_sample_profile: float = None,
+        table_sample_profile: dict = None,
         table_sample_query: str = None,
         table_partition_config: dict = None,
         table_entity: Table = None,
