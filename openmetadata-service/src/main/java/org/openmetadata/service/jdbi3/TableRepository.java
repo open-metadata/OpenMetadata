@@ -519,6 +519,58 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withTableQueries(getQueries(table));
   }
 
+  public ResultList<SQLQuery> getQueriesForPagination(UUID id, int limit, String before, String after) {
+    RestUtil.validateCursors(before, after);
+    int total = daoCollection.entityExtensionDAO().getTotalQueriesCount(id.toString());
+    List<SQLQuery> tableQueries = null;
+    if (before != null) {
+      tableQueries =
+          daoCollection
+              .entityExtensionDAO()
+              .listBeforeTableQueries(id.toString(), "table.tableQueries", limit + 1, RestUtil.decodeCursor(before));
+    } else {
+      tableQueries =
+          daoCollection
+              .entityExtensionDAO()
+              .getExtensionPagination(
+                  id.toString(), "table.tableQueries", limit + 1, after == null ? "" : RestUtil.decodeCursor(after));
+    }
+    ResultList<SQLQuery> tablQueriesList;
+    if (before != null) {
+      tablQueriesList = getBeforeListForTableQueries(tableQueries, limit, total);
+    } else {
+      tablQueriesList = getAfterListForTableQueries(after, tableQueries, limit, total);
+    }
+    return tablQueriesList;
+  }
+
+  private ResultList<SQLQuery> getBeforeListForTableQueries(List<SQLQuery> tableQueries, int limit, int total) {
+    String beforeCursor = null;
+    String afterCursor;
+    if (tableQueries.size() > limit) { // If extra result exists, then previous page exists - return before cursor
+      tableQueries.remove(0);
+      beforeCursor = tableQueries.get(0).getQuery();
+    }
+    afterCursor = tableQueries.get(tableQueries.size() - 1).getQuery();
+    return getQueryResultList(tableQueries, beforeCursor, afterCursor, total);
+  }
+
+  private ResultList<SQLQuery> getAfterListForTableQueries(
+      String after, List<SQLQuery> tableQueries, int limit, int total) {
+    String beforeCursor;
+    String afterCursor = null;
+    beforeCursor = after == null ? null : tableQueries.get(0).getQuery();
+    if (tableQueries.size() > limit) { // If extra result exists, then next page exists - return after cursor
+      tableQueries.remove(limit);
+      afterCursor = tableQueries.get(limit - 1).getQuery();
+    }
+    return getQueryResultList(tableQueries, beforeCursor, afterCursor, total);
+  }
+
+  private ResultList<SQLQuery> getQueryResultList(List<SQLQuery> queries, String before, String after, int total) {
+    return new ResultList<>(queries, before, after, total);
+  }
+
   private List<SQLQuery> getQueries(Table table) throws IOException {
     List<SQLQuery> tableQueries =
         JsonUtils.readObjects(
