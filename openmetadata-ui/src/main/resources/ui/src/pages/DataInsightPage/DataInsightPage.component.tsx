@@ -17,13 +17,14 @@ import {
   Col,
   Row,
   Select,
-  SelectProps,
   Space,
   Tooltip,
   Typography,
 } from 'antd';
 import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
@@ -38,8 +39,9 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
+import SearchDropdown from '../../components/SearchDropdown/SearchDropdown';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
-import { ROUTES } from '../../constants/constants';
+import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
   DAY_FILTER,
   DEFAULT_DAYS,
@@ -65,6 +67,7 @@ import {
   getFormattedDateFromMilliSeconds,
   getPastDaysDateTimeMillis,
 } from '../../utils/TimeUtils';
+import { TeamStateType, TierStateType } from './DataInsight.interface';
 import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
 import KPIList from './KPIList';
@@ -77,13 +80,26 @@ const DataInsightPage = () => {
   const { isAdminUser } = useAuth();
   const history = useHistory();
 
-  const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
+  const [teamsOptions, setTeamOptions] = useState<TeamStateType>({
+    defaultOptions: [],
+    selectedOptions: [],
+    options: [],
+  });
+  const [tierOptions, setTierOptions] = useState<TierStateType>({
+    selectedOptions: [],
+    options: [],
+  });
+
   const [activeTab, setActiveTab] = useState(DataInsightTabs.DATA_ASSETS);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
 
   const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
+
+  const defaultTierOptions = useMemo(() => {
+    return Object.keys(TIER_FILTER);
+  }, []);
 
   const { descriptionKpi, ownerKpi } = useMemo(() => {
     return {
@@ -101,9 +117,12 @@ const DataInsightPage = () => {
   }, [kpiList]);
 
   const handleTierChange = (tiers: string[] = []) => {
+    setTierOptions((prev) => ({ ...prev, selectedOptions: tiers }));
     setChartFilter((previous) => ({
       ...previous,
-      tier: tiers.length ? tiers.join(',') : undefined,
+      tier: tiers.length
+        ? tiers.map((tier) => TIER_FILTER[tier]).join(',')
+        : undefined,
     }));
   };
 
@@ -116,6 +135,10 @@ const DataInsightPage = () => {
   };
 
   const handleTeamChange = (teams: string[] = []) => {
+    setTeamOptions((prev) => ({
+      ...prev,
+      selectedOptions: teams,
+    }));
     setChartFilter((previous) => ({
       ...previous,
       team: teams.length ? teams.join(',') : undefined,
@@ -123,36 +146,77 @@ const DataInsightPage = () => {
   };
 
   const handleTeamSearch = async (query: string) => {
-    if (fetchTeamSuggestions) {
+    if (fetchTeamSuggestions && !isEmpty(query)) {
       try {
-        const response = await fetchTeamSuggestions(query, 5);
-        setTeamOptions(getTeamFilter(response.values));
+        const response = await fetchTeamSuggestions(query, PAGE_SIZE);
+        setTeamOptions((prev) => ({
+          ...prev,
+          options: getTeamFilter(response.values as ListItem[]),
+        }));
       } catch (_error) {
         // we will not show the toast error message for suggestion API
       }
+    } else {
+      setTeamOptions((prev) => ({
+        ...prev,
+        options: prev.defaultOptions,
+      }));
+    }
+  };
+
+  const handleTierSearch = async (query: string) => {
+    if (query) {
+      setTierOptions((prev) => ({
+        ...prev,
+        options: prev.options.filter((value) =>
+          value.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+        ),
+      }));
+    } else {
+      setTierOptions((prev) => ({
+        ...prev,
+        options: defaultTierOptions,
+      }));
     }
   };
 
   const fetchDefaultTeamOptions = async () => {
+    if (teamsOptions.defaultOptions.length) {
+      setTeamOptions((prev) => ({
+        ...prev,
+        options: prev.defaultOptions,
+      }));
+
+      return;
+    }
+
     try {
       const response = await searchQuery({
         searchIndex: SearchIndex.TEAM,
         query: '*',
-        pageSize: 5,
+        pageSize: PAGE_SIZE,
       });
       const hits = response.hits.hits;
       const teamFilterOptions = hits.map((hit) => {
         const source = hit._source;
 
-        return {
-          label: source.displayName || source.name,
-          value: source.fullyQualifiedName || source.name,
-        };
+        return source.name;
       });
-      setTeamOptions(teamFilterOptions);
+      setTeamOptions((prev) => ({
+        ...prev,
+        defaultOptions: teamFilterOptions,
+        options: teamFilterOptions,
+      }));
     } catch (_error) {
       // we will not show the toast error message for search API
     }
+  };
+
+  const fetchDefaultTierOptions = () => {
+    setTierOptions((prev) => ({
+      ...prev,
+      options: defaultTierOptions,
+    }));
   };
 
   const fetchKpiList = async () => {
@@ -230,26 +294,24 @@ const DataInsightPage = () => {
           <Card>
             <Space className="w-full justify-between">
               <Space className="w-full">
-                <Select
-                  allowClear
-                  showArrow
-                  className="data-insight-select-dropdown"
-                  mode="multiple"
-                  notFoundContent={null}
-                  options={teamsOptions}
-                  placeholder={t('label.select-teams')}
+                <SearchDropdown
+                  label={t('label.team')}
+                  options={teamsOptions.options}
+                  searchKey="teams"
+                  selectedKeys={teamsOptions.selectedOptions}
                   onChange={handleTeamChange}
+                  onGetInitialOptions={fetchDefaultTeamOptions}
                   onSearch={handleTeamSearch}
                 />
-                <Select
-                  allowClear
-                  showArrow
-                  className="data-insight-select-dropdown"
-                  mode="multiple"
-                  notFoundContent={null}
-                  options={TIER_FILTER}
-                  placeholder={t('label.select-tiers')}
+
+                <SearchDropdown
+                  label={t('label.tier')}
+                  options={tierOptions.options}
+                  searchKey="tier"
+                  selectedKeys={tierOptions.selectedOptions}
                   onChange={handleTierChange}
+                  onGetInitialOptions={fetchDefaultTierOptions}
+                  onSearch={handleTierSearch}
                 />
               </Space>
               <Space>
