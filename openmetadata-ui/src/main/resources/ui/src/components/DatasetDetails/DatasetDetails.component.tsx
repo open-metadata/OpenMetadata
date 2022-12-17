@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
@@ -665,75 +666,77 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           />
           <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
             {activeTab === 1 && (
-              <div
-                className="tab-details-container tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full"
-                id="schemaDetails">
-                <div className="tw-col-span-3">
-                  <Description
-                    description={description}
-                    entityFieldTasks={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldTaskCount
-                    )}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={datasetFQN}
-                    entityName={entityName}
-                    entityType={EntityType.TABLE}
-                    hasEditAccess={
-                      tablePermissions.EditAll ||
-                      tablePermissions.EditDescription
-                    }
-                    isEdit={isEdit}
-                    isReadOnly={deleted}
-                    owner={owner}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onEntityFieldSelect={onEntityFieldSelect}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
-                </div>
-                <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
-                  <FrequentlyJoinedTables
-                    header="Frequently Joined Tables"
-                    tableList={getFrequentlyJoinedWithTables()}
-                  />
-                </div>
-                <div className="tw-col-span-full">
-                  <SchemaTab
-                    columnName={getPartialNameFromTableFQN(
-                      datasetFQN,
-                      [FqnPart['Column']],
-                      FQN_SEPARATOR_CHAR
-                    )}
-                    columns={columns}
-                    entityFieldTasks={getEntityFieldThreadCounts(
-                      EntityField.COLUMNS,
-                      entityFieldTaskCount
-                    )}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.COLUMNS,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={datasetFQN}
-                    hasDescriptionEditAccess={
-                      tablePermissions.EditAll ||
-                      tablePermissions.EditDescription
-                    }
-                    hasTagEditAccess={
-                      tablePermissions.EditAll || tablePermissions.EditTags
-                    }
-                    isReadOnly={deleted}
-                    joins={tableJoinData.columnJoins as ColumnJoins[]}
-                    tableConstraints={tableDetails.tableConstraints}
-                    onEntityFieldSelect={onEntityFieldSelect}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                    onUpdate={onColumnsUpdate}
-                  />
-                </div>
+              <div className="tab-details-container">
+                <Row id="schemaDetails">
+                  <Col span={17}>
+                    <Description
+                      description={description}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldTaskCount
+                      )}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={datasetFQN}
+                      entityName={entityName}
+                      entityType={EntityType.TABLE}
+                      hasEditAccess={
+                        tablePermissions.EditAll ||
+                        tablePermissions.EditDescription
+                      }
+                      isEdit={isEdit}
+                      isReadOnly={deleted}
+                      owner={owner}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onEntityFieldSelect={onEntityFieldSelect}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </Col>
+                  <Col offset={1} span={6}>
+                    <div className="border-1 border-main rounded-6">
+                      <FrequentlyJoinedTables
+                        header="Frequently Joined Tables"
+                        tableList={getFrequentlyJoinedWithTables()}
+                      />
+                    </div>
+                  </Col>
+                  <Col className="m-t-md" span={24}>
+                    <SchemaTab
+                      columnName={getPartialNameFromTableFQN(
+                        datasetFQN,
+                        [FqnPart['Column']],
+                        FQN_SEPARATOR_CHAR
+                      )}
+                      columns={columns}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.COLUMNS,
+                        entityFieldTaskCount
+                      )}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        EntityField.COLUMNS,
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={datasetFQN}
+                      hasDescriptionEditAccess={
+                        tablePermissions.EditAll ||
+                        tablePermissions.EditDescription
+                      }
+                      hasTagEditAccess={
+                        tablePermissions.EditAll || tablePermissions.EditTags
+                      }
+                      isReadOnly={deleted}
+                      joins={tableJoinData.columnJoins as ColumnJoins[]}
+                      tableConstraints={tableDetails.tableConstraints}
+                      onEntityFieldSelect={onEntityFieldSelect}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                      onUpdate={onColumnsUpdate}
+                    />
+                  </Col>
+                </Row>
               </div>
             )}
             {activeTab === 2 && (
