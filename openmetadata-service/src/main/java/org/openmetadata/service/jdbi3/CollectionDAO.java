@@ -50,7 +50,7 @@ import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
-import org.openmetadata.schema.dataInsight.kpi.Kpi;
+import org.openmetadata.schema.dataInsight.KPI;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.alerts.Alert;
@@ -252,7 +252,7 @@ public interface CollectionDAO {
   TokenDAO getTokenDAO();
 
   @CreateSqlObject
-  KpiDAO kpiDAO();
+  KPIDAO KPIDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -3261,15 +3261,15 @@ public interface CollectionDAO {
     void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);
   }
 
-  interface KpiDAO extends EntityDAO<Kpi> {
+  interface KPIDAO extends EntityDAO<KPI> {
     @Override
     default String getTableName() {
       return "kpi_entity";
     }
 
     @Override
-    default Class<Kpi> getEntityClass() {
-      return Kpi.class;
+    default Class<KPI> getEntityClass() {
+      return KPI.class;
     }
 
     @Override

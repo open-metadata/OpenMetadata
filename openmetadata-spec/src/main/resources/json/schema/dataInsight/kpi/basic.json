@@ -2,10 +2,10 @@
   "$id": "https://open-metadata.org/schema/dataInsight/kpi/basic.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Basic",
-  "description": "This schema defines basic types that are used by other Kpi Definitions",
+  "description": "This schema defines basic types that are used by other KPI Definitions",
   "definitions": {
     "kpiTargetType": {
-      "javaType": "org.openmetadata.schema.dataInsight.type.KpiTargetType",
+      "javaType": "org.openmetadata.schema.dataInsight.type.KPITargetType",
       "description": "This enum defines the type of key Result",
       "type": "string",
       "enum": [
@@ -15,8 +15,8 @@
     },
     "kpiTarget": {
       "type": "object",
-      "javaType": "org.openmetadata.schema.dataInsight.type.KpiTarget",
-      "description": "This schema defines the parameter values that can be passed for a Kpi Parameter.",
+      "javaType": "org.openmetadata.schema.dataInsight.type.KPITarget",
+      "description": "This schema defines the parameter values that can be passed for a KPI Parameter.",
       "properties": {
         "name": {
           "description": "name of the parameter. Must match the parameter names in metrics of the chart this objective refers",
@@ -35,8 +35,8 @@
       "additionalProperties": false
     },
     "kpiResult": {
-      "description": "Schema to capture kpi result.",
-      "javaType": "org.openmetadata.schema.dataInsight.type.KpiResult",
+      "description": "Schema to capture KPI result.",
+      "javaType": "org.openmetadata.schema.dataInsight.type.KPIResult",
       "type": "object",
       "properties": {
         "timestamp": {

@@ -41,9 +41,8 @@ import org.apache.commons.lang.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.dataInsight.kpi.Kpi;
-import org.openmetadata.schema.dataInsight.type.KpiResult;
-import org.openmetadata.schema.dataInsight.type.KpiTarget;
+import org.openmetadata.schema.dataInsight.type.KPIResult;
+import org.openmetadata.schema.dataInsight.type.KPITarget;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -560,14 +559,13 @@ public final class ChangeEventParser {
   public static String handleKpiResult(
       PUBLISH_TO publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
     String kpiName = entity.getName();
-    KpiResult result = (KpiResult) newValue;
-    Kpi kpiEntity = (Kpi) entity;
+    KPIResult result = (KPIResult) newValue;
     if (result != null) {
       String format =
           String.format(
               "Added Results for %s. Target Name : %s , Current Value: %s, Target Met: %s",
               getBold(publishTo), getBold(publishTo), getBold(publishTo), getBold(publishTo));
-      KpiTarget target = result.getTargetResult().get(0);
+      KPITarget target = result.getTargetResult().get(0);
       return String.format(format, kpiName, target.getName(), target.getValue(), target.getTargetMet());
     } else {
       String format = String.format("KpiResult %s is updated.", getBold(publishTo));

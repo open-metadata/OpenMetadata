@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/api/dataInsight/kpi/createKpiRequest.json",
+  "$id": "https://open-metadata.org/schema/api/dataInsight/kpi/createKPIRequest.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateKpiRequest",
+  "title": "CreateKPIRequest",
   "description": "Schema corresponding to a Kpi.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest",
+  "javaType": "org.openmetadata.schema.api.dataInsight.kpi.CreateKPIRequest",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {

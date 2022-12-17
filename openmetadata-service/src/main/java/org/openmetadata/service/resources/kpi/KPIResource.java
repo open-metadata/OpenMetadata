@@ -36,15 +36,15 @@ import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
-import org.openmetadata.schema.dataInsight.kpi.Kpi;
-import org.openmetadata.schema.dataInsight.type.KpiResult;
+import org.openmetadata.schema.api.dataInsight.kpi.CreateKPIRequest;
+import org.openmetadata.schema.dataInsight.KPI;
+import org.openmetadata.schema.dataInsight.type.KPIResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.KpiRepository;
+import org.openmetadata.service.jdbi3.KPIRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -58,13 +58,13 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "kpi")
-public class KpiResource extends EntityResource<Kpi, KpiRepository> {
+public class KPIResource extends EntityResource<KPI, KPIRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
 
   static final String FIELDS = "owner,startDate,endDate,targetDefinition,dataInsightChart,metricType";
 
   @Override
-  public Kpi addHref(UriInfo uriInfo, Kpi kpi) {
+  public KPI addHref(UriInfo uriInfo, KPI kpi) {
     kpi.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, kpi.getId()));
     Entity.withHref(uriInfo, kpi.getOwner());
     Entity.withHref(uriInfo, kpi.getDataInsightChart());
@@ -72,20 +72,20 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @Inject
-  public KpiResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Kpi.class, new KpiRepository(dao), authorizer);
+  public KPIResource(CollectionDAO dao, Authorizer authorizer) {
+    super(KPI.class, new KPIRepository(dao), authorizer);
   }
 
-  public static class KpiList extends ResultList<Kpi> {
+  public static class KPIList extends ResultList<KPI> {
     @SuppressWarnings("unused")
-    public KpiList() {
+    public KPIList() {
       // Empty constructor needed for deserialization
     }
   }
 
-  public static class KpiResultList extends ResultList<KpiResult> {
+  public static class KPIResultList extends ResultList<KPIResult> {
     @SuppressWarnings("unused")
-    public KpiResultList() {
+    public KPIResultList() {
       /* Required for serde */
     }
   }
@@ -103,9 +103,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of kpi",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KpiList.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPIList.class)))
       })
-  public ResultList<Kpi> list(
+  public ResultList<KPI> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -167,10 +167,10 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The Kpi",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class))),
         @ApiResponse(responseCode = "404", description = "Kpi for instance {id} is not found")
       })
-  public Kpi get(
+  public KPI get(
       @Context UriInfo uriInfo,
       @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
@@ -200,10 +200,10 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The Kpi",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class))),
         @ApiResponse(responseCode = "404", description = "Kpi for instance {id} is not found")
       })
-  public Kpi getByName(
+  public KPI getByName(
       @Context UriInfo uriInfo,
       @PathParam("name") String name,
       @Context SecurityContext securityContext,
@@ -233,12 +233,12 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Kpi",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Kpi for instance {id} and version {version} is " + "not found")
       })
-  public Kpi getVersion(
+  public KPI getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Kpi Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
@@ -261,13 +261,13 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The Kpi",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKPIRequest create)
       throws IOException {
-    Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
+    KPI kpi = getKpi(create, securityContext.getUserPrincipal().getName());
     dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
     return create(uriInfo, securityContext, kpi);
   }
@@ -308,12 +308,12 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated kpi Objective ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKPIRequest create)
       throws IOException {
-    Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
+    KPI kpi = getKpi(create, securityContext.getUserPrincipal().getName());
     // Check if this kpi exist
     try {
       // if a kpi exits it is an update call
@@ -363,7 +363,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the Kpi. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class)))
       })
   public Response restoreKpi(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
@@ -372,7 +372,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @PUT
-  @Path("/{fqn}/kpiResult")
+  @Path("/{fqn}/KPIResult")
   @Operation(
       operationId = "addKpiResult",
       summary = "Add kpi result data",
@@ -382,20 +382,20 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully updated the Kpi. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class)))
       })
   public Response addKpiResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Encoded @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn,
-      @Valid KpiResult kpiResult)
+      @Valid KPIResult KPIResult)
       throws IOException {
-    return dao.addKpiResult(uriInfo, fqn, kpiResult).toResponse();
+    return dao.addKpiResult(uriInfo, fqn, KPIResult).toResponse();
   }
 
   @GET
-  @Path("/{fqn}/kpiResult")
+  @Path("/{fqn}/KPIResult")
   @Operation(
       operationId = "listKpiResults",
       summary = "List of kpi results",
@@ -408,12 +408,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of kpi results",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = KpiResource.KpiResultList.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPIResultList.class)))
       })
-  public ResultList<KpiResult> listKpiResults(
+  public ResultList<KPIResult> listKpiResults(
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
       @Parameter(description = "Filter kpi results after the given start timestamp", schema = @Schema(type = "number"))
@@ -444,12 +441,9 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Latest Kpi Result",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = KpiResource.KpiResultList.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPIResultList.class)))
       })
-  public KpiResult listKpiResults(
+  public KPIResult listKpiResults(
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
       throws IOException {
@@ -457,7 +451,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   @DELETE
-  @Path("/{fqn}/kpiResult/{timestamp}")
+  @Path("/{fqn}/KPIResult/{timestamp}")
   @Operation(
       operationId = "deleteKpiResult",
       summary = "Delete kpi result.",
@@ -466,8 +460,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully deleted the KpiResult",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
+            description = "Successfully deleted the KPIResult",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = KPI.class)))
       })
   public Response deleteKpiResult(
       @Context UriInfo uriInfo,
@@ -479,8 +473,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return dao.deleteKpiResult(fqn, timestamp).toResponse();
   }
 
-  private Kpi getKpi(CreateKpiRequest create, String user) throws IOException {
-    return copy(new Kpi(), create, user)
+  private KPI getKpi(CreateKPIRequest create, String user) throws IOException {
+    return copy(new KPI(), create, user)
         .withStartDate(create.getStartDate())
         .withEndDate(create.getEndDate())
         .withTargetDefinition(create.getTargetDefinition())

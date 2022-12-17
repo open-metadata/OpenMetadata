@@ -1,10 +1,10 @@
 {
   "$id": "https://open-metadata.org/schema/dataInsight/kpi/kpi.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Kpi",
+  "title": "KPI",
   "description": "Defines a kpi with a metric and target.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.dataInsight.kpi.Kpi",
+  "javaType": "org.openmetadata.schema.dataInsight.KPI",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "properties": {
     "id": {
@@ -31,7 +31,7 @@
       "$ref": "./basic.json#/definitions/kpiTargetType"
     },
     "dataInsightChart": {
-      "description": "Data Insight Chart Referred by this Kpi Objective.",
+      "description": "Data Insight Chart Referred by this KPI Objective.",
       "$ref": "../../type/entityReference.json"
     },
     "targetDefinition": {
@@ -42,7 +42,7 @@
       }
     },
     "kpiResult": {
-      "description": "Result of the Kpi",
+      "description": "Result of the KPI",
       "$ref": "./basic.json#/definitions/kpiResult"
     },
     "startDate": {
