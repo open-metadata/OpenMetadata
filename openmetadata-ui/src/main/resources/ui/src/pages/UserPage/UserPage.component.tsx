@@ -93,7 +93,7 @@ const UserPage = () => {
 
   const fetchUserData = () => {
     setUserData({} as User);
-    getUserByName(username, 'profile,roles,teams,follows,owns')
+    getUserByName(username, 'profile,roles,teams')
       .then((res) => {
         if (res) {
           setUserData(res);
