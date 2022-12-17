@@ -17,9 +17,11 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -509,11 +511,11 @@ public interface CollectionDAO {
     @Override
     public SQLQuery map(ResultSet rs, StatementContext ctx) throws SQLException {
       List<EntityReference> users = new ArrayList<>();
+      String json = rs.getString("users");
       try {
-        String json = rs.getString("users");
         users = JsonUtils.readValue(json, new TypeReference<ArrayList<EntityReference>>() {});
-      } catch (Exception e) {
-        System.out.println("error");
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
       return new SQLQuery()
           .withVote(rs.getDouble("vote"))
