@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -68,6 +69,7 @@ public class AlertActionRepository extends EntityRepository<AlertAction> {
       recordChange("readTimeout", original.getReadTimeout(), updated.getReadTimeout());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());
       recordChange("alertActionConfig", original.getAlertActionConfig(), updated.getAlertActionConfig());
+      AlertsPublisherManager.getInstance().updateAllAlertUsingAlertAction(updated);
     }
   }
 }

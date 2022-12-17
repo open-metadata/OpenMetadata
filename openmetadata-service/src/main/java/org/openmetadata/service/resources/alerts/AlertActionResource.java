@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.jdbi3.AlertActionRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -79,6 +80,8 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
 
   public AlertActionResource(CollectionDAO dao, Authorizer authorizer) {
     super(AlertAction.class, new AlertActionRepository(dao), authorizer);
+    // Initialize the Alerts Publisher Manager
+    AlertsPublisherManager.initialize(dao);
   }
 
   public static class AlertActionList extends ResultList<AlertAction> {
@@ -353,7 +356,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
           boolean hardDelete,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    AlertsPublisherManager.getInstance().deleteAlertActionFromAllAlertPublisher((AlertAction) response.getEntity());
+    return response;
   }
 
   public AlertAction getAlertAction(CreateAlertAction create, String user) throws IOException {
