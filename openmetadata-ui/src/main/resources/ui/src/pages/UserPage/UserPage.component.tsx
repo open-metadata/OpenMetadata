@@ -39,6 +39,7 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { UserProfileTab } from '../../enums/user.enum';
 import {
   Post,
   Thread,
@@ -54,7 +55,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const { t } = useTranslation();
-  const { username, tab } = useParams<{ [key: string]: string }>();
+  const { username, tab = UserProfileTab.ACTIVITY } =
+    useParams<{ [key: string]: string }>();
   const { search } = useLocation();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -93,7 +95,7 @@ const UserPage = () => {
 
   const fetchUserData = () => {
     setUserData({} as User);
-    getUserByName(username, 'profile,roles,teams,follows,owns')
+    getUserByName(username, 'profile,roles,teams')
       .then((res) => {
         if (res) {
           setUserData(res);
@@ -113,27 +115,29 @@ const UserPage = () => {
       .finally(() => setIsLoading(false));
   };
 
-  const fetchEntities = (
+  const fetchEntities = async (
     fetchOwnedEntities = false,
     handleEntity: Dispatch<SetStateAction<AssetsDataType>>
   ) => {
     const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
-    searchData(
-      fetchOwnedEntities
-        ? `owner.id:${userData.id}`
-        : `followers:${userData.id}`,
-      entity.currPage,
-      PAGE_SIZE,
-      ``,
-      '',
-      '',
-      myDataSearchIndex
-    )
-      .then((res) => {
-        const hits = res?.data?.hits?.hits as SearchEntityHits;
+    if (userData.id) {
+      try {
+        const response = await searchData(
+          fetchOwnedEntities
+            ? `owner.id:${userData.id}`
+            : `followers:${userData.id}`,
+          entity.currPage,
+          PAGE_SIZE,
+          ``,
+          '',
+          '',
+          myDataSearchIndex
+        );
+        const hits = response.data.hits.hits as SearchEntityHits;
+
         if (hits?.length > 0) {
           const data = formatDataResponse(hits);
-          const total = res.data.hits.total.value;
+          const total = response.data.hits.total.value;
           handleEntity({
             data,
             total,
@@ -148,15 +152,15 @@ const UserPage = () => {
             currPage: entity.currPage,
           });
         }
-      })
-      .catch((err: AxiosError) => {
+      } catch (error) {
         showErrorToast(
-          err,
+          error as AxiosError,
           t('server.entity-fetch-error', {
             entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
           })
         );
-      });
+      }
+    }
   };
 
   const handleFollowingEntityPaginate = (page: string | number) => {
@@ -338,7 +342,13 @@ const UserPage = () => {
   }, [username]);
 
   useEffect(() => {
-    if (userData.id) {
+    const isActivityTabs = [
+      UserProfileTab.ACTIVITY,
+      UserProfileTab.TASKS,
+    ].includes(tab as UserProfileTab);
+
+    // only make feed api call if active tab is either activity or tasks
+    if (userData.id && isActivityTabs) {
       const threadType =
         tab === 'tasks' ? ThreadType.Task : ThreadType.Conversation;
 
@@ -358,19 +368,16 @@ const UserPage = () => {
   }, [tab]);
 
   useEffect(() => {
-    if (!isEmpty(userData)) {
-      fetchEntities(true, setOwnedEntities);
+    if (tab === UserProfileTab.FOLLOWING) {
       fetchEntities(false, setFollowingEntities);
     }
-  }, [userData]);
+  }, [followingEntities.currPage, tab, userData]);
 
   useEffect(() => {
-    fetchEntities(false, setFollowingEntities);
-  }, [followingEntities.currPage]);
-
-  useEffect(() => {
-    fetchEntities(true, setOwnedEntities);
-  }, [ownedEntities.currPage]);
+    if (tab === UserProfileTab.MY_DATA) {
+      fetchEntities(true, setOwnedEntities);
+    }
+  }, [ownedEntities.currPage, tab, userData]);
 
   useEffect(() => {
     setCurrentLoggedInUser(AppState.getCurrentUserDetails());

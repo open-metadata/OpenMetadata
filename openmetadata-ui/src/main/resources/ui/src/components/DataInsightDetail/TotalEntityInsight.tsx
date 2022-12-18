@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -50,14 +50,17 @@ import {
   renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import CustomStatistic from './CustomStatistic';
 import './DataInsightDetail.less';
+import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
+  selectedDays: number;
 }
 
-const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
+const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [totalEntitiesByType, setTotalEntitiesByType] =
     useState<DataInsightChartResult>();
 
@@ -65,12 +68,13 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
-  const { data, entities, total } = useMemo(() => {
-    return getGraphDataByEntityType(
-      totalEntitiesByType?.data ?? [],
-      DataInsightChartType.TotalEntitiesByType
-    );
-  }, [totalEntitiesByType]);
+  const { data, entities, total, relativePercentage, latestData } =
+    useMemo(() => {
+      return getGraphDataByEntityType(
+        totalEntitiesByType?.data ?? [],
+        DataInsightChartType.TotalEntitiesByType
+      );
+    }, [totalEntitiesByType]);
 
   const { t } = useTranslation();
 
@@ -125,44 +129,81 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter }) => {
         </>
       }>
       {data.length ? (
-        <ResponsiveContainer debounce={1} minHeight={400}>
-          <LineChart data={data} margin={BAR_CHART_MARGIN}>
-            <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
-            <XAxis dataKey="timestamp" />
-            <YAxis />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              align="left"
-              content={(props) =>
-                renderLegend(props as LegendProps, `${total}`, activeKeys)
-              }
-              layout="vertical"
-              verticalAlign="top"
-              wrapperStyle={{ left: '0px', top: '0px' }}
-              onClick={handleLegendClick}
-              onMouseEnter={handleLegendMouseEnter}
-              onMouseLeave={handleLegendMouseLeave}
-            />
-            {entities.map((entity) => (
-              <Line
-                dataKey={entity}
-                hide={
-                  activeKeys.length && entity !== activeMouseHoverKey
-                    ? !activeKeys.includes(entity)
-                    : false
-                }
-                key={entity}
-                stroke={ENTITIES_BAR_COLO_MAP[entity]}
-                strokeOpacity={
-                  isEmpty(activeMouseHoverKey) || entity === activeMouseHoverKey
-                    ? DEFAULT_CHART_OPACITY
-                    : HOVER_CHART_OPACITY
-                }
-                type="monotone"
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+        <Row gutter={16}>
+          <Col span={18}>
+            <ResponsiveContainer debounce={1} minHeight={400}>
+              <LineChart data={data} margin={BAR_CHART_MARGIN}>
+                <CartesianGrid
+                  stroke={GRAPH_BACKGROUND_COLOR}
+                  vertical={false}
+                />
+                <XAxis dataKey="timestamp" />
+                <YAxis />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  align="left"
+                  content={(props) =>
+                    renderLegend(props as LegendProps, activeKeys)
+                  }
+                  layout="horizontal"
+                  verticalAlign="top"
+                  wrapperStyle={{ left: '0px', top: '0px' }}
+                  onClick={handleLegendClick}
+                  onMouseEnter={handleLegendMouseEnter}
+                  onMouseLeave={handleLegendMouseLeave}
+                />
+                {entities.map((entity) => (
+                  <Line
+                    dataKey={entity}
+                    hide={
+                      activeKeys.length && entity !== activeMouseHoverKey
+                        ? !activeKeys.includes(entity)
+                        : false
+                    }
+                    key={entity}
+                    stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                    strokeOpacity={
+                      isEmpty(activeMouseHoverKey) ||
+                      entity === activeMouseHoverKey
+                        ? DEFAULT_CHART_OPACITY
+                        : HOVER_CHART_OPACITY
+                    }
+                    type="monotone"
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </Col>
+          <Col span={6}>
+            <Row gutter={[8, 8]}>
+              <Col span={24}>
+                <CustomStatistic
+                  changeInValue={relativePercentage}
+                  duration={selectedDays}
+                  label={t('label.total-entity', {
+                    entity: t('label.assets'),
+                  })}
+                  value={total}
+                />
+              </Col>
+              {entities.map((entity) => {
+                const progress = (latestData[entity] / Number(total)) * 100;
+
+                return (
+                  <Col key={uniqueId()} span={24}>
+                    <DataInsightProgressBar
+                      progress={progress}
+                      showLabel={false}
+                      startValue={latestData[entity]}
+                      successValue={entity}
+                      suffix=""
+                    />
+                  </Col>
+                );
+              })}
+            </Row>
+          </Col>
+        </Row>
       ) : (
         <EmptyGraphPlaceholder />
       )}

@@ -17,6 +17,8 @@
 @box-shadow-color: rgba(0, 0, 0, 0.06);
 @icon-color: #515151;
 @group-title-color: #76746f;
+@summary-card-bg-hover: #f0f1f3;
+@target-blue-color: #1890ff;
 
 .data-insight-select-dropdown {
   min-width: 136px;
@@ -28,6 +30,7 @@
 .data-insight-left-panel.ant-menu-root.ant-menu-inline {
   background: @white;
   border: 0px;
+  margin-top: 16px;
 
   .ant-menu-item::after {
     left: 0;
@@ -87,6 +90,7 @@
     // library has given height directly via style attribute , so to override need to provide !important
     height: 30px !important;
   }
+
   .ant-progress-outer {
     margin-right: 0;
     padding-right: 0;
@@ -109,12 +113,48 @@
     left: 2px;
     padding: 0 16px 0 8px;
     font-size: 12px;
+    color: @text-color;
   }
   .data-insight-kpi-target {
     height: 100%;
     position: absolute;
     left: 0;
-    border-right: 2px solid #1890ff;
+    border-right: 2px solid @target-blue-color;
+
+    .target-text {
+      position: relative;
+      right: -8px;
+      top: -14px;
+      display: flex;
+      justify-content: flex-end;
+      font-size: 10px;
+    }
+
+    &::after {
+      content: '●';
+      position: absolute;
+      top: -5px;
+      right: -6px;
+      color: @target-blue-color;
+      font-size: 10px;
+    }
+  }
+}
+
+.custom-data-insight-legend {
+  display: flex;
+  gap: 4px;
+
+  .custom-data-insight-legend-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
     border-radius: 4px;
+    color: @text-grey-muted;
+
+    &:hover {
+      background: @summary-card-bg-hover;
+    }
   }
 }

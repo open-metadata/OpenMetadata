@@ -11,34 +11,14 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
-
-@label-color: #6b7280;
-@summary-card-bg-hover: #f0f1f3;
-
-.data-insight-card {
-  .ant-card-head {
-    border-bottom: none;
+.alerts-notification-form {
+  .ant-form-item {
+    margin-bottom: 12px;
   }
-  .custom-data-insight-tooltip {
-    .ant-card-head {
-      border-bottom: 1px solid @border-gray-color;
-    }
-  }
-  .ant-card-body {
-    padding-top: 8px;
-  }
-}
 
-.ant-typography.data-insight-label-text {
-  color: @label-color;
-}
-
-.summary-card-item {
-  cursor: pointer;
-  padding: 8px;
-  &:hover {
-    background-color: @summary-card-bg-hover;
-    border-radius: 6px;
+  .footer {
+    gap: 16px;
+    display: flex;
+    justify-content: end;
   }
 }

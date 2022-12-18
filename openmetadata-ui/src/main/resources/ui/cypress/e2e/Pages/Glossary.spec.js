@@ -245,7 +245,7 @@ describe('Glossary page should work properly', () => {
     
     // updating description
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
-    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('.ant-modal-wrap').should('be.visible');
     cy.get(descriptionBox).should('be.visible').as('description');
 
     cy.get('@description').clear();
@@ -254,7 +254,7 @@ describe('Glossary page should work properly', () => {
     interceptURL('PATCH', '/api/v1/glossaries/*', 'saveGlossary');
     cy.get('[data-testid="save"]').click();
 
-    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('.ant-modal-wrap').should('not.exist');
 
     verifyResponseStatusCode('@saveGlossary', 200);
 
@@ -298,7 +298,7 @@ describe('Glossary page should work properly', () => {
 
     // updating description
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
-    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('.ant-modal-wrap').should('be.visible');
     cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
       .should('be.visible')
       .as('description');
@@ -306,7 +306,7 @@ describe('Glossary page should work properly', () => {
     cy.get('@description').type(newDescription);
     cy.get('[data-testid="save"]').click();
     verifyResponseStatusCode('@saveData', 200);
-    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('.ant-modal-wrap').should('not.exist');
 
     cy.get('[data-testid="viewer-container"]')
       .contains(newDescription)

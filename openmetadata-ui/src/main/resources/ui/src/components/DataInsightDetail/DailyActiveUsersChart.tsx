@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,14 +42,16 @@ import {
   renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import CustomStatistic from './CustomStatistic';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
+  selectedDays: number;
 }
 
-const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
+const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [dailyActiveUsers, setDailyActiveUsers] = useState<DailyActiveUsers[]>(
     []
   );
@@ -58,7 +60,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
 
   const { t } = useTranslation();
 
-  const { data, total } = useMemo(
+  const { data, total, relativePercentage } = useMemo(
     () => getFormattedActiveUsersData(dailyActiveUsers),
     [dailyActiveUsers]
   );
@@ -102,28 +104,43 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter }) => {
         </>
       }>
       {dailyActiveUsers.length ? (
-        <ResponsiveContainer debounce={1} minHeight={400}>
-          <LineChart data={data} margin={BAR_CHART_MARGIN}>
-            <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
-            <Legend
-              align="left"
-              content={() =>
-                renderLegend({ payload: [] } as LegendProps, `${total}`)
-              }
-              layout="vertical"
-              verticalAlign="top"
-              wrapperStyle={{ left: '0px', top: '0px' }}
+        <Row gutter={16}>
+          <Col span={18}>
+            <ResponsiveContainer debounce={1} minHeight={400}>
+              <LineChart data={data} margin={BAR_CHART_MARGIN}>
+                <CartesianGrid
+                  stroke={GRAPH_BACKGROUND_COLOR}
+                  vertical={false}
+                />
+                <Legend
+                  align="left"
+                  content={() =>
+                    renderLegend({ payload: [] } as LegendProps, [])
+                  }
+                  layout="vertical"
+                  verticalAlign="top"
+                  wrapperStyle={{ left: '0px', top: '0px' }}
+                />
+                <XAxis dataKey="timestamp" />
+                <YAxis />
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  dataKey="activeUsers"
+                  stroke={DATA_INSIGHT_GRAPH_COLORS[3]}
+                  type="monotone"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Col>
+          <Col span={6}>
+            <CustomStatistic
+              changeInValue={relativePercentage}
+              duration={selectedDays}
+              label={t('label.total-active-user')}
+              value={total}
             />
-            <XAxis dataKey="timestamp" />
-            <YAxis />
-            <Tooltip content={<CustomTooltip />} />
-            <Line
-              dataKey="activeUsers"
-              stroke={DATA_INSIGHT_GRAPH_COLORS[3]}
-              type="monotone"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+          </Col>
+        </Row>
       ) : (
         <EmptyGraphPlaceholder />
       )}
