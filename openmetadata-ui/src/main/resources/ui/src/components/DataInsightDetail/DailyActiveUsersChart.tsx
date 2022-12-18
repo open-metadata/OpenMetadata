@@ -115,7 +115,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                 <Legend
                   align="left"
                   content={() =>
-                    renderLegend({ payload: [] } as LegendProps, '', [], false)
+                    renderLegend({ payload: [] } as LegendProps, [])
                   }
                   layout="vertical"
                   verticalAlign="top"

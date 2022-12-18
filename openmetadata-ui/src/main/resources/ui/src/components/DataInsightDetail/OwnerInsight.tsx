@@ -166,7 +166,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                 <Legend
                   align="left"
                   content={(props) =>
-                    renderLegend(props as LegendProps, '', activeKeys, false)
+                    renderLegend(props as LegendProps, activeKeys)
                   }
                   layout="horizontal"
                   verticalAlign="top"

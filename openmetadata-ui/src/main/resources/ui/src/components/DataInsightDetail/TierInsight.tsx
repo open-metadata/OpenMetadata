@@ -138,7 +138,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                 <Legend
                   align="left"
                   content={(props) =>
-                    renderLegend(props as LegendProps, total, activeKeys, false)
+                    renderLegend(props as LegendProps, activeKeys)
                   }
                   layout="horizontal"
                   verticalAlign="top"

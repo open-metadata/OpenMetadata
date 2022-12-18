@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { t } from 'i18next';
 import {
@@ -19,7 +19,6 @@ import {
   groupBy,
   isEmpty,
   isInteger,
-  isNil,
   isString,
   isUndefined,
   last,
@@ -30,7 +29,6 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
-import ChangeInValueIndicator from '../components/DataInsightDetail/ChangeInValueIndicator';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -68,76 +66,46 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 
 export const renderLegend = (
   legendData: LegendProps,
-  latest: string | number,
-  activeKeys = [] as string[],
-  showLatestValue = true,
-  changeInValueIndicator?: {
-    changeInValue: number;
-    duration?: number;
-    suffix?: string;
-  }
+  activeKeys = [] as string[]
 ) => {
   const { payload = [] } = legendData;
 
   return (
-    <>
-      {showLatestValue && (
-        <Space direction="vertical" size={0} style={{ margin: '0px 0px 16px' }}>
-          <Typography.Text className="data-insight-label-text">
-            Latest
-          </Typography.Text>
-          <Typography.Text className="font-bold text-lg">
-            {latest}
-          </Typography.Text>
-          {changeInValueIndicator &&
-          changeInValueIndicator.changeInValue &&
-          !isNil(changeInValueIndicator.changeInValue) ? (
-            <ChangeInValueIndicator
-              changeInValue={changeInValueIndicator.changeInValue}
-              duration={changeInValueIndicator.duration}
-              suffix={changeInValueIndicator.suffix ?? '%'}
-            />
-          ) : (
-            ''
-          )}
-        </Space>
-      )}
-      <ul className="custom-data-insight-legend">
-        {payload.map((entry, index) => {
-          const isActive =
-            activeKeys.length === 0 || activeKeys.includes(entry.value);
+    <ul className="custom-data-insight-legend">
+      {payload.map((entry, index) => {
+        const isActive =
+          activeKeys.length === 0 || activeKeys.includes(entry.value);
 
-          return (
-            <li
-              className="recharts-legend-item custom-data-insight-legend-item"
-              key={`item-${index}`}
-              onClick={(e) =>
-                legendData.onClick && legendData.onClick({ ...entry, ...e })
-              }
-              onMouseEnter={(e) =>
-                legendData.onMouseEnter &&
-                legendData.onMouseEnter({ ...entry, ...e })
-              }
-              onMouseLeave={(e) =>
-                legendData.onMouseLeave &&
-                legendData.onMouseLeave({ ...entry, ...e })
-              }>
-              <Surface className="m-r-xss" height={14} version="1.1" width={14}>
-                <rect
-                  fill={isActive ? entry.color : GRAYED_OUT_COLOR}
-                  height="14"
-                  rx="2"
-                  width="14"
-                />
-              </Surface>
-              <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-                {entry.value}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </>
+        return (
+          <li
+            className="recharts-legend-item custom-data-insight-legend-item"
+            key={`item-${index}`}
+            onClick={(e) =>
+              legendData.onClick && legendData.onClick({ ...entry, ...e })
+            }
+            onMouseEnter={(e) =>
+              legendData.onMouseEnter &&
+              legendData.onMouseEnter({ ...entry, ...e })
+            }
+            onMouseLeave={(e) =>
+              legendData.onMouseLeave &&
+              legendData.onMouseLeave({ ...entry, ...e })
+            }>
+            <Surface className="m-r-xss" height={14} version="1.1" width={14}>
+              <rect
+                fill={isActive ? entry.color : GRAYED_OUT_COLOR}
+                height="14"
+                rx="2"
+                width="14"
+              />
+            </Surface>
+            <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
+              {entry.value}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 };
 
@@ -181,7 +149,8 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
 
   if (active && payload && payload.length) {
     const timestamp = getDateByTimeStamp(
-      payload[0].payload.timestampValue || 0
+      payload[0].payload.timestampValue || 0,
+      'MMM dd, yyyy'
     );
 
     return (
