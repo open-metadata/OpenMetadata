@@ -188,7 +188,7 @@ class Profiler(Generic[TMetric]):
             CreateTableProfileRequest:
         """
         for attrs, val in profile.tableProfile:
-            if attrs not in {"timestamp", "profileSample"} and val:
+            if attrs not in {"timestamp", "profileSample", "profileSampleType"} and val:
                 return profile
 
         for col_element in profile.columnProfile:
