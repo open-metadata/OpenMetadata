@@ -34,7 +34,7 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent import (
     PageViewData,
 )
-from metadata.generated.schema.api.dataInsight.kpi.createKPIRequest import (
+from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
     CreateKPIRequest,
 )
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
@@ -283,7 +283,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         fqn = "CompletedDescription"
         self.metadata.add_kpi_result(
             fqn,
-            KpiResult(
+            KPIResult(
                 timestamp=int(datetime.utcnow().timestamp() * 1000),
                 kpiFqn="CompletedDescription",
                 targetResult=[

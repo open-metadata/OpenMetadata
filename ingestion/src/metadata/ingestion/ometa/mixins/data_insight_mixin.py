@@ -23,7 +23,7 @@ from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
-from metadata.generated.schema.api.dataInsight.kpi.createKPIRequest import (
+from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
     CreateKPIRequest,
 )
 from metadata.generated.schema.dataInsight.dataInsightChartResult import (
