@@ -27,6 +27,8 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
   CartesianGrid,
+  Legend,
+  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -35,7 +37,12 @@ import {
   YAxis,
 } from 'recharts';
 import { getLatestKpiResult, getListKpiResult } from '../../axiosAPIs/KpiAPI';
-import { GRAPH_BACKGROUND_COLOR, ROUTES } from '../../constants/constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+  ROUTES,
+} from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
@@ -51,7 +58,12 @@ import {
   ChartFilter,
   UIKpiResult,
 } from '../../interface/data-insight.interface';
-import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
+import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import {
+  CustomTooltip,
+  getKpiGraphData,
+  renderLegend,
+} from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
@@ -71,6 +83,8 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
 
@@ -152,6 +166,18 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
     return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
   }, [kpiResults, kpiList]);
 
+  const handleLegendClick: LegendProps['onClick'] = (event) => {
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
+  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
+    setActiveMouseHoverKey(event.dataKey);
+  };
+  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
+    setActiveMouseHoverKey('');
+  };
+
   useEffect(() => {
     setKpiResults([]);
     setKpiLatestResults(undefined);
@@ -183,16 +209,10 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
         </Space>
       }>
       {kpiList.length ? (
-        <Row>
+        <Row gutter={16}>
           {graphData.length ? (
             <>
-              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-                <Col span={5}>
-                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
-                </Col>
-              )}
-
-              <Col span={19}>
+              <Col span={18}>
                 <ResponsiveContainer debounce={1} minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
@@ -201,6 +221,18 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
                     />
                     <XAxis dataKey="timestamp" />
                     <YAxis />
+                    <Legend
+                      align="left"
+                      content={(props) =>
+                        renderLegend(props as LegendProps, activeKeys)
+                      }
+                      layout="horizontal"
+                      verticalAlign="top"
+                      wrapperStyle={{ left: '0px', top: '0px' }}
+                      onClick={handleLegendClick}
+                      onMouseEnter={handleLegendMouseEnter}
+                      onMouseLeave={handleLegendMouseLeave}
+                    />
                     <Tooltip
                       content={
                         <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
@@ -209,14 +241,30 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
                     {kpis.map((kpi, i) => (
                       <Line
                         dataKey={kpi}
+                        hide={
+                          activeKeys.length && kpi !== activeMouseHoverKey
+                            ? !activeKeys.includes(kpi)
+                            : false
+                        }
                         key={i}
                         stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
+                        strokeOpacity={
+                          isEmpty(activeMouseHoverKey) ||
+                          kpi === activeMouseHoverKey
+                            ? DEFAULT_CHART_OPACITY
+                            : HOVER_CHART_OPACITY
+                        }
                         type="monotone"
                       />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
               </Col>
+              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
+                <Col span={6}>
+                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
+                </Col>
+              )}
             </>
           ) : (
             <EmptyGraphPlaceholder />

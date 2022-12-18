@@ -13,9 +13,11 @@
 
 import { Progress, Typography } from 'antd';
 import classNames from 'classnames';
+import { isNil } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import ChangeInValueIndicator from './ChangeInValueIndicator';
 
 interface DataInsightProgressBarProps {
   width?: number;
@@ -28,9 +30,13 @@ interface DataInsightProgressBarProps {
   successValue?: number | string;
   startValue?: number | string;
   suffix?: string;
+  changeInValue?: number;
+  duration?: number;
+  showEndValueAsLabel?: boolean;
 }
 
 const DataInsightProgressBar = ({
+  showEndValueAsLabel = false,
   width,
   progress,
   className,
@@ -41,17 +47,19 @@ const DataInsightProgressBar = ({
   successValue = 100,
   showLabel = true,
   showSuccessInfo = false,
+  changeInValue,
+  duration,
 }: DataInsightProgressBarProps) => {
   const { t } = useTranslation();
 
   return (
     <div className={classNames(className)} style={{ width }}>
       {showLabel && (
-        <Typography.Text className="data-insight-label-text">
+        <Typography.Paragraph className="data-insight-label-text">
           {label ?? t('label.latest')}
-        </Typography.Text>
+        </Typography.Paragraph>
       )}
-      <div className="flex">
+      <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
         <Progress
           className="data-insight-progress-bar"
           format={(per) => (
@@ -63,12 +71,16 @@ const DataInsightProgressBar = ({
               {target && (
                 <span
                   className="data-insight-kpi-target"
-                  style={{ width: `${target}%` }}
-                />
+                  style={{ width: `${target}%` }}>
+                  <span className="target-text">
+                    {target}
+                    {suffix}
+                  </span>
+                </span>
               )}
               <span>
                 {successValue}
-                {suffix}
+                {showEndValueAsLabel ? '' : suffix}
               </span>
             </>
           )}
@@ -79,6 +91,16 @@ const DataInsightProgressBar = ({
           <SVGIcons className="m-l-xs" icon={Icons.SUCCESS_BADGE} />
         )}
       </div>
+
+      {changeInValue && !isNil(changeInValue) ? (
+        <ChangeInValueIndicator
+          changeInValue={changeInValue}
+          duration={duration}
+          suffix={suffix}
+        />
+      ) : (
+        ''
+      )}
     </div>
   );
 };

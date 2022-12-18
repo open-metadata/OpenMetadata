@@ -577,7 +577,14 @@
     "event-type": "Event Type",
     "connection-timeout-plural-optional": "Connection Timeout (s)",
     "all-data-assets": "All Data Assets",
-    "specific-data-assets": "Specific Data Assets"
+    "specific-data-assets": "Specific Data Assets",
+    "days-change-lowercase": "{{days}}-days change",
+    "total-entity": "Total {{entity}}",
+    "assets": "Assets",
+    "completed-description": "Completed Description",
+    "assigned-entity": "Assigned {{entity}}",
+    "total-assets-view": "Total Assets View",
+    "total-active-user": "Total Active User"
   },
   "message": {
     "service-email-required": "Service account Email is required",
