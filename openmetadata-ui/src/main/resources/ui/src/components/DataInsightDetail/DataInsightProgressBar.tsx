@@ -59,7 +59,7 @@ const DataInsightProgressBar = ({
           {label ?? t('label.latest')}
         </Typography.Paragraph>
       )}
-      <div className={classNames('flex', { 'tw-mt-3': Boolean(target) })}>
+      <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
         <Progress
           className="data-insight-progress-bar"
           format={(per) => (

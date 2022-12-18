@@ -14,6 +14,7 @@
 import { Space, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import ChangeInValueIndicator from './ChangeInValueIndicator';
 
 interface CustomStatisticProps {
@@ -31,10 +32,12 @@ const CustomStatistic = ({
   duration,
   suffix = '%',
 }: CustomStatisticProps) => {
+  const { t } = useTranslation();
+
   return (
     <Space direction="vertical" size={0} style={{ margin: 0 }}>
       <Typography.Text className="data-insight-label-text">
-        {label ?? 'Latest'}
+        {label ?? t('label.latest')}
       </Typography.Text>
       <Typography.Text className="font-bold text-lg">{value}</Typography.Text>
       {changeInValue && !isNil(changeInValue) ? (
