@@ -86,6 +86,17 @@ public class AlertRepository extends EntityRepository<Alert> {
     }
   }
 
+
+  public void validateAlertActions(List<EntityReference> alertRef) throws IOException {
+    if (CommonUtil.nullOrEmpty(alertRef)) {
+      throw new IllegalArgumentException("Alert Action cannot be null or Empty");
+    }
+    for (EntityReference ref : alertRef) {
+      // validate targetDefinition
+      Entity.getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
+    }
+  }
+
   public List<AlertAction> getAllAlertActionForAlert(UUID alertId) throws IOException {
     List<AlertAction> alertActionList = new ArrayList<>();
     List<CollectionDAO.EntityRelationshipRecord> records =
@@ -98,7 +109,7 @@ public class AlertRepository extends EntityRepository<Alert> {
     }
     return alertActionList;
   }
-
+  
   public void validateAlertActions(List<EntityReference> alertRef) throws IOException {
     if (CommonUtil.nullOrEmpty(alertRef)) {
       throw new IllegalArgumentException("Alert Action cannot be null or Empty");
