@@ -548,6 +548,7 @@
     "table-profile": "Table Profile",
     "column-profile": "Column Profile",
     "applied-advanced-search": "Applied advanced search",
+    "select-data-assets": "Select Data Assets",
     "profiler-timeout-seconds-label": "Timeout in Seconds",
     "add-deploy": "Add & Deploy",
     "dbt-Configuration-source": "DBT Configuration Source",
@@ -555,6 +556,12 @@
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
     "latest": "Latest",
+    "trigger": "Trigger",
+    "destination": "Destination",
+    "alert": "Alert",
+    "alert-plural": "Alerts",
+    "select-field": "Select {{field}}",
+    "filter-plural": "Filters",
     "task-lowercase": "task",
     "create": "Create",
     "admin": "Admin",
@@ -564,7 +571,13 @@
     "create-entity": "Create {{entity}}",
     "domain": "Domain",
     "private-key": "PrivateKey",
-    "service-email": "Service account Email"
+    "service-email": "Service account Email",
+    "search-by-type": "Search by {{type}}",
+    "fqn-uppercase": "FQN",
+    "event-type": "Event Type",
+    "connection-timeout-plural-optional": "Connection Timeout (s)",
+    "all-data-assets": "All Data Assets",
+    "specific-data-assets": "Specific Data Assets"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -685,7 +698,11 @@
     "profiler-timeout-seconds-message": "Optional number setting the timeout in seconds for the profiler. If the timeout is reached the profiler will wait for any pending queries to terminated its execution.",
     "instance-identifier": "Name that identifies this configuration instance uniquely.",
     "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files.",
-    "no-profiler-enabled-summary-message": "Profiler is not enabled for the table."
+    "no-profiler-enabled-summary-message": "Profiler is not enabled for the table.",
+    "alerts-description": "Stay current with timely alerts using webhooks.",
+    "alerts-destination-description": "Send notifications to Slack, MS Teams, Email, or and use Webhooks.",
+    "alerts-trigger-description": "Trigger for all data assets or a specific entity.",
+    "alerts-filter-description": "Specify the change events to narrow the scope of your alerts."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
@@ -704,7 +721,8 @@
     "unexpected-response": "Unexpected response from server!",
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "team-moved-error": "Error while moving team",
-    "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}"
+    "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
+    "create-entity-success": "{{entity}} created successfully."
   },
   "url": {}
 }

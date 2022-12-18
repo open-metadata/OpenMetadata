@@ -119,7 +119,7 @@
     "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx}' --fix",
     "pretty": "prettier . --config './.prettierrc' --write",
-    "build-check": "yarn run json2ts && yarn run js-antlr && yarn run lint && yarn run parse-conn-schema",
+    "build-check": "yarn run json2ts && yarn run js-antlr && yarn run parse-conn-schema",
     "commit-check": "yarn run pretty && yarn run build",
     "json2ts": "sh json2ts.sh",
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
