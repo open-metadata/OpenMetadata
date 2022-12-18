@@ -195,7 +195,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         return None
 
-    def get_profile_sample(self, entity: Table) -> Optional[tuple]:
+    def get_profile_sample(self, entity: Table) -> Optional[dict]:
         """Get profile sample
 
         Args:

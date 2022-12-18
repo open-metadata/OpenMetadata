@@ -44,11 +44,10 @@ class Sampler:
         self.profile_sample = None
         self.profile_sample_type = None
         if profile_sample:
-            self.profile_sample = (
-                profile_sample.get("profile_sample") if profile_sample else None
-            )
-            self.profile_sample_type = profile_sample.get(
-                "profile_sample_type", ProfileSampleType.PERCENTAGE
+            self.profile_sample = profile_sample.get("profile_sample")
+            self.profile_sample_type = (
+                profile_sample.get("profile_sample_type")
+                or ProfileSampleType.PERCENTAGE
             )
         self.session = session
         self.table = table
