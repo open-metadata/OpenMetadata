@@ -55,7 +55,10 @@ import {
   KpiDates,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
-import { getFormattedDateFromMilliSeconds } from './TimeUtils';
+import {
+  getDateByTimeStamp,
+  getFormattedDateFromMilliSeconds,
+} from './TimeUtils';
 
 const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
   [
@@ -174,20 +177,28 @@ const getEntryFormattedValue = (
 };
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], label, isPercentage, kpiTooltipRecord } = props;
+  const { active, payload = [], isPercentage, kpiTooltipRecord } = props;
 
   if (active && payload && payload.length) {
+    const timestamp = getDateByTimeStamp(
+      payload[0].payload.timestampValue || 0
+    );
+
     return (
-      <Card>
-        {/* this is a graph tooltip so using the explicit title here */}
-        <Typography.Title level={5}>{label}</Typography.Title>
+      <Card
+        className="custom-data-insight-tooltip"
+        title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         {payload.map((entry, index) => (
-          <li className="d-flex items-center" key={`item-${index}`}>
-            <Surface className="mr-2" height={14} version="1.1" width={14}>
-              <rect fill={entry.color} height="14" rx="2" width="14" />
-            </Surface>
-            <span>
-              {entry.dataKey} -{' '}
+          <li
+            className="d-flex items-center justify-between tw-gap-6 tw-pb-1.5 text-sm"
+            key={`item-${index}`}>
+            <span className="flex items-center text-grey-muted">
+              <Surface className="mr-2" height={12} version="1.1" width={12}>
+                <rect fill={entry.color} height="14" rx="2" width="14" />
+              </Surface>
+              {entry.dataKey}
+            </span>
+            <span className="font-medium">
               {getEntryFormattedValue(
                 entry.value,
                 entry.dataKey,
@@ -243,7 +254,8 @@ const getLatestCount = (latestData = {}) => {
   const latestEntries = Object.entries(latestData ?? {});
 
   for (const entry of latestEntries) {
-    if (entry[0] !== 'timestamp') {
+    // if key is 'timestamp' or 'timestampValue' skipping its count for total
+    if (!['timestamp', 'timestampValue'].includes(entry[0])) {
       total += toNumber(entry[1]);
     }
   }
@@ -414,6 +426,7 @@ const getGraphFilteredData = (
 
         return {
           timestamp: timestamp,
+          timestampValue: data.timestamp,
           [data.entityType]: value,
         };
       }
@@ -494,6 +507,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
       }
 
       return {
+        timestampValue: data.timestamp,
         timestamp: timestamp,
         [tiering]: ((data?.entityCountFraction || 0) * 100).toFixed(2),
       };
@@ -525,6 +539,7 @@ export const getFormattedActiveUsersData = (
 ) => {
   const formattedData = activeUsers.map((user) => ({
     ...user,
+    timestampValue: user.timestamp,
     timestamp: user.timestamp
       ? getFormattedDateFromMilliSeconds(user.timestamp)
       : '',
@@ -619,6 +634,7 @@ export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
     }
 
     return {
+      timestampValue: kpiResult.timestamp,
       timestamp,
       [kpiFqn]:
         currentKpi?.metricType === KpiTargetType.Percentage

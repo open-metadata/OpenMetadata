@@ -229,7 +229,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                       showEndValueAsLabel
                       progress={progress}
                       showLabel={false}
-                      startValue={latestData[entity]}
+                      startValue={latestData[entity].toFixed(2)}
                       successValue={entity}
                       suffix={isPercentageGraph ? '%' : ''}
                     />
