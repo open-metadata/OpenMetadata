@@ -12,24 +12,25 @@
  */
 import { render } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import AlertsPage from './AlertsPage';
 
 describe('Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
-    const { findByText } = render(<AlertsPage />);
+    const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });
 
-    expect(await findByText('Alerts')).toBeInTheDocument();
+    expect(await findByText('label.alert-plural')).toBeInTheDocument();
   });
 
   it('SubTitle should be rendered', async () => {
-    const { findByText } = render(<AlertsPage />);
+    const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });
 
-    expect(await findByText(/Alerts body/)).toBeInTheDocument();
+    expect(await findByText(/message.alerts-description/)).toBeInTheDocument();
   });
 
   it('Add alert button should be rendered', async () => {
-    const { findByText } = render(<AlertsPage />);
+    const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });
 
-    expect(await findByText(/Create Alert/)).toBeInTheDocument();
+    expect(await findByText(/label.create-entity/)).toBeInTheDocument();
   });
 });
