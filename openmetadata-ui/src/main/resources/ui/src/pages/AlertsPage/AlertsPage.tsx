@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Col, Row, Table, Tag, Tooltip, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,6 +34,7 @@ import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { AlertsExpanded } from './AlertRowExpanded';
 
 const AlertsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -166,6 +169,20 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
+            expandable={{
+              expandedRowRender: (record) => <AlertsExpanded alert={record} />,
+              expandIcon: ({ expanded, onExpand, expandable, record }) =>
+                expandable && (
+                  <Typography.Text
+                    className="m-r-xs cursor-pointer"
+                    data-testid="expand-icon"
+                    onClick={(e) => onExpand(record, e)}>
+                    <FontAwesomeIcon
+                      icon={expanded ? faCaretDown : faCaretRight}
+                    />
+                  </Typography.Text>
+                ),
+            }}
             loading={{ spinning: loading, indicator: <Loader /> }}
             pagination={false}
             rowKey="id"
@@ -187,6 +204,7 @@ const AlertsPage = () => {
 
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
+            allowSoftDelete={false}
             entityId={selectedAlert?.id || ''}
             entityName={selectedAlert?.name || ''}
             entityType={EntityType.ALERT}

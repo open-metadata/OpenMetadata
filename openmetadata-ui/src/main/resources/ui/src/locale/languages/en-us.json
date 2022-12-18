@@ -584,7 +584,8 @@
     "completed-description": "Completed Description",
     "assigned-entity": "Assigned {{entity}}",
     "total-assets-view": "Total Assets View",
-    "total-active-user": "Total Active User"
+    "total-active-user": "Total Active User",
+    "alert-actions": "Alert Actions"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -709,7 +710,8 @@
     "alerts-description": "Stay current with timely alerts using webhooks.",
     "alerts-destination-description": "Send notifications to Slack, MS Teams, Email, or and use Webhooks.",
     "alerts-trigger-description": "Trigger for all data assets or a specific entity.",
-    "alerts-filter-description": "Specify the change events to narrow the scope of your alerts."
+    "alerts-filter-description": "Specify the change events to narrow the scope of your alerts.",
+    "length-validator-error": "At least {{length}} {{field}} required"
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
@@ -729,7 +731,8 @@
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "team-moved-error": "Error while moving team",
     "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
-    "create-entity-success": "{{entity}} created successfully."
+    "create-entity-success": "{{entity}} created successfully.",
+    "update-entity-success": "{{entity}} updated successfully."
   },
   "url": {}
 }

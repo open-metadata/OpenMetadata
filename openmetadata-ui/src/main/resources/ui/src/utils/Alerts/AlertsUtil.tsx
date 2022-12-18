@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Typography } from 'antd';
+import { RuleObject } from 'antd/lib/form';
 import i18next from 'i18next';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -65,13 +66,13 @@ export const StyledCard = ({
   subHeading: string;
 }) => {
   return (
-    <Card bordered={false} className="bg-grey">
+    <div className="bg-grey p-sm rounded-4">
       <Typography.Text>{heading}</Typography.Text>
       <br />
       <Typography.Text className="text-xs text-grey-muted">
         {subHeading}
       </Typography.Text>
-    </Card>
+    </div>
   );
 };
 
@@ -83,3 +84,26 @@ export const getDisplayNameForTriggerType = (type: AlertTriggerType) => {
       return i18next.t('label.specific-data-assets');
   }
 };
+
+/**
+ *
+ * @param name Field name used to identify which field has error
+ * @param minLengthRequired how many item should be there in the list
+ * @returns If validation failed throws an error else resolve
+ */
+export const listLengthValidator =
+  <T,>(name: string, minLengthRequired = 1) =>
+  async (_: RuleObject, list: T[]) => {
+    if (!list || list.length < minLengthRequired) {
+      return Promise.reject(
+        new Error(
+          i18next.t('message.length-validator-error', {
+            length: minLengthRequired,
+            field: name,
+          })
+        )
+      );
+    }
+
+    return Promise.resolve();
+  };
