@@ -147,6 +147,7 @@ def get_schema_names_reflection(self, **kw):
             return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
     return []
 
+
 def get_view_names(
     self, connection, schema=None, **kw
 ):  # pylint: disable=unused-argument
@@ -164,6 +165,7 @@ def get_view_names(
         else:
             views.append(row[0])
     return views
+
 
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
