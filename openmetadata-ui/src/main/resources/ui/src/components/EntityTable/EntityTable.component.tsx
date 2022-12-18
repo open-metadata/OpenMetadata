@@ -707,6 +707,7 @@ const EntityTable = ({
           }"`}
           placeholder={t('label.enter-column-description')}
           value={editColumn.column.description as string}
+          visible={Boolean(editColumn)}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
         />

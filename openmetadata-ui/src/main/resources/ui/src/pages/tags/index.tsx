@@ -816,18 +816,19 @@ const TagsPage = () => {
               rowKey="id"
               size="small"
             />
-            {isEditTag && (
-              <ModalWithMarkdownEditor
-                header={`Edit description for ${editTag?.name}`}
-                placeholder="Enter Description"
-                value={editTag?.description as string}
-                onCancel={() => {
-                  setIsEditTag(false);
-                  setEditTag(undefined);
-                }}
-                onSave={updatePrimaryTag}
-              />
-            )}
+            <ModalWithMarkdownEditor
+              header={t('label.edit-description-for', {
+                entityName: editTag?.name,
+              })}
+              placeholder={t('label.enter-description')}
+              value={editTag?.description as string}
+              visible={isEditTag}
+              onCancel={() => {
+                setIsEditTag(false);
+                setEditTag(undefined);
+              }}
+              onSave={updatePrimaryTag}
+            />
             <FormModal
               errorData={errorDataCategory}
               form={Form}

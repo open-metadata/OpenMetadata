@@ -50,8 +50,7 @@ import org.openmetadata.service.util.JsonUtils;
 @TestInstance(Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
-
-  Table TABLE;
+  private Table TABLE;
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {

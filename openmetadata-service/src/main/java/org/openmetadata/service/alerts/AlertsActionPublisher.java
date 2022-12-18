@@ -64,7 +64,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     AlertActionStatus currentStatus =
         new AlertActionStatus()
             .withStatus(AlertActionStatus.Status.ACTIVE)
-            .withFailureDetails(new FailureDetails())
+            .withFailureDetails(null)
             .withTimestamp(System.currentTimeMillis());
     setStatus(currentStatus);
     onStartDelegate();
@@ -87,41 +87,41 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     return alertAction;
   }
 
-  protected void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
+  protected void setErrorStatus(Long updateTime, Integer statusCode, String reason)
       throws IOException, InterruptedException {
-    if (!attemptTime.equals(alertAction.getStatusDetails().getFailureDetails().getLastFailedAt())) {
-      setStatus(AlertActionStatus.Status.FAILED, attemptTime, statusCode, reason, null);
-    }
-    alertRepository.deleteAlertActionPublisher(alert.getId(), alertAction);
+    setStatus(AlertActionStatus.Status.FAILED, updateTime, statusCode, reason, null);
+    AlertsPublisherManager.getInstance().deleteAlertActionPublisher(alert.getId(), alertAction);
     throw new RuntimeException(reason);
   }
 
-  protected void setAwaitingRetry(Long attemptTime, int statusCode, String reason) throws IOException {
-    if (!attemptTime.equals(alertAction.getStatusDetails().getFailureDetails().getLastFailedAt())) {
-      setStatus(
-          AlertActionStatus.Status.AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
-    }
+  protected void setAwaitingRetry(Long updateTime, int statusCode, String reason) throws IOException {
+    setStatus(AlertActionStatus.Status.AWAITING_RETRY, updateTime, statusCode, reason, updateTime + currentBackoffTime);
+  }
+
+  protected void setSuccessStatus(Long updateTime) throws IOException {
+    setStatus(AlertActionStatus.Status.ACTIVE, updateTime, 200, null, null);
   }
 
   protected void setStatus(
-      AlertActionStatus.Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp)
+      AlertActionStatus.Status status, Long updateTime, Integer statusCode, String reason, Long nextAttemptTime)
       throws IOException {
-    FailureDetails details =
-        alertAction.getStatusDetails().getFailureDetails() != null
-            ? alertAction.getStatusDetails().getFailureDetails()
-            : new FailureDetails();
-    details
-        .withLastFailedAt(attemptTime)
-        .withLastFailedStatusCode(statusCode)
-        .withLastFailedReason(reason)
-        .withNextAttempt(timestamp);
+    FailureDetails details = null;
+    if (status != AlertActionStatus.Status.ACTIVE) {
+      details = new FailureDetails();
+      details
+          .withLastFailedAt(updateTime)
+          .withLastFailedStatusCode(statusCode)
+          .withLastFailedReason(reason)
+          .withNextAttempt(nextAttemptTime);
+    }
+
     AlertActionStatus currentStatus =
-        alertRepository.setStatus(alert.getId(), alertAction.getId(), status, details).withTimestamp(attemptTime);
+        AlertsPublisherManager.getInstance().setStatus(alert.getId(), alertAction.getId(), status, details, updateTime);
     alertAction.setStatusDetails(currentStatus);
   }
 
   protected void setStatus(AlertActionStatus status) throws IOException {
-    alertRepository.setStatus(alert.getId(), alertAction.getId(), status);
+    AlertsPublisherManager.getInstance().setStatus(alert.getId(), alertAction.getId(), status);
     alertAction.setStatusDetails(status);
   }
 
@@ -152,11 +152,6 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
       try {
         LOG.info("Sending Alert {}:{}:{}", alert.getName(), alertAction.getStatusDetails().getStatus(), batch.size());
         sendAlert(event);
-        // Successfully sent Alert, update Status
-        alertAction.getStatusDetails().getFailureDetails().setLastSuccessfulAt(System.currentTimeMillis());
-        if (alertAction.getStatusDetails().getStatus() != AlertActionStatus.Status.ACTIVE) {
-          setStatus(AlertActionStatus.Status.ACTIVE, System.currentTimeMillis(), null, null, null);
-        }
       } catch (Exception ex) {
         LOG.warn("Invalid Exception in Alert {}", alert.getName());
         setErrorStatus(

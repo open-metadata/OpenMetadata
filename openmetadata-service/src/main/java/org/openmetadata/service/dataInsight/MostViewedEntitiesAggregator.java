@@ -1,6 +1,5 @@
 package org.openmetadata.service.dataInsight;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.elasticsearch.search.aggregations.Aggregations;
@@ -17,14 +16,14 @@ public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface
   }
 
   @Override
-  public DataInsightChartResult process() throws ParseException {
+  public DataInsightChartResult process() {
     List data = this.aggregate();
     DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
     return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  List<MostViewedEntities> aggregate() throws ParseException {
+  List<MostViewedEntities> aggregate() {
     MultiBucketsAggregation entityFqnBuckets = this.aggregations.get("entityFqn");
     List<MostViewedEntities> data = new ArrayList();
     for (MultiBucketsAggregation.Bucket entityFqnBucket : entityFqnBuckets.getBuckets()) {

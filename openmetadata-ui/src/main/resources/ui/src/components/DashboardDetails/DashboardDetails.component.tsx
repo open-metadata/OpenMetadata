@@ -173,9 +173,6 @@ const DashboardDetails = ({
     }
   }, [dashboardDetails.id]);
 
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
   const closeRequestModal = () => {
     setSelectedField('');
   };
@@ -752,7 +749,6 @@ const DashboardDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -830,9 +826,12 @@ const DashboardDetails = ({
       </div>
       {editChart && (
         <ModalWithMarkdownEditor
-          header={`Edit Chart: "${editChart.chart.displayName}"`}
-          placeholder="Enter Chart Description"
+          header={t('label.edit-chart', {
+            chartName: editChart.chart.displayName,
+          })}
+          placeholder={t('label.enter-chart-description')}
           value={editChart.chart.description || ''}
+          visible={Boolean(editChart)}
           onCancel={closeEditChartModal}
           onSave={onChartUpdate}
         />
