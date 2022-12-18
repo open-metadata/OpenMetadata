@@ -1,5 +1,7 @@
 package org.openmetadata.service.alerts;
 
+import static org.openmetadata.service.Entity.ALERT;
+import static org.openmetadata.service.Entity.ALERT_ACTION;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -42,13 +44,13 @@ public class AlertUtil {
     AlertsActionPublisher publisher;
     switch (alertAction.getAlertActionType()) {
       case SLACK_WEBHOOK:
-        publisher = new SlackWebhookEventPublisher(alert, alertAction, daoCollection);
+        publisher = new SlackWebhookEventPublisher(alert, alertAction);
         break;
       case MS_TEAMS_WEBHOOK:
-        publisher = new MSTeamsWebhookPublisher(alert, alertAction, daoCollection);
+        publisher = new MSTeamsWebhookPublisher(alert, alertAction);
         break;
       case GENERIC_WEBHOOK:
-        publisher = new GenericWebhookPublisher(alert, alertAction, daoCollection);
+        publisher = new GenericWebhookPublisher(alert, alertAction);
         break;
       case EMAIL:
         publisher = new EmailAlertPublisher(alert, alertAction, daoCollection);
@@ -157,7 +159,11 @@ public class AlertUtil {
     List<TriggerConfig> triggerConfigs = new ArrayList<>();
     TriggerConfig allMetadataTrigger = new TriggerConfig().withType(TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS);
     TriggerConfig specificDataAsset = new TriggerConfig().withType(TriggerConfig.AlertTriggerType.SPECIFIC_DATA_ASSET);
-    specificDataAsset.setEntities(new HashSet<>(Entity.getEntityList()));
+    Set<String> entitites = new HashSet<>(Entity.getEntityList());
+    // Alert and Alert Action should be removed from entities list
+    entitites.remove(ALERT);
+    entitites.remove(ALERT_ACTION);
+    specificDataAsset.setEntities(entitites);
 
     triggerConfigs.add(allMetadataTrigger);
     triggerConfigs.add(specificDataAsset);

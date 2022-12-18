@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Relationship.USES;
 import static org.openmetadata.service.Entity.ALERT;
 import static org.openmetadata.service.Entity.ALERT_ACTION;
 
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
+import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.type.EntityReference;
@@ -91,6 +93,25 @@ public class AlertRepository extends EntityRepository<Alert> {
     for (EntityReference actionRef : entity.getAlertActions()) {
       addRelationship(entity.getId(), actionRef.getId(), ALERT, ALERT_ACTION, Relationship.USES);
     }
+  }
+
+  public List<AlertAction> getAllAlertActionForAlert(UUID alertId) throws IOException {
+    List<AlertAction> alertActionList = new ArrayList<>();
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        daoCollection.relationshipDAO().findTo(alertId.toString(), ALERT, USES.ordinal(), ALERT_ACTION);
+    EntityRepository<AlertAction> alertEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      AlertAction alertAction = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
+      alertAction.setStatusDetails(getActionStatus(alertId, alertAction.getId()));
+      alertActionList.add(alertAction);
+    }
+    return alertActionList;
+  }
+
+  public AlertActionStatus getActionStatus(UUID alertid, UUID actionId) throws IOException {
+    String status =
+        daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(alertid.toString(), actionId.toString());
+    return JsonUtils.readValue(status, AlertActionStatus.class);
   }
 
   @Override
