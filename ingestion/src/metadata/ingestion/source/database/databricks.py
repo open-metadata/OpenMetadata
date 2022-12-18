@@ -148,6 +148,26 @@ def get_schema_names_reflection(self, **kw):
     return []
 
 
+def get_view_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
+    query = "SHOW VIEWS"
+    if schema:
+        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+    view_in_schema = connection.execute(query)
+    views = []
+    for row in view_in_schema:
+        # check number of columns in result
+        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
+        # else it is hive with 1 column in the result
+        if len(row) > 1:
+            views.append(row[1])
+        else:
+            views.append(row[0])
+    return views
+
+
+DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
 DatabricksDialect.get_schema_names = get_schema_names
 reflection.Inspector.get_schema_names = get_schema_names_reflection
