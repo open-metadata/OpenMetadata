@@ -587,7 +587,7 @@ const AddAlertPage = () => {
                                         </Form.Item>
                                       </Space>
                                       <Form.Item
-                                        label="Secret Key:"
+                                        label={t('label.secret-key')}
                                         labelCol={{ span: 24 }}
                                         name={[
                                           name,

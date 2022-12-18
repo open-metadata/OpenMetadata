@@ -15,27 +15,29 @@ import { getFunctionDisplayName } from './AlertsUtil';
 
 describe('AlertsUtil tests', () => {
   it('getFunctionDisplayName should return correct text for matchAnyEntityFqn', () => {
-    expect(getFunctionDisplayName('matchAnyEntityFqn')).toBe('Match FQN');
+    expect(getFunctionDisplayName('matchAnyEntityFqn')).toBe(
+      'label.fqn-uppercase'
+    );
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyOwnerName', () => {
-    expect(getFunctionDisplayName('matchAnyOwnerName')).toBe('Match Owner');
+    expect(getFunctionDisplayName('matchAnyOwnerName')).toBe('label.owner');
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyEventType', () => {
     expect(getFunctionDisplayName('matchAnyEventType')).toBe(
-      'Match Event Type'
+      'label.event-type'
     );
   });
 
   it('getFunctionDisplayName should return correct text for matchTestResult', () => {
     expect(getFunctionDisplayName('matchTestResult')).toBe(
-      'Match Test Results'
+      'label.test-results'
     );
   });
 
   it('getFunctionDisplayName should return correct text for matchUpdatedBy', () => {
-    expect(getFunctionDisplayName('matchUpdatedBy')).toBe('Match Updated By');
+    expect(getFunctionDisplayName('matchUpdatedBy')).toBe('label.updated-by');
   });
 
   it('getFunctionDisplayName should return correct text for matchAnySource', () => {

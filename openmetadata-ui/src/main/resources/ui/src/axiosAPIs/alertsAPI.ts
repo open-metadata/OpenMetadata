@@ -92,3 +92,9 @@ export const getDefaultTriggerConfigs = async (after?: string) => {
 
   return response.data;
 };
+
+export const getAlertActionForAlerts = async (id: string) => {
+  const response = await axiosClient.get(`${BASE_URL}/allAlertAction/${id}`);
+
+  return response.data;
+};
