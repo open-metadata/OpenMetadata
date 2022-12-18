@@ -55,11 +55,11 @@ const DataInsightProgressBar = ({
   return (
     <div className={classNames(className)} style={{ width }}>
       {showLabel && (
-        <Typography.Text className="data-insight-label-text">
+        <Typography.Paragraph className="data-insight-label-text">
           {label ?? t('label.latest')}
-        </Typography.Text>
+        </Typography.Paragraph>
       )}
-      <div className="flex">
+      <div className={classNames('flex', { 'tw-mt-3': Boolean(target) })}>
         <Progress
           className="data-insight-progress-bar"
           format={(per) => (
