@@ -895,6 +895,38 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @GET
+  @Path("/{id}/getTableQueries")
+  @Operation(
+      operationId = "getTableQueryList",
+      summary = "get table query data",
+      tags = "tables",
+      description = "get table query data from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public ResultList<SQLQuery> getTableQueryList(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid SQLQuery sqlQuery,
+      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+      @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    ResultList<SQLQuery> getTableQueryList = dao.getQueriesForPagination(id, limitParam, before, after);
+    return getTableQueryList;
+  }
+
   @PUT
   @Path("/{id}/dataModel")
   @Operation(

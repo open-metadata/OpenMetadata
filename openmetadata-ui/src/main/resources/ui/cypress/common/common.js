@@ -744,7 +744,7 @@ export const editCreatedProperty = (propertyName) => {
 
     verifyResponseStatusCode('@checkPatchForDescription', 200);
 
-    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('.ant-modal-wrap').should('not.exist');
 
     //Fetching for updated descriptions for the created custom property
     cy.get(`[data-row-key="${propertyName}"]`).find('[data-testid="viewer-container"]').should('contain', 'This is new description');
