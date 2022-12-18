@@ -1,11 +1,10 @@
 [
   {
     "name": "ActivityFeedAlert",
+    "description": "Alert Received on the Activity Feed are controlled with this.",
     "triggerConfig": {
       "type": "SpecificDataAsset",
       "entities": [
-        "alert",
-        "alertAction",
         "bot",
         "chart",
         "dashboard",

@@ -23,6 +23,7 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.EmailUtil;
@@ -35,7 +36,7 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
   private final CollectionDAO daoCollection;
 
   public EmailAlertPublisher(Alert alert, AlertAction alertAction, CollectionDAO dao) {
-    super(alert, alertAction, dao);
+    super(alert, alertAction);
     if (alertAction.getAlertActionType() == AlertAction.AlertActionType.EMAIL) {
       this.emailAlertConfig = JsonUtils.convertValue(alertAction.getAlertActionConfig(), EmailAlertConfig.class);
       this.daoCollection = dao;
@@ -55,19 +56,20 @@ public class EmailAlertPublisher extends AlertsActionPublisher {
   }
 
   @Override
-  public void sendAlert(ChangeEvent event) throws IOException, InterruptedException {
-    try {
-      Set<String> receivers = buildReceiversList(event);
-      EmailMessage emailMessage = ChangeEventParser.buildEmailMessage(event);
-      for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(email, emailMessage);
+  public void sendAlert(EventResource.ChangeEventList list) throws IOException {
+    for (ChangeEvent event : list.getData()) {
+      try {
+        Set<String> receivers = buildReceiversList(event);
+        EmailMessage emailMessage = ChangeEventParser.buildEmailMessage(event);
+        for (String email : receivers) {
+          EmailUtil.sendChangeEventMail(email, emailMessage);
+        }
+        setSuccessStatus(System.currentTimeMillis());
+      } catch (Exception e) {
+        setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
+        throw new EventPublisherException(
+            String.format("Failed to publish event %s to email due to %s ", event, e.getMessage()));
       }
-      setSuccessStatus(System.currentTimeMillis());
-    } catch (Exception e) {
-      LOG.error("Failed to publish event {} to email due to {} ", event, e.getMessage());
-      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
-      throw new EventPublisherException(
-          String.format("Failed to publish event %s to email due to %s ", event, e.getMessage()));
     }
   }
 
