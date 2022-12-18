@@ -98,11 +98,7 @@ const ConfigureIngestion = ({
 
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
     handleProfileSampleType(value);
-    if (value === ProfileSampleType.Percentage) {
-      handleProfileSample(undefined);
-    } else if (value === ProfileSampleType.Rows) {
-      handleProfileSample(undefined);
-    }
+    handleProfileSample(undefined);
   };
 
   const getIngestSampleToggle = (label: string, desc: string) => {
