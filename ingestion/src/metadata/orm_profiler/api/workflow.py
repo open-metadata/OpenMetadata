@@ -463,6 +463,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                         self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
                         self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
                     except Exception as exc:  # pylint: disable=broad-except
+
                         logger.debug(traceback.format_exc())
                         logger.warning(
                             "Unexpected exception processing entity "

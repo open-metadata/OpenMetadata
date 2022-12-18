@@ -14,10 +14,10 @@
       "description": "Type of Profile Sample (percentage or rows)",
       "type": "string",
       "enum": [
-        "percentage",
-        "rows"
+        "PERCENTAGE",
+        "ROWS"
       ],
-      "default": "percentage"
+      "default": "PERCENTAGE"
     },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",

@@ -21,6 +21,9 @@ from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 from pydantic import ValidationError
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType,
+)
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -491,23 +494,28 @@ class Profiler(Generic[TMetric]):
                     else col.name.__root__
                 )
             ]
+
+            check_profile_sample_if_exists = (
+                hasattr(self.profiler_interface, "profile_sample")
+                and self.profiler_interface.profile_sample
+            )
             table_profile = TableProfile(
                 timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
+                profileSample=self.profiler_interface.profile_sample.get(
+                    "profile_sample"
+                )
+                if check_profile_sample_if_exists
+                else None,
+                profileSampleType=self.profiler_interface.profile_sample.get(
+                    "profile_sample_type"
+                )
+                or ProfileSampleType.PERCENTAGE.value
+                if check_profile_sample_if_exists
+                else ProfileSampleType.PERCENTAGE.value,
             )
-            if (
-                hasattr(self.profiler_interface, "profile_sample")
-                and self.profiler_interface.profile_sample
-            ):
-                table_profile.profileSample = (
-                    self.profiler_interface.profile_sample.get("profile_sample"),
-                )
-                table_profile.profileSampleType = (
-                    self.profiler_interface.profile_sample.get(
-                        "profile_sample_type"
-                    ).value,
-                )
+
             if self._system_results:
                 system_profile = [
                     SystemProfile(**system_result)

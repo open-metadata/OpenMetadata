@@ -4,15 +4,6 @@
   "title": "DatabaseServiceProfilerPipeline",
   "description": "DatabaseService Profiler Pipeline Configuration.",
   "definitions": {
-    "profileSampleType": {
-      "description": "Type of Profile Sample (percentage or rows)",
-      "type": "string",
-      "enum": [
-        "percentage",
-        "rows"
-      ],
-      "default": "percentage"
-    },
     "profilerConfigType": {
       "description": "Profiler Source Config Pipeline type",
       "type": "string",
@@ -52,7 +43,7 @@
       "default": null
     },
     "profileSampleType": {
-      "$ref": "#/definitions/profileSampleType"
+      "$ref": "../entity/data/table.json#definitions/profileSampleType"
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",

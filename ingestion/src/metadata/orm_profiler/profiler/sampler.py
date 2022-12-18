@@ -48,7 +48,7 @@ class Sampler:
                 profile_sample.get("profile_sample") if profile_sample else None
             )
             self.profile_sample_type = profile_sample.get(
-                "profile_sample_type", ProfileSampleType.percentage
+                "profile_sample_type", ProfileSampleType.PERCENTAGE
             )
         self.session = session
         self.table = table
@@ -59,7 +59,7 @@ class Sampler:
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
-        if self.profile_sample_type == ProfileSampleType.percentage:
+        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             return (
                 self.session.query(
                     self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
@@ -95,7 +95,7 @@ class Sampler:
         session_query = self.session.query(rnd)
 
         # Prepare sampled CTE
-        if self.profile_sample_type == ProfileSampleType.percentage:
+        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             sampled = session_query.where(rnd.c.random <= self.profile_sample).cte(
                 f"{self.table.__tablename__}_sample"
             )

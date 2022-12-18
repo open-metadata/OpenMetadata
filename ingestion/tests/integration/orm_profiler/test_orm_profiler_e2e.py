@@ -21,6 +21,9 @@ from unittest import TestCase
 
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType,
+)
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -107,8 +110,11 @@ class ProfilerWorkflowTest(TestCase):
         """
         Prepare Ingredients
         """
-        User.__table__.create(bind=cls.engine)
-        NewUser.__table__.create(bind=cls.engine)
+        try:
+            User.__table__.create(bind=cls.engine)
+            NewUser.__table__.create(bind=cls.engine)
+        except:
+            pass
 
         data = [
             User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
@@ -151,8 +157,10 @@ class ProfilerWorkflowTest(TestCase):
             hard_delete=True,
         )
 
-        NewUser.__table__.drop(bind=cls.engine)
         User.__table__.drop(bind=cls.engine)
+        NewUser.__table__.drop(bind=cls.engine)
+        cls.session.close()
+        return super().tearDownClass()
 
     def test_ingestion(self):
         """
@@ -212,6 +220,32 @@ class ProfilerWorkflowTest(TestCase):
 
         assert not table.tableProfilerConfig
         assert profile.profileSample == 75.0
+        assert profile.profileSampleType == ProfileSampleType.PERCENTAGE
+
+        workflow_config["processor"]["config"]["tableConfig"][0][
+            "profileSampleType"
+        ] = ProfileSampleType.ROWS
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert not table.tableProfilerConfig
+        assert profile.profileSample == 75
+        assert profile.profileSampleType == ProfileSampleType.ROWS
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""
