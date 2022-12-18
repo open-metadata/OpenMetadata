@@ -18,6 +18,7 @@
 @icon-color: #515151;
 @group-title-color: #76746f;
 @summary-card-bg-hover: #f0f1f3;
+@target-blue-color: #1890ff;
 
 .data-insight-select-dropdown {
   min-width: 136px;
@@ -118,8 +119,25 @@
     height: 100%;
     position: absolute;
     left: 0;
-    border-right: 2px solid #1890ff;
-    border-radius: 4px;
+    border-right: 2px solid @target-blue-color;
+
+    .target-text {
+      position: relative;
+      right: -8px;
+      top: -16px;
+      display: flex;
+      justify-content: flex-end;
+      font-size: 10px;
+    }
+
+    &::after {
+      content: '●';
+      position: absolute;
+      top: -5px;
+      right: -6px;
+      color: @target-blue-color;
+      font-size: 10px;
+    }
   }
 }
 

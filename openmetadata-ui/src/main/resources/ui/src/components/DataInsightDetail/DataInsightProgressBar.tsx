@@ -71,8 +71,12 @@ const DataInsightProgressBar = ({
               {target && (
                 <span
                   className="data-insight-kpi-target"
-                  style={{ width: `${target}%` }}
-                />
+                  style={{ width: `${target}%` }}>
+                  <span className="target-text">
+                    {target}
+                    {suffix}
+                  </span>
+                </span>
               )}
               <span>
                 {successValue}
