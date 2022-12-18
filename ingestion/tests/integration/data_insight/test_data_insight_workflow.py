@@ -34,7 +34,7 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent import (
     PageViewData,
 )
-from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
+from metadata.generated.schema.api.dataInsight.kpi.createKPIRequest import (
     CreateKPIRequest,
 )
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
@@ -42,7 +42,7 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
     DataInsightChartResult,
     DataInsightChartType,
 )
-from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
+from metadata.generated.schema.dataInsight.kpi.basic import KpiTarget, KpiResult
 from metadata.generated.schema.dataInsight.kpi.kpi import KPI
 from metadata.generated.schema.dataInsight.type.dailyActiveUsers import DailyActiveUsers
 from metadata.generated.schema.dataInsight.type.pageViewsByEntities import (
@@ -172,7 +172,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
     def test_execute_method(self):
         """test method excution"""
-        workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
+        workflow: DataInsightWorkflow = DataInsightWorkflow.create( )
         workflow.execute()
 
         sleep(1)  # wait for data to be available
@@ -283,7 +283,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         fqn = "CompletedDescription"
         self.metadata.add_kpi_result(
             fqn,
-            KPIResult(
+            KpiResult(
                 timestamp=int(datetime.utcnow().timestamp() * 1000),
                 kpiFqn="CompletedDescription",
                 targetResult=[

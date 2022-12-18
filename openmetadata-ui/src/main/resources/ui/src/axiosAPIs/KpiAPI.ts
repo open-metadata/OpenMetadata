@@ -83,7 +83,7 @@ export const getListKpiResult = async (
   orderBy = 'ASC'
 ) => {
   const response = await APIClient.get<PagingResponse<KpiResult[]>>(
-    `/kpi/${fqn}/kpiResult`,
+    `/kpi/${fqn}/KPIResult`,
     { params: { ...params, orderBy } }
   );
 

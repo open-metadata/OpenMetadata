@@ -23,7 +23,7 @@ from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
-from metadata.generated.schema.api.dataInsight.kpi.createKpiRequest import (
+from metadata.generated.schema.api.dataInsight.kpi.createKPIRequest import (
     CreateKPIRequest,
 )
 from metadata.generated.schema.dataInsight.dataInsightChartResult import (
@@ -56,7 +56,7 @@ class DataInisghtMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.json())
+        resp = self.client.put(f"/kpi/{fqn}/KPIResult", record.json())
 
         return resp
 
@@ -139,7 +139,7 @@ class DataInisghtMixin:
         params = {"startTs": start_ts, "endTs": end_ts}
 
         resp = self.client.get(
-            f"/kpi/{fqn}/kpiResult",
+            f"/kpi/{fqn}/KPIResult",
             params,
         )
 
