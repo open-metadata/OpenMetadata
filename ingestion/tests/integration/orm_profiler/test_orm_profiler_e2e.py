@@ -21,11 +21,8 @@ from unittest import TestCase
 
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-)
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import ProfileSampleType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )

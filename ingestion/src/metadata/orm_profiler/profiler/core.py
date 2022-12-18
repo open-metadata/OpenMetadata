@@ -21,9 +21,6 @@ from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 from pydantic import ValidationError
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
-from metadata.generated.schema.entity.data.table import (
-    ProfileSampleType,
-)
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -32,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
+    ProfileSampleType,
     SystemProfile,
     TableProfile,
 )
