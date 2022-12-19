@@ -26,9 +26,11 @@ export const getIngestionHeadingName = (
     ingestionName = upperCase(ingestionType);
   }
 
-  return t('label.ingestion-workflow-action', {
-    action:
-      type === INGESTION_ACTION_TYPE.ADD ? t('label.add') : t('label.edit'),
-    workflow: ingestionName,
-  });
+  return type === INGESTION_ACTION_TYPE.ADD
+    ? t('label.add-workflow-ingestion', {
+        workflow: ingestionName,
+      })
+    : t('label.edit-workflow-ingestion', {
+        workflow: ingestionName,
+      });
 };

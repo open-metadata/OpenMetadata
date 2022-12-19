@@ -20,11 +20,12 @@ import { useTranslation } from 'react-i18next';
 
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, lowerCase, startCase, upperCase } from 'lodash';
+import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
+import { PIPELINE_TYPE_LOCALISATION } from '../../constants/Ingestions.constant';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { Connection } from '../../generated/entity/services/databaseService';
 import {
@@ -280,20 +281,22 @@ const Ingestion: React.FC<IngestionProps> = ({
     let name;
     switch (type) {
       case PipelineType.ElasticSearchReindex:
-        name = `${t('label.add')} ${startCase(type)}`;
+        name = t('label.add-entity', {
+          entity: t('labe.elastic-search-re-index'),
+        });
 
         break;
 
       case PipelineType.Dbt:
         name = t('label.add-workflow-ingestion', {
-          workflow: upperCase(type),
+          workflow: t('label.dbt-uppercase'),
         });
 
         break;
 
       default:
         name = t('label.add-workflow-ingestion', {
-          workflow: startCase(type),
+          workflow: t(`label.${PIPELINE_TYPE_LOCALISATION[type]}`),
         });
     }
 

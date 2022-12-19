@@ -56,3 +56,14 @@ export const INGESTION_ACTION_TYPE = {
   ADD: 'add',
   EDIT: 'edit',
 };
+
+export const PIPELINE_TYPE_LOCALISATION = {
+  dataInsight: 'data-insight',
+  dbt: 'dbt',
+  elasticSearchReindex: 'elastic-search-re-index',
+  lineage: 'lineage',
+  metadata: 'metadata',
+  profiler: 'profiler',
+  TestSuite: 'test-suite',
+  usage: 'usage',
+};

@@ -309,7 +309,7 @@
     "detail-plural": "Details",
     "ingestion": "Ingestion",
     "add-workflow-ingestion": "Add {{workflow}} Ingestion",
-    "ingestion-workflow-action": "{{action}} {{workflow}} Ingestion",
+    "edit-workflow-ingestion": "Edit {{workflow}} Ingestion",
     "clear-all": "Clear All",
     "view-less": "View less",
     "view-more": "View more",
@@ -585,7 +585,8 @@
     "completed-description": "Completed Description",
     "assigned-entity": "Assigned {{entity}}",
     "total-assets-view": "Total Assets View",
-    "total-active-user": "Total Active User"
+    "total-active-user": "Total Active User",
+    "elastic-search-re-index": "ElasticSearchReindex"
   },
   "message": {
     "service-email-required": "Service account Email is required",
