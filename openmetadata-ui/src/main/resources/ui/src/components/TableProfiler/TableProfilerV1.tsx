@@ -26,9 +26,9 @@ import {
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, map } from 'lodash';
 import { SelectableOption } from 'Models';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
@@ -112,7 +112,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
     return testCaseStatus;
   }, []);
 
-  const getPageHeader = useCallback(() => {
+  const getPageHeader = useMemo(() => {
     if (isProfiler) {
       return PAGE_HEADERS.TABLE_PROFILE;
     } else if (isDataQuality) {
@@ -123,12 +123,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   }, [isProfiler, isDataQuality]);
 
   const testCaseTypeOption = useMemo(() => {
-    const testCaseStatus: SelectableOption[] = Object.entries(TestType).map(
-      ([key, value]) => ({
-        label: key,
-        value: value,
-      })
-    );
+    const testCaseStatus: SelectableOption[] = map(TestType, (value, key) => ({
+      label: key,
+      value: value,
+    }));
     testCaseStatus.unshift({
       label: t('label.all'),
       value: '',
@@ -331,7 +329,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
           direction="vertical">
           <Row className="m-b-md">
             <Col span={10}>
-              <PageHeader data={getPageHeader()} />
+              <PageHeader data={getPageHeader} />
             </Col>
             <Col span={14}>
               <Space align="center" className="w-full justify-end">
