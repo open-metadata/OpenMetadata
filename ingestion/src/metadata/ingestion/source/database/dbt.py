@@ -512,9 +512,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         try:
             source_elements = fqn.split(table_fqn)
             # remove service name from fqn to make it parseable in format db.schema.table
-            query_fqn = fqn._build(
+            query_fqn = fqn._build(  # pylint: disable=protected-access
                 *source_elements[-3:]
-            )  # pylint: disable=protected-access
+            )
             query = (
                 f"create table {query_fqn} as {data_model_link.datamodel.sql.__root__}"
             )
