@@ -55,7 +55,7 @@ def clean_str(raw: str) -> str:
 
     - descriptions/comments with single quotes, e.g., `Mysql's data`.
       get converted to `Mysql''s data`
-    - To insert a literal `\` in MySQL you need to escape with another `\`. This applies for `\n` and `\"` in
+    - To insert a literal backlash in MySQL you need to escape with another one. This applies for `\n` and `\"` in
       inner JSONs for a field
     """
     return raw.replace("'", "''").replace("\\n", "\\\\n").replace('\\"', '\\\\"')
