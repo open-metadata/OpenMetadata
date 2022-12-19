@@ -510,16 +510,20 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         logger.info(f"Processing DBT Query lineage for: {table_fqn}")
 
         try:
-            source_elements = table_fqn.split(".")
+            source_elements = fqn.split(table_fqn)
+            # remove service name from fqn to make it parseable in format db.schema.table
+            query_fqn = fqn._build(  # pylint: disable=protected-access
+                *source_elements[-3:]
+            )
             query = (
-                f"create table {table_fqn} as {data_model_link.datamodel.sql.__root__}"
+                f"create table {query_fqn} as {data_model_link.datamodel.sql.__root__}"
             )
             lineages = get_lineage_by_query(
                 self.metadata,
                 query=query,
-                service_name=source_elements[1],
-                database_name=source_elements[2],
-                schema_name=source_elements[3],
+                service_name=source_elements[0],
+                database_name=source_elements[1],
+                schema_name=source_elements[2],
             )
             for lineage_request in lineages or []:
                 yield lineage_request
