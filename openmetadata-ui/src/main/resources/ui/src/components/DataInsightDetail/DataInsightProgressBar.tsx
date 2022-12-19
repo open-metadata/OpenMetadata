@@ -13,7 +13,7 @@
 
 import { Progress, Typography } from 'antd';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { isNil, round } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -73,7 +73,7 @@ const DataInsightProgressBar = ({
                   className="data-insight-kpi-target"
                   style={{ width: `${target}%` }}>
                   <span className="target-text">
-                    {target}
+                    {round(target, 2)}
                     {suffix}
                   </span>
                 </span>
