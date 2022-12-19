@@ -15,6 +15,7 @@ import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { t } from 'i18next';
 import {
+  first,
   groupBy,
   isEmpty,
   isInteger,
@@ -52,7 +53,10 @@ import {
   KpiDates,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
-import { getFormattedDateFromMilliSeconds } from './TimeUtils';
+import {
+  getDateByTimeStamp,
+  getFormattedDateFromMilliSeconds,
+} from './TimeUtils';
 
 const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
   [
@@ -62,62 +66,46 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 
 export const renderLegend = (
   legendData: LegendProps,
-  latest: string | number,
-  activeKeys = [] as string[],
-  showLatestValue = true
+  activeKeys = [] as string[]
 ) => {
   const { payload = [] } = legendData;
 
   return (
-    <>
-      {showLatestValue && (
-        <>
-          <Typography.Text className="data-insight-label-text">
-            Latest
-          </Typography.Text>
-          <Typography
-            className="font-bold text-lg"
-            style={{ margin: '0px 0px 16px' }}>
-            {latest}
-          </Typography>
-        </>
-      )}
-      <ul className="mr-2">
-        {payload.map((entry, index) => {
-          const isActive =
-            activeKeys.length === 0 || activeKeys.includes(entry.value);
+    <ul className="custom-data-insight-legend">
+      {payload.map((entry, index) => {
+        const isActive =
+          activeKeys.length === 0 || activeKeys.includes(entry.value);
 
-          return (
-            <li
-              className="recharts-legend-item d-flex items-center m-t-xss cursor-pointer"
-              key={`item-${index}`}
-              onClick={(e) =>
-                legendData.onClick && legendData.onClick({ ...entry, ...e })
-              }
-              onMouseEnter={(e) =>
-                legendData.onMouseEnter &&
-                legendData.onMouseEnter({ ...entry, ...e })
-              }
-              onMouseLeave={(e) =>
-                legendData.onMouseLeave &&
-                legendData.onMouseLeave({ ...entry, ...e })
-              }>
-              <Surface className="mr-2" height={14} version="1.1" width={14}>
-                <rect
-                  fill={isActive ? entry.color : GRAYED_OUT_COLOR}
-                  height="14"
-                  rx="2"
-                  width="14"
-                />
-              </Surface>
-              <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-                {entry.value}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </>
+        return (
+          <li
+            className="recharts-legend-item custom-data-insight-legend-item"
+            key={`item-${index}`}
+            onClick={(e) =>
+              legendData.onClick && legendData.onClick({ ...entry, ...e })
+            }
+            onMouseEnter={(e) =>
+              legendData.onMouseEnter &&
+              legendData.onMouseEnter({ ...entry, ...e })
+            }
+            onMouseLeave={(e) =>
+              legendData.onMouseLeave &&
+              legendData.onMouseLeave({ ...entry, ...e })
+            }>
+            <Surface className="m-r-xss" height={14} version="1.1" width={14}>
+              <rect
+                fill={isActive ? entry.color : GRAYED_OUT_COLOR}
+                height="14"
+                rx="2"
+                width="14"
+              />
+            </Surface>
+            <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
+              {entry.value}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 };
 
@@ -157,20 +145,29 @@ const getEntryFormattedValue = (
 };
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], label, isPercentage, kpiTooltipRecord } = props;
+  const { active, payload = [], isPercentage, kpiTooltipRecord } = props;
 
   if (active && payload && payload.length) {
+    const timestamp = getDateByTimeStamp(
+      payload[0].payload.timestampValue || 0,
+      'MMM dd, yyyy'
+    );
+
     return (
-      <Card>
-        {/* this is a graph tooltip so using the explicit title here */}
-        <Typography.Title level={5}>{label}</Typography.Title>
+      <Card
+        className="custom-data-insight-tooltip"
+        title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         {payload.map((entry, index) => (
-          <li className="d-flex items-center" key={`item-${index}`}>
-            <Surface className="mr-2" height={14} version="1.1" width={14}>
-              <rect fill={entry.color} height="14" rx="2" width="14" />
-            </Surface>
-            <span>
-              {entry.dataKey} -{' '}
+          <li
+            className="d-flex items-center justify-between tw-gap-6 tw-pb-1.5 text-sm"
+            key={`item-${index}`}>
+            <span className="flex items-center text-grey-muted">
+              <Surface className="mr-2" height={12} version="1.1" width={12}>
+                <rect fill={entry.color} height="14" rx="2" width="14" />
+              </Surface>
+              {entry.dataKey}
+            </span>
+            <span className="font-medium">
               {getEntryFormattedValue(
                 entry.value,
                 entry.dataKey,
@@ -226,7 +223,8 @@ const getLatestCount = (latestData = {}) => {
   const latestEntries = Object.entries(latestData ?? {});
 
   for (const entry of latestEntries) {
-    if (entry[0] !== 'timestamp') {
+    // if key is 'timestamp' or 'timestampValue' skipping its count for total
+    if (!['timestamp', 'timestampValue'].includes(entry[0])) {
       total += toNumber(entry[1]);
     }
   }
@@ -269,6 +267,62 @@ const getLatestPercentage = (
     const latestChartRecords = groupDataByTimeStamp[latestData.timestamp];
 
     latestChartRecords.forEach((record) => {
+      totalEntityCount += record?.entityCount ?? 0;
+      totalEntityWithDescription += record?.completedDescription ?? 0;
+      totalEntityWithOwner += record?.hasOwner ?? 0;
+    });
+    switch (dataInsightChartType) {
+      case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+        return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
+          2
+        );
+
+      case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+        return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
+
+      default:
+        return 0;
+    }
+  }
+
+  return 0;
+};
+
+/**
+ *
+ * @param rawData raw chart data
+ * @param dataInsightChartType chart type
+ * @returns old percentage for the chart
+ */
+const getOldestPercentage = (
+  rawData: DataInsightChartResult['data'] = [],
+  dataInsightChartType: DataInsightChartType
+) => {
+  let totalEntityCount = 0;
+  let totalEntityWithDescription = 0;
+  let totalEntityWithOwner = 0;
+
+  const modifiedData = rawData
+    .map((raw) => {
+      const timestamp = raw.timestamp;
+      if (timestamp) {
+        return {
+          ...raw,
+          timestamp,
+        };
+      }
+
+      return;
+    })
+    .filter(Boolean);
+
+  const sortedData = sortBy(modifiedData, 'timestamp');
+  const groupDataByTimeStamp = groupBy(sortedData, 'timestamp');
+  const oldestData = first(sortedData);
+  if (oldestData) {
+    const oldestChartRecords = groupDataByTimeStamp[oldestData.timestamp];
+
+    oldestChartRecords.forEach((record) => {
       totalEntityCount += record?.entityCount ?? 0;
       totalEntityWithDescription += record?.completedDescription ?? 0;
       totalEntityWithOwner += record?.hasOwner ?? 0;
@@ -341,6 +395,7 @@ const getGraphFilteredData = (
 
         return {
           timestamp: timestamp,
+          timestampValue: data.timestamp,
           [data.entityType]: value,
         };
       }
@@ -370,7 +425,20 @@ export const getGraphDataByEntityType = (
   );
 
   const graphData = prepareGraphData(timestamps, filteredData);
-  const latestData = last(graphData);
+  const latestData = last(graphData) as Record<string, number>;
+  const oldData = first(graphData);
+  const latestPercentage = toNumber(
+    isPercentageGraph
+      ? getLatestPercentage(rawData, dataInsightChartType)
+      : getLatestCount(latestData)
+  );
+  const oldestPercentage = toNumber(
+    isPercentageGraph
+      ? getOldestPercentage(rawData, dataInsightChartType)
+      : getLatestCount(oldData)
+  );
+
+  const relativePercentage = latestPercentage - oldestPercentage;
 
   return {
     data: graphData,
@@ -378,6 +446,11 @@ export const getGraphDataByEntityType = (
     total: isPercentageGraph
       ? getLatestPercentage(rawData, dataInsightChartType)
       : getLatestCount(latestData),
+    relativePercentage: isPercentageGraph
+      ? relativePercentage
+      : (relativePercentage / oldestPercentage) * 100,
+    latestData,
+    isPercentageGraph,
   };
 };
 
@@ -403,6 +476,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
       }
 
       return {
+        timestampValue: data.timestamp,
         timestamp: timestamp,
         [tiering]: ((data?.entityCountFraction || 0) * 100).toFixed(2),
       };
@@ -412,12 +486,16 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   });
 
   const graphData = prepareGraphData(timestamps, filteredData);
-  const latestData = last(graphData);
+  const latestData = getLatestCount(last(graphData));
+  const oldestData = getLatestCount(first(graphData));
+  const relativePercentage = latestData - oldestData;
 
   return {
     data: graphData,
     tiers,
-    total: getLatestCount(latestData),
+    total: latestData,
+    relativePercentage,
+    latestData: last(graphData) as Record<string, number>,
   };
 };
 
@@ -430,14 +508,21 @@ export const getFormattedActiveUsersData = (
 ) => {
   const formattedData = activeUsers.map((user) => ({
     ...user,
+    timestampValue: user.timestamp,
     timestamp: user.timestamp
       ? getFormattedDateFromMilliSeconds(user.timestamp)
       : '',
   }));
 
+  const latestCount = Number(last(formattedData)?.activeUsers);
+  const oldestCount = Number(first(formattedData)?.activeUsers);
+
+  const relativePercentage = ((latestCount - oldestCount) / oldestCount) * 100;
+
   return {
     data: formattedData,
-    total: last(formattedData)?.activeUsers,
+    total: latestCount,
+    relativePercentage,
   };
 };
 
@@ -518,6 +603,7 @@ export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
     }
 
     return {
+      timestampValue: kpiResult.timestamp,
       timestamp,
       [kpiFqn]:
         currentKpi?.metricType === KpiTargetType.Percentage

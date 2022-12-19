@@ -1,0 +1,204 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Button, Col, Row, Table, Tag, Tooltip, Typography } from 'antd';
+import { isNil } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { getAllAlerts } from '../../axiosAPIs/alertsAPI';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import Loader from '../../components/Loader/Loader';
+import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { AlertAction } from '../../generated/alerts/alertAction';
+import { Alerts, ProviderType } from '../../generated/alerts/alerts';
+import { Paging } from '../../generated/type/paging';
+import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
+import { getSettingPath } from '../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+
+const AlertsPage = () => {
+  const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+  const [alerts, setAlerts] = useState<Alerts[]>([]);
+  const [alertsPaging, setAlertsPaging] = useState<Paging>({
+    total: 0,
+  } as Paging);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [selectedAlert, setSelectedAlert] = useState<Alerts>();
+
+  const fetchAlerts = useCallback(async (after?: string) => {
+    setLoading(true);
+    try {
+      const { data, paging } = await getAllAlerts({ after });
+
+      setAlerts(data);
+      setAlertsPaging(paging);
+    } catch (error) {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.alert-plural') })
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
+
+  const handleAlertDelete = useCallback(async () => {
+    fetchAlerts();
+  }, []);
+
+  const onPageChange = useCallback((after: string | number, page?: number) => {
+    if (after) {
+      fetchAlerts(after + '');
+      page && setCurrentPage(page);
+    }
+  }, []);
+
+  const columns = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        width: '200px',
+        key: 'name',
+      },
+      {
+        title: t('label.trigger'),
+        dataIndex: ['triggerConfig', 'type'],
+        width: '200px',
+        key: 'triggerConfig.type',
+        render: getDisplayNameForTriggerType,
+      },
+      {
+        title: t('label.destination'),
+        dataIndex: 'alertActions',
+        width: '200px',
+        key: 'alertActions',
+        render: (actions: AlertAction[]) =>
+          actions.map((action) => <Tag key={action.name}>{action.name}</Tag>),
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        flex: true,
+        key: 'description',
+      },
+      {
+        title: t('label.actions'),
+        dataIndex: 'id',
+        width: 120,
+        key: 'id',
+        render: (id: string, record: Alerts) => {
+          return (
+            <>
+              <Tooltip placement="bottom" title={t('label.edit')}>
+                <Link to={`edit/${id}`}>
+                  <Button
+                    data-testid={`alert-edit-${record.name}`}
+                    icon={<SVGIcons className="tw-w-4" icon={Icons.EDIT} />}
+                    type="text"
+                  />
+                </Link>
+              </Tooltip>
+              <Tooltip placement="bottom" title={t('label.delete')}>
+                <Button
+                  data-testid={`alert-delete-${record.name}`}
+                  disabled={record.provider === ProviderType.System}
+                  icon={<SVGIcons className="tw-w-4" icon={Icons.DELETE} />}
+                  type="text"
+                  onClick={() => setSelectedAlert(record)}
+                />
+              </Tooltip>
+            </>
+          );
+        },
+      },
+    ],
+    [handleAlertDelete]
+  );
+
+  return (
+    <>
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <div className="d-flex justify-between">
+            <div>
+              <Typography.Title level={5}>
+                {t('label.alert-plural')}
+              </Typography.Title>
+              <Typography.Text>
+                {t('message.alerts-description')}
+              </Typography.Text>
+            </div>
+            <Link
+              to={getSettingPath(
+                GlobalSettingsMenuCategory.COLLABORATION,
+                GlobalSettingOptions.ADD_ALERTS
+              )}>
+              <Button type="primary">
+                {t('label.create-entity', { entity: 'alert' })}
+              </Button>
+            </Link>
+          </div>
+        </Col>
+        <Col span={24}>
+          <Table
+            bordered
+            columns={columns}
+            dataSource={alerts}
+            loading={{ spinning: loading, indicator: <Loader /> }}
+            pagination={false}
+            rowKey="id"
+            size="middle"
+          />
+        </Col>
+        <Col span={24}>
+          {Boolean(
+            !isNil(alertsPaging.after) || !isNil(alertsPaging.before)
+          ) && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE_MEDIUM}
+              paging={alertsPaging}
+              pagingHandler={onPageChange}
+              totalCount={alertsPaging.total}
+            />
+          )}
+
+          <DeleteWidgetModal
+            afterDeleteAction={handleAlertDelete}
+            entityId={selectedAlert?.id || ''}
+            entityName={selectedAlert?.name || ''}
+            entityType={EntityType.ALERT}
+            visible={Boolean(selectedAlert)}
+            onCancel={() => {
+              setSelectedAlert(undefined);
+            }}
+          />
+        </Col>
+      </Row>
+    </>
+  );
+};
+
+export default AlertsPage;

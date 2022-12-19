@@ -26,3 +26,9 @@ export enum CreatePasswordGenerator {
   AutomaticGenerate = 'AUTOMATIC_GENERATE',
   CreatePassword = 'CREATE_PASSWORD',
 }
+export enum UserProfileTab {
+  ACTIVITY = 'activity',
+  TASKS = 'tasks',
+  MY_DATA = 'mydata',
+  FOLLOWING = 'following',
+}

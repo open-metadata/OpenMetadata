@@ -2,7 +2,6 @@ package org.openmetadata.service.alerts.generic;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
@@ -13,11 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerts.AlertsActionPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -28,8 +25,8 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
   private final Client client;
   private final Webhook webhook;
 
-  public GenericWebhookPublisher(Alert alert, AlertAction alertAction, CollectionDAO dao) {
-    super(alert, alertAction, dao);
+  public GenericWebhookPublisher(Alert alert, AlertAction alertAction) {
+    super(alert, alertAction);
     if (alertAction.getAlertActionType() == AlertAction.AlertActionType.GENERIC_WEBHOOK) {
       webhook = JsonUtils.convertValue(alertAction.getAlertActionConfig(), Webhook.class);
       ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -59,10 +56,10 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
   }
 
   @Override
-  public void sendAlert(ChangeEvent event) throws EventPublisherException, IOException, InterruptedException {
+  public void sendAlert(EventResource.ChangeEventList list)
+      throws EventPublisherException, IOException, InterruptedException {
     long attemptTime = System.currentTimeMillis();
     try {
-      EventResource.ChangeEventList list = new EventResource.ChangeEventList(List.of(event), null, null, 1);
       String json = JsonUtils.pojoToJson(list);
       Response response;
       if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
