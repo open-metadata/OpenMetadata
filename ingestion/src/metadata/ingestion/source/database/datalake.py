@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    AzureDatalakeConfig,
+    AzureConfig,
     DatalakeConnection,
     GCSConfig,
     S3Config,
@@ -193,7 +193,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             else:
                 yield from self.fetch_s3_bucket_names()
 
-        if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+        if isinstance(self.service_connection.configSource, AzureConfig):
             yield from self.get_container_names()
 
     def get_container_names(self) -> Iterable[str]:
@@ -319,7 +319,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         continue
 
                     yield table_name, TableType.Regular
-            if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+            if isinstance(self.service_connection.configSource, AzureConfig):
                 files_names = self.get_tables(container_name=bucket_name)
                 for file in files_names.list_blobs():
                     file_name = file.name
@@ -376,7 +376,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 data_frame = self.get_s3_files(
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
-            if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+            if isinstance(self.service_connection.configSource, AzureConfig):
                 columns = None
                 connection_args = self.service_connection.configSource.securityConfig
                 storage_options = {
