@@ -172,7 +172,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
     def test_execute_method(self):
         """test method excution"""
-        workflow: DataInsightWorkflow = DataInsightWorkflow.create()
+        workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
         workflow.execute()
 
         sleep(1)  # wait for data to be available
