@@ -62,7 +62,7 @@ const mockProps = {
     },
   } as Thread,
   comment: '',
-  isVisible: true,
+  open: true,
   setComment: jest.fn(),
   onClose: jest.fn(),
   onConfirm: jest.fn(),
