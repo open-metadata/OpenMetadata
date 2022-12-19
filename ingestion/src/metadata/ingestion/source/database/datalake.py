@@ -256,6 +256,14 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 bucket = self.client.get_bucket(bucket_name)
                 for key in bucket.list_blobs(prefix=prefix):
                     table_name = self.standardize_table_name(bucket_name, key.name)
+                    # adding this condition as the gcp blobs also contains directory, which we can filter out
+                    if table_name.endswith("/") or not self.check_valid_file_type(
+                        key.name
+                    ):
+                        logger.debug(
+                            f"Object filtered due to unsupported file type: {key.name}"
+                        )
+                        continue
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -264,6 +272,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
                     )
+
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern,
                         table_fqn
@@ -273,11 +282,6 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         self.status.filter(
                             table_fqn,
                             "Object Filtered Out",
-                        )
-                        continue
-                    if not self.check_valid_file_type(key.name):
-                        logger.debug(
-                            f"Object filtered due to unsupported file type: {key.name}"
                         )
                         continue
 

@@ -17,14 +17,16 @@ import {
   Col,
   Row,
   Select,
-  SelectProps,
   Space,
   Tooltip,
   Typography,
 } from 'antd';
 import { t } from 'i18next';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
+import { getListKPIs } from '../../axiosAPIs/KpiAPI';
 import { searchQuery } from '../../axiosAPIs/searchAPI';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
@@ -37,8 +39,9 @@ import TierInsight from '../../components/DataInsightDetail/TierInsight';
 import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
+import SearchDropdown from '../../components/SearchDropdown/SearchDropdown';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
-import { ROUTES } from '../../constants/constants';
+import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
   DAY_FILTER,
   DEFAULT_DAYS,
@@ -49,6 +52,7 @@ import {
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
 import {
   ChartFilter,
@@ -63,6 +67,7 @@ import {
   getFormattedDateFromMilliSeconds,
   getPastDaysDateTimeMillis,
 } from '../../utils/TimeUtils';
+import { TeamStateType, TierStateType } from './DataInsight.interface';
 import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
 import KPIList from './KPIList';
@@ -75,21 +80,55 @@ const DataInsightPage = () => {
   const { isAdminUser } = useAuth();
   const history = useHistory();
 
-  const [teamsOptions, setTeamOptions] = useState<SelectProps['options']>([]);
+  const [teamsOptions, setTeamOptions] = useState<TeamStateType>({
+    defaultOptions: [],
+    selectedOptions: [],
+    options: [],
+  });
+  const [tierOptions, setTierOptions] = useState<TierStateType>({
+    selectedOptions: [],
+    options: [],
+  });
+
   const [activeTab, setActiveTab] = useState(DataInsightTabs.DATA_ASSETS);
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
+  const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const [selectedDaysFilter, setSelectedDaysFilter] = useState(DEFAULT_DAYS);
 
   const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
 
+  const defaultTierOptions = useMemo(() => {
+    return Object.keys(TIER_FILTER);
+  }, []);
+
+  const { descriptionKpi, ownerKpi } = useMemo(() => {
+    return {
+      descriptionKpi: kpiList.find(
+        (kpi) =>
+          kpi.dataInsightChart.name ===
+          DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
+      ),
+      ownerKpi: kpiList.find(
+        (kpi) =>
+          kpi.dataInsightChart.name ===
+          DataInsightChartType.PercentageOfEntitiesWithOwnerByType
+      ),
+    };
+  }, [kpiList]);
+
   const handleTierChange = (tiers: string[] = []) => {
+    setTierOptions((prev) => ({ ...prev, selectedOptions: tiers }));
     setChartFilter((previous) => ({
       ...previous,
-      tier: tiers.length ? tiers.join(',') : undefined,
+      tier: tiers.length
+        ? tiers.map((tier) => TIER_FILTER[tier]).join(',')
+        : undefined,
     }));
   };
 
   const handleDaysChange = (days: number) => {
+    setSelectedDaysFilter(days);
     setChartFilter((previous) => ({
       ...previous,
       startTs: getPastDaysDateTimeMillis(days),
@@ -98,6 +137,10 @@ const DataInsightPage = () => {
   };
 
   const handleTeamChange = (teams: string[] = []) => {
+    setTeamOptions((prev) => ({
+      ...prev,
+      selectedOptions: teams,
+    }));
     setChartFilter((previous) => ({
       ...previous,
       team: teams.length ? teams.join(',') : undefined,
@@ -105,35 +148,85 @@ const DataInsightPage = () => {
   };
 
   const handleTeamSearch = async (query: string) => {
-    if (fetchTeamSuggestions) {
+    if (fetchTeamSuggestions && !isEmpty(query)) {
       try {
-        const response = await fetchTeamSuggestions(query, 5);
-        setTeamOptions(getTeamFilter(response.values));
+        const response = await fetchTeamSuggestions(query, PAGE_SIZE);
+        setTeamOptions((prev) => ({
+          ...prev,
+          options: getTeamFilter(response.values as ListItem[]),
+        }));
       } catch (_error) {
         // we will not show the toast error message for suggestion API
       }
+    } else {
+      setTeamOptions((prev) => ({
+        ...prev,
+        options: prev.defaultOptions,
+      }));
+    }
+  };
+
+  const handleTierSearch = async (query: string) => {
+    if (query) {
+      setTierOptions((prev) => ({
+        ...prev,
+        options: prev.options.filter((value) =>
+          value.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+        ),
+      }));
+    } else {
+      setTierOptions((prev) => ({
+        ...prev,
+        options: defaultTierOptions,
+      }));
     }
   };
 
   const fetchDefaultTeamOptions = async () => {
+    if (teamsOptions.defaultOptions.length) {
+      setTeamOptions((prev) => ({
+        ...prev,
+        options: prev.defaultOptions,
+      }));
+
+      return;
+    }
+
     try {
       const response = await searchQuery({
         searchIndex: SearchIndex.TEAM,
         query: '*',
-        pageSize: 5,
+        pageSize: PAGE_SIZE,
       });
       const hits = response.hits.hits;
       const teamFilterOptions = hits.map((hit) => {
         const source = hit._source;
 
-        return {
-          label: source.displayName || source.name,
-          value: source.fullyQualifiedName || source.name,
-        };
+        return source.name;
       });
-      setTeamOptions(teamFilterOptions);
+      setTeamOptions((prev) => ({
+        ...prev,
+        defaultOptions: teamFilterOptions,
+        options: teamFilterOptions,
+      }));
     } catch (_error) {
       // we will not show the toast error message for search API
+    }
+  };
+
+  const fetchDefaultTierOptions = () => {
+    setTierOptions((prev) => ({
+      ...prev,
+      options: defaultTierOptions,
+    }));
+  };
+
+  const fetchKpiList = async () => {
+    try {
+      const response = await getListKPIs({ fields: 'dataInsightChart' });
+      setKpiList(response.data);
+    } catch (_err) {
+      setKpiList([]);
     }
   };
 
@@ -162,6 +255,7 @@ const DataInsightPage = () => {
 
   useEffect(() => {
     fetchDefaultTeamOptions();
+    fetchKpiList();
   }, []);
 
   useEffect(() => {
@@ -202,26 +296,24 @@ const DataInsightPage = () => {
           <Card>
             <Space className="w-full justify-between">
               <Space className="w-full">
-                <Select
-                  allowClear
-                  showArrow
-                  className="data-insight-select-dropdown"
-                  mode="multiple"
-                  notFoundContent={null}
-                  options={teamsOptions}
-                  placeholder={t('label.select-teams')}
+                <SearchDropdown
+                  label={t('label.team')}
+                  options={teamsOptions.options}
+                  searchKey="teams"
+                  selectedKeys={teamsOptions.selectedOptions}
                   onChange={handleTeamChange}
+                  onGetInitialOptions={fetchDefaultTeamOptions}
                   onSearch={handleTeamSearch}
                 />
-                <Select
-                  allowClear
-                  showArrow
-                  className="data-insight-select-dropdown"
-                  mode="multiple"
-                  notFoundContent={null}
-                  options={TIER_FILTER}
-                  placeholder={t('label.select-tiers')}
+
+                <SearchDropdown
+                  label={t('label.tier')}
+                  options={tierOptions.options}
+                  searchKey="tier"
+                  selectedKeys={tierOptions.selectedOptions}
                   onChange={handleTierChange}
+                  onGetInitialOptions={fetchDefaultTierOptions}
+                  onSearch={handleTierSearch}
                 />
               </Space>
               <Space>
@@ -246,28 +338,50 @@ const DataInsightPage = () => {
             </Space>
           </Card>
         </Col>
-        <Col span={24}>
-          <DataInsightSummary
-            chartFilter={chartFilter}
-            onScrollToChart={handleScrollToChart}
-          />
-        </Col>
-        <Col span={24}>
-          <KPIChart chartFilter={chartFilter} />
-        </Col>
+
+        {/* Do not show summary for KPIs */}
+        {tab !== DataInsightTabs.KPIS && (
+          <Col span={24}>
+            <DataInsightSummary
+              chartFilter={chartFilter}
+              onScrollToChart={handleScrollToChart}
+            />
+          </Col>
+        )}
+
+        {/* Do not show KPIChart for app analytics */}
+        {tab !== DataInsightTabs.APP_ANALYTICS && (
+          <Col span={24}>
+            <KPIChart chartFilter={chartFilter} kpiList={kpiList} />
+          </Col>
+        )}
         {activeTab === DataInsightTabs.DATA_ASSETS && (
           <>
             <Col span={24}>
-              <TotalEntityInsight chartFilter={chartFilter} />
+              <TotalEntityInsight
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
-              <DescriptionInsight chartFilter={chartFilter} />
+              <DescriptionInsight
+                chartFilter={chartFilter}
+                kpi={descriptionKpi}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
-              <OwnerInsight chartFilter={chartFilter} />
+              <OwnerInsight
+                chartFilter={chartFilter}
+                kpi={ownerKpi}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
-              <TierInsight chartFilter={chartFilter} />
+              <TierInsight
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
           </>
         )}
@@ -277,10 +391,16 @@ const DataInsightPage = () => {
               <TopViewEntities chartFilter={chartFilter} />
             </Col>
             <Col span={24}>
-              <PageViewsByEntitiesChart chartFilter={chartFilter} />
+              <PageViewsByEntitiesChart
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
-              <DailyActiveUsersChart chartFilter={chartFilter} />
+              <DailyActiveUsersChart
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
             <Col span={24}>
               <TopActiveUsers chartFilter={chartFilter} />

@@ -11,16 +11,9 @@
  *  limitations under the License.
  */
 
-import { Column, DataType } from '../../../generated/entity/data/table';
-import { TagLabel } from './../../../generated/type/tagLabel';
-
-export interface ColumnSummaryProps {
-  columns: Column[];
-}
-
-export interface BasicColumnInfo {
-  name: string;
-  type: DataType;
-  tags?: TagLabel[];
-  description?: string;
-}
+export type TeamStateType = {
+  defaultOptions: string[];
+  selectedOptions: string[];
+  options: string[];
+};
+export type TierStateType = Omit<TeamStateType, 'defaultOptions'>;

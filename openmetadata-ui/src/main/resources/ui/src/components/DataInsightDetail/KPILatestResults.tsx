@@ -1,4 +1,4 @@
-import { Progress, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { toNumber, uniqueId } from 'lodash';
 
 import React, { FC, useMemo } from 'react';
@@ -6,6 +6,7 @@ import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequ
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getNumberOfDaysForTimestamp } from '../../utils/TimeUtils';
+import DataInsightProgressBar from './DataInsightProgressBar';
 
 interface Props {
   kpiLatestResultsRecord: Record<string, UIKpiResult>;
@@ -45,22 +46,30 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const isTargetMet = targetResult.targetMet;
 
         return (
-          <Space className="w-full" direction="vertical" key={uniqueId()}>
+          <Space
+            className="w-full"
+            direction="vertical"
+            key={uniqueId()}
+            size={8}>
             <Typography.Text className="data-insight-label-text">
               {resultData.displayName ?? name}
             </Typography.Text>
-            <Space className="w-full justify-between">
-              <Typography.Text>{`${
-                isPercentage ? targetPercentValue : targetValue
-              }${suffix}`}</Typography.Text>
-              <Typography.Text>{`${
-                isPercentage ? targetMetPercentValue : targetMetValue
-              }${suffix}`}</Typography.Text>
-            </Space>
-            <Progress percent={currentProgress} showInfo={isTargetMet} />
-            <Typography.Text className="data-insight-label-text">
-              {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
-            </Typography.Text>
+            <div>
+              <DataInsightProgressBar
+                showSuccessInfo
+                progress={Number(currentProgress)}
+                showLabel={false}
+                startValue={isPercentage ? targetPercentValue : targetValue}
+                successValue={
+                  isPercentage ? targetMetPercentValue : targetMetValue
+                }
+                suffix={suffix}
+              />
+
+              <Typography.Text className="data-insight-label-text">
+                {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
+              </Typography.Text>
+            </div>
           </Space>
         );
       })}

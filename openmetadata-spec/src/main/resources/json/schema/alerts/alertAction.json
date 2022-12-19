@@ -14,7 +14,8 @@
         "GenericWebhook",
         "SlackWebhook",
         "MsTeamsWebhook",
-        "Email"
+        "Email",
+        "ActivityFeed"
       ]
     },
     "status": {
@@ -33,10 +34,6 @@
       "type": "object",
       "javaType": "org.openmetadata.schema.type.FailureDetails",
       "properties": {
-        "lastSuccessfulAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
         "lastFailedAt": {
           "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
           "$ref": "../type/basic.json#/definitions/timestamp"
@@ -56,6 +53,21 @@
       },
       "additionalProperties": false
     },
+    "activityFeedAlertActionConfig": {
+      "description": "Activity Feed Alert Action Config",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.alerts.ActivityFeedAlertActionConfig",
+      "properties": {
+        "name": {
+          "description": "Name",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description",
+          "type": "string"
+        }
+      }
+    },
     "alertActionStatus": {
       "description": "Alert Action Current Status",
       "type": "object",
@@ -67,10 +79,15 @@
         "failureDetails": {
           "$ref": "#/definitions/failureDetails"
         },
+        "lastSuccessfulAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
         "timestamp": {
           "$ref": "../type/basic.json#/definitions/timestamp"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -152,6 +169,9 @@
         },
         {
           "$ref": "./emailAlertConfig.json"
+        },
+        {
+          "$ref": "#/definitions/activityFeedAlertActionConfig"
         }
       ]
     },
@@ -163,5 +183,7 @@
     "provider" : {
       "$ref": "../type/basic.json#/definitions/providerType"
     }
-  }
+  },
+  "required": ["name", "alertActionType", "alertActionConfig"],
+  "additionalProperties": false
 }

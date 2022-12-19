@@ -11,31 +11,32 @@
  *  limitations under the License.
  */
 
+@import url('../../../styles/variables.less');
 @white: #ffffff;
-@summary-panel-offset: 118px; // (topnav height) 64px + (margin) 16px + (tabs height) 38px
-@label-color: #37352f99;
+@gray: #dde3ea;
+@summary-panel-offset: 96px; // (topnav height) 64px + page padding top and bottom 32px
+@label-color: #6b7280;
 @succesColor: #28a745;
 @failedColor: #cb2431;
 @abortedColor: #efae2f;
+@section-header-color: #6b7280;
 
 .summary-panel-container {
-  width: 380px;
-  display: none;
   background-color: @white;
+  margin-right: -8px;
+  position: sticky;
   height: calc(100vh - @summary-panel-offset);
-}
-
-.show-panel {
-  display: block;
-  position: fixed;
-  top: @summary-panel-offset;
-  right: 0px;
-  z-index: 1000;
+  top: 2px; // To show the border properly
+  z-index: 9;
   box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
   font-size: 14px;
   overflow-y: scroll;
   -ms-overflow-style: none;
   scrollbar-width: none;
+
+  .ant-typography {
+    color: #37352f;
+  }
 
   .summary-panel-statistics-count {
     color: #37352f;
@@ -50,6 +51,7 @@
 
   .section-header {
     font-size: 16px;
+    color: @section-header-color;
   }
 
   .success {
@@ -62,7 +64,7 @@
     color: @abortedColor;
   }
 
-  .column-name {
+  .entity-title {
     font-weight: 500;
   }
 
@@ -77,8 +79,18 @@
 
   .close-icon {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 12px;
+    right: 12px;
+  }
+
+  .summary-schema-editor {
+    margin: 16px 0px;
+    border: 1px solid @gray;
+    border-radius: 4px;
+  }
+
+  .link {
+    color: @primary-color;
   }
 }
 

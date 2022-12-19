@@ -85,12 +85,17 @@ export const handleIngestionRetry = (
         }
       });
 
+      if(ingestionType === 'metadata') {
+        cy.get(`[data-row-key*="${ingestionType}"]`).find('[data-testid="pipeline-status"]').as('checkRun');
+     } else {
+        cy.get(`[data-row-key*="${ingestionType}"]`).find('[data-testid="pipeline-status"]').as('checkRun');
+     }
       // the latest run should be success
-      cy.get(`.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`).then(
+      cy.get('@checkRun').then(
         ($ingestionStatus) => {
           
           if (
-            $ingestionStatus.text() !== 'Success' &&
+            $ingestionStatus.text() !== 'Success' &&  $ingestionStatus.text() !== 'Failed' &&
             retryCount <= RETRY_TIMES
           ) {
             // retry after waiting with log1 method [20s,40s,80s,160s,320s]
@@ -101,7 +106,7 @@ export const handleIngestionRetry = (
             checkSuccessState();
           } else {
             cy.get(
-              `.ant-table-tbody > :nth-child(${rowIndex}) > :nth-child(4)`
+              '@checkRun'
             ).should('have.text', 'Success');
           }
         }
@@ -135,7 +140,6 @@ export const testServiceCreationAndIngestion = (
     serviceName,
     type = 'database',
     testIngestionButton = true,
-    configureDBT
 ) => {
     //Storing the created service name and the type of service
     // Select Service in step 1
@@ -199,13 +203,6 @@ export const testServiceCreationAndIngestion = (
     addIngestionInput();
 
     cy.get('[data-testid="next-button"]').should('exist').click();
-
-    // Configure DBT Model
-    if (isDatabaseService(type)) {
-        cy.contains('Configure DBT Model').should('be.visible');
-        configureDBT && configureDBT();
-        cy.get('[data-testid="submit-btn"]').should('be.visible').click();
-    }
 
     scheduleIngestion();
 
@@ -747,7 +744,7 @@ export const editCreatedProperty = (propertyName) => {
 
     verifyResponseStatusCode('@checkPatchForDescription', 200);
 
-    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('.ant-modal-wrap').should('not.exist');
 
     //Fetching for updated descriptions for the created custom property
     cy.get(`[data-row-key="${propertyName}"]`).find('[data-testid="viewer-container"]').should('contain', 'This is new description');
@@ -962,7 +959,7 @@ export const updateDescriptionForIngestedTables = (
         '/api/v1/services/ingestionPipelines/trigger/*',
         'checkRun'
     );
-    cy.get('[data-testid="run"]').should('be.visible').click();
+    cy.get(`[data-row-key*="${serviceName}_metadata"] [data-testid="run"]`).should('be.visible').click();
     verifyResponseStatusCode('@checkRun', 200);
 
     //Close the toast message

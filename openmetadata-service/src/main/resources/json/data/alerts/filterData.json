@@ -2,404 +2,362 @@
   {
     "entityType" : "all",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
       "matchAnyEventType",
-      "matchTestResult",
       "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "bot",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType": "chart",
     "supportedFunctions": [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "dashboard",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "dashboardService",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "database",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "databaseSchema",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "databaseService",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "glossary",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "glossaryTerm",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "ingestionPipeline",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "location",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "messagingService",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "metrics",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "mlmodel",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "mlmodelService",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "pipeline",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "pipelineService",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "policy",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "report",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "role",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "storageService",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "table",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "tag",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "tagCategory",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "team",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "topic",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "user",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "events",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "feed",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "testSuite",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "testDefinition",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "testCase",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
       "matchAnyEventType",
-      "matchTestResult"
+      "matchTestResult",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "type",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "webAnalyticEvent",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "dataInsightChart",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "kpi",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "metadataService",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "alert",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   },
   {
     "entityType" : "alertAction",
     "supportedFunctions" : [
-      "matchAnySource",
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
-      "matchAnyEntityId",
-      "matchAnyEventType"
+      "matchAnyEventType",
+      "matchUpdatedBy"
     ]
   }
 ]

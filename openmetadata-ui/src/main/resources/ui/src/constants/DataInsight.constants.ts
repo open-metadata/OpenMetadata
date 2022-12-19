@@ -23,8 +23,8 @@ import {
 
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
-  right: 30,
-  left: 20,
+  right: 20,
+  left: 10,
   bottom: 5,
 };
 
@@ -87,28 +87,13 @@ export const DAY_FILTER = [
   },
 ];
 
-export const TIER_FILTER = [
-  {
-    value: 'Tier.Tier1',
-    label: i18n.t('label.tier-number', { tier: 1 }),
-  },
-  {
-    value: 'Tier.Tier2',
-    label: i18n.t('label.tier-number', { tier: 2 }),
-  },
-  {
-    value: 'Tier.Tier3',
-    label: i18n.t('label.tier-number', { tier: 3 }),
-  },
-  {
-    value: 'Tier.Tier4',
-    label: i18n.t('label.tier-number', { tier: 4 }),
-  },
-  {
-    value: 'Tier.Tier5',
-    label: i18n.t('label.tier-number', { tier: 5 }),
-  },
-];
+export const TIER_FILTER = {
+  [i18n.t('label.tier-number', { tier: 1 })]: 'Tier.Tier1',
+  [i18n.t('label.tier-number', { tier: 2 })]: 'Tier.Tier2',
+  [i18n.t('label.tier-number', { tier: 3 })]: 'Tier.Tier3',
+  [i18n.t('label.tier-number', { tier: 4 })]: 'Tier.Tier4',
+  [i18n.t('label.tier-number', { tier: 5 })]: 'Tier.Tier5',
+};
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getPastDaysDateTimeMillis(DEFAULT_DAYS),

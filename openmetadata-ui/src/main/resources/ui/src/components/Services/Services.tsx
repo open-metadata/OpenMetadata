@@ -16,7 +16,10 @@ import { isEmpty } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { getServiceDetailsPath, PAGE_SIZE } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  SERVICE_VIEW_CAP,
+} from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { servicesDisplayName } from '../../constants/Services.constant';
@@ -170,7 +173,7 @@ const Services = ({
           {showPagination(paging) && (
             <NextPrevious
               currentPage={currentPage}
-              pageSize={PAGE_SIZE}
+              pageSize={SERVICE_VIEW_CAP}
               paging={paging}
               pagingHandler={onPageChange}
               totalCount={paging.total}

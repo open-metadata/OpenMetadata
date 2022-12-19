@@ -68,8 +68,6 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "norms": false,
         "analyzer": "om_analyzer"
       },
       "version": {
@@ -105,8 +103,6 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
-            "norms": false,
             "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {

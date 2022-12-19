@@ -59,6 +59,11 @@
       "description": "Support Elastic Search Reindexing",
       "type": "boolean",
       "default": true
+    },
+    "supportsDBTExtraction": {
+      "description": "Supports DBT Extraction.",
+      "type": "boolean",
+      "default": true
     }
   }
 }

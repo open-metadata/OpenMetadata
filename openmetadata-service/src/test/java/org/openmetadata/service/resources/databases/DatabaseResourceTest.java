@@ -24,12 +24,10 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -50,11 +48,6 @@ import org.openmetadata.service.util.TestUtils;
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
-  }
-
-  @BeforeAll
-  public void setup(TestInfo test) throws IOException, URISyntaxException {
-    super.setup(test);
   }
 
   @Test
@@ -125,7 +118,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertListNull(
         database.getOwner(), database.getDatabaseSchemas(), database.getUsageSummary(), database.getLocation());
 
-    fields = "owner,databaseSchemas,usageSummary,location";
+    fields = "owner,databaseSchemas,usageSummary,location,tags";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

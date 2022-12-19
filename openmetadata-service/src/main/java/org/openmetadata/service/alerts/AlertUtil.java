@@ -1,9 +1,12 @@
 package org.openmetadata.service.alerts;
 
+import static org.openmetadata.service.Entity.ALERT;
+import static org.openmetadata.service.Entity.ALERT_ACTION;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,7 +17,10 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.entity.alerts.AlertFilterRule;
+import org.openmetadata.schema.entity.alerts.TriggerConfig;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.ParamAdditionalContext;
@@ -28,6 +34,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public class AlertUtil {
@@ -37,17 +44,19 @@ public class AlertUtil {
     AlertsActionPublisher publisher;
     switch (alertAction.getAlertActionType()) {
       case SLACK_WEBHOOK:
-        publisher = new SlackWebhookEventPublisher(alert, alertAction, daoCollection);
+        publisher = new SlackWebhookEventPublisher(alert, alertAction);
         break;
       case MS_TEAMS_WEBHOOK:
-        publisher = new MSTeamsWebhookPublisher(alert, alertAction, daoCollection);
+        publisher = new MSTeamsWebhookPublisher(alert, alertAction);
         break;
       case GENERIC_WEBHOOK:
-        publisher = new GenericWebhookPublisher(alert, alertAction, daoCollection);
+        publisher = new GenericWebhookPublisher(alert, alertAction);
         break;
       case EMAIL:
         publisher = new EmailAlertPublisher(alert, alertAction, daoCollection);
         break;
+      case ACTIVITY_FEED:
+        throw new IllegalArgumentException("Cannot create Activity Feed as Publisher.");
       default:
         throw new IllegalArgumentException("Invalid Alert Action Specified.");
     }
@@ -78,6 +87,7 @@ public class AlertUtil {
         case matchAnySource:
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(Entity.getEntityList())));
           break;
+        case matchUpdatedBy:
         case matchAnyOwnerName:
           func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
           break;
@@ -111,5 +121,77 @@ public class AlertUtil {
       }
     }
     return indexesToSearch;
+  }
+
+  public static boolean evaluateAlertConditions(ChangeEvent changeEvent, List<AlertFilterRule> alertFilterRules) {
+    if (alertFilterRules.size() > 0) {
+      boolean result;
+      String completeCondition = buildCompleteCondition(alertFilterRules);
+      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
+      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+      Expression expression = parseExpression(completeCondition);
+      result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
+      LOG.debug("Alert evaluated as Result : {}", result);
+      return result;
+    } else {
+      return true;
+    }
+  }
+
+  public static String buildCompleteCondition(List<AlertFilterRule> alertFilterRules) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < alertFilterRules.size(); i++) {
+      AlertFilterRule rule = alertFilterRules.get(i);
+      builder.append("(");
+      if (rule.getEffect() == AlertFilterRule.Effect.ALLOW) {
+        builder.append(rule.getCondition());
+      } else {
+        builder.append("!");
+        builder.append(rule.getCondition());
+      }
+      builder.append(")");
+      if (i != (alertFilterRules.size() - 1)) builder.append(" && ");
+    }
+    return builder.toString();
+  }
+
+  public static List<TriggerConfig> getDefaultAlertTriggers() {
+    List<TriggerConfig> triggerConfigs = new ArrayList<>();
+    TriggerConfig allMetadataTrigger = new TriggerConfig().withType(TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS);
+    TriggerConfig specificDataAsset = new TriggerConfig().withType(TriggerConfig.AlertTriggerType.SPECIFIC_DATA_ASSET);
+    Set<String> entitites = new HashSet<>(Entity.getEntityList());
+    // Alert and Alert Action should be removed from entities list
+    entitites.remove(ALERT);
+    entitites.remove(ALERT_ACTION);
+    specificDataAsset.setEntities(entitites);
+
+    triggerConfigs.add(allMetadataTrigger);
+    triggerConfigs.add(specificDataAsset);
+
+    return triggerConfigs;
+  }
+
+  public static boolean shouldTriggerAlert(String entityType, TriggerConfig config) {
+    // OpenMetadataWide Setting apply to all ChangeEvents
+    if (config.getType() == TriggerConfig.AlertTriggerType.ALL_DATA_ASSETS) {
+      return true;
+    } else {
+      // Use Trigger Specific Settings
+      return config.getEntities().contains(entityType);
+    }
+  }
+
+  public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
+    // Check Trigger Conditions
+    if (!AlertUtil.shouldTriggerAlert(
+        event.getEntityType(), ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getTriggerConfig())) {
+      return false;
+    }
+    // Check Spel Conditions
+    if (!AlertUtil.evaluateAlertConditions(
+        event, ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules())) {
+      return false;
+    }
+    return true;
   }
 }

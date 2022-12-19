@@ -12,6 +12,8 @@
 """
 Restore utility for the metadata CLI
 """
+import traceback
+
 from sqlalchemy.engine import Engine
 
 from metadata.cli.utils import get_engine
@@ -28,12 +30,35 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
     """
 
     with open(sql_file, encoding="utf-8") as file:
-        for query in file.readlines():
+        failed_queries = 0
+        all_queries = file.readlines()
+        print_ansi_encoded_string(
+            color=ANSI.GREEN,
+            bold=False,
+            message=f"Queries to process for restore: {len(all_queries)}",
+        )
+
+        for query in all_queries:
             # `%` is a reserved syntax in SQLAlchemy to bind parameters. Escaping it with `%%`
             clean_query = query.replace("%", "%%")
 
-            with engine.connect() as conn:
-                conn.execute(clean_query)
+            try:
+                with engine.connect() as conn:
+                    conn.execute(clean_query)
+
+            except Exception as err:
+                failed_queries += 1
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error processing the following query while restoring - {err}"
+                )
+                logger.warning(clean_query)
+
+        print_ansi_encoded_string(
+            color=ANSI.GREEN,
+            bold=False,
+            message=f"Restore finished. {failed_queries} queries failed.",
+        )
 
 
 def run_restore(

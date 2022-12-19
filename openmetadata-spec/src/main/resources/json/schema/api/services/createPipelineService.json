@@ -26,6 +26,14 @@
     "connection": {
       "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineConnection"
     },
+    "tags": {
+      "description": "Tags for this Pipeline Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "owner": {
       "description": "Owner of this pipeline service.",
       "$ref": "../../type/entityReference.json"

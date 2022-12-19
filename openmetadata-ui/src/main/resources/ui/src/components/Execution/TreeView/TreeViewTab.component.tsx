@@ -59,10 +59,10 @@ const TreeViewTab = ({
           <ArrowSvg className="cursor-pointer" />
         </Col>
         <Col>
-          <Typography.Title className="p-b-0 m-b-0" level={5}>
+          <Typography.Text className="p-b-0 m-b-0 font-medium">
             {formatDateTimeFromSeconds(startTime)} to{' '}
             {formatDateTimeFromSeconds(endTime)}
-          </Typography.Title>
+          </Typography.Text>
         </Col>
         <Col>
           <ArrowSvg className=" cursor-pointer transform-180" />

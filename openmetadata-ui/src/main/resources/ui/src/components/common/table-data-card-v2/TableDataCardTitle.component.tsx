@@ -42,7 +42,7 @@ const TableDataCardTitle = ({
 
   const title = (
     <Button
-      className="tw-text-grey-body tw-font-semibold"
+      className="w-full"
       data-testid={`${getPartialNameFromTableFQN(
         source.fullyQualifiedName ?? '',
         [FqnPart.Service]
@@ -50,7 +50,13 @@ const TableDataCardTitle = ({
       id={`${id}Title`}
       type="link"
       onClick={isTourRoute ? handleLinkClick : undefined}>
-      <Typography.Title level={5}>{stringToHTML(source.name)}</Typography.Title>
+      <Typography.Title
+        ellipsis
+        className="text-left"
+        level={5}
+        title={source.name}>
+        {stringToHTML(source.name)}
+      </Typography.Title>
     </Button>
   );
 
@@ -60,7 +66,7 @@ const TableDataCardTitle = ({
 
   return (
     <Link
-      className="table-data-card-title-container"
+      className="table-data-card-title-container w-full"
       to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
       {title}
     </Link>

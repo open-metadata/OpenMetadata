@@ -15,7 +15,6 @@ package org.openmetadata.client.gateway;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import feign.Feign;
-import feign.RequestInterceptor;
 import feign.form.FormEncoder;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
@@ -77,19 +76,10 @@ public class OpenMetadata {
   }
 
   public <K> void updateRequestType(Class<K> requestClass) {
-    if (apiClient.getApiAuthorizations().containsKey(REQUEST_INTERCEPTOR_KEY)) {
-      apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
-    }
+    apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
     CustomRequestInterceptor<K> newInterceptor =
         new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
     apiClient.addAuthorization(REQUEST_INTERCEPTOR_KEY, newInterceptor);
-  }
-
-  public void addRequestInterceptor(String requestInterceptorKey, RequestInterceptor interceptor) {
-    if (apiClient.getApiAuthorizations().containsKey(requestInterceptorKey)) {
-      LOG.info("Interceptor with this key already exists");
-    }
-    apiClient.addAuthorization(requestInterceptorKey, interceptor);
   }
 
   public void validateVersion() {

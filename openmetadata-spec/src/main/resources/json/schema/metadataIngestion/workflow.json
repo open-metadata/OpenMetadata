@@ -44,6 +44,9 @@
             },
             {
               "$ref": "dataInsightPipeline.json"
+            },
+            {
+              "$ref": "dbtPipeline.json"
             }
           ]
         }

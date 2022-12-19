@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.alerts;
 
+import static org.openmetadata.service.alerts.AlertUtil.getDefaultAlertTriggers;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,19 +54,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateAlert;
 import org.openmetadata.schema.entity.alerts.Alert;
+import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.entity.alerts.EntitySpelFilters;
 import org.openmetadata.schema.entity.alerts.TriggerConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerts.ActivityFeedAlertCache;
 import org.openmetadata.service.alerts.AlertUtil;
+import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.jdbi3.AlertRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.resources.settings.SettingsResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
@@ -79,26 +87,11 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "alerts", order = 8) // init after alertAction Resource
 public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public static final String COLLECTION_PATH = "v1/alerts/";
-  private final CollectionDAO.AlertDAO alertDAO;
-  private List<TriggerConfig> bootStrappedFilters = new ArrayList<>();
-  private Map<String, EntitySpelFilters> entitySpelFiltersList = new HashMap<>();
+  private final CollectionDAO daoCollection;
+  private final Map<String, EntitySpelFilters> entitySpelFiltersList = new HashMap<>();
   static final String FIELDS = "triggerConfig,filteringRules,alertActions";
 
-  private void initDefaultTriggersSettings() throws IOException {
-    // Load Trigger File
-    List<String> triggerDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/triggerData.json$");
-    if (triggerDataFiles.size() != 1) {
-      LOG.warn("Invalid number of triggerDataFiles Only one expected.");
-      return;
-    }
-    String triggerDataFile = triggerDataFiles.get(0);
-    try {
-      String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), triggerDataFile);
-      bootStrappedFilters = JsonUtils.readObjects(json, TriggerConfig.class);
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the {} from file {}", "filters", triggerDataFile, e);
-    }
-
+  private void initAlerts() throws IOException {
     // Load Filter Data
     List<String> filterDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/filterData.json$");
     if (filterDataFiles.size() != 1) {
@@ -109,12 +102,43 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
     try {
       String json = CommonUtil.getResourceAsStream(getClass().getClassLoader(), filterDataFile);
       List<EntitySpelFilters> filters = JsonUtils.readObjects(json, EntitySpelFilters.class);
-      filters.forEach(
-          (spelFilter) -> {
-            entitySpelFiltersList.put(spelFilter.getEntityType(), spelFilter);
-          });
+      filters.forEach((spelFilter) -> entitySpelFiltersList.put(spelFilter.getEntityType(), spelFilter));
     } catch (Exception e) {
       LOG.warn("Failed to initialize the {} from file {}", "filters", filterDataFile, e);
+    }
+
+    // Initialize Alert For ActivityFeed, this does not have any publisher since it is for internal system filtering
+    List<String> alertFile = EntityUtil.getJsonDataResources(".*json/data/alerts/alertsData.json$");
+    List<String> alertActionFile = EntityUtil.getJsonDataResources(".*json/data/alerts/alertsActionData.json$");
+    String alertDataFile = alertFile.get(0);
+    String alertActionDataFile = alertActionFile.get(0);
+    Alert activityFeedAlert = null;
+    try {
+      String actionJson = CommonUtil.getResourceAsStream(PolicyResource.class.getClassLoader(), alertActionDataFile);
+      // Assumes to have 1 entry currently
+      AlertAction alertActions = JsonUtils.readObjects(actionJson, AlertAction.class).get(0);
+
+      String alertJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), alertDataFile);
+      activityFeedAlert = JsonUtils.readObjects(alertJson, Alert.class).get(0);
+      // populate alert actions
+      EntityRepository<AlertAction> actionEntityRepository = Entity.getEntityRepository(Entity.ALERT_ACTION);
+      AlertAction action =
+          actionEntityRepository.getByName(null, alertActions.getName(), actionEntityRepository.getFields("id"));
+      activityFeedAlert.setAlertActions(List.of(action.getEntityReference()));
+      dao.initializeEntity(activityFeedAlert);
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize the {} from file {}", "filters", alertDataFile, e);
+    }
+
+    // Init Publishers
+    ActivityFeedAlertCache.initialize(activityFeedAlert.getName(), daoCollection);
+    // Create Publishers
+    List<String> listAllAlerts = daoCollection.alertDAO().listAllAlerts(daoCollection.alertDAO().getTableName());
+    List<Alert> alertList = JsonUtils.readObjects(listAllAlerts, Alert.class);
+    for (Alert alert : alertList) {
+      if (!alert.getName().equals(activityFeedAlert.getName())) {
+        AlertsPublisherManager.getInstance().addAlertActionPublishers(alert);
+      }
     }
   }
 
@@ -125,7 +149,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
 
   public AlertResource(CollectionDAO dao, Authorizer authorizer) {
     super(Alert.class, new AlertRepository(dao), authorizer);
-    alertDAO = dao.alertDAO();
+    daoCollection = dao;
   }
 
   public static class AlertList extends ResultList<Alert> {
@@ -137,12 +161,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      List<String> listAllAlerts = alertDAO.listAllAlerts(alertDAO.getTableName());
-      List<Alert> alertList = JsonUtils.readObjects(listAllAlerts, Alert.class);
-      for (Alert alert : alertList) {
-        dao.addAlertActionPublishers(alert);
-      }
-      initDefaultTriggersSettings();
+      initAlerts();
     } catch (Exception ex) {
       // Starting application should not fail
       LOG.warn("Exception during initialization", ex);
@@ -249,10 +268,34 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId,
-      @Parameter(description = "alertAction Id", schema = @Schema(type = "UUID")) @PathParam("alertId")
+      @Parameter(description = "alertAction Id", schema = @Schema(type = "UUID")) @PathParam("actionId")
           UUID alertActionId)
       throws IOException {
     return dao.getAlertActionStatus(alertId, alertActionId);
+  }
+
+  @GET
+  @Path("/allAlertAction/{alertId}")
+  @Valid
+  @Operation(
+      operationId = "getAllAlertActionForAlert",
+      summary = "Get all alert Action of an alert",
+      tags = "alerts",
+      description = "Get all alert Action of alert by given Id , and id of the alert it is bound to",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity events",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = AlertActionStatus.class))),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public List<AlertAction> getAllAlertActionForAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("alertId") UUID alertId)
+      throws IOException {
+    return dao.getAllAlertActionForAlert(alertId);
   }
 
   @GET
@@ -274,7 +317,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public List<TriggerConfig> getAlertBootstrapFilters(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return bootStrappedFilters;
+    return getDefaultAlertTriggers();
   }
 
   @GET
@@ -417,7 +460,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       throws IOException {
     Alert alert = getAlert(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, alert);
-    dao.addAlertActionPublishers(alert);
+    AlertsPublisherManager.getInstance().addAlertActionPublishers(alert);
     return response;
   }
 
@@ -439,7 +482,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       throws IOException {
     Alert alert = getAlert(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, alert);
-    dao.updateAlertActionPublishers((Alert) response.getEntity());
+    AlertsPublisherManager.getInstance().updateAlertActionPublishers(alert);
     return response;
   }
 
@@ -467,7 +510,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
           JsonPatch patch)
       throws IOException {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    dao.updateAlertActionPublishers((Alert) response.getEntity());
+    AlertsPublisherManager.getInstance().updateAlertActionPublishers((Alert) response.getEntity());
     return response;
   }
 
@@ -500,7 +543,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
-    dao.deleteAlertAllPublishers(id);
+    AlertsPublisherManager.getInstance().deleteAlertAllPublishers(id);
     return response;
   }
 

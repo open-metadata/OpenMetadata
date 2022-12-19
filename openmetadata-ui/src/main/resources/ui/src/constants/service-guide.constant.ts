@@ -118,3 +118,19 @@ export const addProfilerIngestionGuide = [
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The profiler will run at a regular interval as per the schedule.',
   },
 ];
+
+export const addDBTIngestionGuide = [
+  {
+    step: 2,
+    title: 'Add DBT Ingestion',
+    description: `A profiler workflow can be configured and deployed after a metadata ingestion has been set up. Multiple profiler pipelines can be set up for the same database service. 
+      The pipeline feeds the Profiler tab of the Table entity, and also runs the tests configured for that entity. Add a Name, FQN, and define the filter pattern to start.`,
+  },
+  { ...schedulingIngestionGuide },
+  {
+    step: 5,
+    title: 'DBT Ingestion Added Successfully',
+    description:
+      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The profiler will run at a regular interval as per the schedule.',
+  },
+];

@@ -14,6 +14,7 @@
 import { isEmpty, isUndefined, trim } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
@@ -34,9 +35,9 @@ import {
   IngestionPipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  DatabaseServiceMetadataPipelineClass,
   DbtConfig,
-} from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+  DbtPipelineClass,
+} from '../../generated/metadataIngestion/dbtPipeline';
 import {
   getCurrentUserId,
   getIngestionFrequency,
@@ -81,6 +82,7 @@ const AddIngestion = ({
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
+  const { t } = useTranslation();
   const isDatabaseService = useMemo(() => {
     return serviceCategory === ServiceCategory.DATABASE_SERVICES;
   }, [serviceCategory]);
@@ -88,7 +90,7 @@ const AddIngestion = ({
     return serviceData.serviceType === MetadataServiceType.OpenMetadata;
   }, [serviceCategory]);
   const showDBTConfig = useMemo(() => {
-    return isDatabaseService && pipelineType === PipelineType.Metadata;
+    return isDatabaseService && pipelineType === PipelineType.Dbt;
   }, [isDatabaseService, pipelineType]);
 
   const [saveState, setSaveState] = useState<LoadingState>('initial');
@@ -144,22 +146,21 @@ const AddIngestion = ({
     )
   );
   const configData = useMemo(
-    () =>
-      (data?.sourceConfig.config as DatabaseServiceMetadataPipelineClass)
-        ?.dbtConfigSource,
+    () => (data?.sourceConfig.config as DbtPipelineClass)?.dbtConfigSource,
     [data]
   );
   const [dbtConfigSource, setDbtConfigSource] = useState<DbtConfig | undefined>(
-    showDBTConfig ? (configData as DbtConfig) : undefined
+    configData as DbtConfig
   );
 
   const sourceTypeData = useMemo(
     () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
     [configData]
   );
-  const [dbtConfigSourceType, setDbtConfigSourceType] = useState<
-    DBT_SOURCES | undefined
-  >(showDBTConfig ? sourceTypeData.sourceType : undefined);
+  const [dbtConfigSourceType, setDbtConfigSourceType] = useState<DBT_SOURCES>(
+    sourceTypeData.sourceType
+  );
+
   const [gcsConfigType, setGcsConfigType] = useState<GCS_CONFIG | undefined>(
     showDBTConfig ? sourceTypeData.gcsType : undefined
   );
@@ -195,6 +196,9 @@ const AddIngestion = ({
   );
   const [threadCount, setThreadCount] = useState(
     (data?.sourceConfig.config as ConfigClass)?.threadCount ?? 5
+  );
+  const [timeoutSeconds, setTimeoutSeconds] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.timeoutSeconds ?? 43200
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
@@ -442,12 +446,6 @@ const AddIngestion = ({
   const getMetadataIngestionFields = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
-        const DatabaseConfigData = {
-          ...(showDBTConfig
-            ? escapeBackwardSlashChar({ dbtConfigSource } as ConfigClass)
-            : undefined),
-        };
-
         return {
           useFqnForFiltering: useFqnFilter,
           includeViews: includeView,
@@ -466,7 +464,6 @@ const AddIngestion = ({
           ),
           markDeletedTables,
           markAllDeletedTables,
-          ...DatabaseConfigData,
           type: ConfigType.DatabaseMetadata,
         };
       }
@@ -555,8 +552,19 @@ const AddIngestion = ({
           generateSampleData: ingestSampleData,
           profileSample: profileSample,
           threadCount: threadCount,
+          timeoutSeconds: timeoutSeconds,
         };
       }
+
+      case PipelineType.Dbt: {
+        return {
+          ...escapeBackwardSlashChar({
+            dbtConfigSource,
+          } as ConfigClass),
+          type: ConfigType.Dbt,
+        };
+      }
+
       case PipelineType.ElasticSearchReindex:
       case PipelineType.DataInsight: {
         return metadataToESConfig
@@ -693,7 +701,9 @@ const AddIngestion = ({
   };
   const getExcludedSteps = () => {
     const excludedSteps = [];
-    if (!showDBTConfig) {
+    if (showDBTConfig) {
+      excludedSteps.push(1);
+    } else {
       excludedSteps.push(2);
     }
     if (!isServiceTypeOpenMetadata) {
@@ -743,6 +753,7 @@ const AddIngestion = ({
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
             handleThreadCount={setThreadCount}
+            handleTimeoutSeconds={setTimeoutSeconds}
             includeLineage={includeLineage}
             includeTags={includeTag}
             includeView={includeView}
@@ -769,6 +780,7 @@ const AddIngestion = ({
             stageFileLocation={stageFileLocation}
             tableFilterPattern={tableFilterPattern}
             threadCount={threadCount}
+            timeoutSeconds={timeoutSeconds}
             topicFilterPattern={topicFilterPattern}
             useFqnFilter={useFqnFilter}
             onCancel={handleCancelClick}
@@ -779,14 +791,17 @@ const AddIngestion = ({
 
         {activeIngestionStep === 2 && (
           <DBTConfigFormBuilder
-            cancelText="Back"
+            cancelText={t('label.cancel')}
             data={dbtConfigSource || {}}
+            formType={status}
             gcsType={gcsConfigType}
             handleGcsTypeChange={(type) => setGcsConfigType(type)}
+            handleIngestionName={(val) => setIngestionName(val)}
             handleSourceChange={(src) => setDbtConfigSourceType(src)}
-            okText="Next"
+            ingestionName={ingestionName}
+            okText={t('label.next')}
             source={dbtConfigSourceType}
-            onCancel={handlePrev}
+            onCancel={handleCancelClick}
             onSubmit={(dbtConfigData) => {
               setDbtConfigSource(dbtConfigData);
               handleNext();
@@ -812,7 +827,9 @@ const AddIngestion = ({
             }
             repeatFrequency={repeatFrequency}
             status={saveState}
-            submitButtonLabel={isUndefined(data) ? 'Add & Deploy' : 'Submit'}
+            submitButtonLabel={
+              isUndefined(data) ? t('label.add-deploy') : t('label.submit')
+            }
             onBack={handlePrev}
             onDeploy={handleScheduleIntervalDeployClick}
           />

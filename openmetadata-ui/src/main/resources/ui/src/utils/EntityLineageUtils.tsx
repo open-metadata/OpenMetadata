@@ -47,9 +47,9 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
+  MIN_ZOOM_VALUE,
   NODE_HEIGHT,
   NODE_WIDTH,
-  ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
@@ -106,7 +106,7 @@ export const getHeaderLabel = (
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(ZOOM_VALUE);
+  reactFlowInstance.zoomTo(MIN_ZOOM_VALUE);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {

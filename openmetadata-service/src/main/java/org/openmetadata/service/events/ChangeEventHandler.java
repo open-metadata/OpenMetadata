@@ -38,13 +38,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.filter.FilterRegistry;
+import org.openmetadata.service.alerts.AlertUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.ChangeEventParser;
-import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.NotificationHandler;
 import org.openmetadata.service.util.RestUtil;
@@ -69,7 +68,7 @@ public class ChangeEventHandler implements EventHandler {
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
       notificationHandler.processNotifications(responseContext);
-      ChangeEvent changeEvent = getChangeEvent(method, responseContext);
+      ChangeEvent changeEvent = getChangeEvent(loggedInUserName, method, responseContext);
       if (changeEvent == null) {
         return null;
       }
@@ -92,7 +91,7 @@ public class ChangeEventHandler implements EventHandler {
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
         // ignore usageSummary updates in the feed
         boolean filterEnabled;
-        filterEnabled = FilterUtil.shouldProcessRequest(changeEvent, FilterRegistry.getAllFilters());
+        filterEnabled = AlertUtil.shouldProcessActivityFeedRequest(changeEvent);
         if (filterEnabled) {
           for (Thread thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message
@@ -126,7 +125,7 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  public ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
+  public ChangeEvent getChangeEvent(String updateBy, String method, ContainerResponseContext responseContext) {
     // GET operations don't produce change events
     if (method.equals("GET")) {
       return null;
@@ -147,7 +146,7 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
-      return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
+      return getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)
           .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
     }
@@ -171,7 +170,7 @@ public class ChangeEventHandler implements EventHandler {
         eventType = ENTITY_SOFT_DELETED;
       }
 
-      return getChangeEvent(eventType, entityType, entityInterface)
+      return getChangeEvent(updateBy, eventType, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
           .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
@@ -188,7 +187,7 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
-      return getChangeEvent(ENTITY_DELETED, entityType, entityInterface)
+      return getChangeEvent(updateBy, ENTITY_DELETED, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getVersion())
           .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
@@ -196,12 +195,13 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+  private static ChangeEvent getChangeEvent(
+      String updateBy, EventType eventType, String entityType, EntityInterface entityInterface) {
     return new ChangeEvent()
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
-        .withUserName(entityInterface.getUpdatedBy())
+        .withUserName(updateBy)
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());

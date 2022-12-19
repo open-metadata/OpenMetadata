@@ -1,0 +1,59 @@
+[
+  {
+    "name": "ActivityFeedAlert",
+    "description": "Alert Received on the Activity Feed are controlled with this.",
+    "triggerConfig": {
+      "type": "SpecificDataAsset",
+      "entities": [
+        "bot",
+        "chart",
+        "dashboard",
+        "dashboardService",
+        "dataInsightChart",
+        "database",
+        "databaseSchema",
+        "databaseService",
+        "glossary",
+        "glossaryTerm",
+        "ingestionPipeline",
+        "kpi",
+        "location",
+        "messagingService",
+        "metadataService",
+        "metrics",
+        "mlmodel",
+        "mlmodelService",
+        "pipeline",
+        "pipelineService",
+        "policy",
+        "report",
+        "role",
+        "storageService",
+        "table",
+        "tag",
+        "tagCategory",
+        "team",
+        "testCase",
+        "testDefinition",
+        "testSuite",
+        "topic",
+        "type",
+        "user",
+        "webAnalyticEvent"
+      ]
+    },
+    "filteringRules": [
+      {
+        "name": "DisableIngestionActivityFeedData",
+        "effect": "deny",
+        "condition": "matchUpdatedBy('ingestion-bot')"
+      },
+      {
+        "name": "DisableUsageSummaryFromActivityFeed",
+        "effect": "deny",
+        "condition": "matchAnyFieldChange('usageSummary')"
+      }
+    ],
+    "provider" : "system"
+  }
+]

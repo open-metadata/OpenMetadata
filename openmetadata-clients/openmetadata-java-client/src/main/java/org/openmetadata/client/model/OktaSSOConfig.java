@@ -25,7 +25,7 @@ public class OktaSSOConfig {
   private String authorizationServerURL;
 
   /** Okta client scopes. */
-  private List<String> scopes = new ArrayList<String>();
+  private List<String> scopes = new ArrayList<>();
 
   /** Okta Client ID. (Required) */
   public String getClientId() {

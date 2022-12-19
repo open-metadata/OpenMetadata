@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -45,16 +46,22 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateAlertAction;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.jdbi3.AlertActionRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -62,7 +69,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Alerts collection", tags = "Alerts collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "alertAction", order = 7) // init befoe Alert Resource Init
+@Collection(name = "alertAction", order = 7) // init before Alert Resource Init
 public class AlertActionResource extends EntityResource<AlertAction, AlertActionRepository> {
   public static final String COLLECTION_PATH = "v1/alertAction/";
 
@@ -73,12 +80,36 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
 
   public AlertActionResource(CollectionDAO dao, Authorizer authorizer) {
     super(AlertAction.class, new AlertActionRepository(dao), authorizer);
+    // Initialize the Alerts Publisher Manager
+    AlertsPublisherManager.initialize(dao);
   }
 
   public static class AlertActionList extends ResultList<AlertAction> {
 
     @SuppressWarnings("unused") /* Required for tests */
     public AlertActionList() {}
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    initDefaultAlertActions();
+  }
+
+  private void initDefaultAlertActions() throws IOException {
+    List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/alerts/alertsActionData.json$");
+    if (jsonDataFiles.size() != 1) {
+      LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
+      return;
+    }
+    String jsonDataFile = jsonDataFiles.get(0);
+    try {
+      String json = CommonUtil.getResourceAsStream(PolicyResource.class.getClassLoader(), jsonDataFile);
+      // Assumes to have 1 entry currently
+      AlertAction alertActions = JsonUtils.readObjects(json, AlertAction.class).get(0);
+      dao.initializeEntity(alertActions);
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);
+    }
   }
 
   @GET
@@ -325,7 +356,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
           boolean hardDelete,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    AlertsPublisherManager.getInstance().deleteAlertActionFromAllAlertPublisher((AlertAction) response.getEntity());
+    return response;
   }
 
   public AlertAction getAlertAction(CreateAlertAction create, String user) throws IOException {
