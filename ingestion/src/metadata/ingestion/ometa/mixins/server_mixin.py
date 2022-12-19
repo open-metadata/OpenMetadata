@@ -67,7 +67,10 @@ class OMetaServerMixin:
         Run endpoint /version to check server version
         :return: Server version
         """
-        raw_version = self.client.get("/version")["version"]
+        try:
+            raw_version = self.client.get("/version")["version"]
+        except KeyError:
+            raise VersionMismatchException("Cannot Find Version at api/v1/version")
         return self.get_version_from_string(raw_version)
 
     def get_client_version(self) -> str:

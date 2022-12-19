@@ -29,7 +29,6 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
-    ProfileSampleType,
     SystemProfile,
     TableProfile,
 )
@@ -91,6 +90,9 @@ class Profiler(Generic[TMetric]):
         self.exclude_columns = exclude_columns
         self._metrics = metrics
         self._profile_date = profile_date
+        self.profile_sample_config = (
+            self.profiler_interface.profile_sample_config or None
+        )
 
         self.validate_composed_metric()
 
@@ -493,25 +495,16 @@ class Profiler(Generic[TMetric]):
                 )
             ]
 
-            check_profile_sample_if_exists = (
-                hasattr(self.profiler_interface, "profile_sample")
-                and self.profiler_interface.profile_sample
-            )
             table_profile = TableProfile(
                 timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                profileSample=self.profiler_interface.profile_sample.get(
-                    "profile_sample"
-                )
-                if check_profile_sample_if_exists
+                profileSample=self.profile_sample_config.profile_sample
+                if self.profile_sample_config
                 else None,
-                profileSampleType=self.profiler_interface.profile_sample.get(
-                    "profile_sample_type"
-                )
-                or ProfileSampleType.PERCENTAGE.value
-                if check_profile_sample_if_exists
-                else ProfileSampleType.PERCENTAGE.value,
+                profileSampleType=self.profile_sample_config.profile_sample_type
+                if self.profile_sample_config
+                else None,
             )
 
             if self._system_results:

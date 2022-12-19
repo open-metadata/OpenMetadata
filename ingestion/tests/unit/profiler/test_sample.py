@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.orm_profiler.profiler.core import Profiler
@@ -124,7 +125,9 @@ class SampleTest(TestCase):
         generate a random subset of data
         """
         sampler = Sampler(
-            session=self.session, table=User, profile_sample={"profile_sample": 50.0}
+            session=self.session,
+            table=User,
+            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
         )
         random_sample = sampler.random_sample()
         res = self.session.query(func.count()).select_from(random_sample).first()
@@ -143,7 +146,7 @@ class SampleTest(TestCase):
                 ProfilerInterfaceArgs(
                     service_connection_config=self.sqlite_conn,
                     table_entity=self.table_entity,
-                    table_sample_profile={"profile_sample": 50},
+                    profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
                     ometa_client=None,
                 )
             )
@@ -186,7 +189,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_profile={"profile_sample": 50},
+                        profile_sample_config=ProfileSampleConfig(profile_sample=50),
                         ometa_client=None,
                     )
                 ),
@@ -208,7 +211,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_profile={"profile_sample": 50},
+                        profile_sample_config=ProfileSampleConfig(profile_sample=50),
                         ometa_client=None,
                     )
                 ),

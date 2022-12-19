@@ -39,7 +39,6 @@
     "profileSample": {
       "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
       "type": "number",
-      "maximum": 100,
       "default": null
     },
     "profileSampleType": {

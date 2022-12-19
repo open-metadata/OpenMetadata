@@ -111,7 +111,7 @@ class ProfilerWorkflowTest(TestCase):
             User.__table__.create(bind=cls.engine)
             NewUser.__table__.create(bind=cls.engine)
         except:
-            pass
+            print("Table Already exists")
 
         data = [
             User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
@@ -157,7 +157,6 @@ class ProfilerWorkflowTest(TestCase):
         User.__table__.drop(bind=cls.engine)
         NewUser.__table__.drop(bind=cls.engine)
         cls.session.close()
-        return super().tearDownClass()
 
     def test_ingestion(self):
         """
@@ -222,7 +221,7 @@ class ProfilerWorkflowTest(TestCase):
         workflow_config["processor"]["config"]["tableConfig"][0][
             "profileSampleType"
         ] = ProfileSampleType.ROWS
-
+        workflow_config["processor"]["config"]["tableConfig"][0]["profileSample"] = 4
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
         status = profiler_workflow.result_status()
@@ -241,7 +240,7 @@ class ProfilerWorkflowTest(TestCase):
         ).profile
 
         assert not table.tableProfilerConfig
-        assert profile.profileSample == 75
+        assert profile.profileSample == 4.0
         assert profile.profileSampleType == ProfileSampleType.ROWS
 
     def test_worflow_sample_profile(self):

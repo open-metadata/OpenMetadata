@@ -19,6 +19,7 @@ from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects
@@ -37,18 +38,15 @@ class Sampler:
         self,
         session: Optional[Session],
         table: DeclarativeMeta,
-        profile_sample: Optional[dict] = None,
+        profile_sample_config: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
         self.profile_sample = None
         self.profile_sample_type = None
-        if profile_sample:
-            self.profile_sample = profile_sample.get("profile_sample")
-            self.profile_sample_type = (
-                profile_sample.get("profile_sample_type")
-                or ProfileSampleType.PERCENTAGE
-            )
+        if profile_sample_config:
+            self.profile_sample = profile_sample_config.profile_sample
+            self.profile_sample_type = profile_sample_config.profile_sample_type
         self.session = session
         self.table = table
         self._partition_details = partition_details
@@ -95,12 +93,10 @@ class Sampler:
 
         # Prepare sampled CTE
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            sampled = session_query.where(rnd.c.random <= self.profile_sample).cte(
-                f"{self.table.__tablename__}_sample"
-            )
+            sampled = session_query.where(rnd.c.random <= self.profile_sample)
         else:
-            sampled = session_query.cte(f"{self.table.__tablename__}_sample")
-
+            sampled = session_query
+        sampled = sampled.cte(f"{self.table.__tablename__}_sample")
         # Assign as an alias
         return aliased(self.table, sampled)
 

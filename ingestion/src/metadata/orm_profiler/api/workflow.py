@@ -69,6 +69,7 @@ from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInte
 from metadata.orm_profiler.api.models import (
     ProfilerProcessorConfig,
     ProfilerResponse,
+    ProfileSampleConfig,
     TableConfig,
 )
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -203,26 +204,27 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
         if entity_config:
-            return {
-                "profile_sample": entity_config.profileSample,
-                "profile_sample_type": entity_config.profileSampleType,
-            }
+            return ProfileSampleConfig(
+                profile_sample=entity_config.profileSample,
+                profile_sample_type=entity_config.profileSampleType,
+            )
 
         if (
             hasattr(entity, "tableProfilerConfig")
             and hasattr(entity.tableProfilerConfig, "profileSample")
             and entity.tableProfilerConfig.profileSample
         ):
-            return {
-                "profile_sample": entity.tableProfilerConfig.profileSample,
-                "profile_sample_type": entity.tableProfilerConfig.profileSampleType,
-            }
+
+            return ProfileSampleConfig(
+                profile_sample=entity.tableProfilerConfig.profileSample,
+                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
+            )
 
         if self.source_config.profileSample:
-            return {
-                "profile_sample": self.source_config.profileSample,
-                "profile_sample_type": self.source_config.profileSampleType,
-            }
+            return ProfileSampleConfig(
+                profile_sample=self.source_config.profileSample,
+                profile_sample_type=self.source_config.profileSampleType,
+            )
         return None
 
     def get_profile_query(self, entity: Table) -> Optional[str]:
@@ -269,7 +271,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 ometa_client=create_ometa_client(self.metadata_config),
                 thread_count=self.source_config.threadCount,
                 table_entity=self._table_entity,
-                table_sample_profile=self.get_profile_sample(self._table_entity)
+                profile_sample_config=self.get_profile_sample(self._table_entity)
                 if not self.get_profile_query(self._table_entity)
                 else None,
                 table_sample_query=self.get_profile_query(self._table_entity)

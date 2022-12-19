@@ -20,6 +20,7 @@ from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base
 
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.utils.connections import create_and_bind_session
@@ -60,7 +61,9 @@ class RunnerTest(TestCase):
     session = create_and_bind_session(engine)
 
     sampler = Sampler(
-        session=session, table=User, profile_sample={"profile_sample": 50.0}
+        session=session,
+        table=User,
+        profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
     )
     sample = sampler.random_sample()
 
