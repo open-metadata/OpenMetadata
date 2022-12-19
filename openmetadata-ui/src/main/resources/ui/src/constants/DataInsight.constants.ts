@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RowProps } from 'antd/lib/grid/row';
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
@@ -23,9 +24,16 @@ import {
 
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
-  right: 20,
-  left: 10,
+  right: 30,
+  left: 0,
   bottom: 5,
+};
+
+export const DI_STRUCTURE = {
+  rowContainerGutter: 32 as RowProps['gutter'],
+  leftContainerSpan: 19,
+  rightContainerSpan: 5,
+  rightRowGutter: [8, 16] as RowProps['gutter'],
 };
 
 export const DATA_INSIGHT_GRAPH_COLORS = [

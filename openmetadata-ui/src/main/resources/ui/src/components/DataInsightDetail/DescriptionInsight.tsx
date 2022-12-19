@@ -35,6 +35,7 @@ import {
 } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
+  DI_STRUCTURE,
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -149,8 +150,8 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
         </>
       }>
       {data.length ? (
-        <Row gutter={16}>
-          <Col span={18}>
+        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+          <Col span={DI_STRUCTURE.leftContainerSpan}>
             <ResponsiveContainer
               debounce={1}
               id="description-summary-graph"
@@ -201,8 +202,8 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
               </LineChart>
             </ResponsiveContainer>
           </Col>
-          <Col span={6}>
-            <Row gutter={[8, 8]}>
+          <Col span={DI_STRUCTURE.rightContainerSpan}>
+            <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
                 <Typography.Paragraph
                   className="data-insight-label-text"
@@ -221,13 +222,11 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                 />
               </Col>
               {entities.map((entity) => {
-                const progress = (latestData[entity] / Number(total)) * 100;
-
                 return (
                   <Col key={uniqueId()} span={24}>
                     <DataInsightProgressBar
                       showEndValueAsLabel
-                      progress={progress}
+                      progress={latestData[entity]}
                       showLabel={false}
                       startValue={latestData[entity].toFixed(2)}
                       successValue={entity}
