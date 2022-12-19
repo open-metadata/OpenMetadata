@@ -42,7 +42,7 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
     DataInsightChartResult,
     DataInsightChartType,
 )
-from metadata.generated.schema.dataInsight.kpi.basic import KpiTarget, KpiResult
+from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
 from metadata.generated.schema.dataInsight.kpi.kpi import KPI
 from metadata.generated.schema.dataInsight.type.dailyActiveUsers import DailyActiveUsers
 from metadata.generated.schema.dataInsight.type.pageViewsByEntities import (
@@ -172,7 +172,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
     def test_execute_method(self):
         """test method excution"""
-        workflow: DataInsightWorkflow = DataInsightWorkflow.create( )
+        workflow: DataInsightWorkflow = DataInsightWorkflow.create()
         workflow.execute()
 
         sleep(1)  # wait for data to be available
