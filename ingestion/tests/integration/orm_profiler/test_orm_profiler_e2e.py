@@ -120,6 +120,8 @@ class ProfilerWorkflowTest(TestCase):
         data = [
             User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
             User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
+            User(name="Joh", fullname="Joh Doe", nickname=None, age=37),
+            User(name="Jae", fullname="Jae Doe", nickname=None, age=38),
         ]
         cls.session.add_all(data)
         cls.session.commit()
@@ -225,7 +227,7 @@ class ProfilerWorkflowTest(TestCase):
         workflow_config["processor"]["config"]["tableConfig"][0][
             "profileSampleType"
         ] = ProfileSampleType.ROWS
-        workflow_config["processor"]["config"]["tableConfig"][0]["profileSample"] = 4
+        workflow_config["processor"]["config"]["tableConfig"][0]["profileSample"] = 3
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
         status = profiler_workflow.result_status()
@@ -244,7 +246,8 @@ class ProfilerWorkflowTest(TestCase):
         ).profile
 
         assert not table.tableProfilerConfig
-        assert profile.profileSample == 4.0
+        assert profile.profileSample == 3.0
+        assert profile.rowCount == 3.0
         assert profile.profileSampleType == ProfileSampleType.ROWS
 
     def test_worflow_sample_profile(self):
