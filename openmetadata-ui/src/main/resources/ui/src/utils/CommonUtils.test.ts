@@ -1,3 +1,9 @@
+import {
+  mockFQNWithSpecialChar1,
+  mockFQNWithSpecialChar2,
+  mockTableNameFromFQN,
+  mockTableNameWithSpecialChar,
+} from './CommonUtils.mock';
 /*
  *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +18,8 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { sortTagsCaseInsensitive } from './CommonUtils';
-import { mockTags, sortedMockTags } from './CommonUtils.mock';
+import { getNameFromFQN, sortTagsCaseInsensitive } from './CommonUtils';
+import { mockFQN, mockTags, sortedMockTags } from './CommonUtils.mock';
 
 describe('Tests for CommonUtils', () => {
   describe('Tests for sortTagsCaseInsensitive function', () => {
@@ -33,6 +39,29 @@ describe('Tests for CommonUtils', () => {
       expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).not.toEqual(
         mockTags
       );
+    });
+
+    it('Function getNameFromFQN should return the correct table name for fqn without special characters', () => {
+      expect(getNameFromFQN(mockFQN)).toEqual(mockTableNameFromFQN);
+    });
+
+    it('Function getNameFromFQN should return the correct table name for fqn with special characters', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar1)).toEqual(
+        mockTableNameWithSpecialChar
+      );
+    });
+
+    it('Function getNameFromFQN should return the correct table name for fqn with special characters and containing double quotes in schema part in fqn as well', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar2)).toEqual(
+        mockTableNameWithSpecialChar
+      );
+    });
+
+    it('Table name returned from the function getNameFromFQN should not contain double quotes in it', () => {
+      const result = getNameFromFQN(mockFQNWithSpecialChar2);
+      const containsDoubleQuotes = result.search('"');
+
+      expect(containsDoubleQuotes > 0).toEqual(false);
     });
   });
 });
