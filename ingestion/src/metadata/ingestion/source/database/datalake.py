@@ -383,6 +383,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     "tenant_id": connection_args.tenantId,
                     "client_id": connection_args.clientId,
                     "client_secret": connection_args.clientSecret.get_secret_value(),
+                    "account_name": connection_args.accountName
                 }
                 data_frame = self.get_azure_files(
                     client=self.client,
@@ -566,7 +567,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         return False
 
     def close(self):
-        pass
+        self.client.close()
 
     def get_status(self) -> SourceStatus:
         return self.status
