@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Typography } from 'antd';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
@@ -26,6 +26,7 @@ import { SourceType } from '../../searched-data/SearchedData.interface';
 import './TableDataCardTitle.less';
 
 interface TableDataCardTitleProps {
+  dataTestId?: string;
   id?: string;
   searchIndex: SearchIndex | EntityType;
   source: SourceType;
@@ -33,6 +34,7 @@ interface TableDataCardTitleProps {
 }
 
 const TableDataCardTitle = ({
+  dataTestId,
   id,
   searchIndex,
   source,
@@ -40,13 +42,20 @@ const TableDataCardTitle = ({
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
+  const testId = useMemo(
+    () =>
+      dataTestId
+        ? dataTestId
+        : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
+            FqnPart.Service,
+          ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
+    [dataTestId, source]
+  );
+
   const title = (
     <Button
       className="w-full"
-      data-testid={`${getPartialNameFromTableFQN(
-        source.fullyQualifiedName ?? '',
-        [FqnPart.Service]
-      )}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`}
+      data-testid={testId}
       id={`${id}Title`}
       type="link"
       onClick={isTourRoute ? handleLinkClick : undefined}>
@@ -66,7 +75,7 @@ const TableDataCardTitle = ({
 
   return (
     <Link
-      className="table-data-card-title-container w-full"
+      className="table-data-card-title-container w-fit-content w-max-90"
       to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
       {title}
     </Link>

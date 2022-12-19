@@ -62,6 +62,7 @@ function DashboardSummary({ entityDetails }: DashboardSummaryProps) {
       <Row className="m-md" gutter={[0, 4]}>
         <Col span={24}>
           <TableDataCardTitle
+            dataTestId="summary-panel-title"
             searchIndex={SearchIndex.DASHBOARD}
             source={entityDetails}
           />
