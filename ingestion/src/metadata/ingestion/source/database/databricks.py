@@ -210,7 +210,7 @@ class DatabricksSource(CommonDbSourceService):
         else:
             results = self.connection.execute("SHOW CATALOGS")
             for res in results:
-                if len(res) > 0:
+                if res:
                     new_catalog = res[0]
                     database_fqn = fqn.build(
                         self.metadata,
@@ -226,9 +226,7 @@ class DatabricksSource(CommonDbSourceService):
                     ):
                         self.status.filter(database_fqn, "Database Filtered Out")
                         continue
-
                     try:
-
                         self.set_inspector(database_name=new_catalog)
                         yield new_catalog
                     except Exception as exc:
