@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
@@ -51,7 +50,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.FailureDetails;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -126,10 +124,6 @@ public final class EntityUtil {
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
-  public static final BiPredicate<FailureDetails, FailureDetails> failureDetailsMatch =
-      (failureDetails1, failureDetails2) ->
-          Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
-              && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
 
   public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
       (filter1, filter2) ->
