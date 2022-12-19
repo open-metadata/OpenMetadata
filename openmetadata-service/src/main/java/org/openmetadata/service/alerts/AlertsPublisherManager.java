@@ -6,7 +6,6 @@ import static org.openmetadata.service.Entity.ALERT_ACTION;
 
 import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +17,6 @@ import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FailureDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -50,16 +48,6 @@ public class AlertsPublisherManager {
     return INSTANCE;
   }
 
-  public List<AlertAction> getAllAlertActions(UUID id) {
-    List<AlertAction> alertActions = new ArrayList<>();
-    if (alertActions != null) {
-      for (AlertsActionPublisher publisher : alertPublisherMap.get(id).values()) {
-        alertActions.add(publisher.getAlertAction());
-      }
-    }
-    return alertActions;
-  }
-
   public void addAlertActionPublishers(Alert alert) throws IOException {
     EntityRepository<AlertAction> alertActionEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
     for (EntityReference alertActionRef : alert.getAlertActions()) {
@@ -72,9 +60,13 @@ public class AlertsPublisherManager {
   public void addAlertActionPublisher(Alert alert, AlertAction alertAction) throws IOException {
     if (Boolean.FALSE.equals(alertAction.getEnabled())) {
       // Only add alert that is enabled for publishing events
-      setStatus(
-          alert.getId(), alertAction.getId(), AlertActionStatus.Status.DISABLED, null, System.currentTimeMillis());
-      alertAction.setStatusDetails(new AlertActionStatus().withStatus(AlertActionStatus.Status.DISABLED));
+      AlertActionStatus status =
+          new AlertActionStatus()
+              .withStatus(AlertActionStatus.Status.DISABLED)
+              .withTimestamp(System.currentTimeMillis())
+              .withFailureDetails(null);
+      setStatus(alert.getId(), alertAction.getId(), status);
+      alertAction.setStatusDetails(status);
       return;
     }
 
@@ -93,17 +85,6 @@ public class AlertsPublisherManager {
         alertPublisherMap.get(alert.getId()) == null ? new HashMap<>() : alertPublisherMap.get(alert.getId());
     alertsActionPublisherMap.put(alertAction.getId(), publisher);
     alertPublisherMap.put(alert.getId(), alertsActionPublisherMap);
-  }
-
-  public AlertActionStatus setStatus(
-      UUID alertId, UUID alertActionId, AlertActionStatus.Status status, FailureDetails failureDetails, Long timeStamp)
-      throws IOException {
-    AlertActionStatus currentStatus =
-        new AlertActionStatus().withStatus(status).withFailureDetails(failureDetails).withTimestamp(timeStamp);
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .insert(alertId.toString(), alertActionId.toString(), "alertActionStatus", JsonUtils.pojoToJson(currentStatus));
-    return currentStatus;
   }
 
   public void removeAlertStatus(UUID alertId, UUID alertActionId) {
@@ -136,7 +117,7 @@ public class AlertsPublisherManager {
     for (CollectionDAO.EntityRelationshipRecord record : records) {
       deleteAlertAllPublishers(record.getId());
       Alert alert = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
-      addAlertActionPublishers(alert);
+      addAlertActionPublisher(alert, alertAction);
     }
   }
 
