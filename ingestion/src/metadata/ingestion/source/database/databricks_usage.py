@@ -102,7 +102,6 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
                                 endTime=row.get("execution_end_time_ms"),
                                 analysisDate=datetime.now(),
                                 serviceName=self.config.serviceName,
-                                databaseName="default",  # In databricks databaseName is always default
                             )
                         )
                 except Exception as err:
