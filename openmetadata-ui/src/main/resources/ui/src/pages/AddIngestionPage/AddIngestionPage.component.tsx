@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -30,6 +30,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import {
   DEPLOYED_PROGRESS_VAL,
@@ -257,37 +258,35 @@ const AddIngestionPage = () => {
     } else {
       return (
         <div className="self-center">
-          <Row className="m-t-lg m-b-xlg">
-            <Col className="flex justify-end" offset={3} span={12}>
-              <Space direction="vertical" size="middle">
-                <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-                <div className="form-container">
-                  <AddIngestion
-                    activeIngestionStep={activeIngestionStep}
-                    handleCancelClick={goToService}
-                    handleViewServiceClick={goToService}
-                    heading={`Add ${capitalize(ingestionType)} Ingestion`}
-                    ingestionAction={ingestionAction}
-                    ingestionProgress={ingestionProgress}
-                    isAirflowSetup={isAirflowRunning}
-                    isIngestionCreated={isIngestionCreated}
-                    isIngestionDeployed={isIngestionDeployed}
-                    pipelineType={ingestionType as PipelineType}
-                    serviceCategory={serviceCategory as ServiceCategory}
-                    serviceData={serviceData as DataObj}
-                    setActiveIngestionStep={(step) =>
-                      setActiveIngestionStep(step)
-                    }
-                    showDeployButton={showIngestionButton}
-                    status={FormSubmitType.ADD}
-                    onAddIngestionSave={onAddIngestionSave}
-                    onAirflowStatusCheck={onAirflowStatusCheck}
-                    onIngestionDeploy={onIngestionDeploy}
-                  />
-                </div>
-              </Space>
-            </Col>
-            <Col className="m-t-xlg p-x-lg" data-testid="right-panel" span={7}>
+          <PageLayoutV1 center>
+            <Space direction="vertical" size="middle">
+              <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+              <div className="form-container">
+                <AddIngestion
+                  activeIngestionStep={activeIngestionStep}
+                  handleCancelClick={goToService}
+                  handleViewServiceClick={goToService}
+                  heading={`Add ${capitalize(ingestionType)} Ingestion`}
+                  ingestionAction={ingestionAction}
+                  ingestionProgress={ingestionProgress}
+                  isAirflowSetup={isAirflowRunning}
+                  isIngestionCreated={isIngestionCreated}
+                  isIngestionDeployed={isIngestionDeployed}
+                  pipelineType={ingestionType as PipelineType}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceData={serviceData as DataObj}
+                  setActiveIngestionStep={(step) =>
+                    setActiveIngestionStep(step)
+                  }
+                  showDeployButton={showIngestionButton}
+                  status={FormSubmitType.ADD}
+                  onAddIngestionSave={onAddIngestionSave}
+                  onAirflowStatusCheck={onAirflowStatusCheck}
+                  onIngestionDeploy={onIngestionDeploy}
+                />
+              </div>
+            </Space>
+            <div className="m-t-xlg p-x-lg w-800" data-testid="right-panel">
               {getServiceIngestionStepGuide(
                 activeIngestionStep,
                 true,
@@ -298,8 +297,8 @@ const AddIngestionPage = () => {
                 false,
                 isAirflowRunning
               )}
-            </Col>
-          </Row>
+            </div>
+          </PageLayoutV1>
         </div>
       );
     }
