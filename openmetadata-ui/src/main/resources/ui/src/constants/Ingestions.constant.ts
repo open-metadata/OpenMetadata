@@ -51,3 +51,8 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   },
   { name: i18next.t('label.connection-details'), step: 3 },
 ];
+
+export const INGESTION_ACTION_TYPE = {
+  ADD: 'add',
+  EDIT: 'edit',
+};

@@ -309,6 +309,7 @@
     "detail-plural": "Details",
     "ingestion": "Ingestion",
     "add-workflow-ingestion": "Add {{workflow}} Ingestion",
+    "ingestion-workflow-action": "{{action}} {{workflow}} Ingestion",
     "clear-all": "Clear All",
     "view-less": "View less",
     "view-more": "View more",

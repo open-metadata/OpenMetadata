@@ -37,6 +37,7 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -49,6 +50,7 @@ import {
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getIngestionHeadingName } from '../../utils/IngestionUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceIngestionStepGuide,
@@ -308,7 +310,10 @@ const EditIngestionPage = () => {
                 data={ingestionData}
                 handleCancelClick={goToService}
                 handleViewServiceClick={goToService}
-                heading={`Edit ${capitalize(ingestionType)} Ingestion`}
+                heading={getIngestionHeadingName(
+                  ingestionType,
+                  INGESTION_ACTION_TYPE.EDIT
+                )}
                 ingestionAction={ingestionAction}
                 ingestionProgress={ingestionProgress}
                 isAirflowSetup={isAirflowRunning}

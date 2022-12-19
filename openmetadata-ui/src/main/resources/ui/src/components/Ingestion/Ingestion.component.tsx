@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
+import { isEmpty, isNil, lowerCase, startCase, upperCase } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
@@ -276,6 +276,30 @@ const Ingestion: React.FC<IngestionProps> = ({
     );
   };
 
+  const getAddIngestionName = (type: PipelineType): string => {
+    let name;
+    switch (type) {
+      case PipelineType.ElasticSearchReindex:
+        name = `${t('label.add')} ${startCase(type)}`;
+
+        break;
+
+      case PipelineType.Dbt:
+        name = t('label.add-workflow-ingestion', {
+          workflow: upperCase(type),
+        });
+
+        break;
+
+      default:
+        name = t('label.add-workflow-ingestion', {
+          workflow: startCase(type),
+        });
+    }
+
+    return name;
+  };
+
   const getAddIngestionDropdown = (types: PipelineType[]) => {
     return (
       <Fragment>
@@ -308,15 +332,11 @@ const Ingestion: React.FC<IngestionProps> = ({
           <DropDownList
             horzPosRight
             dropDownList={types.map((type) => ({
+              name: getAddIngestionName(type),
               disabled:
                 type === PipelineType.DataInsight
                   ? isDataSightIngestionExists
                   : false,
-              name: `${t('label.add')} ${startCase(type)} ${
-                type === PipelineType.ElasticSearchReindex
-                  ? ''
-                  : t('label.ingestion')
-              }`,
               value: type,
             }))}
             onSelect={(_e, value) =>
