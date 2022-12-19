@@ -372,7 +372,7 @@ public class KPIResource extends EntityResource<KPI, KPIRepository> {
   }
 
   @PUT
-  @Path("/{fqn}/KPIResult")
+  @Path("/{fqn}/kpiResult")
   @Operation(
       operationId = "addKpiResult",
       summary = "Add kpi result data",
@@ -389,13 +389,13 @@ public class KPIResource extends EntityResource<KPI, KPIRepository> {
       @Context SecurityContext securityContext,
       @Encoded @Parameter(description = "fqn of the kpi", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn,
-      @Valid KPIResult KPIResult)
+      @Valid KPIResult kpiResult)
       throws IOException {
-    return dao.addKpiResult(uriInfo, fqn, KPIResult).toResponse();
+    return dao.addKpiResult(uriInfo, fqn, kpiResult).toResponse();
   }
 
   @GET
-  @Path("/{fqn}/KPIResult")
+  @Path("/{fqn}/kpiResult")
   @Operation(
       operationId = "listKpiResults",
       summary = "List of kpi results",
@@ -451,7 +451,7 @@ public class KPIResource extends EntityResource<KPI, KPIRepository> {
   }
 
   @DELETE
-  @Path("/{fqn}/KPIResult/{timestamp}")
+  @Path("/{fqn}/kpiResult/{timestamp}")
   @Operation(
       operationId = "deleteKpiResult",
       summary = "Delete kpi result.",

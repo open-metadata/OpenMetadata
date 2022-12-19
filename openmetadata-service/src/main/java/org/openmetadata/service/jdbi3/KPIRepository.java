@@ -28,7 +28,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.kpi.KPIResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -39,7 +38,7 @@ public class KPIRepository extends EntityRepository<KPI> {
   private static final String UPDATE_FIELDS = "owner,targetDefinition,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
       "owner,targetDefinition,dataInsightChart,description,owner,startDate,endDate,metricType";
-  public static final String KPI_RESULT_EXTENSION = "kpi.KPIResult";
+  public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
   public KPIRepository(CollectionDAO dao) {
     super(
@@ -55,7 +54,7 @@ public class KPIRepository extends EntityRepository<KPI> {
   @Override
   public KPI setFields(KPI kpi, EntityUtil.Fields fields) throws IOException {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : null);
-    kpi.setKpiResult(fields.contains("KPIResult") ? getKpiResult(kpi.getFullyQualifiedName()) : null);
+    kpi.setKpiResult(fields.contains("kpiResult") ? getKpiResult(kpi.getFullyQualifiedName()) : null);
     kpi.setOwner(fields.contains("owner") ? getOwner(kpi) : null);
     return kpi;
   }
@@ -113,7 +112,7 @@ public class KPIRepository extends EntityRepository<KPI> {
   }
 
   @Transaction
-  public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KPIResult KPIResult) throws IOException {
+  public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KPIResult kpiResult) throws IOException {
     // Validate the request content
     KPI kpi = dao.findEntityByName(fqn);
 
@@ -121,7 +120,7 @@ public class KPIRepository extends EntityRepository<KPI> {
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, KPIResult.getTimestamp()),
+                .getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp()),
             KPIResult.class);
     if (storedKpiResult != null) {
       daoCollection
@@ -129,14 +128,14 @@ public class KPIRepository extends EntityRepository<KPI> {
           .update(
               kpi.getFullyQualifiedName(),
               KPI_RESULT_EXTENSION,
-              JsonUtils.pojoToJson(KPIResult),
-              KPIResult.getTimestamp());
+              JsonUtils.pojoToJson(kpiResult),
+              kpiResult.getTimestamp());
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .insert(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, "KPIResult", JsonUtils.pojoToJson(KPIResult));
+          .insert(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, "kpiResult", JsonUtils.pojoToJson(kpiResult));
     }
-    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), KPIResult, storedKpiResult);
+    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult, storedKpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
@@ -162,14 +161,14 @@ public class KPIRepository extends EntityRepository<KPI> {
   }
 
   private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue, Object oldValue) {
-    FieldChange fieldChange = new FieldChange().withName("KPIResult").withNewValue(newValue).withOldValue(oldValue);
+    FieldChange fieldChange = new FieldChange().withName("kpiResult").withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsUpdated().add(fieldChange);
     return change;
   }
 
   private ChangeDescription deleteKpiChangeDescription(Double version, Object oldValue) {
-    FieldChange fieldChange = new FieldChange().withName("KPIResult").withOldValue(oldValue);
+    FieldChange fieldChange = new FieldChange().withName("kpiResult").withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsDeleted().add(fieldChange);
     return change;
