@@ -149,7 +149,7 @@ function EditConnectionFormPage() {
       </ErrorPlaceHolder>
     ) : (
       <Row className="m-t-lg m-b-xlg">
-        <Col offset={3} span={12}>
+        <Col className="flex justify-end" offset={3} span={12}>
           <Space direction="vertical" size="middle">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <div className="form-container">
