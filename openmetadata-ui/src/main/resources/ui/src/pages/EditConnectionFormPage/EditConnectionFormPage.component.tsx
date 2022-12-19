@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { ServiceOption, ServicesData, ServiceTypes } from 'Models';
@@ -22,13 +22,12 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { addServiceGuide } from '../../constants/service-guide.constant';
 import { OPENMETADATA } from '../../constants/Services.constant';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
@@ -150,28 +149,28 @@ function EditConnectionFormPage() {
         {getEntityMissingError(serviceCategory, serviceFQN)}
       </ErrorPlaceHolder>
     ) : (
-      <PageLayout
-        classes="w-max-1080 h-full p-t-xss"
-        header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-        layout={PageLayoutType['2ColRTL']}
-        rightPanel={fetchRightPanel()}>
-        <div className="form-container">
-          <Typography.Title level={5}>
-            {`Edit ${serviceFQN} Service Connection`}
-          </Typography.Title>
-          <ServiceConfig
-            data={serviceDetails as ServicesData}
-            disableTestConnection={
-              ServiceCategory.METADATA_SERVICES === serviceCategory &&
-              OPENMETADATA === serviceFQN
-            }
-            handleUpdate={handleConfigUpdate}
-            serviceCategory={serviceCategory as ServiceCategory}
-            serviceFQN={serviceFQN}
-            serviceType={serviceDetails?.serviceType || ''}
-          />
-        </div>
-      </PageLayout>
+      <PageLayoutV1 center>
+        <Space direction="vertical" size="middle">
+          <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+          <div className="form-container">
+            <Typography.Title level={5}>
+              {`Edit ${serviceFQN} Service Connection`}
+            </Typography.Title>
+            <ServiceConfig
+              data={serviceDetails as ServicesData}
+              disableTestConnection={
+                ServiceCategory.METADATA_SERVICES === serviceCategory &&
+                OPENMETADATA === serviceFQN
+              }
+              handleUpdate={handleConfigUpdate}
+              serviceCategory={serviceCategory as ServiceCategory}
+              serviceFQN={serviceFQN}
+              serviceType={serviceDetails?.serviceType || ''}
+            />
+          </div>
+        </Space>
+        <div className="m-t-xlg p-x-lg w-800">{fetchRightPanel()}</div>
+      </PageLayoutV1>
     );
   };
 

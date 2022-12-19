@@ -70,7 +70,6 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
                                 startTime=row.get("query_start_time_ms"),
                                 endTime=row.get("execution_end_time_ms"),
                                 analysisDate=datetime.now(),
-                                databaseName="default",  # In databricks databaseName is always default
                                 serviceName=self.config.serviceName,
                             )
                     except Exception as exc:

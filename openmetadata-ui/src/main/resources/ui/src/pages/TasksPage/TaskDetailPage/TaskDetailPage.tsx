@@ -13,7 +13,7 @@
 
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Dropdown, Layout, Menu, Tabs } from 'antd';
+import { Button, Card, Dropdown, Layout, MenuProps, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
@@ -74,9 +74,9 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
+  getTaskActionList,
   isDescriptionTask,
   isTagsTask,
-  TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -105,6 +105,8 @@ const TaskDetailPage = () => {
   const { isAuthDisabled } = useAuthContext();
 
   const { taskId } = useParams<{ [key: string]: string }>();
+
+  const TASK_ACTION_LIST = useMemo(() => getTaskActionList(), []);
 
   const [taskDetail, setTaskDetail] = useState<Thread>({} as Thread);
   const [taskFeedDetail, setTaskFeedDetail] = useState<Thread>({} as Thread);
@@ -491,6 +493,9 @@ const TaskDetailPage = () => {
     setSuggestion(value);
   };
 
+  const handleMenuItemClick: MenuProps['onClick'] = (info) =>
+    onTaskActionChange(info.key);
+
   useEffect(() => {
     fetchTaskDetail();
   }, [taskId]);
@@ -689,14 +694,12 @@ const TaskDetailPage = () => {
                                 icon={faChevronDown}
                               />
                             }
-                            overlay={
-                              <Menu
-                                selectable
-                                items={TASK_ACTION_LIST}
-                                selectedKeys={[taskAction.key]}
-                                onClick={(info) => onTaskActionChange(info.key)}
-                              />
-                            }
+                            menu={{
+                              items: TASK_ACTION_LIST,
+                              selectable: true,
+                              selectedKeys: [taskAction.key],
+                              onClick: handleMenuItemClick,
+                            }}
                             trigger={['click']}
                             type="primary"
                             onClick={onTaskResolve}>
@@ -720,7 +723,7 @@ const TaskDetailPage = () => {
                 <CommentModal
                   comment={comment}
                   isLoading={isLoadingOnSave}
-                  isVisible={modalVisible}
+                  open={modalVisible}
                   setComment={setComment}
                   taskDetail={taskDetail}
                   onClose={onCommentModalClose}

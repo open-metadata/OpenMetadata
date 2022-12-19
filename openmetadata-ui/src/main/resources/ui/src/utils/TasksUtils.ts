@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
-import { t } from 'i18next';
+import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
 import { getUserSuggestions } from '../axiosAPIs/miscAPI';
@@ -37,6 +37,7 @@ import { TaskType } from '../generated/entity/feed/thread';
 import {
   EntityData,
   Option,
+  TaskAction,
   TaskActionMode,
 } from '../pages/TasksPage/TasksPage.interface';
 import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
@@ -310,13 +311,13 @@ export const fetchEntityDetail = (
   }
 };
 
-export const TASK_ACTION_LIST = [
+export const getTaskActionList = (): TaskAction[] => [
   {
-    label: t('label.accept-suggestion'),
+    label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
   },
   {
-    label: t('label.edit-amp-accept-suggestion'),
+    label: i18Next.t('label.edit-amp-accept-suggestion'),
     key: TaskActionMode.EDIT,
   },
 ];
