@@ -1,0 +1,23 @@
+source:
+  type: mongodb
+  serviceName: local_mongodb
+  serviceConnection:
+    config:
+      type: MongoDB
+      username: openmetadata_user
+      password: openmetadata_password
+      databaseSchema: openmetadata_db
+      hostPort: localhost:3306
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      tableFilterPattern:
+        includes:
+        - ''
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

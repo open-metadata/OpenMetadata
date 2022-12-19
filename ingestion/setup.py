@@ -123,6 +123,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0"},
+    "mongodb": {"pymongo==4.3.3"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
     "pymssql": {"pymssql==2.2.5"},
     "mssql-odbc": {"pyodbc"},

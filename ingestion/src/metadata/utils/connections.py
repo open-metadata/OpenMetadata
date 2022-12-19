@@ -48,6 +48,7 @@ from metadata.clients.connection_clients import (
     MetabaseClient,
     MlflowClientWrapper,
     ModeClient,
+    MongoDBClient,
     NifiClientWrapper,
     PowerBiClient,
     QuickSightClient,
@@ -111,6 +112,9 @@ from metadata.generated.schema.entity.services.connections.database.dynamoDBConn
 )
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection as GlueDBConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
+    MongoDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
@@ -291,6 +295,7 @@ def get_connection(
     GluePipelineClient,
     SalesforceClient,
     KafkaClient,
+    MongoDBClient,
 ]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
@@ -363,6 +368,27 @@ def _(
 
     dynamo_connection = AWSClient(connection.awsConfig).get_dynamo_client()
     return dynamo_connection
+
+
+@get_connection.register
+def _(
+    connection: MongoDBConnection,
+    verbose: bool = False,  # pylint: disable=unused-argument
+) -> MongoDBClient:
+    from urllib.parse import quote_plus
+
+    from pymongo import MongoClient
+
+    url = f"{connection.scheme.value}://"
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+    url += f"{connection.hostPort}"
+
+    mongodb_connection = MongoDBClient(MongoClient(url))
+    return mongodb_connection
 
 
 @get_connection.register
@@ -563,6 +589,25 @@ def _(connection: DynamoClient) -> None:
     try:
         connection.client.tables.all()
     except ClientError as err:
+        msg = f"Connection error for {connection}: {err}. Check the connection details."
+        raise SourceConnectionException(msg) from err
+    except Exception as exc:
+        msg = f"Unknown error connecting with {connection}: {exc}."
+        raise SourceConnectionException(msg) from exc
+
+
+@test_connection.register
+def _(connection: MongoDBClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from pymongo.errors import ServerSelectionTimeoutError
+
+    try:
+        connection.client.server_info()
+    except ServerSelectionTimeoutError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg) from err
     except Exception as exc:
