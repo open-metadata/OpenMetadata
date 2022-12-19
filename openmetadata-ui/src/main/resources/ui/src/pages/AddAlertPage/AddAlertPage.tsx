@@ -60,6 +60,7 @@ import {
   AlertTriggerType,
   Effect,
   EntityReference,
+  ProviderType,
   TriggerConfig,
 } from '../../generated/alerts/alerts';
 import {
@@ -85,6 +86,8 @@ const AddAlertPage = () => {
   const [form] = useForm<Alerts>();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
+  // To block certain action based on provider of the Alert e.g. System / User
+  const [provider, setProvider] = useState<ProviderType>(ProviderType.User);
 
   const [filterFunctions, setFilterFunctions] = useState<Function[]>();
   const [defaultTriggers, setDefaultTriggers] = useState<Array<TriggerConfig>>(
@@ -115,6 +118,8 @@ const AddAlertPage = () => {
             } as unknown as AlertFilterRule)
         ) ?? [];
 
+      setProvider(response.provider ?? ProviderType.User);
+
       form.setFieldsValue({
         ...response,
         filteringRules: requestFilteringRules,
@@ -122,7 +127,7 @@ const AddAlertPage = () => {
       });
     } catch {
       showErrorToast(
-        t('message.entity-fetch-error', { entity: t('label.alert') }),
+        t('server.entity-fetch-error', { entity: t('label.alert') }),
         fqn
       );
     } finally {
@@ -617,6 +622,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                disabled={provider === ProviderType.System}
                                 icon={<PlusOutlined />}
                                 type="default"
                                 onClick={() => add({}, 0)}>
@@ -639,6 +645,9 @@ const AddAlertPage = () => {
                                       key={key}
                                       name={[name, 'alertActionType']}>
                                       <Select
+                                        disabled={
+                                          provider === ProviderType.System
+                                        }
                                         placeholder={t('label.select-field', {
                                           field: t('label.source'),
                                         })}
@@ -662,7 +671,12 @@ const AddAlertPage = () => {
                                     <Form.Item
                                       required
                                       name={[name, 'displayName']}>
-                                      <Input placeholder={t('label.name')} />
+                                      <Input
+                                        disabled={
+                                          provider === ProviderType.System
+                                        }
+                                        placeholder={t('label.name')}
+                                      />
                                     </Form.Item>
                                     <Form.Item
                                       required
@@ -672,6 +686,9 @@ const AddAlertPage = () => {
                                         'endpoint',
                                       ]}>
                                       <Input
+                                        disabled={
+                                          provider === ProviderType.System
+                                        }
                                         placeholder={
                                           t('label.endpoint-url') +
                                           ': ' +
@@ -692,7 +709,11 @@ const AddAlertPage = () => {
                                             label="Batch Size"
                                             labelCol={{ span: 24 }}
                                             name={[name, 'batchSize']}>
-                                            <Input defaultValue={10} />
+                                            <Input
+                                              disabled={
+                                                provider === ProviderType.System
+                                              }
+                                            />
                                           </Form.Item>
                                           <Form.Item
                                             colon
@@ -702,7 +723,11 @@ const AddAlertPage = () => {
                                             )}`}
                                             labelCol={{ span: 24 }}
                                             name={[name, 'timeout']}>
-                                            <Input />
+                                            <Input
+                                              disabled={
+                                                provider === ProviderType.System
+                                              }
+                                            />
                                           </Form.Item>
                                         </Space>
                                         <Form.Item
@@ -714,17 +739,14 @@ const AddAlertPage = () => {
                                             'secretKey',
                                           ]}>
                                           <Input
+                                            disabled={
+                                              provider === ProviderType.System
+                                            }
                                             placeholder={t('label.secret-key')}
                                           />
                                         </Form.Item>
                                       </Collapse.Panel>
                                     </Collapse>
-
-                                    {/* <Form.Item
-                                      name={[name, 'enabled']}
-                                      valuePropName="checked">
-                                      <Switch />
-                                    </Form.Item> */}
                                   </div>
                                   <Button
                                     data-testid={`remove-filter-rule-${name}`}
