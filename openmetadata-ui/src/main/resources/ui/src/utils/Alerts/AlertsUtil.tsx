@@ -17,9 +17,9 @@ import i18next from 'i18next';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
-import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams-grey.svg';
-import { ReactComponent as SlackIcon } from '../../assets/svg/slack-grey.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook-grey.svg';
+import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
+import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
+import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertActionType } from '../../generated/alerts/alertAction';
 import { AlertTriggerType } from '../../generated/alerts/alerts';
 
@@ -107,3 +107,20 @@ export const listLengthValidator =
 
     return Promise.resolve();
   };
+
+export const getAlertActionTypeDisplayName = (
+  alertActionType: AlertActionType
+) => {
+  switch (alertActionType) {
+    case AlertActionType.ActivityFeed:
+      return i18next.t('label.activity-feed');
+    case AlertActionType.Email:
+      return i18next.t('label.email');
+    case AlertActionType.GenericWebhook:
+      return i18next.t('label.webhook');
+    case AlertActionType.SlackWebhook:
+      return i18next.t('label.slack');
+    case AlertActionType.MSTeamsWebhook:
+      return i18next.t('label.ms-teams');
+  }
+};

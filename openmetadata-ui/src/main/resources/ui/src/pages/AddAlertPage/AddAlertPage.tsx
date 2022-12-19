@@ -14,6 +14,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
+  Checkbox,
   Col,
   Collapse,
   Divider,
@@ -22,7 +23,6 @@ import {
   Row,
   Select,
   Space,
-  Switch,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -49,7 +49,6 @@ import {
   getSuggestions,
 } from '../../axiosAPIs/miscAPI';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
-import { CreatableSelect } from '../../components/CreatableSelect/CreatableSelect';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -72,6 +71,7 @@ import {
 import { EntitySpelFilters } from '../../generated/alerts/entitySpelFilters';
 import { Function } from '../../generated/type/function';
 import {
+  getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
   getDisplayNameForTriggerType,
   getFunctionDisplayName,
@@ -444,28 +444,45 @@ const AddAlertPage = () => {
           case AlertActionType.Email:
             return (
               <>
-                <Form.Item label="Receivers" name="receivers">
-                  <CreatableSelect />
+                <Form.Item
+                  required
+                  label={t('label.name')}
+                  labelCol={{ span: 24 }}
+                  name={[name, 'displayName']}>
+                  <Input
+                    disabled={provider === ProviderType.System}
+                    placeholder={t('label.name')}
+                  />
                 </Form.Item>
                 <Form.Item
-                  label="Send to admins"
-                  name="sendToAdmins"
-                  valuePropName="checked">
-                  <Switch />
+                  label={t('label.receiver-plural')}
+                  labelCol={{ span: 24 }}
+                  name={[name, 'alertActionConfig', 'receivers']}>
+                  <Select
+                    showSearch
+                    mode="tags"
+                    open={false}
+                    placeholder="List emails to subscribe to notifications"
+                  />
                 </Form.Item>
-
-                <Form.Item
-                  label="Send to Owners"
-                  name="sendToOwners"
-                  valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-                <Form.Item
-                  label="Send to followers"
-                  name="sendToFollowers"
-                  valuePropName="checked">
-                  <Switch />
-                </Form.Item>
+                <Space align="baseline">
+                  <label>{t('label.send-to')}:</label>
+                  <Form.Item
+                    name={[name, 'alertActionConfig', 'sendToAdmins']}
+                    valuePropName="checked">
+                    <Checkbox>{t('label.admin-plural')}</Checkbox>
+                  </Form.Item>
+                  <Form.Item
+                    name={[name, 'alertActionConfig', 'sendToOwners']}
+                    valuePropName="checked">
+                    <Checkbox>{t('label.owner-plural')}</Checkbox>
+                  </Form.Item>
+                  <Form.Item
+                    name={[name, 'alertActionConfig', 'sendToFollowers']}
+                    valuePropName="checked">
+                    <Checkbox>{t('label.follower-plural')}</Checkbox>
+                  </Form.Item>
+                </Space>
               </>
             );
           case AlertActionType.GenericWebhook:
@@ -765,7 +782,9 @@ const AddAlertPage = () => {
                                                 {getAlertsActionTypeIcon(
                                                   value as AlertActionType
                                                 )}
-                                                {startCase(value)}
+                                                {getAlertActionTypeDisplayName(
+                                                  value
+                                                )}
                                               </Space>
                                             </Select.Option>
                                           );
@@ -808,6 +827,8 @@ const AddAlertPage = () => {
             </Card>
           </Form>
         </Col>
+        <Col span={24} />
+        <Col span={24} />
       </Row>
     </>
   );

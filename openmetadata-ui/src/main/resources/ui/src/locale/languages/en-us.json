@@ -408,7 +408,6 @@
     "edit-team-type": "Edit Team Type",
     "configure-webhook-type": "Configure {{webhookType}} Webhooks",
     "ms-teams": "MS Teams",
-    "ms-team": "MS Team",
     "bot": "Bot",
     "bot-plural": "Bots",
     "policy-name": "Policy name",
@@ -586,7 +585,12 @@
     "total-assets-view": "Total Assets View",
     "total-active-user": "Total Active User",
     "alert-actions": "Alert Actions",
-    "test-results": "Test Results"
+    "test-results": "Test Results",
+    "send-to": "Send to",
+    "receiver-plural": "Receivers",
+    "admin-plural": "Admins",
+    "owner-plural": "Owners",
+    "follower-plural": "Followers"
   },
   "message": {
     "service-email-required": "Service account Email is required",
