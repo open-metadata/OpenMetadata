@@ -477,7 +477,7 @@ export const getNameFromFQN = (fqn: string): string => {
   // Regular expression which matches pattern like '."some content"' at the end of string
   // Example in string 'sample_data."example_table"."example.sample/fqn"',
   // this regular expression  will match '."example.sample/fqn"'
-  const regexForQuoteInFQN = /(\."*[^"]*")$/g;
+  const regexForQuoteInFQN = /(\."[^"]+")$/g;
 
   if (regexForQuoteInFQN.test(fqn)) {
     arr = fqn.split('"');

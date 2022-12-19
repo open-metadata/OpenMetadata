@@ -1,8 +1,14 @@
 import {
   mockFQNWithSpecialChar1,
   mockFQNWithSpecialChar2,
+  mockFQNWithSpecialChar3,
+  mockFQNWithSpecialChar4,
+  mockFQNWithSpecialChar5,
   mockTableNameFromFQN,
   mockTableNameWithSpecialChar,
+  mockTableNameWithSpecialChar3,
+  mockTableNameWithSpecialChar4,
+  mockTableNameWithSpecialChar5,
 } from './CommonUtils.mock';
 /*
  *  Copyright 2022 Collate
@@ -45,15 +51,33 @@ describe('Tests for CommonUtils', () => {
       expect(getNameFromFQN(mockFQN)).toEqual(mockTableNameFromFQN);
     });
 
-    it('Function getNameFromFQN should return the correct table name for fqn with special characters', () => {
+    it('Function getNameFromFQN should return the correct table name for sample_data.ecommerce_db."dim.api/client"', () => {
       expect(getNameFromFQN(mockFQNWithSpecialChar1)).toEqual(
         mockTableNameWithSpecialChar
       );
     });
 
-    it('Function getNameFromFQN should return the correct table name for fqn with special characters and containing double quotes in schema part in fqn as well', () => {
+    it('Function getNameFromFQN should return the correct table name for sample_data."ecommerce_db"."dim.api/client"', () => {
       expect(getNameFromFQN(mockFQNWithSpecialChar2)).toEqual(
         mockTableNameWithSpecialChar
+      );
+    });
+
+    it('Regular expression in getNameFromFQN should not match for sample_data."ecommerce_db"."dim.api/"client" and should return names by default method', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar3)).toEqual(
+        mockTableNameWithSpecialChar3
+      );
+    });
+
+    it('Regular expression in getNameFromFQN should not match for sample_data."ecommerce_db"."dim.api/client"" and should return names by default method', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar4)).toEqual(
+        mockTableNameWithSpecialChar4
+      );
+    });
+
+    it('Regular expression in getNameFromFQN should not match for sample_data."ecommerce_db".""dim.api/client" and should return names by default method', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar5)).toEqual(
+        mockTableNameWithSpecialChar5
       );
     });
 
