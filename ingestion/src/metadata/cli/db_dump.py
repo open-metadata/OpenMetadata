@@ -58,7 +58,7 @@ def clean_str(raw: str) -> str:
     - To insert a literal backlash in MySQL you need to escape with another one. This applies for `\n` and `\"` in
       inner JSONs for a field
     """
-    return raw.replace("'", "''").replace("\\n", "\\\\n").replace('\\"', '\\\\"')
+    return raw.replace("'", "''").replace("\\", "\\\\")
 
 
 @singledispatch
