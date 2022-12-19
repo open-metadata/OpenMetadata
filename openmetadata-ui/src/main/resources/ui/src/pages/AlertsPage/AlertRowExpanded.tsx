@@ -19,6 +19,7 @@ import { getAlertActionForAlerts } from '../../axiosAPIs/alertsAPI';
 import Loader from '../../components/Loader/Loader';
 import { AlertAction } from '../../generated/alerts/alertAction';
 import { Alerts } from '../../generated/alerts/alerts';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 export const AlertsExpanded = ({ alert }: { alert: Alerts }) => {
   const [alertActions, setAlertActions] = useState<AlertAction[]>([]);
@@ -29,6 +30,10 @@ export const AlertsExpanded = ({ alert }: { alert: Alerts }) => {
       setLoading(true);
       const response = await getAlertActionForAlerts(alert.id);
       setAlertActions(response);
+    } catch (error) {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.alert-actions') })
+      );
     } finally {
       setLoading(false);
     }

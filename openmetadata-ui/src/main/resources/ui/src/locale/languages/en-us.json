@@ -590,7 +590,8 @@
     "receiver-plural": "Receivers",
     "admin-plural": "Admins",
     "owner-plural": "Owners",
-    "follower-plural": "Followers"
+    "follower-plural": "Followers",
+    "email-plural": "Emails"
   },
   "message": {
     "service-email-required": "Service account Email is required",

@@ -462,7 +462,9 @@ const AddAlertPage = () => {
                     showSearch
                     mode="tags"
                     open={false}
-                    placeholder="List emails to subscribe to notifications"
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.email-plural'),
+                    })}
                   />
                 </Form.Item>
                 <Space align="baseline">
