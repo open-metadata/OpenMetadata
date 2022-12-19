@@ -49,9 +49,23 @@ def single_quote_wrap(raw: str) -> str:
     return f"'{raw}'"
 
 
+def clean_str(raw: str) -> str:
+    """
+    String cleaning for SQL parsing.
+
+    - descriptions/comments with single quotes, e.g., `Mysql's data`.
+      get converted to `Mysql''s data`
+    """
+    return raw.replace("'", "''")
+
+
 @singledispatch
 def clean_col(column_raw: Optional[Union[dict, str]]) -> str:
-    return single_quote_wrap(str(column_raw)) if column_raw is not None else "null"
+    return (
+        single_quote_wrap(clean_str(str(column_raw)))
+        if column_raw is not None
+        else "null"
+    )
 
 
 @clean_col.register(dict)
@@ -66,9 +80,12 @@ def _(column_raw: Optional[Union[dict, list]]) -> str:
     """
     return (
         single_quote_wrap(
-            json.dumps(
-                column_raw, default=str
-            )  # If we don't know how to serialize, convert to str
+            clean_str(
+                json.dumps(
+                    column_raw,
+                    default=str,  # If we don't know how to serialize, convert to str
+                )
+            )
         )
         if column_raw is not None
         else "null"
