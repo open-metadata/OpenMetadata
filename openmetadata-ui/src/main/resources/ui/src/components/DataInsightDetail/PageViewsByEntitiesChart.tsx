@@ -180,7 +180,9 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                 <CustomStatistic
                   changeInValue={relativePercentage}
                   duration={selectedDays}
-                  label={t('label.total-assets-view')}
+                  label={t('label.total-entity', {
+                    entity: t('label.assets'),
+                  })}
                   value={total}
                 />
               </Col>
