@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
+import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
 import { getLatestTableProfileByFqn } from '../../axiosAPIs/tableAPI';
@@ -54,7 +55,6 @@ import {
 } from '../../utils/CommonUtils';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../header/PageHeader.component';
@@ -330,10 +330,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
           className="tab-details-container w-full h-min-full"
           direction="vertical">
           <Row className="m-b-md">
-            <Col span={9}>
+            <Col span={10}>
               <PageHeader data={getPageHeader()} />
             </Col>
-            <Col span={15}>
+            <Col span={14}>
               <Space align="center" className="w-full justify-end">
                 {isDataQuality && (
                   <>
@@ -409,24 +409,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                       : t('message.no-permission-for-action')
                   }>
                   <Button
-                    ghost
-                    className="flex items-center"
+                    className="rounded-4 tw-w-8 flex justify-center manage-dropdown-button"
                     data-testid="profiler-setting-btn"
                     disabled={!editTest}
-                    icon={
-                      <SVGIcons
-                        alt="setting"
-                        className="mr-2"
-                        icon={
-                          editTest
-                            ? Icons.SETTINGS_PRIMERY
-                            : Icons.SETTINGS_GRAY
-                        }
-                      />
-                    }
                     type="primary"
                     onClick={() => handleSettingModal(true)}>
-                    {t('label.settings')}
+                    <SettingIcon className="text-primary self-center manage-dropdown-icon" />
                   </Button>
                 </Tooltip>
               </Space>

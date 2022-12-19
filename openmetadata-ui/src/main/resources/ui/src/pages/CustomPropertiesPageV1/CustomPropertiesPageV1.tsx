@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button as ButtonAntd, Col, Row, Space, Tooltip } from 'antd';
+import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -190,6 +190,9 @@ const CustomEntityDetailV1 = () => {
       className="m-y-xs"
       data-testid="custom-entity-container"
       gutter={[16, 16]}>
+      <Col span={24}>
+        <PageHeader data={getCustomPageHeader()} />
+      </Col>
       <Col className="global-settings-tabs" span={24}>
         <TabsPane
           activeTab={activeTab}
@@ -232,34 +235,27 @@ const CustomEntityDetailV1 = () => {
             </div>
           ) : (
             <div data-testid="entity-custom-fields">
-              <Row>
-                <Col className="m-y-md" span={24}>
-                  <Space className="w-full justify-between">
-                    <PageHeader data={getCustomPageHeader()} />
-                    <Tooltip
-                      title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
-                      <Button
-                        className="m-b-md p-y-xss p-x-xs rounded-4"
-                        data-testid="add-field-button"
-                        disabled={!editPermission}
-                        size="custom"
-                        theme="primary"
-                        onClick={() => handleAddProperty()}>
-                        Add Property
-                      </Button>
-                    </Tooltip>
-                  </Space>
-                </Col>
-                <Col span={24}>
-                  <CustomPropertyTable
-                    customProperties={
-                      selectedEntityTypeDetail.customProperties || []
-                    }
-                    hasAccess={editPermission}
-                    updateEntityType={updateEntityType}
-                  />
-                </Col>
-              </Row>
+              <div className="flex justify-end">
+                <Tooltip
+                  title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                  <Button
+                    className="m-b-md p-y-xss p-x-xs rounded-4"
+                    data-testid="add-field-button"
+                    disabled={!editPermission}
+                    size="custom"
+                    theme="primary"
+                    onClick={() => handleAddProperty()}>
+                    Add Property
+                  </Button>
+                </Tooltip>
+              </div>
+              <CustomPropertyTable
+                customProperties={
+                  selectedEntityTypeDetail.customProperties || []
+                }
+                hasAccess={editPermission}
+                updateEntityType={updateEntityType}
+              />
             </div>
           ))}
       </Col>
