@@ -255,12 +255,13 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 table_sample_query=table_sample_query,
                 table_partition_config=table_partition_config,
             )
-        self.client = get_connection(service_connection_config).client
         return DataLakeTestSuiteInterface(
             service_connection_config=service_connection_config,
             ometa_client=self.client,
             data_frame=ometa_to_dataframe(
-                service_connection_config.configSource, self.client, table_entity
+                service_connection_config.configSource,
+                get_connection(service_connection_config).client,
+                table_entity,
             )[0],
             table_entity=table_entity,
         )

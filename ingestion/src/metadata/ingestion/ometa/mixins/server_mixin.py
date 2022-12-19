@@ -37,6 +37,10 @@ class VersionMismatchException(Exception):
     Used when server and client versions do not match
     """
 
+class VersionNotFoundException(Exception):
+    """
+    Used when server doesn't return a version
+    """
 
 class OMetaServerMixin:
     """
@@ -70,7 +74,7 @@ class OMetaServerMixin:
         try:
             raw_version = self.client.get("/version")["version"]
         except KeyError:
-            raise VersionMismatchException("Cannot Find Version at api/v1/version")
+            raise VersionNotFoundException("Cannot Find Version at api/v1/version")
         return self.get_version_from_string(raw_version)
 
     def get_client_version(self) -> str:
