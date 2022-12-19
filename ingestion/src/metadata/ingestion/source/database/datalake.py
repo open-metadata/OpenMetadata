@@ -377,6 +377,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
             if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+                columns = None
                 connection_args = self.service_connection.configSource.securityConfig
                 storage_options = {
                     "tenant_id": connection_args.tenantId,
