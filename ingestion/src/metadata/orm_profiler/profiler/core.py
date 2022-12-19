@@ -90,9 +90,7 @@ class Profiler(Generic[TMetric]):
         self.exclude_columns = exclude_columns
         self._metrics = metrics
         self._profile_date = profile_date
-        self.profile_sample_config = (
-            self.profiler_interface.profile_sample_config or None
-        )
+        self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.validate_composed_metric()
 
