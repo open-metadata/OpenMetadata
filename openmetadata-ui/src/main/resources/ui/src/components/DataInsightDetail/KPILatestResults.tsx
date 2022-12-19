@@ -46,25 +46,30 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const isTargetMet = targetResult.targetMet;
 
         return (
-          <Space className="w-full" direction="vertical" key={uniqueId()}>
+          <Space
+            className="w-full"
+            direction="vertical"
+            key={uniqueId()}
+            size={8}>
             <Typography.Text className="data-insight-label-text">
               {resultData.displayName ?? name}
             </Typography.Text>
+            <div>
+              <DataInsightProgressBar
+                showSuccessInfo
+                progress={Number(currentProgress)}
+                showLabel={false}
+                startValue={isPercentage ? targetPercentValue : targetValue}
+                successValue={
+                  isPercentage ? targetMetPercentValue : targetMetValue
+                }
+                suffix={suffix}
+              />
 
-            <DataInsightProgressBar
-              showSuccessInfo
-              progress={Number(currentProgress)}
-              showLabel={false}
-              startValue={isPercentage ? targetPercentValue : targetValue}
-              successValue={
-                isPercentage ? targetMetPercentValue : targetMetValue
-              }
-              suffix={suffix}
-            />
-
-            <Typography.Text className="data-insight-label-text">
-              {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
-            </Typography.Text>
+              <Typography.Text className="data-insight-label-text">
+                {getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
+              </Typography.Text>
+            </div>
           </Space>
         );
       })}

@@ -11,127 +11,79 @@
  *  limitations under the License.
  */
 
-import {
-  faWindowMaximize,
-  faWindowMinimize,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button } from 'antd';
+import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import Loader from '../../Loader/Loader';
+import {
+  EditorContentRef,
+  ModalWithMarkdownEditorProps,
+} from './ModalWithMarkdownEditor.interface';
+import './ModalWithMarkdownEditor.style.less';
 
-type EditorContentRef = {
-  getEditorContent: () => string;
-};
+export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorProps> =
+  ({
+    header,
+    placeholder,
+    value,
+    onSave,
+    onCancel,
+    visible,
+  }: ModalWithMarkdownEditorProps) => {
+    const { t } = useTranslation();
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
-type Props = {
-  isExpandable?: boolean;
-  header: string;
-  value: string;
-  placeholder: string;
-  onSave?: (text: string) => Promise<void>;
-  onCancel?: () => void;
-};
+    const markdownRef = useRef<EditorContentRef>();
 
-export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
-  isExpandable = false,
-  header,
-  placeholder,
-  value,
-  onSave,
-  onCancel,
-}: Props) => {
-  const { t } = useTranslation();
-  const [expanded, setExpanded] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const markdownRef = useRef<EditorContentRef>();
-
-  const getContainerClasses = () => {
-    return classnames(
-      'tw-modal-container',
-      expanded ? ' tw-w-screen tw-h-screen tw-max-w-none' : null
-    );
-  };
-
-  const handleSaveData = async () => {
-    if (markdownRef.current) {
-      setIsLoading(true);
-      try {
-        await onSave?.(markdownRef.current?.getEditorContent() ?? '');
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
+    const handleSaveData = async () => {
+      if (markdownRef.current) {
+        setIsLoading(true);
+        try {
+          await onSave?.(markdownRef.current?.getEditorContent().trim() ?? '');
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        } finally {
+          setIsLoading(false);
+        }
       }
-    }
-  };
+    };
 
-  return ReactDOM.createPortal(
-    <dialog className="tw-modal" data-testid="markdown-editor">
-      <div className="tw-modal-backdrop" />
-      <div className={getContainerClasses()}>
-        <div className="tw-modal-header">
-          <p className="tw-modal-title" data-testid="header">
-            {header}
-          </p>
-          {isExpandable && (
-            <div className="tw-flex">
-              <Button
-                className="tw-text-lg tw-text-gray-900 hover:tw-text-gray-900"
-                size="small"
-                onClick={() => setExpanded((value) => !value)}>
-                <FontAwesomeIcon
-                  icon={expanded ? faWindowMinimize : faWindowMaximize}
-                />
-              </Button>
-              <svg
-                className="tw-w-6 tw-h-6 tw-ml-1 tw-cursor-pointer"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-                onClick={onCancel}>
-                <path
-                  d="M6 18L18 6M6 6l12 12"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                />
-              </svg>
-            </div>
-          )}
-        </div>
-        <div className="tw-modal-body">
-          <RichTextEditor
-            initialValue={value}
-            placeHolder={placeholder}
-            ref={markdownRef}
-          />
-        </div>
-        <div className="tw-modal-footer">
+    return (
+      <Modal
+        centered
+        destroyOnClose
+        className="description-markdown-editor"
+        closable={false}
+        data-testid="markdown-editor"
+        footer={[
           <Button
             data-testid="cancel"
             disabled={isLoading}
+            key="cancelButton"
             type="link"
             onClick={onCancel}>
             {t('label.cancel')}
-          </Button>
+          </Button>,
           <Button
             data-testid="save"
+            key="saveButton"
             type="primary"
             onClick={() => handleSaveData()}>
             {isLoading ? <Loader size="small" type="white" /> : t('label.save')}
-          </Button>
-        </div>
-      </div>
-    </dialog>,
-    document.body
-  );
-};
+          </Button>,
+        ]}
+        open={visible}
+        title={<Typography.Text data-testid="header">{header}</Typography.Text>}
+        width="90%"
+        onCancel={onCancel}>
+        <RichTextEditor
+          initialValue={value}
+          placeHolder={placeholder}
+          ref={markdownRef}
+        />
+      </Modal>
+    );
+  };

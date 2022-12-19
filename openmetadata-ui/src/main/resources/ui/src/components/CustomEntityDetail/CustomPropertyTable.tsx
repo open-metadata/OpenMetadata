@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
@@ -166,15 +165,16 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         onCancel={resetSelectedProperty}
         onConfirm={handlePropertyDelete}
       />
-      {updateCheck && (
-        <ModalWithMarkdownEditor
-          header={`Edit Property: "${selectedProperty.name}"`}
-          placeholder="Enter Property Description"
-          value={selectedProperty.description || ''}
-          onCancel={resetSelectedProperty}
-          onSave={handlePropertyUpdate}
-        />
-      )}
+      <ModalWithMarkdownEditor
+        header={t('label.edit-property', {
+          propertyName: selectedProperty.name,
+        })}
+        placeholder={t('label.enter-property-description')}
+        value={selectedProperty.description || ''}
+        visible={updateCheck}
+        onCancel={resetSelectedProperty}
+        onSave={handlePropertyUpdate}
+      />
     </Fragment>
   );
 };

@@ -7,13 +7,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class AlertActionRepository extends EntityRepository<AlertAction> {
-  private static final String UPDATE_FIELDS = "owner,alertActionConfig";
-  private static final String PATCH_FIELDS = "owner";
+  private static final String UPDATE_FIELDS =
+      "owner,description,displayName,alertActionConfig,enabled,batchSize,readTimeout,timeout,alertActionConfig";
+  private static final String PATCH_FIELDS =
+      "owner,description,displayName,alertActionConfig,enabled,batchSize,readTimeout,timeout,alertActionConfig";
 
   public AlertActionRepository(CollectionDAO dao) {
     super(
@@ -63,11 +66,14 @@ public class AlertActionRepository extends EntityRepository<AlertAction> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      recordChange("description", original.getDescription(), updated.getDescription());
+      recordChange("displayName", original.getDisplayName(), updated.getDisplayName());
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("readTimeout", original.getReadTimeout(), updated.getReadTimeout());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());
       recordChange("alertActionConfig", original.getAlertActionConfig(), updated.getAlertActionConfig());
+      AlertsPublisherManager.getInstance().updateAllAlertUsingAlertAction(updated);
     }
   }
 }

@@ -116,27 +116,28 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                 </p>
               </div>
               <div>
-                <div
-                  className={classNames('whats-new-modal-button-container', {
-                    'w-60': activeData.features.length > 0,
-                  })}>
-                  {activeData.features.length > 0 && (
+                {activeData.features.length > 0 && (
+                  <div
+                    className={classNames('whats-new-modal-button-container', {
+                      'w-60': activeData.features.length > 0,
+                    })}>
                     <button
                       className={getToggleButtonClasses('features')}
                       data-testid="WhatsNewModalFeatures"
                       onClick={() => handleToggleChange('features')}>
                       {t('label.feature-plural')}
                     </button>
-                  )}
-                  <button
-                    className={getToggleButtonClasses('change-log')}
-                    data-testid="WhatsNewModalChangeLogs"
-                    onClick={() => {
-                      handleToggleChange('change-log');
-                    }}>
-                    {t('label.change-logs')}
-                  </button>
-                </div>
+
+                    <button
+                      className={getToggleButtonClasses('change-log')}
+                      data-testid="WhatsNewModalChangeLogs"
+                      onClick={() => {
+                        handleToggleChange('change-log');
+                      }}>
+                      {t('label.change-logs')}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div>

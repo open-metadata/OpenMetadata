@@ -355,13 +355,14 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
             </Col>
           ))}
         </Row>
-        {!isEmpty(selectedFeature) && editDescription && (
+        {!isEmpty(selectedFeature) && (
           <ModalWithMarkdownEditor
-            header={`${t('label.edit-entity', {
-              entity: t('label.feature'),
-            })}: "${selectedFeature.name}"`}
-            placeholder={t('message.enter-feature-description')}
+            header={t('label.edit-feature', {
+              featureName: selectedFeature.name,
+            })}
+            placeholder={t('label.enter-feature-description')}
             value={selectedFeature.description as string}
+            visible={editDescription}
             onCancel={handleCancelEditDescription}
             onSave={handleDescriptionChange}
           />

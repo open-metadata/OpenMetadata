@@ -14,6 +14,7 @@
 import { Popover } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { isFunction, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
@@ -209,18 +210,19 @@ const Description: FC<DescriptionProps> = ({
                 markdown={description}
               />
             ) : (
-              <span className="tw-no-description p-y-xs">No description </span>
+              <span className="tw-no-description p-y-xs">
+                {t('label.no-description')}
+              </span>
             )}
           </div>
-          {isEdit && (
-            <ModalWithMarkdownEditor
-              header={`Edit description for ${entityName}`}
-              placeholder="Enter Description"
-              value={description}
-              onCancel={onCancel}
-              onSave={handleSave}
-            />
-          )}
+          <ModalWithMarkdownEditor
+            header={t('label.edit-description-for', { entityName })}
+            placeholder={t('label.enter-description')}
+            value={description}
+            visible={Boolean(isEdit)}
+            onCancel={onCancel}
+            onSave={handleSave}
+          />
         </div>
         <DescriptionActions />
       </div>

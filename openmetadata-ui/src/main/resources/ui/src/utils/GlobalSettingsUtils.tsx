@@ -18,6 +18,7 @@ import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
+import { ReactComponent as BellIcon } from '../../src/assets/svg/ic-alert-bell.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as OMLogo } from '../../src/assets/svg/metadata.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
@@ -149,6 +150,16 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           icon: <OMLogo className="side-panel-icons w-4 h-4" />,
+        },
+      ],
+    },
+    {
+      category: 'Collaboration',
+      items: [
+        {
+          label: 'Alerts',
+          isProtected: Boolean(isAdminUser),
+          icon: <BellIcon className="side-panel-icons" />,
         },
       ],
     },

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -56,9 +56,10 @@ import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {
   chartFilter: ChartFilter;
+  selectedDays: number;
 }
 
-const TierInsight: FC<Props> = ({ chartFilter }) => {
+const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [totalEntitiesByTier, setTotalEntitiesByTier] =
     useState<DataInsightChartResult>();
 
@@ -66,7 +67,7 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
-  const { data, tiers, total } = useMemo(() => {
+  const { data, tiers, total, relativePercentage, latestData } = useMemo(() => {
     return getGraphDataByTierType(totalEntitiesByTier?.data ?? []);
   }, [totalEntitiesByTier]);
 
@@ -122,50 +123,89 @@ const TierInsight: FC<Props> = ({ chartFilter }) => {
           </Typography.Text>
         </>
       }>
-      <DataInsightProgressBar
-        className="m-b-md"
-        progress={Number(total)}
-        width={250}
-      />
       {data.length ? (
-        <ResponsiveContainer debounce={1} minHeight={400}>
-          <LineChart data={data} margin={BAR_CHART_MARGIN}>
-            <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
-            <XAxis dataKey="timestamp" />
-            <YAxis />
-            <Tooltip content={<CustomTooltip isPercentage />} />
-            <Legend
-              align="left"
-              content={(props) =>
-                renderLegend(props as LegendProps, total, activeKeys, false)
-              }
-              layout="vertical"
-              verticalAlign="top"
-              wrapperStyle={{ left: '0px', top: '0px' }}
-              onClick={handleLegendClick}
-              onMouseEnter={handleLegendMouseEnter}
-              onMouseLeave={handleLegendMouseLeave}
-            />
-            {tiers.map((tier) => (
-              <Line
-                dataKey={tier}
-                hide={
-                  activeKeys.length && tier !== activeMouseHoverKey
-                    ? !activeKeys.includes(tier)
-                    : false
-                }
-                key={tier}
-                stroke={TIER_BAR_COLOR_MAP[tier]}
-                strokeOpacity={
-                  isEmpty(activeMouseHoverKey) || tier === activeMouseHoverKey
-                    ? DEFAULT_CHART_OPACITY
-                    : HOVER_CHART_OPACITY
-                }
-                type="monotone"
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+        <Row gutter={16}>
+          <Col span={18}>
+            <ResponsiveContainer debounce={1} minHeight={400}>
+              <LineChart data={data} margin={BAR_CHART_MARGIN}>
+                <CartesianGrid
+                  stroke={GRAPH_BACKGROUND_COLOR}
+                  vertical={false}
+                />
+                <XAxis dataKey="timestamp" />
+                <YAxis />
+                <Tooltip content={<CustomTooltip isPercentage />} />
+                <Legend
+                  align="left"
+                  content={(props) =>
+                    renderLegend(props as LegendProps, activeKeys)
+                  }
+                  layout="horizontal"
+                  verticalAlign="top"
+                  wrapperStyle={{ left: '0px', top: '0px' }}
+                  onClick={handleLegendClick}
+                  onMouseEnter={handleLegendMouseEnter}
+                  onMouseLeave={handleLegendMouseLeave}
+                />
+                {tiers.map((tier) => (
+                  <Line
+                    dataKey={tier}
+                    hide={
+                      activeKeys.length && tier !== activeMouseHoverKey
+                        ? !activeKeys.includes(tier)
+                        : false
+                    }
+                    key={tier}
+                    stroke={TIER_BAR_COLOR_MAP[tier]}
+                    strokeOpacity={
+                      isEmpty(activeMouseHoverKey) ||
+                      tier === activeMouseHoverKey
+                        ? DEFAULT_CHART_OPACITY
+                        : HOVER_CHART_OPACITY
+                    }
+                    type="monotone"
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </Col>
+          <Col span={6}>
+            <Row gutter={[8, 8]}>
+              <Col span={24}>
+                <Typography.Paragraph
+                  className="data-insight-label-text"
+                  style={{ marginBottom: '4px' }}>
+                  {t('label.assigned-entity', {
+                    entity: t('label.tier'),
+                  })}{' '}
+                  %
+                </Typography.Paragraph>
+                <DataInsightProgressBar
+                  changeInValue={relativePercentage}
+                  className="m-b-md"
+                  duration={selectedDays}
+                  progress={Number(total)}
+                  showLabel={false}
+                />
+              </Col>
+              {tiers.map((tiers) => {
+                const progress = (latestData[tiers] / Number(total)) * 100;
+
+                return (
+                  <Col key={uniqueId()} span={24}>
+                    <DataInsightProgressBar
+                      showEndValueAsLabel
+                      progress={progress}
+                      showLabel={false}
+                      startValue={progress.toFixed(2)}
+                      successValue={tiers}
+                    />
+                  </Col>
+                );
+              })}
+            </Row>
+          </Col>
+        </Row>
       ) : (
         <EmptyGraphPlaceholder />
       )}
