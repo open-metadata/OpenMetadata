@@ -55,8 +55,10 @@ def clean_str(raw: str) -> str:
 
     - descriptions/comments with single quotes, e.g., `Mysql's data`.
       get converted to `Mysql''s data`
+    - To insert a literal `\` in MySQL you need to escape with another `\`. This applies for `\n` and `\"` in
+      inner JSONs for a field
     """
-    return raw.replace("'", "''")
+    return raw.replace("'", "''").replace("\\n", "\\\\n").replace('\\"', '\\\\"')
 
 
 @singledispatch
@@ -148,7 +150,6 @@ def dump_entity_custom(engine: Engine, output: Path, inspector) -> None:
             )
             res = engine.execute(text(statement)).all()
             for row in res:
-
                 # Let's use .format here to not add more variables
                 # pylint: disable=consider-using-f-string
                 insert = "INSERT INTO {table} ({cols}) VALUES ({data});\n".format(
