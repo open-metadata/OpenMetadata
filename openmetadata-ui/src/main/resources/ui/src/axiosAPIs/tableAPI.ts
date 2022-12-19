@@ -225,8 +225,9 @@ export const getTableQueryByTableId = async (id: string) => {
 };
 
 export const getLatestTableProfileByFqn = async (fqn: string) => {
+  const encodedFQN = encodeURIComponent(fqn);
   const response = await APIClient.get<Table>(
-    `/tables/${fqn}/tableProfile/latest`
+    `/tables/${encodedFQN}/tableProfile/latest`
   );
 
   return response.data;
