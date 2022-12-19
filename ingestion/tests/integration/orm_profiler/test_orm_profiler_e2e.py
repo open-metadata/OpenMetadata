@@ -16,6 +16,7 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+import logging
 from copy import deepcopy
 from unittest import TestCase
 
@@ -34,6 +35,9 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.connections import create_and_bind_session
+
+logging.basicConfig(level=logging.WARN)
+logger = logging.getLogger(__name__)
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 
@@ -111,7 +115,7 @@ class ProfilerWorkflowTest(TestCase):
             User.__table__.create(bind=cls.engine)
             NewUser.__table__.create(bind=cls.engine)
         except:
-            print("Table Already exists")
+            logger.warning("Table Already exists")
 
         data = [
             User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),

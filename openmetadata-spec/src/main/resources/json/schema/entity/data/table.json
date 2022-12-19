@@ -631,7 +631,7 @@
       "description": "This schema defines the type for Table profile config.",
       "properties": {
         "profileSample": {
-          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
+          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
           "type": "number",
           "default": null
         },
@@ -675,7 +675,7 @@
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "profileSample": {
-          "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
+          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
           "type": "number",
           "default": null
         },
