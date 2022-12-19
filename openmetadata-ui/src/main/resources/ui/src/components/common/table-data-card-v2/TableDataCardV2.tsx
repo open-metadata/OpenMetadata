@@ -147,7 +147,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
             className="tw-inline tw-h-5"
             src={serviceTypeLogo(source.serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2 w-9/10">
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2 w-full">
             <TableDataCardTitle
               handleLinkClick={handleLinkClick}
               id={id}
