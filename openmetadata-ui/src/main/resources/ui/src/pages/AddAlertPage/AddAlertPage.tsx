@@ -22,11 +22,12 @@ import {
   Row,
   Select,
   Space,
+  Switch,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
-import { intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
+import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -48,6 +49,7 @@ import {
   getSuggestions,
 } from '../../axiosAPIs/miscAPI';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+import { CreatableSelect } from '../../components/CreatableSelect/CreatableSelect';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -390,6 +392,7 @@ const AddAlertPage = () => {
   const filters = Form.useWatch(['filteringRules'], form);
   const entitySelected = Form.useWatch(['triggerConfig', 'entities'], form);
   const trigger = Form.useWatch(['triggerConfig', 'type'], form);
+  const alertActions = Form.useWatch(['alertActions'], form);
 
   // Run time values needed for conditional rendering
   const functions = useMemo(() => {
@@ -432,6 +435,106 @@ const AddAlertPage = () => {
       form.resetFields(['filteringRules', 'condition']);
     }
   };
+
+  const getDestinationConfigFields = useCallback(
+    (name: number) => {
+      const alertActionType = get(alertActions, [name, 'alertActionType']);
+      if (alertActions && alertActions[name]) {
+        switch (alertActionType) {
+          case AlertActionType.Email:
+            return (
+              <>
+                <Form.Item label="Receivers" name="receivers">
+                  <CreatableSelect />
+                </Form.Item>
+                <Form.Item
+                  label="Send to admins"
+                  name="sendToAdmins"
+                  valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+
+                <Form.Item
+                  label="Send to Owners"
+                  name="sendToOwners"
+                  valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+                <Form.Item
+                  label="Send to followers"
+                  name="sendToFollowers"
+                  valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+              </>
+            );
+          case AlertActionType.GenericWebhook:
+          case AlertActionType.SlackWebhook:
+          case AlertActionType.MSTeamsWebhook:
+            return (
+              <>
+                <Form.Item required name={[name, 'displayName']}>
+                  <Input
+                    disabled={provider === ProviderType.System}
+                    placeholder={t('label.name')}
+                  />
+                </Form.Item>
+                <Form.Item
+                  required
+                  name={[name, 'alertActionConfig', 'endpoint']}>
+                  <Input
+                    disabled={provider === ProviderType.System}
+                    placeholder={
+                      t('label.endpoint-url') +
+                      ': ' +
+                      'http(s)://www.example.com'
+                    }
+                  />
+                </Form.Item>
+
+                <Collapse ghost>
+                  <Collapse.Panel
+                    header={`${t('label.advanced-config')}:`}
+                    key="1">
+                    <Space>
+                      <Form.Item
+                        initialValue={10}
+                        label="Batch Size"
+                        labelCol={{ span: 24 }}
+                        name={[name, 'batchSize']}>
+                        <Input disabled={provider === ProviderType.System} />
+                      </Form.Item>
+                      <Form.Item
+                        colon
+                        initialValue={10}
+                        label={`${t(
+                          'label.connection-timeout-plural-optional'
+                        )}`}
+                        labelCol={{ span: 24 }}
+                        name={[name, 'timeout']}>
+                        <Input disabled={provider === ProviderType.System} />
+                      </Form.Item>
+                    </Space>
+                    <Form.Item
+                      label={t('label.secret-key')}
+                      labelCol={{ span: 24 }}
+                      name={[name, 'alertActionConfig', 'secretKey']}>
+                      <Input
+                        disabled={provider === ProviderType.System}
+                        placeholder={t('label.secret-key')}
+                      />
+                    </Form.Item>
+                  </Collapse.Panel>
+                </Collapse>
+              </>
+            );
+        }
+      }
+
+      return <></>;
+    },
+    [alertActions]
+  );
 
   return (
     <>
@@ -653,7 +756,8 @@ const AddAlertPage = () => {
                                         })}
                                         showSearch={false}>
                                         {map(AlertActionType, (value) => {
-                                          return (
+                                          return value ===
+                                            AlertActionType.ActivityFeed ? null : (
                                             <Select.Option
                                               key={value}
                                               value={value}>
@@ -668,85 +772,7 @@ const AddAlertPage = () => {
                                         })}
                                       </Select>
                                     </Form.Item>
-                                    <Form.Item
-                                      required
-                                      name={[name, 'displayName']}>
-                                      <Input
-                                        disabled={
-                                          provider === ProviderType.System
-                                        }
-                                        placeholder={t('label.name')}
-                                      />
-                                    </Form.Item>
-                                    <Form.Item
-                                      required
-                                      name={[
-                                        name,
-                                        'alertActionConfig',
-                                        'endpoint',
-                                      ]}>
-                                      <Input
-                                        disabled={
-                                          provider === ProviderType.System
-                                        }
-                                        placeholder={
-                                          t('label.endpoint-url') +
-                                          ': ' +
-                                          'http(s)://www.example.com'
-                                        }
-                                      />
-                                    </Form.Item>
-
-                                    <Collapse ghost>
-                                      <Collapse.Panel
-                                        header={`${t(
-                                          'label.advanced-config'
-                                        )}:`}
-                                        key="1">
-                                        <Space>
-                                          <Form.Item
-                                            initialValue={10}
-                                            label="Batch Size"
-                                            labelCol={{ span: 24 }}
-                                            name={[name, 'batchSize']}>
-                                            <Input
-                                              disabled={
-                                                provider === ProviderType.System
-                                              }
-                                            />
-                                          </Form.Item>
-                                          <Form.Item
-                                            colon
-                                            initialValue={10}
-                                            label={`${t(
-                                              'label.connection-timeout-plural-optional'
-                                            )}`}
-                                            labelCol={{ span: 24 }}
-                                            name={[name, 'timeout']}>
-                                            <Input
-                                              disabled={
-                                                provider === ProviderType.System
-                                              }
-                                            />
-                                          </Form.Item>
-                                        </Space>
-                                        <Form.Item
-                                          label={t('label.secret-key')}
-                                          labelCol={{ span: 24 }}
-                                          name={[
-                                            name,
-                                            'alertActionConfig',
-                                            'secretKey',
-                                          ]}>
-                                          <Input
-                                            disabled={
-                                              provider === ProviderType.System
-                                            }
-                                            placeholder={t('label.secret-key')}
-                                          />
-                                        </Form.Item>
-                                      </Collapse.Panel>
-                                    </Collapse>
+                                    {getDestinationConfigFields(name)}
                                   </div>
                                   <Button
                                     data-testid={`remove-filter-rule-${name}`}

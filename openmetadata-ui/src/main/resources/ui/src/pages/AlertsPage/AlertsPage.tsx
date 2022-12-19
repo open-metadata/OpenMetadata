@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Table, Tag, Tooltip, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as RightArrowIcon } from '../../assets/svg/ic-right-arrow.svg';
 import { getAllAlerts } from '../../axiosAPIs/alertsAPI';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -173,14 +174,11 @@ const AlertsPage = () => {
               expandedRowRender: (record) => <AlertsExpanded alert={record} />,
               expandIcon: ({ expanded, onExpand, expandable, record }) =>
                 expandable && (
-                  <Typography.Text
-                    className="m-r-xs cursor-pointer"
-                    data-testid="expand-icon"
-                    onClick={(e) => onExpand(record, e)}>
-                    <FontAwesomeIcon
-                      icon={expanded ? faCaretDown : faCaretRight}
-                    />
-                  </Typography.Text>
+                  <Icon
+                    component={expanded ? DropDownIcon : RightArrowIcon}
+                    size={16}
+                    onClick={(e) => onExpand(record, e)}
+                  />
                 ),
             }}
             loading={{ spinning: loading, indicator: <Loader /> }}

@@ -585,7 +585,8 @@
     "assigned-entity": "Assigned {{entity}}",
     "total-assets-view": "Total Assets View",
     "total-active-user": "Total Active User",
-    "alert-actions": "Alert Actions"
+    "alert-actions": "Alert Actions",
+    "test-results": "Test Results"
   },
   "message": {
     "service-email-required": "Service account Email is required",
