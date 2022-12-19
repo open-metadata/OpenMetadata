@@ -18,7 +18,7 @@ const KPILatestResults: FC<Props> = ({ kpiLatestResultsRecord }) => {
   }, [kpiLatestResultsRecord]);
 
   return (
-    <Space className="w-full" direction="vertical">
+    <Space className="w-full" direction="vertical" size={16}>
       {latestResultsList.map((result) => {
         const name = result[0];
         const resultData = result[1];
