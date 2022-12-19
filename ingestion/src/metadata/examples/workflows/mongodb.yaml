@@ -1,19 +1,18 @@
 source:
   type: mongodb
-  serviceName: local_mongodb
+  serviceName: local_mongo
   serviceConnection:
     config:
       type: MongoDB
-      username: openmetadata_user
-      password: openmetadata_password
+      username: mongodb_user
+      password: mongodb_password
+      hostPort: localhost:27017
       databaseSchema: openmetadata_db
-      hostPort: localhost:3306
+      connectionOptions: {}
+      connectionArguments: {}
   sourceConfig:
     config:
       type: DatabaseMetadata
-      tableFilterPattern:
-        includes:
-        - ''
 sink:
   type: metadata-rest
   config: {}
