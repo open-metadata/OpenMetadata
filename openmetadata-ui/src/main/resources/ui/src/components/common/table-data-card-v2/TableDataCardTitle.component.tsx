@@ -75,7 +75,7 @@ const TableDataCardTitle = ({
 
   return (
     <Link
-      className="table-data-card-title-container w-full"
+      className="table-data-card-title-container w-fit-content w-max-90"
       to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
       {title}
     </Link>
