@@ -37,10 +37,12 @@ class VersionMismatchException(Exception):
     Used when server and client versions do not match
     """
 
+
 class VersionNotFoundException(Exception):
     """
     Used when server doesn't return a version
     """
+
 
 class OMetaServerMixin:
     """
