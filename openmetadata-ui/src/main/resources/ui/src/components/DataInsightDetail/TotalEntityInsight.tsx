@@ -44,7 +44,10 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import {
+  axisTickFormatter,
+  updateActiveChartFilter,
+} from '../../utils/ChartUtils';
 import {
   CustomTooltip,
   getGraphDataByEntityType,
@@ -139,7 +142,7 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   vertical={false}
                 />
                 <XAxis dataKey="timestamp" />
-                <YAxis />
+                <YAxis tickFormatter={(value) => axisTickFormatter(value)} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
                   align="left"

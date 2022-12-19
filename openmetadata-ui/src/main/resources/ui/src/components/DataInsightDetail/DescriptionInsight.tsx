@@ -222,13 +222,11 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                 />
               </Col>
               {entities.map((entity) => {
-                const progress = (latestData[entity] / Number(total)) * 100;
-
                 return (
                   <Col key={uniqueId()} span={24}>
                     <DataInsightProgressBar
                       showEndValueAsLabel
-                      progress={progress}
+                      progress={latestData[entity]}
                       showLabel={false}
                       startValue={latestData[entity].toFixed(2)}
                       successValue={entity}
