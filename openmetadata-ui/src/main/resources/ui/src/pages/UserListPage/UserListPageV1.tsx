@@ -222,6 +222,7 @@ const UserListPageV1 = () => {
       afterDeleteAction={handleFetch}
       currentPage={currentPage}
       data={userList}
+      isAdminPage={isAdminPage}
       isDataLoading={isDataLoading}
       paging={paging}
       searchTerm={searchValue}
