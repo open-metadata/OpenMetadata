@@ -346,7 +346,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new KpiResourceTest().setupKpi();
 
     runWebhookTests = new Random().nextBoolean();
-    if (true) {
+    if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
       AlertResourceTest alertResourceTest = new AlertResourceTest();
       alertResourceTest.startWebhookSubscription(true);
@@ -356,7 +356,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    if (true) {
+    if (runWebhookTests) {
       AlertResourceTest alertResourceTest = new AlertResourceTest();
       alertResourceTest.validateWebhookEvents();
       alertResourceTest.validateWebhookEntityEvents(entityType);
