@@ -134,13 +134,14 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
   const expandableConfig: ExpandableConfig<Team> = useMemo(
     () => ({
+      ...getTableExpandableConfig<Team>(),
       onExpand: (isOpen, record) => {
         if (isOpen && isEmpty(record.children)) {
           onTeamExpand(false, record.fullyQualifiedName, true);
         }
       },
     }),
-    [onTeamExpand]
+    [onTeamExpand, getTableExpandableConfig]
   );
 
   return (
@@ -153,10 +154,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           components={TABLE_CONSTANTS}
           data-testid="team-hierarchy-table"
           dataSource={data}
-          expandable={{
-            ...getTableExpandableConfig<Team>(),
-            ...expandableConfig,
-          }}
+          expandable={expandableConfig}
           loading={isTableLoading}
           pagination={false}
           rowKey="name"
