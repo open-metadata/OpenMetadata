@@ -72,7 +72,7 @@ import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
 import KPIList from './KPIList';
 
-const fetchTeamSuggestions = autocomplete(SearchIndex.TEAM);
+const fetchTeamSuggestions = autocomplete({ searchIndex: SearchIndex.TEAM });
 
 const DataInsightPage = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
