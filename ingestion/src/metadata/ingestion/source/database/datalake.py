@@ -567,7 +567,8 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         return False
 
     def close(self):
-        self.client.close()
+        if isinstance(self.service_connection.configSource, AzureConfig):
+            self.client.close()
 
     def get_status(self) -> SourceStatus:
         return self.status
