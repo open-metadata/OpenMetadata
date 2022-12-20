@@ -3,7 +3,10 @@ package org.openmetadata.service.resources.events;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.events.CreateAlertAction;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.type.Webhook;
@@ -11,6 +14,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.alerts.AlertActionResource;
 
+@Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class AlertActionResourceTest extends EntityResourceTest<AlertAction, CreateAlertAction> {
 
   public AlertActionResourceTest() {
