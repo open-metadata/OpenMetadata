@@ -31,7 +31,9 @@ import { Paging } from '../../generated/type/paging';
 import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { AlertsExpanded } from './AlertRowExpanded';
 
 const AlertsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -166,6 +168,10 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
+            expandable={{
+              ...getTableExpandableConfig<Alerts>(),
+              expandedRowRender: (record) => <AlertsExpanded alert={record} />,
+            }}
             loading={{ spinning: loading, indicator: <Loader /> }}
             pagination={false}
             rowKey="id"
@@ -187,6 +193,7 @@ const AlertsPage = () => {
 
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
+            allowSoftDelete={false}
             entityId={selectedAlert?.id || ''}
             entityName={selectedAlert?.name || ''}
             entityType={EntityType.ALERT}

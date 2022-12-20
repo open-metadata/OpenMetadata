@@ -51,3 +51,19 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   },
   { name: i18next.t('label.connection-details'), step: 3 },
 ];
+
+export const INGESTION_ACTION_TYPE = {
+  ADD: 'add',
+  EDIT: 'edit',
+};
+
+export const PIPELINE_TYPE_LOCALISATION = {
+  dataInsight: 'data-insight',
+  dbt: 'dbt',
+  elasticSearchReindex: 'elastic-search-re-index',
+  lineage: 'lineage',
+  metadata: 'metadata',
+  profiler: 'profiler',
+  TestSuite: 'test-suite',
+  usage: 'usage',
+};

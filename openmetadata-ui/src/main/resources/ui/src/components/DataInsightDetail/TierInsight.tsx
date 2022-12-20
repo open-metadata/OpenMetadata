@@ -35,7 +35,9 @@ import {
 } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
+  DI_STRUCTURE,
   TIER_BAR_COLOR_MAP,
+  TIER_DATA,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -43,7 +45,10 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import {
+  axisTickFormatter,
+  updateActiveChartFilter,
+} from '../../utils/ChartUtils';
 import {
   CustomTooltip,
   getGraphDataByTierType,
@@ -124,8 +129,8 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
         </>
       }>
       {data.length ? (
-        <Row gutter={16}>
-          <Col span={18}>
+        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+          <Col span={DI_STRUCTURE.leftContainerSpan}>
             <ResponsiveContainer debounce={1} minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
@@ -133,12 +138,14 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   vertical={false}
                 />
                 <XAxis dataKey="timestamp" />
-                <YAxis />
-                <Tooltip content={<CustomTooltip isPercentage />} />
+                <YAxis
+                  tickFormatter={(value) => axisTickFormatter(value, '%')}
+                />
+                <Tooltip content={<CustomTooltip isPercentage isTier />} />
                 <Legend
                   align="left"
                   content={(props) =>
-                    renderLegend(props as LegendProps, activeKeys)
+                    renderLegend(props as LegendProps, activeKeys, true)
                   }
                   layout="horizontal"
                   verticalAlign="top"
@@ -169,8 +176,8 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
               </LineChart>
             </ResponsiveContainer>
           </Col>
-          <Col span={6}>
-            <Row gutter={[8, 8]}>
+          <Col span={DI_STRUCTURE.rightContainerSpan}>
+            <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
                 <Typography.Paragraph
                   className="data-insight-label-text"
@@ -189,16 +196,14 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                 />
               </Col>
               {tiers.map((tiers) => {
-                const progress = (latestData[tiers] / Number(total)) * 100;
-
                 return (
                   <Col key={uniqueId()} span={24}>
                     <DataInsightProgressBar
                       showEndValueAsLabel
-                      progress={progress}
+                      progress={latestData[tiers]}
                       showLabel={false}
-                      startValue={progress.toFixed(2)}
-                      successValue={tiers}
+                      startValue={Number(latestData[tiers]).toFixed(2)}
+                      successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
                     />
                   </Col>
                 );

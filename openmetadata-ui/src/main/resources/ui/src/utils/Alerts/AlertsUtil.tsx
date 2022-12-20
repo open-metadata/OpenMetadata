@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Typography } from 'antd';
+import { RuleObject } from 'antd/lib/form';
 import i18next from 'i18next';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
-import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams-grey.svg';
-import { ReactComponent as SlackIcon } from '../../assets/svg/slack-grey.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook-grey.svg';
+import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
+import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
+import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertActionType } from '../../generated/alerts/alertAction';
 import { AlertTriggerType } from '../../generated/alerts/alerts';
 
@@ -65,13 +66,13 @@ export const StyledCard = ({
   subHeading: string;
 }) => {
   return (
-    <Card bordered={false} className="bg-grey">
+    <div className="bg-grey p-sm rounded-4">
       <Typography.Text>{heading}</Typography.Text>
       <br />
       <Typography.Text className="text-xs text-grey-muted">
         {subHeading}
       </Typography.Text>
-    </Card>
+    </div>
   );
 };
 
@@ -81,5 +82,45 @@ export const getDisplayNameForTriggerType = (type: AlertTriggerType) => {
       return i18next.t('label.all-data-assets');
     case AlertTriggerType.SpecificDataAsset:
       return i18next.t('label.specific-data-assets');
+  }
+};
+
+/**
+ *
+ * @param name Field name used to identify which field has error
+ * @param minLengthRequired how many item should be there in the list
+ * @returns If validation failed throws an error else resolve
+ */
+export const listLengthValidator =
+  <T,>(name: string, minLengthRequired = 1) =>
+  async (_: RuleObject, list: T[]) => {
+    if (!list || list.length < minLengthRequired) {
+      return Promise.reject(
+        new Error(
+          i18next.t('message.length-validator-error', {
+            length: minLengthRequired,
+            field: name,
+          })
+        )
+      );
+    }
+
+    return Promise.resolve();
+  };
+
+export const getAlertActionTypeDisplayName = (
+  alertActionType: AlertActionType
+) => {
+  switch (alertActionType) {
+    case AlertActionType.ActivityFeed:
+      return i18next.t('label.activity-feed');
+    case AlertActionType.Email:
+      return i18next.t('label.email');
+    case AlertActionType.GenericWebhook:
+      return i18next.t('label.webhook');
+    case AlertActionType.SlackWebhook:
+      return i18next.t('label.slack');
+    case AlertActionType.MSTeamsWebhook:
+      return i18next.t('label.ms-teams');
   }
 };

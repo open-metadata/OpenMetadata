@@ -41,7 +41,6 @@ EXPECTED_DATABRICKS_DETAILS = [
         analysisDate=datetime.now(),
         aborted=None,
         serviceName="local_databricks1",
-        databaseName="default",
         databaseSchema=None,
     ),
     TableQuery(
@@ -52,7 +51,6 @@ EXPECTED_DATABRICKS_DETAILS = [
         analysisDate=datetime.now(),
         aborted=None,
         serviceName="local_databricks1",
-        databaseName="default",
         databaseSchema=None,
     ),
     TableQuery(
@@ -63,7 +61,6 @@ EXPECTED_DATABRICKS_DETAILS = [
         analysisDate=datetime.now(),
         aborted=None,
         serviceName="local_databricks1",
-        databaseName="default",
         databaseSchema=None,
     ),
     TableQuery(
@@ -74,7 +71,6 @@ EXPECTED_DATABRICKS_DETAILS = [
         analysisDate=datetime.now(),
         aborted=None,
         serviceName="local_databricks1",
-        databaseName="default",
         databaseSchema=None,
     ),
 ]

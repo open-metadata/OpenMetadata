@@ -3096,6 +3096,9 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension")
     String getExtension(@Bind("entityFQN") String entityId, @Bind("extension") String extension);
 
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
+    List<String> getExtension(@Bind("entityFQN") String entityFQN);
+
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
     String getExtensionAtTimestamp(

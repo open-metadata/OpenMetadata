@@ -139,7 +139,7 @@
     "exclude": "Exclude",
     "enable-column-profile": "Enable column profile",
     "profile-sample-query": "Profile Sample Query",
-    "profile-sample-percentage": "Profile Sample %",
+    "profile-sample-type": "Profile Sample {{type}}",
     "save": "Save",
     "all": "All",
     "run": "Run",
@@ -186,6 +186,7 @@
     "data-insight-total-entity-summary": "Total Data Assets",
     "user": "User",
     "team": "Team",
+    "percentage": "Percentage",
     "most-recent-session": "Most Recent Session",
     "total-session": "Total Sessions",
     "average-session": "Avg. Session Time",
@@ -309,6 +310,7 @@
     "detail-plural": "Details",
     "ingestion": "Ingestion",
     "add-workflow-ingestion": "Add {{workflow}} Ingestion",
+    "edit-workflow-ingestion": "Edit {{workflow}} Ingestion",
     "clear-all": "Clear All",
     "view-less": "View less",
     "view-more": "View more",
@@ -408,7 +410,6 @@
     "edit-team-type": "Edit Team Type",
     "configure-webhook-type": "Configure {{webhookType}} Webhooks",
     "ms-teams": "MS Teams",
-    "ms-team": "MS Team",
     "bot": "Bot",
     "bot-plural": "Bots",
     "policy-name": "Policy name",
@@ -548,6 +549,9 @@
     "table-profile": "Table Profile",
     "column-profile": "Column Profile",
     "applied-advanced-search": "Applied advanced search",
+    "row-count-lowercase": "row count",
+    "row": "Row",
+    "please-enter-value": "Please enter {{name}} value",
     "select-data-assets": "Select Data Assets",
     "profiler-timeout-seconds-label": "Timeout in Seconds",
     "add-deploy": "Add & Deploy",
@@ -584,7 +588,18 @@
     "completed-description": "Completed Description",
     "assigned-entity": "Assigned {{entity}}",
     "total-assets-view": "Total Assets View",
-    "total-active-user": "Total Active User"
+    "total-active-user": "Total Active User",
+    "elastic-search-re-index": "ElasticSearchReindex",
+    "alert-actions": "Alert Actions",
+    "test-results": "Test Results",
+    "send-to": "Send to",
+    "receiver-plural": "Receivers",
+    "admin-plural": "Admins",
+    "owner-plural": "Owners",
+    "follower-plural": "Followers",
+    "email-plural": "Emails",
+    "no-tier": "No Tier",
+    "dbt-run-result-http-path": "DBT Run Results HTTP Path"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -705,11 +720,15 @@
     "profiler-timeout-seconds-message": "Optional number setting the timeout in seconds for the profiler. If the timeout is reached the profiler will wait for any pending queries to terminated its execution.",
     "instance-identifier": "Name that identifies this configuration instance uniquely.",
     "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files.",
+    "profile-sample-percentage-message": "Set the Profiler value as percentage",
+    "profile-sample-row-count-message": " Set the Profiler value as row count",
     "no-profiler-enabled-summary-message": "Profiler is not enabled for the table.",
     "alerts-description": "Stay current with timely alerts using webhooks.",
     "alerts-destination-description": "Send notifications to Slack, MS Teams, Email, or and use Webhooks.",
     "alerts-trigger-description": "Trigger for all data assets or a specific entity.",
-    "alerts-filter-description": "Specify the change events to narrow the scope of your alerts."
+    "alerts-filter-description": "Specify the change events to narrow the scope of your alerts.",
+    "length-validator-error": "At least {{length}} {{field}} required",
+    "dbt-run-result-http-path-message": "DBT run results http path to extract the test results information."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
@@ -729,7 +748,8 @@
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "team-moved-error": "Error while moving team",
     "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
-    "create-entity-success": "{{entity}} created successfully."
+    "create-entity-success": "{{entity}} created successfully.",
+    "update-entity-success": "{{entity}} updated successfully."
   },
   "url": {}
 }

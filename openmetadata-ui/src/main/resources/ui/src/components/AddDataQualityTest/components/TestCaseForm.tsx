@@ -241,6 +241,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       form={form}
       layout="vertical"
       name="tableTestForm"
+      preserve={false}
       onFinish={handleFormSubmit}
       onValuesChange={handleValueChange}>
       <Form.Item

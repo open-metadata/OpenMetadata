@@ -267,7 +267,7 @@ export const getAdvancedFieldDefaultOptions = (
 export const getEntityCount = async (
   path: string,
   database?: string
-): Promise<AxiosResponse<{ paging: Paging }>> => {
+): Promise<{ paging: Paging }> => {
   const params = { database, limit: 0 };
 
   const response = await APIClient.get(`/${path}`, { params });

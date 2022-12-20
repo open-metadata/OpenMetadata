@@ -25,6 +25,7 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
+import { PIPELINE_TYPE_LOCALISATION } from '../../constants/Ingestions.constant';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { Connection } from '../../generated/entity/services/databaseService';
 import {
@@ -276,6 +277,32 @@ const Ingestion: React.FC<IngestionProps> = ({
     );
   };
 
+  const getAddIngestionName = (type: PipelineType): string => {
+    let name;
+    switch (type) {
+      case PipelineType.ElasticSearchReindex:
+        name = t('label.add-entity', {
+          entity: t('labe.elastic-search-re-index'),
+        });
+
+        break;
+
+      case PipelineType.Dbt:
+        name = t('label.add-workflow-ingestion', {
+          workflow: t('label.dbt-uppercase'),
+        });
+
+        break;
+
+      default:
+        name = t('label.add-workflow-ingestion', {
+          workflow: t(`label.${PIPELINE_TYPE_LOCALISATION[type]}`),
+        });
+    }
+
+    return name;
+  };
+
   const getAddIngestionDropdown = (types: PipelineType[]) => {
     return (
       <Fragment>
@@ -308,15 +335,11 @@ const Ingestion: React.FC<IngestionProps> = ({
           <DropDownList
             horzPosRight
             dropDownList={types.map((type) => ({
+              name: getAddIngestionName(type),
               disabled:
                 type === PipelineType.DataInsight
                   ? isDataSightIngestionExists
                   : false,
-              name: `${t('label.add')} ${startCase(type)} ${
-                type === PipelineType.ElasticSearchReindex
-                  ? ''
-                  : t('label.ingestion')
-              }`,
               value: type,
             }))}
             onSelect={(_e, value) =>

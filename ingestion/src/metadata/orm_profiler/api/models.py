@@ -15,7 +15,7 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -24,6 +24,7 @@ from metadata.generated.schema.api.data.createTableProfile import (
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
+    ProfileSampleType,
     Table,
     TableData,
 )
@@ -42,10 +43,18 @@ class TableConfig(ConfigModel):
     """table profile config"""
 
     fullyQualifiedName: FullyQualifiedEntityName
-    profileSample: Optional[float] = None
+    profileSample: Optional[Union[float, int]] = None
+    profileSampleType: Optional[ProfileSampleType] = None
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]
+
+
+class ProfileSampleConfig(ConfigModel):
+    """Profile Sample Config"""
+
+    profile_sample: Optional[Union[float, int]] = None
+    profile_sample_type: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
 
 
 class ProfilerProcessorConfig(ConfigModel):
