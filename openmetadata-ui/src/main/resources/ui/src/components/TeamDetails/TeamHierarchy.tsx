@@ -141,7 +141,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         }
       },
     }),
-    [onTeamExpand, getTableExpandableConfig]
+    [onTeamExpand]
   );
 
   return (
