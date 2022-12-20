@@ -12,6 +12,7 @@
  */
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DbtConfig } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
   errorMsg,
@@ -50,6 +51,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   handleUpdateDescriptions,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
+  const { t } = useTranslation();
 
   const validate = (data: DbtConfig) => {
     const { isValid, errors: reqErrors } = validateDbtHttpConfig(data);
@@ -115,10 +117,10 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="run-result-file">
-          DBT Run Results File Path
+          {t('label.dbt-run-result-http-path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT run results file path to extract the test results information.
+          {t('message.dbt-run-result-http-path-message')}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"

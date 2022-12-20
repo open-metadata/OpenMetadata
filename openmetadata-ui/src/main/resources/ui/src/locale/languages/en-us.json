@@ -598,7 +598,8 @@
     "owner-plural": "Owners",
     "follower-plural": "Followers",
     "email-plural": "Emails",
-    "no-tier": "No Tier"
+    "no-tier": "No Tier",
+    "dbt-run-result-http-path": "DBT Run Results HTTP Path"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -726,7 +727,8 @@
     "alerts-destination-description": "Send notifications to Slack, MS Teams, Email, or and use Webhooks.",
     "alerts-trigger-description": "Trigger for all data assets or a specific entity.",
     "alerts-filter-description": "Specify the change events to narrow the scope of your alerts.",
-    "length-validator-error": "At least {{length}} {{field}} required"
+    "length-validator-error": "At least {{length}} {{field}} required",
+    "dbt-run-result-http-path-message": "DBT run results http path to extract the test results information."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

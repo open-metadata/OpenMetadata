@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         py-version: ['3.9']
-        e2e-test: ['mysql', 'bigquery']
+        e2e-test: ['mysql', 'bigquery', 'snowflake']
     environment: e2e
 
     steps:
@@ -73,6 +73,11 @@ jobs:
         E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.E2E_BQ_PRIVATE_KEY_ID }}
         E2E_BQ_CLIENT_EMAIL: ${{ secrets.E2E_BQ_CLIENT_EMAIL }}
         E2E_BQ_CLIENT_ID: ${{ secrets.E2E_BQ_CLIENT_ID }}
+        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.E2E_SNOWFLAKE_PASSWORD }}
+        E2E_SNOWFLAKE_USERNAME: ${{ secrets.E2E_SNOWFLAKE_USERNAME }}
+        E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.E2E_SNOWFLAKE_ACCOUNT }}
+        E2E_SNOWFLAKE_DATABASE: ${{ secrets.E2E_SNOWFLAKE_DATABASE }}
+        E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.E2E_SNOWFLAKE_WAREHOUSE }}
       run: |
         source env/bin/activate
         python -m pytest -c ingestion/setup.cfg ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py

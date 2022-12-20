@@ -781,7 +781,7 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
-        <div className="tw--mt-4 tw-px-1.5 tw-flex tw-justify-between">
+        <div className="px-1.5 flex justify-between">
           <div className="tw-relative">
             <AntDButton
               className="flex items-center p-0"
@@ -813,7 +813,7 @@ const Users = ({
             </Space>
           ) : null}
         </div>
-        <div className="tw-mt-3.5">
+        <div className="m-t-xs">
           <ActivityFeedList
             hideFeedFilter
             hideThreadFilter
@@ -983,7 +983,7 @@ const Users = ({
 
   return (
     <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
-      <div className="tw-mb-10">
+      <div className="m-b-md">
         <TabsPane
           activeTab={activeTab}
           className="tw-flex-initial"

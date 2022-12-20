@@ -110,6 +110,13 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
 
   return (
     <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>
+      <Col data-testid="row-metrics" span={24}>
+        <ProfilerDetailsCard
+          chartCollection={rowCountMetrics}
+          curveType="stepAfter"
+          name="rowCount"
+        />
+      </Col>
       <Col span={24}>
         <Card
           className="rounded-6 border-1"
@@ -144,13 +151,6 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
             </Col>
           </Row>
         </Card>
-      </Col>
-      <Col data-testid="row-metrics" span={24}>
-        <ProfilerDetailsCard
-          chartCollection={rowCountMetrics}
-          curveType="stepAfter"
-          name="rowCount"
-        />
       </Col>
     </Row>
   );
