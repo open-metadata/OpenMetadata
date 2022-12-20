@@ -24,6 +24,7 @@ from metadata.generated.schema.api.data.createTableProfile import (
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
+    ProfileSampleType,
     Table,
     TableData,
 )
@@ -42,11 +43,18 @@ class TableConfig(ConfigModel):
     """table profile config"""
 
     fullyQualifiedName: FullyQualifiedEntityName
-    profileSample: Optional[float] = None
-    profileSampleRows: Optional[Union[float, int]] = None
+    profileSample: Optional[Union[float, int]] = None
+    profileSampleType: Optional[ProfileSampleType] = None
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]
+
+
+class ProfileSampleConfig(ConfigModel):
+    """Profile Sample Config"""
+
+    profile_sample: Optional[Union[float, int]] = None
+    profile_sample_type: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
 
 
 class ProfilerProcessorConfig(ConfigModel):

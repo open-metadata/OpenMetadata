@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 
 
@@ -37,8 +38,7 @@ class ProfilerInterfaceArgs(BaseModel):
     ometa_client: Optional[OpenMetadata]
     thread_count: Optional[float]
     table_entity: Optional[Union[Table, Any]]
-    table_sample_percentage: Optional[Union[float, int]]
-    table_sample_rows: Optional[int]
+    profile_sample_config: Optional[ProfileSampleConfig] = None
     table_sample_query: Optional[Union[int, str]]
     table_partition_config: Optional[PartitionProfilerConfig]
     timeout_seconds: Optional[int]

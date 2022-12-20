@@ -28,7 +28,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
-import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -189,23 +188,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         getChangeEvent(withHref(uriInfo, ingestionPipeline), change, entityType, ingestionPipeline.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
-  }
-
-  public IngestionPipeline checkProfileSampleType(IngestionPipeline ingestionPipeline) throws IOException {
-    if (ingestionPipeline.getPipelineType().value().equals("profiler")) {
-      JSONObject origSourceConfig =
-          new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-      if (origSourceConfig.has("profileSample") && origSourceConfig.has("profileSampleRows")) {
-        //        Default to percentage
-        JSONObject newSourceConfig =
-            new JSONObject().put("config", origSourceConfig.put("profileSampleRows", (Integer) null));
-        SourceConfig sc = JsonUtils.readValue(newSourceConfig.toString(), SourceConfig.class);
-        ingestionPipeline.setSourceConfig(sc);
-        return ingestionPipeline;
-      }
-    }
-
-    return ingestionPipeline;
   }
 
   public ResultList<PipelineStatus> listPipelineStatus(String ingestionPipelineFQN, Long startTs, Long endTs)

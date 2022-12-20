@@ -14,13 +14,13 @@
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
-import { ProfileSampleType } from '../enums/Profiler.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
   DataType,
   PartitionIntervalType,
   PartitionIntervalUnit,
+  ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { JSON_TAB_SIZE } from './constants';
@@ -270,12 +270,12 @@ export const INTERVAL_UNIT_OPTIONS = Object.values(PartitionIntervalUnit).map(
 export const PROFILE_SAMPLE_OPTIONS = [
   {
     label: t('label.percentage'),
-    key: ProfileSampleType.SAMPLE_PERCENTAGE,
-    value: ProfileSampleType.SAMPLE_PERCENTAGE,
+    key: ProfileSampleType.Percentage,
+    value: ProfileSampleType.Percentage,
   },
   {
     label: t('label.row-count'),
-    key: ProfileSampleType.SAMPLE_ROW,
-    value: ProfileSampleType.SAMPLE_ROW,
+    key: ProfileSampleType.Rows,
+    value: ProfileSampleType.Rows,
   },
 ];

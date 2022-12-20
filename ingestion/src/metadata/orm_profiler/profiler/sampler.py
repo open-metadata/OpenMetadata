@@ -18,7 +18,8 @@ from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import Dialects
@@ -37,13 +38,15 @@ class Sampler:
         self,
         session: Optional[Session],
         table: DeclarativeMeta,
-        profile_sample_percentage: Optional[float] = None,
-        profile_sample_rows: Optional[int] = None,
+        profile_sample_config: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
-        self.profile_sample_percentage = profile_sample_percentage
-        self.profile_sample_rows = profile_sample_rows
+        self.profile_sample = None
+        self.profile_sample_type = None
+        if profile_sample_config:
+            self.profile_sample = profile_sample_config.profile_sample
+            self.profile_sample_type = profile_sample_config.profile_sample_type
         self.session = session
         self.table = table
         self._partition_details = partition_details
@@ -53,14 +56,20 @@ class Sampler:
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
+        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+            return (
+                self.session.query(
+                    self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
+                )
+                .suffix_with(
+                    f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
+                    dialect=Dialects.Snowflake,
+                )
+                .cte(f"{self.table.__tablename__}_rnd")
+            )
         return (
-            self.session.query(
-                self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
-            )
-            .suffix_with(
-                f"SAMPLE BERNOULLI ({self.profile_sample_percentage or self.profile_sample_rows or 100})",
-                dialect=Dialects.Snowflake,
-            )
+            self.session.query(self.table)
+            .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )
 
@@ -72,7 +81,7 @@ class Sampler:
         if self._profile_sample_query:
             return self._fetch_sample_data_with_query_object()
 
-        if not self.profile_sample_percentage and not self.profile_sample_rows:
+        if not self.profile_sample:
             if self._partition_details:
                 return self._random_sample_for_partitioned_tables()
 
@@ -80,19 +89,14 @@ class Sampler:
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
+        session_query = self.session.query(rnd)
 
         # Prepare sampled CTE
-        profile_sample = (
-            self.profile_sample_percentage
-            if self.profile_sample_percentage
-            else self.profile_sample_rows
-        )
-        sampled = (
-            self.session.query(rnd)
-            .where(rnd.c.random <= profile_sample)
-            .cte(f"{self.table.__tablename__}_sample")
-        )
-
+        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+            sampled = session_query.where(rnd.c.random <= self.profile_sample)
+        else:
+            sampled = session_query
+        sampled = sampled.cte(f"{self.table.__tablename__}_sample")
         # Assign as an alias
         return aliased(self.table, sampled)
 

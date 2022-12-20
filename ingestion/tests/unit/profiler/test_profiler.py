@@ -256,4 +256,3 @@ class ProfilerTest(TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         os.remove(cls.db_path)
-        return super().tearDownClass()

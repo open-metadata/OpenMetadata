@@ -14,13 +14,13 @@
 import { Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
-import React, { Fragment, useRef, useState } from 'react';
+import React, { Fragment, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
-import { ProfileSampleType } from '../../../enums/Profiler.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { ProfileSampleType } from '../../../generated/entity/data/table';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -90,25 +90,15 @@ const ConfigureIngestion = ({
   onCancel,
   onNext,
   formType,
-  profileSampleRows,
-  onProfileSampleRowChange,
+  profileSampleType,
+  handleProfileSampleType,
 }: ConfigureIngestionProps) => {
   const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
-  const [selectedProfileSampleType, setSelectedProfileSampleType] =
-    useState<ProfileSampleType>(
-      profileSampleRows
-        ? ProfileSampleType.SAMPLE_ROW
-        : ProfileSampleType.SAMPLE_PERCENTAGE
-    );
 
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
-    setSelectedProfileSampleType(value);
-    if (value === ProfileSampleType.SAMPLE_PERCENTAGE) {
-      onProfileSampleRowChange(undefined);
-    } else if (value === ProfileSampleType.SAMPLE_ROW) {
-      handleProfileSample(undefined);
-    }
+    handleProfileSampleType(value);
+    handleProfileSample(undefined);
   };
 
   const getIngestSampleToggle = (label: string, desc: string) => {
@@ -152,7 +142,7 @@ const ConfigureIngestion = ({
       <>
         <Form.Item
           className="m-t-sm"
-          initialValue={selectedProfileSampleType}
+          initialValue={profileSampleType || ProfileSampleType.Percentage}
           label={t('label.profile-sample', {
             type: 'Type',
           })}
@@ -160,7 +150,7 @@ const ConfigureIngestion = ({
           <Select
             data-testid="profile-sample"
             options={PROFILE_SAMPLE_OPTIONS}
-            value={selectedProfileSampleType}
+            value={profileSampleType}
             onChange={handleProfileSampleTypeChange}
           />
         </Form.Item>
@@ -170,21 +160,20 @@ const ConfigureIngestion = ({
             type: 'Value',
           })}
           name="profile-sample-value">
-          {selectedProfileSampleType ===
-            ProfileSampleType.SAMPLE_PERCENTAGE && (
+          {profileSampleType === ProfileSampleType.Percentage && (
             <>
               <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
                 {t('message.profile-sample-percentage-message')}
               </Typography.Paragraph>
               <SliderWithInput
-                value={profileSample || 0}
-                onChange={(value: number) =>
+                value={profileSample || 100}
+                onChange={(value: number | null) =>
                   handleProfileSample(value ?? undefined)
                 }
               />
             </>
           )}
-          {selectedProfileSampleType === ProfileSampleType.SAMPLE_ROW && (
+          {profileSampleType === ProfileSampleType.Rows && (
             <>
               <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
                 {t('message.profile-sample-row-count-message')}
@@ -196,10 +185,8 @@ const ConfigureIngestion = ({
                 placeholder={t('label.please-enter-value', {
                   name: t('label.row-count-lowercase'),
                 })}
-                value={profileSampleRows}
-                onChange={(value) =>
-                  onProfileSampleRowChange(value ?? undefined)
-                }
+                value={profileSample}
+                onChange={(value) => handleProfileSample(value ?? undefined)}
               />
             </>
           )}
