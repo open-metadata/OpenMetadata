@@ -17,7 +17,6 @@ import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilde
 import org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.type.EntityReference;
@@ -120,7 +119,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     BoolQueryBuilder searchQueryFiler = new BoolQueryBuilder();
 
     if (team != null && SUPPORTS_TEAM_FILTER.contains(dataInsightChartName)) {
-      List<String> teamArray = CommonUtil.listOf(team);
+      List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
 
       BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
       teamQueryFilter.should(QueryBuilders.termsQuery(DATA_TEAM, teamArray));
@@ -128,7 +127,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
     }
 
     if (tier != null && SUPPORTS_TIER_FILTER.contains(dataInsightChartName)) {
-      List<String> tierArray = CommonUtil.listOf(tier);
+      List<String> tierArray = Arrays.asList(tier.split("\\s*,\\s*"));
 
       BoolQueryBuilder tierQueryFilter = QueryBuilders.boolQuery();
       tierQueryFilter.should(QueryBuilders.termsQuery(DATA_ENTITY_TIER, tierArray));
