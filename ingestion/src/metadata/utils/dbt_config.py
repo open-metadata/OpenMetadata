@@ -79,12 +79,7 @@ def _(config: DbtLocalConfig):
             )
             with open(config.dbtManifestFilePath, "r", encoding="utf-8") as manifest:
                 dbt_manifest = manifest.read()
-        # Need to also check if the file path is an empty string or not
-        # Because UI sends an empty string if nothing is passed in the field
-        if (
-            config.dbtRunResultsFilePath is not None
-            and config.dbtRunResultsFilePath != ""
-        ):
+        if config.dbtRunResultsFilePath:
             logger.debug(
                 f"Reading [dbtRunResultsFilePath] from: {config.dbtRunResultsFilePath}"
             )
@@ -92,7 +87,7 @@ def _(config: DbtLocalConfig):
                 config.dbtRunResultsFilePath, "r", encoding="utf-8"
             ) as run_results:
                 dbt_run_results = run_results.read()
-        if config.dbtCatalogFilePath is not None and config.dbtCatalogFilePath != "":
+        if config.dbtCatalogFilePath:
             logger.debug(
                 f"Reading [dbtCatalogFilePath] from: {config.dbtCatalogFilePath}"
             )
@@ -118,12 +113,7 @@ def _(config: DbtHttpConfig):
             config.dbtManifestHttpPath
         )
         dbt_run_results = None
-        # Need to also check if the file path is an empty string or not
-        # Because UI sends an empty string if nothing is passed in the field
-        if (
-            config.dbtRunResultsHttpPath is not None
-            and config.dbtRunResultsHttpPath != ""
-        ):
+        if config.dbtRunResultsHttpPath:
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
@@ -132,7 +122,7 @@ def _(config: DbtHttpConfig):
             )
 
         dbt_catalog = None
-        if config.dbtCatalogHttpPath is not None and config.dbtCatalogHttpPath != "":
+        if config.dbtCatalogHttpPath:
             logger.debug(
                 f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}"
             )
