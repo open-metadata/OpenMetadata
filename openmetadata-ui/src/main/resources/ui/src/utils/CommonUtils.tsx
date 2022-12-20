@@ -469,7 +469,23 @@ export const getEntityMissingError = (entityType: string, fqn: string) => {
 };
 
 export const getNameFromFQN = (fqn: string): string => {
-  const arr = fqn.split(FQN_SEPARATOR_CHAR);
+  let arr: string[] = [];
+
+  // Check for fqn containing name inside double quotes which can contain special characters such as '/', '.' etc.
+  // Example: sample_data.example_table."example.sample/fqn"
+
+  // Regular expression which matches pattern like '."some content"' at the end of string
+  // Example in string 'sample_data."example_table"."example.sample/fqn"',
+  // this regular expression  will match '."example.sample/fqn"'
+  const regexForQuoteInFQN = /(\."[^"]+")$/g;
+
+  if (regexForQuoteInFQN.test(fqn)) {
+    arr = fqn.split('"');
+
+    return arr[arr.length - 2];
+  }
+
+  arr = fqn.split(FQN_SEPARATOR_CHAR);
 
   return arr[arr.length - 1];
 };
