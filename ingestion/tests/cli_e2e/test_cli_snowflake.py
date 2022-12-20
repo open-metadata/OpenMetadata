@@ -21,6 +21,9 @@ from .test_cli_db_base_common import CliCommonDB
 
 
 class SnowflakeCliTest(CliCommonDB.TestSuite):
+    """
+    Snowflake CLI Tests
+    """
 
     create_table_query: str = """
         CREATE TABLE E2E_DB.e2e_test.persons (
@@ -62,7 +65,6 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
-
 
     def create_table_and_view(self) -> None:
         with self.engine.connect() as connection:
