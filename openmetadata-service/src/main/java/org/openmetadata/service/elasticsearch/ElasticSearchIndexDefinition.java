@@ -37,6 +37,9 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class ElasticSearchIndexDefinition {
   private static final String REASON_TRACE = "Reason: [%s] , Trace : [%s]";
+  public static final String ENTITY_REPORT_DATA = "entityReportData";
+  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
+  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
@@ -203,6 +206,12 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TAG)) {
       return ElasticSearchIndexType.TAG_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
+      return ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
+      return ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
+      return ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }

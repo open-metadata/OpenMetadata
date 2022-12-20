@@ -61,7 +61,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
             else None
         )
 
-        self.profile_sample = profiler_interface_args.table_sample_precentage
+        self.profile_sample_config = profiler_interface_args.profile_sample_config
         self.profile_query = profiler_interface_args.table_sample_query
         self.partition_details = None
         self._table = profiler_interface_args.table_entity
@@ -259,7 +259,7 @@ class DataLakeProfilerInterface(ProfilerProtocol):
         sampler = DatalakeSampler(
             session=self.client,
             table=self.data_frame_list,
-            profile_sample=self.profile_sample,
+            profile_sample=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )

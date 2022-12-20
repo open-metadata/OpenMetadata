@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RowProps } from 'antd/lib/grid/row';
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
@@ -23,9 +24,16 @@ import {
 
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
-  right: 20,
-  left: 10,
+  right: 30,
+  left: 0,
   bottom: 5,
+};
+
+export const DI_STRUCTURE = {
+  rowContainerGutter: 32 as RowProps['gutter'],
+  leftContainerSpan: 19,
+  rightContainerSpan: 5,
+  rightRowGutter: [8, 16] as RowProps['gutter'],
 };
 
 export const DATA_INSIGHT_GRAPH_COLORS = [
@@ -93,6 +101,15 @@ export const TIER_FILTER = {
   [i18n.t('label.tier-number', { tier: 3 })]: 'Tier.Tier3',
   [i18n.t('label.tier-number', { tier: 4 })]: 'Tier.Tier4',
   [i18n.t('label.tier-number', { tier: 5 })]: 'Tier.Tier5',
+};
+
+export const TIER_DATA = {
+  'Tier.Tier1': i18n.t('label.tier-number', { tier: 1 }),
+  'Tier.Tier2': i18n.t('label.tier-number', { tier: 2 }),
+  'Tier.Tier3': i18n.t('label.tier-number', { tier: 3 }),
+  'Tier.Tier4': i18n.t('label.tier-number', { tier: 4 }),
+  'Tier.Tier5': i18n.t('label.tier-number', { tier: 5 }),
+  NoTier: i18n.t('label.no-tier'),
 };
 
 export const INITIAL_CHART_FILTER: ChartFilter = {

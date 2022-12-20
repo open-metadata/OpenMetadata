@@ -132,9 +132,9 @@ def _(config: DbtHttpConfig):
         if not dbt_manifest:
             raise DBTConfigException("Menifest file not found in file server")
         return DbtFiles(
-            dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
-            dbt_manifest=json.loads(dbt_manifest),
-            dbt_run_results=json.loads(dbt_run_results) if dbt_run_results else None,
+            dbt_catalog=dbt_catalog.json() if dbt_catalog else None,
+            dbt_manifest=dbt_manifest.json(),
+            dbt_run_results=dbt_run_results.json() if dbt_run_results else None,
         )
     except DBTConfigException as exc:
         raise exc

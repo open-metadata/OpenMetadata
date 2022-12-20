@@ -14,30 +14,35 @@ import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
+  Checkbox,
   Col,
+  Collapse,
   Divider,
   Form,
   Input,
   Row,
   Select,
   Space,
-  Switch,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
-import { AxiosError } from 'axios';
-import { get, intersection, isEmpty, map, startCase } from 'lodash';
+import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { createAlertAction } from '../../axiosAPIs/alertActionAPI';
+import {
+  createAlertAction,
+  updateAlertAction,
+} from '../../axiosAPIs/alertActionAPI';
 import {
   createAlert,
+  getAlertActionForAlerts,
   getAlertsFromId,
   getDefaultTriggerConfigs,
   getEntityFilterFunctions,
   getFilterFunctions,
+  updateAlert,
 } from '../../axiosAPIs/alertsAPI';
 import {
   getSearchedUsersAndTeams,
@@ -51,19 +56,26 @@ import {
 import { PROMISE_STATE } from '../../enums/common.enum';
 import { AlertAction } from '../../generated/alerts/alertAction';
 import {
+  AlertFilterRule,
   Alerts,
   AlertTriggerType,
   Effect,
   EntityReference,
+  ProviderType,
   TriggerConfig,
 } from '../../generated/alerts/alerts';
-import { AlertActionType } from '../../generated/alerts/api/createAlertAction';
+import {
+  AlertActionType,
+  CreateAlertAction,
+} from '../../generated/alerts/api/createAlertAction';
 import { EntitySpelFilters } from '../../generated/alerts/entitySpelFilters';
 import { Function } from '../../generated/type/function';
 import {
+  getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
   getDisplayNameForTriggerType,
   getFunctionDisplayName,
+  listLengthValidator,
   StyledCard,
 } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -76,6 +88,8 @@ const AddAlertPage = () => {
   const [form] = useForm<Alerts>();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
+  // To block certain action based on provider of the Alert e.g. System / User
+  const [provider, setProvider] = useState<ProviderType>(ProviderType.User);
 
   const [filterFunctions, setFilterFunctions] = useState<Function[]>();
   const [defaultTriggers, setDefaultTriggers] = useState<Array<TriggerConfig>>(
@@ -88,23 +102,34 @@ const AddAlertPage = () => {
   const fetchAlert = async () => {
     try {
       setLoadingCount((count) => count + 1);
+
       const response: Alerts = await getAlertsFromId(fqn);
+      const alertActions = await getAlertActionForAlerts(response.id);
 
       const requestFilteringRules =
-        response.filteringRules?.map((curr) => ({
-          ...curr,
-          condition: curr.condition
-            .replace(new RegExp(`${curr.name}\\('`), '')
-            .replace(new RegExp(`'\\)`), ''),
-        })) ?? [];
+        response.filteringRules?.map(
+          (curr) =>
+            ({
+              ...curr,
+              condition: curr.condition
+                .replace(new RegExp(`${curr.name}\\('`), '')
+                .replaceAll("'", '')
+                .replace(new RegExp(`\\)`), '')
+                .split(',')
+                .map(trim),
+            } as unknown as AlertFilterRule)
+        ) ?? [];
+
+      setProvider(response.provider ?? ProviderType.User);
 
       form.setFieldsValue({
         ...response,
         filteringRules: requestFilteringRules,
+        alertActions: alertActions as unknown as EntityReference[],
       });
     } catch {
       showErrorToast(
-        t('message.entity-fetch-error', { entity: t('label.alert') }),
+        t('server.entity-fetch-error', { entity: t('label.alert') }),
         fqn
       );
     } finally {
@@ -149,8 +174,60 @@ const AddAlertPage = () => {
     fetchDefaultTriggerConfig();
   }, []);
 
+  const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+
+  const updateCreateAlertActions = async (alertActions: AlertAction[]) => {
+    const api = isEditMode ? updateAlertAction : createAlertAction;
+    if (isEditMode) {
+      if (!form.isFieldTouched(['alertActions'])) {
+        // If destination is not changed return given alertAction as it is
+        return Promise.resolve(
+          alertActions.map((action) => ({
+            id: action.id ?? '',
+            type: 'alertAction',
+          }))
+        );
+      }
+    }
+
+    // Else Create AlertActions and return new IDs
+    const promises =
+      alertActions?.map((action) =>
+        api(
+          pick(action, [
+            'alertActionConfig',
+            'alertActionType',
+            'name',
+            'displayName',
+            'timeout',
+            'batchSize',
+          ]) as CreateAlertAction
+        )
+      ) ?? [];
+
+    const responses = await Promise.allSettled(promises);
+
+    const requestAlertActions: EntityReference[] = responses.map((res) => {
+      if (res.status === PROMISE_STATE.REJECTED) {
+        throw res.reason;
+      }
+
+      return {
+        id: res.status === PROMISE_STATE.FULFILLED ? res.value.id ?? '' : '',
+        type: 'alertAction',
+      };
+    });
+
+    return Promise.resolve(requestAlertActions);
+  };
+
   const handleSave = async (data: Alerts) => {
     const { filteringRules, alertActions } = data;
+    if (!alertActions?.length) {
+      return;
+    }
+
+    const api = isEditMode ? updateAlert : createAlert;
 
     const requestFilteringRules = filteringRules?.map((curr) => ({
       ...curr,
@@ -160,40 +237,31 @@ const AddAlertPage = () => {
       )?.join(', ')})`,
     }));
 
+    const modifiedAlertActions = alertActions?.map(
+      (action) =>
+        ({
+          ...action,
+          name: action.name ?? action.displayName,
+          displayName: action.displayName,
+        } as unknown as AlertAction)
+    );
+
     try {
-      const actions: AlertAction[] =
-        alertActions?.map(
-          (action) =>
-            ({
-              ...action,
-              enabled: true,
-            } as unknown as AlertAction)
-        ) ?? [];
-
-      const promises = actions.map((action) => createAlertAction(action));
-
-      const responses = await Promise.allSettled(promises);
-
-      const requestAlertActions: EntityReference[] = responses.map((res) => {
-        if (res.status === PROMISE_STATE.REJECTED) {
-          throw res.reason;
-        }
-
-        return {
-          id: res.status === PROMISE_STATE.FULFILLED ? res.value.id ?? '' : '',
-          type: 'alertAction',
-        };
-      });
+      const requestAlertActions = await updateCreateAlertActions(
+        modifiedAlertActions
+      );
 
       try {
-        await createAlert({
+        await api({
           ...data,
           filteringRules: requestFilteringRules,
           alertActions: requestAlertActions,
         });
 
         showErrorToast(
-          t('server.create-entity-success', { entity: t('alert-plural') })
+          t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
+            entity: t('label.alert-plural'),
+          })
         );
         history.push(
           getSettingPath(
@@ -203,15 +271,24 @@ const AddAlertPage = () => {
         );
       } catch (error) {
         showErrorToast(
-          t('server.entity-creation-error', {
-            entity: t('label.alert-plural'),
-          }),
-          (error as AxiosError).message
+          t(
+            `server.${
+              isEditMode ? 'entity-updating-error' : 'entity-creation-error'
+            }`,
+            {
+              entity: t('label.alert-plural'),
+            }
+          )
         );
       }
     } catch (error) {
       showErrorToast(
-        t('server.entity-creation-error', { entity: t('label.alert-plural') })
+        t(
+          `server.${
+            isEditMode ? 'entity-updating-error' : 'entity-creation-error'
+          }`,
+          { entity: t('label.alert-plural') }
+        )
       );
     }
   };
@@ -222,7 +299,7 @@ const AddAlertPage = () => {
 
       return response.hits.hits.map((d) => ({
         label: d._source.displayName ?? d._source.name,
-        value: d._source.id,
+        value: d._source.fullyQualifiedName,
       }));
     } catch (error) {
       return [];
@@ -313,35 +390,169 @@ const AddAlertPage = () => {
 
   // Watchers
   const filters = Form.useWatch(['filteringRules'], form);
-  const alertActions = Form.useWatch(['alertActions'], form);
   const entitySelected = Form.useWatch(['triggerConfig', 'entities'], form);
   const trigger = Form.useWatch(['triggerConfig', 'type'], form);
+  const alertActions = Form.useWatch(['alertActions'], form);
 
   // Run time values needed for conditional rendering
   const functions = useMemo(() => {
     if (entityFunctions) {
+      const exitingFunctions = filters?.map((f) => f.name) ?? [];
+      let supportedFunctions: string[][] = [];
+
       if (!trigger || trigger === AlertTriggerType.AllDataAssets) {
-        return entityFunctions['all'].supportedFunctions.sort();
+        supportedFunctions = [entityFunctions['all'].supportedFunctions];
+      } else {
+        supportedFunctions =
+          entitySelected?.map(
+            (entity) =>
+              entityFunctions[entity as unknown as string].supportedFunctions
+          ) ?? [];
       }
 
-      const arrFunctions = entitySelected?.map(
-        (entity) =>
-          entityFunctions[entity as unknown as string].supportedFunctions
-      );
+      const functions = intersection(...supportedFunctions)
+        .sort()
+        .map((func) => ({
+          label: getFunctionDisplayName(func),
+          value: func,
+          disabled: exitingFunctions.includes(func),
+        }));
 
-      const functions = arrFunctions
-        ? intersection(...arrFunctions).sort()
-        : [];
-
-      return functions as string[];
+      return functions as DefaultOptionType[];
     }
 
     return [];
-  }, [entitySelected, entityFunctions]);
+  }, [entitySelected, entityFunctions, filters]);
 
   const selectedTrigger = useMemo(
     () => defaultTriggers.find(({ type }) => trigger === type),
     [defaultTriggers, trigger]
+  );
+
+  const handleChange = (changedValues: Partial<Alerts>) => {
+    const { triggerConfig } = changedValues;
+    if (triggerConfig?.entities || triggerConfig?.type) {
+      form.resetFields(['filteringRules', 'condition']);
+    }
+  };
+
+  const getDestinationConfigFields = useCallback(
+    (name: number) => {
+      const alertActionType = get(alertActions, [name, 'alertActionType']);
+      if (alertActions && alertActions[name]) {
+        switch (alertActionType) {
+          case AlertActionType.Email:
+            return (
+              <>
+                <Form.Item
+                  required
+                  label={t('label.name')}
+                  labelCol={{ span: 24 }}
+                  name={[name, 'displayName']}>
+                  <Input
+                    disabled={provider === ProviderType.System}
+                    placeholder={t('label.name')}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label={t('label.receiver-plural')}
+                  labelCol={{ span: 24 }}
+                  name={[name, 'alertActionConfig', 'receivers']}>
+                  <Select
+                    showSearch
+                    mode="tags"
+                    open={false}
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.email-plural'),
+                    })}
+                  />
+                </Form.Item>
+                <Space align="baseline">
+                  <label>{t('label.send-to')}:</label>
+                  <Form.Item
+                    name={[name, 'alertActionConfig', 'sendToAdmins']}
+                    valuePropName="checked">
+                    <Checkbox>{t('label.admin-plural')}</Checkbox>
+                  </Form.Item>
+                  <Form.Item
+                    name={[name, 'alertActionConfig', 'sendToOwners']}
+                    valuePropName="checked">
+                    <Checkbox>{t('label.owner-plural')}</Checkbox>
+                  </Form.Item>
+                  <Form.Item
+                    name={[name, 'alertActionConfig', 'sendToFollowers']}
+                    valuePropName="checked">
+                    <Checkbox>{t('label.follower-plural')}</Checkbox>
+                  </Form.Item>
+                </Space>
+              </>
+            );
+          case AlertActionType.GenericWebhook:
+          case AlertActionType.SlackWebhook:
+          case AlertActionType.MSTeamsWebhook:
+            return (
+              <>
+                <Form.Item required name={[name, 'displayName']}>
+                  <Input
+                    disabled={provider === ProviderType.System}
+                    placeholder={t('label.name')}
+                  />
+                </Form.Item>
+                <Form.Item
+                  required
+                  name={[name, 'alertActionConfig', 'endpoint']}>
+                  <Input
+                    disabled={provider === ProviderType.System}
+                    placeholder={
+                      t('label.endpoint-url') +
+                      ': ' +
+                      'http(s)://www.example.com'
+                    }
+                  />
+                </Form.Item>
+
+                <Collapse ghost>
+                  <Collapse.Panel
+                    header={`${t('label.advanced-config')}:`}
+                    key="1">
+                    <Space>
+                      <Form.Item
+                        initialValue={10}
+                        label="Batch Size"
+                        labelCol={{ span: 24 }}
+                        name={[name, 'batchSize']}>
+                        <Input disabled={provider === ProviderType.System} />
+                      </Form.Item>
+                      <Form.Item
+                        colon
+                        initialValue={10}
+                        label={`${t(
+                          'label.connection-timeout-plural-optional'
+                        )}`}
+                        labelCol={{ span: 24 }}
+                        name={[name, 'timeout']}>
+                        <Input disabled={provider === ProviderType.System} />
+                      </Form.Item>
+                    </Space>
+                    <Form.Item
+                      label={t('label.secret-key')}
+                      labelCol={{ span: 24 }}
+                      name={[name, 'alertActionConfig', 'secretKey']}>
+                      <Input
+                        disabled={provider === ProviderType.System}
+                        placeholder={t('label.secret-key')}
+                      />
+                    </Form.Item>
+                  </Collapse.Panel>
+                </Collapse>
+              </>
+            );
+        }
+      }
+
+      return <></>;
+    },
+    [alertActions]
   );
 
   return (
@@ -359,14 +570,15 @@ const AddAlertPage = () => {
           <Form<Alerts>
             className="alerts-notification-form"
             form={form}
-            onFinish={handleSave}>
+            onFinish={handleSave}
+            onValuesChange={handleChange}>
             <Card loading={loadingCount > 0}>
               <Form.Item
                 label={t('label.name')}
                 labelCol={{ span: 24 }}
                 name="name"
                 rules={[{ required: true }]}>
-                <Input />
+                <Input disabled={isEditMode} />
               </Form.Item>
               <Form.Item
                 label={t('label.description')}
@@ -375,277 +587,250 @@ const AddAlertPage = () => {
                 rules={[{ required: true }]}>
                 <Input.TextArea />
               </Form.Item>
-
-              <Row gutter={[16, 16]}>
-                <Col span={8}>
-                  <Space className="w-full" direction="vertical" size={16}>
-                    <StyledCard
-                      heading={t('label.trigger')}
-                      subHeading={t('message.alerts-trigger-description')}
-                    />
-                    <div>
-                      <Form.Item
-                        initialValue={AlertTriggerType.AllDataAssets}
-                        name={['triggerConfig', 'type']}>
-                        <Select
-                          options={defaultTriggers.map((trigger) => ({
-                            label: getDisplayNameForTriggerType(trigger.type),
-                            value: trigger.type,
-                          }))}
-                        />
-                      </Form.Item>
-                      {selectedTrigger?.type ===
-                        AlertTriggerType.SpecificDataAsset && (
-                        <Form.Item name={['triggerConfig', 'entities']}>
+              <Form.Item>
+                <Row gutter={[16, 16]}>
+                  <Col span={8}>
+                    <Space className="w-full" direction="vertical" size={16}>
+                      <StyledCard
+                        heading={t('label.trigger')}
+                        subHeading={t('message.alerts-trigger-description')}
+                      />
+                      <div>
+                        <Form.Item
+                          initialValue={AlertTriggerType.AllDataAssets}
+                          name={['triggerConfig', 'type']}>
                           <Select
-                            showArrow
-                            className="w-full"
-                            mode="multiple"
-                            options={
-                              selectedTrigger.entities?.map((entity) => ({
-                                value: entity,
-                                label: startCase(entity),
-                              })) ?? []
-                            }
-                            placeholder={t('label.select-data-assets')}
+                            options={defaultTriggers.map((trigger) => ({
+                              label: getDisplayNameForTriggerType(trigger.type),
+                              value: trigger.type,
+                            }))}
                           />
                         </Form.Item>
-                      )}
-                    </div>
-                  </Space>
-                </Col>
-                <Col span={8}>
-                  <Space className="w-full" direction="vertical" size={16}>
-                    <StyledCard
-                      heading={t('label.filter-plural')}
-                      subHeading={t('message.alerts-filter-description')}
-                    />
+                        {selectedTrigger?.type ===
+                          AlertTriggerType.SpecificDataAsset && (
+                          <Form.Item
+                            required
+                            messageVariables={{
+                              fieldName: t('label.data-assets'),
+                            }}
+                            name={['triggerConfig', 'entities']}>
+                            <Select
+                              showArrow
+                              className="w-full"
+                              mode="multiple"
+                              options={
+                                selectedTrigger.entities?.map((entity) => ({
+                                  value: entity,
+                                  label: startCase(entity),
+                                })) ?? []
+                              }
+                              placeholder={t('label.select-data-assets')}
+                            />
+                          </Form.Item>
+                        )}
+                      </div>
+                    </Space>
+                  </Col>
+                  <Col span={8}>
+                    <Space className="w-full" direction="vertical" size={16}>
+                      <StyledCard
+                        heading={t('label.filter-plural')}
+                        subHeading={t('message.alerts-filter-description')}
+                      />
 
-                    <Form.List name="filteringRules">
-                      {(fields, { add, remove }) => (
-                        <>
-                          {fields.map(({ key, name }) => (
-                            <div key={`filteringRules-${key}`}>
-                              <div className="d-flex gap-1">
-                                <div className="flex-1">
-                                  <Form.Item key={key} name={[name, 'name']}>
-                                    <Select
-                                      options={functions?.map(
-                                        (func: string) => ({
-                                          label: getFunctionDisplayName(func),
-                                          value: func,
-                                        })
+                      <Form.List
+                        name="filteringRules"
+                        rules={[
+                          {
+                            validator: listLengthValidator(
+                              t('label.filter-plural')
+                            ),
+                          },
+                        ]}>
+                        {(fields, { add, remove }, { errors }) => (
+                          <>
+                            <Form.Item>
+                              <Button
+                                block
+                                icon={<PlusOutlined />}
+                                type="default"
+                                onClick={() => add({}, 0)}>
+                                {t('label.add-entity', {
+                                  entity: t('label.filter-plural'),
+                                })}
+                              </Button>
+                            </Form.Item>
+                            {fields.map(({ key, name }) => (
+                              <div key={`filteringRules-${key}`}>
+                                {name > 0 && (
+                                  <Divider
+                                    style={{ margin: 0, marginBottom: '16px' }}
+                                  />
+                                )}
+                                <div className="d-flex gap-1">
+                                  <div className="flex-1">
+                                    <Form.Item key={key} name={[name, 'name']}>
+                                      <Select
+                                        options={functions}
+                                        placeholder={t('label.select-field', {
+                                          field: t('label.condition'),
+                                        })}
+                                      />
+                                    </Form.Item>
+                                    {filters &&
+                                      filters[name] &&
+                                      getConditionField(
+                                        filters[name].name ?? '',
+                                        name
                                       )}
-                                      placeholder={t('label.select-field', {
-                                        field: t('label.condition'),
-                                      })}
-                                    />
-                                  </Form.Item>
-                                  {filters &&
-                                    filters[name] &&
-                                    getConditionField(
-                                      filters[name].name ?? '',
-                                      name
-                                    )}
 
-                                  <Form.Item
-                                    initialValue={Effect.Allow}
-                                    key={key}
-                                    name={[name, 'effect']}>
-                                    <Select
-                                      options={map(Effect, (func: string) => ({
-                                        label: startCase(func),
-                                        value: func,
-                                      }))}
-                                      placeholder={t('label.select-field', {
-                                        field: t('label.effect'),
-                                      })}
-                                    />
-                                  </Form.Item>
+                                    <Form.Item
+                                      initialValue={Effect.Allow}
+                                      key={key}
+                                      name={[name, 'effect']}>
+                                      <Select
+                                        options={map(
+                                          Effect,
+                                          (func: string) => ({
+                                            label: startCase(func),
+                                            value: func,
+                                          })
+                                        )}
+                                        placeholder={t('label.select-field', {
+                                          field: t('label.effect'),
+                                        })}
+                                      />
+                                    </Form.Item>
+                                  </div>
+                                  <Button
+                                    data-testid={`remove-filter-rule-${name}`}
+                                    icon={
+                                      <SVGIcons
+                                        alt={t('label.delete')}
+                                        className="w-4"
+                                        icon={Icons.DELETE}
+                                      />
+                                    }
+                                    type="text"
+                                    onClick={() => remove(name)}
+                                  />
                                 </div>
-                                <Button
-                                  data-testid={`remove-filter-rule-${name}`}
-                                  icon={
-                                    <SVGIcons
-                                      alt={t('label.delete')}
-                                      className="w-4"
-                                      icon={Icons.DELETE}
-                                    />
-                                  }
-                                  type="text"
-                                  onClick={() => remove(name)}
-                                />
                               </div>
-                              {fields.length - 1 !== key && (
-                                <Divider style={{ margin: '8px 0' }} />
-                              )}
-                            </div>
-                          ))}
-                          <Form.Item>
-                            <Button
-                              block
-                              icon={<PlusOutlined />}
-                              type="dashed"
-                              onClick={() => add()}>
-                              {t('label.add-entity', {
-                                entity: t('label.filter-plural'),
-                              })}
-                            </Button>
-                          </Form.Item>
-                        </>
-                      )}
-                    </Form.List>
-                  </Space>
-                </Col>
-                <Col span={8}>
-                  <Space className="w-full" direction="vertical" size={16}>
-                    <StyledCard
-                      heading={t('label.destination')}
-                      subHeading={t('message.alerts-destination-description')}
-                    />
+                            ))}
+                            <Form.ErrorList errors={errors} />
+                          </>
+                        )}
+                      </Form.List>
+                    </Space>
+                  </Col>
+                  <Col span={8}>
+                    <Space className="w-full" direction="vertical" size={16}>
+                      <StyledCard
+                        heading={t('label.destination')}
+                        subHeading={t('message.alerts-destination-description')}
+                      />
 
-                    <Form.List name="alertActions">
-                      {(fields, { add, remove }) => (
-                        <>
-                          {fields.map(({ key, name }) => (
-                            <div key={`alertActions-${key}`}>
-                              <div className="d-flex" style={{ gap: '10px' }}>
-                                <div className="flex-1">
-                                  <Form.Item
-                                    required
-                                    key={key}
-                                    name={[name, 'alertActionType']}>
-                                    <Select
-                                      placeholder={t('label.select-field', {
-                                        field: t('label.source'),
-                                      })}
-                                      showSearch={false}>
-                                      {map(AlertActionType, (value) => {
-                                        return (
-                                          <Select.Option
-                                            key={value}
-                                            value={value}>
-                                            <Space size={16}>
-                                              {getAlertsActionTypeIcon(
-                                                value as AlertActionType
-                                              )}
-                                              {value}
-                                            </Space>
-                                          </Select.Option>
-                                        );
-                                      })}
-                                    </Select>
-                                  </Form.Item>
-                                  <Form.Item required name={[name, 'name']}>
-                                    <Input placeholder={t('label.name')} />
-                                  </Form.Item>
-                                  <Form.Item
-                                    required
-                                    name={[
-                                      name,
-                                      'alertActionConfig',
-                                      'endpoint',
-                                    ]}>
-                                    <Input
-                                      placeholder={
-                                        t('label.endpoint-url') +
-                                        ': ' +
-                                        'http(s)://www.example.com'
-                                      }
-                                    />
-                                  </Form.Item>
-
-                                  <Form.Item
-                                    label={t('label.advanced-config')}
-                                    name={[name, 'enabled']}
-                                    valuePropName="checked">
-                                    <Switch />
-                                  </Form.Item>
-                                  {get(
-                                    alertActions,
-                                    `${name}.enabled`,
-                                    false
-                                  ) && (
-                                    <>
-                                      <Space className="w-full" size={16}>
-                                        <Form.Item
-                                          initialValue={10}
-                                          label="Batch Size"
-                                          labelCol={{ span: 24 }}
-                                          name={[name, 'batchSize']}>
-                                          <Input defaultValue={10} />
-                                        </Form.Item>
-                                        <Form.Item
-                                          colon
-                                          initialValue={10}
-                                          label={`${t(
-                                            'label.connection-timeout-plural-optional'
-                                          )}`}
-                                          labelCol={{ span: 24 }}
-                                          name={[name, 'timeout']}>
-                                          <Input />
-                                        </Form.Item>
-                                      </Space>
-                                      <Form.Item
-                                        label={t('label.secret-key')}
-                                        labelCol={{ span: 24 }}
-                                        name={[
-                                          name,
-                                          'alertActionConfig',
-                                          'secretKey',
-                                        ]}>
-                                        <Input
-                                          placeholder={t('label.secret-key')}
-                                        />
-                                      </Form.Item>
-                                    </>
-                                  )}
+                      <Form.List
+                        name="alertActions"
+                        rules={[
+                          {
+                            validator: listLengthValidator(
+                              t('label.destination')
+                            ),
+                          },
+                        ]}>
+                        {(fields, { add, remove }, { errors }) => (
+                          <>
+                            <Form.Item>
+                              <Button
+                                block
+                                disabled={provider === ProviderType.System}
+                                icon={<PlusOutlined />}
+                                type="default"
+                                onClick={() => add({}, 0)}>
+                                {t('label.add-entity', {
+                                  entity: t('label.destination'),
+                                })}
+                              </Button>
+                            </Form.Item>
+                            {fields.map(({ key, name }) => (
+                              <div key={`alertActions-${key}`}>
+                                {name > 0 && (
+                                  <Divider
+                                    style={{ margin: 0, marginBottom: '16px' }}
+                                  />
+                                )}
+                                <div className="d-flex" style={{ gap: '10px' }}>
+                                  <div className="flex-1">
+                                    <Form.Item
+                                      required
+                                      key={key}
+                                      name={[name, 'alertActionType']}>
+                                      <Select
+                                        disabled={
+                                          provider === ProviderType.System
+                                        }
+                                        placeholder={t('label.select-field', {
+                                          field: t('label.source'),
+                                        })}
+                                        showSearch={false}>
+                                        {map(AlertActionType, (value) => {
+                                          return value ===
+                                            AlertActionType.ActivityFeed ? null : (
+                                            <Select.Option
+                                              key={value}
+                                              value={value}>
+                                              <Space size={16}>
+                                                {getAlertsActionTypeIcon(
+                                                  value as AlertActionType
+                                                )}
+                                                {getAlertActionTypeDisplayName(
+                                                  value
+                                                )}
+                                              </Space>
+                                            </Select.Option>
+                                          );
+                                        })}
+                                      </Select>
+                                    </Form.Item>
+                                    {getDestinationConfigFields(name)}
+                                  </div>
+                                  <Button
+                                    data-testid={`remove-filter-rule-${name}`}
+                                    icon={
+                                      <SVGIcons
+                                        alt={t('label.delete')}
+                                        className="w-4"
+                                        icon={Icons.DELETE}
+                                      />
+                                    }
+                                    type="text"
+                                    onClick={() => remove(name)}
+                                  />
                                 </div>
-                                <Button
-                                  data-testid={`remove-filter-rule-${name}`}
-                                  icon={
-                                    <SVGIcons
-                                      alt={t('label.delete')}
-                                      className="w-4"
-                                      icon={Icons.DELETE}
-                                    />
-                                  }
-                                  type="text"
-                                  onClick={() => remove(name)}
-                                />
                               </div>
-
-                              {fields.length - 1 !== key && <Divider />}
-                            </div>
-                          ))}
-                          <Form.Item>
-                            <Button
-                              block
-                              icon={<PlusOutlined />}
-                              type="dashed"
-                              onClick={() => add()}>
-                              {t('label.add-entity', {
-                                entity: t('label.destination'),
-                              })}
-                            </Button>
-                          </Form.Item>
-                        </>
-                      )}
-                    </Form.List>
-                  </Space>
-                </Col>
-                <Col className="footer" span={24}>
-                  <Button onClick={() => history.goBack()}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button htmlType="submit" type="primary">
-                    {t('label.save')}
-                  </Button>
-                </Col>
-              </Row>
+                            ))}
+                            <Form.ErrorList errors={errors} />
+                          </>
+                        )}
+                      </Form.List>
+                    </Space>
+                  </Col>
+                  <Col className="footer" span={24}>
+                    <Button onClick={() => history.goBack()}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button htmlType="submit" type="primary">
+                      {t('label.save')}
+                    </Button>
+                  </Col>
+                </Row>
+              </Form.Item>
             </Card>
           </Form>
         </Col>
+        <Col span={24} />
+        <Col span={24} />
       </Row>
     </>
   );

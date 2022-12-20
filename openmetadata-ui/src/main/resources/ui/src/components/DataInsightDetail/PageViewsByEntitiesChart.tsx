@@ -35,6 +35,7 @@ import {
 } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
+  DI_STRUCTURE,
   ENTITIES_BAR_COLO_MAP,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -128,8 +129,8 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
         </>
       }>
       {data.length ? (
-        <Row gutter={16}>
-          <Col span={18}>
+        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+          <Col span={DI_STRUCTURE.leftContainerSpan}>
             <ResponsiveContainer debounce={1} minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
@@ -173,13 +174,15 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
               </LineChart>
             </ResponsiveContainer>
           </Col>
-          <Col span={6}>
-            <Row gutter={[8, 8]}>
+          <Col span={DI_STRUCTURE.rightContainerSpan}>
+            <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
                 <CustomStatistic
                   changeInValue={relativePercentage}
                   duration={selectedDays}
-                  label={t('label.total-assets-view')}
+                  label={t('label.total-entity', {
+                    entity: t('label.assets'),
+                  })}
                   value={total}
                 />
               </Col>

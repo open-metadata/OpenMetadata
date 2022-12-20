@@ -19,6 +19,7 @@ import { useHistory } from 'react-router-dom';
 import { getRoles } from '../../../axiosAPIs/rolesAPIV1';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/next-previous/NextPrevious';
+import PageHeader from '../../../components/header/PageHeader.component';
 import Loader from '../../../components/Loader/Loader';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
@@ -28,6 +29,7 @@ import {
   ROUTES,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
@@ -118,7 +120,8 @@ const RolesListPage = () => {
       data-testid="roles-list-container"
       gutter={[16, 16]}>
       <Col span={24}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space className="w-full justify-between">
+          <PageHeader data={PAGE_HEADERS.ROLES} />
           <Tooltip
             placement="left"
             title={addRolePermission ? 'Add Role' : NO_PERMISSION_FOR_ACTION}>

@@ -27,15 +27,7 @@ import {
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import jsonData from '../../../jsons/en';
-import {
-  errorMsg,
-  getSeparator,
-  requiredField,
-} from '../../../utils/CommonUtils';
-import {
-  checkDbtGCSCredsConfigRules,
-  validateDbtGCSCredsConfig,
-} from '../../../utils/DBTConfigFormUtil';
+import { errorMsg, getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
 import {
@@ -105,20 +97,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   const validate = (data: DbtConfig) => {
     let valid = true;
     const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
-    if (gcsType === GCS_CONFIG.GCSValues) {
-      const { isValid: reqValid, errors: reqErr } = validateDbtGCSCredsConfig(
-        (gcsConfig || {}) as GCSCredentialsValues
-      );
-      const { isValid: fieldValid, errors: fieldErr } =
-        checkDbtGCSCredsConfigRules((gcsConfig || {}) as GCSCredentialsValues);
-
-      setErrors({
-        ...fieldErr,
-        ...reqErr,
-      });
-
-      valid = reqValid && fieldValid;
-    } else {
+    if (gcsType !== GCS_CONFIG.GCSValues) {
       if (isEmpty(gcsConfig)) {
         setErrors({
           gcsConfig: `GCS Config ${jsonData['form-error-messages']['is-required']}`,
@@ -150,7 +129,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="credential-type">
-            {requiredField('Credentials Type')}
+            Credentials Type
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud service account type.
@@ -170,7 +149,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="project-id">
-            {requiredField('Project ID')}
+            Project ID
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud project id.
@@ -190,7 +169,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="private-key-id">
-            {requiredField('Private Key ID')}
+            Private Key ID
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud Private key id.
@@ -211,7 +190,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="private-key">
-            {requiredField('Private Key')}
+            Private Key
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud private key.
@@ -231,7 +210,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="client-email">
-            {requiredField('Client Email')}
+            Client Email
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud email.
@@ -251,7 +230,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="client-id">
-            {requiredField('Client ID')}
+            Client ID
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud Client ID.
@@ -269,7 +248,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="auth-uri">
-            {requiredField('Authentication URI')}
+            Authentication URI
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud auth uri.
@@ -287,7 +266,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="token-uri">
-            {requiredField('Token URI')}
+            Token URI
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud token uri.
@@ -307,7 +286,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="auth-x509-certificate-uri">
-            {requiredField('Authentication Provider x509 Certificate URL')}
+            Authentication Provider x509 Certificate URL
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud auth provider certificate.
@@ -330,7 +309,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="client-x509-certificate-uri">
-            {requiredField('Client x509 Certificate URL')}
+            Client x509 Certificate URL
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud client certificate uri.
@@ -358,7 +337,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="gcs-cred-path">
-          {requiredField('GCS Credentials Path')}
+          GCS Credentials Path
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           GCS Credentials Path.

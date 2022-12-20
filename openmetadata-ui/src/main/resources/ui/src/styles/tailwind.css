@@ -362,10 +362,6 @@
     animation: highlight 3000ms ease-out;
   }
 
-  .rotate-inverse {
-    transform: rotate(180deg);
-  }
-
   .rjsf.no-header #root__title,
   .rjsf.no-header #root__description,
   .rjsf .form-additional .control-label,

@@ -76,7 +76,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="catalog-file">
-          {requiredField('DBT Catalog File Path')}
+          DBT Catalog File Path
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT catalog file to extract dbt models with their column schemas.

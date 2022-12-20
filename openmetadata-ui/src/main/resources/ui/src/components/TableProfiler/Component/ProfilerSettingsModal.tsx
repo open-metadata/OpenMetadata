@@ -17,13 +17,12 @@ import {
   InputNumber,
   Modal,
   Select,
-  Slider,
   Space,
   Switch,
   TreeSelect,
 } from 'antd';
 import Form from 'antd/lib/form';
-import { List } from 'antd/lib/form/Form';
+import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -42,16 +41,19 @@ import {
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
   PROFILER_METRIC,
+  PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_PARTITION_TYPE,
 } from '../../../constants/profiler.constant';
 import {
   ColumnProfilerConfig,
   PartitionProfilerConfig,
+  ProfileSampleType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
 import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import SliderWithInput from '../../SliderWithInput/SliderWithInput';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import '../tableProfiler.less';
 
@@ -65,7 +67,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const [form] = Form.useForm();
   const [data, setData] = useState<TableProfilerConfig>();
   const [sqlQuery, setSqlQuery] = useState<string>('');
-  const [profileSample, setProfileSample] = useState<number>(100);
+  const [profileSample, setProfileSample] = useState<number | undefined>(100);
   const [excludeCol, setExcludeCol] = useState<string[]>([]);
   const [includeCol, setIncludeCol] = useState<ColumnProfilerConfig[]>(
     DEFAULT_INCLUDE_PROFILE
@@ -74,6 +76,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const [enablePartition, setEnablePartition] = useState(false);
   const [partitionData, setPartitionData] = useState<PartitionProfilerConfig>();
+  const [selectedProfileSampleType, setSelectedProfileSampleType] = useState<
+    ProfileSampleType | undefined
+  >(ProfileSampleType.Percentage);
 
   const selectOptions = useMemo(() => {
     return columns.map(({ name }) => ({
@@ -121,10 +126,33 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   }, [columns]);
 
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
-    const { includeColumns, partitioning } = tableProfilerConfig;
-    setSqlQuery(tableProfilerConfig.profileQuery || '');
-    setProfileSample(tableProfilerConfig.profileSample || 100);
-    setExcludeCol(tableProfilerConfig.excludeColumns || []);
+    const {
+      includeColumns,
+      partitioning,
+      profileQuery,
+      profileSample,
+      profileSampleType,
+      excludeColumns,
+    } = tableProfilerConfig;
+    setSqlQuery(profileQuery || '');
+    setProfileSample(profileSample);
+    setExcludeCol(excludeColumns || []);
+    setSelectedProfileSampleType(
+      profileSampleType || ProfileSampleType.Percentage
+    );
+
+    const profileSampleTypeCheck =
+      profileSampleType === ProfileSampleType.Percentage;
+    form.setFieldsValue({
+      profileSampleType,
+      profileSamplePercentage: profileSampleTypeCheck
+        ? profileSample || 100
+        : 100,
+      profileSampleRows: !profileSampleTypeCheck
+        ? profileSample || 100
+        : undefined,
+    });
+
     if (includeColumns && includeColumns?.length > 0) {
       const includeColValue = includeColumns.map((col) => {
         if (
@@ -184,12 +212,21 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     });
   };
 
-  const handleSave = async () => {
+  const handleSave: FormProps['onFinish'] = async (data) => {
     setIsLoading(true);
+    const { profileSamplePercentage, profileSampleRows, profileSampleType } =
+      data;
+
     const profileConfig: TableProfilerConfig = {
       excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
       profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-      profileSample: !isUndefined(profileSample) ? profileSample : undefined,
+      ...{
+        profileSample:
+          profileSampleType === ProfileSampleType.Percentage
+            ? profileSamplePercentage
+            : profileSampleRows,
+        profileSampleType: profileSampleType,
+      },
       includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
         ? getIncludesColumns()
         : undefined,
@@ -219,7 +256,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       setIsLoading(false);
     }
   };
-
   const handleCancel = () => {
     data && updateInitialConfig(data);
     onVisibilityChange(false);
@@ -255,40 +291,58 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       onCancel={handleCancel}>
       <Row gutter={[16, 16]}>
         <Col data-testid="profile-sample-container" span={24}>
-          <p>{t('label.profile-sample-percentage')}</p>
-          <div className="tw-px-2 tw-mb-1.5">
-            <Row gutter={20}>
-              <Col span={20}>
-                <Slider
-                  className="profiler-slider"
-                  marks={{
-                    0: '0%',
-                    100: '100%',
-                  }}
-                  max={100}
-                  min={0}
-                  tooltipPlacement="bottom"
-                  tooltipVisible={false}
-                  value={profileSample}
-                  onChange={(value) => {
-                    setProfileSample(value);
-                  }}
+          <Form
+            data-testid="configure-ingestion-container"
+            form={form}
+            initialValues={{
+              profileSampleType: selectedProfileSampleType,
+              profileSamplePercentage: profileSample || 100,
+            }}
+            layout="vertical">
+            <Form.Item
+              label={t('label.profile-sample-type', {
+                type: '',
+              })}
+              name="profileSampleType">
+              <Select
+                className="w-full"
+                data-testid="profile-sample"
+                options={PROFILE_SAMPLE_OPTIONS}
+                onChange={setSelectedProfileSampleType}
+              />
+            </Form.Item>
+
+            {selectedProfileSampleType === ProfileSampleType.Percentage ? (
+              <Form.Item
+                className="m-b-0"
+                label={t('label.profile-sample-type', {
+                  type: 'Value',
+                })}
+                name="profileSamplePercentage">
+                <SliderWithInput
+                  className="p-x-xs"
+                  value={profileSample || 0}
+                  onChange={(value) => setProfileSample(Number(value))}
                 />
-              </Col>
-              <Col span={4}>
+              </Form.Item>
+            ) : (
+              <Form.Item
+                className="m-b-0"
+                label={t('label.profile-sample-type', {
+                  type: 'Value',
+                })}
+                name="profileSampleRows">
                 <InputNumber
-                  formatter={(value) => `${value}%`}
-                  max={100}
+                  className="w-full"
+                  data-testid="metric-number-input"
                   min={0}
-                  step={1}
-                  value={profileSample}
-                  onChange={(value) => {
-                    setProfileSample(Number(value));
-                  }}
+                  placeholder={t('label.please-enter-value', {
+                    name: t('label.row-count-lowercase'),
+                  })}
                 />
-              </Col>
-            </Row>
-          </div>
+              </Form.Item>
+            )}
+          </Form>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
           <p className="tw-mb-1.5">{t('label.profile-sample-query')} </p>
