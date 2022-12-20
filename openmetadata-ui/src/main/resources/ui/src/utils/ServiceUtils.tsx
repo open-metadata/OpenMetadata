@@ -657,7 +657,7 @@ export const setServiceSchemaCount = (
       let count = 0;
       results.forEach((result) => {
         if (result.status === PROMISE_STATE.FULFILLED) {
-          count += result.value.data?.paging?.total || 0;
+          count += result.value?.paging?.total || 0;
         }
       });
       callback(count);
@@ -678,7 +678,7 @@ export const setServiceTableCount = (
       let count = 0;
       results.forEach((result) => {
         if (result.status === PROMISE_STATE.FULFILLED) {
-          count += result.value.data?.paging?.total || 0;
+          count += result.value?.paging?.total || 0;
         }
       });
       callback(count);
