@@ -610,14 +610,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           rowKey="id"
           size="small"
         />
-        <NextPrevious
-          isNumberBased
-          currentPage={currentTablesPage}
-          pageSize={PAGE_SIZE}
-          paging={paging}
-          pagingHandler={tablePaginationHandler}
-          totalCount={tableInstanceCount}
-        />
+        {tableInstanceCount > PAGE_SIZE && tableData.length > 0 && (
+          <NextPrevious
+            isNumberBased
+            currentPage={currentTablesPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={tablePaginationHandler}
+            totalCount={tableInstanceCount}
+          />
+        )}
       </>
     );
   };

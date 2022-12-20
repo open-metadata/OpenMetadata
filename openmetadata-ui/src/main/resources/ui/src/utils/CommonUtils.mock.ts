@@ -105,3 +105,21 @@ export const sortedMockTags = [
     state: State.Confirmed,
   },
 ];
+
+export const mockFQN = 'sample_data.ecommerce_db.dim_product';
+export const mockFQNWithSpecialChar1 =
+  'sample_data.ecommerce_db."dim.api/client"';
+export const mockFQNWithSpecialChar2 =
+  'sample_data."ecommerce_db"."dim.api/client"';
+export const mockFQNWithSpecialChar3 =
+  'sample_data.ecommerce_db."dim.api/"client"';
+export const mockFQNWithSpecialChar4 =
+  'sample_data.ecommerce_db."dim.api/client""';
+export const mockFQNWithSpecialChar5 =
+  'sample_data.ecommerce_db.""dim.api/client"';
+
+export const mockTableNameFromFQN = 'dim_product';
+export const mockTableNameWithSpecialChar = 'dim.api/client';
+export const mockTableNameWithSpecialChar3 = 'api/"client"';
+export const mockTableNameWithSpecialChar4 = 'api/client""';
+export const mockTableNameWithSpecialChar5 = 'api/client"';

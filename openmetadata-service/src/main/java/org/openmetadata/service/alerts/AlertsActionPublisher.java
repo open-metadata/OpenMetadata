@@ -17,18 +17,14 @@ import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.FailureDetails;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.jdbi3.AlertRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
 
 /**
@@ -51,22 +47,15 @@ import org.openmetadata.service.resources.events.EventResource;
 public class AlertsActionPublisher extends AbstractAlertPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
   private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
-  private final AlertRepository alertRepository;
 
-  public AlertsActionPublisher(Alert alert, AlertAction alertAction, CollectionDAO dao) {
+  public AlertsActionPublisher(Alert alert, AlertAction alertAction) {
     super(alert, alertAction);
-    this.alertRepository = new AlertRepository(dao);
   }
 
   @SneakyThrows
   @Override
   public void onStart() {
-    AlertActionStatus currentStatus =
-        new AlertActionStatus()
-            .withStatus(AlertActionStatus.Status.ACTIVE)
-            .withFailureDetails(null)
-            .withTimestamp(System.currentTimeMillis());
-    setStatus(currentStatus);
+    setSuccessStatus(System.currentTimeMillis());
     onStartDelegate();
     LOG.info("Alert-lifecycle-onStart {}", alert.getName());
   }
@@ -87,37 +76,47 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     return alertAction;
   }
 
-  protected void setErrorStatus(Long updateTime, Integer statusCode, String reason)
-      throws IOException, InterruptedException {
-    setStatus(AlertActionStatus.Status.FAILED, updateTime, statusCode, reason, null);
-    AlertsPublisherManager.getInstance().deleteAlertActionPublisher(alert.getId(), alertAction);
+  protected void setErrorStatus(Long updateTime, Integer statusCode, String reason) throws IOException {
+    FailureDetails failureDetails =
+        new FailureDetails()
+            .withLastFailedAt(updateTime)
+            .withLastFailedStatusCode(statusCode)
+            .withLastFailedReason(reason)
+            .withNextAttempt(updateTime + currentBackoffTime);
+    AlertActionStatus status =
+        new AlertActionStatus()
+            .withStatus(AlertActionStatus.Status.FAILED)
+            .withTimestamp(updateTime)
+            .withLastSuccessfulAt(null)
+            .withFailureDetails(failureDetails);
+    setStatus(status);
     throw new RuntimeException(reason);
   }
 
   protected void setAwaitingRetry(Long updateTime, int statusCode, String reason) throws IOException {
-    setStatus(AlertActionStatus.Status.AWAITING_RETRY, updateTime, statusCode, reason, updateTime + currentBackoffTime);
+    FailureDetails failureDetails =
+        new FailureDetails()
+            .withLastFailedAt(updateTime)
+            .withLastFailedStatusCode(statusCode)
+            .withLastFailedReason(reason)
+            .withNextAttempt(updateTime + currentBackoffTime);
+    AlertActionStatus status =
+        new AlertActionStatus()
+            .withStatus(AlertActionStatus.Status.AWAITING_RETRY)
+            .withTimestamp(updateTime)
+            .withLastSuccessfulAt(null)
+            .withFailureDetails(failureDetails);
+    setStatus(status);
   }
 
   protected void setSuccessStatus(Long updateTime) throws IOException {
-    setStatus(AlertActionStatus.Status.ACTIVE, updateTime, 200, null, null);
-  }
-
-  protected void setStatus(
-      AlertActionStatus.Status status, Long updateTime, Integer statusCode, String reason, Long nextAttemptTime)
-      throws IOException {
-    FailureDetails details = null;
-    if (status != AlertActionStatus.Status.ACTIVE) {
-      details = new FailureDetails();
-      details
-          .withLastFailedAt(updateTime)
-          .withLastFailedStatusCode(statusCode)
-          .withLastFailedReason(reason)
-          .withNextAttempt(nextAttemptTime);
-    }
-
-    AlertActionStatus currentStatus =
-        AlertsPublisherManager.getInstance().setStatus(alert.getId(), alertAction.getId(), status, details, updateTime);
-    alertAction.setStatusDetails(currentStatus);
+    AlertActionStatus status =
+        new AlertActionStatus()
+            .withStatus(AlertActionStatus.Status.ACTIVE)
+            .withTimestamp(updateTime)
+            .withLastSuccessfulAt(updateTime)
+            .withFailureDetails(null);
+    setStatus(status);
   }
 
   protected void setStatus(AlertActionStatus status) throws IOException {
@@ -138,7 +137,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
     return processor;
   }
 
-  protected void sendAlert(ChangeEvent event) throws IOException, InterruptedException {}
+  protected void sendAlert(EventResource.ChangeEventList list) throws IOException, InterruptedException {}
 
   protected void onStartDelegate() {}
 
@@ -147,16 +146,12 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
   @Override
   public void publish(EventResource.ChangeEventList list)
       throws EventPublisherException, IOException, InterruptedException {
-    for (ChangeEvent event : list.getData()) {
-      // Publish to the given Alert Actions
-      try {
-        LOG.info("Sending Alert {}:{}:{}", alert.getName(), alertAction.getStatusDetails().getStatus(), batch.size());
-        sendAlert(event);
-      } catch (Exception ex) {
-        LOG.warn("Invalid Exception in Alert {}", alert.getName());
-        setErrorStatus(
-            System.currentTimeMillis(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), ex.getMessage());
-      }
+    // Publish to the given Alert Actions
+    try {
+      LOG.info("Sending Alert {}:{}:{}", alert.getName(), alertAction.getStatusDetails().getStatus(), batch.size());
+      sendAlert(list);
+    } catch (Exception ex) {
+      LOG.warn("Invalid Exception in Alert {}", alert.getName());
     }
   }
 }

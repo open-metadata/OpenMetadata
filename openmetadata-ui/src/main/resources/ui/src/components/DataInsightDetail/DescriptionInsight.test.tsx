@@ -49,6 +49,14 @@ jest.mock('../../utils/DataInsightUtils', () => ({
       },
     ],
     entities: ['Table', 'Topic', 'Database', 'Pipeline', 'Messaging'],
+    latestData: {
+      timestamp: '24/Oct',
+      Table: 0.3374,
+      Topic: 0.0353,
+      Database: 0.9774,
+      Pipeline: 0.4482,
+      Messaging: 0.3105,
+    },
   })),
 }));
 
@@ -65,6 +73,7 @@ describe('Test DescriptionInsight Component', () => {
         <DescriptionInsight
           chartFilter={INITIAL_CHART_FILTER}
           kpi={undefined}
+          selectedDays={30}
         />
       );
       const card = screen.getByTestId('entity-description-percentage-card');

@@ -409,7 +409,6 @@
     "edit-team-type": "Edit Team Type",
     "configure-webhook-type": "Configure {{webhookType}} Webhooks",
     "ms-teams": "MS Teams",
-    "ms-team": "MS Team",
     "bot": "Bot",
     "bot-plural": "Bots",
     "policy-name": "Policy name",
@@ -581,7 +580,22 @@
     "event-type": "Event Type",
     "connection-timeout-plural-optional": "Connection Timeout (s)",
     "all-data-assets": "All Data Assets",
-    "specific-data-assets": "Specific Data Assets"
+    "specific-data-assets": "Specific Data Assets",
+    "days-change-lowercase": "{{days}}-days change",
+    "total-entity": "Total {{entity}}",
+    "assets": "Assets",
+    "completed-description": "Completed Description",
+    "assigned-entity": "Assigned {{entity}}",
+    "total-assets-view": "Total Assets View",
+    "total-active-user": "Total Active User",
+    "alert-actions": "Alert Actions",
+    "test-results": "Test Results",
+    "send-to": "Send to",
+    "receiver-plural": "Receivers",
+    "admin-plural": "Admins",
+    "owner-plural": "Owners",
+    "follower-plural": "Followers",
+    "email-plural": "Emails"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -708,7 +722,8 @@
     "alerts-description": "Stay current with timely alerts using webhooks.",
     "alerts-destination-description": "Send notifications to Slack, MS Teams, Email, or and use Webhooks.",
     "alerts-trigger-description": "Trigger for all data assets or a specific entity.",
-    "alerts-filter-description": "Specify the change events to narrow the scope of your alerts."
+    "alerts-filter-description": "Specify the change events to narrow the scope of your alerts.",
+    "length-validator-error": "At least {{length}} {{field}} required"
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",
@@ -728,7 +743,8 @@
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "team-moved-error": "Error while moving team",
     "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
-    "create-entity-success": "{{entity}} created successfully."
+    "create-entity-success": "{{entity}} created successfully.",
+    "update-entity-success": "{{entity}} updated successfully."
   },
   "url": {}
 }

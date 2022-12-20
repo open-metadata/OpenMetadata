@@ -179,6 +179,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   return (
     <Card
+      bodyStyle={{ paddingTop: 0 }}
       className="data-insight-card"
       data-testid="summary-card"
       loading={isLoading}
@@ -204,7 +205,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 <Typography.Text className="data-insight-label-text">
                   {summary.label}
                 </Typography.Text>
-                <Typography className="font-semibold text-2xl m--ml-0.5">
+                <Typography className="font-bold text-lg m--ml-0.5">
                   {summary.latest}
                   {summary.id.startsWith('Percentage') ||
                   summary.id.includes(DataInsightChartType.TotalEntitiesByTier)

@@ -13,9 +13,7 @@ DBT service Topology.
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
-
-from pydantic import BaseModel
+from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -34,16 +32,10 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.utils.dbt_config import get_dbt_details
+from metadata.utils.dbt_config import DbtFiles, get_dbt_details
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-class DbtFiles(BaseModel):
-    dbt_catalog: Optional[dict]
-    dbt_manifest: Optional[dict]
-    dbt_run_results: Optional[dict]
 
 
 class DbtServiceTopology(ServiceTopology):
@@ -139,13 +131,8 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     context = create_source_context(topology)
 
     def get_dbt_files(self) -> DbtFiles:
-        dbt_details = get_dbt_details(
+        dbt_files = get_dbt_details(
             self.source_config.dbtConfigSource  # pylint: disable=no-member
-        )
-        dbt_files = DbtFiles(
-            dbt_catalog=dbt_details[0],
-            dbt_manifest=dbt_details[1],
-            dbt_run_results=dbt_details[2],
         )
         yield dbt_files
 

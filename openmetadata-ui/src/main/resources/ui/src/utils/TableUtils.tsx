@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -21,6 +19,7 @@ import { isEmpty, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
@@ -373,7 +372,7 @@ export function getTableExpandableConfig<
           className="m-r-xs cursor-pointer"
           data-testid="expand-icon"
           onClick={(e) => onExpand(record, e)}>
-          <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
+          {expanded ? <DropDownIcon /> : <DropDownIcon />}
         </Typography.Text>
       ),
   };
