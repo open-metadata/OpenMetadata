@@ -26,6 +26,14 @@
     "connection": {
       "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardConnection"
     },
+    "tags": {
+      "description": "Tags for this Dashboard Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "owner": {
       "description": "Owner of this dashboard service.",
       "$ref": "../../type/entityReference.json"

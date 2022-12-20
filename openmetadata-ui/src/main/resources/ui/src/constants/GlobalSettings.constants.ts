@@ -43,6 +43,9 @@ export enum GlobalSettingOptions {
   MSTEAMS = 'msteams',
   ACTIVITY_FEED = 'activityFeed',
   ELASTIC_SEARCH = 'elasticSearch',
+  ALERTS = 'alerts',
+  ADD_ALERTS = 'add-alerts',
+  EDIT_ALERTS = 'edit',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

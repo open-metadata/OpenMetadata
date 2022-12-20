@@ -100,9 +100,6 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
     Set GCS credentials environment variable
     :param gcs_credentials: GCSCredentials
     """
-    if os.environ.get(GOOGLE_CREDENTIALS):
-        return
-
     if isinstance(gcs_credentials.gcsConfig, GCSCredentialsPath):
         os.environ[GOOGLE_CREDENTIALS] = str(gcs_credentials.gcsConfig.__root__)
         return

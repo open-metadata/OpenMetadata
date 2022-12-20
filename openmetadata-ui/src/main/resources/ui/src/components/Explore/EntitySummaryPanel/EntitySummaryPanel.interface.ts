@@ -16,5 +16,4 @@ import { EntityDetailsObjectInterface } from '../explore.interface';
 export interface EntitySummaryPanelProps {
   entityDetails: EntityDetailsObjectInterface;
   handleClosePanel: () => void;
-  showPanel: boolean;
 }

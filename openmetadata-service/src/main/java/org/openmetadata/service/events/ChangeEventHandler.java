@@ -38,12 +38,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerts.AlertUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.ChangeEventParser;
-import org.openmetadata.service.util.FilterUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.NotificationHandler;
 import org.openmetadata.service.util.RestUtil;
@@ -91,7 +91,7 @@ public class ChangeEventHandler implements EventHandler {
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
         // ignore usageSummary updates in the feed
         boolean filterEnabled;
-        filterEnabled = FilterUtil.shouldProcessRequest(changeEvent);
+        filterEnabled = AlertUtil.shouldProcessActivityFeedRequest(changeEvent);
         if (filterEnabled) {
           for (Thread thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
             // Don't create a thread if there is no message

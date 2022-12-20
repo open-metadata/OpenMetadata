@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 10;
+export const LATEST_VERSION_ID = 11;
 
-export const COOKIE_VERSION = 'VERSION_0_13_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_13_1'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -615,6 +615,22 @@ export const WHATS_NEW = [
 -   Users can **search** based on the fields in the Schema of a Topic.`,
       'Other Changes': `-   **Soft deleted entities** can be restored. Currently, only the ML Models are not supported.
 -   **Soft deleted teams** can be restored. When restoring a soft deleted parent team, the child teams will not be restored by default.`,
+    },
+  },
+  {
+    id: 11,
+    version: 'v0.13.1',
+    description: 'Released on 22 December 2022.',
+    features: [],
+    changeLogs: {
+      'Freshness Metric': `- Freshness Metric has been introduced. Data freshness is defined by how often a table is being updated and the number of rows being affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.`,
+      'Data Quality': `- Support has been added for data quality tests on Data Lake.`,
+      'Notification Support': `- The logic for Notification Support has been improved. Users can define a Trigger (all data assets or a specific entity), Filters (events to consider), and Action (Slack, MS Teams, Email, Webhook) on where to send the alert.`,
+      'DBT Workflow': `- Now, DBT has its own workflow. Previously, DBT  was a part of metadata ingestion workflow.`,
+      'Topic Schema': `- Users can update the description and tags for Topic Schema. Previously, the topic schemas were read-only.`,
+      'Data Insight Report': `- The layout for the Data Insight Report has been improved. We now display a line graph instead of a bar graph. The Most Viewed Data Assets are clickable to view the asset details page.`,
+      'Advanced Search': `- Improvements have been made to Advanced Search. Now, when a filter is applied, the details of the filter selected are displayed for clarity.`,
+      'Data Assets Side Preview': `- On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.`,
     },
   },
 ];

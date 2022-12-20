@@ -13,6 +13,7 @@
 
 import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
@@ -104,15 +105,14 @@ const DescriptionV1 = ({
         ) : (
           <span className="">No description </span>
         )}
-        {isEdit && (
-          <ModalWithMarkdownEditor
-            header={`Edit description for ${entityName}`}
-            placeholder="Enter Description"
-            value={description}
-            onCancel={onCancel}
-            onSave={onDescriptionUpdate}
-          />
-        )}
+        <ModalWithMarkdownEditor
+          header={t('label.edit-description-for', { entityName })}
+          placeholder={t('label.enter-description')}
+          value={description}
+          visible={Boolean(isEdit)}
+          onCancel={onCancel}
+          onSave={onDescriptionUpdate}
+        />
       </div>
       {!isReadOnly ? (
         <div

@@ -138,6 +138,8 @@ const Users = ({
   const location = useLocation();
   const isTaskType = isEqual(threadType, ThreadType.Task);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
+  const [isTeamsLoading, setIsTeamsLoading] = useState<boolean>(false);
 
   const { authConfig } = useAuthContext();
   const { t } = useTranslation();
@@ -161,21 +163,23 @@ const Users = ({
     [threadType, fetchFeedHandler]
   );
 
-  const fetchTeams = () => {
-    getTeams(['users'])
-      .then((res) => {
-        if (res.data) {
-          setTeams(res.data);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-teams-error']
-        );
-      });
+  const fetchTeams = async () => {
+    setIsTeamsLoading(true);
+    try {
+      const response = await getTeams(['users']);
+      if (response.data) {
+        setTeams(response.data);
+      } else {
+        throw jsonData['api-error-messages']['unexpected-server-response'];
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-teams-error']
+      );
+    } finally {
+      setIsTeamsLoading(false);
+    }
   };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -484,6 +488,7 @@ const Users = ({
                   isSearchable
                   aria-label="Select teams"
                   className="tw-w-full"
+                  isLoading={isTeamsLoading}
                   options={teams?.map((team) => ({
                     label: getEntityName(team as unknown as EntityReference),
                     value: team.id,
@@ -624,6 +629,7 @@ const Users = ({
                   aria-label="Select roles"
                   className="tw-w-full"
                   id="select-role"
+                  isLoading={isRolesLoading}
                   options={userRolesOption}
                   placeholder="Roles..."
                   styles={reactSingleSelectCustomStyle}
@@ -778,7 +784,7 @@ const Users = ({
         <div className="tw--mt-4 tw-px-1.5 tw-flex tw-justify-between">
           <div className="tw-relative">
             <AntDButton
-              className="flex items-center"
+              className="flex items-center p-0"
               data-testid="feeds"
               icon={getFeedFilterDropdownIcon(feedFilter)}
               type="link"
@@ -867,6 +873,7 @@ const Users = ({
   };
 
   const fetchRoles = async () => {
+    setIsRolesLoading(true);
     try {
       const response = await getRoles(
         '',
@@ -882,17 +889,14 @@ const Users = ({
         err as AxiosError,
         jsonData['api-error-messages']['fetch-roles-error']
       );
+    } finally {
+      setIsRolesLoading(false);
     }
   };
 
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
-
-  useEffect(() => {
-    fetchTeams();
-    fetchRoles();
-  }, []);
 
   useEffect(() => {
     prepareSelectedRoles();
@@ -904,6 +908,18 @@ const Users = ({
       SetIsImgUrlValid(true);
     }
   }, [image]);
+
+  useEffect(() => {
+    if (isRolesEdit && isEmpty(roles)) {
+      fetchRoles();
+    }
+  }, [isRolesEdit, roles]);
+
+  useEffect(() => {
+    if (isTeamsEdit && isEmpty(teams)) {
+      fetchTeams();
+    }
+  }, [isTeamsEdit, teams]);
 
   const getEntityData = useCallback(
     (tabNumber: number) => {

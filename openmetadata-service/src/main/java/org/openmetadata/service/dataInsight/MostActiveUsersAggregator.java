@@ -1,6 +1,5 @@
 package org.openmetadata.service.dataInsight;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.elasticsearch.search.aggregations.Aggregations;
@@ -18,14 +17,14 @@ public class MostActiveUsersAggregator extends DataInsightAggregatorInterface<Mo
   }
 
   @Override
-  public DataInsightChartResult process() throws ParseException {
+  public DataInsightChartResult process() {
     List data = this.aggregate();
     DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
     return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  List<MostActiveUsers> aggregate() throws ParseException {
+  List<MostActiveUsers> aggregate() {
     MultiBucketsAggregation userNameBuckets = this.aggregations.get("userName");
     List<MostActiveUsers> data = new ArrayList();
     for (MultiBucketsAggregation.Bucket userNameBucket : userNameBuckets.getBuckets()) {

@@ -16,11 +16,13 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
+import java.util.List;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -29,7 +31,8 @@ import org.openmetadata.service.util.JsonUtils;
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
-  private static final String UPDATE_FIELDS = "owner";
+  private static final String UPDATE_FIELDS = "owner,tags";
+  private static final String PATCH_FIELDS = UPDATE_FIELDS;
 
   @Getter private final Class<S> serviceConnectionClass;
 
@@ -53,7 +56,7 @@ public abstract class ServiceEntityRepository<
       Class<S> serviceConnectionClass,
       String updatedFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, PATCH_FIELDS, updatedFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
   }
@@ -74,9 +77,9 @@ public abstract class ServiceEntityRepository<
   public void storeEntity(T service, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = service.getOwner();
-
+    List<TagLabel> tags = service.getTags();
     // Don't store owner, service, href and tags as JSON. Build it on the fly based on relationships
-    service.withOwner(null).withHref(null);
+    service.withOwner(null).withHref(null).setTags(null);
 
     service
         .getConnection()
@@ -92,13 +95,15 @@ public abstract class ServiceEntityRepository<
     store(service, update);
 
     // Restore the relationships
-    service.withOwner(owner);
+    service.withOwner(owner).setTags(tags);
   }
 
   @Override
   public void storeRelationships(T service) {
     // Add owner relationship
     storeOwner(service, service.getOwner());
+    // add tags relationship
+    applyTags(service);
   }
 
   @Override

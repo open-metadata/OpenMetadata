@@ -34,10 +34,6 @@
       "type": "object",
       "javaType": "org.openmetadata.schema.type.FailureDetails",
       "properties": {
-        "lastSuccessfulAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
         "lastFailedAt": {
           "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
           "$ref": "../type/basic.json#/definitions/timestamp"
@@ -83,10 +79,15 @@
         "failureDetails": {
           "$ref": "#/definitions/failureDetails"
         },
+        "lastSuccessfulAt": {
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
         "timestamp": {
           "$ref": "../type/basic.json#/definitions/timestamp"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {

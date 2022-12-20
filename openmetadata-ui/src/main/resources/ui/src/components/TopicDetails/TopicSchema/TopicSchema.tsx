@@ -261,6 +261,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             field: t('label.schema-field'),
           })}
           value={editFieldDescription.description ?? ''}
+          visible={Boolean(editFieldDescription)}
           onCancel={() => setEditFieldDescription(undefined)}
           onSave={handleFieldDescriptionChange}
         />
