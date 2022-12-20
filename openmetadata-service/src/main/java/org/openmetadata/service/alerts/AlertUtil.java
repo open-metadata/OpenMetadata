@@ -42,6 +42,7 @@ public class AlertUtil {
   public static AlertsActionPublisher getAlertPublisher(
       Alert alert, AlertAction alertAction, CollectionDAO daoCollection) {
     AlertsActionPublisher publisher;
+    validateAlertActionConfig(alertAction);
     switch (alertAction.getAlertActionType()) {
       case SLACK_WEBHOOK:
         publisher = new SlackWebhookEventPublisher(alert, alertAction);
@@ -61,6 +62,28 @@ public class AlertUtil {
         throw new IllegalArgumentException("Invalid Alert Action Specified.");
     }
     return publisher;
+  }
+
+  public static void validateAlertActionConfig(AlertAction alertAction) {
+    //    switch (alertAction.getAlertActionType()) {
+    //      case SLACK_WEBHOOK:
+    //        JsonUtils.convertValue(alertAction.getAlertActionConfig(), Webhook.class);
+    //        publisher = new SlackWebhookEventPublisher(alert, alertAction);
+    //        break;
+    //      case MS_TEAMS_WEBHOOK:
+    //        publisher = new MSTeamsWebhookPublisher(alert, alertAction);
+    //        break;
+    //      case GENERIC_WEBHOOK:
+    //        publisher = new GenericWebhookPublisher(alert, alertAction);
+    //        break;
+    //      case EMAIL:
+    //        publisher = new EmailAlertPublisher(alert, alertAction, daoCollection);
+    //        break;
+    //      case ACTIVITY_FEED:
+    //        throw new IllegalArgumentException("Cannot create Activity Feed as Publisher.");
+    //      default:
+    //        throw new IllegalArgumentException("Invalid Alert Action Specified.");
+    //    }
   }
 
   public static <T> T validateExpression(String condition, Class<T> clz) {
@@ -143,7 +166,7 @@ public class AlertUtil {
     for (int i = 0; i < alertFilterRules.size(); i++) {
       AlertFilterRule rule = alertFilterRules.get(i);
       builder.append("(");
-      if (rule.getEffect() == AlertFilterRule.Effect.ALLOW) {
+      if (rule.getEffect() == AlertFilterRule.Effect.INCLUDE) {
         builder.append(rule.getCondition());
       } else {
         builder.append("!");

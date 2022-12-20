@@ -89,7 +89,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public static final String COLLECTION_PATH = "v1/alerts/";
   private final CollectionDAO daoCollection;
   private final Map<String, EntitySpelFilters> entitySpelFiltersList = new HashMap<>();
-  static final String FIELDS = "triggerConfig,filteringRules,alertActions";
+  public static final String FIELDS = "owner,triggerConfig,filteringRules,alertActions";
 
   private void initAlerts() throws IOException {
     // Load Filter Data
@@ -120,6 +120,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
 
       String alertJson = CommonUtil.getResourceAsStream(getClass().getClassLoader(), alertDataFile);
       activityFeedAlert = JsonUtils.readObjects(alertJson, Alert.class).get(0);
+      activityFeedAlert.setId(UUID.randomUUID());
       // populate alert actions
       EntityRepository<AlertAction> actionEntityRepository = Entity.getEntityRepository(Entity.ALERT_ACTION);
       AlertAction action =
@@ -144,6 +145,8 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
 
   @Override
   public Alert addHref(UriInfo uriInfo, Alert entity) {
+    Entity.withHref(uriInfo, entity.getOwner());
+    Entity.withHref(uriInfo, entity.getAlertActions());
     return entity;
   }
 
@@ -532,17 +535,9 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   public Response deleteAlert(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Recursively delete the alerts. (Default = `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException, InterruptedException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response = delete(uriInfo, securityContext, id, true, true);
     AlertsPublisherManager.getInstance().deleteAlertAllPublishers(id);
     return response;
   }

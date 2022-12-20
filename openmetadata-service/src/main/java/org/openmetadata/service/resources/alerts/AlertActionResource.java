@@ -51,6 +51,7 @@ import org.openmetadata.schema.api.events.CreateAlertAction;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.jdbi3.AlertActionRepository;
@@ -73,8 +74,11 @@ import org.openmetadata.service.util.ResultList;
 public class AlertActionResource extends EntityResource<AlertAction, AlertActionRepository> {
   public static final String COLLECTION_PATH = "v1/alertAction/";
 
+  public static final String FIELDS = "owner";
+
   @Override
   public AlertAction addHref(UriInfo uriInfo, AlertAction entity) {
+    Entity.withHref(uriInfo, entity.getOwner());
     return entity;
   }
 
@@ -106,6 +110,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
       String json = CommonUtil.getResourceAsStream(PolicyResource.class.getClassLoader(), jsonDataFile);
       // Assumes to have 1 entry currently
       AlertAction alertActions = JsonUtils.readObjects(json, AlertAction.class).get(0);
+      alertActions.setId(UUID.randomUUID());
       dao.initializeEntity(alertActions);
     } catch (Exception e) {
       LOG.warn("Failed to initialize the resource descriptors from file {}", jsonDataFile, e);
@@ -128,6 +133,11 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public ResultList<AlertAction> listAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @Parameter(
               description = "Filter alerts action by type",
               schema = @Schema(type = "string", example = "generic, slack, msteams"))
@@ -153,7 +163,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(Include.ALL).addQueryParam("alertActionType", typeParam);
-    return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -174,6 +184,11 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public AlertAction getAlertActionById(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
@@ -182,7 +197,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, "", include);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -202,6 +217,11 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public AlertAction getAlertActionByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @Parameter(description = "Name of the alert action", schema = @Schema(type = "string")) @PathParam("name")
           String name,
       @Parameter(
@@ -211,7 +231,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, "", include);
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -350,13 +370,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public Response deleteAlertAction(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
       @Parameter(description = "alert Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response = delete(uriInfo, securityContext, id, false, true);
     AlertsPublisherManager.getInstance().deleteAlertActionFromAllAlertPublisher((AlertAction) response.getEntity());
     return response;
   }

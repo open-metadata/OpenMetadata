@@ -1,0 +1,67 @@
+package org.openmetadata.service.resources.events;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.Map;
+import org.apache.http.client.HttpResponseException;
+import org.openmetadata.schema.api.events.CreateAlertAction;
+import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.alerts.AlertActionResource;
+
+public class AlertActionResourceTest extends EntityResourceTest<AlertAction, CreateAlertAction> {
+
+  public AlertActionResourceTest() {
+    super(
+        Entity.ALERT_ACTION,
+        AlertAction.class,
+        AlertActionResource.AlertActionList.class,
+        "alertAction",
+        AlertActionResource.FIELDS);
+    supportsEmptyDescription = true;
+    supportsSoftDelete = false;
+  }
+
+  public Webhook getWebhook(String name, String uri) {
+    return new Webhook()
+        .withName(name)
+        .withDescription("Alert Action Webhook")
+        .withEndpoint(URI.create(uri))
+        .withSecretKey("webhookTest");
+  }
+
+  public CreateAlertAction createRequest(
+      String name, AlertAction.AlertActionType type, Object alertActionConfig, boolean enabled) {
+    return createRequest(name).withEnabled(enabled).withAlertActionType(type).withAlertActionConfig(alertActionConfig);
+  }
+
+  @Override
+  public CreateAlertAction createRequest(String name) {
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/ignore";
+    return new CreateAlertAction()
+        .withName(name)
+        .withAlertActionType(AlertAction.AlertActionType.GENERIC_WEBHOOK)
+        .withEnabled(true)
+        .withBatchSize(100)
+        .withAlertActionConfig(getWebhook(name, uri));
+  }
+
+  @Override
+  public void validateCreatedEntity(
+      AlertAction createdEntity, CreateAlertAction request, Map<String, String> authHeaders)
+      throws HttpResponseException {}
+
+  @Override
+  public void compareEntities(AlertAction expected, AlertAction updated, Map<String, String> authHeaders)
+      throws HttpResponseException {}
+
+  @Override
+  public AlertAction validateGetWithDifferentFields(AlertAction entity, boolean byName) throws HttpResponseException {
+    return entity;
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+}
