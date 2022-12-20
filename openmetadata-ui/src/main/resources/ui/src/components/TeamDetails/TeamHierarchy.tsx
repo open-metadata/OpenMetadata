@@ -26,12 +26,14 @@ import { TABLE_CONSTANTS } from '../../constants/Teams.constants';
 import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { getMovedTeamData } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   DraggableBodyRowProps,
   MovedTeamProps,
+  TableExpandableDataProps,
   TeamHierarchyProps,
 } from './team.interface';
 import './teams.less';
@@ -132,6 +134,34 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     }
   };
 
+  const tableExpandableIconData = useCallback(
+    ({ expanded, onExpand, expandable, record }: TableExpandableDataProps) =>
+      expandable ? (
+        <div
+          draggable
+          className="expand-cell-icon-container"
+          data-testid="expand-table-row"
+          onClick={(e) =>
+            onExpand(
+              record,
+              e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
+            )
+          }>
+          <SVGIcons className="drag-icon" draggable="true" icon={Icons.DRAG} />
+          <SVGIcons
+            className="expand-icon"
+            icon={expanded ? Icons.ARROW_DOWN_LIGHT : Icons.ARROW_RIGHT_LIGHT}
+          />
+        </div>
+      ) : (
+        <>
+          <SVGIcons className="drag-icon" icon={Icons.DRAG} />
+          <div className="expand-cell-empty-icon-container" />
+        </>
+      ),
+    []
+  );
+
   const expandableConfig: ExpandableConfig<Team> = useMemo(
     () => ({
       ...getTableExpandableConfig<Team>(),
@@ -140,8 +170,10 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           onTeamExpand(false, record.fullyQualifiedName, true);
         }
       },
+      expandIcon: ({ expanded, onExpand, expandable, record }) =>
+        tableExpandableIconData({ expanded, onExpand, expandable, record }),
     }),
-    [onTeamExpand]
+    [onTeamExpand, tableExpandableIconData]
   );
 
   return (

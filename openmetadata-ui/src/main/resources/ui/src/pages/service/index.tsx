@@ -1017,11 +1017,12 @@ const ServicePage: FunctionComponent = () => {
                     isRecursiveDelete
                     afterDeleteAction={() =>
                       history.push(
-                        `/settings/services/${
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.SERVICES,
                           SERVICE_CATEGORY_TYPE[
                             serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
                           ]
-                        }`
+                        )
                       )
                     }
                     allowSoftDelete={false}
