@@ -131,7 +131,7 @@ export default function SummaryList({
                           <Text className="text-gray">{`${t(
                             'label.algorithm'
                           )}:`}</Text>
-                          <Text className="text-semi-bold">
+                          <Text className="font-medium">
                             {entity.algorithm}
                           </Text>
                         </Space>
