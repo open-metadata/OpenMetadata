@@ -21,6 +21,7 @@ import { useHistory } from 'react-router-dom';
 import { updateUser } from '../../axiosAPIs/userAPI';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
@@ -33,6 +34,7 @@ import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
+import PageHeader from '../header/PageHeader.component';
 import Loader from '../Loader/Loader';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import './usersList.less';
@@ -48,6 +50,7 @@ interface UserListV1Props {
   onShowDeletedUserChange: (value: boolean) => void;
   onSearch: (text: string) => void;
   afterDeleteAction: () => void;
+  isAdminPage: boolean | undefined;
 }
 
 const UserListV1: FC<UserListV1Props> = ({
@@ -61,6 +64,7 @@ const UserListV1: FC<UserListV1Props> = ({
   onShowDeletedUserChange,
   onPagingChange,
   afterDeleteAction,
+  isAdminPage,
 }) => {
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
@@ -217,16 +221,12 @@ const UserListV1: FC<UserListV1Props> = ({
 
   return (
     <Row className="user-listing" gutter={[16, 16]}>
-      <Col span={8}>
-        <Searchbar
-          removeMargin
-          placeholder="Search for user..."
-          searchValue={searchTerm}
-          typingInterval={500}
-          onSearch={onSearch}
+      <Col span={12}>
+        <PageHeader
+          data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
         />
       </Col>
-      <Col span={16}>
+      <Col span={12}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
           <span>
             <Switch
@@ -246,6 +246,15 @@ const UserListV1: FC<UserListV1Props> = ({
             </Button>
           </Tooltip>
         </Space>
+      </Col>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder="Search for user..."
+          searchValue={searchTerm}
+          typingInterval={500}
+          onSearch={onSearch}
+        />
       </Col>
 
       <Col span={24}>

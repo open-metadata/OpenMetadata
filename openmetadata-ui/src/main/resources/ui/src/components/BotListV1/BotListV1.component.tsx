@@ -25,6 +25,7 @@ import {
   PAGE_SIZE_LARGE,
 } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
@@ -38,6 +39,7 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
+import PageHeader from '../header/PageHeader.component';
 import Loader from '../Loader/Loader';
 import { BotListV1Props } from './BotListV1.interfaces';
 
@@ -234,15 +236,11 @@ const BotListV1 = ({
     </Row>
   ) : (
     <Row gutter={[16, 16]}>
-      <Col span={8}>
-        <Searchbar
-          removeMargin
-          placeholder={t('label.search-for-bots')}
-          typingInterval={500}
-          onSearch={handleSearch}
-        />
+      <Col span={12}>
+        <PageHeader data={PAGE_HEADERS.BOTS} />
       </Col>
-      <Col span={16}>
+
+      <Col span={12}>
         <Space align="center" className="tw-w-full tw-justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
@@ -266,6 +264,14 @@ const BotListV1 = ({
             </Button>
           </Tooltip>
         </Space>
+      </Col>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder={t('label.search-for-bots')}
+          typingInterval={500}
+          onSearch={handleSearch}
+        />
       </Col>
       <Col span={24}>
         <Row>
