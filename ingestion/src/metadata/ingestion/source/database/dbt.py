@@ -286,9 +286,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             self.context.dbt_tests = {}
             for key, manifest_node in manifest_entities.items():
                 try:
-                    # Skip the analysis node since it does not contain relevant metatada
-                    if manifest_node["resource_type"] in ["analysis"]:
-                        continue
 
                     # If the run_results file is passed then only DBT tests will be processed
                     if dbt_files.dbt_run_results:
@@ -308,6 +305,10 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                                 if item["unique_id"] == key
                             )
                             continue
+
+                    # Skip the analysis and test nodes
+                    if manifest_node["resource_type"] in ["analysis", "test"]:
+                        continue
 
                     model_name = (
                         manifest_node["alias"]
