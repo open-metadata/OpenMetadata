@@ -216,7 +216,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               </span>
             )}
           </Space>
-          <DropDown className="flex self-center" />
+          <DropDown className="flex self-center" height={12} width={12} />
         </Space>
       </Button>
     </Dropdown>
