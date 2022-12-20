@@ -207,6 +207,11 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [tab, searchResults]);
 
+  useEffect(() => {
+    // reset Applied Filter SQL Format on tab change
+    setAppliedFilterSQLFormat('');
+  }, [tab]);
+
   return (
     <PageLayoutV1
       className="explore-page-container"
