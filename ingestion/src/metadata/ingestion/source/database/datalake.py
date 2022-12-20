@@ -197,7 +197,15 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             yield from self.get_container_names()
 
     def get_container_names(self) -> Iterable[str]:
-        schema_names = self.client.list_containers(name_starts_with="")
+        """
+        To get schema names
+        """
+        prefix = (
+            self.service_connection.bucketName
+            if self.service_connection.bucketName
+            else ""
+        )
+        schema_names = self.client.list_containers(name_starts_with=prefix)
         for schema in schema_names:
             schema_fqn = fqn.build(
                 self.metadata,
@@ -321,7 +329,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     yield table_name, TableType.Regular
             if isinstance(self.service_connection.configSource, AzureConfig):
                 files_names = self.get_tables(container_name=bucket_name)
-                for file in files_names.list_blobs():
+                for file in files_names.list_blobs(name_starts_with=prefix):
                     file_name = file.name
                     if "/" in file.name:
                         table_name = self.standardize_table_name(bucket_name, file_name)
