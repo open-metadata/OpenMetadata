@@ -20,6 +20,7 @@ import { ReactComponent as IconTagGrey } from '../../../../assets/svg/tag-grey.s
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../constants/constants';
 import { getEntityName, getTagValue } from '../../../../utils/CommonUtils';
 import SVGIcons from '../../../../utils/SvgUtils';
+import { prepareConstraintIcon } from '../../../../utils/TableUtils';
 import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
 import TagsViewer from '../../../tags-viewer/tags-viewer';
 import { BasicColumnInfo, SummaryListProps } from './SummaryList.interface';
@@ -42,6 +43,7 @@ export default function SummaryList({
         type: column.dataType,
         tags: column.tags,
         description: column.description,
+        constraint: column.constraint,
       }));
     } else if (charts) {
       return charts.map((chart) => ({
@@ -95,7 +97,17 @@ export default function SummaryList({
         formattedColumnsData.map((entity) => (
           <Col key={entity.name} span={24}>
             <Row gutter={[0, 4]}>
-              <Col span={24}>{entity.title}</Col>
+              <Col span={24}>
+                {columns &&
+                  prepareConstraintIcon(
+                    entity.name,
+                    entity.constraint,
+                    undefined,
+                    'm-r-xss',
+                    '14px'
+                  )}
+                {entity.title}
+              </Col>
               <Col span={24}>
                 <Row className="text-xs font-300" gutter={[4, 4]}>
                   <Col>
@@ -104,7 +116,7 @@ export default function SummaryList({
                         <Text className="text-gray">{`${t(
                           'label.type'
                         )}:`}</Text>
-                        <Text className="text-semi-bold">{entity.type}</Text>
+                        <Text className="font-medium">{entity.type}</Text>
                       </Space>
                     )}
                   </Col>
@@ -119,7 +131,7 @@ export default function SummaryList({
                           <Text className="text-gray">{`${t(
                             'label.algorithm'
                           )}:`}</Text>
-                          <Text className="text-semi-bold">
+                          <Text className="font-medium">
                             {entity.algorithm}
                           </Text>
                         </Space>

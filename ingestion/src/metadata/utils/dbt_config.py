@@ -79,7 +79,7 @@ def _(config: DbtLocalConfig):
             )
             with open(config.dbtManifestFilePath, "r", encoding="utf-8") as manifest:
                 dbt_manifest = manifest.read()
-        if config.dbtRunResultsFilePath is not None:
+        if config.dbtRunResultsFilePath:
             logger.debug(
                 f"Reading [dbtRunResultsFilePath] from: {config.dbtRunResultsFilePath}"
             )
@@ -87,7 +87,7 @@ def _(config: DbtLocalConfig):
                 config.dbtRunResultsFilePath, "r", encoding="utf-8"
             ) as run_results:
                 dbt_run_results = run_results.read()
-        if config.dbtCatalogFilePath is not None:
+        if config.dbtCatalogFilePath:
             logger.debug(
                 f"Reading [dbtCatalogFilePath] from: {config.dbtCatalogFilePath}"
             )
@@ -113,7 +113,7 @@ def _(config: DbtHttpConfig):
             config.dbtManifestHttpPath
         )
         dbt_run_results = None
-        if config.dbtRunResultsHttpPath is not None:
+        if config.dbtRunResultsHttpPath:
             logger.debug(
                 f"Requesting [dbtRunResultsHttpPath] to: {config.dbtRunResultsHttpPath}"
             )
@@ -122,7 +122,7 @@ def _(config: DbtHttpConfig):
             )
 
         dbt_catalog = None
-        if config.dbtCatalogHttpPath is not None:
+        if config.dbtCatalogHttpPath:
             logger.debug(
                 f"Requesting [dbtCatalogHttpPath] to: {config.dbtCatalogHttpPath}"
             )
