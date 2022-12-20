@@ -31,7 +31,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
 
     create_view_query: str = """
         CREATE VIEW E2E_DB.e2e_test.view_persons AS
-            SELECT *
+            SELECT person_id, full_name
             FROM e2e_test.persons;
     """
 
@@ -63,19 +63,6 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
 
-    def assert_for_table_with_profiler(
-        self, source_status: SourceStatus, sink_status: SinkStatus
-    ):
-        self.assertTrue(len(source_status.failures) == 0)
-        self.assertTrue(len(source_status.success) > self.expected_tables())
-        self.assertTrue(len(sink_status.failures) == 0)
-        self.assertTrue(len(sink_status.records) > self.expected_tables())
-        sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-        lineage = self.retrieve_lineage(self.fqn_created_table())
-        self.assertTrue(len(sample_data.columns) == self.inserted_rows_count())
-        self.assertTrue(
-            len(lineage["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]) == 0
-        )
 
     def create_table_and_view(self) -> None:
         with self.engine.connect() as connection:
