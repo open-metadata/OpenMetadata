@@ -173,7 +173,7 @@ class SampleDataSourceStatus(SourceStatus):
     warnings: List[str] = []
 
     def scanned(  # pylint: disable=arguments-differ
-            self, entity_type: str, entity_name: str
+        self, entity_type: str, entity_name: str
     ) -> None:
         self.success.append(entity_name)
         logger.info(f"{entity_type} Scanned: {entity_name}")
@@ -685,7 +685,7 @@ class SampleDataSource(
                 cleanupPolicies=topic["cleanupPolicies"],
                 service=EntityReference(
                     id=self.kafka_service.id, type="messagingService"
-                )
+                ),
             )
 
             if "schemaType" in topic:
@@ -922,13 +922,13 @@ class SampleDataSource(
                             columnCount=profile["columnCount"],
                             rowCount=profile["rowCount"],
                             timestamp=(
-                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
+                                datetime.now(tz=timezone.utc) - timedelta(days=days)
                             ).timestamp(),
                         ),
                         columnProfile=[
                             ColumnProfile(
                                 timestamp=(
-                                        datetime.now(tz=timezone.utc) - timedelta(days=days)
+                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
                                 ).timestamp(),
                                 **col_profile,
                             )
@@ -938,10 +938,10 @@ class SampleDataSource(
                             SystemProfile(
                                 timestamp=int(
                                     (
-                                            datetime.now(tz=timezone.utc)
-                                            - timedelta(
-                                        days=days, hours=random.randint(0, 24)
-                                    )
+                                        datetime.now(tz=timezone.utc)
+                                        - timedelta(
+                                            days=days, hours=random.randint(0, 24)
+                                        )
                                     ).timestamp()
                                     * 1000
                                 ),
