@@ -118,10 +118,10 @@ export const emptyJsonTree: JsonTree = {
  * @param searchIndex Index to search
  * @param suggestField `suggest_` field to use
  */
-export const autocomplete: (
-  searchIndex: SearchIndex | SearchIndex[],
-  suggestField?: SuggestionField
-) => SelectFieldSettings['asyncFetch'] = (searchIndex, suggestField) => {
+export const autocomplete: (args: {
+  searchIndex: SearchIndex | SearchIndex[];
+  suggestField?: SuggestionField;
+}) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, suggestField }) => {
   const isUserAndTeamSearchIndex =
     searchIndex.includes(SearchIndex.USER) ||
     searchIndex.includes(SearchIndex.TEAM);
@@ -169,7 +169,9 @@ const commonQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete([SearchIndex.USER, SearchIndex.TEAM]),
+      asyncFetch: autocomplete({
+        searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+      }),
     },
   },
 
@@ -178,7 +180,9 @@ const commonQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
+      asyncFetch: autocomplete({
+        searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+      }),
     },
   },
 
@@ -187,7 +191,9 @@ const commonQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
+      asyncFetch: autocomplete({
+        searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+      }),
     },
   },
 };
@@ -202,7 +208,10 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
       type: 'select',
       mainWidgetProps,
       fieldSettings: {
-        asyncFetch: autocomplete(index, SuggestionField.SERVICE),
+        asyncFetch: autocomplete({
+          searchIndex: index,
+          suggestField: SuggestionField.SERVICE,
+        }),
       },
     },
   };
@@ -219,7 +228,10 @@ const tableQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.DATABASE),
+      asyncFetch: autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        suggestField: SuggestionField.DATABASE,
+      }),
     },
   },
 
@@ -228,7 +240,10 @@ const tableQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SCHEMA),
+      asyncFetch: autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        suggestField: SuggestionField.SCHEMA,
+      }),
     },
   },
 
@@ -237,7 +252,10 @@ const tableQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.COLUMN),
+      asyncFetch: autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        suggestField: SuggestionField.COLUMN,
+      }),
     },
   },
 };
