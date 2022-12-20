@@ -1,3 +1,15 @@
+import {
+  mockFQNWithSpecialChar1,
+  mockFQNWithSpecialChar2,
+  mockFQNWithSpecialChar3,
+  mockFQNWithSpecialChar4,
+  mockFQNWithSpecialChar5,
+  mockTableNameFromFQN,
+  mockTableNameWithSpecialChar,
+  mockTableNameWithSpecialChar3,
+  mockTableNameWithSpecialChar4,
+  mockTableNameWithSpecialChar5,
+} from './CommonUtils.mock';
 /*
  *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +24,8 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { sortTagsCaseInsensitive } from './CommonUtils';
-import { mockTags, sortedMockTags } from './CommonUtils.mock';
+import { getNameFromFQN, sortTagsCaseInsensitive } from './CommonUtils';
+import { mockFQN, mockTags, sortedMockTags } from './CommonUtils.mock';
 
 describe('Tests for CommonUtils', () => {
   describe('Tests for sortTagsCaseInsensitive function', () => {
@@ -33,6 +45,47 @@ describe('Tests for CommonUtils', () => {
       expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).not.toEqual(
         mockTags
       );
+    });
+
+    it('Function getNameFromFQN should return the correct table name for fqn without special characters', () => {
+      expect(getNameFromFQN(mockFQN)).toEqual(mockTableNameFromFQN);
+    });
+
+    it('Function getNameFromFQN should return the correct table name for sample_data.ecommerce_db."dim.api/client"', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar1)).toEqual(
+        mockTableNameWithSpecialChar
+      );
+    });
+
+    it('Function getNameFromFQN should return the correct table name for sample_data."ecommerce_db"."dim.api/client"', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar2)).toEqual(
+        mockTableNameWithSpecialChar
+      );
+    });
+
+    it('Regular expression in getNameFromFQN should not match for sample_data."ecommerce_db"."dim.api/"client" and should return names by default method', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar3)).toEqual(
+        mockTableNameWithSpecialChar3
+      );
+    });
+
+    it('Regular expression in getNameFromFQN should not match for sample_data."ecommerce_db"."dim.api/client"" and should return names by default method', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar4)).toEqual(
+        mockTableNameWithSpecialChar4
+      );
+    });
+
+    it('Regular expression in getNameFromFQN should not match for sample_data."ecommerce_db".""dim.api/client" and should return names by default method', () => {
+      expect(getNameFromFQN(mockFQNWithSpecialChar5)).toEqual(
+        mockTableNameWithSpecialChar5
+      );
+    });
+
+    it('Table name returned from the function getNameFromFQN should not contain double quotes in it', () => {
+      const result = getNameFromFQN(mockFQNWithSpecialChar2);
+      const containsDoubleQuotes = result.search('"');
+
+      expect(containsDoubleQuotes > 0).toEqual(false);
     });
   });
 });

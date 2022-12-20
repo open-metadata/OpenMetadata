@@ -277,8 +277,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   };
 
   const fetchLatestProfilerData = async () => {
+    // As we are encoding the fqn in API function to apply all over the application
+    // and the datasetFQN comes form url parameter which is already encoded,
+    // we are decoding FQN below to avoid double encoding in the API function
+    const decodedDatasetFQN = decodeURIComponent(datasetFQN);
     try {
-      const response = await getLatestTableProfileByFqn(datasetFQN);
+      const response = await getLatestTableProfileByFqn(decodedDatasetFQN);
       setTable(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
