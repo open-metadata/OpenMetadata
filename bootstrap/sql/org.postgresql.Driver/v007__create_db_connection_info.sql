@@ -55,5 +55,9 @@ SET json = jsonb_set(json::jsonb #- '{connection,config,configSource}', '{connec
 WHERE servicetype = 'Dagster' and json #>'{connection,config,configSource,hostPort}' is not null;
 
 UPDATE topic_entity
-SET json = jsonb_set(json::jsonb #- '{messageSchema,schemaType}', '{schemaType}', json#> '{messageSchema,schemaText', '{schemaText}')
+SET json = jsonb_set(json::jsonb #- '{schemaText}', '{messageSchema}', jsonb_build_object('schemaText', json#>'{schemaText}'), true)
+WHERE json #> '{schemaText}' IS NOT NULL;
+
+UPDATE topic_entity
+SET json = jsonb_set(json::jsonb #- '{schemaType}', '{messageSchema,schemaType}', json#> '{schemaType}', true)
 WHERE json #> '{schemaType}' IS NOT NULL;
