@@ -103,6 +103,15 @@ export const TIER_FILTER = {
   [i18n.t('label.tier-number', { tier: 5 })]: 'Tier.Tier5',
 };
 
+export const TIER_DATA = {
+  'Tier.Tier1': i18n.t('label.tier-number', { tier: 1 }),
+  'Tier.Tier2': i18n.t('label.tier-number', { tier: 2 }),
+  'Tier.Tier3': i18n.t('label.tier-number', { tier: 3 }),
+  'Tier.Tier4': i18n.t('label.tier-number', { tier: 4 }),
+  'Tier.Tier5': i18n.t('label.tier-number', { tier: 5 }),
+  NoTier: i18n.t('label.no-tier'),
+};
+
 export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getPastDaysDateTimeMillis(DEFAULT_DAYS),
   endTs: getCurrentDateTimeMillis(),
