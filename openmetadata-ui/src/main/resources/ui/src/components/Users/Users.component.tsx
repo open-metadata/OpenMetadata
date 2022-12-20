@@ -813,7 +813,7 @@ const Users = ({
             </Space>
           ) : null}
         </div>
-        <div className="m-t-md">
+        <div className="m-t-xs">
           <ActivityFeedList
             hideFeedFilter
             hideThreadFilter
