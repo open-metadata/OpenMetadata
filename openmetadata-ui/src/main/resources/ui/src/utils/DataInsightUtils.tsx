@@ -38,6 +38,7 @@ import {
 import {
   ENTITIES_SUMMARY_LIST,
   KPI_DATE_PICKER_FORMAT,
+  TIER_DATA,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
@@ -67,7 +68,8 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 
 export const renderLegend = (
   legendData: LegendProps,
-  activeKeys = [] as string[]
+  activeKeys = [] as string[],
+  isTier = false
 ) => {
   const { payload = [] } = legendData;
 
@@ -101,7 +103,9 @@ export const renderLegend = (
               />
             </Surface>
             <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-              {entry.value}
+              {isTier
+                ? TIER_DATA[entry.value as keyof typeof TIER_DATA]
+                : entry.value}
             </span>
           </li>
         );
@@ -146,7 +150,13 @@ const getEntryFormattedValue = (
 };
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], isPercentage, kpiTooltipRecord } = props;
+  const {
+    active,
+    payload = [],
+    isPercentage,
+    kpiTooltipRecord,
+    isTier,
+  } = props;
 
   if (active && payload && payload.length) {
     const timestamp = getDateByTimeStamp(
@@ -166,7 +176,9 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
               <Surface className="mr-2" height={12} version="1.1" width={12}>
                 <rect fill={entry.color} height="14" rx="2" width="14" />
               </Surface>
-              {entry.dataKey}
+              {isTier
+                ? TIER_DATA[entry.dataKey as keyof typeof TIER_DATA]
+                : entry.dataKey}
             </span>
             <span className="font-medium">
               {getEntryFormattedValue(

@@ -34,6 +34,7 @@ import {
   FilterPattern,
   IngestionPipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import {
   DbtConfig,
   DbtPipelineClass,
@@ -193,6 +194,10 @@ const AddIngestion = ({
   );
   const [profileSample, setProfileSample] = useState(
     (data?.sourceConfig.config as ConfigClass)?.profileSample
+  );
+  const [profileSampleType, setProfileSampleType] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.profileSampleType ||
+      ProfileSampleType.Percentage
   );
   const [threadCount, setThreadCount] = useState(
     (data?.sourceConfig.config as ConfigClass)?.threadCount ?? 5
@@ -551,6 +556,7 @@ const AddIngestion = ({
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
           profileSample: profileSample,
+          profileSampleType: profileSampleType,
           threadCount: threadCount,
           timeoutSeconds: timeoutSeconds,
         };
@@ -748,6 +754,7 @@ const AddIngestion = ({
             }
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleProfileSample={(val) => setProfileSample(val)}
+            handleProfileSampleType={(val) => setProfileSampleType(val)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={setResultLimit}
             handleShowFilter={handleShowFilter}
@@ -765,6 +772,7 @@ const AddIngestion = ({
             pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
             profileSample={profileSample}
+            profileSampleType={profileSampleType}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}

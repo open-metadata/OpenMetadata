@@ -45,7 +45,7 @@ import {
   PROFILER_FILTER_RANGE,
 } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
-import { Table } from '../../generated/entity/data/table';
+import { ProfileSampleType, Table } from '../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import { Include } from '../../generated/type/include';
@@ -144,6 +144,24 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
   };
+
+  const getProfileSampleValue = () => {
+    let value;
+    if (profile?.profileSampleType == ProfileSampleType.Percentage) {
+      value = `${profile?.profileSample ?? 100}%`;
+    } else if (profile?.profileSampleType == ProfileSampleType.Rows) {
+      value = `${profile?.profileSample} ${
+        profile?.profileSampleType.toString().length > 1
+          ? t('label.row-plural')
+          : t('label.row')
+      } `;
+    } else {
+      value = '100%';
+    }
+
+    return value;
+  };
+
   const overallSummery: OverallTableSummeryType[] = useMemo(() => {
     return [
       {
@@ -155,8 +173,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
         value: profile?.columnCount ?? 0,
       },
       {
-        title: `${t('label.column-count')} %`,
-        value: `${profile?.profileSample ?? 100}%`,
+        title: `${t('label.profile-sample-type', { type: '' })}`,
+        value: getProfileSampleValue(),
       },
       {
         title: t('label.success'),

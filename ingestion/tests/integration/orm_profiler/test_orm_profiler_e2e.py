@@ -16,13 +16,14 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+import logging
 from copy import deepcopy
 from unittest import TestCase
 
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import ProfileSampleType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -34,6 +35,9 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.connections import create_and_bind_session
+
+logging.basicConfig(level=logging.WARN)
+logger = logging.getLogger(__name__)
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 
@@ -107,12 +111,17 @@ class ProfilerWorkflowTest(TestCase):
         """
         Prepare Ingredients
         """
-        User.__table__.create(bind=cls.engine)
-        NewUser.__table__.create(bind=cls.engine)
+        try:
+            User.__table__.create(bind=cls.engine)
+            NewUser.__table__.create(bind=cls.engine)
+        except:
+            logger.warning("Table Already exists")
 
         data = [
             User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
             User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
+            User(name="Joh", fullname="Joh Doe", nickname=None, age=37),
+            User(name="Jae", fullname="Jae Doe", nickname=None, age=38),
         ]
         cls.session.add_all(data)
         cls.session.commit()
@@ -151,8 +160,9 @@ class ProfilerWorkflowTest(TestCase):
             hard_delete=True,
         )
 
-        NewUser.__table__.drop(bind=cls.engine)
         User.__table__.drop(bind=cls.engine)
+        NewUser.__table__.drop(bind=cls.engine)
+        cls.session.close()
 
     def test_ingestion(self):
         """
@@ -212,6 +222,33 @@ class ProfilerWorkflowTest(TestCase):
 
         assert not table.tableProfilerConfig
         assert profile.profileSample == 75.0
+        assert profile.profileSampleType == ProfileSampleType.PERCENTAGE
+
+        workflow_config["processor"]["config"]["tableConfig"][0][
+            "profileSampleType"
+        ] = ProfileSampleType.ROWS
+        workflow_config["processor"]["config"]["tableConfig"][0]["profileSample"] = 3
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert not table.tableProfilerConfig
+        assert profile.profileSample == 3.0
+        assert profile.rowCount == 3.0
+        assert profile.profileSampleType == ProfileSampleType.ROWS
 
     def test_worflow_sample_profile(self):
         """Test the worflow sample profile gets propagated down to the table profileSample"""
