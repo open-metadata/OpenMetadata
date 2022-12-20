@@ -459,7 +459,8 @@ public class SearchResource {
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.description").highlighterType(UNIFIED));
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.children.name").highlighterType(UNIFIED));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("messageSchema.schemaFields.name").field("messageSchema.schemaFields.name"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("messageSchema.schemaFields.name").field("messageSchema.schemaFields.name"));
     return addAggregation(searchSourceBuilder);
   }
 
