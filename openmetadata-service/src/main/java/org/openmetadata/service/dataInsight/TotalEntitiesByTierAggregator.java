@@ -27,28 +27,28 @@ public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterfac
   List<TotalEntitiesByTier> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
     List<TotalEntitiesByTier> data = new ArrayList<>();
-    List<Double> entityCount = new ArrayList<>();
 
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
+      List<TotalEntitiesByTier> timestampData = new ArrayList<>();
+      double totalEntityCount = 0.0;
+
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
       MultiBucketsAggregation entityTypeBuckets = timestampBucket.getAggregations().get(ENTITY_TIER);
       for (MultiBucketsAggregation.Bucket entityTierBucket : entityTypeBuckets.getBuckets()) {
         String entityTier = entityTierBucket.getKeyAsString();
         Sum sumEntityCount = entityTierBucket.getAggregations().get(ENTITY_COUNT);
-        data.add(
+        timestampData.add(
             new TotalEntitiesByTier()
                 .withTimestamp(timestamp)
                 .withEntityTier(entityTier)
                 .withEntityCount(sumEntityCount.getValue()));
-        entityCount.add(sumEntityCount.getValue());
+        totalEntityCount = totalEntityCount + sumEntityCount.getValue();
       }
-    }
-
-    double totalEntities = entityCount.stream().mapToDouble(v -> v).sum();
-
-    for (TotalEntitiesByTier el : data) {
-      el.withEntityCountFraction(el.getEntityCount() / totalEntities);
+      for (TotalEntitiesByTier el : timestampData) {
+        el.withEntityCountFraction(el.getEntityCount() / totalEntityCount);
+        data.add((el));
+      }
     }
 
     return data;
