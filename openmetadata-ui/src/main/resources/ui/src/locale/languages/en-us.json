@@ -139,7 +139,7 @@
     "exclude": "Exclude",
     "enable-column-profile": "Enable column profile",
     "profile-sample-query": "Profile Sample Query",
-    "profile-sample": "Profile Sample {{type}}",
+    "profile-sample-type": "Profile Sample {{type}}",
     "save": "Save",
     "all": "All",
     "run": "Run",

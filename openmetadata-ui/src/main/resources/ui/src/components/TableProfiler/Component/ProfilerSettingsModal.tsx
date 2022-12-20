@@ -300,7 +300,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             }}
             layout="vertical">
             <Form.Item
-              label={t('label.profile-sample', {
+              label={t('label.profile-sample-type', {
                 type: '',
               })}
               name="profileSampleType">
@@ -315,7 +315,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             {selectedProfileSampleType === ProfileSampleType.Percentage ? (
               <Form.Item
                 className="m-b-0"
-                label={t('label.profile-sample', {
+                label={t('label.profile-sample-type', {
                   type: 'Value',
                 })}
                 name="profileSamplePercentage">
@@ -328,7 +328,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             ) : (
               <Form.Item
                 className="m-b-0"
-                label={t('label.profile-sample', {
+                label={t('label.profile-sample-type', {
                   type: 'Value',
                 })}
                 name="profileSampleRows">

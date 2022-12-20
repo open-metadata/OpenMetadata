@@ -173,7 +173,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
         value: profile?.columnCount ?? 0,
       },
       {
-        title: `${t('label.profile-sample', { type: '' })}`,
+        title: `${t('label.profile-sample-type', { type: '' })}`,
         value: getProfileSampleValue(),
       },
       {

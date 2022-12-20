@@ -143,7 +143,7 @@ const ConfigureIngestion = ({
         <Form.Item
           className="m-t-sm"
           initialValue={profileSampleType || ProfileSampleType.Percentage}
-          label={t('label.profile-sample', {
+          label={t('label.profile-sample-type', {
             type: 'Type',
           })}
           name="profileSample">
@@ -156,7 +156,7 @@ const ConfigureIngestion = ({
         </Form.Item>
         <Form.Item
           className="m-b-xs"
-          label={t('label.profile-sample', {
+          label={t('label.profile-sample-type', {
             type: 'Value',
           })}
           name="profile-sample-value">
