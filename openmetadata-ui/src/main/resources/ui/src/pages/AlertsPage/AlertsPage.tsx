@@ -10,14 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Table, Tag, Tooltip, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
-import { ReactComponent as RightArrowIcon } from '../../assets/svg/ic-right-arrow.svg';
 import { getAllAlerts } from '../../axiosAPIs/alertsAPI';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -34,6 +31,7 @@ import { Paging } from '../../generated/type/paging';
 import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AlertsExpanded } from './AlertRowExpanded';
 
@@ -171,15 +169,8 @@ const AlertsPage = () => {
             columns={columns}
             dataSource={alerts}
             expandable={{
+              ...getTableExpandableConfig<Alerts>(),
               expandedRowRender: (record) => <AlertsExpanded alert={record} />,
-              expandIcon: ({ expanded, onExpand, expandable, record }) =>
-                expandable && (
-                  <Icon
-                    component={expanded ? DropDownIcon : RightArrowIcon}
-                    size={16}
-                    onClick={(e) => onExpand(record, e)}
-                  />
-                ),
             }}
             loading={{ spinning: loading, indicator: <Loader /> }}
             pagination={false}

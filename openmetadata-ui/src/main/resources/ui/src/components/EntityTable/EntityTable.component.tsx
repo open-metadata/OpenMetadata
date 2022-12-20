@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
@@ -48,6 +46,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
   getDataTypeString,
+  getTableExpandableConfig,
   makeData,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
@@ -680,22 +679,8 @@ const EntityTable = ({
         data-testid="entity-table"
         dataSource={data}
         expandable={{
-          rowExpandable: (record) => {
-            return (record.children && record.children.length > 0) || false;
-          },
-          expandIcon: ({ expanded, onExpand, expandable, record }) =>
-            expandable && (
-              <span
-                className="m-r-xs cursor-pointer"
-                onClick={(e) =>
-                  onExpand(
-                    record,
-                    e as unknown as React.MouseEvent<HTMLElement, MouseEvent>
-                  )
-                }>
-                <FontAwesomeIcon icon={expanded ? faCaretDown : faCaretRight} />
-              </span>
-            ),
+          ...getTableExpandableConfig<Column>(),
+          rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
         size="small"

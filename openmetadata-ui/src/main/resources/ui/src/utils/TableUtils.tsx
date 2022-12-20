@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty, upperCase } from 'lodash';
+import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
+import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
@@ -360,20 +361,17 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
   }
 };
 
-export function getTableExpandableConfig<
-  T extends { children?: T[] }
->(): ExpandableConfig<T> {
+export function getTableExpandableConfig<T>(): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
-    rowExpandable: (record: T) => !isEmpty(record.children),
-
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable && (
-        <Typography.Text
-          className="m-r-xs cursor-pointer"
+        <Icon
+          className="mr-1"
+          component={expanded ? DropDownIcon : RightArrowIcon}
           data-testid="expand-icon"
-          onClick={(e) => onExpand(record, e)}>
-          {expanded ? <DropDownIcon /> : <DropDownIcon />}
-        </Typography.Text>
+          size={16}
+          onClick={(e) => onExpand(record, e)}
+        />
       ),
   };
 
