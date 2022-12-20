@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
 from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.registry import CustomTypes
 from metadata.orm_profiler.profiler.core import Profiler
@@ -123,7 +124,11 @@ class SampleTest(TestCase):
         The random sampler should be able to
         generate a random subset of data
         """
-        sampler = Sampler(session=self.session, table=User, profile_sample=50.0)
+        sampler = Sampler(
+            session=self.session,
+            table=User,
+            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+        )
         random_sample = sampler.random_sample()
         res = self.session.query(func.count()).select_from(random_sample).first()
         assert res[0] < 30
@@ -141,7 +146,7 @@ class SampleTest(TestCase):
                 ProfilerInterfaceArgs(
                     service_connection_config=self.sqlite_conn,
                     table_entity=self.table_entity,
-                    table_sample_precentage=50,
+                    profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
                     ometa_client=None,
                 )
             )
@@ -184,7 +189,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_precentage=50,
+                        profile_sample_config=ProfileSampleConfig(profile_sample=50),
                         ometa_client=None,
                     )
                 ),
@@ -206,7 +211,7 @@ class SampleTest(TestCase):
                     profiler_interface_args=ProfilerInterfaceArgs(
                         service_connection_config=self.sqlite_conn,
                         table_entity=self.table_entity,
-                        table_sample_precentage=50,
+                        profile_sample_config=ProfileSampleConfig(profile_sample=50),
                         ometa_client=None,
                     )
                 ),

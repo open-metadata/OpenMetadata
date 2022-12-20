@@ -7,7 +7,9 @@
     "profilerConfigType": {
       "description": "Profiler Source Config Pipeline type",
       "type": "string",
-      "enum": ["Profiler"],
+      "enum": [
+        "Profiler"
+      ],
       "default": "Profiler"
     }
   },
@@ -35,11 +37,12 @@
       "default": true
     },
     "profileSample": {
-      "description": "Percentage of data used to execute the profiler for the whole workflow. This percentage will be applied to all tables in the workflow. Represented in the range (0, 100].",
+      "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
       "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 100,
       "default": null
+    },
+    "profileSampleType": {
+      "$ref": "../entity/data/table.json#definitions/profileSampleType"
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
