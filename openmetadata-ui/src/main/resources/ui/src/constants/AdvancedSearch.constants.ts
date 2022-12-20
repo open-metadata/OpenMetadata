@@ -12,7 +12,7 @@
  */
 
 import i18next from 'i18next';
-import { uniq } from 'lodash';
+import { isUndefined, uniq } from 'lodash';
 import {
   BasicConfig,
   Fields,
@@ -121,17 +121,33 @@ export const emptyJsonTree: JsonTree = {
 export const autocomplete: (
   searchIndex: SearchIndex | SearchIndex[],
   suggestField?: SuggestionField
-) => SelectFieldSettings['asyncFetch'] =
-  (searchIndex, suggestField) => (search) =>
+) => SelectFieldSettings['asyncFetch'] = (searchIndex, suggestField) => {
+  const isUserAndTeamSearchIndex =
+    searchIndex.includes(SearchIndex.USER) ||
+    searchIndex.includes(SearchIndex.TEAM);
+
+  return (search) =>
     suggestQuery({
       query: search ?? '*',
       searchIndex: searchIndex,
       field: suggestField,
-      fetchSource: false,
-    }).then((resp) => ({
-      values: uniq(resp).map(({ text }) => ({ value: text, title: text })),
-      hasMore: false,
-    }));
+      // fetch source if index is type of user or team and both
+      fetchSource: isUserAndTeamSearchIndex,
+    }).then((resp) => {
+      return {
+        values: uniq(resp).map(({ text, _source }) => ({
+          value: text,
+          title:
+            // set displayName or name if index is type of user or team and both.
+            // else set the text
+            isUserAndTeamSearchIndex && !isUndefined(_source)
+              ? _source?.displayName || _source.name
+              : text,
+        })),
+        hasMore: false,
+      };
+    });
+};
 
 const mainWidgetProps = {
   fullWidth: true,
