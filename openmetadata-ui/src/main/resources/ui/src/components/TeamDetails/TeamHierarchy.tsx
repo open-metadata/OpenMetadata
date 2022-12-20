@@ -27,6 +27,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { getMovedTeamData } from '../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
@@ -173,8 +174,6 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           onTeamExpand(false, record.fullyQualifiedName, true);
         }
       },
-      expandIcon: ({ expanded, onExpand, expandable, record }) =>
-        tableExpandableIconData({ expanded, onExpand, expandable, record }),
     }),
     [onTeamExpand, tableExpandableIconData]
   );
@@ -189,7 +188,10 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           components={TABLE_CONSTANTS}
           data-testid="team-hierarchy-table"
           dataSource={data}
-          expandable={expandableConfig}
+          expandable={{
+            ...getTableExpandableConfig<Team>(),
+            ...expandableConfig,
+          }}
           loading={isTableLoading}
           pagination={false}
           rowKey="name"
