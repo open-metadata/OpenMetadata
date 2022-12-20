@@ -3,12 +3,12 @@ source:
   serviceName: local_snowflake
   serviceConnection:
     config:
-      username: <username>
-      password: <password>
-      account: <snowflake_account>
-      warehouse: COMPUTE_WH
+      username: $E2E_SNOWFLAKE_USERNAME
+      password: $E2E_SNOWFLAKE_PASSWORD
+      account: $E2E_SNOWFLAKE_ACCOUNT
+      warehouse: $E2E_SNOWFLAKE_WAREHOUSE
+      database: $E2E_SNOWFLAKE_DATABASE
       type: Snowflake
-      database: E2E_DB
       connectionOptions: {}
       connectionArguments: {}
   sourceConfig:
