@@ -46,6 +46,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
+  DI_STRUCTURE,
 } from '../../constants/DataInsight.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
@@ -209,10 +210,10 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
         </Space>
       }>
       {kpiList.length ? (
-        <Row gutter={16}>
+        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           {graphData.length ? (
             <>
-              <Col span={18}>
+              <Col span={DI_STRUCTURE.leftContainerSpan}>
                 <ResponsiveContainer debounce={1} minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
@@ -261,7 +262,7 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
                 </ResponsiveContainer>
               </Col>
               {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-                <Col span={6}>
+                <Col span={DI_STRUCTURE.rightContainerSpan}>
                   <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
                 </Col>
               )}

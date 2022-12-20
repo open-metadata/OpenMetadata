@@ -17,7 +17,6 @@ import {
   DbtConfigCloudReq,
   DbtConfigHttp,
   DbtConfigLocal,
-  DbtGCSCreds,
   DbtS3CredsReq,
   DbtSourceTypes,
   ErrorDbtCloud,
@@ -28,7 +27,6 @@ import {
 } from '../components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
 import {
   reqDBTCloudFields,
-  reqDBTGCSCredsFields,
   reqDBTHttpFields,
   reqDBTLocalFields,
   reqDBTS3Fields,
@@ -118,24 +116,6 @@ export const validateDbtS3Config = (
   for (const field of Object.keys(requiredFields) as Array<
     keyof DbtS3CredsReq
   >) {
-    if (isEmpty(data[field])) {
-      isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
-    }
-  }
-
-  return { isValid, errors };
-};
-
-export const validateDbtGCSCredsConfig = (
-  data: GCSCredentialsValues,
-  requiredFields = reqDBTGCSCredsFields
-) => {
-  let isValid = true;
-  const errors = {} as ErrorDbtGCS;
-  for (const field of Object.keys(requiredFields) as Array<keyof DbtGCSCreds>) {
     if (isEmpty(data[field])) {
       isValid = false;
       errors[
@@ -250,7 +230,7 @@ export const checkDbtGCSCredsConfigRules = (
 
 export const getSourceTypeFromConfig = (
   data?: DbtConfig,
-  defaultSource = '' as DBT_SOURCES
+  defaultSource = DBT_SOURCES.local
 ): DbtSourceTypes => {
   let sourceType = defaultSource;
   let gcsType = undefined;

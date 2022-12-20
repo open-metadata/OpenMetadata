@@ -190,6 +190,15 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   metadata: ServiceCategory.METADATA_SERVICES,
 };
 
+export const SERVICE_CATEGORY_TYPE = {
+  databaseServices: 'databases',
+  messagingServices: 'messaging',
+  dashboardServices: 'dashboards',
+  pipelineServices: 'pipelines',
+  mlmodelServices: 'mlModels',
+  metadataServices: 'metadata',
+};
+
 export const servicesDisplayName: { [key: string]: string } = {
   databaseServices: i18next.t('label.entity-service', {
     entity: i18next.t('label.database'),

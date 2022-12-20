@@ -74,7 +74,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
     <Fragment>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="catalog-url">
-          {requiredField('DBT Catalog Http Path')}
+          DBT Catalog HTTP Path
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT catalog file to extract dbt models with their column schemas.
@@ -94,7 +94,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-url">
-          {requiredField('DBT Manifest Http Path')}
+          {requiredField('DBT Manifest HTTP Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT manifest file path to extract dbt models and associate with
@@ -109,6 +109,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           value={dbtManifestHttpPath}
           onChange={(e) => handleManifestHttpPathChange(e.target.value)}
         />
+        {errors?.dbtManifestHttpPath && errorMsg(errors.dbtManifestHttpPath)}
       </Field>
       <Field>
         <label

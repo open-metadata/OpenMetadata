@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,26 @@
  *  limitations under the License.
  */
 
-.alerts-notification-form {
-  .ant-form-item {
-    margin-bottom: 16px;
-  }
+import { Typography } from 'antd';
+import React from 'react';
+import './PageHeader.style.less';
 
-  .footer {
-    gap: 16px;
-    display: flex;
-    justify-content: end;
-  }
+interface HeaderProps {
+  data: {
+    header: string;
+    subHeader: string;
+  };
 }
+
+const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
+  return (
+    <div className="page-header-container">
+      <Typography.Title className="heading">{header}</Typography.Title>
+      <Typography.Paragraph className="sub-heading">
+        {subHeader}
+      </Typography.Paragraph>
+    </div>
+  );
+};
+
+export default PageHeader;

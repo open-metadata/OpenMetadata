@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { AlertAction } from '../generated/alerts/alertAction';
@@ -32,6 +33,21 @@ export const createAlertAction = async (alertAction: CreateAlertAction) => {
     CreateAlertAction,
     AxiosResponse<AlertAction>
   >(BASE_URL, alertAction);
+
+  return response.data;
+};
+
+export const patchAlertAction = async (id: string, operation: Operation) => {
+  const response = await axiosClient.patch<
+    Operation,
+    AxiosResponse<AlertAction>
+  >(`${BASE_URL}/${id}`, operation);
+
+  return response.data;
+};
+
+export const updateAlertAction = async (alertAction: AlertAction) => {
+  const response = await axiosClient.put<AlertAction>(BASE_URL, alertAction);
 
   return response.data;
 };

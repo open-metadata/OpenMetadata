@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button as ButtonAntd, Card, Col, Row, Tooltip } from 'antd';
+import { Button as ButtonAntd, Card, Col, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { Fragment, useMemo } from 'react';
+import React, { Fragment, useCallback, useMemo } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
@@ -22,6 +22,7 @@ import {
 } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { servicesDisplayName } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -43,6 +44,7 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
+import PageHeader from '../header/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 interface ServicesProps {
@@ -79,12 +81,34 @@ const Services = ({
     [permissions, serviceName]
   );
 
+  const getServicePageHeader = useCallback(() => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return PAGE_HEADERS.DATABASES_SERVICES;
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return PAGE_HEADERS.DASHBOARD_SERVICES;
+      case ServiceCategory.MESSAGING_SERVICES:
+        return PAGE_HEADERS.MESSAGING_SERVICES;
+      case ServiceCategory.METADATA_SERVICES:
+        return PAGE_HEADERS.METADATA_SERVICES;
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return PAGE_HEADERS.ML_MODELS_SERVICES;
+      case ServiceCategory.PIPELINE_SERVICES:
+        return PAGE_HEADERS.PIPELINES_SERVICES;
+      default:
+        return PAGE_HEADERS.DATABASES_SERVICES;
+    }
+  }, [serviceName]);
+
   return (
     <Row className="tw-justify-center" data-testid="services-container">
       {serviceData.length ? (
         <Fragment>
           <Col span={24}>
-            <div className="tw-flex tw-justify-end" data-testid="header">
+            <Space
+              className="w-full justify-between m-b-lg"
+              data-testid="header">
+              <PageHeader data={getServicePageHeader()} />
               <Tooltip
                 placement="left"
                 title={
@@ -103,7 +127,7 @@ const Services = ({
                   Add New Service
                 </Button>
               </Tooltip>
-            </div>
+            </Space>
           </Col>
           <Col span={24}>
             <Row data-testid="data-container" gutter={[16, 16]}>

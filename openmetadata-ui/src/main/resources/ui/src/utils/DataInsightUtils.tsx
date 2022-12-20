@@ -22,6 +22,7 @@ import {
   isString,
   isUndefined,
   last,
+  omit,
   sortBy,
   toNumber,
 } from 'lodash';
@@ -486,8 +487,8 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   });
 
   const graphData = prepareGraphData(timestamps, filteredData);
-  const latestData = getLatestCount(last(graphData));
-  const oldestData = getLatestCount(first(graphData));
+  const latestData = getLatestCount(omit(last(graphData), 'NoTier'));
+  const oldestData = getLatestCount(omit(first(graphData), 'NoTier'));
   const relativePercentage = latestData - oldestData;
 
   return {
