@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Test MySql connector with CLI
+Test Snowflake connector with CLI
 """
 from typing import List
 
