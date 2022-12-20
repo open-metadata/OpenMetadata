@@ -444,6 +444,9 @@ public class SearchResource {
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_DESCRIPTION, 2.0f)
+            .field("messageSchema.schemaFields.name", 2.0f)
+            .field("messageSchema.schemaFields.description", 1.0f)
+            .field("messageSchema.schemaFields.children.name", 2.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
@@ -453,7 +456,10 @@ public class SearchResource {
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTopicName);
+    hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.description").highlighterType(UNIFIED));
+    hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.children.name").highlighterType(UNIFIED));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("messageSchema.schemaFields.name").field("messageSchema.schemaFields.name"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -462,7 +468,7 @@ public class SearchResource {
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_DESCRIPTION, 2.0f)
-            .field("chars.name", 2.0f)
+            .field("charts.name", 2.0f)
             .field("charts.description")
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
@@ -552,7 +558,6 @@ public class SearchResource {
         .aggregation(AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("service.type").field("service.type").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));

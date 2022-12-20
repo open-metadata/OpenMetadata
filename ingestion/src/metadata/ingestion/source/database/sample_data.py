@@ -173,7 +173,7 @@ class SampleDataSourceStatus(SourceStatus):
     warnings: List[str] = []
 
     def scanned(  # pylint: disable=arguments-differ
-        self, entity_type: str, entity_name: str
+            self, entity_type: str, entity_name: str
     ) -> None:
         self.success.append(entity_name)
         logger.info(f"{entity_type} Scanned: {entity_name}")
@@ -675,15 +675,6 @@ class SampleDataSource(
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            schema_type = topic["schemaType"].lower()
-
-            load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
-            if not load_parser_fn:
-                raise InvalidSchemaTypeException(
-                    f"Cannot find {schema_type} in parser providers registry."
-                )
-            schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
-
             create_topic = CreateTopicRequest(
                 name=topic["name"],
                 description=topic["description"],
@@ -692,15 +683,26 @@ class SampleDataSource(
                 replicationFactor=topic["replicationFactor"],
                 maximumMessageSize=topic["maximumMessageSize"],
                 cleanupPolicies=topic["cleanupPolicies"],
-                messageSchema=Topic(
+                service=EntityReference(
+                    id=self.kafka_service.id, type="messagingService"
+                )
+            )
+
+            if "schemaType" in topic:
+                schema_type = topic["schemaType"].lower()
+                load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
+                if not load_parser_fn:
+                    raise InvalidSchemaTypeException(
+                        f"Cannot find {schema_type} in parser providers registry."
+                    )
+                schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
+
+                create_topic.messageSchema = Topic(
                     schemaText=topic["schemaText"],
                     schemaType=topic["schemaType"],
                     schemaFields=schema_fields,
-                ),
-                service=EntityReference(
-                    id=self.kafka_service.id, type="messagingService"
-                ),
-            )
+                )
+
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
@@ -913,7 +915,6 @@ class SampleDataSource(
                 fqn=table_profile["fqn"],
             )
             for days, profile in enumerate(table_profile["profile"]):
-
                 yield OMetaTableProfileSampleData(
                     table=table,
                     profile=CreateTableProfileRequest(
@@ -921,13 +922,13 @@ class SampleDataSource(
                             columnCount=profile["columnCount"],
                             rowCount=profile["rowCount"],
                             timestamp=(
-                                datetime.now(tz=timezone.utc) - timedelta(days=days)
+                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
                             ).timestamp(),
                         ),
                         columnProfile=[
                             ColumnProfile(
                                 timestamp=(
-                                    datetime.now(tz=timezone.utc) - timedelta(days=days)
+                                        datetime.now(tz=timezone.utc) - timedelta(days=days)
                                 ).timestamp(),
                                 **col_profile,
                             )
@@ -937,10 +938,10 @@ class SampleDataSource(
                             SystemProfile(
                                 timestamp=int(
                                     (
-                                        datetime.now(tz=timezone.utc)
-                                        - timedelta(
-                                            days=days, hours=random.randint(0, 24)
-                                        )
+                                            datetime.now(tz=timezone.utc)
+                                            - timedelta(
+                                        days=days, hours=random.randint(0, 24)
+                                    )
                                     ).timestamp()
                                     * 1000
                                 ),
