@@ -366,6 +366,7 @@ export function getTableExpandableConfig<T>(): ExpandableConfig<T> {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable && (
         <Icon
+          className="mr-1"
           component={expanded ? DropDownIcon : RightArrowIcon}
           data-testid="expand-icon"
           size={16}
