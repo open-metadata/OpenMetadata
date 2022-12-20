@@ -16,6 +16,7 @@ import React from 'react';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ProfileSampleType } from '../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
 import ConfigureIngestion from './ConfigureIngestion';
 
@@ -94,6 +95,9 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleShowFilter: jest.fn(),
   onCancel: jest.fn(),
   onNext: jest.fn(),
+  handleProfileSampleType: jest.fn(),
+  profileSample: 1,
+  profileSampleType: ProfileSampleType.Percentage,
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   enableDebugLog: false,
   handleEnableDebugLog: jest.fn(),
