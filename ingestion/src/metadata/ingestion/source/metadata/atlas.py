@@ -266,19 +266,20 @@ class AtlasSource(Source):
                         entity=Table, fqn=table_fqn
                     )
 
-                    tag_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Tag,
-                        tag_category_name=ATLAS_TAG_CATEGORY,
-                        tag_name=ATLAS_TABLE_TAG,
-                    )
+                    if table_object:
+                        if tbl_attrs.get("description", None):
+                            self.metadata.patch_description(
+                                entity_id=table_object.id,
+                                entity=Table,
+                                description=tbl_attrs["description"],
+                                force=True,
+                            )
 
-                    if tbl_attrs.get("description", None) and table_object:
-                        self.metadata.patch_description(
-                            entity_id=table_object.id,
-                            entity=Table,
-                            description=tbl_attrs["description"],
-                            force=True,
+                        tag_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Tag,
+                            tag_category_name=ATLAS_TAG_CATEGORY,
+                            tag_name=ATLAS_TABLE_TAG,
                         )
 
                         self.metadata.patch_tag(
