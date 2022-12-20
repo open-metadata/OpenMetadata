@@ -459,10 +459,7 @@ public class BuildSearchIndexResource {
     ReportData reportData = JsonUtils.readValue(entity, ReportData.class);
     try {
       UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
-      updateRequest.doc(
-          JsonUtils.pojoToJson(
-              new ReportDataIndexes(reportData).buildESDoc()),
-          XContentType.JSON);
+      updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
       updateRequest.docAsUpsert(true);
       return updateRequest;
     } catch (Exception ex) {

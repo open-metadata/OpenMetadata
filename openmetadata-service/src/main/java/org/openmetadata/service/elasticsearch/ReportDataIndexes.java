@@ -1,7 +1,6 @@
 package org.openmetadata.service.elasticsearch;
 
 import java.util.Map;
-
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -9,7 +8,7 @@ public class ReportDataIndexes implements ElasticSearchIndex {
 
   final ReportData reportData;
 
-  public ReportDataIndexes (ReportData reportData) {
+  public ReportDataIndexes(ReportData reportData) {
     this.reportData = reportData;
   }
 
