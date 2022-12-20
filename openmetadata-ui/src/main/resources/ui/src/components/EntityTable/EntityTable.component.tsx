@@ -44,10 +44,10 @@ import {
 } from '../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
-  getConstraintIcon,
   getDataTypeString,
   getTableExpandableConfig,
   makeData,
+  prepareConstraintIcon,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import {
@@ -329,32 +329,6 @@ const EntityTable = ({
     );
   };
 
-  const prepareConstraintIcon = (
-    columnName: string,
-    columnConstraint?: string
-  ) => {
-    // get the table constraint for column
-    const tableConstraint = tableConstraints?.find((constraint) =>
-      constraint.columns?.includes(columnName)
-    );
-
-    // prepare column constraint element
-    const columnConstraintEl = columnConstraint
-      ? getConstraintIcon(columnConstraint, 'tw-mr-2')
-      : null;
-
-    // prepare table constraint element
-    const tableConstraintEl = tableConstraint
-      ? getConstraintIcon(tableConstraint.constraintType, 'tw-mr-2')
-      : null;
-
-    return (
-      <span data-testid="constraints">
-        {columnConstraintEl} {tableConstraintEl}
-      </span>
-    );
-  };
-
   const handleUpdate = (column: Column, index: number) => {
     handleEditColumn(column, index);
   };
@@ -629,7 +603,7 @@ const EntityTable = ({
         width: 220,
         render: (name: Column['name'], record: Column) => (
           <Popover destroyTooltipOnHide content={name} trigger="hover">
-            {prepareConstraintIcon(name, record.constraint)}
+            {prepareConstraintIcon(name, record.constraint, tableConstraints)}
             <span>{name}</span>
           </Popover>
         ),
