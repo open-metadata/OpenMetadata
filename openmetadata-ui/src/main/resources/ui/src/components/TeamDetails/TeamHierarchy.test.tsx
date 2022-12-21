@@ -109,7 +109,7 @@ describe('Team Hierarchy page', () => {
 
     expect(table).toBeInTheDocument();
 
-    const expandableTableRow = await screen.getAllByTestId('expand-table-row');
+    const expandableTableRow = await screen.getAllByTestId('expand-icon');
     fireEvent.click(expandableTableRow[0]);
 
     const totalRows = await screen.findAllByText('entityName');

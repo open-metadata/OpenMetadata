@@ -37,6 +37,7 @@ import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
   TIER_BAR_COLOR_MAP,
+  TIER_DATA,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -140,11 +141,11 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                 <YAxis
                   tickFormatter={(value) => axisTickFormatter(value, '%')}
                 />
-                <Tooltip content={<CustomTooltip isPercentage />} />
+                <Tooltip content={<CustomTooltip isPercentage isTier />} />
                 <Legend
                   align="left"
                   content={(props) =>
-                    renderLegend(props as LegendProps, activeKeys)
+                    renderLegend(props as LegendProps, activeKeys, true)
                   }
                   layout="horizontal"
                   verticalAlign="top"
@@ -202,7 +203,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                       progress={latestData[tiers]}
                       showLabel={false}
                       startValue={Number(latestData[tiers]).toFixed(2)}
-                      successValue={tiers}
+                      successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
                     />
                   </Col>
                 );

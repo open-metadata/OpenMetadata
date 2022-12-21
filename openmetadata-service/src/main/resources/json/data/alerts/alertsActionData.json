@@ -1,6 +1,7 @@
 [
   {
     "name": "ActivityFeedAlertAction",
+    "fullyQualifiedName": "ActivityFeedAlertAction",
     "enabled": "true",
     "alertActionType": "ActivityFeed",
     "alertActionConfig": {

@@ -12,7 +12,7 @@
  */
 
 import i18next from 'i18next';
-import { uniq } from 'lodash';
+import { isUndefined, uniq } from 'lodash';
 import {
   BasicConfig,
   Fields,
@@ -21,8 +21,9 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+import { getAdvancedFieldDefaultOptions } from '../axiosAPIs/miscAPI';
 import { suggestQuery } from '../axiosAPIs/searchAPI';
-import { SuggestionField } from '../enums/AdvancedSearch.enum';
+import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
 
@@ -118,20 +119,62 @@ export const emptyJsonTree: JsonTree = {
  * @param searchIndex Index to search
  * @param suggestField `suggest_` field to use
  */
-export const autocomplete: (
-  searchIndex: SearchIndex | SearchIndex[],
-  suggestField?: SuggestionField
-) => SelectFieldSettings['asyncFetch'] =
-  (searchIndex, suggestField) => (search) =>
-    suggestQuery({
-      query: search ?? '*',
-      searchIndex: searchIndex,
-      field: suggestField,
-      fetchSource: false,
-    }).then((resp) => ({
-      values: uniq(resp).map(({ text }) => ({ value: text, title: text })),
-      hasMore: false,
-    }));
+export const autocomplete: (args: {
+  searchIndex: SearchIndex | SearchIndex[];
+  suggestField?: SuggestionField;
+  entitySearchIndex?: SearchIndex;
+  entityField?: EntityFields;
+}) => SelectFieldSettings['asyncFetch'] = ({
+  searchIndex,
+  suggestField,
+  entitySearchIndex,
+  entityField,
+}) => {
+  const isUserAndTeamSearchIndex =
+    searchIndex.includes(SearchIndex.USER) ||
+    searchIndex.includes(SearchIndex.TEAM);
+
+  return (search) => {
+    if (search) {
+      return suggestQuery({
+        query: search ?? '*',
+        searchIndex: searchIndex,
+        field: suggestField,
+        // fetch source if index is type of user or team and both
+        fetchSource: isUserAndTeamSearchIndex,
+      }).then((resp) => {
+        return {
+          values: uniq(resp).map(({ text, _source }) => ({
+            value: text,
+            title:
+              // set displayName or name if index is type of user or team and both.
+              // else set the text
+              isUserAndTeamSearchIndex && !isUndefined(_source)
+                ? _source?.displayName || _source.name
+                : text,
+          })),
+          hasMore: false,
+        };
+      });
+    } else {
+      return getAdvancedFieldDefaultOptions(
+        entitySearchIndex as SearchIndex,
+        entityField ?? ''
+      ).then((response) => {
+        const buckets =
+          response.data.aggregations[`sterms#${entityField}`].buckets;
+
+        return {
+          values: buckets.map((bucket) => ({
+            value: bucket.key,
+            title: bucket.label ?? bucket.key,
+          })),
+          hasMore: false,
+        };
+      });
+    }
+  };
+};
 
 const mainWidgetProps = {
   fullWidth: true,
@@ -141,53 +184,80 @@ const mainWidgetProps = {
 /**
  * Common fields that exit for all searchable entities
  */
-const commonQueryBuilderFields: Fields = {
-  deleted: {
-    label: 'Deleted',
-    type: 'boolean',
-    defaultValue: true,
-  },
-
-  'owner.name': {
-    label: 'Owner',
-    type: 'select',
-    mainWidgetProps,
-    fieldSettings: {
-      asyncFetch: autocomplete([SearchIndex.USER, SearchIndex.TEAM]),
+const getCommonQueryBuilderFields = (
+  entitySearchIndex: SearchIndex = SearchIndex.TABLE
+) => {
+  const commonQueryBuilderFields: Fields = {
+    deleted: {
+      label: 'Deleted',
+      type: 'boolean',
+      defaultValue: true,
     },
-  },
 
-  'tags.tagFQN': {
-    label: 'Tags',
-    type: 'select',
-    mainWidgetProps,
-    fieldSettings: {
-      asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
+    'owner.name': {
+      label: 'Owner',
+      type: 'select',
+      mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: autocomplete({
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+          entitySearchIndex,
+          entityField: EntityFields.OWNER,
+        }),
+      },
     },
-  },
 
-  'tier.tagFQN': {
-    label: 'Tier',
-    type: 'select',
-    mainWidgetProps,
-    fieldSettings: {
-      asyncFetch: autocomplete([SearchIndex.TAG, SearchIndex.GLOSSARY]),
+    'tags.tagFQN': {
+      label: 'Tags',
+      type: 'select',
+      mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: autocomplete({
+          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+          entitySearchIndex,
+          entityField: EntityFields.TAG,
+        }),
+      },
     },
-  },
+
+    'tier.tagFQN': {
+      label: 'Tier',
+      type: 'select',
+      mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: autocomplete({
+          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+          entitySearchIndex,
+          entityField: EntityFields.TIER,
+        }),
+      },
+    },
+  };
+
+  return commonQueryBuilderFields;
 };
 
 /**
  * Fields specific to services
  */
-const serviceQueryBuilderFields: Fields = {
-  'service.name': {
-    label: 'Service',
-    type: 'select',
-    mainWidgetProps,
-    fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SERVICE),
+const getServiceQueryBuilderFields = (index: SearchIndex) => {
+  const serviceQueryBuilderFields: Fields = {
+    'service.name': {
+      label: 'Service',
+      type: 'select',
+      mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: autocomplete({
+          searchIndex: index,
+          suggestField: SuggestionField.SERVICE,
+          entitySearchIndex: index,
+          entityField: EntityFields.SERVICE,
+        }),
+      },
     },
-  },
+  };
+
+  return serviceQueryBuilderFields;
 };
 
 /**
@@ -199,7 +269,12 @@ const tableQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.DATABASE),
+      asyncFetch: autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        suggestField: SuggestionField.DATABASE,
+        entitySearchIndex: SearchIndex.TABLE,
+        entityField: EntityFields.DATABASE,
+      }),
     },
   },
 
@@ -208,7 +283,12 @@ const tableQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.SCHEMA),
+      asyncFetch: autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        suggestField: SuggestionField.SCHEMA,
+        entitySearchIndex: SearchIndex.TABLE,
+        entityField: EntityFields.DATABASE_SCHEMA,
+      }),
     },
   },
 
@@ -217,7 +297,12 @@ const tableQueryBuilderFields: Fields = {
     type: 'select',
     mainWidgetProps,
     fieldSettings: {
-      asyncFetch: autocomplete(SearchIndex.TABLE, SuggestionField.COLUMN),
+      asyncFetch: autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        suggestField: SuggestionField.COLUMN,
+        entitySearchIndex: SearchIndex.TABLE,
+        entityField: EntityFields.COLUMN,
+      }),
     },
   },
 };
@@ -315,8 +400,8 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...commonQueryBuilderFields,
-          ...serviceQueryBuilderFields,
+          ...getCommonQueryBuilderFields(SearchIndex.MLMODEL),
+          ...getServiceQueryBuilderFields(SearchIndex.MLMODEL),
         },
       };
 
@@ -324,8 +409,8 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...commonQueryBuilderFields,
-          ...serviceQueryBuilderFields,
+          ...getCommonQueryBuilderFields(SearchIndex.PIPELINE),
+          ...getServiceQueryBuilderFields(SearchIndex.PIPELINE),
         },
       };
 
@@ -333,8 +418,8 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...commonQueryBuilderFields,
-          ...serviceQueryBuilderFields,
+          ...getCommonQueryBuilderFields(SearchIndex.DASHBOARD),
+          ...getServiceQueryBuilderFields(SearchIndex.DASHBOARD),
         },
       };
 
@@ -342,8 +427,8 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...commonQueryBuilderFields,
-          ...serviceQueryBuilderFields,
+          ...getCommonQueryBuilderFields(SearchIndex.TABLE),
+          ...getServiceQueryBuilderFields(SearchIndex.TABLE),
           ...tableQueryBuilderFields,
         },
       };
@@ -352,8 +437,8 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...commonQueryBuilderFields,
-          ...serviceQueryBuilderFields,
+          ...getCommonQueryBuilderFields(SearchIndex.TOPIC),
+          ...getServiceQueryBuilderFields(SearchIndex.TOPIC),
         },
       };
 
@@ -361,7 +446,7 @@ export const getQbConfigs: (searchIndex: SearchIndex) => BasicConfig = (
       return {
         ...getInitialConfigWithoutFields(),
         fields: {
-          ...commonQueryBuilderFields,
+          ...getCommonQueryBuilderFields(),
         },
       };
   }

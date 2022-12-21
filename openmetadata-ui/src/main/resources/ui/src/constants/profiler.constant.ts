@@ -20,6 +20,7 @@ import {
   DataType,
   PartitionIntervalType,
   PartitionIntervalUnit,
+  ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { JSON_TAB_SIZE } from './constants';
@@ -265,3 +266,16 @@ export const INTERVAL_UNIT_OPTIONS = Object.values(PartitionIntervalUnit).map(
     label: value,
   })
 );
+
+export const PROFILE_SAMPLE_OPTIONS = [
+  {
+    label: t('label.percentage'),
+    key: ProfileSampleType.Percentage,
+    value: ProfileSampleType.Percentage,
+  },
+  {
+    label: t('label.row-count'),
+    key: ProfileSampleType.Rows,
+    value: ProfileSampleType.Rows,
+  },
+];

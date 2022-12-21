@@ -105,6 +105,7 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -136,6 +137,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.events.AlertResourceTest;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
@@ -172,9 +174,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final String systemEntityName; // System entity provided by the system that can't be deleted
   protected boolean supportsFollowers;
   protected boolean supportsOwner;
-  protected final boolean supportsTags;
+  protected boolean supportsTags;
   protected boolean supportsPatch = true;
-  protected final boolean supportsSoftDelete;
+  protected boolean supportsSoftDelete;
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
@@ -279,6 +281,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static DataInsightChart DI_CHART1;
   public static EntityReference DI_CHART1_REFERENCE;
 
+  public static AlertAction ALERT_ACTION1;
+  public static EntityReference ALERT_ACTION1_REFERENCE;
   public static KpiTarget KPI_TARGET;
   public static List<Column> COLUMNS;
 
@@ -344,22 +348,23 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TestCaseResourceTest().setupTestCase(test);
     new TypeResourceTest().setupTypes();
     new KpiResourceTest().setupKpi();
+    // new AlertResourceTest().setupAlerts(test);
 
     runWebhookTests = new Random().nextBoolean();
-    if (runWebhookTests) {
+    if (false) {
       webhookCallbackResource.clearEvents();
-      //      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-      //      webhookResourceTest.startWebhookSubscription();
-      //      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
+      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      alertResourceTest.startWebhookSubscription(true);
+      alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    if (runWebhookTests) {
-      //      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-      //      webhookResourceTest.validateWebhookEvents();
-      //      webhookResourceTest.validateWebhookEntityEvents(entityType);
+    if (false) {
+      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      alertResourceTest.validateWebhookEvents();
+      alertResourceTest.validateWebhookEntityEvents(entityType);
     }
     delete_recursiveTest();
   }
@@ -859,7 +864,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
     // Ingestion bot can create and delete all the entities except websocket and bot
-    if (List.of(Entity.WEBHOOK, Entity.BOT).contains(entityType)) {
+    if (List.of(Entity.ALERT, Entity.ALERT_ACTION, Entity.BOT).contains(entityType)) {
       return;
     }
     T entity = createEntity(createRequest(test), INGESTION_BOT_AUTH_HEADERS);
@@ -1742,7 +1747,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
-  protected final T updateAndCheckEntity(
+  public final T updateAndCheckEntity(
       K request,
       Status status,
       Map<String, String> authHeaders,

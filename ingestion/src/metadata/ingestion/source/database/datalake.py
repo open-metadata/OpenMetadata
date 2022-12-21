@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    AzureDatalakeConfig,
+    AzureConfig,
     DatalakeConnection,
     GCSConfig,
     S3Config,
@@ -193,11 +193,19 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             else:
                 yield from self.fetch_s3_bucket_names()
 
-        if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+        if isinstance(self.service_connection.configSource, AzureConfig):
             yield from self.get_container_names()
 
     def get_container_names(self) -> Iterable[str]:
-        schema_names = self.client.list_containers(name_starts_with="")
+        """
+        To get schema names
+        """
+        prefix = (
+            self.service_connection.bucketName
+            if self.service_connection.bucketName
+            else ""
+        )
+        schema_names = self.client.list_containers(name_starts_with=prefix)
         for schema in schema_names:
             schema_fqn = fqn.build(
                 self.metadata,
@@ -319,9 +327,9 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         continue
 
                     yield table_name, TableType.Regular
-            if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+            if isinstance(self.service_connection.configSource, AzureConfig):
                 files_names = self.get_tables(container_name=bucket_name)
-                for file in files_names.list_blobs():
+                for file in files_names.list_blobs(name_starts_with=prefix):
                     file_name = file.name
                     if "/" in file.name:
                         table_name = self.standardize_table_name(bucket_name, file_name)
@@ -376,12 +384,14 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 data_frame = self.get_s3_files(
                     client=self.client, key=table_name, bucket_name=schema_name
                 )
-            if isinstance(self.service_connection.configSource, AzureDatalakeConfig):
+            if isinstance(self.service_connection.configSource, AzureConfig):
+                columns = None
                 connection_args = self.service_connection.configSource.securityConfig
                 storage_options = {
                     "tenant_id": connection_args.tenantId,
                     "client_id": connection_args.clientId,
                     "client_secret": connection_args.clientSecret.get_secret_value(),
+                    "account_name": connection_args.accountName,
                 }
                 data_frame = self.get_azure_files(
                     client=self.client,
@@ -565,7 +575,8 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         return False
 
     def close(self):
-        pass
+        if isinstance(self.service_connection.configSource, AzureConfig):
+            self.client.close()
 
     def get_status(self) -> SourceStatus:
         return self.status

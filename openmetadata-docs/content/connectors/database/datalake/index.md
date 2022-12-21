@@ -275,6 +275,8 @@ We support two ways of authenticating to GCS:
    - `Storage Blob Data Contributor`
    - `Storage Queue Data Contributor`
 
+The current approach for authentication is based on `app registration`, reach out to us on [slack](https://slack.open-metadata.org/) if you find the need for another auth system
+
 </Collapse>
 
 

@@ -21,8 +21,8 @@
     "effect" : {
       "type" : "string",
       "enum" : [
-        "allow",
-        "deny"
+        "include",
+        "exclude"
       ]
     },
     "condition" : {

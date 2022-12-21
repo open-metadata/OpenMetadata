@@ -52,12 +52,11 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
                 logger.warning(
                     f"Error processing the following query while restoring - {err}"
                 )
-                logger.warning(clean_query)
 
         print_ansi_encoded_string(
             color=ANSI.GREEN,
             bold=False,
-            message=f"Restore finished. {failed_queries} queries failed.",
+            message=f"Restore finished. {failed_queries} queries failed from {len(all_queries)}.",
         )
 
 

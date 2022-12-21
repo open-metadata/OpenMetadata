@@ -281,22 +281,8 @@ export const deleteCreatedService = (typeOfService, service_Name, apiService) =>
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteService', 200);
 
-    //Waiting to check if myData page redirection is proper after deleting service
-    cy.get('[data-testid="tables"]').should('exist').should('be.visible');
-
     //Closing the toast notification
     toastNotification(`${typeOfService} Service deleted successfully!`)
-
-    //Checking if the service got deleted successfully
-    interceptURL('GET', '/api/v1/teams/name/Organization?fields=users,owns,defaultRoles,policies,owner,parents,childrenCount&include=all', 'getSettingsPage')
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    verifyResponseStatusCode('@getSettingsPage', 200)
-
-    // Services page
-    cy.get('[data-testid="settings-left-panel"]')
-        .contains(typeOfService)
-        .should('be.visible')
-        .click();
 
     cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
 };

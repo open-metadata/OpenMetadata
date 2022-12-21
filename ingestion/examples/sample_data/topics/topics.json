@@ -98,6 +98,15 @@
 			"cleanupPolicies": ["compact","delete"],
 			"schemaType": "Protobuf",
 			"schemaText": "syntax = \"proto2\";\n\npackage tutorial;\n\nmessage Person {\n  optional string name = 1;\n  optional int32 id = 2;\n  optional string email = 3;\n\n  enum PhoneType {\n    MOBILE = 0;\n    HOME = 1;\n    WORK = 2;\n  }\n\n  message PhoneNumber {\n    optional string number = 1;\n    optional PhoneType type = 2 [default = HOME];\n  }\n\n  repeated PhoneNumber phones = 4;\n}\n\nmessage AddressBook {\n  repeated Person people = 1;\n}"
+		},
+		{
+			"name": "customer_contacts",
+			"description": "Kafka topic to capture the customer contacts such as email, phone",
+			"partitions": 56,
+			"retentionSize": 455858109,
+			"replicationFactor":2,
+			"maximumMessageSize":167,
+			"cleanupPolicies": ["delete"]
 		}
 	]
 }

@@ -24,10 +24,6 @@ import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export const DBTSources: Array<DropDownListItem> = [
   {
-    name: 'No Config Source',
-    value: '',
-  },
-  {
     name: 'Local Config Source',
     value: DBT_SOURCES.local,
   },
@@ -66,30 +62,15 @@ export const reqDBTCloudFields: Record<keyof DbtConfigCloudReq, string> = {
 };
 
 export const reqDBTLocalFields: Record<string, string> = {
-  dbtCatalogFilePath: 'DBT Catalog File Path',
   dbtManifestFilePath: 'DBT Manifest File Path',
 };
 
 export const reqDBTHttpFields: Record<string, string> = {
-  dbtCatalogHttpPath: 'DBT Catalog Http Path',
   dbtManifestHttpPath: 'DBT Manifest Http Path',
 };
 
 export const reqDBTS3Fields: Record<keyof DbtS3CredsReq, string> = {
   awsRegion: 'AWS Region',
-};
-
-export const reqDBTGCSCredsFields: Record<keyof DbtGCSCreds, string> = {
-  authProviderX509CertUrl: 'Authentication Provider x509 Certificate URL',
-  authUri: 'Authentication URI',
-  clientEmail: 'Client Email',
-  clientId: 'Client ID',
-  clientX509CertUrl: 'Client x509 Certificate URL',
-  privateKey: 'Private Key',
-  privateKeyId: 'Private Key ID',
-  projectId: 'Project ID',
-  tokenUri: 'Token URI',
-  type: 'Credentials Type',
 };
 
 export const rulesDBTS3CredsFields: Record<

@@ -3096,6 +3096,9 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension")
     String getExtension(@Bind("entityFQN") String entityId, @Bind("extension") String extension);
 
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
+    List<String> getExtension(@Bind("entityFQN") String entityFQN);
+
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
     String getExtensionAtTimestamp(
@@ -3199,7 +3202,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT (SELECT COUNT(*) FROM database_entity <cond>) + "
+                + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+"
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
@@ -3216,7 +3219,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT (SELECT COUNT(*) FROM database_entity <cond>) + "
+                + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "

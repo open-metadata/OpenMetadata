@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +39,7 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -47,6 +48,7 @@ import { PipelineType } from '../../generated/entity/services/ingestionPipelines
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getIngestionHeadingName } from '../../utils/IngestionUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceIngestionStepGuide,
@@ -266,7 +268,10 @@ const AddIngestionPage = () => {
                   activeIngestionStep={activeIngestionStep}
                   handleCancelClick={goToService}
                   handleViewServiceClick={goToService}
-                  heading={`Add ${capitalize(ingestionType)} Ingestion`}
+                  heading={getIngestionHeadingName(
+                    ingestionType,
+                    INGESTION_ACTION_TYPE.ADD
+                  )}
                   ingestionAction={ingestionAction}
                   ingestionProgress={ingestionProgress}
                   isAirflowSetup={isAirflowRunning}

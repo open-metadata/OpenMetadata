@@ -416,15 +416,6 @@ describe('Test DBT GCS Config Form', () => {
     expect(mockPrefixConfigChange).toBeCalledTimes(2);
   });
 
-  it('should show errors on submit', async () => {
-    const { container } = render(<DBTGCSConfig {...mockProps} />);
-    const submitBtn = getByTestId(container, 'submit-btn');
-
-    fireEvent.click(submitBtn);
-
-    expect(mockSubmit).not.toBeCalled();
-  });
-
   it('should submit', async () => {
     const { container } = render(
       <DBTGCSConfig

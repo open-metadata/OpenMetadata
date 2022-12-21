@@ -90,6 +90,7 @@ class Profiler(Generic[TMetric]):
         self.exclude_columns = exclude_columns
         self._metrics = metrics
         self._profile_date = profile_date
+        self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.validate_composed_metric()
 
@@ -188,7 +189,7 @@ class Profiler(Generic[TMetric]):
             CreateTableProfileRequest:
         """
         for attrs, val in profile.tableProfile:
-            if attrs not in {"timestamp", "profileSample"} and val:
+            if attrs not in {"timestamp", "profileSample", "profileSampleType"} and val:
                 return profile
 
         for col_element in profile.columnProfile:
@@ -491,12 +492,19 @@ class Profiler(Generic[TMetric]):
                     else col.name.__root__
                 )
             ]
+
             table_profile = TableProfile(
                 timestamp=self.profile_date,
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                profileSample=self.profiler_interface.profile_sample,
+                profileSample=self.profile_sample_config.profile_sample
+                if self.profile_sample_config
+                else None,
+                profileSampleType=self.profile_sample_config.profile_sample_type
+                if self.profile_sample_config
+                else None,
             )
+
             if self._system_results:
                 system_profile = [
                     SystemProfile(**system_result)
