@@ -600,7 +600,8 @@
     "follower-plural": "Followers",
     "email-plural": "Emails",
     "no-tier": "No Tier",
-    "dbt-run-result-http-path": "dbt Run Results HTTP Path"
+    "dbt-run-result-http-path": "dbt Run Results HTTP Path",
+    "field-change": "Field Change"
   },
   "message": {
     "service-email-required": "Service account Email is required",
