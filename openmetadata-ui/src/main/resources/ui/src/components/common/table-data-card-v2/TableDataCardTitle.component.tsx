@@ -55,7 +55,7 @@ const TableDataCardTitle = ({
   const title = (
     <Button
       data-testid={testId}
-      id={`${id ?? testId}Title`}
+      id={`${id ?? testId}-title`}
       type="link"
       onClick={isTourRoute ? handleLinkClick : undefined}>
       {stringToHTML(source.name)}
