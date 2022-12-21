@@ -75,7 +75,7 @@ Ingestion container should be good to go (as shown in step 4 below).
 
 ### 2. Add volumes and port mapping
 
-This step is only required if you had not that yet.
+This step is only required if you have not done that yet.
 
 1. Stop docker compose
 2. Update the `mysql` service in the compose file so that it looks like:
