@@ -76,10 +76,10 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
     <Fragment>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="catalog-url">
-          DBT Catalog HTTP Path
+          dbt Catalog HTTP Path
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT catalog file to extract dbt models with their column schemas.
+          dbt catalog file to extract dbt models with their column schemas.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -96,10 +96,10 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-url">
-          {requiredField('DBT Manifest HTTP Path')}
+          {requiredField('dbt Manifest HTTP Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT manifest file path to extract dbt models and associate with
+          dbt manifest file path to extract dbt models and associate with
           tables.
         </p>
         <input

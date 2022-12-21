@@ -103,10 +103,10 @@ describe('RedShift Ingestion', () => {
       .should('be.visible')
       .click();
     cy.get('[data-testid="list-item"]')
-      .contains('Add DBT Ingestion')
+      .contains('Add dbt Ingestion')
       .click();
       //Add DBT ingestion
-      cy.contains('Add DBT Ingestion').should('be.visible');
+      cy.contains('Add dbt Ingestion').should('be.visible');
       cy.get('[data-testid="dbt-source"]')
         .should('be.visible')
         .select('HTTP Config Source');

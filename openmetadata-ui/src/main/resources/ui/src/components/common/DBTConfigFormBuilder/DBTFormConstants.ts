@@ -57,16 +57,16 @@ export const GCSCreds: Array<DropDownListItem> = [
 ];
 
 export const reqDBTCloudFields: Record<keyof DbtConfigCloudReq, string> = {
-  dbtCloudAccountId: 'DBT Cloud Account Id',
-  dbtCloudAuthToken: 'DBT Cloud Authentication Token',
+  dbtCloudAccountId: 'dbt Cloud Account Id',
+  dbtCloudAuthToken: 'dbt Cloud Authentication Token',
 };
 
 export const reqDBTLocalFields: Record<string, string> = {
-  dbtManifestFilePath: 'DBT Manifest File Path',
+  dbtManifestFilePath: 'dbt Manifest File Path',
 };
 
 export const reqDBTHttpFields: Record<string, string> = {
-  dbtManifestHttpPath: 'DBT Manifest Http Path',
+  dbtManifestHttpPath: 'dbt Manifest Http Path',
 };
 
 export const reqDBTS3Fields: Record<keyof DbtS3CredsReq, string> = {
