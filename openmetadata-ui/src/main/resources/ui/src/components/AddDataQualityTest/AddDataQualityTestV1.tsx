@@ -14,9 +14,8 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { createTestCase, createTestSuites } from '../../axiosAPIs/testAPI';
 import {
   getDatabaseDetailsPath,
@@ -34,6 +33,7 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import {
   getCurrentUserId,
   getEntityName,
@@ -60,6 +60,7 @@ import TestSuiteIngestion from './TestSuiteIngestion';
 
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
@@ -68,7 +69,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const [testCaseData, setTestCaseData] = useState<TestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
@@ -143,25 +143,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           ''
       )
     );
-  };
-
-  const handleAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            setIsAirflowRunning(true);
-            resolve();
-          } else {
-            setIsAirflowRunning(false);
-            reject();
-          }
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-          reject();
-        });
-    });
   };
 
   const handleCancelClick = () => {
@@ -253,13 +234,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         <SuccessScreen
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowRunning}
+          isAirflowSetup={isAirflowAvailable}
           name={successName}
           showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
           viewServiceText="View Test Suite"
-          onCheckAirflowStatus={handleAirflowStatusCheck}
+          onCheckAirflowStatus={fetchAirflowStatus}
         />
       );
     }
@@ -270,11 +251,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         onSubmit={handleSelectTestSuite}
       />
     );
-  }, [activeServiceStep, isAirflowRunning, testCaseRes]);
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
+  }, [activeServiceStep, isAirflowAvailable, testCaseRes]);
 
   return (
     <PageLayout

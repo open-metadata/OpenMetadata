@@ -18,7 +18,6 @@ import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
-  checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
   updateIngestionPipeline,
@@ -47,6 +46,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
@@ -60,6 +60,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
+  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
   const history = useHistory();
@@ -80,7 +81,6 @@ const EditIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
@@ -211,33 +211,6 @@ const EditIngestionPage = () => {
     });
   };
 
-  const onAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            resolve();
-          } else {
-            reject();
-          }
-        })
-        .catch(() => reject());
-    });
-  };
-
-  const fetchAirflowStatusCheck = () => {
-    return new Promise<void>((resolve) => {
-      onAirflowStatusCheck()
-        .then(() => {
-          setIsAirflowRunning(true);
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        })
-        .finally(() => resolve());
-    });
-  };
-
   const goToService = () => {
     history.push(
       getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
@@ -308,7 +281,7 @@ const EditIngestionPage = () => {
                   )}
                   ingestionAction={ingestionAction}
                   ingestionProgress={ingestionProgress}
-                  isAirflowSetup={isAirflowRunning}
+                  isAirflowSetup={isAirflowAvailable}
                   isIngestionCreated={isIngestionCreated}
                   isIngestionDeployed={isIngestionDeployed}
                   pipelineType={ingestionType as PipelineType}
@@ -319,7 +292,7 @@ const EditIngestionPage = () => {
                   }
                   showDeployButton={showIngestionButton}
                   status={FormSubmitType.EDIT}
-                  onAirflowStatusCheck={onAirflowStatusCheck}
+                  onAirflowStatusCheck={fetchAirflowStatus}
                   onIngestionDeploy={onIngestionDeploy}
                   onSuccessSave={goToService}
                   onUpdateIngestion={onEditIngestionSave}
@@ -335,7 +308,7 @@ const EditIngestionPage = () => {
                 ingestionType as PipelineType,
                 isDeployed(),
                 true,
-                isAirflowRunning
+                isAirflowAvailable
               )}
             </div>
           </PageLayoutV1>
@@ -345,7 +318,7 @@ const EditIngestionPage = () => {
   };
 
   useEffect(() => {
-    fetchAirflowStatusCheck().finally(() => {
+    fetchAirflowStatus().finally(() => {
       fetchData();
     });
   }, [serviceCategory, serviceFQN]);

@@ -13,10 +13,9 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { createTestSuites } from '../../axiosAPIs/testAPI';
 import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
 import {
@@ -34,6 +33,7 @@ import {
 import { FormSubmitType } from '../../enums/form.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -41,21 +41,13 @@ import AddTestSuiteForm from './AddTestSuiteForm';
 import { TestSuiteFormDataProps } from './testSuite.interface';
 
 const TestSuiteStepper = () => {
+  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const { t } = useTranslation();
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState<boolean>(false);
-  const [addIngestion, setAddIngestion] = useState<boolean>(false);
 
-  const handleAirflowStatusCheck = async (): Promise<void> => {
-    try {
-      await checkAirflowStatus();
-      setIsAirflowRunning(true);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const [addIngestion, setAddIngestion] = useState<boolean>(false);
 
   const handleViewTestSuiteClick = () => {
     history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName || ''));
@@ -83,21 +75,17 @@ const TestSuiteStepper = () => {
           showIngestionButton
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowRunning}
+          isAirflowSetup={isAirflowAvailable}
           name={testSuiteResponse?.name || ''}
           state={FormSubmitType.ADD}
           viewServiceText="View Test Suite"
-          onCheckAirflowStatus={handleAirflowStatusCheck}
+          onCheckAirflowStatus={fetchAirflowStatus}
         />
       );
     }
 
     return <AddTestSuiteForm onSubmit={onSubmitTestSuite} />;
-  }, [activeServiceStep, isAirflowRunning]);
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
+  }, [activeServiceStep, isAirflowAvailable]);
 
   return (
     <Row
