@@ -15,7 +15,13 @@ import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { checkAirflowStatus } from '../axiosAPIs/ingestionPipelineAPI';
 
-export const useAirflowStatus = () => {
+interface UseAirflowStatusProps {
+  isLoading: boolean;
+  isAirflowAvailable: boolean;
+  error: AxiosError | undefined;
+}
+
+export const useAirflowStatus = (): UseAirflowStatusProps => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
   const [error, setError] = useState<AxiosError>();
