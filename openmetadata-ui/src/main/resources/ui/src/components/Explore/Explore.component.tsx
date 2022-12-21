@@ -190,7 +190,7 @@ const Explore: React.FC<ExploreProps> = ({
     const dropdownItems = getDropDownItems(searchIndex);
 
     setSelectedQuickFilters(
-      dropdownItems.map((item) => ({ ...item, value: undefined }))
+      dropdownItems.map((item) => ({ ...item, value: [] }))
     );
   }, [searchIndex]);
 

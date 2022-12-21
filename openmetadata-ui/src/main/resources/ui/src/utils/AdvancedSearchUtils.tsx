@@ -157,8 +157,8 @@ export const getSearchDropdownLabels = (
     return optionsArray.map((option) => ({
       key: option.key,
       label: (
-        <Space className="m-x-sm" data-testid={option} size={6}>
-          <Checkbox checked={checked} data-testid={`${option}-checkbox`} />
+        <Space className="m-x-sm" data-testid={option.key} size={6}>
+          <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
           <Typography.Text
             ellipsis
             className="dropdown-option-label"
@@ -242,8 +242,8 @@ export const getOptionsObject = (
     }
     default: {
       return uniqueOptions.map((op) => ({
-        key: op.source.name,
-        label: op.source.displayName ?? op.source.name,
+        key: op.text,
+        label: op.text,
       }));
     }
   }

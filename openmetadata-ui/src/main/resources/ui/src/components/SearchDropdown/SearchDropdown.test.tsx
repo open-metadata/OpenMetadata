@@ -210,7 +210,10 @@ describe('Search DropDown Component', () => {
 
     // onChange should be called with previous selected keys and current selected keys
     expect(mockOnChange).toHaveBeenCalledWith(
-      ['User 1', 'User 2'],
+      [
+        { key: 'User 1', label: 'User 1' },
+        { key: 'User 2', label: 'User 2' },
+      ],
       'owner.name'
     );
   });

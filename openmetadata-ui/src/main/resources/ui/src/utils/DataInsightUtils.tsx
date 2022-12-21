@@ -516,7 +516,10 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
 export const getTeamFilter = (
   suggestionValues: ListItem[]
 ): SearchDropdownOption[] => {
-  return suggestionValues.map((suggestion) => suggestion.value);
+  return suggestionValues.map((suggestion) => ({
+    key: suggestion.value,
+    label: suggestion.value,
+  }));
 };
 
 export const getFormattedActiveUsersData = (

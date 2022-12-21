@@ -70,7 +70,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
     // Filtering out unselected options
     const unselectedOptions = options.filter(
-      (option) => !selectedOptions.includes(option)
+      (option) =>
+        !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
     );
 
     // Labels for unselected options
