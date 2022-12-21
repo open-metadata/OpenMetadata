@@ -73,6 +73,7 @@ import { Function } from '../../generated/type/function';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
+  getDisplayNameForEntities,
   getDisplayNameForTriggerType,
   getFunctionDisplayName,
   listLengthValidator,
@@ -80,7 +81,7 @@ import {
 } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './add-alerts-page.styles.less';
 
 const AddAlertPage = () => {
@@ -177,7 +178,6 @@ const AddAlertPage = () => {
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
 
   const updateCreateAlertActions = async (alertActions: AlertAction[]) => {
-    const api = isEditMode ? updateAlertAction : createAlertAction;
     if (isEditMode) {
       if (!form.isFieldTouched(['alertActions'])) {
         // If destination is not changed return given alertAction as it is
@@ -192,18 +192,19 @@ const AddAlertPage = () => {
 
     // Else Create AlertActions and return new IDs
     const promises =
-      alertActions?.map((action) =>
-        api(
-          pick(action, [
-            'alertActionConfig',
-            'alertActionType',
-            'name',
-            'displayName',
-            'timeout',
-            'batchSize',
-          ]) as CreateAlertAction
-        )
-      ) ?? [];
+      alertActions?.map((action) => {
+        const api = action.id ? updateAlertAction : createAlertAction;
+        const alertAction = pick(action, [
+          'alertActionConfig',
+          'alertActionType',
+          'name',
+          'displayName',
+          'timeout',
+          'batchSize',
+        ]) as CreateAlertAction;
+
+        return api(alertAction);
+      }) ?? [];
 
     const responses = await Promise.allSettled(promises);
 
@@ -258,14 +259,14 @@ const AddAlertPage = () => {
           alertActions: requestAlertActions,
         });
 
-        showErrorToast(
+        showSuccessToast(
           t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
             entity: t('label.alert-plural'),
           })
         );
         history.push(
           getSettingPath(
-            GlobalSettingsMenuCategory.COLLABORATION,
+            GlobalSettingsMenuCategory.NOTIFICATIONS,
             GlobalSettingOptions.ALERTS
           )
         );
@@ -455,7 +456,7 @@ const AddAlertPage = () => {
                   />
                 </Form.Item>
                 <Form.Item
-                  label={t('label.receiver-plural')}
+                  label={t('label.send-to')}
                   labelCol={{ span: 24 }}
                   name={[name, 'alertActionConfig', 'receivers']}>
                   <Select
@@ -621,7 +622,7 @@ const AddAlertPage = () => {
                               options={
                                 selectedTrigger.entities?.map((entity) => ({
                                   value: entity,
-                                  label: startCase(entity),
+                                  label: getDisplayNameForEntities(entity),
                                 })) ?? []
                               }
                               placeholder={t('label.select-data-assets')}

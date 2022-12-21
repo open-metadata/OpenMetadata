@@ -13,7 +13,8 @@
 
 import { Typography } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import i18next from 'i18next';
+import i18next, { t } from 'i18next';
+import { startCase } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -113,7 +114,7 @@ export const getAlertActionTypeDisplayName = (
 ) => {
   switch (alertActionType) {
     case AlertActionType.ActivityFeed:
-      return i18next.t('label.activity-feed');
+      return i18next.t('label.activity-feeds');
     case AlertActionType.Email:
       return i18next.t('label.email');
     case AlertActionType.GenericWebhook:
@@ -122,5 +123,16 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.slack');
     case AlertActionType.MSTeamsWebhook:
       return i18next.t('label.ms-teams');
+  }
+};
+
+export const getDisplayNameForEntities = (entity: string) => {
+  switch (entity) {
+    case 'kpi':
+      return t('label.kpi-uppercase');
+    case 'mlmodel':
+      return t('label.ml-model');
+    default:
+      return startCase(entity);
   }
 };

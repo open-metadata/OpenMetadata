@@ -15,7 +15,7 @@ import { ResourceEntity } from '../components/PermissionProvider/PermissionProvi
 
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
-  COLLABORATION = 'collaboration',
+  NOTIFICATIONS = 'notifications',
   CUSTOM_ATTRIBUTES = 'customAttributes',
   DATA_QUALITY = 'dataQuality',
   EVENT_PUBLISHERS = 'eventPublishers',
@@ -44,8 +44,9 @@ export enum GlobalSettingOptions {
   ACTIVITY_FEED = 'activityFeed',
   ELASTIC_SEARCH = 'elasticSearch',
   ALERTS = 'alerts',
+  ALERT = 'alert',
   ADD_ALERTS = 'add-alerts',
-  EDIT_ALERTS = 'edit',
+  EDIT_ALERTS = 'edit-alert',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
