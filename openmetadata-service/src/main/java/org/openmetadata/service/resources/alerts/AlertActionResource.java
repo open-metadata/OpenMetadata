@@ -301,6 +301,7 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public Response createAlertAction(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAlertAction create)
       throws IOException {
+    generateRandomAlertActionName(create);
     AlertAction alertAction = getAlertAction(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, alertAction);
   }
@@ -322,6 +323,9 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
   public Response updateAlertAction(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAlertAction create)
       throws IOException {
+    if (CommonUtil.nullOrEmpty(create.getName())) {
+      throw new IllegalArgumentException("[name] must not be null.");
+    }
     AlertAction alertAction = getAlertAction(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, alertAction);
   }
@@ -385,5 +389,13 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
         .withTimeout(create.getTimeout())
         .withReadTimeout(create.getReadTimeout())
         .withAlertActionConfig(create.getAlertActionConfig());
+  }
+
+  public void generateRandomAlertActionName(CreateAlertAction createRequest) {
+    if (CommonUtil.nullOrEmpty(createRequest.getName())) {
+      String name = String.format("%s_%s", createRequest.getAlertActionType().toString(), UUID.randomUUID());
+      createRequest.setName(name);
+      createRequest.setDisplayName(name);
+    }
   }
 }

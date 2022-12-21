@@ -90,7 +90,7 @@ public class GenericWebhookPublisher extends AlertsActionPublisher {
       Throwable cause = ex.getCause();
       if (cause != null && cause.getClass() == UnknownHostException.class) {
         LOG.warn("Invalid webhook {} endpoint {}", webhook.getName(), webhook.getEndpoint());
-        setErrorStatus(attemptTime, null, "UnknownHostException");
+        setErrorStatus(attemptTime, 400, "UnknownHostException");
       } else {
         LOG.debug("Exception occurred while publishing webhook", ex);
       }

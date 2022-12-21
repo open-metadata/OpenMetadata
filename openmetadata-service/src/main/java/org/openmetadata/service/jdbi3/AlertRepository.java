@@ -24,11 +24,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.AlertUtil;
@@ -63,7 +65,8 @@ public class AlertRepository extends EntityRepository<Alert> {
   }
 
   @Override
-  public void prepare(Alert entity) {
+  public void prepare(Alert entity) throws IOException {
+    validateAlertActions(entity.getAlertActions());
     validateFilterRules(entity);
   }
 
@@ -108,6 +111,16 @@ public class AlertRepository extends EntityRepository<Alert> {
       alertActionList.add(alertAction);
     }
     return alertActionList;
+  }
+
+  public void validateAlertActions(List<EntityReference> alertRef) throws IOException {
+    if (CommonUtil.nullOrEmpty(alertRef)) {
+      throw new IllegalArgumentException("Alert Action cannot be null or Empty");
+    }
+    for (EntityReference ref : alertRef) {
+      // validate targetDefinition
+      Entity.getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
+    }
   }
 
   public AlertActionStatus getActionStatus(UUID alertid, UUID actionId) throws IOException {

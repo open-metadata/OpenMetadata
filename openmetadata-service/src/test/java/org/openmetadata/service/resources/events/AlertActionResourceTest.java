@@ -1,11 +1,15 @@
 package org.openmetadata.service.resources.events;
 
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.events.CreateAlertAction;
 import org.openmetadata.schema.entity.alerts.AlertAction;
@@ -16,6 +20,7 @@ import org.openmetadata.service.resources.alerts.AlertActionResource;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Disabled
 public class AlertActionResourceTest extends EntityResourceTest<AlertAction, CreateAlertAction> {
 
   public AlertActionResourceTest() {
@@ -69,4 +74,19 @@ public class AlertActionResourceTest extends EntityResourceTest<AlertAction, Cre
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+
+  @Test
+  @Override
+  protected void post_entityCreateWithInvalidName_400() {
+    // Create an entity with mandatory name field null
+    // Alert Action doesn't need name in creation it is randomly generated
+    CreateAlertAction request = createRequest(null, "description", "displayName", null);
+    try {
+      AlertAction action = createEntity(request, ADMIN_AUTH_HEADERS);
+      AlertAction getAction = getEntityByName(action.getName(), "name", ADMIN_AUTH_HEADERS);
+      deleteEntity(action.getId(), ADMIN_AUTH_HEADERS);
+    } catch (IOException ex) {
+      LOG.error("Error while testing", ex);
+    }
+  }
 }
