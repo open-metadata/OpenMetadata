@@ -236,9 +236,6 @@ li.ProseMirror-selectednode:after {
   position: relative;
   border: 1px solid #dadde6;
   height: 100%;
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
   border-radius: 4px;
 }
 
@@ -821,9 +818,6 @@ li.ProseMirror-selectednode:after {
   font-size: 12px;
   border-radius: 3px;
   color: #fff;
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
 }
 
 .toastui-editor-tooltip .arrow {
@@ -961,9 +955,6 @@ li.ProseMirror-selectednode:after {
   40 - tooltip
 */
 .ProseMirror {
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
   color: #222;
   font-size: 13px;
   overflow-y: auto;
@@ -997,9 +988,6 @@ table.ProseMirror-selectednode {
   margin: 0;
   padding: 0;
   font-size: 13px;
-  font-family: 'Open Sans', 'Helvetica Neue', 'Helvetica', 'Arial',
-    '나눔바른고딕', 'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic',
-    sans-serif;
   z-index: 20;
 }
 

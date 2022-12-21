@@ -18,7 +18,11 @@ import {
   MlFeature,
 } from '../../../../generated/entity/data/mlmodel';
 import { Task } from '../../../../generated/entity/data/pipeline';
-import { Column, DataType } from '../../../../generated/entity/data/table';
+import {
+  Column,
+  Constraint,
+  DataType,
+} from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 
 export interface SummaryListProps {
@@ -35,4 +39,5 @@ export interface BasicColumnInfo {
   type?: DataType | ChartType | FeatureType | string;
   tags?: TagLabel[];
   description?: string;
+  constraint?: Constraint;
 }
