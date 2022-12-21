@@ -63,6 +63,9 @@ spec:
       - name: init-airflow-directories
         image: busybox
         command: ['sh', '-c', 'mkdir -p /exports/airflow-dags /exports/airflow-logs']
+        volumeMounts:
+          - mountPath: /exports
+            name: nfs-pvc
       containers:
       - name: nfs-server
         image: gcr.io/google_containers/volume-nfs:0.8
