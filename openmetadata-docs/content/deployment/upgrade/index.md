@@ -27,10 +27,9 @@ Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.or
 
 If you are upgrading production this is the recommended version to upgrade.
   
- 
- 
- 
-## Breaking Changes for 0.13.1 Stable Release
+## Breaking Changes from 0.13.0 Feature Release
+
+OpenMetadata Release 0.13.0 introduces below breaking changes -
 
 ### Webhooks
 
@@ -40,6 +39,13 @@ Before upgrading to 0.13.1 it is recommended to save the existing Webhook config
 
 We have added Alerts/Notifications , which can be configured to receive customised alerts on updates in OM using Triggers, Filtering Information to different destinations like Slack, MsTeams or even Emails.
 Please use the same webhook config that you had saved from previous version to configure the Alerts Destination after upgrading.
+### dbt Workflow
+
+dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow.
+
+We will remove the dbt configuration from your existing metadata ingestion pipelines and they will keep working as expected.
+
+After upgrading you will have to create the dbt workflow for the dbt ingestion to start working again.
 
 ## Breaking Changes from 0.12.x Stable Release
 

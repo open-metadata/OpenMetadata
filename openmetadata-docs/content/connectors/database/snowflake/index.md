@@ -12,6 +12,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [DBT Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check

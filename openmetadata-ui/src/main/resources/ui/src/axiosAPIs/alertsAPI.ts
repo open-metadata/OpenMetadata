@@ -40,7 +40,20 @@ export const getAlertsFromId = async (
     params: {
       ...params,
       include: 'all',
-      fields: 'alertActions',
+    },
+  });
+
+  return response.data;
+};
+
+export const getAlertsFromName = async (
+  name: string,
+  params?: Pick<ListAlertsRequestParams, 'include'>
+) => {
+  const response = await axiosClient.get<Alerts>(`${BASE_URL}/name/${name}`, {
+    params: {
+      ...params,
+      include: 'all',
     },
   });
 
@@ -51,7 +64,6 @@ export const getAllAlerts = async (params: ListAlertsRequestParams) => {
   const response = await axiosClient.get<PagingResponse<Alerts[]>>(BASE_URL, {
     params: {
       ...params,
-      fields: 'alertActions',
     },
   });
 
