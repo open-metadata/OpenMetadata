@@ -150,7 +150,7 @@ export const excludedService = [
   MetadataServiceType.OpenMetadata,
 ];
 
-export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog'];
+export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
 
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   databaseServices: (Object.values(DatabaseServiceType) as string[])
@@ -188,6 +188,15 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
+};
+
+export const SERVICE_CATEGORY_TYPE = {
+  databaseServices: 'databases',
+  messagingServices: 'messaging',
+  dashboardServices: 'dashboards',
+  pipelineServices: 'pipelines',
+  mlmodelServices: 'mlModels',
+  metadataServices: 'metadata',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {

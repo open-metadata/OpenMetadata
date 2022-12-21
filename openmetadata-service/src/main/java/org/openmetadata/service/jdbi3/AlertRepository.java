@@ -13,9 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Relationship.USES;
+import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.service.Entity.ALERT;
 import static org.openmetadata.service.Entity.ALERT_ACTION;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,11 +24,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.AlertUtil;
@@ -40,8 +43,8 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class AlertRepository extends EntityRepository<Alert> {
   public static final String COLLECTION_PATH = "/v1/alerts";
-  static final String ALERT_PATCH_FIELDS = "triggerConfig,filteringRules,alertActions";
-  static final String ALERT_UPDATE_FIELDS = "triggerConfig,filteringRules,alertActions";
+  static final String ALERT_PATCH_FIELDS = "owner,triggerConfig,filteringRules,alertActions";
+  static final String ALERT_UPDATE_FIELDS = "owner,triggerConfig,filteringRules,alertActions";
 
   public AlertRepository(CollectionDAO dao) {
     super(
@@ -57,11 +60,13 @@ public class AlertRepository extends EntityRepository<Alert> {
   @Override
   public Alert setFields(Alert entity, Fields fields) throws IOException {
     entity.setAlertActions(fields.contains("alertActions") ? getAlertActions(entity) : null);
+    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity; // No fields to set
   }
 
   @Override
-  public void prepare(Alert entity) {
+  public void prepare(Alert entity) throws IOException {
+    validateAlertActions(entity.getAlertActions());
     validateFilterRules(entity);
   }
 
@@ -91,14 +96,14 @@ public class AlertRepository extends EntityRepository<Alert> {
     storeOwner(entity, entity.getOwner());
     // Store Alert to AlertAction RelationShip
     for (EntityReference actionRef : entity.getAlertActions()) {
-      addRelationship(entity.getId(), actionRef.getId(), ALERT, ALERT_ACTION, Relationship.USES);
+      addRelationship(entity.getId(), actionRef.getId(), ALERT, ALERT_ACTION, Relationship.CONTAINS);
     }
   }
 
   public List<AlertAction> getAllAlertActionForAlert(UUID alertId) throws IOException {
     List<AlertAction> alertActionList = new ArrayList<>();
     List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(alertId.toString(), ALERT, USES.ordinal(), ALERT_ACTION);
+        daoCollection.relationshipDAO().findTo(alertId.toString(), ALERT, CONTAINS.ordinal(), ALERT_ACTION);
     EntityRepository<AlertAction> alertEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
     for (CollectionDAO.EntityRelationshipRecord record : records) {
       AlertAction alertAction = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
@@ -106,6 +111,16 @@ public class AlertRepository extends EntityRepository<Alert> {
       alertActionList.add(alertAction);
     }
     return alertActionList;
+  }
+
+  public void validateAlertActions(List<EntityReference> alertRef) throws IOException {
+    if (CommonUtil.nullOrEmpty(alertRef)) {
+      throw new IllegalArgumentException("Alert Action cannot be null or Empty");
+    }
+    for (EntityReference ref : alertRef) {
+      // validate targetDefinition
+      Entity.getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
+    }
   }
 
   public AlertActionStatus getActionStatus(UUID alertid, UUID actionId) throws IOException {
@@ -126,7 +141,7 @@ public class AlertRepository extends EntityRepository<Alert> {
 
   private List<EntityReference> getAlertActions(Alert entity) throws IOException {
     List<CollectionDAO.EntityRelationshipRecord> testCases =
-        findTo(entity.getId(), ALERT, Relationship.USES, ALERT_ACTION);
+        findTo(entity.getId(), ALERT, Relationship.CONTAINS, ALERT_ACTION);
     return EntityUtil.getEntityReferences(testCases);
   }
 
@@ -149,7 +164,7 @@ public class AlertRepository extends EntityRepository<Alert> {
           "alertActions",
           ALERT,
           original.getId(),
-          Relationship.USES,
+          Relationship.CONTAINS,
           ALERT_ACTION,
           new ArrayList<>(original.getAlertActions()),
           new ArrayList<>(updated.getAlertActions()),

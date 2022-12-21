@@ -22,11 +22,9 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -50,11 +48,6 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
         DatabaseSchemaList.class,
         "databaseSchemas",
         DatabaseSchemaResource.FIELDS);
-  }
-
-  @BeforeAll
-  public void setup(TestInfo test) throws IOException, URISyntaxException {
-    super.setup(test);
   }
 
   @Test

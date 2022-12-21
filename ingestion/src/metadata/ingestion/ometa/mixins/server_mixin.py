@@ -38,6 +38,12 @@ class VersionMismatchException(Exception):
     """
 
 
+class VersionNotFoundException(Exception):
+    """
+    Used when server doesn't return a version
+    """
+
+
 class OMetaServerMixin:
     """
     OpenMetadata API methods related to the Pipeline Entity
@@ -67,7 +73,10 @@ class OMetaServerMixin:
         Run endpoint /version to check server version
         :return: Server version
         """
-        raw_version = self.client.get("/version")["version"]
+        try:
+            raw_version = self.client.get("/version")["version"]
+        except KeyError:
+            raise VersionNotFoundException("Cannot Find Version at api/v1/version")
         return self.get_version_from_string(raw_version)
 
     def get_client_version(self) -> str:

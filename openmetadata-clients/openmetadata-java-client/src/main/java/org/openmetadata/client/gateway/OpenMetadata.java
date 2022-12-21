@@ -76,9 +76,7 @@ public class OpenMetadata {
   }
 
   public <K> void updateRequestType(Class<K> requestClass) {
-    if (apiClient.getApiAuthorizations().containsKey(REQUEST_INTERCEPTOR_KEY)) {
-      apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
-    }
+    apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
     CustomRequestInterceptor<K> newInterceptor =
         new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
     apiClient.addAuthorization(REQUEST_INTERCEPTOR_KEY, newInterceptor);

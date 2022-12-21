@@ -34,6 +34,7 @@ export interface ChartFilter {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   isPercentage?: boolean;
+  isTier?: boolean;
   kpiTooltipRecord?: Record<string, KpiTargetType>;
 }
 

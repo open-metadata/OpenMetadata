@@ -175,24 +175,23 @@ const MyData: React.FC<MyDataProps> = ({
     );
   }, [ownedData, followedData, pendingTaskCount]);
 
-  const fetchMoreFeed = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      isMounted.current
-    ) {
-      fetchFeedHandler(feedFilter, pagingObj.after, threadType);
-    }
-  };
+  const fetchMoreFeed = useCallback(
+    (isElementInView: boolean, pagingObj: Paging) => {
+      if (
+        isElementInView &&
+        pagingObj?.after &&
+        !isFeedLoading &&
+        isMounted.current
+      ) {
+        fetchFeedHandler(feedFilter, pagingObj.after, threadType);
+      }
+    },
+    [isFeedLoading, threadType, fetchFeedHandler, isMounted.current]
+  );
 
   useEffect(() => {
-    fetchMoreFeed(Boolean(isInView), paging, isFeedLoading);
-  }, [isInView, paging, isFeedLoading]);
+    fetchMoreFeed(Boolean(isInView), paging);
+  }, [isInView, paging]);
 
   useEffect(() => {
     isMounted.current = true;

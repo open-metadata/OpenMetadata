@@ -22,6 +22,9 @@ from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
 from metadata.cli.ingest import run_ingest
+from metadata.cli.openmetadata_dag_config_migration import (
+    run_openmetadata_dag_config_migration,
+)
 from metadata.cli.openmetadata_imports_migration import (
     run_openmetadata_imports_migration,
 )
@@ -42,6 +45,7 @@ class MetadataCommands(Enum):
     RESTORE = "restore"
     WEBHOOK = "webhook"
     OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
+    OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
 
 
 OM_IMPORTS_MIGRATION = """
@@ -50,6 +54,13 @@ OM_IMPORTS_MIGRATION = """
     `openmetadata_managed_apis` hence breaking existing DAGs. 
     The `dag_generated_config` folder also changed location in Docker.
     This small CLI utility allows you to update both elements.
+    """
+
+OM_DAG_CONFIG_MIGRATION = """
+    Update DAG Config files generated after creating workflow in 0.12 and before.
+    In 0.13 certains keys of the dag config. files have been removed. This small
+    utility command allows you to update legacy dag config files. Note this can
+    also be done manually through the UI by clicking on `redeploy`
     """
 
 BACKUP_HELP = """
@@ -101,6 +112,22 @@ def create_openmetadata_imports_migration_args(parser: argparse.ArgumentParser):
         "--change-config-file-path",
         help="Flag option. If pass this will try to change the path of the dag config files",
         type=bool,
+    )
+
+
+def create_openmetadata_dag_config_migration_args(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "-d",
+        "--dir-path",
+        default="/opt/airflow/dag_generated_configs",
+        type=pathlib.Path,
+        help="Path to the DAG folder. Default to `/opt/airflow/dag_generated_configs`",
+    )
+
+    parser.add_argument(
+        "--keep-backups",
+        help="Flag option. If passed, old files will be kept as backups <filename>.json.bak",
+        action="store_true",
     )
 
 
@@ -324,6 +351,12 @@ def get_parser(args=None):
             help=OM_IMPORTS_MIGRATION,
         )
     )
+    create_openmetadata_dag_config_migration_args(
+        sub_parser.add_parser(
+            MetadataCommands.OPENMETADATA_DAG_CONFIG_MIGRATION.value,
+            help=OM_DAG_CONFIG_MIGRATION,
+        )
+    )
     docker_args(
         sub_parser.add_parser(MetadataCommands.DOCKER.value, help="Docker Quickstart")
     )
@@ -444,4 +477,9 @@ def metadata(args=None):
     if metadata_workflow == MetadataCommands.OPENMETADATA_IMPORTS_MIGRATION.value:
         run_openmetadata_imports_migration(
             contains_args.get("dir_path"), contains_args.get("change_config_file_path")
+        )
+
+    if metadata_workflow == MetadataCommands.OPENMETADATA_DAG_CONFIG_MIGRATION.value:
+        run_openmetadata_dag_config_migration(
+            contains_args.get("dir_path"), contains_args.get("keep_backups")
         )

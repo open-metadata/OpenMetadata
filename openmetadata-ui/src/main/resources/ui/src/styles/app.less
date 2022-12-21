@@ -189,6 +189,9 @@
 .bg-primary-hover-lite {
   background-color: @primary-hover-light;
 }
+.bg-grey {
+  background-color: @gray;
+}
 
 .activeCategory {
   border-left: 2px solid @primary;
@@ -266,6 +269,9 @@
 .z-10 {
   z-index: 10;
 }
+.z-400 {
+  z-index: 400;
+}
 
 .entity-details-container {
   height: 100%;
@@ -304,11 +310,6 @@
 }
 
 /* Group CSS End*/
-.heading {
-  font-weight: 500 !important;
-  margin-bottom: 16px !important;
-  color: @grey-body !important;
-}
 
 .quick-filter-dropdown-trigger-btn {
   padding: 4px;
@@ -320,4 +321,17 @@
 .quick-filter-dropdown-trigger-btn:hover,
 .quick-filter-dropdown-trigger-btn:focus {
   background-color: @trigger-btn-hover-bg;
+}
+
+// Rotate
+.rotate-inverse {
+  transform: rotate(180deg);
+}
+
+.rotate-90 {
+  transform: rotate(90deg);
+}
+
+.rotate--90 {
+  transform: rotate(-90deg);
 }

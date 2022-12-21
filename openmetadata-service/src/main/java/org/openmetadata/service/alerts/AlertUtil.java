@@ -143,7 +143,7 @@ public class AlertUtil {
     for (int i = 0; i < alertFilterRules.size(); i++) {
       AlertFilterRule rule = alertFilterRules.get(i);
       builder.append("(");
-      if (rule.getEffect() == AlertFilterRule.Effect.ALLOW) {
+      if (rule.getEffect() == AlertFilterRule.Effect.INCLUDE) {
         builder.append(rule.getCondition());
       } else {
         builder.append("!");

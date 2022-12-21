@@ -525,7 +525,9 @@ const GlossaryV1 = ({
               </Row>
             ) : (
               <Space className="display-name">
-                <Title level={4}>{getEntityName(selectedData)}</Title>
+                <Title className="tw-text-base" level={5}>
+                  {getEntityName(selectedData)}
+                </Title>
                 <Tooltip
                   title={
                     editDisplayNamePermission
@@ -533,6 +535,7 @@ const GlossaryV1 = ({
                       : NO_PERMISSION_FOR_ACTION
                   }>
                   <ButtonAntd
+                    className="m-b-xss"
                     disabled={!editDisplayNamePermission}
                     type="text"
                     onClick={() => setIsNameEditing(true)}>

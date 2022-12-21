@@ -16,6 +16,7 @@ To be used by OpenMetadata class
 
 from datetime import datetime, timezone
 from typing import List, Optional
+from urllib.parse import quote
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -61,7 +62,7 @@ class OMetaTestsMixin:
             _type_: _description_
         """
         resp = self.client.put(
-            f"{self.get_suffix(TestCase)}/{test_case_fqn}/testCaseResult",
+            f"{self.get_suffix(TestCase)}/{quote(test_case_fqn,safe='')}/testCaseResult",
             test_results.json(),
         )
 

@@ -152,6 +152,7 @@ An example of S3 CLI call will look as:
 ```commandline
 metadata backup -u openmetadata_user -p openmetadata_password \
     -H localhost -d openmetadata_db --output=dir1/dir2 \
+    --upload-destination-type AWS \
     --upload http://localhost:9000 my-bucket backup/
 ```
 

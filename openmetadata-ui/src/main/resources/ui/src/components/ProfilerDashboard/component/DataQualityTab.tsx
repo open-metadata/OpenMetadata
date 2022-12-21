@@ -17,8 +17,6 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ArrowDown } from '../../../assets/svg/arrow-down.svg';
-import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
@@ -30,6 +28,7 @@ import { getDecodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
   getEntityFqnFromEntityLink,
+  getTableExpandableConfig,
   getTestResultBadgeIcon,
 } from '../../../utils/TableUtils';
 import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
@@ -217,31 +216,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         columns={columns}
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
         expandable={{
+          ...getTableExpandableConfig<TestCase>(),
           expandRowByClick: true,
           rowExpandable: () => true,
           expandedRowRender: (recode) => <TestSummary data={recode} />,
-          expandIcon: ({ expanded, onExpand, record }) =>
-            expanded ? (
-              <ArrowDown
-                className="mx-auto"
-                onClick={(e: React.MouseEvent) =>
-                  onExpand(
-                    record,
-                    e as React.MouseEvent<HTMLElement, MouseEvent>
-                  )
-                }
-              />
-            ) : (
-              <ArrowRight
-                className="mx-auto"
-                onClick={(e: React.MouseEvent) =>
-                  onExpand(
-                    record,
-                    e as React.MouseEvent<HTMLElement, MouseEvent>
-                  )
-                }
-              />
-            ),
         }}
         loading={{
           indicator: <Loader size="small" />,

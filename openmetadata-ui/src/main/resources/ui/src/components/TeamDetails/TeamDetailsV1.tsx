@@ -65,7 +65,6 @@ import {
 } from '../../interface/teamsAndUsers.interface';
 import AddAttributeModal from '../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import {
-  commonUserDetailColumns,
   getEntityName,
   getTierFromEntityInfo,
   hasEditAccess,
@@ -100,6 +99,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
+import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
 import { getTabs, searchTeam } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
@@ -263,7 +263,7 @@ const TeamDetailsV1 = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     return [
-      ...commonUserDetailColumns,
+      ...commonUserDetailColumns(),
       {
         title: t('label.actions'),
         dataIndex: 'actions',
@@ -1045,7 +1045,10 @@ const TeamDetailsV1 = ({
       {!isEmpty(currentTeam) ? (
         <Fragment>
           {!isOrganization && (
-            <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+            <TitleBreadcrumb
+              className="p-b-xs"
+              titleLinks={slashedDatabaseName}
+            />
           )}
           <div
             className="tw-flex tw-justify-between tw-items-center"

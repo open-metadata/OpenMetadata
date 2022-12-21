@@ -28,6 +28,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.interfaces.sqalchemy.mixins.sqa_mixin import SQAInterfaceMixin
 from metadata.interfaces.test_suite_protocol import TestSuiteProtocol
+from metadata.orm_profiler.api.models import ProfileSampleConfig
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.test_suite.validations.core import validation_enum_registry
@@ -52,7 +53,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
         sqa_metadata_obj: Optional[MetaData] = None,
-        table_sample_precentage: float = None,
+        profile_sample_config: Optional[ProfileSampleConfig] = None,
         table_sample_query: str = None,
         table_partition_config: dict = None,
         table_entity: Table = None,
@@ -67,7 +68,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
 
         self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
 
-        self.table_sample_precentage = table_sample_precentage
+        self.profile_sample_config = profile_sample_config
         self.table_sample_query = table_sample_query
         self.table_partition_config = (
             self.get_partition_details(table_partition_config)
@@ -115,7 +116,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
         return Sampler(
             session=self.session,
             table=self.table,
-            profile_sample=self.table_sample_precentage,
+            profile_sample_config=self.profile_sample_config,
             partition_details=self.table_partition_config,
             profile_sample_query=self.table_sample_query,
         )

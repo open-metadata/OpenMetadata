@@ -116,7 +116,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       actionType: 'click',
-      selector: '#tabledatacard0Title',
+      selector: '#tabledatacard0-title',
       beforeNext: () => {
         AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
       },

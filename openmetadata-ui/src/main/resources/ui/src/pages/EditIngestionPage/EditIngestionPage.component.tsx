@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -28,7 +29,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import {
   DEPLOYED_PROGRESS_VAL,
@@ -37,9 +38,9 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
@@ -49,6 +50,7 @@ import {
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getIngestionHeadingName } from '../../utils/IngestionUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceIngestionStepGuide,
@@ -267,7 +269,10 @@ const EditIngestionPage = () => {
         activeTitle: true,
       },
       {
-        name: `Edit ${capitalize(ingestionType)} Ingestion`,
+        name: getIngestionHeadingName(
+          ingestionType,
+          INGESTION_ACTION_TYPE.EDIT
+        ),
         url: '',
         activeTitle: true,
       },
@@ -288,45 +293,52 @@ const EditIngestionPage = () => {
     } else {
       return (
         <div className="self-center">
-          <PageLayout
-            classes="w-max-1080 h-full p-t-xss"
-            header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-            layout={PageLayoutType['2ColRTL']}
-            rightPanel={getServiceIngestionStepGuide(
-              activeIngestionStep,
-              true,
-              ingestionData?.name || '',
-              '',
-              ingestionType as PipelineType,
-              isDeployed(),
-              true,
-              isAirflowRunning
-            )}>
-            <div className="form-container">
-              <AddIngestion
-                activeIngestionStep={activeIngestionStep}
-                data={ingestionData}
-                handleCancelClick={goToService}
-                handleViewServiceClick={goToService}
-                heading={`Edit ${capitalize(ingestionType)} Ingestion`}
-                ingestionAction={ingestionAction}
-                ingestionProgress={ingestionProgress}
-                isAirflowSetup={isAirflowRunning}
-                isIngestionCreated={isIngestionCreated}
-                isIngestionDeployed={isIngestionDeployed}
-                pipelineType={ingestionType as PipelineType}
-                serviceCategory={serviceCategory as ServiceCategory}
-                serviceData={serviceData as DataObj}
-                setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-                showDeployButton={showIngestionButton}
-                status={FormSubmitType.EDIT}
-                onAirflowStatusCheck={onAirflowStatusCheck}
-                onIngestionDeploy={onIngestionDeploy}
-                onSuccessSave={goToService}
-                onUpdateIngestion={onEditIngestionSave}
-              />
+          <PageLayoutV1 center>
+            <Space direction="vertical" size="middle">
+              <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+              <div className="form-container">
+                <AddIngestion
+                  activeIngestionStep={activeIngestionStep}
+                  data={ingestionData}
+                  handleCancelClick={goToService}
+                  handleViewServiceClick={goToService}
+                  heading={getIngestionHeadingName(
+                    ingestionType,
+                    INGESTION_ACTION_TYPE.EDIT
+                  )}
+                  ingestionAction={ingestionAction}
+                  ingestionProgress={ingestionProgress}
+                  isAirflowSetup={isAirflowRunning}
+                  isIngestionCreated={isIngestionCreated}
+                  isIngestionDeployed={isIngestionDeployed}
+                  pipelineType={ingestionType as PipelineType}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceData={serviceData as DataObj}
+                  setActiveIngestionStep={(step) =>
+                    setActiveIngestionStep(step)
+                  }
+                  showDeployButton={showIngestionButton}
+                  status={FormSubmitType.EDIT}
+                  onAirflowStatusCheck={onAirflowStatusCheck}
+                  onIngestionDeploy={onIngestionDeploy}
+                  onSuccessSave={goToService}
+                  onUpdateIngestion={onEditIngestionSave}
+                />
+              </div>
+            </Space>
+            <div className="m-t-xlg p-x-lg w-800" data-testid="right-panel">
+              {getServiceIngestionStepGuide(
+                activeIngestionStep,
+                true,
+                ingestionData?.name || '',
+                '',
+                ingestionType as PipelineType,
+                isDeployed(),
+                true,
+                isAirflowRunning
+              )}
             </div>
-          </PageLayout>
+          </PageLayoutV1>
         </div>
       );
     }
