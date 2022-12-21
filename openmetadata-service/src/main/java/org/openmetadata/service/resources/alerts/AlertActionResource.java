@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -304,6 +305,34 @@ public class AlertActionResource extends EntityResource<AlertAction, AlertAction
     generateRandomAlertActionName(create);
     AlertAction alertAction = getAlertAction(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, alertAction);
+  }
+
+  @POST
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateAlertAction",
+      summary = "Create new alert Action with Bulk",
+      tags = "alertAction",
+      description = "Create new alert Action with Bulk",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "alert",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateAlertAction.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateAlertAction(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<CreateAlertAction> create)
+      throws IOException {
+    List<AlertAction> alert = new ArrayList<>();
+    for (CreateAlertAction createAlertAction : create) {
+      generateRandomAlertActionName(createAlertAction);
+      AlertAction alertAction = getAlertAction(createAlertAction, securityContext.getUserPrincipal().getName());
+      Response resp = create(uriInfo, securityContext, alertAction);
+      alert.add((AlertAction) resp.getEntity());
+    }
+    return Response.status(Response.Status.CREATED).entity(alert).build();
   }
 
   @PUT
