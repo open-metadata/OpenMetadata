@@ -18,7 +18,7 @@ from typing import Any, Iterable, List, Optional
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -81,10 +81,18 @@ class MessagingServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=Topic,
-                context="Topic",
+                context="topic",
                 processor="yield_topic",
                 consumer=["messaging_service"],
-            )
+            ),
+            NodeStage(
+                type_=TopicSampleData,
+                context="topic_sample_data",
+                processor="yield_topic_sample_data",
+                consumer=["messaging_service"],
+                nullable=True,
+                ack_sink=False,
+            ),
         ],
     )
 
@@ -114,6 +122,11 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_topic(self, topic_details: Any) -> Iterable[CreateTopicRequest]:
         """
         Method to Get Messaging Entity
+        """
+
+    def yield_topic_sample_data(self, topic_details: Any) -> Iterable[TopicSampleData]:
+        """
+        Method to Get Sample Data of Messaging Entity
         """
 
     @abstractmethod
