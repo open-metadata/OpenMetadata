@@ -87,7 +87,7 @@ docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
 docker compose -f docker/local-metadata/docker-compose.yml down
 
 echo "Starting Local Docker Containers"
-mkdir -p docker-volume && mkdir -p docker-volume/db-data
+mkdir -p docker-volume && mkdir -p docker-volume/db-data && mkdir -p docker-volume/es-data
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
