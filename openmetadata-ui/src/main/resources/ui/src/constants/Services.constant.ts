@@ -150,7 +150,7 @@ export const excludedService = [
   MetadataServiceType.OpenMetadata,
 ];
 
-export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog'];
+export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
 
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   databaseServices: (Object.values(DatabaseServiceType) as string[])

@@ -233,9 +233,7 @@ const AddIngestionPage = () => {
         activeTitle: true,
       },
       {
-        name: t('label.add-workflow-ingestion', {
-          workflow: startCase(ingestionType),
-        }),
+        name: getIngestionHeadingName(ingestionType, INGESTION_ACTION_TYPE.ADD),
         url: '',
         activeTitle: true,
       },

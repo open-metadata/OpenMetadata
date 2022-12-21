@@ -370,10 +370,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     <Fragment>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="gcs-config">
-          DBT Configuration Source
+          dbt Configuration Source
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          Available sources to fetch DBT catalog and manifest files.
+          Available sources to fetch dbt catalog and manifest files.
         </p>
         <select
           className="tw-form-inputs tw-form-inputs-padding"
@@ -400,7 +400,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="dbt-bucket-name">
-          DBT Bucket Name
+          dbt Bucket Name
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           Name of the bucket where the dbt files are stored.
@@ -419,7 +419,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="dbt-object-prefix">
-          DBT Object Prefix
+          dbt Object Prefix
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           Path of the folder where the dbt files are stored.
