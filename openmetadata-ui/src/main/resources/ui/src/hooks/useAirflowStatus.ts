@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import { checkAirflowStatus } from '../axiosAPIs/ingestionPipelineAPI';
 
 interface UseAirflowStatusProps {
-  isLoading: boolean;
+  isFetchingStatus: boolean;
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;
   fetchAirflowStatus: () => Promise<void>;
@@ -44,5 +44,10 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
     fetchAirflowStatus();
   }, []);
 
-  return { isLoading, isAirflowAvailable, error, fetchAirflowStatus };
+  return {
+    isFetchingStatus: isLoading,
+    isAirflowAvailable,
+    error,
+    fetchAirflowStatus,
+  };
 };
