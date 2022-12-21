@@ -31,6 +31,8 @@ Before proceeding, please back up your MySQL/Postgres DB behind the OpenMetadata
 
 Make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands. If you are using the default database available with OpenMetadata Dependencies, make sure to port-forward the MySQL service using `kubectl port-forward service/mysql 3306:3306`.
 
+Then, follow the next steps to create a virtual environment and install the latest OpenMetadata Python package with the backup CLI:
+
 1. `python -m venv venv`
 2. `source venv/bin/activate`
 3. `PIP_USER=false pip install openmetadata-ingestion==0.13.0.3`
