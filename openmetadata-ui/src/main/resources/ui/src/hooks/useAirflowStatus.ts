@@ -19,6 +19,7 @@ interface UseAirflowStatusProps {
   isLoading: boolean;
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;
+  fetchAirflowStatus: () => Promise<void>;
 }
 
 export const useAirflowStatus = (): UseAirflowStatusProps => {
@@ -43,5 +44,5 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
     fetchAirflowStatus();
   }, []);
 
-  return { isLoading, isAirflowAvailable, error };
+  return { isLoading, isAirflowAvailable, error, fetchAirflowStatus };
 };
