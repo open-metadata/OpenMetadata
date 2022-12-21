@@ -32,7 +32,11 @@ If you are upgrading production this is the recommended version to upgrade.
 OpenMetadata Release 0.13.0 introduces below breaking changes -
 ### dbt Workflow
 
-dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow
+dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow.
+
+We will remove the dbt configuration from your existing metadata ingestion pipelines and they will keep working as expected.
+
+After upgrading you will have to create the dbt workflow for the dbt ingestion to start working again.
 
 ## Breaking Changes from 0.12.x Stable Release
 
