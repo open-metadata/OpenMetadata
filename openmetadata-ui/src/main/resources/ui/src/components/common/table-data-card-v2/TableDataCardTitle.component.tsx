@@ -54,18 +54,11 @@ const TableDataCardTitle = ({
 
   const title = (
     <Button
-      className="w-full"
       data-testid={testId}
-      id={`${id}Title`}
+      id={`${id ?? testId}-title`}
       type="link"
       onClick={isTourRoute ? handleLinkClick : undefined}>
-      <Typography.Title
-        ellipsis
-        className="text-left"
-        level={5}
-        title={source.name}>
-        {stringToHTML(source.name)}
-      </Typography.Title>
+      {stringToHTML(source.name)}
     </Button>
   );
 
@@ -74,11 +67,17 @@ const TableDataCardTitle = ({
   }
 
   return (
-    <Link
-      className="table-data-card-title-container w-fit-content w-max-90"
-      to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
-      {title}
-    </Link>
+    <Typography.Title
+      ellipsis
+      className="m-b-0 text-base"
+      level={5}
+      title={source.name}>
+      <Link
+        className="table-data-card-title-container w-fit-content w-max-90"
+        to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
+        {title}
+      </Link>
+    </Typography.Title>
   );
 };
 
