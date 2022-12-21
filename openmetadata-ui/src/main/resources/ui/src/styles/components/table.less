@@ -9,6 +9,35 @@
   .ant-table-bordered {
     table {
       border: 1px solid #dde3ea;
+
+      tbody {
+        tr {
+          td {
+            .drag-icon {
+              width: 12px;
+              height: 12px;
+              margin-right: 2px;
+              display: inline-flex;
+              visibility: hidden;
+            }
+
+            .expand-icon {
+              cursor: pointer;
+            }
+
+            .expand-cell-empty-icon-container {
+              width: 16px;
+              height: 16px;
+              display: inline-flex;
+            }
+          }
+        }
+        .ant-table-cell-row-hover {
+          .drag-icon {
+            visibility: initial;
+          }
+        }
+      }
     }
     .ant-table-container > .ant-table-content > table > tbody > tr > td {
       border-right: none;

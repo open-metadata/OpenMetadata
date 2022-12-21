@@ -90,7 +90,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       }}
       title={t('label.add-team')}
       visible={visible}
-      width={650}
+      width={750}
       onCancel={onCancel}>
       <Form
         id="add-team-form"

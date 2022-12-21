@@ -194,6 +194,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           placement="topRight"
           trigger="hover"
           visible={visible && !isEditPost}
+          zIndex={100}
           onVisibleChange={handleVisibleChange}>
           <Space align="start" className="w-full">
             <UserPopOverCard userName={feedDetail.from}>
