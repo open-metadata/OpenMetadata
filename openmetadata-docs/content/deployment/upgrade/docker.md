@@ -35,9 +35,23 @@ what you'll need to do to:
 2. Add volumes and port mapping to the databases and restore your data,
 3. Start OpenMetadata with the 0.13.1 release.
 
-These steps are based on MySQL, but the steps are analogous for Postgres.
+These steps are based on MySQL, but are analogous for Postgres.
 
-### Backup 0.12.3 data
+Please, validate the process in your development or staging environment first before going into PROD.
+
+
+<Note>
+
+This guide is specific to installations using the default docker compose file we shipped on the 0.12.3 release. The
+whole process is about making sure that all the data will be properly backed up considering that there is no
+port mapping or volumes available.
+
+If your docker compose already had volumes for the database, then upgrading the version of OpenMetadata and the
+Ingestion container should be good to go (as shown in step 4 below).
+
+</Note>
+
+### 1. Backup 0.12.3 data
 
 1. Get inside the `openmetadata_ingestion` container with `docker exec -it openmetadata_ingestion bash`.
 2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
@@ -59,7 +73,9 @@ These steps are based on MySQL, but the steps are analogous for Postgres.
     In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
     command output.
 
-### Add volumes and port mapping
+### 2. Add volumes and port mapping
+
+This step is only required if you had not that yet.
 
 1. Stop docker compose
 2. Update the `mysql` service in the compose file so that it looks like:
@@ -95,9 +111,12 @@ These steps are based on MySQL, but the steps are analogous for Postgres.
    1. This will run a clean database instance with ports and volumes.
    2. The OpenMetadata server will run the 0.12.3 migrations to populate the starting tables.
 
-### Restore the backup
+### 3. Restore the backup
 
-1. On your laptop/VM, prepare a virtual environment and install `openmetadata-ingestion==0.13.1`
+We will now use the backup generated in the previous step to repopulate the database.
+
+1. On your laptop/VM, prepare a virtual environment and install `openmetadata-ingestion==0.13.1`. It is important
+   that the instance has access to the database.
    1. `python -m venv venv`
    2. `source venv/bin/activate`
    3. `pip install openmetadata-ingestion==0.13.1`
@@ -112,7 +131,7 @@ These steps are based on MySQL, but the steps are analogous for Postgres.
     ```
 4. Stop the docker compose
 
-### Upgrade OpenMetadata versions
+### 4. Upgrade OpenMetadata versions
 
 1. On the compose file we previously updated the database settings, update the image tag in the `ingestion` and 
     `openmetadata-server` to 0.13.1. E.g., `image: openmetadata/server:0.13.1`.
