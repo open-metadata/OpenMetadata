@@ -29,7 +29,7 @@ Below document is valid for upgrading Helm Charts from **0.12.x to 0.13.0**.
 
 Before proceeding, please back up your MySQL/Postgres DB behind the OpenMetadata server. This step is crucial for restoring to your current state if any issues arise during the upgrade. It is recommended before upgrading your production instances.
 
-Make sure you have a connectivity between your database (mysql / postgresql) with host machine where you will be running the below commands. If you are using the default database available with OpenMetadata Dependencies, make sure to port-forward the mysql service using `kubectl port-forward service/mysql 3306:3306`.
+Make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands. If you are using the default database available with OpenMetadata Dependencies, make sure to port-forward the MySQL service using `kubectl port-forward service/mysql 3306:3306`.
 
 1. `python -m venv venv`
 2. `source venv/bin/activate`
