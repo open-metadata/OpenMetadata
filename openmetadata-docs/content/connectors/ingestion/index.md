@@ -28,12 +28,21 @@ In this section we will explore the different workflows, how they work and how t
   </InlineCallout>
   <InlineCallout
     color="violet-70"
-    bold="Metadata Profiler & Quality Tests"
+    bold="Metadata Profiler"
     icon="cable"
     href="/connectors/ingestion/workflows/profiler"
   >
-    Get metrics from your Tables and run automated Quality Tests!
+    To get metrics from your Tables
   </InlineCallout>
+  <InlineCallout
+    color="violet-70"
+    bold="Metadata Data Quality Tests"
+    icon="cable"
+    href="/connectors/ingestion/workflows/data-quality"
+  >
+    To run automated Quality Tests on your Tables.
+  </InlineCallout>
+   
   <InlineCallout
     color="violet-70"
     bold="Metadata Usage"
