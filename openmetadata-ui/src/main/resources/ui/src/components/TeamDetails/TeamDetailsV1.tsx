@@ -1045,7 +1045,10 @@ const TeamDetailsV1 = ({
       {!isEmpty(currentTeam) ? (
         <Fragment>
           {!isOrganization && (
-            <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+            <TitleBreadcrumb
+              className="p-b-xs"
+              titleLinks={slashedDatabaseName}
+            />
           )}
           <div
             className="tw-flex tw-justify-between tw-items-center"

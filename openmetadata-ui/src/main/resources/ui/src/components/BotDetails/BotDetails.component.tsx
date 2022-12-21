@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -198,50 +198,58 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <Card className="page-layout-v1-left-panel mt-2">
-          <div data-testid="left-panel">
-            <div className="flex flex-col">
-              <SVGIcons
-                alt="bot-profile"
-                icon={Icons.BOT_PROFILE}
-                width="280px"
-              />
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Card className="page-layout-v1-left-panel mt-2">
+            <div data-testid="left-panel">
+              <div className="flex flex-col">
+                <SVGIcons
+                  alt="bot-profile"
+                  icon={Icons.BOT_PROFILE}
+                  width="280px"
+                />
 
-              <Space className="p-b-md" direction="vertical" size={8}>
-                <DisplayNameComponent
-                  displayName={displayName}
-                  displayNamePermission={displayNamePermission}
-                  editAllPermission={editAllPermission}
-                  handleDisplayNameChange={handleDisplayNameChange}
-                  isDisplayNameEdit={isDisplayNameEdit}
-                  setIsDisplayNameEdit={(value: boolean) =>
-                    setIsDisplayNameEdit(value)
-                  }
-                  onDisplayNameChange={onDisplayNameChange}
-                />
-                <Description
-                  description={botData.description || ''}
-                  entityName={getEntityName(botData)}
-                  hasEditAccess={descriptionPermission || editAllPermission}
-                  isEdit={isDescriptionEdit}
-                  onCancel={() => setIsDescriptionEdit(false)}
-                  onDescriptionEdit={() => setIsDescriptionEdit(true)}
-                  onDescriptionUpdate={handleDescriptionChange}
-                />
-              </Space>
+                <Space className="p-b-md" direction="vertical" size={8}>
+                  <DisplayNameComponent
+                    displayName={displayName}
+                    displayNamePermission={displayNamePermission}
+                    editAllPermission={editAllPermission}
+                    handleDisplayNameChange={handleDisplayNameChange}
+                    isDisplayNameEdit={isDisplayNameEdit}
+                    setIsDisplayNameEdit={(value: boolean) =>
+                      setIsDisplayNameEdit(value)
+                    }
+                    onDisplayNameChange={onDisplayNameChange}
+                  />
+                  <Description
+                    description={botData.description || ''}
+                    entityName={getEntityName(botData)}
+                    hasEditAccess={descriptionPermission || editAllPermission}
+                    isEdit={isDescriptionEdit}
+                    onCancel={() => setIsDescriptionEdit(false)}
+                    onDescriptionEdit={() => setIsDescriptionEdit(true)}
+                    onDescriptionUpdate={handleDescriptionChange}
+                  />
+                </Space>
+              </div>
             </div>
-          </div>
-        </Card>
-        <RolesCard
-          roles={roles}
-          selectedRoles={selectedRoles}
-          setSelectedRoles={(selectedRoles) => setSelectedRoles(selectedRoles)}
-          updateUserDetails={updateUserDetails}
-          userData={botUserData}
-        />
-        <InheritedRolesCard userData={botUserData} />
-      </>
+          </Card>
+        </Col>
+        <Col span={24}>
+          <RolesCard
+            roles={roles}
+            selectedRoles={selectedRoles}
+            setSelectedRoles={(selectedRoles) =>
+              setSelectedRoles(selectedRoles)
+            }
+            updateUserDetails={updateUserDetails}
+            userData={botUserData}
+          />
+        </Col>
+        <Col span={24}>
+          <InheritedRolesCard userData={botUserData} />
+        </Col>
+      </Row>
     );
   };
 

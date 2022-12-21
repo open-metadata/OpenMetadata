@@ -71,7 +71,7 @@ const RolesCard = ({
   if (isAdminUser && !isAuthDisabled) {
     return (
       <Card
-        className="ant-card-feed relative page-layout-v1-left-panel mt-2.5"
+        className="ant-card-feed relative page-layout-v1-left-panel"
         key="roles-card"
         title={
           <div className="flex items-center justify-between">
