@@ -66,11 +66,56 @@
       "href": {
         "type": "text"
       },
-      "schemaText": {
-        "type": "text"
-      },
-      "schemaType": {
-        "type": "text"
+      "messageSchema": {
+        "properties": {
+          "schemaType": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "schemaFields": {
+            "properties": {
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "dataType": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "tags": {
+                "properties": {
+                  "tagFQN": {
+                    "type": "keyword"
+                  },
+                  "labelType": {
+                    "type": "keyword"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "source": {
+                    "type": "keyword"
+                  },
+                  "state": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "cleanupPolicies": {
         "type": "keyword"

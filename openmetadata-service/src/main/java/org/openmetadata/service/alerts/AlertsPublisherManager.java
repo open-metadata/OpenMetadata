@@ -1,6 +1,6 @@
 package org.openmetadata.service.alerts;
 
-import static org.openmetadata.schema.type.Relationship.USES;
+import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.service.Entity.ALERT;
 import static org.openmetadata.service.Entity.ALERT_ACTION;
 
@@ -112,7 +112,9 @@ public class AlertsPublisherManager {
   @SneakyThrows
   public void updateAllAlertUsingAlertAction(AlertAction alertAction) {
     List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findFrom(alertAction.getId().toString(), ALERT_ACTION, USES.ordinal(), ALERT);
+        daoCollection
+            .relationshipDAO()
+            .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
     EntityRepository<Alert> alertEntityRepository = Entity.getEntityRepository(ALERT);
     for (CollectionDAO.EntityRelationshipRecord record : records) {
       deleteAlertAllPublishers(record.getId());
@@ -124,7 +126,9 @@ public class AlertsPublisherManager {
   @SneakyThrows
   public void deleteAlertActionFromAllAlertPublisher(AlertAction alertAction) {
     List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findFrom(alertAction.getId().toString(), ALERT_ACTION, USES.ordinal(), ALERT);
+        daoCollection
+            .relationshipDAO()
+            .findFrom(alertAction.getId().toString(), ALERT_ACTION, CONTAINS.ordinal(), ALERT);
     for (CollectionDAO.EntityRelationshipRecord record : records) {
       deleteAlertActionPublisher(record.getId(), alertAction);
     }

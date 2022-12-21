@@ -15,6 +15,7 @@ import org.openmetadata.service.alerts.AlertsActionPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.resources.events.EventResource;
 import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MSTeamsWebhookPublisher extends AlertsActionPublisher {
@@ -24,7 +25,7 @@ public class MSTeamsWebhookPublisher extends AlertsActionPublisher {
   public MSTeamsWebhookPublisher(Alert alert, AlertAction alertAction) {
     super(alert, alertAction);
     if (alertAction.getAlertActionType() == AlertAction.AlertActionType.MS_TEAMS_WEBHOOK) {
-      Webhook webhook = (Webhook) alertAction.getAlertActionConfig();
+      Webhook webhook = JsonUtils.convertValue(alertAction.getAlertActionConfig(), Webhook.class);
       String msTeamsWebhookURL = webhook.getEndpoint().toString();
       ClientBuilder clientBuilder = ClientBuilder.newBuilder();
       clientBuilder.connectTimeout(alertAction.getTimeout(), TimeUnit.SECONDS);
