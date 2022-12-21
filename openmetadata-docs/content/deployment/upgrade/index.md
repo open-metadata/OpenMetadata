@@ -32,7 +32,7 @@ If you are upgrading production this is the recommended version to upgrade.
  
 ## Breaking Changes from 0.13.0 Feature Release
 
-OpenMetadata Release 0.13.x introduces below breaking changes -
+OpenMetadata Release 0.13.x introduces below breaking changes:
 
 ### Docker Volumes
  OpenMetadata Release 0.13.x introduces Default Docker Volumes for Databse(MYQSL, PostgreSQL) and ElasticSearch with Docker deployment.

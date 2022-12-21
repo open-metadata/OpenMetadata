@@ -74,7 +74,7 @@ def docker_volume():
         os.mkdir(MAIN_DIR)
         db = "db-data"
         es = "es-data"
-        path_to_join = [db]
+        path_to_join = [db, es]
         final_path = []
         for path in path_to_join:
             temp_path = os.path.join(MAIN_DIR, path)

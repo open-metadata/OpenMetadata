@@ -41,7 +41,7 @@ services:
       - ./docker-volume/db:/var/lib/postgresql/data
     ...
 ```
-## Volumes for Elastic-Search container:
+## Volumes for Elasticsearch container:
 Following are the changes we have to do while mounting the directory for Elasticsearch in OpenMetadata.
 - Update or add the volume in the docker-compose.yml file.
 Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
