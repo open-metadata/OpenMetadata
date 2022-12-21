@@ -30,6 +30,7 @@ If you are upgrading production this is the recommended version to upgrade.
 ## Breaking Changes from 0.13.0 Feature Release
 
 OpenMetadata Release 0.13.0 introduces below breaking changes -
+
 ### dbt Workflow
 
 dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow.
@@ -37,6 +38,13 @@ dbt ingestion has been separated from the metadata ingestion. It can now be conf
 We will remove the dbt configuration from your existing metadata ingestion pipelines and they will keep working as expected.
 
 After upgrading you will have to create the dbt workflow for the dbt ingestion to start working again.
+
+### Airflow Lineage Backend
+
+- The import for the Airflow Lineage Backend has been updated from `airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`
+  to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
+- We removed support from Airflow v1.
+- The failure callback now only updates the pipeline status if the Pipeline already exists in OpenMetadata.
 
 ## Breaking Changes from 0.12.x Stable Release
 
