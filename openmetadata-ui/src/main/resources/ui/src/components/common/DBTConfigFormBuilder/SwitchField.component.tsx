@@ -44,7 +44,7 @@ function SwitchField({
       <p
         className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs"
         data-testid="switch-description">
-        Optional configuration to update the description from DBT or not
+        Optional configuration to update the description from dbt or not
       </p>
     </Field>
   );

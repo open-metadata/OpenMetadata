@@ -69,7 +69,7 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
+  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const testSuitePath = useMemo(
     () => location.pathname.split('/')[1],
@@ -306,6 +306,7 @@ const TestSuitePipelineTab = () => {
   }, []);
 
   useEffect(() => {
+    setIsLoading(true);
     checkAirflowStatus()
       .then((res) => {
         if (res.status === 200) {
@@ -316,6 +317,7 @@ const TestSuitePipelineTab = () => {
       })
       .catch(() => {
         setIsAirflowRunning(false);
+        setIsLoading(false);
       });
   }, []);
 
