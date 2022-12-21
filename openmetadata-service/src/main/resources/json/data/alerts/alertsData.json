@@ -9,12 +9,12 @@
     },
     "filteringRules": [
       {
-        "name": "DisableIngestionActivityFeedData",
+        "name": "matchUpdatedBy",
         "effect": "exclude",
         "condition": "matchUpdatedBy('ingestion-bot')"
       },
       {
-        "name": "DisableUsageSummaryFromActivityFeed",
+        "name": "matchAnyFieldChange",
         "effect": "exclude",
         "condition": "matchAnyFieldChange('usageSummary')"
       }
