@@ -47,7 +47,7 @@ const AlertsPage = () => {
     try {
       const { data, paging } = await getAllAlerts({ after });
 
-      setAlerts(data);
+      setAlerts(data.filter((d) => d.provider !== ProviderType.System));
       setAlertsPaging(paging);
     } catch (error) {
       showErrorToast(

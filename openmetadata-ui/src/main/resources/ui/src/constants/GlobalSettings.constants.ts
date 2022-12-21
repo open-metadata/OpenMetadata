@@ -41,7 +41,7 @@ export enum GlobalSettingOptions {
   BOTS = 'bots',
   TABLES = 'tables',
   MSTEAMS = 'msteams',
-  ACTIVITY_FEED = 'activityFeed',
+  ACTIVITY_FEED = 'activityFeeds',
   ELASTIC_SEARCH = 'elasticSearch',
   ALERTS = 'alerts',
   ALERT = 'alert',

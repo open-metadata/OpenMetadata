@@ -64,10 +64,7 @@ import {
   ProviderType,
   TriggerConfig,
 } from '../../generated/alerts/alerts';
-import {
-  AlertActionType,
-  CreateAlertAction,
-} from '../../generated/alerts/api/createAlertAction';
+import { AlertActionType } from '../../generated/alerts/api/createAlertAction';
 import { EntitySpelFilters } from '../../generated/alerts/entitySpelFilters';
 import { Function } from '../../generated/type/function';
 import {
@@ -201,7 +198,7 @@ const AddAlertPage = () => {
           'displayName',
           'timeout',
           'batchSize',
-        ]) as CreateAlertAction;
+        ]) as AlertAction;
 
         return api(alertAction);
       }) ?? [];
@@ -238,18 +235,9 @@ const AddAlertPage = () => {
       )?.join(', ')})`,
     }));
 
-    const modifiedAlertActions = alertActions?.map(
-      (action) =>
-        ({
-          ...action,
-          name: action.name ?? action.displayName,
-          displayName: action.displayName,
-        } as unknown as AlertAction)
-    );
-
     try {
       const requestAlertActions = await updateCreateAlertActions(
-        modifiedAlertActions
+        alertActions as unknown as AlertAction[]
       );
 
       try {
@@ -446,16 +434,6 @@ const AddAlertPage = () => {
             return (
               <>
                 <Form.Item
-                  required
-                  label={t('label.name')}
-                  labelCol={{ span: 24 }}
-                  name={[name, 'displayName']}>
-                  <Input
-                    disabled={provider === ProviderType.System}
-                    placeholder={t('label.name')}
-                  />
-                </Form.Item>
-                <Form.Item
                   label={t('label.send-to')}
                   labelCol={{ span: 24 }}
                   name={[name, 'alertActionConfig', 'receivers']}>
@@ -493,12 +471,6 @@ const AddAlertPage = () => {
           case AlertActionType.MSTeamsWebhook:
             return (
               <>
-                <Form.Item required name={[name, 'displayName']}>
-                  <Input
-                    disabled={provider === ProviderType.System}
-                    placeholder={t('label.name')}
-                  />
-                </Form.Item>
                 <Form.Item
                   required
                   name={[name, 'alertActionConfig', 'endpoint']}>
@@ -686,7 +658,7 @@ const AddAlertPage = () => {
                                       )}
 
                                     <Form.Item
-                                      initialValue={Effect.Allow}
+                                      initialValue={Effect.Include}
                                       key={key}
                                       name={[name, 'effect']}>
                                       <Select

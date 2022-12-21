@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { SlackChatConfig } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { fetchSlackConfig } from '../axiosAPIs/miscAPI';
 import Loader from '../components/Loader/Loader';
-import SlackChat from '../components/SlackChat/SlackChat';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
 import AccountActivationConfirmation from '../pages/signup/account-activation-confirmation.component';
@@ -62,7 +58,6 @@ const AppRouter = () => {
     getCallBackComponent,
   } = useAuthContext();
 
-  const [slackConfig, setSlackConfig] = useState<SlackChatConfig | undefined>();
   const callbackComponent = getCallBackComponent();
   const oidcProviders = [
     AuthTypes.GOOGLE,
@@ -76,35 +71,6 @@ const AppRouter = () => {
     authConfig &&
     (authConfig.provider === AuthTypes.BASIC ||
       authConfig.provider === AuthTypes.LDAP);
-
-  const fetchSlackChatConfig = () => {
-    fetchSlackConfig()
-      .then((res) => {
-        if (res.data) {
-          const { slackUrl } = res.data;
-          const slackConfig = {
-            slackUrl,
-          };
-          setSlackConfig(slackConfig);
-        } else {
-          throw '';
-        }
-      })
-      .catch((err: AxiosError) => {
-        // eslint-disable-next-line no-console
-        console.error(err);
-        setSlackConfig(undefined);
-      });
-  };
-
-  useEffect(() => {
-    fetchSlackChatConfig();
-  }, []);
-
-  const slackChat =
-    slackConfig && slackConfig.slackUrl ? (
-      <SlackChat slackConfig={slackConfig} />
-    ) : null;
 
   useEffect(() => {
     const { pathname } = location;
@@ -128,17 +94,11 @@ const AppRouter = () => {
   }
 
   if (isOidcProvider || isAuthenticated) {
-    return (
-      <>
-        <AuthenticatedAppRouter />
-        {slackChat}
-      </>
-    );
+    return <AuthenticatedAppRouter />;
   }
 
   return (
     <>
-      {slackChat}
       <Switch>
         <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
         {callbackComponent ? (

@@ -116,7 +116,7 @@ export const AlertDetailsComponent = ({
               const conditions = isArray(filter.condition)
                 ? filter.condition.join(', ')
                 : filter.condition;
-              const effect = filter.effect === Effect.Allow ? '===' : '!==';
+              const effect = filter.effect === Effect.Include ? '===' : '!==';
               const conditionName = getFunctionDisplayName(
                 filter.fullyQualifiedName ?? ''
               );
@@ -140,7 +140,7 @@ export const AlertDetailsComponent = ({
               <Col key={action.name} span={8}>
                 <Card
                   className="h-full"
-                  extra={
+                  title={
                     <Space size={8}>
                       {getAlertsActionTypeIcon(action.alertActionType)}
 
@@ -148,8 +148,7 @@ export const AlertDetailsComponent = ({
                         action.alertActionType ?? AlertActionType.GenericWebhook
                       )}
                     </Space>
-                  }
-                  title={action.displayName ?? action.name}>
+                  }>
                   <Space direction="vertical" size={8}>
                     {action.alertActionType === AlertActionType.Email && (
                       <>
@@ -218,7 +217,7 @@ export const AlertDetailsComponent = ({
                             {t('label.secret-key')}:{' '}
                           </Typography.Text>
 
-                          {action.alertActionConfig?.secretKey ?? '-'}
+                          {action.alertActionConfig?.secretKey ? '****' : '-'}
                         </Typography.Text>
                       </>
                     )}

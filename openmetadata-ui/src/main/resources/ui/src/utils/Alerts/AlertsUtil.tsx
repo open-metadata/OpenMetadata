@@ -52,6 +52,8 @@ export const getFunctionDisplayName = (func: string): string => {
       return i18next.t('label.test-results');
     case 'matchUpdatedBy':
       return i18next.t('label.updated-by');
+    case 'matchAnyFieldChange':
+      return i18next.t('label.field-change');
     case 'matchAnySource':
     case 'matchAnyEntityId':
     default:
