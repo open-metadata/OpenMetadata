@@ -19,6 +19,7 @@ import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
 import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
 import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
@@ -42,7 +43,11 @@ import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constant
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { Column, DataType } from '../generated/entity/data/table';
+import {
+  Column,
+  DataType,
+  TableConstraint,
+} from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
@@ -135,7 +140,11 @@ export const getSearchTableTagsWithoutTier = (
   );
 };
 
-export const getConstraintIcon = (constraint = '', className = '') => {
+export const getConstraintIcon = (
+  constraint = '',
+  className = '',
+  width = '16px'
+) => {
   let title: string, icon: string;
   switch (constraint) {
     case ConstraintTypes.PRIMARY_KEY:
@@ -177,7 +186,7 @@ export const getConstraintIcon = (constraint = '', className = '') => {
       size="small"
       title={title}
       trigger="mouseenter">
-      <SVGIcons alt={title} icon={icon} width="16px" />
+      <SVGIcons alt={title} icon={icon} width={width} />
     </PopOver>
   );
 };
@@ -361,19 +370,64 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
   }
 };
 
-export function getTableExpandableConfig<T>(): ExpandableConfig<T> {
+export function getTableExpandableConfig<T>(
+  isDraggable?: boolean
+): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      expandable && (
-        <Icon
-          className="mr-1"
-          component={expanded ? DropDownIcon : RightArrowIcon}
-          data-testid="expand-icon"
-          size={16}
-          onClick={(e) => onExpand(record, e)}
-        />
+      expandable ? (
+        <>
+          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+          <Icon
+            className="mr-1"
+            component={expanded ? DropDownIcon : RightArrowIcon}
+            data-testid="expand-icon"
+            size={16}
+            onClick={(e) => onExpand(record, e)}
+          />
+        </>
+      ) : (
+        isDraggable && (
+          <>
+            <Icon className="drag-icon" component={DragIcon} />
+            <div className="expand-cell-empty-icon-container" />
+          </>
+        )
       ),
   };
 
   return expandableConfig;
 }
+
+export const prepareConstraintIcon = (
+  columnName: string,
+  columnConstraint?: string,
+  tableConstraints?: TableConstraint[],
+  iconClassName?: string,
+  iconWidth?: string
+) => {
+  // get the table constraint for column
+  const tableConstraint = tableConstraints?.find((constraint) =>
+    constraint.columns?.includes(columnName)
+  );
+
+  // prepare column constraint element
+  const columnConstraintEl = columnConstraint
+    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    : null;
+
+  // prepare table constraint element
+  const tableConstraintEl = tableConstraint
+    ? getConstraintIcon(
+        tableConstraint.constraintType,
+        iconClassName || 'tw-mr-2',
+        iconWidth
+      )
+    : null;
+
+  return (
+    <span data-testid="constraints">
+      {columnConstraintEl} {tableConstraintEl}
+    </span>
+  );
+};
