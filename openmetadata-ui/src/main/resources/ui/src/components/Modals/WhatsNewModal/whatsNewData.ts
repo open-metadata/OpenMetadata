@@ -626,7 +626,7 @@ export const WHATS_NEW = [
       'Data Quality': `- **Freshness Metric** has been introduced. Data freshness is defined by how often a table is being updated and the number of rows being affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.
 - Support has been added for **data quality** tests on **Data Lake** .`,
       'Notification Support': `- The logic for **Notification Support** has been improved. Users can define **Alerts** based on a **Trigger** (all data assets or a specific entity), **Filters** (events to consider), and **Action** (Slack, MS Teams, Email, Webhook) on where to send the alert.`,
-      'DBT Workflow': `- Now, DBT has its own workflow. Previously, **DBT**  was a part of metadata ingestion workflow.`,
+      'dbt Workflow': `- Now, dbt has its own workflow. Previously, **dbt**  was a part of metadata ingestion workflow.`,
       'Topic Schema': `- Users can update the description and tags for **Topic Schema**. Previously, the topic schemas were read-only. We now support Avro/Protobuf parsing and field level details for topic schemas.`,
       'Data Insight Report': `- The layout for the **Data Insights Report** has been improved. We now display a line graph instead of a bar graph. The **Most Viewed Data Assets** are clickable to view the asset details page.`,
       'Advanced Search': `- Improvements have been made to **Advanced Search**. Now, when a filter is applied, the details of the filter selected are displayed for clarity.`,
