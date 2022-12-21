@@ -27,18 +27,24 @@ Below document is valid for upgrading Helm Charts from **0.12.x to 0.13.0**.
 
 ### Back up metadata
 
-Before proceeding, pleae make sure you made a backup of your MySQL/Postgres DB behind OpenMetadata server. This step is extremely important for you to restore to your current state if any issues come up during the upgrade 
+Before proceeding, pleae make sure you made a backup of your MySQL/Postgres DB behind OpenMetadata server. This step is extremely important for you to restore to your current state if any issues come up during the upgrade. It is recommended before upgrading you production instances.
 
-<InlineCalloutContainer>
-  <InlineCallout
-    color="violet-70"
-    icon="luggage"
-    bold="Backup Metadata"
-    href="/deployment/backup-restore-metadata"
-  >
-    Learn how to back up MySQL data.
-  </InlineCallout>
-</InlineCalloutContainer>
+Make sure you have a connectivity between your database (mysql / postgresql) with host machine where you will be running the below commands. If you are using the default database available with OpenMetadata Dependencies, make sure to port-forward the mysql service using `kubectl port-forward service/mysql 3306:3306`.
+
+1. `python -m venv venv`
+2. `source venv/bin/activate`
+3. `PIP_USER=false pip install openmetadata-ingestion==0.13.0.3`
+4. Validate the installed `metadata` version with `python -m metadata --version`
+5. Run the backup using the updated `metadata` CLI:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
+    ```
+    if using Postgres:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
+    ```
+6. The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup
+    command output.
 
 ## Get an overview of what has changed in Helm Values
 
