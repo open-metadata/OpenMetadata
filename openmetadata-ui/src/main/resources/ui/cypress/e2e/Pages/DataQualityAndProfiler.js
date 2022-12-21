@@ -44,11 +44,17 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const columnTestName = `${NEW_COLUMN_TEST_CASE.column}_${NEW_COLUMN_TEST_CASE.type}`;
 
 const goToProfilerTab = () => {
+  interceptURL(
+    'GET',
+    `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?fields=*&include=all`,
+    'waitForPageLoad'
+  );
   visitEntityDetailsPage(
     TEAM_ENTITY,
     serviceName,
     MYDATA_SUMMARY_OPTIONS.tables
   );
+  verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="Profiler & Data Quality"]')
     .should('be.visible')
@@ -456,8 +462,13 @@ describe('Data Quality and Profiler should work properly', () => {
   it('SQL query should be visible while editing the test case', () => {
     const { term, entity, serviceName, sqlTestCase, testSuiteName, sqlQuery } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
-
+    interceptURL(
+      'GET',
+      `api/v1/tables/name/${serviceName}.*.${term}?fields=*&include=all`,
+      'waitForPageLoad'
+    );
     visitEntityDetailsPage(term, serviceName, entity);
+    verifyResponseStatusCode('@waitForPageLoad', 200);
     cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
     cy.get('[data-testid="Profiler & Data Quality"]')
       .should('be.visible')
