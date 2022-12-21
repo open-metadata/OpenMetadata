@@ -48,6 +48,8 @@ services:
     ports:
       - "9200:9200"
       - "9300:9300"
+    volumes:
+      - ./docker-volume/es-data:/usr/share/elasticsearch/data
 
   openmetadata-server:
     container_name: openmetadata_server

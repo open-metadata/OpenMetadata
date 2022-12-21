@@ -19,7 +19,26 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 It is adviced to go through [openmetadata release notes](/deployment/upgrade/versions/012-to-013) before starting the upgrade process. 
 
 </Warning>
+###  Backup 0.12.3 data
 
+1. Make sure your instance is connected to the Database server
+2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
+   1. `python -m venv venv`
+   2. `source venv/bin/activate`
+   3. `PIP_USER=false pip install openmetadata-ingestion~=0.13.1`
+3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
+    indeed at 0.13.1. Notice the `python -m metadata` vs. `metadata`. 
+4. Run the backup using the updated `metadata` CLI:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
+    ```
+   if using Postgres:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
+    ```
+5. This will generate the .sql file which can be used for the backup
+    In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
+    command output.
 ### 1. Download the binaries for the release you want to install
 
 OpenMetadata release binaries are maintained as GitHub releases.
