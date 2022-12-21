@@ -301,6 +301,7 @@
     "chart-type": "Chart Type",
     "query-plural": "Queries",
     "dbt-uppercase": "DBT",
+    "dbt-lowercase": "dbt",
     "row-plural": "Rows",
     "columns-plural": "Columns",
     "algorithm": "Algorithm",
@@ -397,7 +398,7 @@
     "notification-plural": "Notifications",
     "view-all": "View all",
     "configure-ingestion": "Configure Ingestion",
-    "configure-dbt": "Configure DBT",
+    "configure-dbt": "Configure dbt",
     "configure-service": "Configure Service",
     "tables": "Tables",
     "topics": "Topics",
@@ -555,7 +556,7 @@
     "select-data-assets": "Select Data Assets",
     "profiler-timeout-seconds-label": "Timeout in Seconds",
     "add-deploy": "Add & Deploy",
-    "dbt-Configuration-source": "DBT Configuration Source",
+    "dbt-Configuration-source": "dbt Configuration Source",
     "select-dbt-source": "Select DBT Source",
     "no-selected-dbt": "No source selected for DBT Configuration.",
     "dbt": "DBT",
@@ -599,7 +600,7 @@
     "follower-plural": "Followers",
     "email-plural": "Emails",
     "no-tier": "No Tier",
-    "dbt-run-result-http-path": "DBT Run Results HTTP Path"
+    "dbt-run-result-http-path": "dbt Run Results HTTP Path"
   },
   "message": {
     "service-email-required": "Service account Email is required",
@@ -719,7 +720,7 @@
     "advanced-search-message": "Discover the right data assets using the syntax editor with and/or conditions.",
     "profiler-timeout-seconds-message": "Optional number setting the timeout in seconds for the profiler. If the timeout is reached the profiler will wait for any pending queries to terminated its execution.",
     "instance-identifier": "Name that identifies this configuration instance uniquely.",
-    "fetch-dbt-files": "Available sources to fetch DBT catalog and manifest files.",
+    "fetch-dbt-files": "Available sources to fetch dbt catalog and manifest files.",
     "profile-sample-percentage-message": "Set the Profiler value as percentage",
     "profile-sample-row-count-message": " Set the Profiler value as row count",
     "no-profiler-enabled-summary-message": "Profiler is not enabled for the table.",
@@ -728,7 +729,7 @@
     "alerts-trigger-description": "Trigger for all data assets or a specific entity.",
     "alerts-filter-description": "Specify the change events to narrow the scope of your alerts.",
     "length-validator-error": "At least {{length}} {{field}} required",
-    "dbt-run-result-http-path-message": "DBT run results http path to extract the test results information."
+    "dbt-run-result-http-path-message": "dbt run results http path to extract the test results information."
   },
   "server": {
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet.",

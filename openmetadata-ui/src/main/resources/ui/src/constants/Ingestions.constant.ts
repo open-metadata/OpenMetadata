@@ -24,7 +24,7 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   },
   {
     name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.dbt-uppercase'),
+      entity: i18next.t('label.dbt-lowercase'),
     }),
     step: 2,
   },

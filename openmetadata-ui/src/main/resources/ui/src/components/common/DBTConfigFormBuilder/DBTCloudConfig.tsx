@@ -77,10 +77,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-account-id">
-          {requiredField('DBT Cloud Account Id')}
+          {requiredField('dbt Cloud Account Id')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT cloud account Id.
+          dbt cloud account Id.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -97,10 +97,10 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-auth-token">
-          {requiredField('DBT Cloud Authentication Token')}
+          {requiredField('dbt Cloud Authentication Token')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT cloud account authentication token.
+          dbt cloud account authentication token.
         </p>
         <Input.Password
           className="tw-form-inputs tw-form-inputs-padding"
@@ -117,11 +117,11 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="dbtCloudProjectId">
-          DBT Cloud Project Id
+          dbt Cloud Project Id
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          In case of multiple projects in a DBT cloud account, specify the
-          project&apos;s id from which you want to extract the DBT run artifacts
+          In case of multiple projects in a dbt cloud account, specify the
+          project&apos;s id from which you want to extract the dbt run artifacts
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
