@@ -586,6 +586,9 @@ site_menu:
   - category: Features / Data Insights
     url: /openmetadata/data-insight
 
+  - category: Features / Alerts & Notifications
+    url: /openmetadata/alerts-notifications
+
   - category: Main Concepts
     url: /main-concepts
     color: violet-70
