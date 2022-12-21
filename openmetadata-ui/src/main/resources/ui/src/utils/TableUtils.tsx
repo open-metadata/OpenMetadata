@@ -19,6 +19,7 @@ import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
 import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
 import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
@@ -369,17 +370,29 @@ export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
   }
 };
 
-export function getTableExpandableConfig<T>(): ExpandableConfig<T> {
+export function getTableExpandableConfig<T>(
+  isDraggable?: boolean
+): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      expandable && (
-        <Icon
-          className="mr-1"
-          component={expanded ? DropDownIcon : RightArrowIcon}
-          data-testid="expand-icon"
-          size={16}
-          onClick={(e) => onExpand(record, e)}
-        />
+      expandable ? (
+        <>
+          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+          <Icon
+            className="mr-1"
+            component={expanded ? DropDownIcon : RightArrowIcon}
+            data-testid="expand-icon"
+            size={16}
+            onClick={(e) => onExpand(record, e)}
+          />
+        </>
+      ) : (
+        isDraggable && (
+          <>
+            <Icon className="drag-icon" component={DragIcon} />
+            <div className="expand-cell-empty-icon-container" />
+          </>
+        )
       ),
   };
 

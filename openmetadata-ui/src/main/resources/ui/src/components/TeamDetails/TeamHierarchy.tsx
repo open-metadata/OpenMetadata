@@ -134,7 +134,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
   const expandableConfig: ExpandableConfig<Team> = useMemo(
     () => ({
-      ...getTableExpandableConfig<Team>(),
+      ...getTableExpandableConfig<Team>(true),
       onExpand: (isOpen, record) => {
         if (isOpen && isEmpty(record.children)) {
           onTeamExpand(false, record.fullyQualifiedName, true);
