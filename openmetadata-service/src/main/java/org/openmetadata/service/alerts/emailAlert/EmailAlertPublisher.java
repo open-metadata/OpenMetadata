@@ -1,13 +1,34 @@
 package org.openmetadata.service.alerts.emailAlert;
 
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import javax.swing.event.ChangeEvent;
-
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.entity.alerts.Alert;
+import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.AlertsActionPublisher;
+import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.resources.events.EventResource;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class EmailAlertPublisher extends AlertsActionPublisher {

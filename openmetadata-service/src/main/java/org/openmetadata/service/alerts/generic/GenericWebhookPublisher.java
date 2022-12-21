@@ -4,8 +4,21 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Invocation;
+import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.alerts.Alert;
+import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerts.AlertsActionPublisher;
+import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.resources.events.EventResource;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GenericWebhookPublisher extends AlertsActionPublisher {
