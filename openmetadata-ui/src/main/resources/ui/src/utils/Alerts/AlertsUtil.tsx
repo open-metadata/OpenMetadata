@@ -14,6 +14,7 @@
 import { Typography } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import i18next from 'i18next';
+import { startCase } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
@@ -51,6 +52,8 @@ export const getFunctionDisplayName = (func: string): string => {
       return i18next.t('label.test-results');
     case 'matchUpdatedBy':
       return i18next.t('label.updated-by');
+    case 'matchAnyFieldChange':
+      return i18next.t('label.field-change');
     case 'matchAnySource':
     case 'matchAnyEntityId':
     default:
@@ -113,7 +116,7 @@ export const getAlertActionTypeDisplayName = (
 ) => {
   switch (alertActionType) {
     case AlertActionType.ActivityFeed:
-      return i18next.t('label.activity-feed');
+      return i18next.t('label.activity-feeds');
     case AlertActionType.Email:
       return i18next.t('label.email');
     case AlertActionType.GenericWebhook:
@@ -124,3 +127,16 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.ms-teams');
   }
 };
+
+export const getDisplayNameForEntities = (entity: string) => {
+  switch (entity) {
+    case 'kpi':
+      return i18next.t('label.kpi-uppercase');
+    case 'mlmodel':
+      return i18next.t('label.ml-model');
+    default:
+      return startCase(entity);
+  }
+};
+
+export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
