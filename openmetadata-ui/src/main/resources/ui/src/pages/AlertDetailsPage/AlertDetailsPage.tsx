@@ -35,7 +35,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AlertDetailsPage = () => {
   const { t } = useTranslation();
 
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn: id } = useParams<{ fqn: string }>();
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<Alerts>();
   const [alertActions, setAlertActions] = useState<AlertAction[]>([]);
@@ -45,12 +45,13 @@ const AlertDetailsPage = () => {
     try {
       setLoadingCount((count) => count + 1);
 
-      const response: Alerts = await getAlertsFromId(fqn);
+      const response: Alerts = await getAlertsFromId(id);
       const alertActions = await getAlertActionForAlerts(response.id);
 
       const requestFilteringRules =
         response.filteringRules?.map((curr) => {
-          const [fullyQualifiedName, filterRule] = curr.condition.split('(');
+          const [fullyQualifiedName, filterRule] =
+            curr.condition?.split('(') ?? [];
 
           return {
             ...curr,
@@ -68,7 +69,7 @@ const AlertDetailsPage = () => {
     } catch {
       showErrorToast(
         t('server.entity-fetch-error', { entity: t('label.alert') }),
-        fqn
+        id
       );
     } finally {
       setLoadingCount((count) => count - 1);
@@ -76,10 +77,10 @@ const AlertDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (fqn) {
+    if (id) {
       fetchAlert();
     }
-  }, [fqn]);
+  }, [id]);
 
   const breadcrumb = useMemo(
     () => [

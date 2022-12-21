@@ -14,7 +14,7 @@ import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Row, Space, Tag, Typography } from 'antd';
 import { isArray } from 'lodash';
-import React, { Fragment, useMemo } from 'react';
+import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
@@ -29,6 +29,7 @@ import {
   Effect,
 } from '../../../generated/alerts/alerts';
 import {
+  EDIT_LINK_PATH,
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
   getDisplayNameForEntities,
@@ -59,8 +60,6 @@ export const AlertDetailsComponent = ({
 }: AlertDetailsComponentProps) => {
   const { t } = useTranslation();
 
-  const editLinkPath = useMemo(() => `/settings/notifications/edit-alert`, []);
-
   return (
     <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
@@ -68,7 +67,7 @@ export const AlertDetailsComponent = ({
           <TitleBreadcrumb titleLinks={breadcrumb} />
           <Space size={16}>
             {allowEdit && (
-              <Link to={`${editLinkPath}/${alerts?.id}`}>
+              <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
                 <Button icon={<Icon component={IconEdit} size={12} />}>
                   {t('label.edit')}
                 </Button>
@@ -138,91 +137,93 @@ export const AlertDetailsComponent = ({
           <Row gutter={[16, 16]}>
             {alertActions.map((action) => (
               <Col key={action.name} span={8}>
-                <Card
-                  className="h-full"
-                  title={
-                    <Space size={8}>
-                      {getAlertsActionTypeIcon(action.alertActionType)}
+                {action.alertActionType === AlertActionType.ActivityFeed ? (
+                  <Space size={16}>
+                    {getAlertsActionTypeIcon(action.alertActionType)}
 
-                      {getAlertActionTypeDisplayName(
-                        action.alertActionType ?? AlertActionType.GenericWebhook
-                      )}
-                    </Space>
-                  }>
-                  <Space direction="vertical" size={8}>
-                    {action.alertActionType === AlertActionType.Email && (
-                      <>
-                        <Typography.Text>
-                          {t('label.send-to')}:{' '}
-                          <div>
-                            {action.alertActionConfig?.receivers?.map((rec) => (
-                              <Tag key={rec}>{rec}</Tag>
-                            ))}
-                          </div>
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Space size={16}>
-                            <span>
-                              {action.alertActionConfig.sendToAdmins ? (
-                                <CheckCircleOutlined />
-                              ) : (
-                                <CloseCircleOutlined />
-                              )}{' '}
-                              {t('label.admin-plural')}
-                            </span>
-                            <span>
-                              {action.alertActionConfig.sendToOwners ? (
-                                <CheckCircleOutlined />
-                              ) : (
-                                <CloseCircleOutlined />
-                              )}{' '}
-                              {t('label.owner-plural')}
-                            </span>
-                            <span>
-                              {action.alertActionConfig.sendToFollowers ? (
-                                <CheckCircleOutlined />
-                              ) : (
-                                <CloseCircleOutlined />
-                              )}{' '}
-                              {t('label.follower-plural')}
-                            </span>
-                          </Space>
-                        </Typography.Text>
-                      </>
-                    )}
-                    {action.alertActionType !== AlertActionType.Email && (
-                      <>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('label.webhook')}:{' '}
-                          </Typography.Text>
-                          {getHostNameFromURL(
-                            action.alertActionConfig?.endpoint ?? '-'
-                          )}
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('label.batch-size')}:{' '}
-                          </Typography.Text>
-                          {action.batchSize}
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('label.field-timeout-description')}:{' '}
-                          </Typography.Text>
-                          {action.timeout}
-                        </Typography.Text>
-                        <Typography.Text>
-                          <Typography.Text type="secondary">
-                            {t('label.secret-key')}:{' '}
-                          </Typography.Text>
-
-                          {action.alertActionConfig?.secretKey ? '****' : '-'}
-                        </Typography.Text>
-                      </>
+                    {getAlertActionTypeDisplayName(
+                      action.alertActionType ?? AlertActionType.GenericWebhook
                     )}
                   </Space>
-                </Card>
+                ) : (
+                  <Card className="h-full" title={<Space size={8} />}>
+                    <Space direction="vertical" size={8}>
+                      {action.alertActionType === AlertActionType.Email && (
+                        <>
+                          <Typography.Text>
+                            {t('label.send-to')}:{' '}
+                            <div>
+                              {action.alertActionConfig?.receivers?.map(
+                                (rec) => (
+                                  <Tag key={rec}>{rec}</Tag>
+                                )
+                              )}
+                            </div>
+                          </Typography.Text>
+                          <Typography.Text>
+                            <Space size={16}>
+                              <span>
+                                {action.alertActionConfig.sendToAdmins ? (
+                                  <CheckCircleOutlined />
+                                ) : (
+                                  <CloseCircleOutlined />
+                                )}{' '}
+                                {t('label.admin-plural')}
+                              </span>
+                              <span>
+                                {action.alertActionConfig.sendToOwners ? (
+                                  <CheckCircleOutlined />
+                                ) : (
+                                  <CloseCircleOutlined />
+                                )}{' '}
+                                {t('label.owner-plural')}
+                              </span>
+                              <span>
+                                {action.alertActionConfig.sendToFollowers ? (
+                                  <CheckCircleOutlined />
+                                ) : (
+                                  <CloseCircleOutlined />
+                                )}{' '}
+                                {t('label.follower-plural')}
+                              </span>
+                            </Space>
+                          </Typography.Text>
+                        </>
+                      )}
+                      {action.alertActionType !== AlertActionType.Email && (
+                        <>
+                          <Typography.Text>
+                            <Typography.Text type="secondary">
+                              {t('label.webhook')}:{' '}
+                            </Typography.Text>
+                            {getHostNameFromURL(
+                              action.alertActionConfig?.endpoint ?? '-'
+                            )}
+                          </Typography.Text>
+                          <Typography.Text>
+                            <Typography.Text type="secondary">
+                              {t('label.batch-size')}:{' '}
+                            </Typography.Text>
+                            {action.batchSize}
+                          </Typography.Text>
+                          <Typography.Text>
+                            <Typography.Text type="secondary">
+                              {t('message.field-timeout-description')}:{' '}
+                            </Typography.Text>
+                            {action.timeout}
+                          </Typography.Text>
+                          <Typography.Text>
+                            <Typography.Text type="secondary">
+                              {t('label.secret-key')}:{' '}
+                            </Typography.Text>
+
+                            {action.alertActionConfig?.secretKey ? '****' : '-'}
+                          </Typography.Text>
+                        </>
+                      )}
+                    </Space>
+                  </Card>
+                )}
               </Col>
             ))}
           </Row>

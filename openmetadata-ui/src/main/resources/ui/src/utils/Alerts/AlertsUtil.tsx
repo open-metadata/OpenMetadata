@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import i18next, { t } from 'i18next';
+import i18next from 'i18next';
 import { startCase } from 'lodash';
 import React from 'react';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -131,10 +131,12 @@ export const getAlertActionTypeDisplayName = (
 export const getDisplayNameForEntities = (entity: string) => {
   switch (entity) {
     case 'kpi':
-      return t('label.kpi-uppercase');
+      return i18next.t('label.kpi-uppercase');
     case 'mlmodel':
-      return t('label.ml-model');
+      return i18next.t('label.ml-model');
     default:
       return startCase(entity);
   }
 };
+
+export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
