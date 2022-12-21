@@ -30,7 +30,7 @@ If you are upgrading production this is the recommended version to upgrade.
  
  
  
-## Breaking Changes from 0.13.0 Feature Release
+## Breaking Changes for 0.13.1 Stable Release
 
 ### Webhooks
 
