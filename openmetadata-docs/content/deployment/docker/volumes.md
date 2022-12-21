@@ -112,6 +112,9 @@ Once these changes are done, restart the container via:
 ```commandline
 docker compose down && docker compose up -d
 ```
+
+Since our Ingestion Docker Image is based on Official Airflow Docker image as base, it is recommended to provide right permissions to host directories for airflow user running inside the container as per the instructions mentioned [here](https://airflow.apache.org/docs/apache-airflow/2.3.3/start/docker.html?highlight=docker#setting-the-right-airflow-user).
+
 <Note>
 If you are starting  the OpenMetadata Docker containers using below command:
 ```command line
