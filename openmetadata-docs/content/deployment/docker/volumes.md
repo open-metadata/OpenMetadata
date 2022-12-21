@@ -41,7 +41,20 @@ services:
       - ./docker-volume/db:/var/lib/postgresql/data
     ...
 ```
+## Volumes for Elastic-Search container:
+Following are the changes we have to do while mounting the directory for Elasticsearch in OpenMetadata.
+- Update or add the volume in the docker-compose.yml file.
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
+```commandline
+version: "3.9"
+services:
+ postgresql:
+    ...
+    volumes:
+      - ./docker-volume/es-data:/usr/share/elasticsearch/data
+    ...
+```
 ## Volumes for ingestion container
 Following are the changes we have to do while mounting the directory for ingestion in OpenMetadata. Here we will maintaing different directory for dag_generated_configs, dags and secrets.
 - Remove the below section from the docker-compose.yml file.
