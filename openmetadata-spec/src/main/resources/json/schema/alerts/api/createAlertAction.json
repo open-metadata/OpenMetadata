@@ -61,6 +61,6 @@
       ]
     }
   },
-  "required": ["name", "alertActionType", "alertActionConfig"],
+  "required": ["alertActionType", "alertActionConfig"],
   "additionalProperties": false
 }
