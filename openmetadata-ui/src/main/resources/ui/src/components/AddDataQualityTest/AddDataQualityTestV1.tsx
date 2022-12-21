@@ -72,7 +72,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
   const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
-    const { service, serviceType, fullyQualifiedName = '' } = table;
+    const {
+      service,
+      serviceType,
+      database,
+      databaseSchema,
+      fullyQualifiedName = '',
+    } = table;
 
     const data: TitleBreadcrumbProps['titleLinks'] = [
       {
@@ -89,11 +95,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         name: getPartialNameFromTableFQN(fullyQualifiedName, [
           FqnPart.Database,
         ]),
-        url: getDatabaseDetailsPath(fullyQualifiedName),
+        url: getDatabaseDetailsPath(database?.fullyQualifiedName || ''),
       },
       {
         name: getPartialNameFromTableFQN(fullyQualifiedName, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(fullyQualifiedName),
+        url: getDatabaseSchemaDetailsPath(
+          databaseSchema?.fullyQualifiedName || ''
+        ),
       },
       {
         name: getEntityName(table),
