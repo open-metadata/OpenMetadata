@@ -120,7 +120,7 @@ public class AlertsActionPublisher extends AbstractAlertPublisher {
   }
 
   protected void setStatus(AlertActionStatus status) throws IOException {
-    AlertsPublisherManager.getInstance().setStatus(alert.getId(), alertAction.getId(), status);
+    // AlertsPublisherManager.getInstance().setStatus(alert.getId(), alertAction.getId(), status);
     alertAction.setStatusDetails(status);
   }
 
