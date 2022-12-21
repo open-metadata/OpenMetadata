@@ -21,10 +21,11 @@ import {
   MenuProps,
   Row,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
@@ -33,7 +34,10 @@ import {
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
 import Loader from '../Loader/Loader';
-import { SearchDropdownProps } from './SearchDropdown.interface';
+import {
+  SearchDropdownOption,
+  SearchDropdownProps,
+} from './SearchDropdown.interface';
 import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
@@ -52,7 +56,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
   const [selectedOptions, setSelectedOptions] =
-    useState<string[]>(selectedKeys);
+    useState<SearchDropdownOption[]>(selectedKeys);
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
@@ -83,11 +87,18 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
-    const isSelected = selectedOptions.includes(currentKey);
+    // Find out if clicked option is present in selected key
+    const selectedKey = selectedOptions.find(
+      (option) => option.key === currentKey
+    );
 
-    const updatedValues = isSelected
-      ? selectedOptions.filter((v) => v !== currentKey)
-      : [...selectedOptions, currentKey];
+    // Get the option object for clicked option
+    const option = options.find((op) => op.key === currentKey);
+
+    // Get updated options
+    const updatedValues = isUndefined(selectedKey)
+      ? [...selectedOptions, ...(option ? [option] : [])]
+      : selectedOptions.filter((option) => option.key !== currentKey);
 
     setSelectedOptions(updatedValues);
   };
@@ -203,22 +214,29 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         setIsDropDownOpen(visible);
         setSearchText('');
       }}>
-      <Button className="quick-filter-dropdown-trigger-btn">
-        <Space data-testid="search-dropdown" size={4}>
-          <Space size={0}>
-            <Typography.Text>{label}</Typography.Text>
-            {selectedKeys.length > 0 && (
-              <span>
-                {': '}
-                <Typography.Text className="text-primary font-medium">
-                  {getSelectedOptionLabelString(selectedKeys)}
-                </Typography.Text>
-              </span>
-            )}
+      <Tooltip
+        mouseLeaveDelay={0}
+        overlayClassName={isEmpty(selectedKeys) ? 'd-none' : ''}
+        placement="bottom"
+        title={getSelectedOptionLabelString(selectedKeys, true)}
+        trigger="hover">
+        <Button className="quick-filter-dropdown-trigger-btn">
+          <Space data-testid="search-dropdown" size={4}>
+            <Space size={0}>
+              <Typography.Text>{label}</Typography.Text>
+              {selectedKeys.length > 0 && (
+                <span>
+                  {': '}
+                  <Typography.Text className="text-primary font-medium">
+                    {getSelectedOptionLabelString(selectedKeys)}
+                  </Typography.Text>
+                </span>
+              )}
+            </Space>
+            <DropDown className="flex self-center" height={12} width={12} />
           </Space>
-          <DropDown className="flex self-center" height={12} width={12} />
-        </Space>
-      </Button>
+        </Button>
+      </Tooltip>
     </Dropdown>
   );
 };

@@ -143,7 +143,7 @@ const Explore: React.FC<ExploreProps> = ({
     data.forEach((filter) => {
       filter.value?.map((val) => {
         if (filter.key) {
-          terms.push({ term: { [filter.key]: val } });
+          terms.push({ term: { [filter.key]: val.key } });
         }
       });
     });
