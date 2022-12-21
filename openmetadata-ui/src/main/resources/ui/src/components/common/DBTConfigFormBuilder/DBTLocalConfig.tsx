@@ -76,10 +76,10 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="catalog-file">
-          DBT Catalog File Path
+          dbt Catalog File Path
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT catalog file to extract dbt models with their column schemas.
+          dbt catalog file to extract dbt models with their column schemas.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -96,10 +96,10 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-file">
-          {requiredField('DBT Manifest File Path')}
+          {requiredField('dbt Manifest File Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT manifest file path to extract dbt models and associate with
+          dbt manifest file path to extract dbt models and associate with
           tables.
         </p>
         <input
@@ -117,10 +117,10 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="run-result-file">
-          DBT Run Results File Path
+          dbt Run Results File Path
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          DBT run results file path to extract the test results information.
+          dbt run results file path to extract the test results information.
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"

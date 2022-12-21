@@ -50,9 +50,9 @@ export const addMetadataIngestionGuide = [
   },
   {
     step: 2,
-    title: 'Configure DBT Model',
-    description: `A DBT model provides transformation logic that creates a table from raw data. Lineage traces the path of data across tables, but a DBT model provides specifics. 
-    Select the  required DBT source provider and fill in the mandatory fields. Integrate with DBT from OpenMetadata to view the models used to generate tables.`,
+    title: 'Configure dbt Model',
+    description: `A dbt model provides transformation logic that creates a table from raw data. Lineage traces the path of data across tables, but a dbt model provides specifics. 
+    Select the  required dbt source provider and fill in the mandatory fields. Integrate with dbt from OpenMetadata to view the models used to generate tables.`,
   },
   {
     ...schedulingIngestionGuide,
@@ -122,14 +122,16 @@ export const addProfilerIngestionGuide = [
 export const addDBTIngestionGuide = [
   {
     step: 2,
-    title: 'Add DBT Ingestion',
-    description: `A profiler workflow can be configured and deployed after a metadata ingestion has been set up. Multiple profiler pipelines can be set up for the same database service. 
-      The pipeline feeds the Profiler tab of the Table entity, and also runs the tests configured for that entity. Add a Name, FQN, and define the filter pattern to start.`,
+    title: 'Add dbt Ingestion',
+    description: `A dbt workflow can be configured and deployed after a metadata ingestion has been set up. 
+     Multiple dbt pipelines can be set up for the same database service. The pipeline feeds the dbt tab of the 
+     Table entity, creates lineage from dbt nodes and adds tests from dbt. Add the source configuration of the
+      dbt files to start.`,
   },
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: 'DBT Ingestion Added Successfully',
+    title: 'dbt Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The profiler will run at a regular interval as per the schedule.',
   },

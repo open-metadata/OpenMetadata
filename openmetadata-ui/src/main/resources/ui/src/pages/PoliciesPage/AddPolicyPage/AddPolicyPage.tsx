@@ -105,7 +105,7 @@ const AddPolicyPage = () => {
       data-testid="add-policy-container"
       gutter={[16, 16]}>
       <Col offset={4} span={12}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
+        <TitleBreadcrumb className="m-y-md" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph
             className="tw-text-base"

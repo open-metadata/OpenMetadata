@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Input, Typography } from 'antd';
-import React, { Fragment } from 'react';
+import { Button, Input, Space, Typography } from 'antd';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons from '../../../utils/SvgUtils';
 import { DisplayNameComponentProps } from './DisplayNameComponent.interface';
@@ -51,7 +51,7 @@ const DisplayNameComponent = ({
           </div>
         </div>
       ) : (
-        <Fragment>
+        <Space>
           {displayName ? (
             <Typography.Title className="display-name" level={5}>
               {displayName}
@@ -63,7 +63,7 @@ const DisplayNameComponent = ({
           )}
           {(displayNamePermission || editAllPermission) && (
             <button
-              className="ml-2 focus:tw-outline-none"
+              className="focus:tw-outline-none m-b-xss"
               data-testid="edit-displayName"
               onClick={() => setIsDisplayNameEdit(true)}>
               <SVGIcons
@@ -74,7 +74,7 @@ const DisplayNameComponent = ({
               />
             </button>
           )}
-        </Fragment>
+        </Space>
       )}
     </div>
   );

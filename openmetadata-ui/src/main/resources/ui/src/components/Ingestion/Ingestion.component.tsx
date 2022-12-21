@@ -289,7 +289,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
       case PipelineType.Dbt:
         name = t('label.add-workflow-ingestion', {
-          workflow: t('label.dbt-uppercase'),
+          workflow: t('label.dbt-lowercase'),
         });
 
         break;
