@@ -27,10 +27,13 @@ Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.or
 
 If you are upgrading production this is the recommended version to upgrade.
   
- 
- 
- 
 ## Breaking Changes from 0.13.0 Feature Release
+
+OpenMetadata Release 0.13.0 introduces below breaking changes -
+### dbt Workflow
+
+dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow
+
 ## Breaking Changes from 0.12.x Stable Release
 
 OpenMetadata Release 0.12.x introduces below breaking changes -
