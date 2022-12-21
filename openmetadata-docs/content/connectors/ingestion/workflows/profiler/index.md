@@ -80,14 +80,29 @@ Once you have created your profiler you can adjust some behavior at the table le
 />
 
 #### Profiler Options
-**Profile Sample %**
-Set the sample percentage to be use by the profiler for the specific table. This will overwrite the workflow sample percentage.
+**Profile Sample**
+Set the sample to be use by the profiler for the specific table.
+- `Percentage`: Value must be between 0 and 100 exclusive (0 < percentage < 100). This will sample the table based on a percentage
+- `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
 **Profile Sample Query**
 Use a query to sample data for the profiler. This will overwrite any profle sample set.
 
 **Enable Column Profile**
-This setting allows you exclude or include specific column from the profiler. It also allows you to exclude the computation of specific metrics.
+This setting allows user to exclude or include specific columns and metrics from the profiler.
+
+**Enable Partition**
+If your table includes a timestamp, date or datetime column type you can enable partitionning. If enabled, the profiler will fetch the last `<interval>` `<interval unit>` of data to profile the table. Note that if "profile sample" is set, this configuration will be used against the partitioned data and not the whole table.
+- `Column Name`: this is the name of the column that will be used as the partition field
+- `Interval Type`:
+  - `TIME-UNIT`: a business logical timestamp/date/datetime (e.g. order date, sign up datetime, etc.)
+  - `INGESTION-TIME`: a process logical timestamp/date/datetime (i.e. when was my data ingested in my table)
+- `Interval`: the interval value (e.g. `1`, `2`, etc.)
+- `Interval Unit`: 
+  - `HOUR`
+  - `DAY`
+  - `MONTH`
+  - `YEAR`
 
 
 ## YAML Configuration
