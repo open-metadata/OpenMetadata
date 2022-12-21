@@ -49,7 +49,7 @@ Open the file `docker-compose.yml` downloaded from the Release page [Link](https
 ```commandline
 version: "3.9"
 services:
- postgresql:
+ elasticsearch:
     ...
     volumes:
       - ./docker-volume/es-data:/usr/share/elasticsearch/data
