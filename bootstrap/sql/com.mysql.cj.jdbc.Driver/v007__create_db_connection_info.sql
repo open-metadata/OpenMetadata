@@ -56,3 +56,12 @@ WHERE  serviceType = 'Dagster' AND json -> '$.connection.config.configSource.hos
 UPDATE pipeline_service_entity
 SET json = JSON_INSERT(JSON_INSERT(JSON_REMOVE(json, '$.connection.config.configSource'),'$.connection.config.host', JSON_EXTRACT(json,'$.connection.config.configSource.hostPort')), '$.connection.config.token','')
 WHERE  serviceType = 'Dagster' AND json -> '$.connection.config.configSource.hostPort' IS NOT NULL;
+
+UPDATE topic_entity
+SET json = JSON_INSERT(JSON_REMOVE(json, '$.schemaType'), '$.messageSchema', JSON_OBJECT('schemaType', JSON_EXTRACT(json, '$.schemaType')))
+WHERE json -> '$.schemaType' IS NOT NULL;
+
+UPDATE topic_entity
+SET json = JSON_INSERT(JSON_REMOVE(json, '$.schemaText'), '$.messageSchema.schemaText', JSON_EXTRACT(json, '$.schemaText'))
+WHERE json -> '$.schemaText' IS NOT NULL;
+

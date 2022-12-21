@@ -241,15 +241,15 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
       if (updated.getMessageSchema() != null) {
         recordChange(
-            "schema.schemaText",
+            "messageSchema.schemaText",
             original.getMessageSchema().getSchemaText(),
             updated.getMessageSchema().getSchemaText());
         recordChange(
-            "schema.schemaType",
+            "messageSchema.schemaType",
             original.getMessageSchema().getSchemaType(),
             updated.getMessageSchema().getSchemaType());
         updateSchemaFields(
-            "schemaFields",
+            "messageSchema.schemaFields",
             original.getMessageSchema().getSchemaFields(),
             updated.getMessageSchema().getSchemaFields(),
             EntityUtil.schemaFieldMatch);
