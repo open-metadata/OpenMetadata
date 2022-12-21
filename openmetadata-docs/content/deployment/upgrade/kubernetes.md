@@ -27,18 +27,26 @@ Below document is valid for upgrading Helm Charts from **0.12.x to 0.13.0**.
 
 ### Back up metadata
 
-Before proceeding, pleae make sure you made a backup of your MySQL/Postgres DB behind OpenMetadata server. This step is extremely important for you to restore to your current state if any issues come up during the upgrade 
+Before proceeding, please back up your MySQL/Postgres DB behind the OpenMetadata server. This step is crucial for restoring to your current state if any issues arise during the upgrade. It is recommended before upgrading your production instances.
 
-<InlineCalloutContainer>
-  <InlineCallout
-    color="violet-70"
-    icon="luggage"
-    bold="Backup Metadata"
-    href="/deployment/backup-restore-metadata"
-  >
-    Learn how to back up MySQL data.
-  </InlineCallout>
-</InlineCalloutContainer>
+Make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands. If you are using the default database available with OpenMetadata Dependencies, make sure to port-forward the MySQL service using `kubectl port-forward service/mysql 3306:3306`.
+
+Then, follow the next steps to create a virtual environment and install the latest OpenMetadata Python package with the backup CLI:
+
+1. `python -m venv venv`
+2. `source venv/bin/activate`
+3. `pip install openmetadata-ingestion~=0.13.1`
+4. Validate the installed `metadata` version with `python -m metadata --version`
+5. Run the backup using the updated `metadata` CLI:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
+    ```
+    if using Postgres:
+    ```
+    python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
+    ```
+6. The above command will generate a backup file with extension as `.sql`. You can copy the name from the backup
+    command output.
 
 ## Get an overview of what has changed in Helm Values
 
@@ -67,19 +75,13 @@ Verify with the below command to see the latest release available locally.
 ```commandline
 helm search repo open-metadata --versions
 > NAME                                   	CHART VERSION	APP VERSION	DESCRIPTION                                
-open-metadata/openmetadata             	0.0.39       	0.12.1     	A Helm chart for OpenMetadata on Kubernetes
-open-metadata/openmetadata             	0.0.38       	0.12.0     	A Helm chart for OpenMetadata on Kubernetes
-open-metadata/openmetadata             	0.0.37       	0.12.0     	A Helm chart for OpenMetadata on Kubernetes
-open-metadata/openmetadata             	0.0.36       	0.12.0     	A Helm chart for OpenMetadata on Kubernetes
-open-metadata/openmetadata             	0.0.35       	0.11.5     	A Helm chart for OpenMetadata on Kubernetes
-open-metadata/openmetadata             	0.0.34       	0.11.4     	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.48       	0.13.0     	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.47       	0.13.0     	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.46       	0.12.3     	A Helm chart for OpenMetadata on Kubernetes
 ...
-open-metadata/openmetadata-dependencies	0.0.39       	0.12.1     	Helm Dependencies for OpenMetadata         
-open-metadata/openmetadata-dependencies	0.0.38       	0.12.0     	Helm Dependencies for OpenMetadata         
-open-metadata/openmetadata-dependencies	0.0.37       	0.12.0     	Helm Dependencies for OpenMetadata         
-open-metadata/openmetadata-dependencies	0.0.36       	0.12.0     	Helm Dependencies for OpenMetadata         
-open-metadata/openmetadata-dependencies	0.0.35       	0.11.5     	Helm Dependencies for OpenMetadata         
-open-metadata/openmetadata-dependencies	0.0.34       	0.11.4     	Helm Dependencies for OpenMetadata
+open-metadata/openmetadata-dependencies	0.0.48       	0.13.0     	Helm Dependencies for OpenMetadata         
+open-metadata/openmetadata-dependencies	0.0.47       	0.13.0     	Helm Dependencies for OpenMetadata         
+open-metadata/openmetadata-dependencies	0.0.46       	0.12.3     	Helm Dependencies for OpenMetadata
 ...
 ```
 
@@ -176,35 +178,3 @@ global:
     containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
 ...
 ```
-
-## Troubleshooting for 0.10 Release
-
-If you are upgrading from previous releases to 0.10, you might encounter the below logs which indicates that the 0.10
-release is backward incompatible.
-
-```commandline
-[I/O dispatcher 1] DEBUG org.apache.http.impl.nio.client.InternalIODispatch - http-outgoing-0 [ACTIVE] [content length: 263; pos: 263; completed: true]
-[main] DEBUG org.elasticsearch.client.RestClient - request [PUT http://elasticsearch:9200/glossary_search_index/_mapping?master_timeout=30s&ignore_unavailable=false&expand_wildcards=open%2Cclosed&allow_no_indices=false&ignore_throttled=false&timeout=30s] returned [HTTP/1.1 400 Bad Request]
-[main] ERROR org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition - Failed to update Elastic Search indexes due to
-org.elasticsearch.ElasticsearchStatusException: Elasticsearch exception [type=illegal_argument_exception, reason=can't merge a non object mapping [owner] with an object mapping]
-    at org.elasticsearch.rest.BytesRestResponse.errorFromXContent(BytesRestResponse.java:176)
-    at org.elasticsearch.client.RestHighLevelClient.parseEntity(RestHighLevelClient.java:1933)
-    at org.elasticsearch.client.RestHighLevelClient.parseResponseException(RestHighLevelClient.java:1910)
-    at org.elasticsearch.client.RestHighLevelClient.internalPerformRequest(RestHighLevelClient.java:1667)
-    at org.elasticsearch.client.RestHighLevelClient.performRequest(RestHighLevelClient.java:1639)
-    at org.elasticsearch.client.RestHighLevelClient.performRequestAndParseEntity(RestHighLevelClient.java:1606)
-    at org.elasticsearch.client.IndicesClient.putMapping(IndicesClient.java:342)
-    at org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.updateIndex(ElasticSearchIndexDefinition.java:139)
-    at org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.updateIndexes(ElasticSearchIndexDefinition.java:91)
-    at org.openmetadata.service.util.TablesInitializer.execute(TablesInitializer.java:227)
-    at org.openmetadata.service.util.TablesInitializer.main(TablesInitializer.java:149)
-    Suppressed: org.elasticsearch.client.ResponseException: method [PUT], host [http://elasticsearch:9200], URI [/glossary_search_index/_mapping?master_timeout=30s&ignore_unavailable=false&expand_wildcards=open%2Cclosed&allow_no_indices=false&ignore_throttled=false&timeout=30s], status line [HTTP/1.1 400 Bad Request]
-{"error":{"root_cause":[{"type":"illegal_argument_exception","reason":"can't merge a non object mapping [owner] with an object mapping"}],"type":"illegal_argument_exception","reason":"can't merge a non object mapping [owner] with an object mapping"},"status":400}
-        at org.elasticsearch.client.RestClient.convertResponse(RestClient.java:326)
-        at org.elasticsearch.client.RestClient.performRequest(RestClient.java:296)
-        at org.elasticsearch.client.RestClient.performRequest(RestClient.java:270)
-        at org.elasticsearch.client.RestHighLevelClient.internalPerformRequest(RestHighLevelClient.java:1654)
-        ... 7 common frames omitted
-```
-
-Note that to migrate, you'll need a fresh installation! Follow the [upgrade guide](/deployment/upgrade/versions/090-to-010) for more details.

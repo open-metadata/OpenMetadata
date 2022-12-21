@@ -29,6 +29,16 @@ Before upgrading to 0.13.1 it is recommended to save the existing Webhook config
 
 We have added Alerts/Notifications , which can be configured to receive customised alerts on updates in OM using Triggers, Filtering Information to different destinations like Slack, MsTeams or even Emails.
 Please use the same webhook config that you had saved from previous version to configure the Alerts Destination after upgrading.
+
+
+OpenMetadata Release 0.13.x introduces below breaking changes:
+
+### Docker Volumes
+ OpenMetadata Release 0.13.x introduces Default Docker Volumes for Databse(MYQSL, PostgreSQL) and ElasticSearch with Docker deployment.
+
+ - If you are looking for the fresh deployment of 0.13.x - [here](https://docs.open-metadata.org/deployment/docker)
+ - If you are looking for upgrading of the new version i.e 0.13.x - [here](https://docs.open-metadata.org/deployment/upgrade/docker)
+
 ### dbt Workflow
 
 dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow.
