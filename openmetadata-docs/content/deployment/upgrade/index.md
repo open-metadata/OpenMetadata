@@ -31,6 +31,16 @@ If you are upgrading production this is the recommended version to upgrade.
  
  
 ## Breaking Changes from 0.13.0 Feature Release
+
+### Webhooks
+
+Starting from 0.13.1 , OpenMetadata will be deprecating the existing webhooks for Slack, MSTeams.
+
+Before upgrading to 0.13.1 it is recommended to save the existing Webhook configs(like webhook url) to use them later.
+
+We have added Alerts/Notifications , which can be configured to receive customised alerts on updates in OM using Triggers, Filtering Information to different destinations like Slack, MsTeams or even Emails.
+Please use the same webhook config that you had saved from previous version to configure the Alerts Destination after upgrading.
+
 ## Breaking Changes from 0.12.x Stable Release
 
 OpenMetadata Release 0.12.x introduces below breaking changes -
