@@ -23,6 +23,7 @@ import {
   Constraint,
   DataType,
 } from '../../../../generated/entity/data/table';
+import { Field } from '../../../../generated/entity/data/topic';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 
 export interface SummaryListProps {
@@ -30,6 +31,7 @@ export interface SummaryListProps {
   charts?: Chart[];
   tasks?: Task[];
   mlFeatures?: MlFeature[];
+  schemaFields?: Field[];
 }
 
 export interface BasicColumnInfo {

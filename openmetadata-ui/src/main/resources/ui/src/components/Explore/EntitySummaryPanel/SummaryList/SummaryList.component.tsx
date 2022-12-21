@@ -32,6 +32,7 @@ export default function SummaryList({
   charts,
   tasks,
   mlFeatures,
+  schemaFields,
 }: SummaryListProps) {
   const { t } = useTranslation();
 
@@ -84,8 +85,16 @@ export default function SummaryList({
         tags: feature.tags,
         description: feature.description,
       }));
+    } else if (schemaFields) {
+      return schemaFields.map((field) => ({
+        name: field.name,
+        title: <Text className="entity-title">{field.name}</Text>,
+        type: field.dataType,
+        description: field.description,
+        tags: field.tags,
+      }));
     } else return [];
-  }, [columns, charts, tasks, mlFeatures]);
+  }, [columns, charts, tasks, mlFeatures, schemaFields]);
 
   return (
     <Row>

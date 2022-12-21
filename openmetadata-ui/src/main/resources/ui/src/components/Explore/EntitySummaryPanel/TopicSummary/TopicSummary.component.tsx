@@ -20,8 +20,8 @@ import { Topic } from '../../../../generated/entity/data/topic';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
-import SchemaEditor from '../../../schema-editor/SchemaEditor';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
+import SummaryList from '../SummaryList/SummaryList.component';
 
 interface TopicSummaryProps {
   entityDetails: Topic;
@@ -73,17 +73,16 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
         </Col>
       </Row>
       <Divider className="m-0" />
-      <Row className="m-md">
+      <Row className="m-md" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Text className="section-header">
             {t('label.schema')}
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {entityDetails.messageSchema?.schemaText ? (
-            <SchemaEditor
-              editorClass="summary-schema-editor"
-              value={entityDetails.messageSchema.schemaText}
+          {entityDetails.messageSchema?.schemaFields ? (
+            <SummaryList
+              schemaFields={entityDetails.messageSchema?.schemaFields || []}
             />
           ) : (
             <div className="m-y-md">
