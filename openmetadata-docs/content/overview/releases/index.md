@@ -22,7 +22,11 @@ version. To see what's coming in next releases, please check our [Roadmap](/over
 The logic for Notification Support has been improved. Users can define Alerts based on a Trigger (all data assets or a specific entity), Filters (events to consider), and Action (Slack, MS Teams, Email, Webhook) on where to send the alert.
 
 ## Ingestion
-Now, DBT has its own workflow. Previously, DBT  was a part of metadata ingestion workflow.
+- Now, dbt has its own workflow. Previously, dbt  was a part of metadata ingestion workflow.
+- Airflow Lineage Operator and the OpenMetadata Hook are now part of the ingestion package. Send Airflow metadata from your DAGs and safely store the OpenMetadata server connection directly in Airflow.
+- Multiple Databases (catalog) is now supported for the Databricks connector
+- Azure blob is now supported to backup your metadata into
+
 
 ## General Improvements
 - Users can update the description and tags for Topic Schema. Previously, the topic schemas were read-only. We now support Avro/Protobuf parsing and field level details for topic schemas.
