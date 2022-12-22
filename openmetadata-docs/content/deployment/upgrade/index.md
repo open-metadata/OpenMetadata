@@ -13,6 +13,7 @@ OpenMetadata community will be doing feature releases and stable releases.
  - Stable releases are to upgrade your production environments and share it with your users.
 
 ## 0.13.1 - Stable Release
+
 OpenMetadata 0.12.3 is a stable release. Please check the [release notes]() 
 
 If you are upgrading production this is the recommended version to upgrade.
@@ -34,10 +35,11 @@ Please use the same webhook config that you had saved from previous version to c
 OpenMetadata Release 0.13.x introduces below breaking changes:
 
 ### Docker Volumes
- OpenMetadata Release 0.13.x introduces Default Docker Volumes for Databse(MYQSL, PostgreSQL) and ElasticSearch with Docker deployment.
 
- - If you are looking for the fresh deployment of 0.13.x - [here](https://docs.open-metadata.org/deployment/docker)
- - If you are looking for upgrading of the new version i.e 0.13.x - [here](https://docs.open-metadata.org/deployment/upgrade/docker)
+OpenMetadata Release 0.13.x introduces Default Docker Volumes for Database (MySQL, PostgreSQL) and ElasticSearch with Docker deployment.
+
+- If you are looking for the fresh deployment of 0.13.x - [here](https://docs.open-metadata.org/deployment/docker)
+- If you are looking for upgrading of the new version i.e 0.13.x - [here](https://docs.open-metadata.org/deployment/upgrade/docker)
 
 ### dbt Workflow
 
@@ -46,6 +48,13 @@ dbt ingestion has been separated from the metadata ingestion. It can now be conf
 We will remove the dbt configuration from your existing metadata ingestion pipelines and they will keep working as expected.
 
 After upgrading you will have to create the dbt workflow for the dbt ingestion to start working again.
+
+### Airflow Lineage Backend
+
+- The import for the Airflow Lineage Backend has been updated from `airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`
+  to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
+- We removed support from Airflow v1.
+- The failure callback now only updates the pipeline status if the Pipeline already exists in OpenMetadata.
 
 ## 0.13.0 - Feature Release
 
