@@ -529,6 +529,7 @@ const TaskDetailPage = () => {
             <Fragment>
               <Content style={{ ...contentStyles, overflowY: 'auto' }}>
                 <TitleBreadcrumb
+                  className="m-t-lg m-b-xs"
                   titleLinks={[
                     ...getBreadCrumbList(entityData, entityType as EntityType),
                     {
