@@ -241,5 +241,5 @@ link="/connectors/ingestion/workflows/data-quality"
 icon="mediation"
 title="DBT Integration"
 text="Learn more about how to ingest DBT models' definitions and their lineage."
-link="/connectors/ingestion/workflows/metadata/dbt"
+link="/connectors/ingestion/workflows/dbt"
 />

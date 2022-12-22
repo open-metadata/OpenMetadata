@@ -491,4 +491,4 @@ source:
     - **ssl_verify_identity**: Set to true to check the server's identity.
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

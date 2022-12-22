@@ -25,7 +25,7 @@ If you want to learn more about how to extract metadata from DBT, we have you co
     color="violet-70"
     bold="DBT Ingestion"
     icon="add_moderator"
-    href="/connectors/ingestion/workflows/metadata/dbt"
+    href="/connectors/ingestion/workflows/dbt"
   >
     Extract Metadata and ingest your DBT models.
   </InlineCallout>
