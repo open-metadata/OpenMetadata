@@ -57,7 +57,7 @@ export const INGESTION_ACTION_TYPE = {
   EDIT: 'edit',
 };
 
-export const PIPELINE_TYPE_LOCALISATION = {
+export const PIPELINE_TYPE_LOCALIZATION = {
   dataInsight: 'data-insight',
   dbt: 'dbt',
   elasticSearchReindex: 'elastic-search-re-index',

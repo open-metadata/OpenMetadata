@@ -67,16 +67,20 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   );
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [showThreadTypeList, setShowThreadTypeList] = useState<boolean>(false);
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.OWNER);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(
+    isEntityFeed ? FeedFilter.ALL : FeedFilter.OWNER
+  );
   const [threadType, setThreadType] = useState<ThreadType>();
 
   const handleDropDown = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
-      const feedType = (value as FeedFilter) || FeedFilter.OWNER;
+      const feedType =
+        (value as FeedFilter) ||
+        (isEntityFeed ? FeedFilter.ALL : FeedFilter.OWNER);
 
       setFeedFilter(feedType);
       setFieldListVisible(false);
-      onFeedFiltersUpdate && onFeedFiltersUpdate(feedType, threadType);
+      onFeedFiltersUpdate && value && onFeedFiltersUpdate(feedType, threadType);
     },
     [setFeedFilter, setFieldListVisible, onFeedFiltersUpdate, threadType]
   );
@@ -136,7 +140,9 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         value === 'ALL' ? undefined : (value as ThreadType) ?? undefined;
       setThreadType(threadType);
       setShowThreadTypeList(false);
-      onFeedFiltersUpdate && onFeedFiltersUpdate(feedFilter, threadType);
+      onFeedFiltersUpdate &&
+        value &&
+        onFeedFiltersUpdate(feedFilter, threadType);
     },
     [feedFilter, onFeedFiltersUpdate, setThreadType, setShowThreadTypeList]
   );
@@ -289,7 +295,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </>
       ) : (
-        <>
+        <div className="h-min-50">
           {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
             <NoFeedPlaceholder entityName={entityName} />
           ) : !refreshFeedCount ? (
@@ -297,7 +303,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               {t('message.no-data-available-for-selected-filter')}
             </ErrorPlaceHolder>
           ) : null}
-        </>
+        </div>
       )}
       <DeleteConfirmationModal
         visible={confirmationState.state}

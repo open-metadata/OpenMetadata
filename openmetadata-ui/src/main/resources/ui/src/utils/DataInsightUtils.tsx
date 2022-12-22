@@ -23,6 +23,7 @@ import {
   isUndefined,
   last,
   omit,
+  round,
   sortBy,
   toNumber,
 } from 'lodash';
@@ -507,7 +508,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   return {
     data: graphData,
     tiers,
-    total: latestData,
+    total: round(latestData, 2),
     relativePercentage,
     latestData: last(graphData) as Record<string, number>,
   };
