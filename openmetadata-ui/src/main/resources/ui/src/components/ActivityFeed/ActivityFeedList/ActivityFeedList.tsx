@@ -67,12 +67,13 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   );
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [showThreadTypeList, setShowThreadTypeList] = useState<boolean>(false);
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
 
   const handleDropDown = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
-      const feedType = (value as FeedFilter) || FeedFilter.ALL;
+      const feedType = (value as FeedFilter) || FeedFilter.OWNER;
+
       setFeedFilter(feedType);
       setFieldListVisible(false);
       onFeedFiltersUpdate && onFeedFiltersUpdate(feedType, threadType);
@@ -166,7 +167,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 icon={getFeedFilterDropdownIcon(feedFilter)}
                 type="link"
                 onClick={() => setFieldListVisible((visible) => !visible)}>
-                <Typography.Text className="font-normal text-primary m-x-xss">
+                <Typography.Text className="font-medium text-primary m-x-xss">
                   {feedFilterList.find((f) => f.value === feedFilter)?.name}
                 </Typography.Text>
                 <DropDownIcon className="dropdown-icon" />
@@ -191,7 +192,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 icon={getThreadFilterDropdownIcon(threadType ?? 'ALL')}
                 type="link"
                 onClick={() => setShowThreadTypeList((visible) => !visible)}>
-                <Typography.Text className="font-normal text-primary m-x-xss">
+                <Typography.Text className="font-medium text-primary m-x-xss">
                   {
                     threadFilterList.find(
                       (f) => f.value === (threadType ?? 'ALL')
@@ -235,7 +236,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   return (
     <div className={classNames(className, 'feed-list-container')} id="feedData">
       <div className={stickyFilter ? 'filters-wrapper' : ''}>
-        {feedList.length === 0 && feedFilter === FeedFilter.ALL && !threadType
+        {feedList.length === 0 && feedFilter === FeedFilter.OWNER && !threadType
           ? null
           : getFilterDropDown()}
       </div>

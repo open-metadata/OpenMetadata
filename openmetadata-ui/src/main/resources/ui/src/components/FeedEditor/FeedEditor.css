@@ -1062,7 +1062,15 @@
 button.ql-emoji {
   vertical-align: bottom;
 }
-#tab-panel {
+#emoji-palette > #tab-panel {
   gap: 4px;
-  margin-top: 8px;
+  padding-top: 8px;
+}
+
+#emoji-palette {
+  z-index: 9999;
+}
+
+.ap {
+  text-indent: 0px;
 }

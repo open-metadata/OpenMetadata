@@ -60,6 +60,7 @@ const MyDataPage = () => {
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
   const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
@@ -104,6 +105,7 @@ const MyDataPage = () => {
     if (!currentUser || !currentUser.id) {
       return;
     }
+    setIsLoadingOwnedData(true);
     try {
       const userData = await getUserById(currentUser?.id, 'follows, owns');
 
@@ -112,15 +114,15 @@ const MyDataPage = () => {
         const owns: EntityReference[] = userData.owns ?? [];
         const follows: EntityReference[] = userData.follows ?? [];
 
-        setFollowedDataCount(follows.length);
-        setOwnedDataCount(owns.length);
-
-        const includedOwnsData = owns.filter((data) =>
-          includeData.includes(data.type as AssetsType)
-        );
         const includedFollowsData = follows.filter((data) =>
           includeData.includes(data.type as AssetsType)
         );
+        const includedOwnsData = owns.filter((data) =>
+          includeData.includes(data.type as AssetsType)
+        );
+
+        setFollowedDataCount(includedFollowsData.length);
+        setOwnedDataCount(includedOwnsData.length);
 
         setFollowedData(includedFollowsData.slice(0, 8));
         setOwnedData(includedOwnsData.slice(0, 8));
@@ -128,6 +130,8 @@ const MyDataPage = () => {
     } catch (err) {
       setOwnedData([]);
       setFollowedData([]);
+    } finally {
+      setIsLoadingOwnedData(false);
     }
   };
 
@@ -307,6 +311,7 @@ const MyDataPage = () => {
             followedData={followedData || []}
             followedDataCount={followedDataCount}
             isFeedLoading={isFeedLoading}
+            isLoadingOwnedData={isLoadingOwnedData}
             ownedData={ownedData || []}
             ownedDataCount={ownedDataCount}
             paging={paging}

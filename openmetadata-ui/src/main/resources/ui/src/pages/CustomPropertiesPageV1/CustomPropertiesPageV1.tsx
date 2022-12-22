@@ -15,13 +15,14 @@ import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
+import PageHeader from '../../components/header/PageHeader.component';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
@@ -38,6 +39,7 @@ import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
 } from '../../constants/HelperTextUtil';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -139,6 +141,24 @@ const CustomEntityDetailV1 = () => {
     }
   };
 
+  const getCustomPageHeader = useCallback(() => {
+    switch (tabAttributePath) {
+      case ENTITY_PATH.tables:
+        return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
+      case ENTITY_PATH.topics:
+        return PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES;
+      case ENTITY_PATH.dashboards:
+        return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
+      case ENTITY_PATH.pipelines:
+        return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
+      case ENTITY_PATH.mlmodels:
+        return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
+
+      default:
+        return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
+    }
+  }, [tabAttributePath]);
+
   useEffect(() => {
     if (!isUndefined(tab)) {
       setActiveTab(1);
@@ -170,6 +190,9 @@ const CustomEntityDetailV1 = () => {
       className="m-y-xs"
       data-testid="custom-entity-container"
       gutter={[16, 16]}>
+      <Col span={24}>
+        <PageHeader data={getCustomPageHeader()} />
+      </Col>
       <Col className="global-settings-tabs" span={24}>
         <TabsPane
           activeTab={activeTab}

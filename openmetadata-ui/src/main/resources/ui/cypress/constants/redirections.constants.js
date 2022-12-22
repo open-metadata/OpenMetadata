@@ -135,10 +135,6 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="metadata"]',
     url: `${BASE_URL}/settings/services/metadata`,
   },
-  activityFeed: {
-    testid: '[data-menu-id*="activityFeed"]',
-    url: `${BASE_URL}/settings/collaboration/activityFeed`,
-  },
   customAttributesTable: {
     testid: '[data-menu-id*="tables"]',
     url: `${BASE_URL}/settings/customAttributes/tables`,

@@ -11,18 +11,9 @@
  *  limitations under the License.
  */
 
-import { Table, TableType } from '../../../generated/entity/data/table';
-import { OverallTableSummeryType } from '../../TableProfiler/TableProfiler.interface';
+import { EntityDetailsObjectInterface } from '../explore.interface';
 
 export interface EntitySummaryPanelProps {
-  entityDetails: Table;
+  entityDetails: EntityDetailsObjectInterface;
   handleClosePanel: () => void;
-  overallSummery: OverallTableSummeryType[];
-  showPanel: boolean;
-}
-
-export interface BasicTableInfo {
-  Type: TableType | string;
-  Queries: string;
-  Columns: string;
 }

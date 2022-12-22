@@ -24,7 +24,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getChartById, updateChart } from '../../axiosAPIs/chartAPI';
+import { updateChart } from '../../axiosAPIs/chartAPI';
 import {
   addFollower,
   getDashboardByFqn,
@@ -78,6 +78,7 @@ import {
 import {
   dashboardDetailsTabs,
   defaultFields,
+  fetchCharts,
   getCurrentDashboardTab,
   sortTagsForCharts,
 } from '../../utils/DashboardDetailsUtils';
@@ -230,32 +231,6 @@ const DashboardDetailsPage = () => {
     );
 
     return patchDashboardDetails(dashboardId, jsonPatch);
-  };
-
-  const fetchCharts = async (charts: Dashboard['charts']) => {
-    let chartsData: ChartType[] = [];
-    let promiseArr: Array<Promise<ChartType>> = [];
-    if (charts?.length) {
-      promiseArr = charts.map((chart) => getChartById(chart.id, ['tags']));
-      await Promise.allSettled(promiseArr)
-        .then((res) => {
-          if (res.length) {
-            chartsData = res
-              .filter((chart) => chart.status === 'fulfilled')
-              .map(
-                (chart) => (chart as PromiseFulfilledResult<ChartType>).value
-              );
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-chart-error']
-          );
-        });
-    }
-
-    return chartsData;
   };
 
   const setLeafNode = (val: EntityLineage, pos: LineagePos) => {

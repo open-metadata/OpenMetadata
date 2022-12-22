@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { toString } from 'lodash';
 import AppState from '../AppState';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityUsage';
@@ -21,14 +23,22 @@ import { getEntityName } from './CommonUtils';
  * @param listUsers - List of users
  * @param listTeams - List of teams
  * @param excludeCurrentUser - Wether to exclude current user to be on list. Needed when calls from searching
+ * @param searchQuery - search query for user or team
  * @returns List of user or team
  */
 export const getOwnerList = (
   listUsers?: User[],
   listTeams?: Team[],
-  excludeCurrentUser?: boolean
+  excludeCurrentUser?: boolean,
+  searchQuery?: string
 ) => {
   const userDetails = AppState.getCurrentUserDetails();
+
+  const isAdminIncludeInQuery =
+    getEntityName(userDetails).includes(toString(searchQuery)) ||
+    searchQuery === WILD_CARD_CHAR
+      ? true
+      : false;
 
   if (userDetails?.isAdmin) {
     const users = (listUsers || [])
@@ -47,7 +57,7 @@ export const getOwnerList = (
     }));
 
     return [
-      ...(!excludeCurrentUser
+      ...(!excludeCurrentUser && isAdminIncludeInQuery
         ? [
             {
               name: getEntityName(userDetails),

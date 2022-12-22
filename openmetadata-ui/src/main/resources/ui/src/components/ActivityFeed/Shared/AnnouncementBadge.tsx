@@ -21,7 +21,7 @@ const AnnouncementBadge = () => {
       <SVGIcons
         alt="announcement"
         className="announcement-badge"
-        icon={Icons.ANNOUNCEMENT_PURPLE}
+        icon={Icons.ANNOUNCEMENT_YELLOW}
       />
       <span className="announcement-content">Announcement</span>
     </div>

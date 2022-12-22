@@ -75,6 +75,14 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         },
       },
       {
+        title: t('label.data-asset-type'),
+        dataIndex: 'entityType',
+        key: 'entityType',
+        render: (entityType: string) => (
+          <Typography.Text>{entityType}</Typography.Text>
+        ),
+      },
+      {
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',

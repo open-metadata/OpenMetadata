@@ -20,8 +20,6 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { TeamType } from '../generated/entity/teams/team';
-import ActivityFeedSettingsPage from '../pages/ActivityFeedSettingsPage/ActivityFeedSettingsPage';
-import TeamsPage from '../pages/teams/TeamsPage';
 import { userPermissions } from '../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -30,6 +28,28 @@ import {
 } from '../utils/RouterUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
+
+const AddAlertPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AddAlertPage/AddAlertPage'))
+);
+
+const AlertDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AlertDetailsPage/AlertDetailsPage'))
+);
+
+const AlertsActivityFeedPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
+  )
+);
+
+const AlertsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AlertsPage/AlertsPage'))
+);
+
+const TeamsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/teams/TeamsPage'))
+);
 
 const ServicesPage = withSuspenseFallback(
   React.lazy(() => import('../pages/services/ServicesPage'))
@@ -172,21 +192,6 @@ const GlobalSettingRouter = () => {
 
       <AdminProtectedRoute
         exact
-        // Currently we don't have any permission related to ActivityFeed settings page
-        // update below once we have it
-        component={ActivityFeedSettingsPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.FEED,
-          permissions
-        )}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.COLLABORATION,
-          GlobalSettingOptions.ACTIVITY_FEED
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
         component={ElasticSearchIndexPage}
         hasPermission={false}
         path={getSettingPath(
@@ -199,6 +204,57 @@ const GlobalSettingRouter = () => {
         exact
         component={ServicesPage}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERTS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddAlertPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.EDIT_ALERTS,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddAlertPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ADD_ALERTS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERT,
+          true
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertsActivityFeedPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ACTIVITY_FEED
+        )}
       />
 
       <AdminProtectedRoute

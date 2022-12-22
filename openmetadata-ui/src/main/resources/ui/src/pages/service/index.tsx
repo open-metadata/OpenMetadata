@@ -68,6 +68,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import {
   OPENMETADATA,
   servicesDisplayName,
+  SERVICE_CATEGORY_TYPE,
 } from '../../constants/Services.constant';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -1014,6 +1015,16 @@ const ServicePage: FunctionComponent = () => {
                   )}
                   <DeleteWidgetModal
                     isRecursiveDelete
+                    afterDeleteAction={() =>
+                      history.push(
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.SERVICES,
+                          SERVICE_CATEGORY_TYPE[
+                            serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
+                          ]
+                        )
+                      )
+                    }
                     allowSoftDelete={false}
                     deleteMessage={getDeleteEntityMessage(
                       serviceName || '',

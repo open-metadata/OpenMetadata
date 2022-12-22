@@ -209,15 +209,17 @@ export const getSearchedTeams = (
   return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
 };
 
-export const getSearchedUsersAndTeams = (
+export const getSearchedUsersAndTeams = async (
   queryString: string,
   from: number,
   size = 10
 ) => {
-  return searchData(queryString, from, size, '', '', '', [
+  const response = await searchData(queryString, from, size, '', '', '', [
     SearchIndex.USER,
     SearchIndex.TEAM,
   ]);
+
+  return response.data;
 };
 
 export const deleteEntity = async (
@@ -265,7 +267,7 @@ export const getAdvancedFieldDefaultOptions = (
 export const getEntityCount = async (
   path: string,
   database?: string
-): Promise<AxiosResponse<{ paging: Paging }>> => {
+): Promise<{ paging: Paging }> => {
   const params = { database, limit: 0 };
 
   const response = await APIClient.get(`/${path}`, { params });

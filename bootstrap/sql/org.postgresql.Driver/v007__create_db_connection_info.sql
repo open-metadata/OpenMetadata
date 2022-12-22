@@ -30,3 +30,34 @@ CREATE TABLE IF NOT EXISTS alert_action_def (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+
+UPDATE dbservice_entity
+SET json = jsonb_set(json, '{connection,config,database}', json#>'{connection,config,databaseSchema}')
+where serviceType in ('Db2')
+  and json#>'{connection,config,databaseSchema}' is not null;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,databaseSchema}'
+where serviceType in ('Db2');
+
+DELETE from openmetadata_settings where configType = 'activityFeedFilterSetting';
+
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{sourceConfig,config,dbtConfigSource}';
+
+UPDATE pipeline_service_entity 
+SET json = jsonb_set(jsonb_set(json::jsonb #- '{connection,config,configSource}', '{connection,config,token}', json#> '{connection,config,configSource,token}', true) ,'{connection,config,host}', json #> '{connection,config,configSource,host}' , true)
+WHERE serviceType = 'Dagster' and json #>'{connection,config,configSource,host}' is not null;
+
+
+UPDATE pipeline_service_entity
+SET json = jsonb_set(json::jsonb #- '{connection,config,configSource}', '{connection,config,host}', json#> '{connection,config,configSource,hostPort}', true)
+WHERE servicetype = 'Dagster' and json #>'{connection,config,configSource,hostPort}' is not null;
+
+UPDATE topic_entity
+SET json = jsonb_set(json::jsonb #- '{schemaText}', '{messageSchema}', jsonb_build_object('schemaText', json#>'{schemaText}'), true)
+WHERE json #> '{schemaText}' IS NOT NULL;
+
+UPDATE topic_entity
+SET json = jsonb_set(json::jsonb #- '{schemaType}', '{messageSchema,schemaType}', json#> '{schemaType}', true)
+WHERE json #> '{schemaType}' IS NOT NULL;

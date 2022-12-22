@@ -93,18 +93,17 @@ import org.openmetadata.service.util.JsonUtils;
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private static final String SENDING_REQUEST_TO_ELASTIC_SEARCH = "Sending request to ElasticSearch {}";
   private final RestHighLevelClient client;
-  private final ElasticSearchIndexDefinition esIndexDefinition;
   private final CollectionDAO dao;
   private static final String SERVICE_NAME = "service.name";
   private static final String DATABASE_NAME = "database.name";
 
   public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
-    super(esConfig.getBatchSize(), new ArrayList<>());
+    super(esConfig.getBatchSize());
     this.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
-    esIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+    ElasticSearchIndexDefinition esIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
     esIndexDefinition.createIndexes();
   }
 

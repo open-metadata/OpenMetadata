@@ -190,64 +190,6 @@ site_menu:
     url: /connectors/database/athena/airflow
   - category: Connectors / Database / Athena / CLI
     url: /connectors/database/athena/cli
-  - category: Connectors / Database / BigQuery
-    url: /connectors/database/bigquery
-  - category: Connectors / Database / BigQuery / Airflow
-    url: /connectors/database/bigquery/airflow
-  - category: Connectors / Database / BigQuery / CLI
-    url: /connectors/database/bigquery/cli
-  - category: Connectors / Database / Snowflake
-    url: /connectors/database/snowflake
-  - category: Connectors / Database / Snowflake / Airflow
-    url: /connectors/database/snowflake/airflow
-  - category: Connectors / Database / Snowflake / CLI
-    url: /connectors/database/snowflake/cli
-  - category: Connectors / Database / Redshift
-    url: /connectors/database/redshift
-  - category: Connectors / Database / Redshift / Airflow
-    url: /connectors/database/redshift/airflow
-  - category: Connectors / Database / Redshift / CLI
-    url: /connectors/database/redshift/cli
-  - category: Connectors / Database / Redshift / Troubleshooting
-    url: /connectors/database/redshift/troubleshooting
-  - category: Connectors / Database / Glue
-    url: /connectors/database/glue
-  - category: Connectors / Database / Glue / Airflow
-    url: /connectors/database/glue/airflow
-  - category: Connectors / Database / Glue / CLI
-    url: /connectors/database/glue/cli
-  - category: Connectors / Database / MSSQL
-    url: /connectors/database/mssql
-  - category: Connectors / Database / MSSQL / Airflow
-    url: /connectors/database/mssql/airflow
-  - category: Connectors / Database / MSSQL / CLI
-    url: /connectors/database/mssql/cli
-  - category: Connectors / Database / Postgres
-    url: /connectors/database/postgres
-  - category: Connectors / Database / Postgres / Airflow
-    url: /connectors/database/postgres/airflow
-  - category: Connectors / Database / Postgres / CLI
-    url: /connectors/database/postgres/cli
-  - category: Connectors / Database / Postgres / Troubleshooting
-    url: /connectors/database/postgres/troubleshooting
-  - category: Connectors / Database / MySQL
-    url: /connectors/database/mysql
-  - category: Connectors / Database / MySQL / Airflow
-    url: /connectors/database/mysql/airflow
-  - category: Connectors / Database / MySQL / CLI
-    url: /connectors/database/mysql/cli
-  - category: Connectors / Database / Oracle
-    url: /connectors/database/oracle
-  - category: Connectors / Database / Oracle / Airflow
-    url: /connectors/database/oracle/airflow
-  - category: Connectors / Database / Oracle / CLI
-    url: /connectors/database/oracle/cli
-  - category: Connectors / Database / Clickhouse
-    url: /connectors/database/clickhouse
-  - category: Connectors / Database / Clickhouse / Airflow
-    url: /connectors/database/clickhouse/airflow
-  - category: Connectors / Database / Clickhouse / CLI
-    url: /connectors/database/clickhouse/cli
   - category: Connectors / Database / AzureSQL
     url: /connectors/database/azuresql
   - category: Connectors / Database / AzureSQL / Airflow
@@ -256,6 +198,18 @@ site_menu:
     url: /connectors/database/azuresql/cli
   - category: Connectors / Database / AzureSQL / Troubleshooting
     url: /connectors/database/azuresql/troubleshooting
+  - category: Connectors / Database / BigQuery
+    url: /connectors/database/bigquery
+  - category: Connectors / Database / BigQuery / Airflow
+    url: /connectors/database/bigquery/airflow
+  - category: Connectors / Database / BigQuery / CLI
+    url: /connectors/database/bigquery/cli
+  - category: Connectors / Database / Clickhouse
+    url: /connectors/database/clickhouse
+  - category: Connectors / Database / Clickhouse / Airflow
+    url: /connectors/database/clickhouse/airflow
+  - category: Connectors / Database / Clickhouse / CLI
+    url: /connectors/database/clickhouse/cli
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Airflow
@@ -284,6 +238,14 @@ site_menu:
     url: /connectors/database/deltalake/airflow
   - category: Connectors / Database / DeltaLake / CLI
     url: /connectors/database/deltalake/cli
+  - category: Connectors / Database / Domo Database
+    url: /connectors/database/domo-database
+  - category: Connectors / Database / Domo Database / Airflow
+    url: /connectors/database/domo-database/airflow
+  - category: Connectors / Database / Domo Database / CLI
+    url: /connectors/database/domo-database/cli
+  - category: Connectors / Database / Domo Database / Troubleshoot
+    url: /connectors/database/domo-database/troubleshoot
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
   - category: Connectors / Database / Druid / Airflow
@@ -296,6 +258,12 @@ site_menu:
     url: /connectors/database/dynamodb/airflow
   - category: Connectors / Database / DynamoDB / CLI
     url: /connectors/database/dynamodb/cli
+  - category: Connectors / Database / Glue
+    url: /connectors/database/glue
+  - category: Connectors / Database / Glue / Airflow
+    url: /connectors/database/glue/airflow
+  - category: Connectors / Database / Glue / CLI
+    url: /connectors/database/glue/cli
   - category: Connectors / Database / Hive
     url: /connectors/database/hive
   - category: Connectors / Database / Hive / Airflow
@@ -304,18 +272,52 @@ site_menu:
     url: /connectors/database/hive/cli
   - category: Connectors / Database / Hive / Troubleshooting
     url: /connectors/database/hive/troubleshooting
+  - category: Connectors / Database / MariaDB
+    url: /connectors/database/mariadb
+  - category: Connectors / Database / MariaDB / Airflow
+    url: /connectors/database/mariadb/airflow
+  - category: Connectors / Database / MariaDB / CLI
+    url: /connectors/database/mariadb/cli
+  - category: Connectors / Database / MSSQL
+    url: /connectors/database/mssql
+  - category: Connectors / Database / MSSQL / Airflow
+    url: /connectors/database/mssql/airflow
+  - category: Connectors / Database / MSSQL / CLI
+    url: /connectors/database/mssql/cli
+  - category: Connectors / Database / MySQL
+    url: /connectors/database/mysql
+  - category: Connectors / Database / MySQL / Airflow
+    url: /connectors/database/mysql/airflow
+  - category: Connectors / Database / MySQL / CLI
+    url: /connectors/database/mysql/cli
+  - category: Connectors / Database / Oracle
+    url: /connectors/database/oracle
+  - category: Connectors / Database / Oracle / Airflow
+    url: /connectors/database/oracle/airflow
+  - category: Connectors / Database / Oracle / CLI
+    url: /connectors/database/oracle/cli
+  - category: Connectors / Database / Postgres
+    url: /connectors/database/postgres
+  - category: Connectors / Database / Postgres / Airflow
+    url: /connectors/database/postgres/airflow
+  - category: Connectors / Database / Postgres / CLI
+    url: /connectors/database/postgres/cli
+  - category: Connectors / Database / Postgres / Troubleshooting
+    url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
   - category: Connectors / Database / Presto / Airflow
     url: /connectors/database/presto/airflow
   - category: Connectors / Database / Presto / CLI
     url: /connectors/database/presto/cli
-  - category: Connectors / Database / Trino
-    url: /connectors/database/trino
-  - category: Connectors / Database / Trino / Airflow
-    url: /connectors/database/trino/airflow
-  - category: Connectors / Database / Trino / CLI
-    url: /connectors/database/trino/cli
+  - category: Connectors / Database / Redshift
+    url: /connectors/database/redshift
+  - category: Connectors / Database / Redshift / Airflow
+    url: /connectors/database/redshift/airflow
+  - category: Connectors / Database / Redshift / CLI
+    url: /connectors/database/redshift/cli
+  - category: Connectors / Database / Redshift / Troubleshooting
+    url: /connectors/database/redshift/troubleshooting
   - category: Connectors / Database / Salesforce
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Airflow
@@ -328,27 +330,24 @@ site_menu:
     url: /connectors/database/singlestore/airflow
   - category: Connectors / Database / SingleStore / CLI
     url: /connectors/database/singlestore/cli
+  - category: Connectors / Database / Snowflake
+    url: /connectors/database/snowflake
+  - category: Connectors / Database / Snowflake / Airflow
+    url: /connectors/database/snowflake/airflow
+  - category: Connectors / Database / Snowflake / CLI
+    url: /connectors/database/snowflake/cli
+  - category: Connectors / Database / Trino
+    url: /connectors/database/trino
+  - category: Connectors / Database / Trino / Airflow
+    url: /connectors/database/trino/airflow
+  - category: Connectors / Database / Trino / CLI
+    url: /connectors/database/trino/cli
   - category: Connectors / Database / Vertica
     url: /connectors/database/vertica
   - category: Connectors / Database / Vertica / Airflow
     url: /connectors/database/vertica/airflow
   - category: Connectors / Database / Vertica / CLI
     url: /connectors/database/vertica/cli
-  - category: Connectors / Database / MariaDB
-    url: /connectors/database/mariadb
-  - category: Connectors / Database / MariaDB / Airflow
-    url: /connectors/database/mariadb/airflow
-  - category: Connectors / Database / MariaDB / CLI
-    url: /connectors/database/mariadb/cli
-  - category: Connectors / Database / Domo Database
-    url: /connectors/database/domo-database
-  - category: Connectors / Database / Domo Database / Airflow
-    url: /connectors/database/domo-database/airflow
-  - category: Connectors / Database / Domo Database / CLI
-    url: /connectors/database/domo-database/cli
-  - category: Connectors / Database / Domo Database / Troubleshoot
-    url: /connectors/database/domo-database/troubleshoot
-
   - category: Connectors / Dashboard
     url: /connectors/dashboard
   - category: Connectors / Dashboard / Looker
@@ -586,6 +585,9 @@ site_menu:
 
   - category: Features / Data Insights
     url: /openmetadata/data-insight
+
+  - category: Features / Alerts & Notifications
+    url: /openmetadata/alerts-notifications
 
   - category: Main Concepts
     url: /main-concepts

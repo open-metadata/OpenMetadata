@@ -22,7 +22,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import Services from '../../components/Services/Services';
-import { pagingObject } from '../../constants/constants';
+import { pagingObject, SERVICE_VIEW_CAP } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { ServiceCategory as Category } from '../../enums/service.enum';
@@ -59,7 +59,7 @@ const ServicesPage = () => {
   const getServiceDetails = async (type: string) => {
     setIsLoading(true);
     try {
-      const { data, paging } = await getServices(type);
+      const { data, paging } = await getServices(type, SERVICE_VIEW_CAP);
       setServiceDetails(data);
       setPaging(paging);
     } catch (error) {

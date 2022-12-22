@@ -29,6 +29,9 @@ export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
 export const GRAYED_OUT_COLOR = '#CCCCCC';
 
+export const DEFAULT_CHART_OPACITY = 1;
+export const HOVER_CHART_OPACITY = 0.3;
+
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
 export const TAG_VIEW_CAP = 33;
@@ -38,6 +41,7 @@ export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 12;
 export const PAGE_SIZE_MEDIUM = 15;
+export const SERVICE_VIEW_CAP = 20;
 export const PAGE_SIZE_LARGE = 100;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;

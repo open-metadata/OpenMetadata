@@ -23,8 +23,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
@@ -33,29 +31,24 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.joda.time.Period;
-import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.filter.EventFilter;
-import org.openmetadata.schema.filter.Filters;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.FailureDetails;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlHyperParameter;
-import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -90,8 +83,6 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
-  public static final Comparator<Filters> compareFilters = Comparator.comparing(Filters::getEventType);
-  public static final Comparator<EventFilter> compareEventFilters = Comparator.comparing(EventFilter::getEntityType);
 
   //
   // Matchers used for matching two items in a list
@@ -124,14 +115,6 @@ public final class EntityUtil {
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
-  public static final BiPredicate<FailureDetails, FailureDetails> failureDetailsMatch =
-      (failureDetails1, failureDetails2) ->
-          Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
-              && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
-
-  public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
-      (filter1, filter2) ->
-          filter1.getEntityType().equals(filter2.getEntityType()) && filter1.getFilters().equals(filter2.getFilters());
 
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
@@ -146,32 +129,11 @@ public final class EntityUtil {
 
   public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
+  public static final BiPredicate<Field, Field> schemaFieldMatch =
+      (field1, field2) ->
+          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+
   private EntityUtil() {}
-
-  /** Validate Ingestion Schedule */
-  public static void validateIngestionSchedule(Schedule ingestion) {
-    if (ingestion == null) {
-      return;
-    }
-    String duration = ingestion.getRepeatFrequency();
-
-    // ISO8601 duration format is P{y}Y{m}M{d}DT{h}H{m}M{s}S.
-    String[] splits = duration.split("T");
-    if (splits[0].contains("Y") || splits[0].contains("M") || (splits.length == 2 && splits[1].contains("S"))) {
-      throw new IllegalArgumentException(
-          "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - " + "example P{d}DT{h}H{m}M");
-    }
-
-    Period period;
-    try {
-      period = ISOPeriodFormat.standard().parsePeriod(duration);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid ingestion repeatFrequency " + duration, e);
-    }
-    if (period.toStandardMinutes().getMinutes() < 60) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency is too short and must be more than 60 minutes");
-    }
-  }
 
   /** Validate that JSON payload can be turned into POJO object */
   public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException, IOException {
@@ -375,6 +337,15 @@ public final class EntityUtil {
         : FullyQualifiedName.build("columns", localColumnName, columnField);
   }
 
+  /** Return schema field name of format "schemaFields".fieldName.fieldName */
+  public static String getSchemaField(Topic topic, Field field, String fieldName) {
+    // Remove topic FQN from schemaField FQN to get the local name
+    String localFieldName = EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("schemaFields", localFieldName)
+        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+  }
+
   /** Return rule field name of format "rules".ruleName.ruleFieldName */
   public static String getRuleField(Rule rule, String ruleField) {
     return ruleField == null
@@ -400,19 +371,6 @@ public final class EntityUtil {
 
   public static Double nextMajorVersion(Double version) {
     return Math.round((version + 1.0) * 10.0) / 10.0;
-  }
-
-  public static void addSoftDeleteFilter(List<Filters> filters) {
-    // Add filter for soft delete events if delete event type is requested
-    Optional<Filters> deleteFilter =
-        filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
-    deleteFilter.ifPresent(
-        eventFilter ->
-            filters.add(
-                new Filters()
-                    .withEventType(EventType.ENTITY_SOFT_DELETED)
-                    .withInclude(eventFilter.getInclude())
-                    .withExclude(eventFilter.getExclude())));
   }
 
   public static EntityReference copy(EntityReference from, EntityReference to) {
@@ -490,5 +448,9 @@ public final class EntityUtil {
 
   public static EntityReference getEntityReference(EntityInterface entity) {
     return entity == null ? null : entity.getEntityReference();
+  }
+
+  public static Column getColumn(Table table, String columnName) {
+    return table.getColumns().stream().filter(c -> c.getName().equals(columnName)).findFirst().orElse(null);
   }
 }

@@ -139,6 +139,7 @@ const TourPage = () => {
             followedData={[]}
             followedDataCount={1}
             isFeedLoading={false}
+            isLoadingOwnedData={false}
             ownedData={[]}
             ownedDataCount={1}
             paging={{} as Paging}

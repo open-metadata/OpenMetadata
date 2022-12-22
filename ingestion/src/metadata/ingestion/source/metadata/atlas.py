@@ -266,30 +266,33 @@ class AtlasSource(Source):
                         entity=Table, fqn=table_fqn
                     )
 
-                    if tbl_attrs.get("description", None) and table_object:
-                        self.metadata.patch_description(
-                            entity_id=table_object.id,
-                            entity=Table,
-                            description=tbl_attrs["description"],
-                            force=True,
+                    if table_object:
+                        if tbl_attrs.get("description", None):
+                            self.metadata.patch_description(
+                                entity_id=table_object.id,
+                                entity=Table,
+                                description=tbl_attrs["description"],
+                                force=True,
+                            )
+
+                        tag_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Tag,
+                            tag_category_name=ATLAS_TAG_CATEGORY,
+                            tag_name=ATLAS_TABLE_TAG,
                         )
 
-                    tag_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Tag,
-                        tag_category_name=ATLAS_TAG_CATEGORY,
-                        tag_name=ATLAS_TABLE_TAG,
-                    )
-
-                    self.metadata.patch_tag(
-                        entity=Table, entity_id=table_object.id, tag_fqn=tag_fqn
-                    )
+                        self.metadata.patch_tag(
+                            entity=Table, entity_id=table_object.id, tag_fqn=tag_fqn
+                        )
 
                     yield from self.ingest_lineage(tbl_entity["guid"], name)
 
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to parse {table_entity}: {exc}")
+                    logger.warning(
+                        f"Failed to parse for database : {db_entity} - table {table}: {exc}"
+                    )
 
     def get_tags(self):
         tags = [

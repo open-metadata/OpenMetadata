@@ -89,10 +89,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}
       />,
       {
@@ -109,10 +111,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}
       />,
       {
@@ -129,10 +133,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={10}>
         <p>hello world</p>
       </SearchedData>,
@@ -148,10 +154,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={mockData}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={11}>
         <p>hello world</p>
       </SearchedData>,
@@ -167,11 +175,13 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         showOnboardingTemplate
         currentPage={0}
         data={[]}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={0}
       />,
       {
@@ -186,10 +196,12 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData
         isFilterSelected
+        isSummaryPanelVisible
         currentPage={0}
         data={[]}
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         paginate={mockPaginate}
+        selectedEntityName="name1"
         totalValue={0}
       />,
       {

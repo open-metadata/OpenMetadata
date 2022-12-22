@@ -90,6 +90,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -119,6 +120,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/users")
@@ -1040,6 +1042,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException(
           String.format("Bot user [%s] is already used by [%s] bot.", user.getName(), bot.getName()));
     }
+    // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
+    if (original != null) {
+      user.setRoles(original.getRoles());
+    } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
+      user.setRoles(UserUtil.getRoleForBot(botName));
+    }
     // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
@@ -1116,7 +1124,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private User retrieveBotUser(User user, UriInfo uriInfo) {
     User original;
     try {
-      original = dao.getByName(uriInfo, user.getFullyQualifiedName(), new Fields(List.of("authenticationMechanism")));
+      original = dao.getByName(uriInfo, user.getFullyQualifiedName(), dao.getFieldsWithUserAuth("*"));
     } catch (EntityNotFoundException | IOException exc) {
       LOG.debug(String.format("User not found when adding auth mechanism for: [%s]", user.getName()));
       original = null;

@@ -26,6 +26,14 @@
     "connection": {
       "$ref": "../../entity/services/mlmodelService.json#/definitions/mlModelConnection"
     },
+    "tags": {
+      "description": "Tags for this MlModel Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "owner": {
       "description": "Owner of this mlModel service.",
       "$ref": "../../type/entityReference.json"

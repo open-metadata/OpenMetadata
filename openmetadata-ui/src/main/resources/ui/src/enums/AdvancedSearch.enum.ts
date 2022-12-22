@@ -30,3 +30,15 @@ export enum AdvancedFields {
   CHART = 'chart_suggest',
   TASK = 'task_suggest',
 }
+
+export enum EntityFields {
+  OWNER = 'owner.name',
+  TAG = 'tags.tagFQN',
+  TIER = 'tier.tagFQN',
+  SERVICE = 'service.name',
+  DATABASE = 'database.name',
+  DATABASE_SCHEMA = 'databaseSchema.name',
+  COLUMN = 'columns.name',
+  CHART = 'charts.name',
+  TASK = 'tasks.name',
+}

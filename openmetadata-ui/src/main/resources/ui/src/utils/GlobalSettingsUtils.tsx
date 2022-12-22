@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import i18next from 'i18next';
 import { camelCase } from 'lodash';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
@@ -19,6 +21,7 @@ import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-acti
 import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
+import { ReactComponent as BellIcon } from '../../src/assets/svg/ic-alert-bell.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as OMLogo } from '../../src/assets/svg/metadata.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
@@ -42,6 +45,7 @@ export interface MenuListItem {
 export interface MenuList {
   category: string;
   items: MenuListItem[];
+  isBeta?: boolean;
 }
 
 export const getGlobalSettingsMenuWithPermission = (
@@ -154,15 +158,18 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: 'Collaboration',
+      category: i18next.t('label.notification-plural'),
+      isBeta: true,
       items: [
         {
-          label: 'Activity Feed',
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.FEED,
-            permissions
-          ),
+          label: i18next.t('label.activity-feeds'),
+          isProtected: Boolean(isAdminUser),
           icon: <AllActivityIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.alert-plural'),
+          isProtected: Boolean(isAdminUser),
+          icon: <BellIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -249,12 +256,13 @@ export const getGlobalSettingMenuItem = (
     isProtected: boolean;
     icon: React.ReactNode;
   }[],
-  type?: string
+  type?: string,
+  isBeta?: boolean
 ): {
   key: string;
   icon: React.ReactNode;
   children: ItemType[] | undefined;
-  label: string;
+  label: ReactNode;
   type: string | undefined;
 } => {
   const subItems = children
@@ -269,7 +277,13 @@ export const getGlobalSettingMenuItem = (
     key: `${category}.${key}`,
     icon,
     children: subItems,
-    label,
+    label: isBeta ? (
+      <Badge color="#7147e8" count="beta" offset={[30, 8]} size="small">
+        {label}
+      </Badge>
+    ) : (
+      label
+    ),
     type,
   };
 };

@@ -20,7 +20,7 @@ import { Thread } from '../../../generated/entity/feed/thread';
 interface CommentModalProps {
   taskDetail: Thread;
   comment: string;
-  isVisible: boolean;
+  open: boolean;
   setComment: (value: string) => void;
   onClose: () => void;
   onConfirm: () => void;
@@ -30,7 +30,7 @@ interface CommentModalProps {
 const CommentModal: FC<CommentModalProps> = ({
   taskDetail,
   comment,
-  isVisible,
+  open,
   setComment,
   onClose,
   onConfirm,
@@ -54,9 +54,9 @@ const CommentModal: FC<CommentModalProps> = ({
         className: 'ant-btn-primary-custom',
       }}
       okText="Close with comment"
+      open={open}
       title={`Close Task #${taskDetail.task?.id} ${taskDetail.message}`}
-      visible={isVisible}
-      width={700}
+      width={900}
       onCancel={onClose}
       onOk={onConfirm}>
       <RichTextEditor

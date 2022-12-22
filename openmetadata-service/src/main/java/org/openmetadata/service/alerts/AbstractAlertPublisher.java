@@ -1,28 +1,15 @@
 package org.openmetadata.service.alerts;
 
-import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.entity.alerts.AlertFilterRule;
-import org.openmetadata.schema.entity.alerts.TriggerConfig;
-import org.openmetadata.schema.filter.EventFilter;
-import org.openmetadata.schema.filter.Filters;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.EventPublisher;
 import org.openmetadata.service.events.errors.RetriableException;
 import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
-import org.openmetadata.service.util.FilterUtil;
-import org.springframework.expression.Expression;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public abstract class AbstractAlertPublisher implements EventPublisher {
@@ -36,8 +23,6 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
   protected int currentBackoffTime = BACKOFF_NORMAL;
   protected final List<ChangeEvent> batch = new ArrayList<>();
 
-  protected final ConcurrentHashMap<String, Map<EventType, Filters>> filter = new ConcurrentHashMap<>();
-
   protected final Alert alert;
 
   protected final AlertAction alertAction;
@@ -47,19 +32,6 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     this.alert = alert;
     this.alertAction = alertAction;
     this.batchSize = alertAction.getBatchSize();
-    updateFilter(alert.getTriggerConfig().getEventFilters());
-  }
-
-  protected void updateFilter(List<EventFilter> filterList) {
-    filterList.forEach(
-        (entityFilter) -> {
-          String entityType = entityFilter.getEntityType();
-          Map<EventType, Filters> entityBasicFilterMap = new HashMap<>();
-          if (entityFilter.getFilters() != null) {
-            entityFilter.getFilters().forEach((f) -> entityBasicFilterMap.put(f.getEventType(), f));
-          }
-          filter.put(entityType, entityBasicFilterMap);
-        });
   }
 
   @Override
@@ -69,12 +41,12 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     ChangeEvent changeEvent = changeEventHolder.get();
 
     // Evaluate Alert Trigger Config
-    if (!shouldTriggerAlert(changeEvent)) {
+    if (!AlertUtil.shouldTriggerAlert(changeEvent.getEntityType(), alert.getTriggerConfig())) {
       return;
     }
 
     // Evaluate ChangeEvent Alert Filtering
-    if (!evaluateAlertConditions(changeEvent)) {
+    if (!AlertUtil.evaluateAlertConditions(changeEvent, alert.getFilteringRules())) {
       return;
     }
 
@@ -109,31 +81,5 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     } else if (currentBackoffTime == BACKOFF_1_HOUR) {
       currentBackoffTime = BACKOFF_24_HOUR;
     }
-  }
-
-  private boolean shouldTriggerAlert(ChangeEvent changeEvent) {
-    // OpenMetadataWide Setting apply to all ChangeEvents
-    if (alert.getTriggerConfig().getType() == TriggerConfig.AlertTriggerType.OPEN_METADATA_WIDE) {
-      return true;
-    } else {
-      // Use Trigger Specific Settings
-      return filter.isEmpty() || FilterUtil.shouldProcessRequest(changeEvent, filter);
-    }
-  }
-
-  private boolean evaluateAlertConditions(ChangeEvent changeEvent) {
-    boolean result = false;
-    for (AlertFilterRule rule : alert.getFilteringRules()) {
-      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      StandardEvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-      Expression expression = parseExpression(rule.getCondition());
-      if (rule.getEffect() == AlertFilterRule.Effect.ALLOW) {
-        result = Boolean.TRUE.equals(expression.getValue(evaluationContext, Boolean.class));
-      } else if (rule.getEffect() == AlertFilterRule.Effect.DENY) {
-        result = Boolean.FALSE.equals(expression.getValue(evaluationContext, Boolean.class));
-      }
-      LOG.debug("Alert evaluated as Result : {}", result);
-    }
-    return result;
   }
 }

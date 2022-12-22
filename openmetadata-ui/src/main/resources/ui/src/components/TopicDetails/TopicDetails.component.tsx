@@ -51,6 +51,7 @@ import { getLineageViewPath } from '../../utils/RouterUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getConfigObject } from '../../utils/TopicDetailsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -190,15 +191,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     ];
   };
 
-  const getConfigObject = () => {
-    return {
-      Partitions: partitions,
-      'Replication Factor': replicationFactor,
-      'Retention Size': retentionSize,
-      'CleanUp Policies': cleanupPolicies,
-      'Max Message Size': maximumMessageSize,
-    };
-  };
   const tabs = [
     {
       name: t('label.schema'),
@@ -632,7 +624,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               )}
               {activeTab === 4 && (
                 <div data-testid="config">
-                  <SchemaEditor value={JSON.stringify(getConfigObject())} />
+                  <SchemaEditor
+                    value={JSON.stringify(getConfigObject(topicDetails))}
+                  />
                 </div>
               )}
               {activeTab === 5 && (

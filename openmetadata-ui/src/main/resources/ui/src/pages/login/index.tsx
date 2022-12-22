@@ -189,7 +189,7 @@ const SigninPage = () => {
               'sso-container': !isAuthProviderBasic,
             })}>
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text className="mt-8 w-80 text-xl text-semi-bold text-grey-muted">
+            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('label.om-description')}{' '}
             </Typography.Text>
 

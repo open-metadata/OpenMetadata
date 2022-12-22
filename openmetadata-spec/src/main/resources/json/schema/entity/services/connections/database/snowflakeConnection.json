@@ -98,12 +98,15 @@
     "supportsLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
     "supportsDatabase": {
-      "title": "Supports Profiler",
+      "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
     },
     "supportsQueryComment": {

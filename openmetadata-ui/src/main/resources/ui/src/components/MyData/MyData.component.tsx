@@ -60,10 +60,11 @@ const MyData: React.FC<MyDataProps> = ({
   fetchFeedHandler,
   paging,
   updateThreadHandler,
+  isLoadingOwnedData,
 }: MyDataProps): React.ReactElement => {
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-  const [feedFilter, setFeedFilter] = useState(FeedFilter.ALL);
+  const [feedFilter, setFeedFilter] = useState(FeedFilter.OWNER);
   const [threadType, setThreadType] = useState<ThreadType>();
 
   const getLeftPanel = () => {
@@ -138,6 +139,7 @@ const MyData: React.FC<MyDataProps> = ({
               </>
             }
             headerTextLabel="My Data"
+            isLoadingOwnedData={isLoadingOwnedData}
             noDataPlaceholder={<>You have not owned anything yet.</>}
             testIDText="My data"
           />
@@ -166,6 +168,7 @@ const MyData: React.FC<MyDataProps> = ({
               </>
             }
             headerTextLabel="Following"
+            isLoadingOwnedData={isLoadingOwnedData}
             noDataPlaceholder={<>You have not followed anything yet.</>}
             testIDText="Following data"
           />
@@ -173,30 +176,25 @@ const MyData: React.FC<MyDataProps> = ({
         <div className="tw-mt-5" />
       </>
     );
-  }, [ownedData, followedData, pendingTaskCount]);
+  }, [ownedData, followedData, pendingTaskCount, isLoadingOwnedData]);
 
-  const getLoader = () => {
-    return isFeedLoading ? <Loader /> : null;
-  };
-
-  const fetchMoreFeed = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      isMounted.current
-    ) {
-      fetchFeedHandler(feedFilter, pagingObj.after, threadType);
-    }
-  };
+  const fetchMoreFeed = useCallback(
+    (isElementInView: boolean, pagingObj: Paging) => {
+      if (
+        isElementInView &&
+        pagingObj?.after &&
+        !isFeedLoading &&
+        isMounted.current
+      ) {
+        fetchFeedHandler(feedFilter, pagingObj.after, threadType);
+      }
+    },
+    [isFeedLoading, threadType, fetchFeedHandler, isMounted.current]
+  );
 
   useEffect(() => {
-    fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
-  }, [isInView, paging, isFeedLoading]);
+    fetchMoreFeed(Boolean(isInView), paging);
+  }, [isInView, paging]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -215,7 +213,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   // Check if feedFilter or ThreadType filter is applied or not
   const filtersApplied = useMemo(
-    () => feedFilter === FeedFilter.ALL && !threadType,
+    () => feedFilter === FeedFilter.OWNER && !threadType,
     [feedFilter, threadType]
   );
 
@@ -243,12 +241,12 @@ const MyData: React.FC<MyDataProps> = ({
           ) : (
             !isFeedLoading && <Onboarding />
           )}
+          {isFeedLoading ? <Loader /> : null}
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {getLoader()}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
           {/* Add spacer to work infinite scroll smoothly */}
           <div className="tw-p-4" />
         </Fragment>

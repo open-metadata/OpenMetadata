@@ -45,8 +45,7 @@ base_requirements = {
     "boto3~=1.19.12",
     "botocore==1.22.12",
     "avro-python3==1.10.2",
-    "grpcio-tools",
-    "protobuf",
+    "grpcio-tools==1.48.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.12.0",  # From airflow constraints
@@ -54,7 +53,8 @@ base_requirements = {
     "requests-aws4auth==1.1.2",
     "pymysql>=1.0.2",
     "cached-property==1.5.2",
-    "chardet",
+    "pandas==1.3.5",
+    "chardet==4.0.0",
 }
 
 
@@ -142,7 +142,6 @@ plugins: Dict[str, Set[str]] = {
     },
     "snowflake": {"snowflake-sqlalchemy~=1.4.3"},
     "snowflake-usage": {"snowflake-sqlalchemy~=1.4.3"},
-    "sample-entity": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.50"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
@@ -151,12 +150,12 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.26.1"},
     "sklearn": {"scikit-learn==1.0.2"},
-    "db2": {"ibm-db-sa==0.3.7"},
+    "db2": {"ibm-db-sa==0.3.8"},
     "clickhouse": {"clickhouse-driver==0.2.5", "clickhouse-sqlalchemy==0.2.3"},
     "databricks": {"sqlalchemy-databricks==0.1.0"},
     "singlestore": {"pymysql>=1.0.2"},
     "azure-sso": {"msal~=1.17.0"},
-    "deltalake": {"delta-spark~=2.0.0"},
+    "deltalake": {"delta-spark~=2.2.0"},
     "great-expectations": {"great-expectations~=0.15.0"},
     "pinotdb": {"pinotdb~=0.3.11"},
     "nifi": {},
@@ -183,7 +182,6 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
-    "faker",
     "coverage",
     # sklearn integration
     "scikit-learn==1.0.2",

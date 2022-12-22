@@ -150,7 +150,7 @@ export const excludedService = [
   MetadataServiceType.OpenMetadata,
 ];
 
-export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog'];
+export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
 
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   databaseServices: (Object.values(DatabaseServiceType) as string[])
@@ -190,6 +190,15 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   metadata: ServiceCategory.METADATA_SERVICES,
 };
 
+export const SERVICE_CATEGORY_TYPE = {
+  databaseServices: 'databases',
+  messagingServices: 'messaging',
+  dashboardServices: 'dashboards',
+  pipelineServices: 'pipelines',
+  mlmodelServices: 'mlModels',
+  metadataServices: 'metadata',
+};
+
 export const servicesDisplayName: { [key: string]: string } = {
   databaseServices: i18next.t('label.entity-service', {
     entity: i18next.t('label.database'),
@@ -218,6 +227,7 @@ export const DEF_UI_SCHEMA = {
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsDBTExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
 };
 

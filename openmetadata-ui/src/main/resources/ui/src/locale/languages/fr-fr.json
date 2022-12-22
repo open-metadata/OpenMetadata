@@ -404,7 +404,6 @@
     "edit-team-type": "Mettre à jour le type d'équipe",
     "configure-webhook-type": "Configurer {{webhookType}} Webhooks",
     "ms-teams": "MS Teams",
-    "ms-team": "MS Team",
     "policy-name": "Nom de Police",
     "add-new-policy": "Ajouter une nouvelle police",
     "policies": "Polices",
@@ -426,7 +425,8 @@
     "updated-by": "Mis à jour par",
     "on-lowercase": "sur",
     "webhook-display-text": "Webhook {{displayText}}",
-    "endpoint": "Point de Terminaison"
+    "endpoint": "Point de Terminaison",
+    "profiler-timeout-seconds-label": "Délai d'Attente en Secondes"
   },
   "message": {
     "service-email-required": "Un Email pour le Service account est requis",
@@ -519,7 +519,8 @@
     "field-text-is-required": "{{fieldText}} est requis.",
     "entity-owned-by-name": "Cette Resource appartient à {{entityOwner}}",
     "and-followed-owned-by-name": "et l'équipe suivante appartient à {{userName}}",
-    "field-text-is-invalid": "{{fieldText}} est invalide."
+    "field-text-is-invalid": "{{fieldText}} est invalide.",
+    "profiler-timeout-seconds-message": "Le délai d'attente en seconde est optionel pour le profilage. Si le délai d'attente est atteint le profilage attendra la fin d'éxécution des requêtes qui on débutées pour terminer son éxécution."
   },
   "server": {
     "no-followed-entities": "Vous ne suivez aucunne resources pour le moment.",

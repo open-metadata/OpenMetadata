@@ -50,10 +50,8 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
@@ -108,8 +106,8 @@ import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -209,21 +207,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void post_feedWithoutMessage_4xx() {
-    // Create thread without message field in the request
     CreateThread create = create().withFrom(USER.getName()).withMessage(null);
     assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
   }
 
   @Test
   void post_feedWithoutFrom_4xx() {
-    // Create thread without from field in the request
     CreateThread create = create().withFrom(null);
     assertResponseContains(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
   }
 
   @Test
   void post_feedWithNonExistentFrom_404() {
-    // Create thread with non-existent from
     CreateThread create = create().withFrom(NON_EXISTENT_ENTITY.toString());
     assertResponse(
         () -> createThread(create, AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
@@ -231,7 +226,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void post_feedWithNonExistentAbout_404() {
-    // Create thread with non-existent addressed To entity
     CreateThread create = create().withAbout("<#E::table::invalidTableName>");
     assertResponse(
         () -> createThread(create, AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TABLE, "invalidTableName"));
@@ -594,15 +588,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
     resolveTask(taskId, resolveTask, userAuthHeaders);
-    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
-    Optional<Table> table =
-        tables.getData().stream()
-            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
-            .findFirst();
-    assertTrue(table.isPresent());
-    assertEquals(
-        "accepted description",
-        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription());
+    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, userAuthHeaders);
+    assertEquals("accepted description", EntityUtil.getColumn(table, ("c1")).getDescription());
 
     Thread taskThread = getTask(taskId, userAuthHeaders);
     task = taskThread.getTask();
@@ -640,27 +627,14 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(task.getId());
     int taskId = task.getId();
 
-    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
-    Optional<Table> table =
-        tables.getData().stream()
-            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
-            .findFirst();
-    assertTrue(table.isPresent());
-    String oldDescription =
-        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription();
+    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, userAuthHeaders);
+    String oldDescription = EntityUtil.getColumn(table, "c1").getDescription();
 
     closeTask(taskId, "closing comment", userAuthHeaders);
 
     // closing the task should not affect description of the table
-    tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
-    table =
-        tables.getData().stream()
-            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
-            .findFirst();
-    assertTrue(table.isPresent());
-    assertEquals(
-        oldDescription,
-        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription());
+    table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, userAuthHeaders);
+    assertEquals(oldDescription, EntityUtil.getColumn(table, "c1").getDescription());
 
     Thread taskThread = getTask(taskId, userAuthHeaders);
     task = taskThread.getTask();
@@ -701,16 +675,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     ResolveTask resolveTask = new ResolveTask().withNewValue(newValue);
     resolveTask(taskId, resolveTask, userAuthHeaders);
-    Map<String, String> params = new HashMap<>();
-    params.put("fields", "tags");
-    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(params, userAuthHeaders);
-    Optional<Table> table =
-        tables.getData().stream()
-            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
-            .findFirst();
-    assertTrue(table.isPresent());
-    List<TagLabel> tags =
-        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getTags();
+    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), "tags", userAuthHeaders);
+    List<TagLabel> tags = EntityUtil.getColumn(table, "c1").getTags();
     assertEquals(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
 
     Thread taskThread = getTask(taskId, userAuthHeaders);
@@ -983,7 +949,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withMessage("Announcement Two")
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails);
-    Thread thread2 = createAndCheck(create, userAuthHeaders);
+    Thread thread2 = createAndCheck(create2, userAuthHeaders);
 
     String originalJson = JsonUtils.pojoToJson(thread2);
 

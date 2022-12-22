@@ -340,6 +340,7 @@ const mockProp: MyDataProps = {
   fetchFeedHandler: mockFetchFeedHandler,
   followedData: currentUserMockData,
   isFeedLoading: false,
+  isLoadingOwnedData: false,
   ownedData: currentUserMockData,
   paging: mockPaging,
   postFeedHandler: postFeed,

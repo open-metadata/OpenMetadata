@@ -13,29 +13,28 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.service.Entity.ALERT;
 import static org.openmetadata.service.Entity.ALERT_ACTION;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
 
-import com.lmax.disruptor.BatchEventProcessor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.alerts.AlertActionStatus;
 import org.openmetadata.schema.entity.alerts.AlertFilterRule;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FailureDetails;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.AlertUtil;
-import org.openmetadata.service.alerts.AlertsActionPublisher;
-import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.resources.alerts.AlertResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -44,12 +43,8 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class AlertRepository extends EntityRepository<Alert> {
   public static final String COLLECTION_PATH = "/v1/alerts";
-  static final String ALERT_PATCH_FIELDS = "triggerConfig,filteringRules,alertActions";
-  static final String ALERT_UPDATE_FIELDS = "triggerConfig,filteringRules,alertActions";
-
-  // Alert is mapped to different publisher
-  private static final ConcurrentHashMap<UUID, List<AlertsActionPublisher>> alertPublisherMap =
-      new ConcurrentHashMap<>();
+  static final String ALERT_PATCH_FIELDS = "owner,triggerConfig,filteringRules,alertActions";
+  static final String ALERT_UPDATE_FIELDS = "owner,triggerConfig,filteringRules,alertActions";
 
   public AlertRepository(CollectionDAO dao) {
     super(
@@ -65,11 +60,13 @@ public class AlertRepository extends EntityRepository<Alert> {
   @Override
   public Alert setFields(Alert entity, Fields fields) throws IOException {
     entity.setAlertActions(fields.contains("alertActions") ? getAlertActions(entity) : null);
+    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity; // No fields to set
   }
 
   @Override
-  public void prepare(Alert entity) {
+  public void prepare(Alert entity) throws IOException {
+    validateAlertActions(entity.getAlertActions());
     validateFilterRules(entity);
   }
 
@@ -99,8 +96,37 @@ public class AlertRepository extends EntityRepository<Alert> {
     storeOwner(entity, entity.getOwner());
     // Store Alert to AlertAction RelationShip
     for (EntityReference actionRef : entity.getAlertActions()) {
-      addRelationship(entity.getId(), actionRef.getId(), ALERT, ALERT_ACTION, Relationship.USES);
+      addRelationship(entity.getId(), actionRef.getId(), ALERT, ALERT_ACTION, Relationship.CONTAINS);
     }
+  }
+
+  public List<AlertAction> getAllAlertActionForAlert(UUID alertId) throws IOException {
+    List<AlertAction> alertActionList = new ArrayList<>();
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        daoCollection.relationshipDAO().findTo(alertId.toString(), ALERT, CONTAINS.ordinal(), ALERT_ACTION);
+    EntityRepository<AlertAction> alertEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      AlertAction alertAction = alertEntityRepository.get(null, record.getId(), alertEntityRepository.getFields("*"));
+      alertAction.setStatusDetails(getActionStatus(alertId, alertAction.getId()));
+      alertActionList.add(alertAction);
+    }
+    return alertActionList;
+  }
+
+  public void validateAlertActions(List<EntityReference> alertRef) throws IOException {
+    if (CommonUtil.nullOrEmpty(alertRef)) {
+      throw new IllegalArgumentException("Alert Action cannot be null or Empty");
+    }
+    for (EntityReference ref : alertRef) {
+      // validate targetDefinition
+      Entity.getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
+    }
+  }
+
+  public AlertActionStatus getActionStatus(UUID alertid, UUID actionId) throws IOException {
+    String status =
+        daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(alertid.toString(), actionId.toString());
+    return JsonUtils.readValue(status, AlertActionStatus.class);
   }
 
   @Override
@@ -113,118 +139,10 @@ public class AlertRepository extends EntityRepository<Alert> {
     return new AlertUpdater(original, updated, operation);
   }
 
-  public void addAlertActionPublishers(Alert alert) throws IOException {
-    EntityRepository<AlertAction> alertActionEntityRepository = Entity.getEntityRepository(ALERT_ACTION);
-    for (EntityReference alertActionRef : alert.getAlertActions()) {
-      AlertAction action =
-          alertActionEntityRepository.get(null, alertActionRef.getId(), alertActionEntityRepository.getFields("*"));
-      addAlertActionPublisher(alert, action);
-    }
-  }
-
-  public void addAlertActionPublisher(Alert alert, AlertAction alertAction) throws IOException {
-    if (Boolean.FALSE.equals(alertAction.getEnabled())) {
-      // Only add alert that is enabled for publishing events
-      setStatus(alert.getId(), alertAction.getId(), AlertActionStatus.Status.DISABLED, null);
-      alertAction.setStatusDetails(new AlertActionStatus().withStatus(AlertActionStatus.Status.DISABLED));
-      return;
-    }
-
-    // Create AlertAction Publisher
-    AlertsActionPublisher publisher = AlertUtil.getAlertPublisher(alert, alertAction, daoCollection);
-    BatchEventProcessor<EventPubSub.ChangeEventHolder> processor = EventPubSub.addEventHandler(publisher);
-    publisher.setProcessor(processor);
-    LOG.info("Alert publisher started for {}", alert.getName());
-
-    List<AlertsActionPublisher> listPublisher =
-        alertPublisherMap.get(alert.getId()) == null ? new ArrayList<>() : alertPublisherMap.get(alert.getId());
-    listPublisher.add(publisher);
-    alertPublisherMap.put(alert.getId(), listPublisher);
-  }
-
-  public AlertActionStatus setStatus(
-      UUID alertId, UUID alertActionId, AlertActionStatus.Status status, FailureDetails failureDetails)
-      throws IOException {
-    AlertActionStatus currentStatus = new AlertActionStatus().withStatus(status).withFailureDetails(failureDetails);
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .insert(alertId.toString(), alertActionId.toString(), "alertActionStatus", JsonUtils.pojoToJson(currentStatus));
-    return currentStatus;
-  }
-
-  public void removeAlertStatus(UUID alertId, UUID alertActionId) {
-    daoCollection.entityExtensionTimeSeriesDao().delete(alertId.toString(), alertActionId.toString());
-  }
-
-  public void removeAllAlertStatus(UUID alertId) {
-    daoCollection.entityExtensionTimeSeriesDao().deleteAll(alertId.toString());
-  }
-
-  public void setStatus(UUID alertId, UUID alertActionId, AlertActionStatus status) throws IOException {
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .insert(alertId.toString(), alertActionId.toString(), "alertActionStatus", JsonUtils.pojoToJson(status));
-  }
-
-  @SneakyThrows
-  public void updateAlertActionPublishers(Alert alert) {
-    // Delete existing alert action publisher and create with the updated Alert
-    // if some alerts are removed or added
-    deleteAlertAllPublishers(alert.getId());
-    addAlertActionPublishers(alert);
-  }
-
-  public void deleteAlertActionPublisher(UUID alertId, AlertAction action) throws InterruptedException {
-    List<AlertsActionPublisher> alertPublishers = alertPublisherMap.get(alertId);
-    if (alertPublishers != null) {
-      int position = -1;
-      for (int i = 0; i < alertPublishers.size(); i++) {
-        AlertsActionPublisher alertsActionPublisher = alertPublishers.get(i);
-        if (alertsActionPublisher.getAlertAction().getId().equals(action.getId())) {
-          alertsActionPublisher.getProcessor().halt();
-          alertsActionPublisher.awaitShutdown();
-          EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
-          LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
-          position = i;
-          break;
-        }
-      }
-      if (position != -1) {
-        alertPublishers.remove(position);
-        removeAlertStatus(alertId, action.getId());
-        alertPublisherMap.put(alertId, alertPublishers);
-      }
-    }
-  }
-
-  public void deleteAlertAllPublishers(UUID alertId) throws InterruptedException {
-    List<AlertsActionPublisher> alertPublishers = alertPublisherMap.get(alertId);
-    if (alertPublishers != null) {
-      for (AlertsActionPublisher alertsActionPublisher : alertPublishers) {
-        alertsActionPublisher.getProcessor().halt();
-        alertsActionPublisher.awaitShutdown();
-        EventPubSub.removeProcessor(alertsActionPublisher.getProcessor());
-        LOG.info("Alert publisher deleted for {}", alertsActionPublisher.getAlert().getName());
-      }
-      alertPublisherMap.clear();
-      removeAllAlertStatus(alertId);
-    }
-  }
-
   private List<EntityReference> getAlertActions(Alert entity) throws IOException {
     List<CollectionDAO.EntityRelationshipRecord> testCases =
-        findTo(entity.getId(), ALERT, Relationship.USES, ALERT_ACTION);
+        findTo(entity.getId(), ALERT, Relationship.CONTAINS, ALERT_ACTION);
     return EntityUtil.getEntityReferences(testCases);
-  }
-
-  private AlertsActionPublisher getAlertActionPublisher(UUID alertID, AlertAction alertAction) {
-    List<AlertsActionPublisher> publishers = alertPublisherMap.get(alertID);
-    for (AlertsActionPublisher publisher : publishers) {
-      if (alertAction.equals(publisher.getAlertAction())) {
-        return publisher;
-      }
-    }
-    return null;
   }
 
   public AlertActionStatus getAlertActionStatus(UUID alertID, UUID alertActionId) throws IOException {
@@ -246,14 +164,12 @@ public class AlertRepository extends EntityRepository<Alert> {
           "alertActions",
           ALERT,
           original.getId(),
-          Relationship.USES,
+          Relationship.CONTAINS,
           ALERT_ACTION,
           new ArrayList<>(original.getAlertActions()),
           new ArrayList<>(updated.getAlertActions()),
           false);
-      if (!original.getAlertActions().equals(updated.getAlertActions())) {
-        updateAlertActionPublishers(updated);
-      }
+      AlertsPublisherManager.getInstance().updateAlertActionPublishers(updated);
     }
   }
 }

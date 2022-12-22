@@ -142,9 +142,8 @@ class FivetranClient:
 
 @dataclass
 class DagsterClient:
-    def __init__(self, client, config) -> None:
+    def __init__(self, client) -> None:
         self.client = client
-        self.config = config
 
 
 @dataclass

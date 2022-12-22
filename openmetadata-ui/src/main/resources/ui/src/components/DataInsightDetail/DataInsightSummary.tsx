@@ -15,8 +15,9 @@ import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getTeamByName } from '../../axiosAPIs/teamsAPI';
 import { getUserPath } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,
@@ -28,7 +29,12 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
-import { ChartFilter } from '../../interface/data-insight.interface';
+import { Team } from '../../generated/entity/teams/team';
+import {
+  ChartFilter,
+  DataInsightTabs,
+} from '../../interface/data-insight.interface';
+import { getEntityName } from '../../utils/CommonUtils';
 import {
   getEntitiesChartSummary,
   getWebChartSummary,
@@ -44,6 +50,9 @@ interface Props {
 }
 
 const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
+  const { tab = DataInsightTabs.DATA_ASSETS } =
+    useParams<{ tab: DataInsightTabs }>();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [entitiesCharts, setEntitiesChart] = useState<
     (DataInsightChartResult | undefined)[]
@@ -53,6 +62,8 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   >([]);
 
   const [mostActiveUser, setMostActiveUser] = useState<MostActiveUsers>();
+
+  const [OrganizationDetails, setOrganizationDetails] = useState<Team>();
 
   const entitiesSummaryList = useMemo(
     () => getEntitiesChartSummary(entitiesCharts),
@@ -65,6 +76,15 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   );
 
   const { t } = useTranslation();
+
+  const fetchOrganizationDetails = async () => {
+    try {
+      const data = await getTeamByName('Organization');
+      setOrganizationDetails(data);
+    } catch (err) {
+      // for this API do not show the toast message
+    }
+  };
 
   const fetchEntitiesChartData = async () => {
     setIsLoading(true);
@@ -151,6 +171,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   };
 
   useEffect(() => {
+    fetchOrganizationDetails();
     fetchEntitiesChartData();
     fetchMostActiveUser();
     fetchWebChartData();
@@ -158,73 +179,87 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   return (
     <Card
+      bodyStyle={{ paddingTop: 0 }}
       className="data-insight-card"
       data-testid="summary-card"
       loading={isLoading}
       title={
         <Typography.Title level={5}>
-          {t('label.data-insight-summary')}
+          {t('label.data-insight-summary', {
+            organization:
+              getEntityName(OrganizationDetails) || t('label.open-metadata'),
+          })}
         </Typography.Title>
       }>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
-        {/* summary of entity charts */}
-        {entitiesSummaryList.map((summary) => (
-          <Col
-            className="summary-card-item"
-            data-testid={`summary-item-${summary.id}`}
-            key={summary.id}
-            span={6}
-            onClick={() => onScrollToChart(summary.id)}>
-            <Typography.Text className="data-insight-label-text">
-              {summary.label}
-            </Typography.Text>
-            <Typography className="font-semibold text-2xl m--ml-0.5">
-              {summary.latest}
-              {summary.id.startsWith('Percentage') ? '%' : ''}
-            </Typography>
-          </Col>
-        ))}
+        {tab === DataInsightTabs.DATA_ASSETS && (
+          <>
+            {/* summary of entity charts */}
+            {entitiesSummaryList.map((summary) => (
+              <Col
+                className="summary-card-item"
+                data-testid="data-assets-summary"
+                key={summary.id}
+                span={6}
+                onClick={() => onScrollToChart(summary.id)}>
+                <Typography.Text className="data-insight-label-text">
+                  {summary.label}
+                </Typography.Text>
+                <Typography className="font-bold text-lg m--ml-0.5">
+                  {summary.latest}
+                  {summary.id.startsWith('Percentage') ||
+                  summary.id.includes(DataInsightChartType.TotalEntitiesByTier)
+                    ? '%'
+                    : ''}
+                </Typography>
+              </Col>
+            ))}
+          </>
+        )}
+        {tab === DataInsightTabs.APP_ANALYTICS && (
+          <>
+            {/* summary for web charts */}
+            {webSummaryList.map((summary) => (
+              <Col
+                className="summary-card-item"
+                data-testid="app-analytics-summary"
+                key={summary.id}
+                span={6}
+                onClick={() => onScrollToChart(summary.id)}>
+                <Typography.Text className="data-insight-label-text">
+                  {summary.label}
+                </Typography.Text>
+                <Typography className="font-semibold text-2xl m--ml-0.5">
+                  {summary.latest}
+                  {summary.id.startsWith('Percentage') ? '%' : ''}
+                </Typography>
+              </Col>
+            ))}
 
-        {/* summary for web charts */}
-        {webSummaryList.map((summary) => (
-          <Col
-            className="summary-card-item"
-            data-testid={`summary-item-${summary.id}`}
-            key={summary.id}
-            span={6}
-            onClick={() => onScrollToChart(summary.id)}>
-            <Typography.Text className="data-insight-label-text">
-              {summary.label}
-            </Typography.Text>
-            <Typography className="font-semibold text-2xl m--ml-0.5">
-              {summary.latest}
-              {summary.id.startsWith('Percentage') ? '%' : ''}
-            </Typography>
-          </Col>
-        ))}
-
-        {/* summary of most active user */}
-        {mostActiveUser && mostActiveUser.userName && (
-          <Col
-            data-testid={`summary-item-${DataInsightChartType.MostActiveUsers}`}
-            key={DataInsightChartType.MostActiveUsers}
-            span={6}>
-            <Typography.Text className="data-insight-label-text d-block">
-              {t('label.most-active-user')}
-            </Typography.Text>
-            <UserPopOverCard userName={mostActiveUser.userName}>
-              <Space>
-                <ProfilePicture
-                  id=""
-                  name={mostActiveUser.userName}
-                  type="circle"
-                />
-                <Link to={getUserPath(mostActiveUser.userName)}>
-                  {mostActiveUser.userName}
-                </Link>
-              </Space>
-            </UserPopOverCard>
-          </Col>
+            {/* summary of most active user */}
+            {mostActiveUser && mostActiveUser.userName && (
+              <Col
+                data-testid={`summary-item-${DataInsightChartType.MostActiveUsers}`}
+                key={DataInsightChartType.MostActiveUsers}
+                span={6}>
+                <Typography.Text className="data-insight-label-text d-block">
+                  {t('label.most-active-user')}
+                </Typography.Text>
+                <UserPopOverCard userName={mostActiveUser.userName}>
+                  <Space>
+                    <ProfilePicture
+                      id=""
+                      name={mostActiveUser.userName}
+                      type="circle"
+                    />
+                    <Link to={getUserPath(mostActiveUser.userName)}>
+                      {mostActiveUser.userName}
+                    </Link>
+                  </Space>
+                </UserPopOverCard>
+              </Col>
+            )}
+          </>
         )}
       </Row>
     </Card>

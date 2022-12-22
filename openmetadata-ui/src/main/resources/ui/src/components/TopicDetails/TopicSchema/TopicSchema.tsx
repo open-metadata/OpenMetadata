@@ -247,7 +247,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         columns={columns}
         data-testid="topic-schema-fields-table"
         dataSource={messageSchema?.schemaFields}
-        expandable={getTableExpandableConfig<Field>()}
+        expandable={{
+          ...getTableExpandableConfig<Field>(),
+          rowExpandable: (record) => !isEmpty(record.children),
+        }}
         pagination={false}
         rowKey="name"
         size="small"
@@ -261,6 +264,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             field: t('label.schema-field'),
           })}
           value={editFieldDescription.description ?? ''}
+          visible={Boolean(editFieldDescription)}
           onCancel={() => setEditFieldDescription(undefined)}
           onSave={handleFieldDescriptionChange}
         />
