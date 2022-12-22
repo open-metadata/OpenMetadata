@@ -49,7 +49,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - ./docker-volume/es-data:/usr/share/elasticsearch/data
+      - ./docker-volume/es-data:/usr/share/elasticsearch/data:rw
 
   openmetadata-server:
     container_name: openmetadata_server
