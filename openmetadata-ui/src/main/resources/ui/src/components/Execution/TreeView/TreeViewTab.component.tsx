@@ -69,32 +69,33 @@ const TreeViewTab = ({
         </Col>
       </Row>
 
-      {isEmpty(viewData) && (
+      {isEmpty(viewData) ? (
         <Empty
           className="my-4"
           description={t('label.no-execution-runs-found')}
         />
+      ) : (
+        <Row className="w-full">
+          <Col span={6}>
+            <Tree
+              defaultExpandAll
+              showIcon
+              showLine={{ showLeafIcon: false }}
+              switcherIcon={<></>}
+              treeData={treeLabelList}
+            />
+          </Col>
+          <Col span={18}>
+            <Tree
+              defaultExpandAll
+              showIcon
+              className="tree-without-indent"
+              switcherIcon={<></>}
+              treeData={treeDataList}
+            />
+          </Col>
+        </Row>
       )}
-      <Row className="w-full">
-        <Col span={6}>
-          <Tree
-            defaultExpandAll
-            showIcon
-            showLine={{ showLeafIcon: false }}
-            switcherIcon={<></>}
-            treeData={treeLabelList}
-          />
-        </Col>
-        <Col span={18}>
-          <Tree
-            defaultExpandAll
-            showIcon
-            className="tree-without-indent"
-            switcherIcon={<></>}
-            treeData={treeDataList}
-          />
-        </Col>
-      </Row>
     </Card>
   );
 };
