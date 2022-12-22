@@ -153,7 +153,7 @@ public class LineageRepository {
       return;
     }
     List<EntityRelationshipRecord> records = new ArrayList<>();
-    //pipeline information is not maintained
+    // pipeline information is not maintained
     if (entityType == Entity.PIPELINE) {
       records = dao.relationshipDAO().findFromPipleine(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
