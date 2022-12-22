@@ -9,6 +9,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class MlModelIndex implements ElasticSearchIndex {
   final MlModel mlModel;
+  final List<String> excludeFields = List.of("changeDescription");
 
   public MlModelIndex(MlModel mlModel) {
     this.mlModel = mlModel;
@@ -17,6 +18,7 @@ public class MlModelIndex implements ElasticSearchIndex {
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(mlModel);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     suggest.add(ElasticSearchSuggest.builder().input(mlModel.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(mlModel.getName()).weight(10).build());
 
