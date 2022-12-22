@@ -19,6 +19,7 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 It is adviced to go through [openmetadata release notes](/deployment/upgrade/versions/012-to-013) before starting the upgrade process. 
 
 </Warning>
+
 ###  Backup 0.12.3 data
 
 1. Make sure your instance is connected to the Database server
