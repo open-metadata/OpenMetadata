@@ -41,6 +41,10 @@ OpenMetadata Release 0.13.x introduces Default Docker Volumes for Database (MySQ
 - If you are looking for the fresh deployment of 0.13.x - [here](https://docs.open-metadata.org/deployment/docker)
 - If you are looking for upgrading of the new version i.e 0.13.x - [here](https://docs.open-metadata.org/deployment/upgrade/docker)
 
+### MySQL Helm Chart Version Updated to 9.2.1
+
+OpenMetadata Helm Chart Release with Application Version `0.13.1` updates the Bitnami MySQL Helm Chart version to `9.2.1` from `8.8.23`. This is not a breaking change but existing user's trying to upgrade will experience a slight delay in OpenMetadata Dependencies Helm Chart Upgrades as it pulls new docker image for MySQL. Please note that OpenMetadata Dependencies Helm Chart is not recommended for production use cases. Please follow the [kubernetes deployment](/deployment/kubernetes) for new installation or [upgrade kubernetes](/deployment/upgrade/kubernetes) for upgrading OpenMetadata in Kubernetes.
+
 ### dbt Workflow
 
 dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow.
