@@ -31,6 +31,7 @@ export interface MyDataProps {
   userDetails?: User;
   ownedData: Array<EntityReference>;
   followedData: Array<EntityReference>;
+  isLoadingOwnedData: boolean;
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
