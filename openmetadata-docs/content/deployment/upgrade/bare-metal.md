@@ -26,7 +26,7 @@ It is adviced to go through [openmetadata release notes](/deployment/upgrade/ver
 2. Create a virtual environment to install an upgraded `metadata` version to run the backup command:
    1. `python -m venv venv`
    2. `source venv/bin/activate`
-   3. `PIP_USER=false pip install openmetadata-ingestion~=0.13.1`
+   3. `pip install openmetadata-ingestion~=0.13.1.0`
 3. Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
     indeed at 0.13.1. Notice the `python -m metadata` vs. `metadata`. 
 4. Run the backup using the updated `metadata` CLI:
