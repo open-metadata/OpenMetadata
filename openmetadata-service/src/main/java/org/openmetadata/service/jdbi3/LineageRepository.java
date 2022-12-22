@@ -153,8 +153,9 @@ public class LineageRepository {
       return;
     }
     List<EntityRelationshipRecord> records = new ArrayList<>();
+    //pipeline information is not maintained
     if (entityType == Entity.PIPELINE) {
-      records = dao.relationshipDAO().findFromPipleine(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findFromPipleine(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
     }
@@ -188,7 +189,6 @@ public class LineageRepository {
     if (entityType == Entity.PIPELINE) {
       records = dao.relationshipDAO().findToPipeline(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
-      // from other ids ---> to this id
       records = dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
     }
     final List<EntityReference> downstreamEntityReferences = new ArrayList<>();
