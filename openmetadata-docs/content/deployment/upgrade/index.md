@@ -70,7 +70,6 @@ Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.or
  OpenMetadata 0.12.3 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) 
 
 If you are upgrading production this is the recommended version to upgrade.
-
 ## Breaking Changes from 0.12.x Stable Release
 
 OpenMetadata Release 0.12.x introduces below breaking changes -
