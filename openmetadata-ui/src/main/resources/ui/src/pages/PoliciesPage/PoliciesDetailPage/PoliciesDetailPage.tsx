@@ -271,7 +271,11 @@ const PoliciesDetailPage = () => {
                         );
                       }}>
                       <Space align="center">
-                        <SVGIcons alt={t('label.edit')} icon={Icons.EDIT} />
+                        <SVGIcons
+                          alt={t('label.edit')}
+                          icon={Icons.EDIT}
+                          width="16px"
+                        />
                         {t('label.edit')}
                       </Space>
                     </Button>

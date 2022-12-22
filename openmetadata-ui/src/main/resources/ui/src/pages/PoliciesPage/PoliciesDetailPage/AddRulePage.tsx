@@ -112,9 +112,9 @@ const AddRulePage = () => {
   }
 
   return (
-    <Row className="tw-bg-body-main tw-h-auto" gutter={[16, 16]}>
+    <Row className="tw-bg-body-main tw-h-auto p-y-lg" gutter={[16, 16]}>
       <Col offset={5} span={14}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
+        <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph
             className="tw-text-base"
