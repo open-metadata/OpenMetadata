@@ -159,10 +159,6 @@ site_menu:
     url: /deployment/upgrade/kubernetes
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions
     url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.9 to 0.10
-    url: /deployment/upgrade/versions/090-to-010
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
-    url: /deployment/upgrade/versions/010-to-011
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
@@ -585,6 +581,9 @@ site_menu:
 
   - category: Features / Data Insights
     url: /openmetadata/data-insight
+
+  - category: Features / Alerts & Notifications
+    url: /openmetadata/alerts-notifications
 
   - category: Main Concepts
     url: /main-concepts

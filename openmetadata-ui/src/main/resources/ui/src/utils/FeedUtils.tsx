@@ -564,6 +564,6 @@ export const getFeedPanelHeaderText = (
       return i18next.t('label.task');
     case ThreadType.Conversation:
     default:
-      return i18next.t('label.Conversation');
+      return i18next.t('label.conversation');
   }
 };

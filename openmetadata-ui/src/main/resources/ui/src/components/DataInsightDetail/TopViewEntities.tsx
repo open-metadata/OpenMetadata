@@ -14,6 +14,7 @@
 import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -69,9 +70,14 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'entityFqn',
         key: 'dataAsset',
         render: (entityFqn: string, record: MostViewedEntities) => {
+          const decodedFqn = getDecodedFqn(entityFqn);
+
+          if (isUndefined(record.entityHref)) {
+            return decodedFqn;
+          }
           const { pathname } = new URL(record.entityHref || '');
 
-          return <Link to={pathname || '#'}>{getDecodedFqn(entityFqn)}</Link>;
+          return <Link to={pathname || '#'}>{decodedFqn}</Link>;
         },
       },
       {
