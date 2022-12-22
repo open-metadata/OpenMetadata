@@ -88,6 +88,9 @@ In order to create and run a Metadata Ingestion workflow, we will follow the ste
 The workflow is modeled around the following JSON Schema.
 
 ## 1. Define the YAML Config
+
+#### Source Configuration - Source Config using AWS S3
+
 This is a sample config for Datalake using AWS S3:
 
 ```yaml
@@ -121,14 +124,15 @@ workflowConfig:
 
 ```
 
-#### Source Configuration - Source Config using AWS S3
-
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **awsAccessKeyId**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
 * **awsRegion**: Specify the region in which your DynamoDB is located. This setting is required even if you have configured a local AWS profile.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+
+
+#### Source Configuration - Service Connection using GCS
 
 This is a sample config for Datalake using GCS:
 
@@ -169,9 +173,6 @@ workflowConfig:
     authProvider: <OpenMetadata auth provider>
 ```
 
-
-#### Source Configuration - Service Connection using GCS
-
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
 * **type**: Credentials type, e.g. `service_account`.
@@ -186,6 +187,9 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **clientX509CertUrl**
 * **bucketName**: name of the bucket in GCS
 * **Prefix**: prefix in gcs bucket
+
+
+#### Source Configuration - Service Connection using Azure
 
 This is a sample config for Datalake using Azure:
 
@@ -218,8 +222,6 @@ workflowConfig:
     hostPort: <OpenMetadata host and port>
     authProvider: <OpenMetadata auth provider>
 ```
-
-#### Source Configuration - Service Connection using Azure
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/security/credentials/azureCredentials.json).
 
