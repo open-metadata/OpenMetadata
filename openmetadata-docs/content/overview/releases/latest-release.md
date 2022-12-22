@@ -19,17 +19,11 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 - Multiple Databases (catalog) is now supported for the Databricks connector
 - Azure blob is now supported to backup your metadata into
 
+## New Connectors
+- OpenMetadata now supports Azure Datalake Storage Gen 2
+
 ## General Improvements
 - Users can update the description and tags for Topic Schema. Previously, the topic schemas were read-only. We now support Avro/Protobuf parsing and field level details for topic schemas.
 - The layout for the Data Insight  Report has been improved. We now display a line graph instead of a bar graph. The Most Viewed Data Assets are clickable to view the asset details page.
 - Improvements have been made to Advanced Search. Now, when a filter is applied, the details of the filter selected are displayed for clarity.
 - On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.
-
-## Security Report
-### Dependabot
-
-### Snyk
-
-### Dependabot Alerts
-
-
