@@ -1,15 +1,15 @@
 ---
-title: Ingest Owner from DBT
+title: Ingest Owner from dbt
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
 ---
 
-# Ingest Owner from DBT
+# Ingest Owner from dbt
 
-Ingest the model/table owner information from DBT `manifest.json` or `catalog.json` file into openmetadata tables.
+Ingest the model/table owner information from dbt `manifest.json` or `catalog.json` file into openmetadata tables.
 
 The owner can be a user or a team in OpenMetadata.
 
-Follow the link [here](https://docs.getdbt.com/reference/resource-configs/meta) to add the owner to the DBT project's `schema.yml` file
+Follow the link [here](https://docs.getdbt.com/reference/resource-configs/meta) to add the owner to the dbt project's `schema.yml` file
 
 ## Requirements
 
@@ -86,12 +86,12 @@ If the owner's name in ``manifest.json` or `catalog.json` file is `openmetadata`
 
 ## Linking the Owner to the table
 
-After runing the ingestion workflow with DBT you can see the created user or team getting linked to the table as it's owner as it was specified in the `manifest.json` or `catalog.json` file.
+After runing the ingestion workflow with dbt you can see the created user or team getting linked to the table as it's owner as it was specified in the `manifest.json` or `catalog.json` file.
 
 <Image src="/images/openmetadata/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.png" alt="linked-user" caption="Linked User"/>
 
 <Note>
 
-If a table already has a owner linked to it, owner from the DBT will not update the current owner.
+If a table already has a owner linked to it, owner from the dbt will not update the current owner.
 
 </Note>

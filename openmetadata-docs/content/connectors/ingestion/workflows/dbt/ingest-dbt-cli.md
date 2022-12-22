@@ -30,7 +30,7 @@ source:
   sourceConfig:
     config:
       type: DBT
-      # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
+      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
       # dbtConfigSource:
       # # For cloud
       #   dbtCloudAuthToken: token

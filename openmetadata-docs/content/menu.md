@@ -1100,7 +1100,7 @@ site_menu:
     url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
-  - category: SDK / Python SDK / Ingestion / DBT
+  - category: SDK / Python SDK / Ingestion / dbt
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage

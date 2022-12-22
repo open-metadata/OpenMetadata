@@ -25,9 +25,9 @@ From the Service Page, go to the Ingestions tab to add a new ingestion and click
 ### 2. Configure the dbt Ingestion
 
 Here you can enter the dbt Ingestion details:
-### Add DBT Source
+### Add dbt Source
 
-DBT sources for manifest.json, catalog.json and run_results.json files can be configured as shown in the UI below. The DBT files are needed to be stored on one of these sources.
+dbt sources for manifest.json, catalog.json and run_results.json files can be configured as shown in the UI below. The dbt files are needed to be stored on one of these sources.
 
 <Note>
 
@@ -73,13 +73,13 @@ File server path of the `manifest.json`, `catalog.json` and `run_results.json` f
 
 <Image src="/images/openmetadata/ingestion/workflows/dbt/file_server.png" alt="file-server" caption="File Server Config"/>
 
-#### DBT Cloud
+#### dbt Cloud
 
-Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with DBT cloud account setup if not done already.
-OpenMetadata uses DBT cloud APIs to fetch the `run artifacts` (manifest.json, catalog.json and run_results.json) from the most recent DBT run.
-The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your DBT cloud account.
+Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with dbt cloud account setup if not done already.
+OpenMetadata uses dbt cloud APIs to fetch the `run artifacts` (manifest.json, catalog.json and run_results.json) from the most recent dbt run.
+The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your dbt cloud account.
 
-<Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-cloud.png" alt="dbt-cloud" caption="DBT Cloud config"/>
+<Image src="/images/openmetadata/ingestion/workflows/dbt/dbt-cloud.png" alt="dbt-cloud" caption="dbt Cloud config"/>
 
 ### 3. Schedule and Deploy
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.

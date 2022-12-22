@@ -12,7 +12,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -102,7 +102,7 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
+      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
       # dbtConfigSource:
       # # For cloud
       #   dbtCloudAuthToken: token
@@ -596,6 +596,6 @@ There are couple of types of SSL modes that Redshift supports which can be added
 - **verify-full**: SSL must be used. The server certificate must be verified and the server hostname must match the hostname attribute on the certificate.
 
 For more information, you can visit [Redshift SSL documentation](https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html)
-## DBT Integration
+## dbt Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage from [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest dbt models' definitions and their lineage from [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
