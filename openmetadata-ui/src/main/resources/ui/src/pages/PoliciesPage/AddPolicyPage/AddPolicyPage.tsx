@@ -30,6 +30,7 @@ import { useHistory } from 'react-router-dom';
 import { addPolicy } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import {
   CreatePolicy,
@@ -100,88 +101,93 @@ const AddPolicyPage = () => {
   };
 
   return (
-    <Row
-      className="tw-bg-body-main tw-h-auto"
-      data-testid="add-policy-container"
-      gutter={[16, 16]}>
-      <Col offset={4} span={12}>
-        <TitleBreadcrumb className="m-y-md" titleLinks={breadcrumb} />
-        <Card>
-          <Typography.Paragraph
-            className="tw-text-base"
-            data-testid="form-title">
-            {t('label.add-new-policy')}
-          </Typography.Paragraph>
-          <Form
-            data-testid="policy-form"
-            id="policy-form"
-            initialValues={{
-              ruleEffect: ruleData.effect,
-            }}
-            layout="vertical"
-            onFinish={handleSumbit}>
-            <Form.Item
-              label={`${t('label.name')}:`}
-              name="name"
-              rules={[
-                {
-                  required: true,
-                  max: 128,
-                  min: 1,
-                  message: t('message.field-text-is-required', {
-                    fieldText: t('label.name'),
-                  }),
-                },
-              ]}>
-              <Input
-                data-testid="policy-name"
-                placeholder={t('label.policy-name')}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Form.Item>
+    <div data-testid="add-policy-container">
+      <PageLayoutV1 center>
+        <Row>
+          <Col span={16}>
+            <Space className="w-full" direction="vertical" size="middle">
+              <TitleBreadcrumb titleLinks={breadcrumb} />
+              <Card>
+                <Typography.Paragraph
+                  className="tw-text-base"
+                  data-testid="form-title">
+                  {t('label.add-new-policy')}
+                </Typography.Paragraph>
+                <Form
+                  data-testid="policy-form"
+                  id="policy-form"
+                  initialValues={{
+                    ruleEffect: ruleData.effect,
+                  }}
+                  layout="vertical"
+                  onFinish={handleSumbit}>
+                  <Form.Item
+                    label={`${t('label.name')}:`}
+                    name="name"
+                    rules={[
+                      {
+                        required: true,
+                        max: 128,
+                        min: 1,
+                        message: t('message.field-text-is-required', {
+                          fieldText: t('label.name'),
+                        }),
+                      },
+                    ]}>
+                    <Input
+                      data-testid="policy-name"
+                      placeholder={t('label.policy-name')}
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </Form.Item>
 
-            <Form.Item label={`${t('label.description')}:`} name="description">
-              <RichTextEditor
-                height="200px"
-                initialValue={description}
-                placeHolder={t('label.write-your-description')}
-                style={{ margin: 0 }}
-                onTextChange={(value) => setDescription(value)}
-              />
-            </Form.Item>
+                  <Form.Item
+                    label={`${t('label.description')}:`}
+                    name="description">
+                    <RichTextEditor
+                      height="200px"
+                      initialValue={description}
+                      placeHolder={t('label.write-your-description')}
+                      style={{ margin: 0 }}
+                      onTextChange={(value) => setDescription(value)}
+                    />
+                  </Form.Item>
 
-            <Divider data-testid="add-rule-divider">
-              {t('label.add-rule')}
-            </Divider>
-            <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+                  <Divider data-testid="add-rule-divider">
+                    {t('label.add-rule')}
+                  </Divider>
+                  <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
-            <Space align="center" className="tw-w-full tw-justify-end">
-              <Button
-                data-testid="cancel-btn"
-                type="link"
-                onClick={handleCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="submit-btn"
-                form="policy-form"
-                htmlType="submit"
-                type="primary">
-                {t('label.submit')}
-              </Button>
+                  <Space align="center" className="tw-w-full tw-justify-end">
+                    <Button
+                      data-testid="cancel-btn"
+                      type="link"
+                      onClick={handleCancel}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
+                      data-testid="submit-btn"
+                      form="policy-form"
+                      htmlType="submit"
+                      type="primary">
+                      {t('label.submit')}
+                    </Button>
+                  </Space>
+                </Form>
+              </Card>
             </Space>
-          </Form>
-        </Card>
-      </Col>
-      <Col className="m-t-xlg" span={4}>
-        <Typography.Paragraph className="tw-text-base tw-font-medium">
-          {t('label.add-policy')}
-        </Typography.Paragraph>
-        <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
-      </Col>
-    </Row>
+          </Col>
+          <Col className="p-l-lg m-t-xlg" span={8}>
+            <Typography.Paragraph className="tw-text-base tw-font-medium">
+              {t('label.add-policy')}
+            </Typography.Paragraph>
+            <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
+          </Col>
+        </Row>
+      </PageLayoutV1>
+    </div>
   );
 };
 
