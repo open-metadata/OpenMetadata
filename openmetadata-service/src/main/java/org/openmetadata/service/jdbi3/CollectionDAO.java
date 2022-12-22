@@ -654,7 +654,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFromPipleine(
-        @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
+        @Bind("toId") String toId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT fromId, fromEntity, json FROM entity_relationship " + "WHERE toId = :toId ORDER BY fromId")
     @RegisterRowMapper(FromRelationshipMapper.class)
