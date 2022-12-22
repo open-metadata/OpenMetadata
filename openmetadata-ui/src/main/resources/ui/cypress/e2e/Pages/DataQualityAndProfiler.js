@@ -145,13 +145,14 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Add table test case with new test suite', () => {
+    const term = TEAM_ENTITY;
     goToProfilerTab();
-
+    interceptURL('GET', `api/v1/tables/name/${serviceName}.*.${term}?include=all`, 'addTableTestPage')
     cy.get('[data-testid="profiler-add-table-test-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-
+    verifyResponseStatusCode('@addTableTestPage', 200)
     cy.get('[data-testid="create-new-test-suite"]')
       .should('be.visible')
       .click();
@@ -477,10 +478,11 @@ describe('Data Quality and Profiler should work properly', () => {
       'have.class',
       'active'
     );
-
+    interceptURL('GET', `api/v1/tables/name/${serviceName}.*.${term}?include=all`, 'addTableTestPage')
     cy.get('[data-testid="profiler-add-table-test-btn"]')
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@addTableTestPage', 200)
 
     // selecting existing test suite
     cy.get('#selectTestSuite_testSuiteId').should('exist').click();
