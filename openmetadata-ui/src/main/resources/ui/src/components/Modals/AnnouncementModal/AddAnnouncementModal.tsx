@@ -105,7 +105,7 @@ const AddAnnouncementModal: FC<Props> = ({
       okText="Submit"
       title={t('label.make-an-announcement')}
       visible={open}
-      width={620}
+      width={720}
       onCancel={onCancel}>
       <Form
         data-testid="announcement-form"

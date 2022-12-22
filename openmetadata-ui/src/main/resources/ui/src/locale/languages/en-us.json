@@ -649,7 +649,7 @@
     "no-kpi-available-add-new-one": "No KPI's are available, add one by clicking Add KPI button.",
     "delete-action-description": "Deleting this {{entityType}} will permanently remove its metadata from OpenMetadata.",
     "restore-action-description": "Restoring this {{entityType}} will restore its metadata in OpenMetadata.",
-    "announcement-action-description": "Set up banners to inform your team of upcoming maintenance, updates, &amp; deletions.",
+    "announcement-action-description": "Set up banners to inform your team of upcoming maintenance, updates & deletions.",
     "column-name-required": "Column name is required",
     "select-column-name": "Select column name",
     "interval-type-required": "Interval type is required",

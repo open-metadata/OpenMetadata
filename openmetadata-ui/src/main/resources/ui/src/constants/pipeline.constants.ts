@@ -13,7 +13,7 @@
 
 export enum PIPELINE_DETAILS_TABS {
   Tasks = 'tasks',
-  ActivityFeedsAndTasks = 'activity-feeds-tasks',
+  ActivityFeedsAndTasks = 'activity_feed',
   Executions = 'executions',
   Lineage = 'lineage',
   CustomProperties = 'custom-properties',

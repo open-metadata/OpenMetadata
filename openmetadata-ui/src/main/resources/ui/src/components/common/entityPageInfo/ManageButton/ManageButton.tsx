@@ -82,7 +82,7 @@ const ManageButton: FC<Props> = ({
                   }
                 }}>
                 <Col span={3}>
-                  <SVGIcons alt="Delete" icon={Icons.DELETE} />
+                  <SVGIcons alt="Delete" icon={Icons.DELETE} width="20px" />
                 </Col>
                 <Col span={21}>
                   <Row data-testid="delete-button">
@@ -125,7 +125,11 @@ const ManageButton: FC<Props> = ({
                       }}>
                       <Col span={3}>
                         {' '}
-                        <SVGIcons alt="Restore" icon={Icons.RESTORE} />
+                        <SVGIcons
+                          alt="Restore"
+                          icon={Icons.RESTORE}
+                          width="20px"
+                        />
                       </Col>
                       <Col span={21}>
                         <Row data-testid="restore-button">
@@ -168,6 +172,7 @@ const ManageButton: FC<Props> = ({
                       <SVGIcons
                         alt="announcement"
                         icon={Icons.ANNOUNCEMENT_BLACK}
+                        width="20px"
                       />
                     </Col>
                     <Col span={21}>

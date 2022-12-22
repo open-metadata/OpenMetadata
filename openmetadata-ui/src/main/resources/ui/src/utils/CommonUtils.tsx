@@ -606,7 +606,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
       dependents,
     });
   } else {
-    return t('message.permanently-delete-metadata-and-dependents', {
+    return t('message.permanently-delete-metadata', {
       entityName: getTitleCase(entity),
     });
   }
