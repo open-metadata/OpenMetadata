@@ -90,9 +90,9 @@ echo "Starting Local Docker Containers"
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
-    docker compose --project-directory . -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose-postgres.yml up -d
+    docker compose -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker --project-directory . compose -f docker/local-metadata/docker-compose-postgres.yml up -d
 else
-    docker compose --project-directory . -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up --build -d
+    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose --project-directory . -f docker/local-metadata/docker-compose.yml up --build -d
 fi
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
