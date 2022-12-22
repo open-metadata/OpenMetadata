@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Skeleton, Typography } from 'antd';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -27,6 +27,7 @@ interface Prop {
 }
 
 interface AntdEntityListProp {
+  isLoadingOwnedData?: boolean;
   entityList: Array<EntityReference>;
   headerText?: string | JSX.Element;
   headerTextLabel: string;
@@ -86,45 +87,50 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
   headerTextLabel,
   noDataPlaceholder,
   testIDText,
+  isLoadingOwnedData,
 }: AntdEntityListProp) => {
   return (
     <Card
       extra={headerText}
       style={leftPanelAntCardStyle}
       title={headerTextLabel}>
-      {entityList.length
-        ? entityList.map((item, index) => {
-            return (
-              <div
-                className="flex items-center justify-between"
-                data-testid={`${testIDText}-${getEntityName(
-                  item as unknown as EntityReference
-                )}`}
-                key={index}>
-                <div className="flex items-center">
-                  {getEntityIcon(item.type || '')}
-                  <Link
-                    className="font-medium"
-                    to={getEntityLink(
-                      item.type || '',
-                      item.fullyQualifiedName as string
-                    )}>
-                    <Button
-                      className="entity-button"
-                      title={getEntityName(item as unknown as EntityReference)}
-                      type="text">
-                      <Typography.Text
-                        className="w-48 text-left"
-                        ellipsis={{ tooltip: true }}>
-                        {getEntityName(item as unknown as EntityReference)}
-                      </Typography.Text>
-                    </Button>
-                  </Link>
-                </div>
+      {isLoadingOwnedData ? (
+        <Skeleton active />
+      ) : entityList.length ? (
+        entityList.map((item, index) => {
+          return (
+            <div
+              className="flex items-center justify-between"
+              data-testid={`${testIDText}-${getEntityName(
+                item as unknown as EntityReference
+              )}`}
+              key={index}>
+              <div className="flex items-center">
+                {getEntityIcon(item.type || '')}
+                <Link
+                  className="font-medium"
+                  to={getEntityLink(
+                    item.type || '',
+                    item.fullyQualifiedName as string
+                  )}>
+                  <Button
+                    className="entity-button"
+                    title={getEntityName(item as unknown as EntityReference)}
+                    type="text">
+                    <Typography.Text
+                      className="w-48 text-left"
+                      ellipsis={{ tooltip: true }}>
+                      {getEntityName(item as unknown as EntityReference)}
+                    </Typography.Text>
+                  </Button>
+                </Link>
               </div>
-            );
-          })
-        : noDataPlaceholder}
+            </div>
+          );
+        })
+      ) : (
+        noDataPlaceholder
+      )}
     </Card>
   );
 };

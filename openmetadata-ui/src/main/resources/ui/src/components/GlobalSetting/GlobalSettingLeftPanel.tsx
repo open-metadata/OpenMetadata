@@ -47,7 +47,8 @@ const GlobalSettingLeftPanel = () => {
             '',
             '',
             curr.items,
-            'group'
+            'group',
+            curr.isBeta
           );
           if (menuItem.children?.length) {
             return [...acc, menuItem];

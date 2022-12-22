@@ -60,6 +60,7 @@ const MyData: React.FC<MyDataProps> = ({
   fetchFeedHandler,
   paging,
   updateThreadHandler,
+  isLoadingOwnedData,
 }: MyDataProps): React.ReactElement => {
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -138,6 +139,7 @@ const MyData: React.FC<MyDataProps> = ({
               </>
             }
             headerTextLabel="My Data"
+            isLoadingOwnedData={isLoadingOwnedData}
             noDataPlaceholder={<>You have not owned anything yet.</>}
             testIDText="My data"
           />
@@ -166,6 +168,7 @@ const MyData: React.FC<MyDataProps> = ({
               </>
             }
             headerTextLabel="Following"
+            isLoadingOwnedData={isLoadingOwnedData}
             noDataPlaceholder={<>You have not followed anything yet.</>}
             testIDText="Following data"
           />
@@ -173,7 +176,7 @@ const MyData: React.FC<MyDataProps> = ({
         <div className="tw-mt-5" />
       </>
     );
-  }, [ownedData, followedData, pendingTaskCount]);
+  }, [ownedData, followedData, pendingTaskCount, isLoadingOwnedData]);
 
   const fetchMoreFeed = useCallback(
     (isElementInView: boolean, pagingObj: Paging) => {

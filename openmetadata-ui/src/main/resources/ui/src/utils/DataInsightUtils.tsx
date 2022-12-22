@@ -30,6 +30,7 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -512,8 +513,13 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   };
 };
 
-export const getTeamFilter = (suggestionValues: ListItem[]): string[] => {
-  return suggestionValues.map((suggestion) => suggestion.value);
+export const getTeamFilter = (
+  suggestionValues: ListItem[]
+): SearchDropdownOption[] => {
+  return suggestionValues.map((suggestion) => ({
+    key: suggestion.value,
+    label: suggestion.value,
+  }));
 };
 
 export const getFormattedActiveUsersData = (

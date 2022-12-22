@@ -44,8 +44,8 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
           key={searchKey}
           title="search-dropdown">
           {options.map((option) => (
-            <div data-testid={`option-${searchKey}`} key={option}>
-              {option}
+            <div data-testid={`option-${searchKey}`} key={option.key}>
+              {option.label}
             </div>
           ))}
           <div
@@ -55,7 +55,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
           </div>
           <div
             data-testid={`onChange-${searchKey}`}
-            onClick={() => onChange([''], searchKey)}>
+            onClick={() => onChange([{ key: '', label: '' }], searchKey)}>
             onChange
           </div>
         </div>

@@ -39,4 +39,6 @@ export enum EntityFields {
   DATABASE = 'database.name',
   DATABASE_SCHEMA = 'databaseSchema.name',
   COLUMN = 'columns.name',
+  CHART = 'charts.name',
+  TASK = 'tasks.name',
 }
