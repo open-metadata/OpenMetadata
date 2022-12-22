@@ -11,7 +11,7 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.

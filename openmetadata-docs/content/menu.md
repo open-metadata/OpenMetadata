@@ -489,15 +489,6 @@ site_menu:
   - category: Connectors / Ingestion / Workflows / Metadata
     url: /connectors/ingestion/workflows/metadata
 
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT
-    url: /connectors/ingestion/workflows/metadata/dbt
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-ui
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest DBT from Workflow Config
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-workflow-config
-  - category: Connectors / Ingestion / Workflows/ Metadata / DBT / Ingest Owner from DBT
-    url: /connectors/ingestion/workflows/metadata/dbt/ingest-dbt-owner
-
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns
     url: /connectors/ingestion/workflows/metadata/filter-patterns
   - category: Connectors / Ingestion / Workflows/ Metadata / Filter Patterns / Database
@@ -511,6 +502,16 @@ site_menu:
     url: /connectors/ingestion/workflows/lineage
   - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
     url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
+  - category: Connectors / Ingestion / Workflows / dbt
+    url: /connectors/ingestion/workflows/dbt
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt CLI
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
   - category: Connectors / Ingestion / Workflows / Profiler
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
@@ -1099,7 +1100,7 @@ site_menu:
     url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
-  - category: SDK / Python SDK / Ingestion / DBT
+  - category: SDK / Python SDK / Ingestion / dbt
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage

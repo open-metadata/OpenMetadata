@@ -15,7 +15,7 @@ import { t } from 'i18next';
 
 import {
   INGESTION_ACTION_TYPE,
-  PIPELINE_TYPE_LOCALISATION,
+  PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 
@@ -25,8 +25,8 @@ export const getIngestionHeadingName = (
 ) => {
   let ingestionName = t(
     `label.${
-      PIPELINE_TYPE_LOCALISATION[
-        ingestionType as keyof typeof PIPELINE_TYPE_LOCALISATION
+      PIPELINE_TYPE_LOCALIZATION[
+        ingestionType as keyof typeof PIPELINE_TYPE_LOCALIZATION
       ]
     }`
   );

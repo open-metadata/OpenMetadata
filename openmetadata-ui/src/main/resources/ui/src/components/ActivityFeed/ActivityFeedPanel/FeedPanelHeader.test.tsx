@@ -84,7 +84,7 @@ describe('Test FeedPanelHeader Component', () => {
     const noun = await findByTestId(container, 'header-noun');
 
     // noun is undefined so default noun should be present in text content
-    expect(noun).toHaveTextContent('Conversation on');
+    expect(noun).toHaveTextContent('label.conversation on');
   });
 
   it('Should render entityFQN if entityField is empty', async () => {
