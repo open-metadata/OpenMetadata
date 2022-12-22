@@ -17,6 +17,8 @@ import i18next from 'i18next';
 import { isArray, isUndefined } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
+import { FormattedSuggestResponseObject } from '../components/Explore/ExploreQuickFilters.interface';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
@@ -25,8 +27,10 @@ import {
   TABLE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 
-import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { AdvancedFields, EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { Pipeline } from '../generated/entity/data/pipeline';
 import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
@@ -70,10 +74,10 @@ export const getAdvancedField = (field: string) => {
     case 'database.name':
       return AdvancedFields.DATABASE;
 
-    case 'charts.displayName':
+    case 'charts.name':
       return AdvancedFields.CHART;
 
-    case 'tasks.displayName':
+    case 'tasks.name':
       return AdvancedFields.TASK;
 
     case 'service.name':
@@ -145,23 +149,23 @@ const getSearchLabel = (itemLabel: string, searchKey: string) => {
 };
 
 export const getSearchDropdownLabels = (
-  optionsArray: string[],
+  optionsArray: SearchDropdownOption[],
   checked: boolean,
   searchKey = ''
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
     return optionsArray.map((option) => ({
-      key: option,
+      key: option.key,
       label: (
-        <Space className="m-x-sm" data-testid={option} size={6}>
-          <Checkbox checked={checked} data-testid={`${option}-checkbox`} />
+        <Space className="m-x-sm" data-testid={option.key} size={6}>
+          <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
           <Typography.Text
             ellipsis
             className="dropdown-option-label"
-            title={option}>
+            title={option.label}>
             <span
               dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option, searchKey),
+                __html: getSearchLabel(option.label, searchKey),
               }}
             />
           </Typography.Text>
@@ -173,15 +177,74 @@ export const getSearchDropdownLabels = (
   }
 };
 
-export const getSelectedOptionLabelString = (selectedOptions: string[]) => {
+export const getSelectedOptionLabelString = (
+  selectedOptions: SearchDropdownOption[],
+  showAllOptions = false
+) => {
   if (isArray(selectedOptions)) {
-    const stringifiedOptions = selectedOptions.join(', ');
-    if (stringifiedOptions.length < 15) {
+    const stringifiedOptions = selectedOptions.map((op) => op.label).join(', ');
+    if (stringifiedOptions.length < 15 || showAllOptions) {
       return stringifiedOptions;
     } else {
       return `${stringifiedOptions.slice(0, 11)}...`;
     }
   } else {
     return '';
+  }
+};
+
+export const getOptionFromDashboardSource = (
+  uniqueOptions: FormattedSuggestResponseObject
+): SearchDropdownOption => {
+  const charts = (uniqueOptions.source as Dashboard).charts;
+  const option: SearchDropdownOption = { key: '', label: '' };
+
+  if (charts) {
+    const chart = charts.find(
+      (chart) => chart.displayName === uniqueOptions.text
+    );
+    if (chart) {
+      option.key = chart.name ?? '';
+      option.label = chart.displayName ?? chart.name ?? '';
+    }
+  }
+
+  return option;
+};
+
+export const getOptionFromPipelineSource = (
+  uniqueOptions: FormattedSuggestResponseObject
+): SearchDropdownOption => {
+  const tasks = (uniqueOptions.source as Pipeline).tasks;
+  const option: SearchDropdownOption = { key: '', label: '' };
+
+  if (tasks) {
+    const task = tasks.find((task) => task.name === uniqueOptions.text);
+    if (task) {
+      option.key = task.name;
+      option.label = task.displayName ?? task.name;
+    }
+  }
+
+  return option;
+};
+
+export const getOptionsObject = (
+  key: string,
+  uniqueOptions: FormattedSuggestResponseObject[]
+): SearchDropdownOption[] => {
+  switch (key) {
+    case EntityFields.CHART: {
+      return uniqueOptions.map((op) => getOptionFromDashboardSource(op));
+    }
+    case EntityFields.TASK: {
+      return uniqueOptions.map((op) => getOptionFromPipelineSource(op));
+    }
+    default: {
+      return uniqueOptions.map((op) => ({
+        key: op.text,
+        label: op.text,
+      }));
+    }
   }
 };

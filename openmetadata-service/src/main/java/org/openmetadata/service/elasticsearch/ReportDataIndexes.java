@@ -15,6 +15,7 @@ public class ReportDataIndexes implements ElasticSearchIndex {
   @Override
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(reportData);
+    doc.put("id", null);
     doc.put("timestamp", reportData.getTimestamp());
     doc.put("reportDataType", reportData.getReportDataType());
     doc.put("data", reportData.getData());

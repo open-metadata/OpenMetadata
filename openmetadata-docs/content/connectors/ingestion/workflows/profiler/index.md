@@ -13,9 +13,15 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
 <Image
-    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-summary.png"}
-    alt="Profiler summary page"
-    caption="Profiler summary page"
+    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-summary-table.png"}
+    alt="Table profile summary page"
+    caption="Table profile summary page"
+/>
+
+<Image
+    src={"/images/openmetadata/ingestion/workflows/profiler/profiler-summary-colomn.png"}
+    alt="Column profile summary page"
+    caption="Column profile summary page"
 />
 
 
@@ -43,20 +49,25 @@ Define the name of the Profiler Workflow. While we only support a single workflo
 
 As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
 
-**Database filter pattern**
+**Database filter pattern (Optional)**
 regex expression to filter databases.
 
-**Schema filter pattern**
+**Schema filter pattern (Optional)**
 regex expression to filter schemas.
 
-**Table filter pattern**
+**Table filter pattern (Optional)**
 regex expression to filter tables.
 
-**Profile Sample**
-Sampling percentage to apply for profiling tables.
+**Profile Sample (Optional)**
+Set the sample to be use by the profiler for the specific table.
+- `Percentage`: Value must be between 0 and 100 exclusive (0 < percentage < 100). This will sample the table based on a percentage
+- `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
-**Thread Count**
+**Thread Count (Optional)**
 Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
+
+**Timeout in Seconds (Optional)**
+This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table. It is important to note that the profiler will wait for the hanging query to terminiate before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12-hours.
 
 **Ingest Sample Data**
 Whether the profiler should ingest sample data
@@ -80,14 +91,29 @@ Once you have created your profiler you can adjust some behavior at the table le
 />
 
 #### Profiler Options
-**Profile Sample %**
-Set the sample percentage to be use by the profiler for the specific table. This will overwrite the workflow sample percentage.
+**Profile Sample**
+Set the sample to be use by the profiler for the specific table.
+- `Percentage`: Value must be between 0 and 100 exclusive (0 < percentage < 100). This will sample the table based on a percentage
+- `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
 **Profile Sample Query**
 Use a query to sample data for the profiler. This will overwrite any profle sample set.
 
 **Enable Column Profile**
-This setting allows you exclude or include specific column from the profiler. It also allows you to exclude the computation of specific metrics.
+This setting allows user to exclude or include specific columns and metrics from the profiler.
+
+**Enable Partition**
+If your table includes a timestamp, date or datetime column type you can enable partitionning. If enabled, the profiler will fetch the last `<interval>` `<interval unit>` of data to profile the table. Note that if "profile sample" is set, this configuration will be used against the partitioned data and not the whole table.
+- `Column Name`: this is the name of the column that will be used as the partition field
+- `Interval Type`:
+  - `TIME-UNIT`: a business logical timestamp/date/datetime (e.g. order date, sign up datetime, etc.)
+  - `INGESTION-TIME`: a process logical timestamp/date/datetime (i.e. when was my data ingested in my table)
+- `Interval`: the interval value (e.g. `1`, `2`, etc.)
+- `Interval Unit`: 
+  - `HOUR`
+  - `DAY`
+  - `MONTH`
+  - `YEAR`
 
 
 ## YAML Configuration

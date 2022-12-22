@@ -14,11 +14,16 @@
 export interface SearchDropdownProps {
   label: string;
   isSuggestionsLoading?: boolean;
-  options: string[];
+  options: SearchDropdownOption[];
   searchKey: string;
-  selectedKeys: string[];
+  selectedKeys: SearchDropdownOption[];
   highlight?: boolean;
-  onChange: (values: string[], searchKey: string) => void;
+  onChange: (values: SearchDropdownOption[], searchKey: string) => void;
   onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
+}
+
+export interface SearchDropdownOption {
+  key: string;
+  label: string;
 }

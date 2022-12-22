@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.elasticsearch;
 
+import static org.openmetadata.schema.analytics.ReportData.ReportDataType.ENTITY_REPORT_DATA;
+import static org.openmetadata.schema.analytics.ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
+import static org.openmetadata.schema.analytics.ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEAM;
 
@@ -9,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -67,6 +71,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/indexResource")
@@ -257,24 +262,90 @@ public class BuildSearchIndexResource {
     }
   }
 
-  private synchronized void updateDataInsightBatch(
+  public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String before, String after) {
+    RestUtil.validateCursors(before, after);
+    int reportDataCount = dao.entityExtensionTimeSeriesDao().listCount(entityFQN);
+    List<CollectionDAO.ReportDataRow> reportDataList;
+    if (before != null) {
+      reportDataList =
+          dao.entityExtensionTimeSeriesDao().getBeforeExtension(entityFQN, limit + 1, RestUtil.decodeCursor(before));
+    } else {
+      reportDataList =
+          dao.entityExtensionTimeSeriesDao()
+              .getAfterExtension(entityFQN, limit + 1, after == null ? "" : RestUtil.decodeCursor(after));
+    }
+    ResultList<ReportData> reportDataResultList;
+    if (before != null) {
+      reportDataResultList = getBeforeExtensionList(reportDataList, limit, reportDataCount);
+    } else {
+      reportDataResultList = getAfterExtensionList(reportDataList, after, limit, reportDataCount);
+    }
+    return reportDataResultList;
+  }
+
+  private ResultList<ReportData> getBeforeExtensionList(
+      List<CollectionDAO.ReportDataRow> reportDataRowList, int limit, int total) {
+    String beforeCursor = null;
+    String afterCursor;
+    if (reportDataRowList.size() > limit) {
+      reportDataRowList.remove(0);
+      beforeCursor = reportDataRowList.get(0).getRowNum();
+    }
+    afterCursor = reportDataRowList.get(reportDataRowList.size() - 1).getRowNum();
+    List<ReportData> reportDataList = new ArrayList<>();
+    for (CollectionDAO.ReportDataRow reportDataRow : reportDataRowList) {
+      reportDataList.add(reportDataRow.getReportData());
+    }
+    return getReportDataResultList(reportDataList, beforeCursor, afterCursor, total);
+  }
+
+  private ResultList<ReportData> getAfterExtensionList(
+      List<CollectionDAO.ReportDataRow> reportDataRowList, String after, int limit, int total) {
+    String beforeCursor;
+    String afterCursor = null;
+    beforeCursor = after == null ? null : reportDataRowList.get(0).getRowNum();
+    if (reportDataRowList.size() > limit) {
+      reportDataRowList.remove(limit);
+      afterCursor = reportDataRowList.get(limit - 1).getRowNum();
+    }
+    List<ReportData> reportDataList = new ArrayList<>();
+    for (CollectionDAO.ReportDataRow reportDataRow : reportDataRowList) {
+      reportDataList.add(reportDataRow.getReportData());
+    }
+    return getReportDataResultList(reportDataList, beforeCursor, afterCursor, total);
+  }
+
+  private ResultList<ReportData> getReportDataResultList(
+      List<ReportData> queries, String before, String after, int total) {
+    return new ResultList<>(queries, before, after, total);
+  }
+
+  private synchronized void fetchReportData(
+      String entityFQN,
+      CreateEventPublisherJob createRequest,
       BulkProcessor processor,
       BulkProcessorListener listener,
       String entityType,
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType)
-      throws IOException {
-    List<String> entityReportData;
-    if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.ENTITY_REPORT_DATA)) {
-      entityReportData = dao.entityExtensionTimeSeriesDao().getExtension("EntityReportData");
-    } else if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
-      entityReportData = dao.entityExtensionTimeSeriesDao().getExtension("WebAnalyticEntityViewReportData");
-    } else if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      entityReportData = dao.entityExtensionTimeSeriesDao().getExtension("WebAnalyticUserActivityViewReportData");
-    } else {
-      return;
+      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType) {
+    ResultList<ReportData> result;
+    String after = null;
+    try {
+      do {
+        result = getReportDataPagination(entityFQN, createRequest.getBatchSize(), null, after);
+        listener.addRequests(result.getPaging().getTotal());
+        updateElasticSearchForDataInsightBatch(processor, indexType, entityType, result.getData());
+        processor.flush();
+        after = result.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Entities of type : {}, Reason : ", entityType, ex);
+      FailureDetails failureDetails =
+          new FailureDetails()
+              .withContext(String.format("%s:Failure in fetching Data", entityType))
+              .withLastFailedReason(
+                  String.format("Failed in listing all ReportData \n Reason : %s", ExceptionUtils.getStackTrace(ex)));
+      listener.updateElasticSearchStatus(EventPublisherJob.Status.IDLE, failureDetails, null);
     }
-    updateElasticSearchForDataInsightBatch(processor, indexType, entityType, entityReportData);
-    listener.addRequests(entityReportData.size());
   }
 
   private synchronized void updateEntityBatch(
@@ -282,8 +353,7 @@ public class BuildSearchIndexResource {
       BulkProcessorListener listener,
       UriInfo uriInfo,
       String entityType,
-      CreateEventPublisherJob createRequest)
-      throws IOException {
+      CreateEventPublisherJob createRequest) {
     listener.allowTotalRequestUpdate();
 
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
@@ -297,10 +367,24 @@ public class BuildSearchIndexResource {
     }
 
     // Start fetching a list of Report Data and pushing them to ES
-    if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.ENTITY_REPORT_DATA)
-        || entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)
-        || entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      updateDataInsightBatch(processor, listener, entityType, indexType);
+    if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.ENTITY_REPORT_DATA)) {
+      fetchReportData(String.valueOf(ENTITY_REPORT_DATA), createRequest, processor, listener, entityType, indexType);
+    } else if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
+      fetchReportData(
+          String.valueOf(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA),
+          createRequest,
+          processor,
+          listener,
+          entityType,
+          indexType);
+    } else if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
+      fetchReportData(
+          String.valueOf(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA),
+          createRequest,
+          processor,
+          listener,
+          entityType,
+          indexType);
     } else {
       // Start fetching a list of Entities and pushing them to ES
       EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(entityType);
@@ -378,9 +462,8 @@ public class BuildSearchIndexResource {
       BulkProcessor bulkProcessor,
       ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
       String entityType,
-      List<String> entities)
-      throws IOException {
-    for (String reportData : entities) {
+      List<ReportData> entities) {
+    for (ReportData reportData : entities) {
       UpdateRequest request = getUpdateRequest(indexType, entityType, reportData);
       if (request != null) {
         bulkProcessor.add(request);
@@ -454,9 +537,7 @@ public class BuildSearchIndexResource {
   }
 
   private UpdateRequest getUpdateRequest(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, String entity)
-      throws IOException {
-    ReportData reportData = JsonUtils.readValue(entity, ReportData.class);
+      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ReportData reportData) {
     try {
       UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
       updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
