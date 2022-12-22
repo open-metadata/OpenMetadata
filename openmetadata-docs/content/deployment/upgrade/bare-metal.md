@@ -75,7 +75,7 @@ For example, to navigate into the directory created by issuing the tar command a
 command.
 
 ```commandline
-cd openmetadata-0.10.0
+cd openmetadata-0.13.0
 ```
 
 ### 4. Stop the OpenMetadata server
