@@ -80,7 +80,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
       setFeedFilter(feedType);
       setFieldListVisible(false);
-      onFeedFiltersUpdate && value && onFeedFiltersUpdate(feedType, threadType);
+      onFeedFiltersUpdate && onFeedFiltersUpdate(feedType, threadType);
     },
     [setFeedFilter, setFieldListVisible, onFeedFiltersUpdate, threadType]
   );
@@ -140,9 +140,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         value === 'ALL' ? undefined : (value as ThreadType) ?? undefined;
       setThreadType(threadType);
       setShowThreadTypeList(false);
-      onFeedFiltersUpdate &&
-        value &&
-        onFeedFiltersUpdate(feedFilter, threadType);
+      onFeedFiltersUpdate && onFeedFiltersUpdate(feedFilter, threadType);
     },
     [feedFilter, onFeedFiltersUpdate, setThreadType, setShowThreadTypeList]
   );
