@@ -78,7 +78,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 
 <Note>
 
-If the owner's name in ``manifest.json` or `catalog.json` file is `openmetadata`, you need to enter `openmetadata` in the name section of add team form as shown below.
+If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`, you need to enter `openmetadata` in the name section of add team form as shown below.
 
 </Note>
 
