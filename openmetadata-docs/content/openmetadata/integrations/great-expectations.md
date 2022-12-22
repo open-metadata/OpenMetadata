@@ -9,7 +9,7 @@ For Data Quality tests the open source python package Great Expectations stands 
 ## Requirements
 
 ### OpenMetadata Requirements
-You will to have OpenMetadata version 0.11 or later.
+You will to have OpenMetadata version 0.10 or later.
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](/quick-start/local-deployment) or follow the [Prefect Integration](/openmetadata/integrations/prefect) guide.
 
