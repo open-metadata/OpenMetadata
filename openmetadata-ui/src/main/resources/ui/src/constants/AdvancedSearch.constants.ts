@@ -63,14 +63,14 @@ export const TABLE_DROPDOWN_ITEMS = [
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
     label: i18next.t('label.chart'),
-    key: 'charts.displayName',
+    key: 'charts.name',
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: i18next.t('label.task'),
-    key: 'tasks.displayName',
+    key: 'tasks.name',
   },
 ];
 

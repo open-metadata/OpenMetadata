@@ -12,17 +12,20 @@
  */
 
 export const mockOptionsArray = [
-  'option_1',
-  'option_2',
-  'option_3',
-  'option_4',
+  { key: 'option_1', label: 'option_1' },
+  { key: 'option_2', label: 'option_2' },
+  { key: 'option_3', label: 'option_3' },
+  { key: 'option_4', label: 'option_4' },
 ];
 
-export const mockShortOptionsArray = ['str1', 'str2'];
+export const mockShortOptionsArray = [
+  { key: 'str1', label: 'str1' },
+  { key: 'str2', label: 'str2' },
+];
 
 export const mockLongOptionsArray = [
-  'string1',
-  'string2',
-  'string3',
-  'string4',
+  { key: 'string1', label: 'string1' },
+  { key: 'string2', label: 'string2' },
+  { key: 'string3', label: 'string3' },
+  { key: 'string4', label: 'string4' },
 ];

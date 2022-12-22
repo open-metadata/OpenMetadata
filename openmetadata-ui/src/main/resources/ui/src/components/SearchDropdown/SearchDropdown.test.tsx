@@ -20,14 +20,20 @@ import { SearchDropdownProps } from './SearchDropdown.interface';
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
 
-const searchOptions = ['User 1', 'User 2', 'User 3', 'User 4', 'User 5'];
+const searchOptions = [
+  { key: 'User 1', label: 'User 1' },
+  { key: 'User 2', label: 'User 2' },
+  { key: 'User 3', label: 'User 3' },
+  { key: 'User 4', label: 'User 4' },
+  { key: 'User 5', label: 'User 5' },
+];
 
 const mockProps: SearchDropdownProps = {
   label: 'Owner',
   isSuggestionsLoading: false,
   options: searchOptions,
   searchKey: 'owner.name',
-  selectedKeys: ['User 1'],
+  selectedKeys: [{ key: 'User 1', label: 'User 1' }],
   onChange: mockOnChange,
   onSearch: mockOnSearch,
 };
@@ -204,7 +210,10 @@ describe('Search DropDown Component', () => {
 
     // onChange should be called with previous selected keys and current selected keys
     expect(mockOnChange).toHaveBeenCalledWith(
-      ['User 1', 'User 2'],
+      [
+        { key: 'User 1', label: 'User 1' },
+        { key: 'User 2', label: 'User 2' },
+      ],
       'owner.name'
     );
   });
