@@ -12,22 +12,24 @@ OpenMetadata community will be doing feature releases and stable releases.
  - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
  - Stable releases are to upgrade your production environments and share it with your users.
 
-## 0.13.0 - Feature Release
-
-OpenMetadata 0.13.0 is a **feature release**. 
-
-**Don't upgrade your production with 0.13.0 feature release** 
-
-Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.org/deployment) and please give us any feedback on our [community slack](https://slack.open-metadata.org)
-
-
-## 0.12.3 - Stable release
- 
- OpenMetadata 0.12.3 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) 
+## 0.13.1 - Stable Release
+OpenMetadata 0.12.3 is a stable release. Please check the [release notes]() 
 
 If you are upgrading production this is the recommended version to upgrade.
-  
-## Breaking Changes from 0.13.0 Feature Release
+
+## Breaking Changes for 0.13.1 Stable Release
+
+OpenMetadata Release 0.13.1 introduces below breaking changes -
+
+### Webhooks
+
+Starting from 0.13.1 , OpenMetadata will be deprecating the existing webhooks for Slack, MSTeams.
+
+Before upgrading to 0.13.1 it is recommended to save the existing Webhook configs(like webhook url) to use them later.
+
+We have added Alerts/Notifications , which can be configured to receive customised alerts on updates in OM using Triggers, Filtering Information to different destinations like Slack, MsTeams or even Emails.
+Please use the same webhook config that you had saved from previous version to configure the Alerts Destination after upgrading.
+
 
 OpenMetadata Release 0.13.x introduces below breaking changes:
 
@@ -44,6 +46,21 @@ dbt ingestion has been separated from the metadata ingestion. It can now be conf
 We will remove the dbt configuration from your existing metadata ingestion pipelines and they will keep working as expected.
 
 After upgrading you will have to create the dbt workflow for the dbt ingestion to start working again.
+
+## 0.13.0 - Feature Release
+
+OpenMetadata 0.13.0 is a **feature release**. 
+
+**Don't upgrade your production with 0.13.0 feature release** 
+
+Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.org/deployment) and please give us any feedback on our [community slack](https://slack.open-metadata.org)
+
+
+## 0.12.3 - Stable release
+ 
+ OpenMetadata 0.12.3 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) 
+
+If you are upgrading production this is the recommended version to upgrade.
 
 ## Breaking Changes from 0.12.x Stable Release
 
