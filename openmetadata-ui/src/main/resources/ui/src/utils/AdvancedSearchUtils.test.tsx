@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
@@ -30,7 +31,7 @@ describe('AdvancedSearchUtils tests', () => {
 
   it('Function getSearchDropdownLabels should return an empty array if passed 1st argument as other than array', () => {
     const resultMenuItems = getSearchDropdownLabels(
-      '' as unknown as string[],
+      '' as unknown as SearchDropdownOption[],
       true
     );
 
@@ -64,7 +65,7 @@ describe('AdvancedSearchUtils tests', () => {
 
   it('Function getSelectedOptionLabelString should return an empty string when passed anything else than string array as an argument', () => {
     const resultOptionsString = getSelectedOptionLabelString(
-      'invalidInput' as unknown as string[]
+      'invalidInput' as unknown as SearchDropdownOption[]
     );
 
     expect(resultOptionsString).toEqual('');
