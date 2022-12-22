@@ -32,6 +32,7 @@ import RichTextEditor from '../../../components/common/rich-text-editor/RichText
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
+import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
   CreatePolicy,
   Effect,
@@ -132,6 +133,19 @@ const AddPolicyPage = () => {
                         message: t('message.field-text-is-required', {
                           fieldText: t('label.name'),
                         }),
+                      },
+                      {
+                        validator: (_, value) => {
+                          if (allowedNameRegEx.test(value)) {
+                            return Promise.reject(
+                              t('message.field-text-is-invalid', {
+                                fieldText: t('label.name'),
+                              })
+                            );
+                          }
+
+                          return Promise.resolve();
+                        },
                       },
                     ]}>
                     <Input
