@@ -21,6 +21,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
   - Databricks Metadata
   - Databricks Usage
 - [Data lake](/connectors/database/datalake)
+  - Azure Data Lake
   - S3 Data Lake
   - Google Cloud Service Data Lake
 - [DB2](/connectors/database/db2)
