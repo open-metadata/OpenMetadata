@@ -69,6 +69,8 @@ def import_class(key: str) -> Type[T]:
         raise ImportClassException(f"Cannot load class from {key} due to {err}")
 
 
+# module building strings read better with .format instead of f-strings
+# pylint: disable=consider-using-f-string
 def import_source_class(service_type: ServiceType, source_type: str) -> Type[Source]:
     return import_class(
         "metadata.ingestion.source.{}.{}.{}Source".format(

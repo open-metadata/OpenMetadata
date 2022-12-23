@@ -12,9 +12,6 @@
 Workflow definition for metadata related ingestions: metadata, lineage and usage.
 """
 import traceback
-
-# module building strings read better with .format instead of f-strings
-# pylint: disable=consider-using-f-string
 from typing import Optional, TypeVar, cast
 
 from metadata.config.common import WorkflowExecutionError

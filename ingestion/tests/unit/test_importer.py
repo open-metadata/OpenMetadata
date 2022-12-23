@@ -27,6 +27,7 @@ from metadata.utils.importer import (
 )
 
 
+# pylint: disable=import-outside-toplevel
 class ImporterTest(TestCase):
     """
     Validate that we properly convert
@@ -52,19 +53,23 @@ class ImporterTest(TestCase):
         )
 
     def test_import_source_class(self) -> None:
-        from metadata.ingestion.source.database.mysql import (
-            MysqlSource,  # pylint: disable=import-outside-toplevel
-        )
+        from metadata.ingestion.source.database.mysql import MysqlSource
+        from metadata.ingestion.source.database.snowflake import SnowflakeSource
 
         self.assertEqual(
             import_source_class(service_type=ServiceType.Database, source_type="mysql"),
             MysqlSource,
         )
 
-    def test_import_processor_class(self) -> None:
-        from metadata.ingestion.processor.query_parser import (
-            QueryParserProcessor,  # pylint: disable=import-outside-toplevel
+        self.assertEqual(
+            import_source_class(
+                service_type=ServiceType.Database, source_type="snowflake"
+            ),
+            SnowflakeSource,
         )
+
+    def test_import_processor_class(self) -> None:
+        from metadata.ingestion.processor.query_parser import QueryParserProcessor
 
         self.assertEqual(
             import_processor_class(processor_type="query-parser"),
@@ -73,25 +78,19 @@ class ImporterTest(TestCase):
 
     def test_import_stage_class(self) -> None:
 
-        from metadata.ingestion.stage.table_usage import (
-            TableUsageStage,  # pylint: disable=import-outside-toplevel
-        )
+        from metadata.ingestion.stage.table_usage import TableUsageStage
 
         self.assertEqual(import_stage_class(stage_type="table-usage"), TableUsageStage)
 
     def test_import_sink_class(self) -> None:
 
-        from metadata.ingestion.sink.metadata_rest import (
-            MetadataRestSink,  # pylint: disable=import-outside-toplevel
-        )
+        from metadata.ingestion.sink.metadata_rest import MetadataRestSink
 
         self.assertEqual(import_sink_class(sink_type="metadata-rest"), MetadataRestSink)
 
     def test_import_bulk_sink_type(self) -> None:
 
-        from metadata.ingestion.bulksink.metadata_usage import (
-            MetadataUsageBulkSink,  # pylint: disable=import-outside-toplevel
-        )
+        from metadata.ingestion.bulksink.metadata_usage import MetadataUsageBulkSink
 
         self.assertEqual(
             import_bulk_sink_type(bulk_sink_type="metadata-usage"),
