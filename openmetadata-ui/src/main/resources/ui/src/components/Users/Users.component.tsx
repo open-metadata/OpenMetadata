@@ -93,7 +93,7 @@ import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import ChangePasswordForm from './ChangePasswordForm';
-import { Option, Props } from './Users.interface';
+import { Option, Props, TabCountsProps } from './Users.interface';
 import { userPageFilterList } from './Users.util';
 
 const Users = ({
@@ -119,6 +119,7 @@ const Users = ({
   onFollowingEntityPaginate,
   onOwnedEntityPaginate,
   onSwitchChange,
+  tabCounts,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -981,6 +982,12 @@ const Users = ({
     [followingEntities, ownedEntities]
   );
 
+  const getTabsList = () =>
+    USER_PROFILE_TABS.map((tab) => ({
+      ...tab,
+      count: tabCounts[tab.countKey as keyof TabCountsProps],
+    }));
+
   return (
     <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
       <div className="m-b-md">
@@ -988,7 +995,7 @@ const Users = ({
           activeTab={activeTab}
           className="tw-flex-initial"
           setActiveTab={activeTabHandler}
-          tabs={USER_PROFILE_TABS}
+          tabs={getTabsList()}
         />
       </div>
       <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>

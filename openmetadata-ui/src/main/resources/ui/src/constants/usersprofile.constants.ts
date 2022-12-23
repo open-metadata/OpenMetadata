@@ -45,20 +45,24 @@ export const USER_PROFILE_TABS = [
     name: 'Activity',
     isProtected: false,
     position: 1,
+    countKey: 'activityCount',
   },
   {
     name: 'Tasks',
     isProtected: false,
     position: 2,
+    countKey: 'taskCount',
   },
   {
     name: 'My Data',
     isProtected: false,
     position: 3,
+    countKey: 'myDataCount',
   },
   {
     name: 'Following',
     isProtected: false,
     position: 4,
+    countKey: 'followingCount',
   },
 ];

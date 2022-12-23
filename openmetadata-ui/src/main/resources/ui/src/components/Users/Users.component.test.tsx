@@ -117,6 +117,12 @@ const mockProp = {
   onFollowingEntityPaginate: jest.fn(),
   onOwnedEntityPaginate: jest.fn(),
   onSwitchChange: jest.fn(),
+  tabCounts: {
+    activityCount: 0,
+    taskCount: 0,
+    myDataCount: 0,
+    followingCount: 0,
+  },
 };
 
 jest.mock('../../axiosAPIs/userAPI', () => ({

@@ -34,10 +34,14 @@ import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
-import { UserDetails } from '../../components/Users/Users.interface';
+import {
+  TabCountsProps,
+  UserDetails,
+} from '../../components/Users/Users.interface';
 import { PAGE_SIZE } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
+import { SettledStatus } from '../../enums/axios.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { UserProfileTab } from '../../enums/user.enum';
 import {
@@ -71,6 +75,13 @@ const UserPage = () => {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(
     (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
   );
+  const [tabCounts, setTabCounts] = useState<TabCountsProps>({
+    activityCount: 0,
+    taskCount: 0,
+    myDataCount: 0,
+    followingCount: 0,
+  });
+
   const [taskStatus, setTaskStatus] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
@@ -93,12 +104,74 @@ const UserPage = () => {
 
   const isTaskType = isEqual(threadType, ThreadType.Task);
 
+  const fetchTabsCount = async (userId: string) => {
+    const promises1 = [
+      getFeedsWithFilter(
+        userData.id,
+        FeedFilter.ALL,
+        undefined,
+        ThreadType.Conversation,
+        undefined
+      ),
+      getFeedsWithFilter(
+        userData.id,
+        FeedFilter.ALL,
+        undefined,
+        ThreadType.Task,
+        undefined
+      ),
+    ];
+
+    const promises2 = [
+      searchData(`owner.id:${userId}`, 0, 0, '', '', '', myDataSearchIndex),
+      searchData(`followers:${userId}`, 0, 0, '', '', '', myDataSearchIndex),
+    ];
+
+    let counts = tabCounts;
+    await Promise.allSettled(promises1)
+      .then(([activityRes, taskRes]) => {
+        const activityCount =
+          activityRes.status === SettledStatus.FULFILLED
+            ? activityRes.value.paging.total
+            : 0;
+        const taskCount =
+          taskRes.status === SettledStatus.FULFILLED
+            ? taskRes.value.paging.total
+            : 0;
+
+        counts = { ...counts, taskCount, activityCount };
+      })
+      .catch(() => {
+        // we will not be showing toast errormessage here
+      });
+
+    await Promise.allSettled(promises2)
+      .then(([myDataRes, followingRes]) => {
+        const myDataCount =
+          myDataRes.status === SettledStatus.FULFILLED
+            ? myDataRes.value.data.hits.total.value
+            : 0;
+        const followingCount =
+          followingRes.status === SettledStatus.FULFILLED
+            ? followingRes.value.data.hits.total.value
+            : 0;
+
+        counts = { ...counts, myDataCount, followingCount };
+      })
+      .catch(() => {
+        // we will not be showing toast errormessage here
+      });
+
+    setTabCounts(counts);
+  };
+
   const fetchUserData = () => {
     setUserData({} as User);
     getUserByName(username, 'profile,roles,teams')
       .then((res) => {
         if (res) {
           setUserData(res);
+          fetchTabsCount(res.id);
         } else {
           throw t('server.unexpected-response');
         }
@@ -200,6 +273,18 @@ const UserPage = () => {
         .then((res) => {
           const { data, paging: pagingObj } = res;
           setPaging(pagingObj);
+          if (threadType === ThreadType.Conversation) {
+            setTabCounts((prev) => ({
+              ...prev,
+              activityCount: pagingObj.total,
+            }));
+          } else if (threadType === ThreadType.Task) {
+            setTabCounts((prev) => ({
+              ...prev,
+              taskCount: pagingObj.total,
+            }));
+          }
+
           setEntityThread((prevData) => {
             if (after) {
               return [...prevData, ...data];
@@ -321,6 +406,7 @@ const UserPage = () => {
           postFeedHandler={postFeedHandler}
           setFeedFilter={setFeedFilter}
           tab={tab}
+          tabCounts={tabCounts}
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}

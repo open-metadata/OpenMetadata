@@ -32,6 +32,12 @@ export type UserDetails = Record<
   string,
   string | Array<string> | boolean | Array<PatchObject>
 >;
+export interface TabCountsProps {
+  activityCount: number;
+  taskCount: number;
+  myDataCount: number;
+  followingCount: number;
+}
 
 export interface Props {
   userData: User;
@@ -64,4 +70,5 @@ export interface Props {
   onFollowingEntityPaginate: (page: string | number) => void;
   onOwnedEntityPaginate: (page: string | number) => void;
   onSwitchChange: (checked: boolean) => void;
+  tabCounts: TabCountsProps;
 }
