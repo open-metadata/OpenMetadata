@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/api/classification/createClassification.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateClassification",
+  "title": "CreateClassificationRequest",
   "description": "Create classification request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.classification.CreateClassification",
