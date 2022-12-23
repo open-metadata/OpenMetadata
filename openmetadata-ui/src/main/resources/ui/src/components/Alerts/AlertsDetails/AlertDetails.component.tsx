@@ -109,7 +109,9 @@ export const AlertDetailsComponent = ({
             </Typography.Text>
           </Space>
           <Divider />
-          <Typography.Title level={5}>{t('label.filter')}</Typography.Title>
+          <Typography.Title level={5}>
+            {t('label.filter-plural')}
+          </Typography.Title>
           <Typography.Paragraph>
             {alerts?.filteringRules?.map((filter) => {
               const conditions = isArray(filter.condition)
