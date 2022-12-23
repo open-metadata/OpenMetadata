@@ -17,6 +17,8 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.entity.classification.tag import Tag
+
 try:
     from typing import get_args
 except ImportError:
@@ -85,7 +87,6 @@ from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
-from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
@@ -132,7 +133,6 @@ class OpenMetadata(
     OMetaTableMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
-    OMetaTagMixin,
     GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
@@ -164,7 +164,7 @@ class OpenMetadata(
     policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
-    tags_path = "tags"
+    classifications_path = "classification"
     tests_path = "tests"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
@@ -280,12 +280,23 @@ class OpenMetadata(
             entity,
             get_args(
                 Union[
+                    Tag,
+                    self.get_create_entity_type(Tag),
+                ]
+            ),
+        ):
+            return "/tags"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[
                     Classification,
                     self.get_create_entity_type(Classification),
                 ]
             ),
         ):
-            return "/tags"
+            return "/classifications"
 
         if issubclass(
             entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
@@ -419,7 +430,10 @@ class OpenMetadata(
             return self.services_path
 
         if "tag" in entity.__name__.lower():
-            return self.tags_path
+            return self.classifications_path
+        
+        if "classification" in entity.__name__.lower():
+            return self.classifications_path
 
         if "test" in entity.__name__.lower():
             return self.tests_path
