@@ -61,8 +61,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexFactory;
-import org.openmetadata.service.elasticsearch.ReportDataIndexes;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
+import org.openmetadata.service.elasticsearch.ReportDataIndexes;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -338,7 +338,7 @@ public class BuildSearchIndexResource {
       do {
         result = getReportDataPagination(entityFQN, createRequest.getBatchSize(), null, after);
         listener.addRequests(result.getPaging().getTotal());
-        updateElasticSearchForDataInsightBatch(processor, indexType, entityType, result.getData());
+        updateElasticSearchForDataInsightBatch(processor, typeInfo, entityType, result.getData());
         processor.flush();
         after = result.getPaging().getAfter();
       } while (after != null);
@@ -361,19 +361,19 @@ public class BuildSearchIndexResource {
       CreateEventPublisherJob createRequest) {
     listener.allowTotalRequestUpdate();
 
-    ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
+    ElasticSearchIndexDefinition.IndexTypeInfo typeInfo =
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType, indexResolver);
 
     if (Boolean.TRUE.equals(createRequest.getRecreateIndex())) {
       // Delete index
-      elasticSearchIndexDefinition.deleteIndex(indexType);
+      elasticSearchIndexDefinition.deleteIndex(typeInfo.getIndexType());
       // Create index
-      elasticSearchIndexDefinition.createIndex(indexType);
+      elasticSearchIndexDefinition.createIndex(typeInfo.getIndexType());
     }
 
     // Start fetching a list of Report Data and pushing them to ES
     if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.ENTITY_REPORT_DATA)) {
-      fetchReportData(String.valueOf(ENTITY_REPORT_DATA), createRequest, processor, listener, entityType, indexType);
+      fetchReportData(String.valueOf(ENTITY_REPORT_DATA), createRequest, processor, listener, entityType, typeInfo);
     } else if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
       fetchReportData(
           String.valueOf(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA),
@@ -381,7 +381,7 @@ public class BuildSearchIndexResource {
           processor,
           listener,
           entityType,
-          indexType);
+          typeInfo);
     } else if (entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       fetchReportData(
           String.valueOf(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA),
@@ -389,7 +389,7 @@ public class BuildSearchIndexResource {
           processor,
           listener,
           entityType,
-          indexType);
+          typeInfo);
     } else {
       // Start fetching a list of Entities and pushing them to ES
       EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(entityType);
@@ -411,7 +411,7 @@ public class BuildSearchIndexResource {
                   createRequest.getBatchSize(),
                   after);
           listener.addRequests(result.getPaging().getTotal());
-          updateElasticSearchForEntityBatch(indexType, processor, entityType, result.getData());
+          updateElasticSearchForEntityBatch(typeInfo, processor, entityType, result.getData());
           processor.flush();
           after = result.getPaging().getAfter();
         } while (after != null);
@@ -465,11 +465,11 @@ public class BuildSearchIndexResource {
 
   private synchronized void updateElasticSearchForDataInsightBatch(
       BulkProcessor bulkProcessor,
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
+      ElasticSearchIndexDefinition.IndexTypeInfo typeInfo,
       String entityType,
       List<ReportData> entities) {
     for (ReportData reportData : entities) {
-      UpdateRequest request = getUpdateRequest(indexType, entityType, reportData);
+      UpdateRequest request = getUpdateRequest(typeInfo, entityType, reportData);
       if (request != null) {
         bulkProcessor.add(request);
       }
@@ -477,7 +477,7 @@ public class BuildSearchIndexResource {
   }
 
   private synchronized void updateElasticSearchForEntityBatch(
-      ElasticSearchIndexResolver.IndexInfo indexInfo,
+      ElasticSearchIndexDefinition.IndexTypeInfo typeInfo,
       BulkProcessor bulkProcessor,
       String entityType,
       List<EntityInterface> entities) {
@@ -485,7 +485,7 @@ public class BuildSearchIndexResource {
       if (entityType.equals(TABLE)) {
         ((Table) entity).getColumns().forEach(table -> table.setProfile(null));
       }
-      UpdateRequest request = getUpdateRequest(indexInfo, entityType, entity);
+      UpdateRequest request = getUpdateRequest(typeInfo, entityType, entity);
       if (request != null) {
         bulkProcessor.add(request);
       }
@@ -508,7 +508,7 @@ public class BuildSearchIndexResource {
       FailureDetails failureDetails;
       Long time = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       try {
-        client.update(getUpdateRequest(typeInfo.getIndexInfo(), entityType, entity), RequestOptions.DEFAULT);
+        client.update(getUpdateRequest(typeInfo, entityType, entity), RequestOptions.DEFAULT);
       } catch (IOException ex) {
         failureDetails = new FailureDetails().withLastFailedAt(time).withLastFailedReason(ex.getMessage());
         latestJob.setFailureDetails(failureDetails);
@@ -526,9 +526,10 @@ public class BuildSearchIndexResource {
   }
 
   private UpdateRequest getUpdateRequest(
-      ElasticSearchIndexResolver.IndexInfo indexInfo, String entityType, EntityInterface entity) {
+      ElasticSearchIndexDefinition.IndexTypeInfo typeInfo, String entityType, EntityInterface entity) {
     try {
-      UpdateRequest updateRequest = new UpdateRequest(indexInfo.getIndexName(), entity.getId().toString());
+      UpdateRequest updateRequest =
+          new UpdateRequest(typeInfo.getIndexInfo().getIndexName(), entity.getId().toString());
       updateRequest.doc(
           JsonUtils.pojoToJson(
               Objects.requireNonNull(ElasticSearchIndexFactory.buildIndex(entityType, entity)).buildESDoc()),
@@ -538,7 +539,7 @@ public class BuildSearchIndexResource {
     } catch (Exception ex) {
       LOG.error(
           "Failed in creating update Request for indexName : {}, entityType: {}",
-          indexInfo.getIndexName(),
+          typeInfo.getIndexInfo().getIndexName(),
           entityType,
           ex);
     }
@@ -546,14 +547,19 @@ public class BuildSearchIndexResource {
   }
 
   private UpdateRequest getUpdateRequest(
-          ElasticSearchIndexDefinition.IndexTypeInfo indexTypeInfo, String entityType, ReportData reportData) {
+      ElasticSearchIndexDefinition.IndexTypeInfo indexTypeInfo, String entityType, ReportData reportData) {
     try {
-      UpdateRequest updateRequest = new UpdateRequest(indexTypeInfo.getIndexInfo().getIndexName()., reportData.getId().toString());
+      UpdateRequest updateRequest =
+          new UpdateRequest(indexTypeInfo.getIndexInfo().getIndexName(), reportData.getId().toString());
       updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
       updateRequest.docAsUpsert(true);
       return updateRequest;
     } catch (Exception ex) {
-      LOG.error("Failed in creating update Request for indexType : {}, entityType: {}", indexTypeInfo.getIndexType(), entityType, ex);
+      LOG.error(
+          "Failed in creating update Request for indexType : {}, entityType: {}",
+          indexTypeInfo.getIndexType(),
+          entityType,
+          ex);
     }
     return null;
   }

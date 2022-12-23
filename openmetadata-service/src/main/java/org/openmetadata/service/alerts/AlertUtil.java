@@ -30,6 +30,7 @@ import org.openmetadata.service.alerts.generic.GenericWebhookPublisher;
 import org.openmetadata.service.alerts.msteams.MSTeamsWebhookPublisher;
 import org.openmetadata.service.alerts.slack.SlackWebhookEventPublisher;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -78,7 +79,7 @@ public class AlertUtil {
     }
   }
 
-  public static Map<String, Function> getAlertFilterFunctions() {
+  public static Map<String, Function> getAlertFilterFunctions(ElasticSearchIndexResolver indexResolver) {
     Map<String, Function> alertFunctions = new HashMap<>();
     for (Function func : CollectionRegistry.getInstance().getFunctions(AlertsRuleEvaluator.class)) {
       AlertsRuleEvaluator.AlertRuleType type = AlertsRuleEvaluator.AlertRuleType.valueOf(func.getName());
@@ -89,11 +90,13 @@ public class AlertUtil {
           break;
         case matchUpdatedBy:
         case matchAnyOwnerName:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM))));
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(getEntitiesIndex(List.of(USER, TEAM), indexResolver)));
           break;
         case matchAnyEntityFqn:
         case matchAnyEntityId:
-          func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
+          func.setParamAdditionalContext(
+              paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList(), indexResolver)));
           break;
         case matchAnyEventType:
           List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).collect(Collectors.toList());
@@ -109,13 +112,13 @@ public class AlertUtil {
     return alertFunctions;
   }
 
-  public static Set<String> getEntitiesIndex(List<String> entities) {
+  public static Set<String> getEntitiesIndex(List<String> entities, ElasticSearchIndexResolver indexResolver) {
     Set<String> indexesToSearch = new HashSet<>();
     for (String entityType : entities) {
       try {
-        ElasticSearchIndexDefinition.ElasticSearchIndexType type =
-            ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
-        indexesToSearch.add(type.indexName);
+        ElasticSearchIndexDefinition.IndexTypeInfo typeInfo =
+            ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType, indexResolver);
+        indexesToSearch.add(typeInfo.getIndexInfo().getIndexName());
       } catch (RuntimeException ex) {
         LOG.error("Failing to get Index for EntityType");
       }

@@ -499,7 +499,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+        DeleteByQueryRequest request = new DeleteByQueryRequest(glossarySearchIndexName);
         GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
         request.setQuery(
             QueryBuilders.boolQuery()

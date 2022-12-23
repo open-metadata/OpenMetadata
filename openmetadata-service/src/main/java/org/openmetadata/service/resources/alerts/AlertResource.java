@@ -66,6 +66,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerts.ActivityFeedAlertCache;
 import org.openmetadata.service.alerts.AlertUtil;
 import org.openmetadata.service.alerts.AlertsPublisherManager;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexResolver;
 import org.openmetadata.service.jdbi3.AlertRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -90,6 +91,8 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   private final CollectionDAO daoCollection;
   private final Map<String, EntitySpelFilters> entitySpelFiltersList = new HashMap<>();
   public static final String FIELDS = "owner,triggerConfig,filteringRules,alertActions";
+
+  private ElasticSearchIndexResolver indexResolver;
 
   private void initAlerts() throws IOException {
     // Load Filter Data
@@ -164,6 +167,8 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
+      this.indexResolver =
+          ElasticSearchIndexResolver.fromClassName(config.getElasticSearchConfiguration().getIndexResolverClassName());
       initAlerts();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -331,7 +336,7 @@ public class AlertResource extends EntityResource<Alert, AlertRepository> {
       tags = "alerts",
       description = "Get list of Alert functions used in filtering conditions in alerts")
   public List<Function> listAlertFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return new ArrayList<>(AlertUtil.getAlertFilterFunctions().values());
+    return new ArrayList<>(AlertUtil.getAlertFilterFunctions(indexResolver).values());
   }
 
   @GET

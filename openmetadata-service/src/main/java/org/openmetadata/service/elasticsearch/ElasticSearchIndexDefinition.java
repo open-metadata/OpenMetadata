@@ -198,12 +198,12 @@ public class ElasticSearchIndexDefinition {
     return new String(in.readAllBytes());
   }
 
-    @Value
-    @AllArgsConstructor(staticName = "of")
-    public static class IndexTypeInfo {
-      private IndexType indexType;
-      private IndexInfo indexInfo;
-    }
+  @Value
+  @AllArgsConstructor(staticName = "of")
+  public static class IndexTypeInfo {
+    private IndexType indexType;
+    private IndexInfo indexInfo;
+  }
 
   public static IndexTypeInfo getIndexMappingByEntityType(String type, ElasticSearchIndexResolver indexResolver) {
     if (type.equalsIgnoreCase(Entity.TABLE)) {
@@ -231,11 +231,16 @@ public class ElasticSearchIndexDefinition {
     } else if (type.equalsIgnoreCase(Entity.TAG)) {
       return IndexTypeInfo.of(IndexType.TAG_SEARCH_INDEX, indexResolver.indexInfo(IndexType.TAG_SEARCH_INDEX));
     } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
-      return IndexTypeInfo.of(IndexType.ENTITY_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.ENTITY_REPORT_DATA_INDEX));
+      return IndexTypeInfo.of(
+          IndexType.ENTITY_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.ENTITY_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
-      IndexTypeInfo.of(IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX));
+      IndexTypeInfo.of(
+          IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX,
+          indexResolver.indexInfo(IndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX));
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      IndexTypeInfo.of(IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX, indexResolver.indexInfo(IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX));
+      IndexTypeInfo.of(
+          IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX,
+          indexResolver.indexInfo(IndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX));
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }

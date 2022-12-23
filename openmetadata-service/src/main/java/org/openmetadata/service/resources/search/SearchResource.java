@@ -106,7 +106,8 @@ public class SearchResource {
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-      this.indexResolver = ElasticSearchIndexResolver.fromClassName(config.getElasticSearchConfiguration().getIndexResolverClassName());
+      this.indexResolver =
+          ElasticSearchIndexResolver.fromClassName(config.getElasticSearchConfiguration().getIndexResolverClassName());
     }
   }
 
@@ -405,15 +406,16 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 20.0f)
-            .field(FIELD_DESCRIPTION, 2.0f)
-            .field("columns.name", 2.0f)
-            .field("columns.description", 1.0f)
-            .field("columns.children.name", 2.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO));
+    QueryStringQueryBuilder queryStringBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(FIELD_DISPLAY_NAME, 20.0f)
+                .field(FIELD_DESCRIPTION, 2.0f)
+                .field("columns.name", 2.0f)
+                .field("columns.description", 1.0f)
+                .field("columns.children.name", 2.0f)
+                .defaultOperator(Operator.AND)
+                .fuzziness(Fuzziness.AUTO));
     FieldValueFactorFunctionBuilder boostScoreBuilder =
         ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count").missing(1).factor(4);
     FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
@@ -439,9 +441,9 @@ public class SearchResource {
     hb.field(highlightColumnChildren);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
-    HighlightBuilder customizedHb = this.indexResolver.customizeHighlight(hb);
+    hb = this.indexResolver.customizeHighlight(hb);
     SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(customizedHb).from(from).size(size);
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
@@ -450,15 +452,16 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 2.0f)
-            .field("messageSchema.schemaFields.name", 2.0f)
-            .field("messageSchema.schemaFields.description", 1.0f)
-            .field("messageSchema.schemaFields.children.name", 2.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(FIELD_DISPLAY_NAME, 10.0f)
+                .field(FIELD_DESCRIPTION, 2.0f)
+                .field("messageSchema.schemaFields.name", 2.0f)
+                .field("messageSchema.schemaFields.description", 1.0f)
+                .field("messageSchema.schemaFields.children.name", 2.0f)
+                .defaultOperator(Operator.AND)
+                .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -475,14 +478,15 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 2.0f)
-            .field("charts.name", 2.0f)
-            .field("charts.description")
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(FIELD_DISPLAY_NAME, 10.0f)
+                .field(FIELD_DESCRIPTION, 2.0f)
+                .field("charts.name", 2.0f)
+                .field("charts.description")
+                .defaultOperator(Operator.AND)
+                .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -503,14 +507,15 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(DESCRIPTION, 2.0f)
-            .field("tasks.name", 2.0f)
-            .field("tasks.description")
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(FIELD_DISPLAY_NAME, 10.0f)
+                .field(DESCRIPTION, 2.0f)
+                .field("tasks.name", 2.0f)
+                .field("tasks.description")
+                .defaultOperator(Operator.AND)
+                .fuzziness(Fuzziness.AUTO));
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -557,6 +562,7 @@ public class SearchResource {
   private SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
     SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
     if (hb != null) {
+      hb = this.indexResolver.customizeHighlight(hb);
       hb.preTags("<span class=\"text-highlighter\">");
       hb.postTags("</span>");
       builder.highlighter(hb);
@@ -591,12 +597,13 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(NAME, 10.0f)
-            .field(DESCRIPTION, 3.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(NAME, 10.0f)
+                .field(DESCRIPTION, 3.0f)
+                .defaultOperator(Operator.AND)
+                .fuzziness(Fuzziness.AUTO));
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -612,12 +619,13 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = this.indexResolver.customizeQuery(
-        QueryBuilders.queryStringQuery(query)
-            .field(NAME, 10.0f)
-            .field(DESCRIPTION, 3.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO));
+    QueryStringQueryBuilder queryBuilder =
+        this.indexResolver.customizeQuery(
+            QueryBuilders.queryStringQuery(query)
+                .field(NAME, 10.0f)
+                .field(DESCRIPTION, 3.0f)
+                .defaultOperator(Operator.AND)
+                .fuzziness(Fuzziness.AUTO));
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
     highlightTagName.highlighterType(UNIFIED);
