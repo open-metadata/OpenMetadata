@@ -14,9 +14,11 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
+  es-data:
 services:
   postgresql:
     build:
+      context: ../../.
       dockerfile: docker/local-metadata/Dockerfile_postgres
     container_name: openmetadata_postgresql
     restart: always
@@ -54,10 +56,11 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - ./docker-volume/es-data:/usr/share/elasticsearch/data
+      - es-data:/usr/share/elasticsearch/data
 
   openmetadata-server:
     build:
+      context: ../../.
       dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
     environment:
@@ -124,6 +127,7 @@ services:
 
   ingestion:
     build:
+      context: ../../.
       dockerfile: ingestion/Dockerfile.ci
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
