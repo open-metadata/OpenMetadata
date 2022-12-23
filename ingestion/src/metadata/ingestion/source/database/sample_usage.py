@@ -16,9 +16,9 @@ import json
 from datetime import datetime
 from typing import Dict, Iterable, Optional
 
-from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import \
-    CustomDatabaseConnection
-
+from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
+    CustomDatabaseConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
 )
@@ -60,7 +60,9 @@ class SampleUsageSource(UsageSource):
         self.metadata = OpenMetadata(metadata_config)
         self.analysis_date = datetime.utcnow()
 
-        sample_data_folder = getattr(self.service_connection.connectionOptions, "sampleDataFolder")
+        sample_data_folder = getattr(
+            self.service_connection.connectionOptions, "sampleDataFolder"
+        )
         if not sample_data_folder:
             raise ValueError("Cannot get sampleDataFolder from connection options")
 
@@ -71,9 +73,7 @@ class SampleUsageSource(UsageSource):
                 encoding="utf-8",
             )
         )
-        self.query_log_csv = (
-            sample_data_folder + "/datasets/query_log"
-        )
+        self.query_log_csv = sample_data_folder + "/datasets/query_log"
         with open(self.query_log_csv, "r", encoding="utf-8") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
         self.service = self.metadata.get_service_or_create(
