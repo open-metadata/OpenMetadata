@@ -15,7 +15,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.glue import GlueSource
+from metadata.ingestion.source.database.glue.source import GlueSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"

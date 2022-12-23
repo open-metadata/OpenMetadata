@@ -12,7 +12,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.datalake import DatalakeSource
+from metadata.ingestion.source.database.datalake.source import DatalakeSource
 
 mock_datalake_config = {
     "source": {

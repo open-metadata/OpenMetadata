@@ -27,7 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.fivetran import (
+from metadata.ingestion.source.pipeline.fivetran.source import (
     FivetranPipelineDetails,
     FivetranSource,
 )

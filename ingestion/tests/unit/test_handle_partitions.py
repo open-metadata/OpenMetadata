@@ -25,7 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.bigquery import BigquerySource
+from metadata.ingestion.source.database.bigquery.source import BigquerySource
 
 """
 Check Partitioned Table in Profiler Workflow

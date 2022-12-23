@@ -35,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.dagster import DagsterSource
+from metadata.ingestion.source.pipeline.dagster.source import DagsterSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
