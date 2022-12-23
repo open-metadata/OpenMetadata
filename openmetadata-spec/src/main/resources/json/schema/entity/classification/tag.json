@@ -28,7 +28,7 @@
       "type": "string"
     },
     "fullyQualifiedName": {
-      "description": "Unique name of the tag of format `Category.tag1.tag2`.",
+      "description": "Unique name of the tag of format `Classification.tag1.tag2`.",
       "type": "string"
     },
     "description": {

@@ -57,7 +57,7 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
         Entity.CLASSIFICATION,
         Classification.class,
         ClassificationList.class,
-        "categories",
+        "classifications",
         ClassificationResource.FIELDS);
     supportsEmptyDescription = false;
   }
