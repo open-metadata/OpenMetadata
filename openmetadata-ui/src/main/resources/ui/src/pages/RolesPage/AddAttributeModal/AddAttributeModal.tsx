@@ -132,7 +132,7 @@ const AddAttributeModal: FC<Props> = ({
       title={
         <span data-testid="modal-title">
           {title}{' '}
-          <span className="tw-text-grey-muted tw-text-sm">
+          <span className="text-grey-muted text-sm">
             ({selectedValues.length}/{data.length} selected)
           </span>
         </span>
@@ -175,7 +175,7 @@ const AddAttributeModal: FC<Props> = ({
               </Col>
               <Col span={2}>
                 {selectedValues.includes(option.id) && (
-                  <FontAwesomeIcon className="tw-text-primary" icon="check" />
+                  <FontAwesomeIcon className="text-primary" icon="check" />
                 )}
               </Col>
             </Row>

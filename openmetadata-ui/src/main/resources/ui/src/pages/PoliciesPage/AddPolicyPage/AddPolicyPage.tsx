@@ -101,15 +101,13 @@ const AddPolicyPage = () => {
 
   return (
     <Row
-      className="tw-bg-body-main tw-h-auto"
+      className="bg-body-main h-auto"
       data-testid="add-policy-container"
       gutter={[16, 16]}>
       <Col offset={4} span={12}>
         <TitleBreadcrumb className="m-y-md" titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph
-            className="tw-text-base"
-            data-testid="form-title">
+          <Typography.Paragraph className="text-base" data-testid="form-title">
             {t('label.add-new-policy')}
           </Typography.Paragraph>
           <Form
@@ -157,7 +155,7 @@ const AddPolicyPage = () => {
             </Divider>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
-            <Space align="center" className="tw-w-full tw-justify-end">
+            <Space align="center" className="w-full justify-end">
               <Button
                 data-testid="cancel-btn"
                 type="link"
@@ -176,7 +174,7 @@ const AddPolicyPage = () => {
         </Card>
       </Col>
       <Col className="m-t-xlg" span={4}>
-        <Typography.Paragraph className="tw-text-base tw-font-medium">
+        <Typography.Paragraph className="text-base font-medium">
           {t('label.add-policy')}
         </Typography.Paragraph>
         <Typography.Text>{t('message.add-policy-message')}</Typography.Text>

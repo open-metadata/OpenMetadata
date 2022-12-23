@@ -109,7 +109,7 @@ const AlertsPage = () => {
                 <Link to={`edit-alert/${id}`}>
                   <Button
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<SVGIcons className="tw-w-4" icon={Icons.EDIT} />}
+                    icon={<SVGIcons className="w-4" icon={Icons.EDIT} />}
                     type="text"
                   />
                 </Link>
@@ -118,7 +118,7 @@ const AlertsPage = () => {
                 <Button
                   data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<SVGIcons className="tw-w-4" icon={Icons.DELETE} />}
+                  icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />

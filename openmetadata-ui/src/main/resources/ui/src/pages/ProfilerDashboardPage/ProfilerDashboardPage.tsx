@@ -213,7 +213,7 @@ const ProfilerDashboardPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <p className="tw-text-center">
+        <p className="text-center">
           No data found{' '}
           {decodedEntityFQN
             ? `for column ${getNameFromFQN(decodedEntityFQN)}`
@@ -224,7 +224,7 @@ const ProfilerDashboardPage = () => {
   }
 
   return (
-    <PageContainerV1 className="tw-py-4">
+    <PageContainerV1 className="p-y-md">
       <ProfilerDashboard
         fetchProfilerData={fetchProfilerData}
         fetchTestCases={fetchTestCases}
