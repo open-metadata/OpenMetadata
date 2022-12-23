@@ -32,10 +32,13 @@ public class DefaultElasticSearchIndexResolver implements ElasticSearchIndexReso
       case ENTITY_REPORT_DATA_INDEX:
         return new IndexInfo("entity_report_data_index", "/elasticsearch/entity_report_data_index.json");
       case WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX:
-        return new IndexInfo("web_analytic_entity_view_report_data_index", "/elasticsearch/web_analytic_entity_view_report_data_index.json");
+        return new IndexInfo(
+            "web_analytic_entity_view_report_data_index",
+            "/elasticsearch/web_analytic_entity_view_report_data_index.json");
       case WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX:
-        return new IndexInfo("web_analytic_user_activity_report_data_index",
-                "/elasticsearch/web_analytic_user_activity_report_data_index.json");
+        return new IndexInfo(
+            "web_analytic_user_activity_report_data_index",
+            "/elasticsearch/web_analytic_user_activity_report_data_index.json");
       default:
         throw new IllegalArgumentException("No such IndexType:" + type);
     }
