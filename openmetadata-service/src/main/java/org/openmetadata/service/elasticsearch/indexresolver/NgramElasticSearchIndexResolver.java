@@ -59,6 +59,12 @@ public class NgramElasticSearchIndexResolver extends DefaultElasticSearchIndexRe
         return new IndexInfo(indexName, "/elasticsearch/ngram/mlmodel_index_mapping.json");
       case TAG_SEARCH_INDEX:
         return new IndexInfo(indexName, "/elasticsearch/ngram/tag_index_mapping.json");
+      case ENTITY_REPORT_DATA_INDEX:
+        return new IndexInfo(indexName, "/elasticsearch/ngram/entity_report_data_index.json");
+      case WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX:
+        return new IndexInfo(indexName, "/elasticsearch/ngram/web_analytic_entity_view_report_data_index.json");
+      case WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX:
+        return new IndexInfo(indexName, "/elasticsearch/ngram/web_analytic_user_activity_report_data_index.json");
       default:
         throw new IllegalArgumentException("No such IndexType:" + type);
     }
