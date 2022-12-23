@@ -47,6 +47,7 @@
       },
       "displayName": {
         "type": "text",
+        "analyzer": "ngram_text_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -80,7 +81,8 @@
             "type": "text"
           },
           "displayName": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "ngram_text_analyzer"
           },
           "description": {
             "type": "text",

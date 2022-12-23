@@ -36,7 +36,8 @@
         "type": "text"
       },
       "displayName": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "ngram_text_analyzer"
       },
       "description": {
         "type": "text",
