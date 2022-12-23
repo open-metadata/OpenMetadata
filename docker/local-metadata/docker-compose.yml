@@ -17,7 +17,6 @@ volumes:
 services:
   mysql:
     build:
-      context: ../../.
       dockerfile: docker/local-metadata/Dockerfile_mysql
     container_name: openmetadata_mysql
     restart: always
@@ -58,7 +57,6 @@ services:
 
   openmetadata-server:
     build:
-      context: ../../.
       dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
     environment:
@@ -128,7 +126,6 @@ services:
 
   ingestion:
     build:
-      context: ../../.
       dockerfile: ingestion/Dockerfile.ci
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}

@@ -17,7 +17,6 @@ volumes:
 services:
   postgresql:
     build:
-      context: ../../.
       dockerfile: docker/local-metadata/Dockerfile_postgres
     container_name: openmetadata_postgresql
     restart: always
@@ -59,7 +58,6 @@ services:
 
   openmetadata-server:
     build:
-      context: ../../.
       dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
     environment:
@@ -126,7 +124,6 @@ services:
 
   ingestion:
     build:
-      context: ../../.
       dockerfile: ingestion/Dockerfile.ci
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
