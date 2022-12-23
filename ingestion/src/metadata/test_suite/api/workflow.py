@@ -25,7 +25,6 @@ from pydantic import ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_sink
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
@@ -61,6 +60,7 @@ from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcesso
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.connections import get_connection
+from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
@@ -107,7 +107,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 sink_type=self.config.sink.type,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
-                _from="test_suite",
+                from_="test_suite",
             )
 
     @classmethod
