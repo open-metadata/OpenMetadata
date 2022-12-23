@@ -28,7 +28,7 @@ const TEAM_DETAILS = {
   updatedname: `${teamName}-updated`,
   teamType: 'Department',
   description: `This is ${teamName} description`,
-  ownername: 'Aaron Johnson',
+  username: 'Aaron Johnson',
   assetname: 'dim_address',
 };
 const hardDeleteTeamName = `team-ct-test-${uuid()}`;
@@ -107,13 +107,13 @@ describe('Teams flow should work properly', () => {
       .click();
     verifyResponseStatusCode('@addUser', 200);
     verifyResponseStatusCode('@getUsers', 200);
-    cy.get('[data-testid="searchbar"]').type(TEAM_DETAILS.ownername);
+    cy.get('[data-testid="searchbar"]').type(TEAM_DETAILS.username);
 
     cy.wait(500);
 
     cy.get('[data-testid="data-container"]').should(
       'contain',
-      TEAM_DETAILS.ownername
+      TEAM_DETAILS.username
     );
     cy.get('[data-testid="checkboxAddUser"]')
       .first()
@@ -130,10 +130,33 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-table-row').should('contain', TEAM_DETAILS.ownername);
+    cy.get('.ant-table-row').should('contain', TEAM_DETAILS.username);
+  });
 
-    //Removing the added user
-    cy.get('[data-testid="remove-user-btn"] > [data-testid="image"]')
+  it('Remove added user from created team', () => {
+    interceptURL('GET', `/api/v1/users?fields=*&team=${TEAM_DETAILS.name}&limit=15`, 'getUsers');
+    interceptURL('GET', `/api/v1/teams/name/${TEAM_DETAILS.name}?*`,'getSelectedTeam')
+    //Click on created team
+    cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
+      .contains(TEAM_DETAILS.name)
+      .click();
+
+    cy.wait("@getSelectedTeam").then(() =>{
+        cy.get('[data-testid="team-heading"]')
+        .should('be.visible')
+        .within(() => {
+          cy.contains(TEAM_DETAILS.name).should('be.visible');
+        })
+    });
+    verifyResponseStatusCode('@getUsers', 200);
+    //Clicking on users tab
+    cy.get('[data-testid="Users"]')
+      .should('exist')
+      .should('be.visible').trigger('click');
+
+    cy.get('.ant-table-row').should('contain', TEAM_DETAILS.username);
+
+    cy.get('[data-testid="remove-user-btn"]')
       .should('exist')
       .should('be.visible')
       .click();
@@ -141,25 +164,28 @@ describe('Teams flow should work properly', () => {
     //Validating the user added
     cy.get('[data-testid="body-text"]').should(
       'contain',
-      TEAM_DETAILS.ownername
+      `Are you sure you want to Remove ${TEAM_DETAILS.username}`
     );
 
+    interceptURL('PATCH', '/api/v1/teams/*', 'deleteUser')
     //Click on confirm button
     cy.get('[data-testid="save-button"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@saveUser', 200);
-
+    cy.wait(['@deleteUser', '@getSelectedTeam', '@getUsers'])
+    
     //Verify if user is removed
     cy.get('[data-testid="Users"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="add-user"]').should(
-      'not.contain',
-      TEAM_DETAILS.ownername
+    cy.get('table').should(
+      'not.exist',
     );
-  });
+
+    cy.get('body').should('not.contain', TEAM_DETAILS.username);
+
+  })
 
   it('Join team should work properly', () => {
     interceptURL('GET', '/api/v1/users*', 'getUsers');
@@ -223,8 +249,8 @@ describe('Teams flow should work properly', () => {
   });
 
   it('Update description for created team', () => {
-    interceptURL('GET', `/api/v1/teams/name/*`, 'getSelectedTeam');
-    interceptURL('PATCH', `/api/v1/teams/*`, 'patchTeam');
+    interceptURL('GET', `/api/v1/teams/name/${TEAM_DETAILS.name}?fields=*&include=all`, 'getSelectedTeam');
+    interceptURL('PATCH', '/api/v1/teams/*', 'patchDescription');
     //Click on created team name
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
@@ -234,9 +260,7 @@ describe('Teams flow should work properly', () => {
     verifyResponseStatusCode('@getUserDetails', 200);
 
     //Validate the updated display name
-    cy.get('[data-testid="team-heading"]').then(($el) => {
-      cy.wrap($el).should('have.text', TEAM_DETAILS.updatedname);
-    });
+    cy.get('[data-testid="team-heading"]').should('contain', `${TEAM_DETAILS.updatedname}`)
 
     cy.get('[data-testid="inactive-link"]')
       .should('be.visible')
@@ -251,6 +275,8 @@ describe('Teams flow should work properly', () => {
     cy.get(descriptionBox).clear().type(updateddescription);
 
     cy.get('[data-testid="save"]').should('be.visible').click();
+    verifyResponseStatusCode('@patchDescription', 200)
+    
     //Validating the updated description
     cy.get('[data-testid="description"] p').should(
       'contain',
