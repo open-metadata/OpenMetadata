@@ -15,8 +15,6 @@ import traceback
 from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
-from metadata.generated.schema.entity.classification.tag import Tag
-
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -27,6 +25,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
