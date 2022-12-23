@@ -5,15 +5,17 @@ Tests for the OMeta tag MixIn
 import unittest
 from unittest import TestCase
 
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.classification.classification import Classification
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -62,12 +64,15 @@ class OMetaTagMixinPost(TestCase):
             name=SECONDARY_TAG_NAME,
             classification=CLASSIFICATION_NAME,
             description="test secondary tag",
-            parent=primary_tag.fullyQualifiedName
+            parent=primary_tag.fullyQualifiedName,
         )
 
         secondary_tag: Tag = self.metadata.create_or_update(create_secondary_tag)
 
-        assert secondary_tag.fullyQualifiedName == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
+        assert (
+            secondary_tag.fullyQualifiedName
+            == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
+        )
 
     def test_get_classification(self):
         """Test GET primary tag"""
@@ -102,3 +107,13 @@ class OMetaTagMixinPost(TestCase):
         classifications = self.metadata.list_entities(entity=Classification).entities
 
         self.assertIsNotNone(classifications)
+
+    def test_list_tag_in_category(self):
+        """
+        Get tags from a category
+        """
+        tags = self.metadata.list_entities(
+            entity=Tag, params={"parent": CLASSIFICATION_NAME}
+        ).entities
+
+        self.assertIsNotNone(tags)

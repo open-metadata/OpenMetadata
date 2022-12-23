@@ -19,13 +19,14 @@ from pydantic import BaseModel, Extra
 from requests.utils import urlparse
 from tableau_api_lib.utils import extract_pages
 
-from metadata.generated.schema.api.data.createChart import CreateChartRequest
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -36,7 +37,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.tableauConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -246,22 +246,22 @@ class TableauSource(DashboardServiceSource):
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
-    def yield_tag(self, _) -> OMetaTagAndClassification:  # pylint: disable=arguments-differ
+    def yield_tag(
+        self, _
+    ) -> OMetaTagAndClassification:  # pylint: disable=arguments-differ
         """
         Fetch Dashboard Tags
         """
         for tag in self.tags:
             classification = OMetaTagAndClassification(
-                category_name=CreateClassificationRequest(
+                classification_request=CreateClassificationRequest(
                     name=TABLEAU_TAG_CATEGORY,
                     description="Tags associates with tableau entities",
                 ),
-                category_details=CreateTagRequest(name=tag, description="Tableau Tag"),
+                tag_request=CreateTagRequest(name=tag, description="Tableau Tag"),
             )
             yield classification
-            logger.info(
-                f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested"
-            )
+            logger.info(f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested")
 
     def get_tag_labels(self, tags: List[str]) -> Optional[List[TagLabel]]:
         return [

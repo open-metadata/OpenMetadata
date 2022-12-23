@@ -28,6 +28,10 @@ from requests_aws4auth import AWS4Auth
 from metadata.config.common import ConfigModel
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -39,7 +43,6 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -823,8 +826,11 @@ class ElasticsearchSink(Sink[Entity]):
 
     def _create_tag_es_doc(self, classification: Classification):
         tag_docs = []
-        """ TODO:9259 no children under classification. Use similar mechanism as glossary"""
-        for tag in classification.children:
+
+        tag_list = self.metadata.list_entities(
+            entity=Tag, params={"parent": classification.name.__root__}
+        )
+        for tag in tag_list.entities or []:
             suggest = [
                 {"input": [tag.name.__root__], "weight": 5},
                 {"input": [tag.fullyQualifiedName], "weight": 10},

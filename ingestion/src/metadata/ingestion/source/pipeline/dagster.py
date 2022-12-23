@@ -14,12 +14,13 @@ Dagster source to extract metadata from OM UI
 import traceback
 from typing import Dict, Iterable, List, Optional
 
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     StatusType,
@@ -32,7 +33,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -99,7 +99,9 @@ class DagsterSource(PipelineServiceSource):
 
         return result["repositoriesOrError"]["nodes"]
 
-    def get_tag_labels(self, tags: OMetaTagAndClassification) -> Optional[List[TagLabel]]:
+    def get_tag_labels(
+        self, tags: OMetaTagAndClassification
+    ) -> Optional[List[TagLabel]]:
 
         return [
             TagLabel(
@@ -167,13 +169,15 @@ class DagsterSource(PipelineServiceSource):
             tags=self.get_tag_labels(self.context.repository_name),
         )
 
-    def yield_tag(self, _) -> OMetaTagAndClassification:  # pylint: disable=arguments-differ
+    def yield_tag(
+        self, _
+    ) -> OMetaTagAndClassification:  # pylint: disable=arguments-differ
         classification = OMetaTagAndClassification(
-            category_name=CreateTagCategoryRequest(
+            classification_request=CreateClassificationRequest(
                 name="DagsterTags",
                 description="Tags associated with dagster",
             ),
-            category_details=CreateTagRequest(
+            tag_request=CreateTagRequest(
                 name=self.context.repository_name, description="Dagster Tag"
             ),
         )

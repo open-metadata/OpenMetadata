@@ -33,6 +33,9 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.dataInsight.dataInsightChart import DataInsightChart
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -60,7 +63,6 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -431,7 +433,7 @@ class OpenMetadata(
 
         if "tag" in entity.__name__.lower():
             return self.classifications_path
-        
+
         if "classification" in entity.__name__.lower():
             return self.classifications_path
 

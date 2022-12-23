@@ -22,10 +22,10 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createClassification import (
+from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -302,14 +302,11 @@ class SnowflakeSource(CommonDbSourceService):
             row = list(res)
             fqn_elements = [name for name in row[2:] if name]
             yield OMetaTagAndClassification(
-                fqn=fqn._build(  # pylint: disable=protected-access
-                    self.context.database_service.name.__root__, *fqn_elements
-                ),
-                category_name=CreateClassificationRequest(
+                classification_request=CreateClassificationRequest(
                     name=row[0],
                     description="SNOWFLAKE TAG NAME",
                 ),
-                category_details=CreateTagRequest(
+                tag_request=CreateTagRequest(
                     name=row[1], description="SNOWFLAKE TAG VALUE"
                 ),
             )

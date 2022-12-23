@@ -23,10 +23,11 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createClassification import (
+from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -39,7 +40,6 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -161,11 +161,11 @@ class BigquerySource(CommonDbSourceService):
                     )
                     for tag in policy_tags:
                         yield OMetaTagAndClassification(
-                            category_name=CreateClassificationRequest(
+                            classification_request=CreateClassificationRequest(
                                 name=self.service_connection.tagCategoryName,
                                 description="",
                             ),
-                            category_details=CreateTagRequest(
+                            tag_request=CreateTagRequest(
                                 name=tag.display_name, description="Bigquery Policy Tag"
                             ),
                         )

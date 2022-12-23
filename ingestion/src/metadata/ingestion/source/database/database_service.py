@@ -27,7 +27,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
@@ -293,7 +292,9 @@ class DatabaseServiceSource(
         From topology. To be run for each schema
         """
 
-    def yield_tag_details(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag_details(
+        self, schema_name: str
+    ) -> Iterable[OMetaTagAndClassification]:
         """
         From topology. To be run for each schema
         """
@@ -335,7 +336,6 @@ class DatabaseServiceSource(
         fetch all schema names without any filtering.
         """
         yield from self.get_database_schema_names()
-
 
     def yield_table_location_link(
         self,

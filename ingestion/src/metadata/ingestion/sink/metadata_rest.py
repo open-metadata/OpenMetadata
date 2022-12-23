@@ -39,14 +39,13 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import DeleteTable
@@ -354,24 +353,18 @@ class MetadataRestSink(Sink[Entity]):
 
         """
         try:
-            self.metadata.create_or_update_tag_category(
-                tag_category_body=record.category_name,
-                category_name=record.category_name.name.__root__,
-            )
+            self.metadata.create_or_update(record.classification_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Unexpected error writing classification [{record.category_name}]: {exc}"
+                f"Unexpected error writing classification [{record.classification_request}]: {exc}"
             )
         try:
-        """TODO:9259 setup classification and parent fields"""
-            self.metadata.create_or_update_tag(
-                primary_tag_body=record.category_details
-            )
+            self.metadata.create_or_update(record.tag_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Unexpected error writing classification [{record.category_name}]: {exc}"
+                f"Unexpected error writing classification [{record.tag_request}]: {exc}"
             )
 
     def write_lineage(self, add_lineage: AddLineageRequest):

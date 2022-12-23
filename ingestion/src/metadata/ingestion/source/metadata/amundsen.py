@@ -20,6 +20,10 @@ from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -30,12 +34,9 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createClassification import (
-    CreateClassificationRequest,
-)
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -50,7 +51,6 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.teams import team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -239,11 +239,11 @@ class AmundsenSource(Source[Entity]):
     def create_tags(self, tags):
         for tag in tags:
             classification = OMetaTagAndClassification(
-                category_name=CreateClassificationRequest(
+                classification_request=CreateClassificationRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
                 ),
-                category_details=CreateTagRequest(
+                tag_request=CreateTagRequest(
                     name=tag, description="Amundsen Table Tag"
                 ),
             )

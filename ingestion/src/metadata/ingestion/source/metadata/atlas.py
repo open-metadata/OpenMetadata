@@ -18,6 +18,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
 from metadata.clients.atlas_client import AtlasClient
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -26,10 +30,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createClassification import (
-    CreateClassificationRequest,
-)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -43,7 +44,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -312,11 +312,11 @@ class AtlasSource(Source):
 
     def create_tag(self) -> OMetaTagAndClassification:
         atlas_table_tag = OMetaTagAndClassification(
-            category_name=CreateClassificationRequest(
+            classification_request=CreateClassificationRequest(
                 name=ATLAS_TAG_CATEGORY,
                 description="Tags associates with atlas entities",
             ),
-            category_details=CreateTagRequest(
+            tag_request=CreateTagRequest(
                 name=ATLAS_TABLE_TAG, description="Atlas Cluster Tag"
             ),
         )
