@@ -11,7 +11,7 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
-- [DBT Integration](#dbt-integration)
+- [dbt Integration](#dbt-integration)
 
 ## Requirements
 
@@ -86,7 +86,7 @@ source:
       #   excludes:
       #     - table3
       #     - table4
-      # For DBT, choose one of Cloud, Local, HTTP, S3 or GCS configurations
+      # For dbt, choose one of Cloud, Local, HTTP, S3 or GCS configurations
       # dbtConfigSource:
       # # For cloud
       #   dbtCloudAuthToken: token
@@ -454,6 +454,6 @@ metadata profile -c <path-to-yaml>
 
 Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
 
-## DBT Integration
+## dbt Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/metadata/dbt).
+You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

@@ -40,6 +40,7 @@ import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
 import SearchDropdown from '../../components/SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
@@ -117,12 +118,12 @@ const DataInsightPage = () => {
     };
   }, [kpiList]);
 
-  const handleTierChange = (tiers: string[] = []) => {
+  const handleTierChange = (tiers: SearchDropdownOption[] = []) => {
     setTierOptions((prev) => ({ ...prev, selectedOptions: tiers }));
     setChartFilter((previous) => ({
       ...previous,
       tier: tiers.length
-        ? tiers.map((tier) => TIER_FILTER[tier]).join(',')
+        ? tiers.map((tier) => TIER_FILTER[tier.key].key).join(',')
         : undefined,
     }));
   };
@@ -136,14 +137,14 @@ const DataInsightPage = () => {
     }));
   };
 
-  const handleTeamChange = (teams: string[] = []) => {
+  const handleTeamChange = (teams: SearchDropdownOption[] = []) => {
     setTeamOptions((prev) => ({
       ...prev,
       selectedOptions: teams,
     }));
     setChartFilter((previous) => ({
       ...previous,
-      team: teams.length ? teams.join(',') : undefined,
+      team: teams.length ? teams.map((team) => team.key).join(',') : undefined,
     }));
   };
 
@@ -171,13 +172,13 @@ const DataInsightPage = () => {
       setTierOptions((prev) => ({
         ...prev,
         options: prev.options.filter((value) =>
-          value.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+          value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
         ),
       }));
     } else {
       setTierOptions((prev) => ({
         ...prev,
-        options: defaultTierOptions,
+        options: defaultTierOptions.map((op) => ({ key: op, label: op })),
       }));
     }
   };
@@ -202,7 +203,7 @@ const DataInsightPage = () => {
       const teamFilterOptions = hits.map((hit) => {
         const source = hit._source;
 
-        return source.name;
+        return { key: source.name, label: source.displayName ?? source.name };
       });
       setTeamOptions((prev) => ({
         ...prev,
@@ -217,7 +218,7 @@ const DataInsightPage = () => {
   const fetchDefaultTierOptions = () => {
     setTierOptions((prev) => ({
       ...prev,
-      options: defaultTierOptions,
+      options: defaultTierOptions.map((op) => ({ key: op, label: op })),
     }));
   };
 

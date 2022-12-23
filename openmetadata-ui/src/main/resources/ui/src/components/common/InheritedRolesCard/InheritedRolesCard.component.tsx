@@ -12,7 +12,7 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
 
   return (
     <Card
-      className="relative page-layout-v1-left-panel mt-2.5"
+      className="relative page-layout-v1-left-panel"
       key="inherited-roles-card-component"
       title={
         <div className="flex">

@@ -46,6 +46,7 @@ import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
 import org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
@@ -533,6 +534,13 @@ public interface CollectionDAO {
     private UUID id;
     private String type;
     private String json;
+  }
+
+  @Getter
+  @Builder
+  class ReportDataRow {
+    private String rowNum;
+    private ReportData reportData;
   }
 
   interface EntityRelationshipDAO {
@@ -3096,8 +3104,24 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension")
     String getExtension(@Bind("entityFQN") String entityId, @Bind("extension") String extension);
 
-    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
-    List<String> getExtension(@Bind("entityFQN") String entityFQN);
+    @SqlQuery("SELECT count(*) FROM entity_extension_time_series WHERE EntityFQN = :entityFQN")
+    int listCount(@Bind("entityFQN") String entityFQN);
+
+    @RegisterRowMapper(ReportDataMapper.class)
+    @SqlQuery(
+        "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
+            + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
+            + "SELECT row_num, json FROM data WHERE row_num < :before LIMIT :limit")
+    List<ReportDataRow> getBeforeExtension(
+        @Bind("entityFQN") String entityFQN, @Bind("limit") int limit, @Bind("before") String before);
+
+    @RegisterRowMapper(ReportDataMapper.class)
+    @SqlQuery(
+        "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
+            + "FROM entity_extension_time_series WHERE EntityFQN = :entityFQN) "
+            + "SELECT row_num, json FROM data WHERE row_num > :after LIMIT :limit")
+    List<ReportDataRow> getAfterExtension(
+        @Bind("entityFQN") String entityFQN, @Bind("limit") int limit, @Bind("after") String after);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
@@ -3164,6 +3188,21 @@ public interface CollectionDAO {
         @Bind("startTs") Long startTs,
         @Bind("endTs") long endTs,
         @Define("orderBy") OrderBy orderBy);
+
+    class ReportDataMapper implements RowMapper<ReportDataRow> {
+      @Override
+      public ReportDataRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+        String rowNumber = rs.getString("row_num");
+        String json = rs.getString("json");
+        ReportData reportData;
+        try {
+          reportData = JsonUtils.readValue(json, ReportData.class);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        return new ReportDataRow(rowNumber, reportData);
+      }
+    }
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

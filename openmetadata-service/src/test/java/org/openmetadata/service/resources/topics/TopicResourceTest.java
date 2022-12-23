@@ -152,7 +152,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldUpdated(change, "replicationFactor", 1, 2);
     fieldUpdated(change, "retentionTime", 1.0, 2.0);
     fieldUpdated(change, "retentionSize", 1.0, 2.0);
-    fieldUpdated(change, "schema.schemaText", "abc", "bcd");
+    fieldUpdated(change, "messageSchema.schemaText", "abc", "bcd");
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
 

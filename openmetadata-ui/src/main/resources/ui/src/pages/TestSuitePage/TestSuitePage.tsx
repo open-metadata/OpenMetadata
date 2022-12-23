@@ -150,6 +150,10 @@ const TestSuitePage = () => {
     []
   );
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   if (isEmpty(testSuites)) {
     return fetchErrorPlaceHolder();
   }

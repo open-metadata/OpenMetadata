@@ -41,7 +41,20 @@ services:
       - ./docker-volume/db:/var/lib/postgresql/data
     ...
 ```
+## Volumes for Elasticsearch container:
+Following are the changes we have to do while mounting the directory for Elasticsearch in OpenMetadata.
+- Update or add the volume in the docker-compose.yml file.
+Open the file `docker-compose.yml` downloaded from the Release page [Link](https://github.com/open-metadata/OpenMetadata/releases/download/0.13.0-release/docker-compose.yml) .
 
+```commandline
+version: "3.9"
+services:
+ elasticsearch:
+    ...
+    volumes:
+      - ./docker-volume/es-data:/usr/share/elasticsearch/data
+    ...
+```
 ## Volumes for ingestion container
 Following are the changes we have to do while mounting the directory for ingestion in OpenMetadata. Here we will maintaing different directory for dag_generated_configs, dags and secrets.
 - Remove the below section from the docker-compose.yml file.
@@ -112,6 +125,9 @@ Once these changes are done, restart the container via:
 ```commandline
 docker compose down && docker compose up -d
 ```
+
+Since our Ingestion Docker Image is based on Official Airflow Docker image as base, it is recommended to provide right permissions to host directories for airflow user running inside the container as per the instructions mentioned [here](https://airflow.apache.org/docs/apache-airflow/2.3.3/start/docker.html?highlight=docker#setting-the-right-airflow-user).
+
 <Note>
 If you are starting  the OpenMetadata Docker containers using below command:
 ```command line

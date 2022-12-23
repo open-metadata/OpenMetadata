@@ -10,6 +10,8 @@ In this section, we provide guides and references to use the Datalake connector.
 Configure and schedule Datalake metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -275,6 +277,8 @@ We support two ways of authenticating to GCS:
    - `Storage Blob Data Contributor`
    - `Storage Queue Data Contributor`
 
+The current approach for authentication is based on `app registration`, reach out to us on [slack](https://slack.open-metadata.org/) if you find the need for another auth system
+
 </Collapse>
 
 
@@ -354,3 +358,22 @@ caption="Edit and Deploy the Ingestion Pipeline"
 />
 
 From the Connection tab, you can also Edit the Service if needed.
+
+
+## Data Profiler
+
+<Tile
+icon="schema"
+title="Profiler Workflow"
+text="Learn more about how to configure the Data Profiler from the UI."
+link="/connectors/ingestion/workflows/profiler"
+/>
+
+## Data Quality
+
+<Tile
+icon="air"
+title="Data Quality Workflow"
+text="Learn more about how to configure the Data Quality tests from the UI."
+link="/connectors/ingestion/workflows/data-quality"
+/>

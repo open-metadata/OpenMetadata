@@ -50,6 +50,14 @@ SET json = jsonb_set(jsonb_set(json::jsonb #- '{connection,config,configSource}'
 WHERE serviceType = 'Dagster' and json #>'{connection,config,configSource,host}' is not null;
 
 
-update pipeline_service_entity 
-set json = jsonb_set(json::jsonb #- '{connection,config,configSource}', '{connection,config,host}', json#> '{connection,config,configSource,hostPort}', true)
-where servicetype = 'Dagster' and json #>'{connection,config,configSource,hostPort}' is not null;
+UPDATE pipeline_service_entity
+SET json = jsonb_set(json::jsonb #- '{connection,config,configSource}', '{connection,config,host}', json#> '{connection,config,configSource,hostPort}', true)
+WHERE servicetype = 'Dagster' and json #>'{connection,config,configSource,hostPort}' is not null;
+
+UPDATE topic_entity
+SET json = jsonb_set(json::jsonb #- '{schemaText}', '{messageSchema}', jsonb_build_object('schemaText', json#>'{schemaText}'), true)
+WHERE json #> '{schemaText}' IS NOT NULL;
+
+UPDATE topic_entity
+SET json = jsonb_set(json::jsonb #- '{schemaType}', '{messageSchema,schemaType}', json#> '{schemaType}', true)
+WHERE json #> '{schemaType}' IS NOT NULL;

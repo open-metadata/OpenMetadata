@@ -45,7 +45,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **Items**: Refer to *#/definitions/sqlQuery*.
 - **`tableTests`** *(array)*: List of test cases that ran against a table. Default: `None`.
   - **Items**: Refer to *../../tests/tableTest.json*.
-- **`dataModel`**: This captures information about how the table is modeled. Currently only DBT model is supported. Refer to *#/definitions/dataModel*.
+- **`dataModel`**: This captures information about how the table is modeled. Currently only dbt model is supported. Refer to *#/definitions/dataModel*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
@@ -152,16 +152,16 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`vote`** *(number)*: Users can vote up to rank the popular queries. Default: `1`.
   - **`checksum`** *(string)*: Checksum to avoid registering duplicate queries.
   - **`queryDate`**: Date on which the query ran. Refer to *../../type/basic.json#/definitions/date*.
-- **`modelType`**: Must be one of: `['DBT']`.
-- **`dataModel`** *(object)*: This captures information about how the table is modeled. Currently only DBT model is supported. Cannot contain additional properties.
+- **`modelType`**: Must be one of: `['dbt']`.
+- **`dataModel`** *(object)*: This captures information about how the table is modeled. Currently only dbt model is supported. Cannot contain additional properties.
   - **`modelType`**: Refer to *#/definitions/modelType*.
   - **`description`**: Description of the Table from the model. Refer to *../../type/basic.json#/definitions/markdown*.
   - **`path`** *(string)*: Path to sql definition file.
-  - **`rawSql`**: This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL query need not be compiled as done in DBT. Refer to *../../type/basic.json#/definitions/sqlQuery*.
-  - **`sql`**: This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where compilation is not necessary, this corresponds to SQL that created the table. Refer to *../../type/basic.json#/definitions/sqlQuery*.
+  - **`rawSql`**: This corresponds to rws SQL from `<model_name>.sql` in dbt. This might be null when SQL query need not be compiled as done in dbt. Refer to *../../type/basic.json#/definitions/sqlQuery*.
+  - **`sql`**: This corresponds to compile SQL from `<model_name>.sql` in dbt. In cases where compilation is not necessary, this corresponds to SQL that created the table. Refer to *../../type/basic.json#/definitions/sqlQuery*.
   - **`upstream`** *(array)*: Fully qualified name of Models/tables used for in `sql` for creating this table.
     - **Items** *(string)*
-  - **`columns`** *(array)*: Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`. Default: `None`.
+  - **`columns`** *(array)*: Columns from the schema defined during modeling. In case of dbt, the metadata here comes from `schema.yaml`. Default: `None`.
     - **Items**: Refer to *#/definitions/column*.
   - **`generatedAt`**: Refer to *../../type/basic.json#/definitions/dateTime*.
 

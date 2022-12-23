@@ -105,7 +105,7 @@ const AddPolicyPage = () => {
       data-testid="add-policy-container"
       gutter={[16, 16]}>
       <Col offset={4} span={12}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
+        <TitleBreadcrumb className="m-y-md" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph
             className="tw-text-base"
@@ -175,7 +175,7 @@ const AddPolicyPage = () => {
           </Form>
         </Card>
       </Col>
-      <Col className="tw-mt-4" span={4}>
+      <Col className="m-t-xlg" span={4}>
         <Typography.Paragraph className="tw-text-base tw-font-medium">
           {t('label.add-policy')}
         </Typography.Paragraph>

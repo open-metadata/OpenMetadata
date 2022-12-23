@@ -95,7 +95,7 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    AzureDatalakeConfig,
+    AzureConfig,
     DatalakeConnection,
     GCSConfig,
     S3Config,
@@ -1005,7 +1005,7 @@ def _(connection: DatalakeClient) -> None:
             else:
                 connection.client.list_buckets()
 
-        if isinstance(config, AzureDatalakeConfig):
+        if isinstance(config, AzureConfig):
             connection.client.list_containers(name_starts_with="")
 
     except ClientError as err:
@@ -1050,7 +1050,7 @@ def _(config: GCSConfig):
 
 
 @get_datalake_client.register
-def _(config: AzureDatalakeConfig):
+def _(config: AzureConfig):
     from azure.identity import ClientSecretCredential
     from azure.storage.blob import BlobServiceClient
 
@@ -1185,7 +1185,9 @@ def _(connection: DagsterClient) -> None:
     from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
 
     try:
-        connection._execute(TEST_QUERY_GRAPHQL)  # pylint: disable=protected-access
+        connection.client._execute(  # pylint: disable=protected-access
+            TEST_QUERY_GRAPHQL
+        )
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc

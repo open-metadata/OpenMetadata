@@ -4,13 +4,8 @@ source:
   serviceConnection:
     config:
       type: Dagster
-      configSource:
-        # For Local Connection
-        hostPort: http://locahost:3000/
-        
-        # For Cloud Connection
-        # host: "https://yourorg.dagster.cloud/prod"
-        # token: token
+      host: http://locahost:3000/
+      # token: <token>
   sourceConfig:
     config:
       type: PipelineMetadata

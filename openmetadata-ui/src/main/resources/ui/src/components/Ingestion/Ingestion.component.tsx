@@ -25,7 +25,7 @@ import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
-import { PIPELINE_TYPE_LOCALISATION } from '../../constants/Ingestions.constant';
+import { PIPELINE_TYPE_LOCALIZATION } from '../../constants/Ingestions.constant';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { Connection } from '../../generated/entity/services/databaseService';
 import {
@@ -282,21 +282,21 @@ const Ingestion: React.FC<IngestionProps> = ({
     switch (type) {
       case PipelineType.ElasticSearchReindex:
         name = t('label.add-entity', {
-          entity: t('labe.elastic-search-re-index'),
+          entity: t('label.elastic-search-re-index'),
         });
 
         break;
 
       case PipelineType.Dbt:
         name = t('label.add-workflow-ingestion', {
-          workflow: t('label.dbt-uppercase'),
+          workflow: t('label.dbt-lowercase'),
         });
 
         break;
 
       default:
         name = t('label.add-workflow-ingestion', {
-          workflow: t(`label.${PIPELINE_TYPE_LOCALISATION[type]}`),
+          workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
         });
     }
 

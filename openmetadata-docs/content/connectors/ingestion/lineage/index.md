@@ -56,9 +56,9 @@ relationship between the nodes.
 What we just described is the core process of identifying and ingesting lineage, and it will be reused (or partially reused)
 for the rest of the options as well.
 
-### DBT
+### dbt
 
-When configuring an Ingestion adding DBT information we can parse the nodes on the Manifest JSON to get the data model
+When configuring an Ingestion adding dbt information we can parse the nodes on the Manifest JSON to get the data model
 lineage. Here we don't need to parse a query to obtain the source and target elements, but we still rely on querying ElasticSearch
 to identify the graph nodes as OpenMetadata Entities.
 
@@ -105,7 +105,7 @@ When running any query from within OpenMetadata we add an information comment to
 {"app": "OpenMetadata", "version": <openmetadata-ingestion version>}
 ```
 
-Note that queries with this text as well as the ones containing headers from DBT (which follow a similar structure),
+Note that queries with this text as well as the ones containing headers from dbt (which follow a similar structure),
 will be filtered out when building the query log internally.
 
 </Note>

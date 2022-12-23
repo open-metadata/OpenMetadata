@@ -136,8 +136,9 @@ const ProfilerDashboardPage = () => {
   const fetchTableEntity = async () => {
     try {
       const fqn = isColumnView
-        ? getTableFQNFromColumnFQN(decodedEntityFQN)
-        : decodedEntityFQN;
+        ? getTableFQNFromColumnFQN(entityTypeFQN)
+        : entityTypeFQN;
+
       const field = `tags, usageSummary, owner, followers${
         isColumnView ? ', profile' : ''
       }`;

@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
 )
 from metadata.generated.schema.entity.data.pipeline import Task
 from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.type import schema
 from metadata.generated.schema.type.entityReference import (
     EntityReference,
     EntityReferenceList,
@@ -96,7 +97,7 @@ class TopicESDocument(BaseModel):
     href: Optional[str]
     deleted: bool
     service: EntityReference
-    serviceType: str
+    messageSchema: Optional[schema.Topic] = None
     schemaText: Optional[str] = None
     schemaType: Optional[str] = None
     cleanupPolicies: List[str] = None

@@ -21,6 +21,7 @@ import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { SearchResponse } from '../../interface/search.interface';
 import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
+import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 
 export type UrlParams = {
   searchQuery: string;
@@ -78,7 +79,7 @@ export interface ExploreProps {
 export interface ExploreQuickFilterField {
   key: string;
   label: string;
-  value: string[] | undefined;
+  value: SearchDropdownOption[] | undefined;
 }
 
 export interface ExploreQuickFilterProps {

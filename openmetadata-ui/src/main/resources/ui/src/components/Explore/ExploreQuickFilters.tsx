@@ -23,9 +23,14 @@ import {
   getUserSuggestions,
 } from '../../axiosAPIs/miscAPI';
 import { MISC_FIELDS } from '../../constants/AdvancedSearch.constants';
-import { getAdvancedField } from '../../utils/AdvancedSearchUtils';
+import {
+  getAdvancedField,
+  getOptionsObject,
+} from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
+import { EntityDetailsType } from './explore.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -35,7 +40,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
 }) => {
   const { t } = useTranslation();
-  const [options, setOptions] = useState<string[]>();
+  const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
   const getInitialOptions = async (key: string) => {
@@ -44,7 +49,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     try {
       const res = await getAdvancedFieldDefaultOptions(index, key);
       const buckets = res.data.aggregations[`sterms#${key}`].buckets;
-      setOptions(buckets.map((option) => option.key));
+      setOptions(
+        buckets.map((option) => ({
+          key: option.key,
+          label: option.label ?? option.key,
+        }))
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -68,9 +78,15 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           const suggestOptions =
             res.data.suggest['metadata-suggest'][0].options ?? [];
           const uniqueOptions = [
-            ...new Set(suggestOptions.map((op) => op.text)),
+            ...new Set(
+              suggestOptions.map((op) => ({
+                text: op.text,
+                source: op._source as EntityDetailsType,
+              }))
+            ),
           ];
-          setOptions(uniqueOptions);
+          const optionsObject = getOptionsObject(key, uniqueOptions);
+          setOptions(optionsObject);
         } else {
           if (key === 'tags.tagFQN') {
             const res = await getTagSuggestions(value);
@@ -84,14 +100,19 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                   .map((op) => op._source.fullyQualifiedName as string)
               ),
             ];
-            setOptions(uniqueOptions);
+            setOptions(uniqueOptions.map((op) => ({ key: op, label: op })));
           } else {
             const res = await getUserSuggestions(value);
 
             const suggestOptions =
               res.data.suggest['metadata-suggest'][0].options ?? [];
             const uniqueOptions = [
-              ...new Set(suggestOptions.map((op) => op._source.name)),
+              ...new Set(
+                suggestOptions.map((op) => ({
+                  key: op._source.name,
+                  label: op._source.displayName ?? op._source.name,
+                }))
+              ),
             ];
             setOptions(uniqueOptions);
           }
