@@ -80,7 +80,9 @@ def get_class_name_root(type_: str) -> str:
     from a source type, e.g., mysql or clickhouse-lineage
     -> ClickhouseLineage
     """
-    return "".join([i.title() for i in type_.split(TYPE_SEPARATOR)]).replace(CLASS_SEPARATOR, "")
+    return "".join([i.title() for i in type_.split(TYPE_SEPARATOR)]).replace(
+        CLASS_SEPARATOR, ""
+    )
 
 
 def import_class(key: str) -> Type[T]:
