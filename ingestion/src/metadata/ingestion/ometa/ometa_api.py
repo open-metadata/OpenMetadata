@@ -58,7 +58,7 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.entity.classification.classification import Tag, Classification
+from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -280,8 +280,6 @@ class OpenMetadata(
             entity,
             get_args(
                 Union[
-                    Tag,
-                    self.get_create_entity_type(Tag),
                     Classification,
                     self.get_create_entity_type(Classification),
                 ]

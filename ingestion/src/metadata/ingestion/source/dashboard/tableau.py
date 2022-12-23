@@ -22,8 +22,8 @@ from tableau_api_lib.utils import extract_pages
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createClassification import (
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.entity.data.dashboard import (

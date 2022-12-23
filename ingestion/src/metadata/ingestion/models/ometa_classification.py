@@ -15,8 +15,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createClassification import (
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
