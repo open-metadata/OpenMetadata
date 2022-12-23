@@ -74,7 +74,6 @@ import {
   refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -98,7 +97,6 @@ import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
@@ -188,8 +186,6 @@ const PipelineDetails = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [selectedField, setSelectedField] = useState<string>('');
-
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
     pipelineStatus
@@ -233,10 +229,6 @@ const PipelineDetails = ({
       fetchResourcePermission();
     }
   }, [pipelineDetails.id]);
-
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
@@ -1030,19 +1022,6 @@ const PipelineDetails = ({
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
-        />
-      ) : null}
-      {selectedField ? (
-        <RequestDescriptionModal
-          createThread={createThread}
-          defaultValue={getDefaultValue(owner as EntityReference)}
-          header={t('label.request-description')}
-          threadLink={getEntityFeedLink(
-            EntityType.PIPELINE,
-            pipelineFQN,
-            selectedField
-          )}
-          onCancel={closeRequestModal}
         />
       ) : null}
     </PageContainerV1>
