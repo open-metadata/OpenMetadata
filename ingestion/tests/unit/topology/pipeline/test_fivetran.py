@@ -118,7 +118,7 @@ MOCK_PIPELINE = Pipeline(
 
 class FivetranUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
-    @patch("metadata.ingestion.source.pipeline.fivetran.FivetranClient")
+    @patch("metadata.ingestion.source.pipeline.fivetran.source.FivetranClient")
     def __init__(self, methodName, fivetran_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

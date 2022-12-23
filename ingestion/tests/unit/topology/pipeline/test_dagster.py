@@ -274,7 +274,7 @@ class DagsterUnitTest(TestCase):
             in EXPTECTED_PIPELINE_NAME
         )
 
-    @patch("metadata.ingestion.source.pipeline.dagster.DagsterSource.get_jobs")
+    @patch("metadata.ingestion.source.pipeline.dagster.source.DagsterSource.get_jobs")
     def test_yield_pipeline(self, get_jobs):
         results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
         get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
