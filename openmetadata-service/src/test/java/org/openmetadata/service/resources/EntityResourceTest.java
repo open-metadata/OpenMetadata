@@ -175,9 +175,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final String collectionName;
   private final String allFields;
   private final String systemEntityName; // System entity provided by the system that can't be deleted
-  protected boolean supportsFollowers;
-  protected boolean supportsOwner;
-  protected boolean supportsTags;
+  protected final boolean supportsFollowers;
+  protected final boolean supportsOwner;
+  protected final boolean supportsTags;
   protected boolean supportsPatch = true;
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;

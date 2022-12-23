@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex } from '../enums/search.enum';
+import { Tag } from '../generated/entity/classification/tag';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
