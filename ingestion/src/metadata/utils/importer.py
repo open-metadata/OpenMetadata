@@ -41,16 +41,40 @@ class ImportClassException(Exception):
     """
 
 
+def get_module_dir(type_: str) -> str:
+    """
+    Build the module directory in the ingestion package
+    from a source type, e.g., mysql or clickhouse-lineage
+    -> clickhouse
+    """
+    return type_.split(TYPE_SEPARATOR)[0]
+
+
 def get_module_name(type_: str) -> str:
     """
     Build the module name in the ingestion package
-    from a source type, e.g., mysql or clickhouse-lineage
-    -> clickhouse_lineage
+    from a source type, e.g., query-parser
+    -> query_parser
     """
     return type_.replace(TYPE_SEPARATOR, CLASS_SEPARATOR)
 
 
-def get_class_name(type_: str) -> str:
+def get_source_module_name(type_: str) -> str:
+    """
+    Build the module name in the ingestion package
+    from a source type, e.g.,
+    mysql -> source
+    clickhouse-lineage -> lineage
+    """
+    raw_module = type_.split(TYPE_SEPARATOR)[-1]
+
+    if raw_module == type_:  # it is invariant, no TYPE_SEPARATOR in teh string
+        return "source"
+
+    return raw_module
+
+
+def get_class_name_root(type_: str) -> str:
     """
     Build the class name in the ingestion package
     from a source type, e.g., mysql or clickhouse-lineage
@@ -79,11 +103,12 @@ def import_source_class(
     service_type: ServiceType, source_type: str, from_: str = "ingestion"
 ) -> Type[Source]:
     return import_class(
-        "metadata.{}.source.{}.{}.{}Source".format(
+        "metadata.{}.source.{}.{}.{}.{}Source".format(
             from_,
             service_type.name.lower(),
-            get_module_name(source_type),
-            get_class_name(source_type),
+            get_module_dir(source_type),
+            get_source_module_name(source_type),
+            get_class_name_root(source_type),
         )
     )
 
@@ -95,7 +120,7 @@ def import_processor_class(
         "metadata.{}.processor.{}.{}Processor".format(
             from_,
             get_module_name(processor_type),
-            get_class_name(processor_type),
+            get_class_name_root(processor_type),
         )
     )
 
@@ -105,7 +130,7 @@ def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]
         "metadata.{}.stage.{}.{}Stage".format(
             from_,
             get_module_name(stage_type),
-            get_class_name(stage_type),
+            get_class_name_root(stage_type),
         )
     )
 
@@ -115,7 +140,7 @@ def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
         "metadata.{}.sink.{}.{}Sink".format(
             from_,
             get_module_name(sink_type),
-            get_class_name(sink_type),
+            get_class_name_root(sink_type),
         )
     )
 
@@ -127,7 +152,7 @@ def import_bulk_sink_type(
         "metadata.{}.bulksink.{}.{}BulkSink".format(
             from_,
             get_module_name(bulk_sink_type),
-            get_class_name(bulk_sink_type),
+            get_class_name_root(bulk_sink_type),
         )
     )
 
