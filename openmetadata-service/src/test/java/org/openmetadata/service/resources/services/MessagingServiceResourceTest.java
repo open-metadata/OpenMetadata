@@ -67,7 +67,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         "services/messagingServices",
         MessagingServiceResource.FIELDS);
     supportsPatch = false;
-    supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupMessagingServices() throws HttpResponseException {

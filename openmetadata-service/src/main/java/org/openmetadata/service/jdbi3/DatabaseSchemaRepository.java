@@ -92,9 +92,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     setDefaultFields(schema);
     schema.setOwner(fields.contains(FIELD_OWNER) ? getOwner(schema) : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
-    schema.setUsageSummary(
+    return schema.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
-    return schema;
   }
 
   private void setDefaultFields(DatabaseSchema schema) throws IOException {
