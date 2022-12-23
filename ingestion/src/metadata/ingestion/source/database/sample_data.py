@@ -64,9 +64,6 @@ from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
-    SampleDataConnection,
-)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
