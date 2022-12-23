@@ -39,8 +39,7 @@
         "SQLite",
         "DeltaLake",
         "Salesforce",
-        "SampleData",
-        "PinotDB",        
+        "PinotDB",
         "Datalake",
         "DomoDatabase",
         "QueryLog",
@@ -119,9 +118,6 @@
         },
         {
           "name": "Salesforce"
-        },
-        {
-          "name": "SampleData"
         },
         {
           "name": "PinotDB"
