@@ -18,7 +18,6 @@
 @primary-hover-light: rgba(219, 209, 249);
 @white: #fff;
 @gray: #dde3ea;
-@grey-body: rgb(55, 53, 47);
 @trigger-btn-hover-bg: #efefef;
 
 //font weight
@@ -68,6 +67,9 @@
 }
 .text-grey-muted {
   color: #6b7280;
+}
+.text-grey-body {
+  color: @text-color-secondary;
 }
 .text-body {
   color: @text-color-secondary;
@@ -212,6 +214,12 @@
   opacity: 0.6;
 }
 
+.link-hover {
+  &:hover {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
 .cursor-pointer {
   cursor: pointer;
 }
