@@ -49,8 +49,6 @@ import {
   getTableFQNFromColumnFQN,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getLineageViewPath } from '../../utils/RouterUtils';
@@ -67,7 +65,6 @@ import PageContainerV1 from '../containers/PageContainerV1';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import Loader from '../Loader/Loader';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -150,7 +147,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-  const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -180,13 +176,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       fetchResourcePermission();
     }
   }, [tableDetails.id]);
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const setUsageDetails = (
     usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
@@ -692,7 +681,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       onCancel={onCancel}
                       onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
-                      onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </Col>
@@ -731,7 +719,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       isReadOnly={deleted}
                       joins={tableJoinData.columnJoins as ColumnJoins[]}
                       tableConstraints={tableDetails.tableConstraints}
-                      onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}
                     />
@@ -841,19 +828,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
-            />
-          ) : null}
-          {selectedField ? (
-            <RequestDescriptionModal
-              createThread={createThread}
-              defaultValue={getDefaultValue(owner)}
-              header="Request description"
-              threadLink={getEntityFeedLink(
-                EntityType.TABLE,
-                datasetFQN,
-                selectedField
-              )}
-              onCancel={closeRequestModal}
             />
           ) : null}
         </div>

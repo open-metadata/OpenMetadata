@@ -54,7 +54,6 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
-import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -90,7 +89,6 @@ import {
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -147,7 +145,6 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [currentPage, setCurrentPage] = useState(1);
@@ -260,13 +257,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const onThreadPanelClose = () => {
     setThreadLink('');
-  };
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
   };
 
   const getEntityFeedCount = () => {
@@ -730,7 +720,6 @@ const DatabaseDetails: FunctionComponent = () => {
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
-                    onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </Col>
@@ -811,23 +800,6 @@ const DatabaseDetails: FunctionComponent = () => {
                       threadLink={threadLink}
                       updateThreadHandler={updateThreadHandler}
                       onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
-                </Col>
-                <Col span={24}>
-                  {selectedField ? (
-                    <RequestDescriptionModal
-                      createThread={createThread}
-                      defaultValue={getDefaultValue(
-                        database?.owner as EntityReference
-                      )}
-                      header={t('label.request-description')}
-                      threadLink={getEntityFeedLink(
-                        EntityType.DATABASE,
-                        databaseFQN,
-                        selectedField
-                      )}
-                      onCancel={closeRequestModal}
                     />
                   ) : null}
                 </Col>
