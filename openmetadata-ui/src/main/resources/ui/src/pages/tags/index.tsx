@@ -155,31 +155,26 @@ const TagsPage = () => {
     setCurrentCategoryName(currentClassification?.name || '');
   };
 
-  const fetchCategories = (setCurrent?: boolean) => {
+  const fetchCategories = async (setCurrent?: boolean) => {
     setIsLoading(true);
-    getClassifications('usageCount')
-      .then((res) => {
-        if (res.data) {
-          setCategoreis(res.data);
-          if (setCurrent) {
-            setCurrentCategory(res.data[0]);
-            setCurrentCategoryName(res.data[0].name);
-          }
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-tags-category-error']
-        );
-        showErrorToast(errMsg);
-        setError(errMsg);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+
+    try {
+      const response = await getClassifications('usageCount');
+      setCategoreis(response.data);
+      if (setCurrent && response.data.length) {
+        setCurrentCategory(response.data[0]);
+        setCurrentCategoryName(response.data[0].name);
+      }
+    } catch (error) {
+      const errMsg = getErrorText(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-tags-category-error']
+      );
+      showErrorToast(errMsg);
+      setError(errMsg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchCurrentCategory = async (name: string, update?: boolean) => {
@@ -428,9 +423,10 @@ const TagsPage = () => {
   const createPrimaryTag = (data: Classification) => {
     const errData = onNewTagChange(data, true);
     if (!Object.values(errData).length) {
-      createTag(currentClassification?.name ?? '', {
+      createTag({
         name: trim(data.name),
         description: data.description,
+        classification: currentClassification?.name ?? '',
       })
         .then((res) => {
           if (res) {
