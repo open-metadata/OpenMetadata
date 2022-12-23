@@ -88,7 +88,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         GlossaryTermResource.GlossaryTermList.class,
         "glossaryTerms",
         GlossaryTermResource.FIELDS);
-    supportsAuthorizedMetadataOperations = false; // TODO why?
     supportsEmptyDescription = false;
   }
 
