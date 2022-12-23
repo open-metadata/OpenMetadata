@@ -79,7 +79,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tags", order = 5) // initialize after Glossary and GlossaryTerm
+@Collection(name = "tags", order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource extends EntityResource<Tag, TagRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
 

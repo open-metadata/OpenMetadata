@@ -65,7 +65,7 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Classification resources collection", tags = "Classification resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "classifications", order = 4)
+@Collection(name = "classifications", order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
 public class ClassificationResource extends EntityResource<Classification, ClassificationRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
 
