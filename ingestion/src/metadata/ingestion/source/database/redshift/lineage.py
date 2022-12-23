@@ -31,7 +31,7 @@ workflowConfig:
 """
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.redshift.redshift_query_parser import (
+from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
 )
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT

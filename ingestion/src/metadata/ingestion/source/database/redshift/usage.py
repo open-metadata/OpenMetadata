@@ -12,7 +12,7 @@
 Redshift usage module
 """
 
-from metadata.ingestion.source.database.redshift.redshift_query_parser import (
+from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource

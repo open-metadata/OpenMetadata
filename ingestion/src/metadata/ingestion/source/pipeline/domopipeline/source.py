@@ -38,11 +38,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.dagster import STATUS_MAP
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+STATUS_MAP = {
+    "success": StatusType.Successful.value,
+    "failure": StatusType.Failed.value,
+    "queued": StatusType.Pending.value,
+}
 
 
 class DomopipelineSource(PipelineServiceSource):

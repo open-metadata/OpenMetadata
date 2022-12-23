@@ -13,7 +13,7 @@ Postgres usage module
 """
 
 
-from metadata.ingestion.source.database.postgres.postgres_query_parser import (
+from metadata.ingestion.source.database.postgres.query_parser import (
     PostgresQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
