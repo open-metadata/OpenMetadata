@@ -1,9 +1,0 @@
-dist
-.idea
-.github
-.run
-build
-env
-target
-**/target
-!openmetadata-dist/target
