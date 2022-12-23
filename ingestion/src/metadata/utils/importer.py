@@ -68,7 +68,7 @@ def get_source_module_name(type_: str) -> str:
     """
     raw_module = type_.split(TYPE_SEPARATOR)[-1]
 
-    if raw_module == type_:  # it is invariant, no TYPE_SEPARATOR in teh string
+    if raw_module == type_:  # it is invariant, no TYPE_SEPARATOR in the string
         return "source"
 
     return raw_module
@@ -80,7 +80,7 @@ def get_class_name_root(type_: str) -> str:
     from a source type, e.g., mysql or clickhouse-lineage
     -> ClickhouseLineage
     """
-    return "".join([i.title() for i in type_.split(TYPE_SEPARATOR)])
+    return "".join([i.title() for i in type_.split(TYPE_SEPARATOR)]).replace(CLASS_SEPARATOR, "")
 
 
 def import_class(key: str) -> Type[T]:
