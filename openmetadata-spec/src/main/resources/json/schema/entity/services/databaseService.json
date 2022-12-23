@@ -222,9 +222,6 @@
               "$ref": "./connections/database/verticaConnection.json"
             },
             {
-              "$ref": "./connections/database/sampleDataConnection.json"
-            },
-            {
               "$ref": "./connections/database/pinotDBConnection.json"
             },
             {
