@@ -34,7 +34,7 @@ default_args = {
 
 config = """
 source:
-  type: sample_data
+  type: sample-data
   serviceName: sample_data_ingestion
   serviceConnection:
     config:

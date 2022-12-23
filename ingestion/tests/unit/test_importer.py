@@ -96,3 +96,11 @@ class ImporterTest(TestCase):
             import_bulk_sink_type(bulk_sink_type="metadata-usage"),
             MetadataUsageBulkSink,
         )
+
+    def test_import_sink_from(self) -> None:
+        from metadata.orm_profiler.sink.metadata_rest import MetadataRestSink
+
+        self.assertEqual(
+            import_sink_class(sink_type="metadata-rest", from_="orm_profiler"),
+            MetadataRestSink,
+        )

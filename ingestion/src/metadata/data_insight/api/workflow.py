@@ -27,7 +27,6 @@ from typing import Optional, Union, cast
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_sink
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.processor.entity_report_data_processor import (
@@ -55,6 +54,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
 from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
+from metadata.utils.importer import get_sink
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
@@ -101,14 +101,14 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                 sink_type="metadata-rest",
                 sink_config=Sink(type="metadata-rest", config={}),  # type: ignore
                 metadata_config=self.metadata_config,
-                _from="data_insight",
+                from_="data_insight",
             )
 
             self.es_sink = get_sink(
                 sink_type=self.config.sink.type,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
-                _from="ingestion",
+                from_="ingestion",
             )
 
             self.es_sink = cast(ElasticsearchSink, self.es_sink)
