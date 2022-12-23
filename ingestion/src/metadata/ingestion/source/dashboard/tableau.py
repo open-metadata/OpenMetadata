@@ -246,9 +246,7 @@ class TableauSource(DashboardServiceSource):
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
-    def yield_tag(
-        self, _
-    ) -> OMetaTagAndClassification:  # pylint: disable=arguments-differ
+    def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
         """
         Fetch Dashboard Tags
         """

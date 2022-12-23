@@ -300,7 +300,6 @@ class SnowflakeSource(CommonDbSourceService):
 
         for res in result:
             row = list(res)
-            fqn_elements = [name for name in row[2:] if name]
             yield OMetaTagAndClassification(
                 classification_request=CreateClassificationRequest(
                     name=row[0],

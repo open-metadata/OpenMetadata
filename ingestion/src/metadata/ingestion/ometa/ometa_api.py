@@ -17,8 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.generated.schema.entity.classification.tag import Tag
-
 try:
     from typing import get_args
 except ImportError:
@@ -36,6 +34,7 @@ from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -431,10 +430,10 @@ class OpenMetadata(
         if "service" in entity.__name__.lower():
             return self.services_path
 
-        if "tag" in entity.__name__.lower():
-            return self.classifications_path
-
-        if "classification" in entity.__name__.lower():
+        if (
+            "tag" in entity.__name__.lower()
+            or "classification" in entity.__name__.lower()
+        ):
             return self.classifications_path
 
         if "test" in entity.__name__.lower():
@@ -730,14 +729,6 @@ class OpenMetadata(
         entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
-
-    def list_tags_by_classification(self, classification: str) -> List[Tag]:
-        """
-        List all tags
-        """
-        """ TODO:9259 use list tags with parent filter """
-        resp = self.client.get(f"{self.get_suffix(Tag)}/{classification}")
-        return [Tag(**d) for d in resp["children"]]
 
     def health_check(self) -> bool:
         """

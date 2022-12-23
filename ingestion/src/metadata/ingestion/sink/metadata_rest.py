@@ -62,7 +62,6 @@ from metadata.ingestion.source.database.database_service import (
     DataModelLink,
     TableLocationLink,
 )
-from metadata.utils import fqn
 from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger
 
