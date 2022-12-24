@@ -114,7 +114,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchAnyEntityId",
-      input = "List of comma separated entityName",
+      input = "List of comma separated entity Ids",
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
@@ -133,7 +133,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchAnyEventType",
-      input = "List of comma separated eventType",
+      input = "List of comma separated eventTypes",
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEventType('entityCreated', 'entityUpdated', 'entityDeleted', 'entitySoftDeleted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
@@ -152,7 +152,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchTestResult",
-      input = "List of comma separated eventType",
+      input = "List of comma separated eventTypes",
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchTestResult('Success', 'Failed', 'Aborted')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
@@ -180,7 +180,7 @@ public class AlertsRuleEvaluator {
 
   @Function(
       name = "matchUpdatedBy",
-      input = "List of comma separated updated by users",
+      input = "List of comma separated user names that updated the entity",
       description = "Returns true if the change event entity is updated by the mentioned users",
       examples = {"matchUpdatedBy('user1', 'user2')"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
