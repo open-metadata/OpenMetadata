@@ -43,7 +43,7 @@ const mockTierData = {
 };
 
 jest.mock('../../../axiosAPIs/tagAPI', () => ({
-  getCategory: jest
+  getClassification: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockTierData })),
 }));

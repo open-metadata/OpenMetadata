@@ -322,12 +322,8 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           if (currentClassification) {
-            const updatedTags = (
-              currentClassification.children as Tag[]
-            ).filter((data) => data.id !== tagId);
             setCurrentCategory({
               ...currentClassification,
-              children: updatedTags,
             });
           }
         } else {
@@ -401,14 +397,6 @@ const TagsPage = () => {
         errData['name'] = 'Name is required';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
-      } else if (
-        !isUndefined(
-          currentClassification?.children?.find(
-            (item) => toLower((item as Tag)?.name) === toLower(data.name)
-          )
-        )
-      ) {
-        errData['name'] = 'Name already exists';
       } else if (data.name.length < 2 || data.name.length > 64) {
         errData['name'] = 'Name size must be between 2 and 64';
       }
@@ -558,9 +546,7 @@ const TagsPage = () => {
                   {getEntityName(category as unknown as EntityReference)}
                 </Typography.Paragraph>
                 {getCountBadge(
-                  currentClassification?.name === category.name
-                    ? currentClassification.children?.length
-                    : category.children?.length || 0,
+                  0,
                   'tw-self-center',
                   currentClassification?.name === category.name
                 )}
@@ -815,7 +801,7 @@ const TagsPage = () => {
               bordered
               columns={tableColumn}
               data-testid="table"
-              dataSource={currentClassification?.children as Tag[]}
+              dataSource={[]}
               pagination={false}
               rowKey="id"
               size="small"
