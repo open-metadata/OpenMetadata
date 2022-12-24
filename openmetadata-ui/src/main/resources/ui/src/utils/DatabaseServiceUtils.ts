@@ -36,7 +36,6 @@ import postgresConnection from '../jsons/connectionSchemas/connections/database/
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
-import sampleDataConnection from '../jsons/connectionSchemas/connections/database/sampleDataConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
@@ -183,7 +182,7 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
       break;
     }
     default: {
-      schema = sampleDataConnection;
+      schema = mysqlConnection;
 
       break;
     }
