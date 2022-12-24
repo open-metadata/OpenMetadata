@@ -193,7 +193,7 @@ class BigquerySource(CommonDbSourceService):
                     tagFQN=fqn.build(
                         self.metadata,
                         entity_type=Tag,
-                        tag_category_name=self.service_connection.tagCategoryName,
+                        classification_name=self.service_connection.tagCategoryName,
                         tag_name=column["policy_tags"],
                     ),
                     labelType="Automated",

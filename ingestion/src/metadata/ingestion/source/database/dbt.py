@@ -146,7 +146,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    tag_category_name="DBTTags",
+                    classification_name="DBTTags",
                     tag_name=tag.replace(".", ""),
                 ),
                 labelType=LabelType.Automated,

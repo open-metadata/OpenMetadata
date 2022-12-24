@@ -278,7 +278,7 @@ class AtlasSource(Source):
                         tag_fqn = fqn.build(
                             self.metadata,
                             entity_type=Tag,
-                            tag_category_name=ATLAS_TAG_CATEGORY,
+                            classification_name=ATLAS_TAG_CATEGORY,
                             tag_name=ATLAS_TABLE_TAG,
                         )
 
