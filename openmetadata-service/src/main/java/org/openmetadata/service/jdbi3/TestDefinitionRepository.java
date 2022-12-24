@@ -27,8 +27,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
-    return entity;
+    return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
   }
 
   @Override

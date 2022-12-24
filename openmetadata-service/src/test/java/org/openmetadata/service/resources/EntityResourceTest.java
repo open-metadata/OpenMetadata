@@ -27,6 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
@@ -105,7 +108,6 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
-import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -177,7 +179,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsTags;
   protected boolean supportsPatch = true;
   protected boolean supportsSoftDelete;
-  protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
   protected boolean supportsNameWithDot = true;
@@ -264,25 +265,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Table TEST_TABLE1;
   public static Table TEST_TABLE2;
+
   public static TestSuite TEST_SUITE1;
-  public static EntityReference TEST_SUITE1_REFERENCE;
-
   public static TestSuite TEST_SUITE2;
-  public static EntityReference TEST_SUITE2_REFERENCE;
-
   public static TestDefinition TEST_DEFINITION1;
-  public static EntityReference TEST_DEFINITION1_REFERENCE;
-
   public static TestDefinition TEST_DEFINITION2;
-  public static EntityReference TEST_DEFINITION2_REFERENCE;
-
   public static TestDefinition TEST_DEFINITION3;
-  public static EntityReference TEST_DEFINITION3_REFERENCE;
-  public static DataInsightChart DI_CHART1;
-  public static EntityReference DI_CHART1_REFERENCE;
 
-  public static AlertAction ALERT_ACTION1;
-  public static EntityReference ALERT_ACTION1_REFERENCE;
+  public static DataInsightChart DI_CHART1;
+
   public static KpiTarget KPI_TARGET;
   public static List<Column> COLUMNS;
 
@@ -946,7 +937,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update the entity as USER_OWNER1
-    request = createPutRequest(getEntityName(test), "newDescription", null, USER1_REF);
+    request.withDescription("newDescription");
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "newDescription");
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
@@ -962,14 +953,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    request = createPutRequest(getEntityName(test), "description", "displayName", TEAM11_REF);
+    request.withOwner(TEAM11_REF);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
-    request = createPutRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    request.withOwner(USER1_REF);
     change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -977,7 +968,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
 
     // Set the owner to the existing owner. No ownership change must be recorded.
-    request = createPutRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    request.withOwner(null);
     change = getChangeDescription(entity.getVersion());
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
@@ -1067,10 +1058,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
     K updateRequest = createRequest(getEntityName(test), "newDescription", "displayName", null);
+    MetadataOperation operation = entityType.equals(Entity.TEST_CASE) ? EDIT_TESTS : EDIT_ALL;
+
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_ALL)));
+        permissionNotAllowed(TEST_USER_NAME, List.of(operation)));
   }
 
   @Test
@@ -1096,7 +1089,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update empty description with a new description
-    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request.withDescription("updatedDescription");
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1109,7 +1102,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     // BOT user can update empty description and empty displayName
     ChangeDescription change = getChangeDescription(entity.getVersion());
-    request = createPutRequest(getEntityName(test), "description", "displayName", null);
+    request.withDescription("description").withDisplayName("displayName");
     if (supportsEmptyDescription) {
       fieldAdded(change, "description", "description");
     }
@@ -1117,14 +1110,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is allowed for users other than bots
-    request = createPutRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
+    request.withDescription("updatedDescription").withDisplayName("updatedDisplayName");
     change = getChangeDescription(entity.getVersion());
     fieldUpdated(change, "description", "description", "updatedDescription");
     fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Updating non-empty description and non-empty displayName is ignored for bot users
-    request = createPutRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
+    request.withDescription("updatedDescription2").withDisplayName("updatedDisplayName2");
     updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
   }
 
@@ -1203,14 +1196,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Common entity tests for PATCH operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
-    if (!supportsPatch || !supportsAuthorizedMetadataOperations) {
+  protected void patch_entityDescriptionAndTestAuthorizer(TestInfo test) throws IOException {
+    if (!supportsPatch) {
       return;
     }
-
     T entity = createEntity(createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
 
-    // Admins, Owner or a User with policy can update the entity
+    // Admins, Owner or a User with policy can update the entity without owner
     entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
@@ -1229,7 +1221,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         patchEntityAndCheck(
             entity, originalJson, authHeaders(USER1.getName() + "@open-metadata.org"), MINOR_UPDATE, change);
 
-    // Admin, owner (USER1) and user with DataSteward role can update description on entity owned by USER1.
+    // Admin, owner (USER1) and user with DataSteward role can update the owner on entity owned by USER1.
     entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
@@ -1522,12 +1514,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void testTeamOnlyPolicy(TestInfo test) throws HttpResponseException {
+  protected void testTeamOnlyPolicy(TestInfo test) throws HttpResponseException {
+    testTeamOnlyPolicy(test, VIEW_ALL);
+  }
+
+  protected void testTeamOnlyPolicy(TestInfo test, MetadataOperation disallowedOperation) throws HttpResponseException {
     if (!supportsOwner) {
       return;
     }
     // TEAM2 allows operations on its entities to users only with in that team due to team only policy attached to it
-    K createRequest = createRequest("policyTestTable", "", "", TEAM21.getEntityReference());
+    // Create an entity owned by TEAM21
+    K createRequest = createRequest("teamOnlyPolicyTest", "", "", TEAM21.getEntityReference());
     T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
     UserResourceTest userResourceTest = new UserResourceTest();
     User userInTeam21 =
@@ -1555,7 +1552,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         FORBIDDEN,
         permissionDenied(
             userInTeam11.getName(),
-            MetadataOperation.VIEW_ALL,
+            disallowedOperation,
             null,
             TEAM_ONLY_POLICY.getName(),
             TEAM_ONLY_POLICY_RULES.get(0).getName()));
@@ -1564,7 +1561,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         FORBIDDEN,
         permissionDenied(
             userInTeam1.getName(),
-            MetadataOperation.VIEW_ALL,
+            disallowedOperation,
             null,
             TEAM_ONLY_POLICY.getName(),
             TEAM_ONLY_POLICY_RULES.get(0).getName()));
@@ -1866,27 +1863,30 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return returned;
   }
 
-  T patchEntityAndCheckAuthorization(T entity, String userName, boolean shouldThrowException) throws IOException {
+  protected T patchEntityAndCheckAuthorization(T entity, String userName, boolean shouldThrowException)
+      throws IOException {
+    return patchEntityAndCheckAuthorization(entity, userName, MetadataOperation.EDIT_OWNER, shouldThrowException);
+  }
+
+  protected T patchEntityAndCheckAuthorization(
+      T entity, String userName, MetadataOperation disallowedOperation, boolean shouldThrowException)
+      throws IOException {
     String originalJson = JsonUtils.pojoToJson(entity);
-
-    String originalDescription = entity.getDescription();
-    String newDescription = format("Description added by %s", userName);
-    ChangeDescription change = getChangeDescription(entity.getVersion());
-    fieldUpdated(change, "description", originalDescription, newDescription);
-
-    entity.setDescription(newDescription);
-
+    Map<String, String> authHeaders = authHeaders(userName + "@open-metadata.org");
     if (shouldThrowException) {
       assertResponse(
-          () -> patchEntity(entity.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
+          () -> patchEntity(entity.getId(), originalJson, entity, authHeaders),
           FORBIDDEN,
-          permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_OWNER)));
-      // Revert to original.
-      entity.setDescription(originalDescription);
+          permissionNotAllowed(userName, List.of(disallowedOperation)));
       return entity;
     }
-    return patchEntityAndCheck(
-        entity, originalJson, authHeaders(userName + "@open-metadata.org"), MINOR_UPDATE, change);
+
+    // Update the entity description and verify the user is authorized to do it
+    String newDescription = format("Description added by %s", userName);
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    fieldUpdated(change, "description", entity.getDescription(), newDescription);
+    entity.setDescription(newDescription);
+    return patchEntityAndCheck(entity, originalJson, authHeaders, MINOR_UPDATE, change);
   }
 
   protected final void validateCommonEntityFields(T entity, CreateEntity create, String updatedBy) {

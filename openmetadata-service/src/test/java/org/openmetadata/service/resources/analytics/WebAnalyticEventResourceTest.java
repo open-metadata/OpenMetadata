@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -38,9 +40,6 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
         "analytics/webAnalyticEvent",
         WebAnalyticEventResource.FIELDS);
     supportsEmptyDescription = false;
-    supportsFollowers = false;
-    supportsAuthorizedMetadataOperations = false;
-    supportsOwner = false;
   }
 
   @Test
@@ -156,8 +155,21 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   }
 
   @Override
-  public WebAnalyticEvent validateGetWithDifferentFields(WebAnalyticEvent entity, boolean byName) {
-    return null;
+  public WebAnalyticEvent validateGetWithDifferentFields(WebAnalyticEvent entity, boolean byName)
+      throws HttpResponseException {
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner());
+    fields = "owner";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner());
+    return entity;
   }
 
   @Override
