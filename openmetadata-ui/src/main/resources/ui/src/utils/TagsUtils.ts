@@ -12,9 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import { flatten, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
-import { Tag } from '../../generated/entity/classification/tag';
 import { getClassification, getTags } from '../axiosAPIs/tagAPI';
 import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
@@ -55,17 +54,10 @@ export const getClassifications = async (fields?: Array<string> | string) => {
 };
 
 export const getTaglist = (
-  categories: Array<Classification> = []
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _categories: Array<Classification> = []
 ): Array<string> => {
-  const children = categories.map((category: Classification) => {
-    return category.children || [];
-  });
-  const allChildren = flatten(children);
-  const tagList = (allChildren as unknown as Tag[]).map((tag) => {
-    return tag?.fullyQualifiedName || '';
-  });
-
-  return tagList;
+  return [] as string[];
 };
 
 export const getTableTags = (
