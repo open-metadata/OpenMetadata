@@ -59,33 +59,22 @@ jobs:
           sudo make install_antlr_cli
           make install_dev generate
 
-
-      - name: Calculate input check values
-        if: ${{ github.event_name == 'workflow_dispatch'}}
+      - name: Process Docker Tags
         id:  input_check
         run: |
-            if ${{ inputs.push_tag_to_release }}; then
+            if ${{ github.event_name == 'release' }}; then
+                echo "tags=openmetadata/ingestion:0.13.1,openmetadata/ingestion:latest" >> $GITHUB_OUTPUT
+            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_tag_to_release }}; then
                 echo "tags=openmetadata/ingestion:${{inputs.tag}},openmetadata/ingestion:latest" >> $GITHUB_OUTPUT
             else
                 echo "tags=openmetadata/ingestion:${{ inputs.tag }}" >> $GITHUB_OUTPUT
             fi
 
       - name: Build and push if event is workflow_dispatch and input is checked
-        if: ${{ github.event_name == 'workflow_dispatch'}}
         uses: docker/build-push-action@v3
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.input_check.outputs.tags }}
-          file: ./ingestion/Dockerfile
-
-      - name: Build and push if event is release
-        if: ${{ github.event_name == 'release'}}
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push:  ${{ github.event_name == 'release' }}
-          tags: 'openmetadata/ingestion:0.13.1,openmetadata/ingestion:latest'
           file: ./ingestion/Dockerfile
