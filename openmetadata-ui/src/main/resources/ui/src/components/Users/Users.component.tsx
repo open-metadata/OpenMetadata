@@ -692,7 +692,7 @@ const Users = ({
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
               <span className="tw-no-description">
-                {t('label.no-inherited-found')}
+                {t('label.no-inherited-roles-found')}
               </span>
             </div>
           ) : (
