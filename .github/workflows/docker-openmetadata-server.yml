@@ -16,7 +16,7 @@ on:
       DOCKER_RELEASE_TAG:
         description: "Docker Release Tag"
         required: true
-      push_tag_to_release:
+      push_latest_tag_to_release:
         description: "Want to update inputed tag to release or not? Check if yes,else leave unchecked."
         type: boolean
   release:
