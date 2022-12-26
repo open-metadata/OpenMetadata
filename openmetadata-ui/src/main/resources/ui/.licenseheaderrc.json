@@ -18,7 +18,7 @@
       },
       "append": "-->"
     },
-    "ts|tsx|js|jsx|css|scss|go": {
+    "ts|tsx|js|jsx|css|scss|less|go": {
       "prepend": "/*",
       "eachLine": {
         "prepend": " *  "
