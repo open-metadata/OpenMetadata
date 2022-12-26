@@ -15,16 +15,17 @@ import traceback
 from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -34,7 +35,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -62,7 +62,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
@@ -146,7 +146,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    tag_category_name="DBTTags",
+                    classification_name="DBTTags",
                     tag_name=tag.replace(".", ""),
                 ),
                 labelType=LabelType.Automated,
@@ -218,7 +218,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                                 f"Please check if following keys exist for the column node: {required_catalog_keys}"
                             )
 
-    def yield_dbt_tags(self, dbt_files: DbtFiles) -> Iterable[OMetaTagAndCategory]:
+    def yield_dbt_tags(
+        self, dbt_files: DbtFiles
+    ) -> Iterable[OMetaTagAndClassification]:
         """
         Create and yeild tags from DBT
         """
@@ -253,14 +255,14 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 # Create all the tags added
                 dbt_tag_labels = self.get_dbt_tag_labels(dbt_tags_list)
                 for tag_label in dbt_tag_labels:
-                    yield OMetaTagAndCategory(
-                        category_name=CreateTagCategoryRequest(
+                    yield OMetaTagAndClassification(
+                        classification_request=CreateClassificationRequest(
                             name="DBTTags",
-                            description="",
+                            description="dbt classification",
                         ),
-                        category_details=CreateTagRequest(
+                        tag_request=CreateTagRequest(
                             name=tag_label.tagFQN.__root__.split(".")[1],
-                            description="DBT Tags",
+                            description="dbt Tags",
                         ),
                     )
             except Exception as exc:

@@ -64,6 +64,7 @@ import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { Field } from '../generated/api/data/createTopic';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Bot } from '../generated/entity/bot';
+import { Classification } from '../generated/entity/classification/classification';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
@@ -74,7 +75,6 @@ import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { Policy } from '../generated/entity/policies/policy';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TagCategory } from '../generated/entity/tags/tagCategory';
 import { Role } from '../generated/entity/teams/role';
 import { Team } from '../generated/entity/teams/team';
 import { EntityReference, User } from '../generated/entity/teams/user';
@@ -578,7 +578,7 @@ export const getEntityName = (
     | Webhook
     | Bot
     | Kpi
-    | TagCategory
+    | Classification
     | Field
 ) => {
   return entity?.displayName || entity?.name || '';

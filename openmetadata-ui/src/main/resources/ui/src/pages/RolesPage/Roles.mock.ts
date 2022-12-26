@@ -319,7 +319,7 @@ export const POLICY_LIST_WITH_PAGING = {
             'storageService',
             'table',
             'tag',
-            'tagCategory',
+            'classification',
             'team',
             'testCase',
             'testDefinition',

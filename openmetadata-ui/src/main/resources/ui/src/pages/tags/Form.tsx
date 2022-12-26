@@ -20,17 +20,17 @@ import React, {
   useState,
 } from 'react';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { errorMsg } from '../../utils/CommonUtils';
 
-type CustomTagCategory = {
-  description: CreateTagCategory['description'];
-  name: CreateTagCategory['name'];
+type CustomClassification = {
+  description: CreateClassification['description'];
+  name: CreateClassification['name'];
 };
 
 type FormProp = {
-  saveData: (value: CreateTagCategory) => void;
-  initialData: CustomTagCategory;
+  saveData: (value: CreateClassification) => void;
+  initialData: CustomClassification;
   errorData?: FormErrorData;
 };
 type EditorContentRef = {
@@ -38,7 +38,7 @@ type EditorContentRef = {
 };
 const Form: React.FC<FormProp> = forwardRef(
   ({ saveData, initialData, errorData }: FormProp, ref): JSX.Element => {
-    const [data, setData] = useState<CustomTagCategory>({
+    const [data, setData] = useState<CustomClassification>({
       name: initialData.name,
       description: initialData.description,
     });
@@ -67,7 +67,7 @@ const Form: React.FC<FormProp> = forwardRef(
     useEffect(() => {
       if (!isMounting.current) {
         saveData({
-          ...(data as CreateTagCategory),
+          ...(data as CreateClassification),
         });
       }
     }, [data]);

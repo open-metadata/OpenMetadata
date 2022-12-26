@@ -25,7 +25,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
@@ -86,7 +86,7 @@ const AddGlossaryPage: FunctionComponent = () => {
 
   const fetchTags = () => {
     setIsTagLoading(true);
-    getTagCategories()
+    getClassifications()
       .then((res) => {
         if (res.data) {
           setTagList(getTaglist(res.data));

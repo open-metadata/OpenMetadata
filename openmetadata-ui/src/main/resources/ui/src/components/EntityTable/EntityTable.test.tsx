@@ -12,14 +12,12 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { flatten } from 'lodash';
 import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../generated/api/data/createTable';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Table } from '../../generated/entity/data/table';
-import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import EntityTableV1 from './EntityTable.component';
 
 const onEntityFieldSelect = jest.fn();
@@ -230,18 +228,7 @@ jest.mock('../../utils/GlossaryUtils', () => ({
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest.fn((categories) => {
-    const children = categories.map((category: TagCategory) => {
-      return category.children || [];
-    });
-    const allChildren = flatten(children);
-    const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-      return tag?.fullyQualifiedName || '';
-    });
-
-    return tagList;
-  }),
+  getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
 }));
 
 describe('Test EntityTable Component', () => {

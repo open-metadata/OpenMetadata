@@ -39,7 +39,7 @@ import {
   getGlossaryTermlist,
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -263,7 +263,7 @@ const EntityPageInfo = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
         if (

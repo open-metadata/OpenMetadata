@@ -228,43 +228,10 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('fast-json-patch', () => ({
-  compare: jest.fn(),
-}));
-
 jest.mock('../../axiosAPIs/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockSearchData)),
-}));
-
-jest.mock('antd', () => ({
-  Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Col: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Input: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Row: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Space: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Divider: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  Typography: {
-    Title: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Dropdown: jest.fn().mockImplementation(({ children, overlay }) => (
-    <div>
-      {children}
-      {overlay}
-    </div>
-  )),
-  Menu: jest.fn().mockImplementation(({ items }) => (
-    <div>
-      {items.map((item: { key: string; label: JSX.Element }) => {
-        <div key={item.key}>{item.label}</div>;
-      })}
-    </div>
-  )),
 }));
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {

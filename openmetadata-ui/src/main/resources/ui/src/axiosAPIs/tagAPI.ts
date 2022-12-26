@@ -12,71 +12,84 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
+import { CreateClassification } from '../generated/api/classification/createClassification';
+import { CreateTag } from '../generated/api/classification/createTag';
+import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
 import { TagsCategory } from '../pages/tags/tagsTypes';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+const BASE_URL = '/classifications';
+
 export const getTags = async (arrQueryFields?: string | string[]) => {
   const url = getURLWithQueryFields('/tags', arrQueryFields);
 
-  const response = await APIClient.get<{ data: TagCategory[] }>(url);
+  const response = await APIClient.get<{ data: Classification[] }>(url);
 
   return response.data;
 };
 
-export const getCategory = async (
+export const getClassification = async (
   name: string,
   arrQueryFields?: string | string[]
 ) => {
-  const url = getURLWithQueryFields(`/tags/${name}`, arrQueryFields);
+  const url = getURLWithQueryFields(`${BASE_URL}/name/${name}`, arrQueryFields);
 
-  const response = await APIClient.get<TagsCategory | TagCategory>(url);
-
-  return response.data;
-};
-
-export const deleteTagCategory = async (categoryId: string) => {
-  const response = await APIClient.delete<TagCategory>(`/tags/${categoryId}`);
+  const response = await APIClient.get<Classification>(url);
 
   return response.data;
 };
 
-export const createTagCategory = async (data: TagsCategory) => {
+export const deleteClassification = async (classificationId: string) => {
+  const response = await APIClient.delete<Classification>(
+    `/classifications/${classificationId}`
+  );
+
+  return response.data;
+};
+
+export const createClassification = async (data: CreateClassification) => {
   const response = await APIClient.post<
     TagsCategory,
-    AxiosResponse<TagCategory>
-  >('/tags', data);
+    AxiosResponse<Classification>
+  >(BASE_URL, data);
 
   return response.data;
 };
-export const updateTagCategory = async (name: string, data: TagCategory) => {
-  const response = await APIClient.put<TagCategory, AxiosResponse<TagCategory>>(
-    `/tags/${name}`,
+export const updateClassification = async (data: Classification) => {
+  const response = await APIClient.put<
+    Classification,
+    AxiosResponse<Classification>
+  >(`/classifications`, data);
+
+  return response.data;
+};
+
+export const createTag = async (data: CreateTag) => {
+  const response = await APIClient.post<CreateTag, AxiosResponse<Tag>>(
+    `/tags`,
     data
   );
 
   return response.data;
 };
 
-export const createTag = async (name: string, data: TagsCategory) => {
-  const response = await APIClient.post<TagClass>(`/tags/${name}`, data);
+export const updateTag = async (data: TagsCategory) => {
+  const response = await APIClient.put(`/tags`, data);
 
   return response.data;
 };
 
-export const updateTag = async (
-  category: string,
-  tagName: string,
-  data: TagsCategory
-) => {
-  const response = await APIClient.put(`/tags/${category}/${tagName}`, data);
-
-  return response.data;
-};
-
-export const deleteTag = async (categoryName: string, tagId: string) => {
-  const response = await APIClient.delete(`/tags/${categoryName}/${tagId}`);
+export const deleteTag = async (tagId: string) => {
+  const response = await APIClient.delete(`/tags/${tagId}`, {
+    // Todo: need to update below params in new implementation, for now providing hardDelete true,
+    // to avoid soft delete issue from UI
+    params: {
+      recursive: true,
+      hardDelete: true,
+    },
+  });
 
   return response.data;
 };

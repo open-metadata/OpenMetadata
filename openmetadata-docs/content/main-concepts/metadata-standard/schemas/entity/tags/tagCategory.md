@@ -1,11 +1,11 @@
 ---
-title: tagCategory
-slug: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
+title: classification
+slug: /main-concepts/metadata-standard/schemas/entity/classification/classification
 ---
 
-# Tag Category
+# Classification
 
-*This schema defines the Tag Category entity. A Tag Category contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.*
+*This schema defines the Classification entity. A Classification contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.*
 
 ## Properties
 

@@ -17,7 +17,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import jsonData from '../../jsons/en';
 import {
-  getTagCategories,
+  getClassifications,
   getTaglist,
   getTagOptions,
 } from '../../utils/TagsUtils';
@@ -37,7 +37,7 @@ export const AddTags = ({
 
   const fetchTags = () => {
     setIsTagLoading(true);
-    getTagCategories()
+    getClassifications()
       .then((res) => {
         setTagList(getTaglist(res.data));
       })

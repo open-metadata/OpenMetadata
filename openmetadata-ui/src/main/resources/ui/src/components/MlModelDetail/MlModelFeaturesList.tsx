@@ -33,7 +33,7 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -123,7 +123,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
         if (

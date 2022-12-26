@@ -291,7 +291,7 @@ export const HTTP_CONFIG_SOURCE = {
 };
 
 export const DBT = {
-  tagCategory: 'DBTTags',
+  classification: 'DBTTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNode: 'dev.dbt_jaffle.raw_customers',

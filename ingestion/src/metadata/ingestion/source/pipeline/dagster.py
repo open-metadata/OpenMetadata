@@ -14,12 +14,13 @@ Dagster source to extract metadata from OM UI
 import traceback
 from typing import Dict, Iterable, List, Optional
 
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     StatusType,
@@ -32,14 +33,13 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -99,14 +99,16 @@ class DagsterSource(PipelineServiceSource):
 
         return result["repositoriesOrError"]["nodes"]
 
-    def get_tag_labels(self, tags: OMetaTagAndCategory) -> Optional[List[TagLabel]]:
+    def get_tag_labels(
+        self, tags: OMetaTagAndClassification
+    ) -> Optional[List[TagLabel]]:
 
         return [
             TagLabel(
                 tagFQN=fqn.build(
                     self.metadata,
                     Tag,
-                    tag_category_name="DagsterTags",
+                    classification_name="DagsterTags",
                     tag_name=tags,
                 ),
                 labelType="Automated",
@@ -167,18 +169,18 @@ class DagsterSource(PipelineServiceSource):
             tags=self.get_tag_labels(self.context.repository_name),
         )
 
-    def yield_tag(self, _) -> OMetaTagAndCategory:  # pylint: disable=arguments-differ
-        tag_category = OMetaTagAndCategory(
-            category_name=CreateTagCategoryRequest(
+    def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
+        classification = OMetaTagAndClassification(
+            classification_request=CreateClassificationRequest(
                 name="DagsterTags",
                 description="Tags associated with dagster",
             ),
-            category_details=CreateTagRequest(
+            tag_request=CreateTagRequest(
                 name=self.context.repository_name, description="Dagster Tag"
             ),
         )
 
-        yield tag_category
+        yield classification
 
     def get_task_runs(self, job_id, pipeline_name):
         """

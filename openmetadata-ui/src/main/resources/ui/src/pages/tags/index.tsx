@@ -30,13 +30,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
+  createClassification,
   createTag,
-  createTagCategory,
+  deleteClassification,
   deleteTag,
-  deleteTagCategory,
-  getCategory,
+  getClassification,
+  updateClassification,
   updateTag,
-  updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -56,10 +56,11 @@ import {
 import { TIER_CATEGORY } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
-import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { ProviderType } from '../../generated/entity/bot';
+import { Classification } from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
 import {
@@ -78,7 +79,7 @@ import {
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTagCategories } from '../../utils/TagsUtils';
+import { getClassifications } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
@@ -99,14 +100,15 @@ type DeleteTagsType = {
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
-  const { tagCategoryName } = useParams<Record<string, string>>();
-  const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
-  const [currentCategory, setCurrentCategory] = useState<TagCategory>();
+  const { ClassificationName } = useParams<Record<string, string>>();
+  const [categories, setCategoreis] = useState<Array<Classification>>([]);
+  const [currentClassification, setCurrentCategory] =
+    useState<Classification>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
   const [isAddingCategory, setIsAddingCategory] = useState<boolean>(false);
   const [isEditTag, setIsEditTag] = useState<boolean>(false);
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
-  const [editTag, setEditTag] = useState<TagClass>();
+  const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
@@ -125,7 +127,7 @@ const TagsPage = () => {
     () =>
       checkPermission(
         Operation.Create,
-        ResourceEntity.TAG_CATEGORY,
+        ResourceEntity.CLASSIFICATION,
         permissions
       ),
     [permissions]
@@ -139,8 +141,8 @@ const TagsPage = () => {
   const fetchCurrentCategoryPermission = async () => {
     try {
       const response = await getEntityPermission(
-        ResourceEntity.TAG_CATEGORY,
-        currentCategory?.id as string
+        ResourceEntity.CLASSIFICATION,
+        currentClassification?.id as string
       );
       setCategoryPermissions(response);
     } catch (error) {
@@ -150,44 +152,42 @@ const TagsPage = () => {
 
   const handleEditNameCancel = () => {
     setIsNameEditing(false);
-    setCurrentCategoryName(currentCategory?.name || '');
+    setCurrentCategoryName(currentClassification?.name || '');
   };
 
-  const fetchCategories = (setCurrent?: boolean) => {
+  const fetchCategories = async (setCurrent?: boolean) => {
     setIsLoading(true);
-    getTagCategories('usageCount')
-      .then((res) => {
-        if (res.data) {
-          setCategoreis(res.data);
-          if (setCurrent) {
-            setCurrentCategory(res.data[0]);
-            setCurrentCategoryName(res.data[0].name);
-          }
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-tags-category-error']
-        );
-        showErrorToast(errMsg);
-        setError(errMsg);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+
+    try {
+      const response = await getClassifications('usageCount');
+      setCategoreis(response.data);
+      if (setCurrent && response.data.length) {
+        setCurrentCategory(response.data[0]);
+        setCurrentCategoryName(response.data[0].name);
+      }
+    } catch (error) {
+      const errMsg = getErrorText(
+        error as AxiosError,
+        jsonData['api-error-messages']['fetch-tags-category-error']
+      );
+      showErrorToast(errMsg);
+      setError(errMsg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchCurrentCategory = async (name: string, update?: boolean) => {
-    if (currentCategory?.name !== name || update) {
+    if (currentClassification?.name !== name || update) {
       setIsLoading(true);
       try {
-        const currentCategory = await getCategory(name, 'usageCount');
-        if (currentCategory) {
-          setCurrentCategory(currentCategory);
-          setCurrentCategoryName(currentCategory.name);
+        const currentClassification = await getClassification(
+          name,
+          'usageCount'
+        );
+        if (currentClassification) {
+          setCurrentCategory(currentClassification);
+          setCurrentCategoryName(currentClassification.name);
           setIsLoading(false);
         } else {
           showErrorToast(
@@ -201,13 +201,16 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentCategory({ name } as TagCategory);
+        setCurrentCategory({ name } as Classification);
         setIsLoading(false);
       }
     }
   };
 
-  const onNewCategoryChange = (data: CreateTagCategory, forceSet = false) => {
+  const onNewCategoryChange = (
+    data: CreateClassification,
+    forceSet = false
+  ) => {
     if (errorDataCategory || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
@@ -233,10 +236,10 @@ const TagsPage = () => {
     return {};
   };
 
-  const createCategory = (data: CreateTagCategory) => {
+  const createCategory = (data: CreateClassification) => {
     const errData = onNewCategoryChange(data, true);
     if (!Object.values(errData).length) {
-      createTagCategory({ ...data, name: trim(data.name) })
+      createClassification({ ...data, name: trim(data.name) })
         .then((res) => {
           if (res) {
             history.push(getTagPath(res.name));
@@ -260,11 +263,11 @@ const TagsPage = () => {
    * It will set current tag category for delete
    */
   const deleteTagHandler = () => {
-    if (currentCategory) {
+    if (currentClassification) {
       setDeleteTags({
         data: {
-          id: currentCategory.id as string,
-          name: currentCategory.displayName || currentCategory.name,
+          id: currentClassification.id as string,
+          name: currentClassification.displayName || currentClassification.name,
           isCategory: true,
         },
         state: true,
@@ -274,20 +277,21 @@ const TagsPage = () => {
 
   /**
    * Take tag category id and delete.
-   * @param categoryId - tag category id
+   * @param classificationId - tag category id
    */
-  const deleteTagCategoryById = (categoryId: string) => {
-    deleteTagCategory(categoryId)
+  const deleteClassificationById = (classificationId: string) => {
+    deleteClassification(classificationId)
       .then((res) => {
         if (res) {
           setIsLoading(true);
-          const updatedCategory = categories.filter(
-            (data) => data.id !== categoryId
+          const updatedClassification = categories.filter(
+            (data) => data.id !== classificationId
           );
-          const currentCategory = updatedCategory[0];
+          const currentClassification = updatedClassification[0];
           history.push(
             getTagPath(
-              currentCategory?.fullyQualifiedName || currentCategory?.name
+              currentClassification?.fullyQualifiedName ||
+                currentClassification?.name
             )
           );
         } else {
@@ -313,15 +317,14 @@ const TagsPage = () => {
    * @param categoryName - tag category name
    * @param tagId -  tag id
    */
-  const handleDeleteTag = (categoryName: string, tagId: string) => {
-    deleteTag(categoryName, tagId)
+  const handleDeleteTag = (tagId: string) => {
+    deleteTag(tagId)
       .then((res) => {
         if (res) {
-          if (currentCategory) {
-            const updatedTags = (currentCategory.children as TagClass[]).filter(
-              (data) => data.id !== tagId
-            );
-            setCurrentCategory({ ...currentCategory, children: updatedTags });
+          if (currentClassification) {
+            setCurrentCategory({
+              ...currentClassification,
+            });
           }
         } else {
           showErrorToast(jsonData['api-error-messages']['delete-tag-error']);
@@ -334,31 +337,30 @@ const TagsPage = () => {
   };
 
   /**
-   * It redirects to respective function call based on tag/tagCategory
+   * It redirects to respective function call based on tag/Classification
    */
   const handleConfirmClick = () => {
     if (deleteTags.data?.isCategory) {
-      deleteTagCategoryById(deleteTags.data.id as string);
+      deleteClassificationById(deleteTags.data.id as string);
     } else {
-      handleDeleteTag(
-        deleteTags.data?.categoryName as string,
-        deleteTags.data?.id as string
-      );
+      handleDeleteTag(deleteTags.data?.id as string);
     }
   };
 
-  const handleUpdateCategory = async (updatedCategory: TagCategory) => {
+  const handleUpdateCategory = async (
+    updatedClassification: Classification
+  ) => {
     try {
-      const response = await updateTagCategory(
-        currentCategory?.name ?? '',
-        updatedCategory
-      );
+      const response = await updateClassification(updatedClassification);
       if (response) {
-        if (currentCategory?.name !== updatedCategory.name) {
+        if (currentClassification?.name !== updatedClassification.name) {
           history.push(getTagPath(response.name));
           setIsNameEditing(false);
         } else {
-          await fetchCurrentCategory(currentCategory?.name as string, true);
+          await fetchCurrentCategory(
+            currentClassification?.name as string,
+            true
+          );
         }
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -372,14 +374,14 @@ const TagsPage = () => {
 
   const handleRenameSave = () => {
     handleUpdateCategory({
-      name: (currentCategoryName || currentCategory?.name) ?? '',
-      description: currentCategory?.description ?? '',
+      name: (currentCategoryName || currentClassification?.name) ?? '',
+      description: currentClassification?.description ?? '',
     });
   };
 
   const handleUpdateDescription = async (updatedHTML: string) => {
     handleUpdateCategory({
-      name: currentCategory?.name ?? '',
+      name: currentClassification?.name ?? '',
       description: updatedHTML,
     });
   };
@@ -388,21 +390,13 @@ const TagsPage = () => {
     setCurrentCategoryName(e.target.value);
   };
 
-  const onNewTagChange = (data: TagCategory, forceSet = false) => {
+  const onNewTagChange = (data: Classification, forceSet = false) => {
     if (errorDataTag || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
-      } else if (
-        !isUndefined(
-          currentCategory?.children?.find(
-            (item) => toLower((item as TagClass)?.name) === toLower(data.name)
-          )
-        )
-      ) {
-        errData['name'] = 'Name already exists';
       } else if (data.name.length < 2 || data.name.length > 64) {
         errData['name'] = 'Name size must be between 2 and 64';
       }
@@ -414,16 +408,17 @@ const TagsPage = () => {
     return {};
   };
 
-  const createPrimaryTag = (data: TagCategory) => {
+  const createPrimaryTag = (data: Classification) => {
     const errData = onNewTagChange(data, true);
     if (!Object.values(errData).length) {
-      createTag(currentCategory?.name ?? '', {
+      createTag({
         name: trim(data.name),
         description: data.description,
+        classification: currentClassification?.name ?? '',
       })
         .then((res) => {
           if (res) {
-            fetchCurrentCategory(currentCategory?.name as string, true);
+            fetchCurrentCategory(currentClassification?.name as string, true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -442,16 +437,12 @@ const TagsPage = () => {
 
   const updatePrimaryTag = async (updatedHTML: string) => {
     try {
-      const response = await updateTag(
-        currentCategory?.name ?? '',
-        editTag?.name ?? '',
-        {
-          name: editTag?.name ?? '',
-          description: updatedHTML,
-        }
-      );
+      const response = await updateTag({
+        name: editTag?.name ?? '',
+        description: updatedHTML,
+      });
       if (response) {
-        await fetchCurrentCategory(currentCategory?.name as string, true);
+        await fetchCurrentCategory(currentClassification?.name as string, true);
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -473,12 +464,12 @@ const TagsPage = () => {
     );
   };
 
-  const handleActionDeleteTag = (record: TagClass) => {
+  const handleActionDeleteTag = (record: Tag) => {
     setDeleteTags({
       data: {
         id: record.id as string,
         name: record.name,
-        categoryName: currentCategory?.name,
+        categoryName: currentClassification?.name,
         isCategory: false,
         status: 'waiting',
       },
@@ -487,24 +478,24 @@ const TagsPage = () => {
   };
 
   useEffect(() => {
-    if (currentCategory) {
+    if (currentClassification) {
       fetchCurrentCategoryPermission();
     }
-  }, [currentCategory]);
+  }, [currentClassification]);
 
   useEffect(() => {
     /**
-     * If tagCategoryName is present then fetch that category
+     * If ClassificationName is present then fetch that category
      */
-    if (tagCategoryName) {
-      const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
-      fetchCurrentCategory(isTier ? TIER_CATEGORY : tagCategoryName);
+    if (ClassificationName) {
+      const isTier = ClassificationName.startsWith(TIER_CATEGORY);
+      fetchCurrentCategory(isTier ? TIER_CATEGORY : ClassificationName);
     }
     /**
      * Fetch all categories and set current category only if there is no categoryName
      */
-    fetchCategories(!tagCategoryName);
-  }, [tagCategoryName]);
+    fetchCategories(!ClassificationName);
+  }, [ClassificationName]);
 
   const fetchLeftPanel = () => {
     return (
@@ -537,11 +528,11 @@ const TagsPage = () => {
           </div>
 
           {categories &&
-            categories.map((category: TagCategory) => (
+            categories.map((category: Classification) => (
               <div
                 className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
                   category.name,
-                  currentCategory?.name
+                  currentClassification?.name
                 )}`}
                 data-testid="side-panel-category"
                 key={category.name}
@@ -555,11 +546,9 @@ const TagsPage = () => {
                   {getEntityName(category as unknown as EntityReference)}
                 </Typography.Paragraph>
                 {getCountBadge(
-                  currentCategory?.name === category.name
-                    ? currentCategory.children?.length
-                    : category.children?.length || 0,
+                  0,
                   'tw-self-center',
-                  currentCategory?.name === category.name
+                  currentClassification?.name === category.name
                 )}
               </div>
             ))}
@@ -568,7 +557,7 @@ const TagsPage = () => {
     );
   };
 
-  const tableColumn: ColumnsType<TagClass> = useMemo(
+  const tableColumn: ColumnsType<Tag> = useMemo(
     () => [
       {
         title: 'Name',
@@ -579,7 +568,7 @@ const TagsPage = () => {
         title: 'Description',
         dataIndex: 'description',
         key: 'description',
-        render: (text: string, record: TagClass) => (
+        render: (text: string, record: Tag) => (
           <div className="tw-group tableBody-cell">
             <div className="cursor-pointer flex">
               <div>
@@ -632,7 +621,7 @@ const TagsPage = () => {
         key: 'actions',
         width: 120,
         align: 'center',
-        render: (_, record: TagClass) => (
+        render: (_, record: Tag) => (
           <button
             className="link-text"
             data-testid="delete-tag"
@@ -673,7 +662,7 @@ const TagsPage = () => {
           </ErrorPlaceHolder>
         ) : (
           <div className="full-height" data-testid="tags-container">
-            {currentCategory && (
+            {currentClassification && (
               <Space className="w-full justify-between" data-testid="header">
                 <Space className="items-center">
                   {isNameEditing ? (
@@ -682,7 +671,7 @@ const TagsPage = () => {
                         <Input
                           className="input-width"
                           data-testid="tag-category-name"
-                          name="tagCategoryName"
+                          name="ClassificationName"
                           value={currentCategoryName}
                           onChange={handleCategoryNameChange}
                         />
@@ -722,9 +711,9 @@ const TagsPage = () => {
                         className="m-b-0"
                         data-testid="category-name"
                         level={5}>
-                        {getEntityName(currentCategory)}
+                        {getEntityName(currentClassification)}
                       </Typography.Title>
-                      {currentCategory.provider === ProviderType.User && (
+                      {currentClassification.provider === ProviderType.User && (
                         <Tooltip
                           title={
                             categoryPermissions.EditAll
@@ -779,7 +768,7 @@ const TagsPage = () => {
                     className="tw-h-8 tw-rounded tw-ml-2"
                     data-testid="delete-tag-category-button"
                     disabled={
-                      currentCategory.provider === ProviderType.System ||
+                      currentClassification.provider === ProviderType.System ||
                       !categoryPermissions.Delete
                     }
                     size="small"
@@ -793,9 +782,10 @@ const TagsPage = () => {
             )}
             <div className="m-b-sm" data-testid="description-container">
               <Description
-                description={currentCategory?.description || ''}
+                description={currentClassification?.description || ''}
                 entityName={
-                  currentCategory?.displayName ?? currentCategory?.name
+                  currentClassification?.displayName ??
+                  currentClassification?.name
                 }
                 hasEditAccess={
                   categoryPermissions.EditDescription ||
@@ -811,7 +801,7 @@ const TagsPage = () => {
               bordered
               columns={tableColumn}
               data-testid="table"
-              dataSource={currentCategory?.children as TagClass[]}
+              dataSource={[]}
               pagination={false}
               rowKey="id"
               size="small"
@@ -842,16 +832,17 @@ const TagsPage = () => {
               onCancel={() => setIsAddingCategory(false)}
               onChange={(data) => {
                 setErrorDataCategory({});
-                onNewCategoryChange(data as TagCategory);
+                onNewCategoryChange(data as Classification);
               }}
-              onSave={(data) => createCategory(data as TagCategory)}
+              onSave={(data) => createCategory(data as Classification)}
             />
             <FormModal
               errorData={errorDataTag}
               form={Form}
               header={t('label.adding-new-tag', {
                 categoryName:
-                  currentCategory?.displayName ?? currentCategory?.name,
+                  currentClassification?.displayName ??
+                  currentClassification?.name,
               })}
               initialData={{
                 name: '',
@@ -862,9 +853,9 @@ const TagsPage = () => {
               onCancel={() => setIsAddingTag(false)}
               onChange={(data) => {
                 setErrorDataTag({});
-                onNewTagChange(data as TagCategory);
+                onNewTagChange(data as Classification);
               }}
-              onSave={(data) => createPrimaryTag(data as TagCategory)}
+              onSave={(data) => createPrimaryTag(data as Classification)}
             />
             <ConfirmationModal
               bodyText={t('message.are-you-sure-delete-tag', {

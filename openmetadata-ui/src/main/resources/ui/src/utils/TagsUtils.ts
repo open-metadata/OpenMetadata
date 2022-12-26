@@ -12,57 +12,52 @@
  */
 
 import { AxiosError } from 'axios';
-import { flatten, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
-import { getCategory, getTags } from '../axiosAPIs/tagAPI';
+import { getClassification, getTags } from '../axiosAPIs/tagAPI';
 import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
-import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
+import { Classification } from '../generated/entity/classification/classification';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
-export const getTagCategories = async (fields?: Array<string> | string) => {
+export const getClassifications = async (fields?: Array<string> | string) => {
   try {
-    const listOfCategories: Array<TagCategory> = [];
-    const categories = await getTags(fields);
-    const categoryList = categories.data.map((category: TagCategory) => {
-      return {
-        name: category.name,
-        description: category.description,
-      } as TagCategory;
-    });
-    if (categoryList.length) {
-      const promiseArr = categoryList.map((category: TagCategory) =>
-        getCategory(category.name, fields)
+    const listOfClassifications: Array<Classification> = [];
+    const classifications = await getTags(fields);
+    const classificationList = classifications.data.map(
+      (category: Classification) => {
+        return {
+          name: category.name,
+          description: category.description,
+        } as Classification;
+      }
+    );
+    if (classificationList.length) {
+      const promiseArr = classificationList.map((category: Classification) =>
+        getClassification(category.name, fields)
       );
 
       const categories = await Promise.allSettled(promiseArr);
 
       categories.map((category) => {
         if (category.status === 'fulfilled') {
-          listOfCategories.push(category.value as TagCategory);
+          listOfClassifications.push(category.value as Classification);
         }
       });
     }
 
-    return Promise.resolve({ data: listOfCategories });
+    return Promise.resolve({ data: listOfClassifications });
   } catch (error) {
     return Promise.reject({ data: (error as AxiosError).response });
   }
 };
 
 export const getTaglist = (
-  categories: Array<TagCategory> = []
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _categories: Array<Classification> = []
 ): Array<string> => {
-  const children = categories.map((category: TagCategory) => {
-    return category.children || [];
-  });
-  const allChildren = flatten(children);
-  const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-    return tag?.fullyQualifiedName || '';
-  });
-
-  return tagList;
+  return [] as string[];
 };
 
 export const getTableTags = (
@@ -123,7 +118,7 @@ export const getTagDisplay = (tag: string) => {
 
 export const fetchTagsAndGlossaryTerms = async () => {
   const responses = await Promise.allSettled([
-    getTagCategories(),
+    getClassifications(),
     fetchGlossaryTerms(),
   ]);
 

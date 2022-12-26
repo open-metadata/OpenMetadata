@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DateFormat;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
+import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
@@ -48,9 +50,9 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
@@ -79,12 +81,7 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public final class TestUtils {
-  // Entity name length allowed is 128 characters
-  public static final int ENTITY_NAME_MAX_LEN = 128;
-  public static final String LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
-  public static final String ENTITY_NAME_LENGTH_ERROR =
-      String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
-
+  public static final String LONG_ENTITY_NAME = "1".repeat(128 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
@@ -415,13 +412,14 @@ public final class TestUtils {
     List<TagLabel> updatedExpectedList = new ArrayList<>();
     EntityUtil.mergeTags(updatedExpectedList, expectedList);
 
+    TagResourceTest tagResourceTest = new TagResourceTest();
     for (TagLabel expected : expectedList) {
       if (expected.getSource() == TagSource.GLOSSARY) {
         GlossaryTerm glossaryTerm =
             new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
         List<TagLabel> derived = new ArrayList<>();
         for (TagLabel tag : listOrEmpty(glossaryTerm.getTags())) {
-          Tag associatedTag = TagResourceTest.getTag(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
+          Tag associatedTag = tagResourceTest.getEntityByName(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
           derived.add(
               new TagLabel()
                   .withTagFQN(tag.getTagFQN())
@@ -561,5 +559,16 @@ public final class TestUtils {
     DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
     Date date = formatter.parse(dateStr);
     return date.getTime();
+  }
+
+  public static <T> String getEntityNameLengthError(Class<T> clazz) {
+    try {
+      Field field = clazz.getDeclaredField("name");
+      Size size = field.getAnnotation(Size.class);
+      return String.format("[name size must be between %d and %d]", size.min(), size.max());
+    } catch (NoSuchFieldException e) {
+      LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
+    }
+    return null;
   }
 }

@@ -132,7 +132,7 @@ jest.mock('../../utils/TableUtils', () => ({
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(),
+  getClassifications: jest.fn(),
   getTaglist: jest.fn().mockReturnValue([]),
   getTagDisplay: jest.fn(),
 }));
