@@ -69,7 +69,7 @@ def get_source_module_name(type_: str) -> str:
     raw_module = type_.split(TYPE_SEPARATOR)[-1]
 
     if raw_module == type_:  # it is invariant, no TYPE_SEPARATOR in the string
-        return "source"
+        return "metadata"
 
     return raw_module
 

@@ -36,7 +36,7 @@ class ImporterTest(TestCase):
     """
 
     def test_get_module_name(self) -> None:
-        self.assertEqual(get_source_module_name("mysql"), "source")
+        self.assertEqual(get_source_module_name("mysql"), "metadata")
         self.assertEqual(get_source_module_name("redshift-usage"), "usage")
 
         self.assertEqual(get_module_name("query-parser"), "query_parser")
@@ -46,10 +46,12 @@ class ImporterTest(TestCase):
         self.assertEqual(get_class_name_root("redshift-usage"), "RedshiftUsage")
 
     def test_import_class(self) -> None:
-        from metadata.ingestion.source.database.mysql.source import MysqlSource
+        from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
-            import_class("metadata.ingestion.source.database.mysql.source.MysqlSource"),
+            import_class(
+                "metadata.ingestion.source.database.mysql.metadata.MysqlSource"
+            ),
             MysqlSource,
         )
 
@@ -60,7 +62,7 @@ class ImporterTest(TestCase):
         from metadata.ingestion.source.database.bigquery.usage import (
             BigqueryUsageSource,
         )
-        from metadata.ingestion.source.database.mysql.source import MysqlSource
+        from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
             import_source_class(service_type=ServiceType.Database, source_type="mysql"),
