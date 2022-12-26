@@ -64,7 +64,7 @@ jobs:
         run: |
             if ${{ github.event_name == 'release' }}; then
                 echo "tags=openmetadata/ingestion:0.13.1,openmetadata/ingestion:latest" >> $GITHUB_OUTPUT
-            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_tag_to_release }}; then
+            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
                 echo "tags=openmetadata/ingestion:${{inputs.tag}},openmetadata/ingestion:latest" >> $GITHUB_OUTPUT
             else
                 echo "tags=openmetadata/ingestion:${{ inputs.tag }}" >> $GITHUB_OUTPUT

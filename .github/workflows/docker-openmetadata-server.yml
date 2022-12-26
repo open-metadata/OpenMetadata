@@ -142,7 +142,7 @@ jobs:
         run: |
             if ${{ github.event_name == 'release' }}; then
                 echo "tags=openmetadata/server:0.13.1,openmetadata/server:latest" >> $GITHUB_OUTPUT
-            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_tag_to_release }}; then
+            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
                 echo "tags=openmetadata/server:${{inputs.tag}},openmetadata/server:latest" >> $GITHUB_OUTPUT
             else
                 echo "tags=openmetadata/server:${{ inputs.tag }}" >> $GITHUB_OUTPUT
