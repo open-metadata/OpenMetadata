@@ -14,9 +14,10 @@
 # Insert license header
 '*': yarn license-header-fix
 
-# Organize Imports
 '*.{ts,tsx,js}':
+  # Organize Imports
   - organize-imports-cli
+  # Run ESLint
   - eslint 'src/**/*.{js,jsx,ts,tsx}' --fix
 
 # Run Prettier
