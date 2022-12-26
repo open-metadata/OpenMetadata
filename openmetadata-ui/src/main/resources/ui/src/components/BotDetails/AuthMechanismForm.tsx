@@ -396,7 +396,7 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.privateKey-required'),
+                  message: t('message.private-key-required'),
                 },
               ]}>
               <Input.Password
