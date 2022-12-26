@@ -316,7 +316,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               <Form.Item
                 className="m-b-0"
                 label={t('label.profile-sample-type', {
-                  type: 'Value',
+                  type: t('label.value'),
                 })}
                 name="profileSamplePercentage">
                 <SliderWithInput
@@ -329,7 +329,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               <Form.Item
                 className="m-b-0"
                 label={t('label.profile-sample-type', {
-                  type: 'Value',
+                  type: t('label.value'),
                 })}
                 name="profileSampleRows">
                 <InputNumber

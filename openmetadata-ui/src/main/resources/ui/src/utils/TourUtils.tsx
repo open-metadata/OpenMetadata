@@ -27,7 +27,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-discover-all-assets-at-one-place"
             renderElement={<strong />}
             values={{
-              text: i18next.t('label.openmetadata'),
+              text: i18next.t('label.open-metadata'),
             }}
           />
         </p>

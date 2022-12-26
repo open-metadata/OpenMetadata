@@ -145,7 +145,9 @@ const AddIngestionPage = () => {
           if (err.response?.status === 409) {
             showErrorToast(
               err,
-              t('label.entity-already-exists', { entity: 'Data asset' })
+              t('label.entity-already-exists', {
+                entity: t('label.data-asset'),
+              })
             );
             reject();
           } else {
