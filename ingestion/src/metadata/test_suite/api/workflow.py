@@ -51,7 +51,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.datalake import ometa_to_dataframe
+from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.interfaces.datalake.datalake_test_suite_interface import (
     DataLakeTestSuiteInterface,
 )
