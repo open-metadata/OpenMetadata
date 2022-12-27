@@ -9,20 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Custom wrapper for Tag and Tag Category
+Custom wrapper for Tag and Classification
 """
-from typing import Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 
 
-class OMetaTagAndCategory(BaseModel):
-    fqn: Optional[FullyQualifiedEntityName]
-    category_name: CreateTagCategoryRequest
-    category_details: CreateTagRequest
+class OMetaTagAndClassification(BaseModel):
+    classification_request: CreateClassificationRequest
+    tag_request: CreateTagRequest

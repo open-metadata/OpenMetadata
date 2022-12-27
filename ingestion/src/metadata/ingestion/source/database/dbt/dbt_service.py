@@ -24,7 +24,7 @@ from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteR
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -51,13 +51,13 @@ class DbtServiceTopology(ServiceTopology):
         producer="get_dbt_files",
         stages=[
             NodeStage(
-                type_=OMetaTagAndCategory,
+                type_=OMetaTagAndClassification,
                 processor="validate_dbt_files",
                 ack_sink=False,
                 nullable=True,
             ),
             NodeStage(
-                type_=OMetaTagAndCategory,
+                type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_dbt_tags",
                 ack_sink=False,
@@ -143,7 +143,9 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_dbt_tags(self, dbt_files: DbtFiles) -> Iterable[OMetaTagAndCategory]:
+    def yield_dbt_tags(
+        self, dbt_files: DbtFiles
+    ) -> Iterable[OMetaTagAndClassification]:
         """
         Create and yeild tags from DBT
         """

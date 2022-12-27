@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
@@ -25,7 +26,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
@@ -86,7 +87,7 @@ const AddGlossaryPage: FunctionComponent = () => {
 
   const fetchTags = () => {
     setIsTagLoading(true);
-    getTagCategories()
+    getClassifications()
       .then((res) => {
         if (res.data) {
           setTagList(getTaglist(res.data));

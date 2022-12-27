@@ -15,7 +15,7 @@
       "description": "Set of tags to match on (OR among all tags).",
       "type": "array",
       "items": {
-        "$ref": "../tags/tagCategory.json#/definitions/tagName"
+        "$ref": "../classification/tag.json#/definitions/tagName"
       }
     }
   }

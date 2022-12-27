@@ -64,9 +64,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -729,8 +729,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void store(T entity, boolean update) throws JsonProcessingException {
     if (update) {
       dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+      LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     } else {
       dao.insert(entity);
+      LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
   }
 

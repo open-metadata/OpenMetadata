@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -149,7 +149,7 @@ describe('RedShift Ingestion', () => {
     //Verify DBT tag category is added
     cy.get('[data-testid="tag-name"]')
       .should('be.visible')
-      .should('contain', DBT.tagCategory);
+      .should('contain', DBT.classification);
 
     cy.get('.ant-table-row')
       .should('be.visible')
@@ -162,7 +162,7 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="entity-tags"]')
       .should('exist')
       .should('be.visible')
-      .should('contain', `${DBT.tagCategory}.${DBT.tagName}`);
+      .should('contain', `${DBT.classification}.${DBT.tagName}`);
     //Verify DBT tab is present
     cy.get('[data-testid="DBT"]').should('exist').should('be.visible');
     cy.get('[data-testid="DBT"]').click();

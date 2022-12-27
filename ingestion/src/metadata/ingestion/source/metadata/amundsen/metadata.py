@@ -20,6 +20,10 @@ from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -30,12 +34,9 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -50,7 +51,6 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams import team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -60,7 +60,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -238,17 +238,17 @@ class AmundsenSource(Source[Entity]):
 
     def create_tags(self, tags):
         for tag in tags:
-            tag_category = OMetaTagAndCategory(
-                category_name=CreateTagCategoryRequest(
+            classification = OMetaTagAndClassification(
+                classification_request=CreateClassificationRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
                 ),
-                category_details=CreateTagRequest(
+                tag_request=CreateTagRequest(
                     name=tag, description="Amundsen Table Tag"
                 ),
             )
-            yield tag_category
-            logger.info(f"Tag Category {tag_category}, Primary Tag {tag} Ingested")
+            yield classification
+            logger.info(f"Classification {classification}, Primary Tag {tag} Ingested")
 
     def _yield_create_database(self, table):
         try:
@@ -337,8 +337,8 @@ class AmundsenSource(Source[Entity]):
                 parsed_string["description"] = description
                 col = Column(**parsed_string)
                 columns.append(col)
-            amundsen_table_tag = OMetaTagAndCategory(
-                category_name=CreateTagCategoryRequest(
+            amundsen_table_tag = OMetaTagAndClassification(
+                category_name=CreateClassificationRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
                 ),
@@ -347,8 +347,8 @@ class AmundsenSource(Source[Entity]):
                 ),
             )
             yield amundsen_table_tag
-            amundsen_cluster_tag = OMetaTagAndCategory(
-                category_name=CreateTagCategoryRequest(
+            amundsen_cluster_tag = OMetaTagAndClassification(
+                category_name=CreateClassificationRequest(
                     name=AMUNDSEN_TAG_CATEGORY,
                     description="Tags associates with amundsen entities",
                 ),
@@ -362,7 +362,7 @@ class AmundsenSource(Source[Entity]):
                     tagFQN=fqn.build(
                         self.metadata,
                         Tag,
-                        tag_category_name=AMUNDSEN_TAG_CATEGORY,
+                        classification_name=AMUNDSEN_TAG_CATEGORY,
                         tag_name=AMUNDSEN_TABLE_TAG,
                     ),
                     labelType="Automated",
@@ -373,7 +373,7 @@ class AmundsenSource(Source[Entity]):
                     tagFQN=fqn.build(
                         self.metadata,
                         Tag,
-                        tag_category_name=AMUNDSEN_TAG_CATEGORY,
+                        classification_name=AMUNDSEN_TAG_CATEGORY,
                         tag_name=table["cluster"],
                     ),
                     labelType="Automated",
@@ -389,7 +389,7 @@ class AmundsenSource(Source[Entity]):
                             tagFQN=fqn.build(
                                 self.metadata,
                                 Tag,
-                                tag_category_name=AMUNDSEN_TAG_CATEGORY,
+                                classification_name=AMUNDSEN_TAG_CATEGORY,
                                 tag_name=tag,
                             ),
                             labelType="Automated",

@@ -22,10 +22,10 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
 )
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -38,7 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
@@ -278,7 +278,7 @@ class SnowflakeSource(CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
 
         try:
             result = self.connection.execute(
@@ -300,16 +300,12 @@ class SnowflakeSource(CommonDbSourceService):
 
         for res in result:
             row = list(res)
-            fqn_elements = [name for name in row[2:] if name]
-            yield OMetaTagAndCategory(
-                fqn=fqn._build(  # pylint: disable=protected-access
-                    self.context.database_service.name.__root__, *fqn_elements
-                ),
-                category_name=CreateTagCategoryRequest(
+            yield OMetaTagAndClassification(
+                classification_request=CreateClassificationRequest(
                     name=row[0],
                     description="SNOWFLAKE TAG NAME",
                 ),
-                category_details=CreateTagRequest(
+                tag_request=CreateTagRequest(
                     name=row[1], description="SNOWFLAKE TAG VALUE"
                 ),
             )

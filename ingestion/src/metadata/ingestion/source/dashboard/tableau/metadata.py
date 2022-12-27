@@ -19,13 +19,14 @@ from pydantic import BaseModel, Extra
 from requests.utils import urlparse
 from tableau_api_lib.utils import extract_pages
 
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -36,14 +37,13 @@ from metadata.generated.schema.entity.services.connections.dashboard.tableauConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import (
@@ -246,22 +246,20 @@ class TableauSource(DashboardServiceSource):
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
-    def yield_tag(self, _) -> OMetaTagAndCategory:  # pylint: disable=arguments-differ
+    def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
         """
         Fetch Dashboard Tags
         """
         for tag in self.tags:
-            tag_category = OMetaTagAndCategory(
-                category_name=CreateTagCategoryRequest(
+            classification = OMetaTagAndClassification(
+                classification_request=CreateClassificationRequest(
                     name=TABLEAU_TAG_CATEGORY,
                     description="Tags associates with tableau entities",
                 ),
-                category_details=CreateTagRequest(name=tag, description="Tableau Tag"),
+                tag_request=CreateTagRequest(name=tag, description="Tableau Tag"),
             )
-            yield tag_category
-            logger.info(
-                f"Tag Category {TABLEAU_TAG_CATEGORY}, Primary Tag {tag} Ingested"
-            )
+            yield classification
+            logger.info(f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested")
 
     def get_tag_labels(self, tags: List[str]) -> Optional[List[TagLabel]]:
         return [
@@ -269,7 +267,7 @@ class TableauSource(DashboardServiceSource):
                 tagFQN=fqn.build(
                     self.metadata,
                     Tag,
-                    tag_category_name=TABLEAU_TAG_CATEGORY,
+                    classification_name=TABLEAU_TAG_CATEGORY,
                     tag_name=tag,
                 ),
                 labelType="Automated",

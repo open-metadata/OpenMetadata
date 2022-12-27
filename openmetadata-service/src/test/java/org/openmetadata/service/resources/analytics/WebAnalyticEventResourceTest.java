@@ -39,7 +39,6 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
         WebAnalyticEventResource.WebAnalyticEventList.class,
         "analytics/webAnalyticEvent",
         WebAnalyticEventResource.FIELDS);
-    supportsEmptyDescription = false;
   }
 
   @Test

@@ -36,7 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import (
@@ -220,7 +220,7 @@ class DynamodbSource(DatabaseServiceSource):
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 
     def standardize_table_name(self, _: str, table: str) -> str:

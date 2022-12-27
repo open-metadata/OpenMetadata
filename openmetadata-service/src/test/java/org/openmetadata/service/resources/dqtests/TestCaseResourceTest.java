@@ -73,7 +73,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         TestCaseResource.TestCaseList.class,
         "testCase",
         TestCaseResource.FIELDS);
-    supportsEmptyDescription = false;
   }
 
   public void setupTestCase(TestInfo test) throws IOException {

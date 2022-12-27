@@ -58,6 +58,8 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Database;
@@ -80,7 +82,6 @@ import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -92,7 +93,6 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SQLQuery;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
@@ -146,7 +146,7 @@ public interface CollectionDAO {
   TagDAO tagDAO();
 
   @CreateSqlObject
-  TagCategoryDAO tagCategoryDAO();
+  ClassificationDAO classificationDAO();
 
   @CreateSqlObject
   TableDAO tableDAO();
@@ -1914,15 +1914,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface TagCategoryDAO extends EntityDAO<TagCategory> {
+  interface ClassificationDAO extends EntityDAO<Classification> {
     @Override
     default String getTableName() {
-      return "tag_category";
+      return "classification";
     }
 
     @Override
-    default Class<TagCategory> getEntityClass() {
-      return TagCategory.class;
+    default Class<Classification> getEntityClass() {
+      return Classification.class;
     }
 
     @Override

@@ -18,6 +18,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
 from metadata.clients.atlas_client import AtlasClient
+from metadata.generated.schema.api.classification.createClassification import (
+    CreateClassificationRequest,
+)
+from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -26,10 +30,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -43,7 +44,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -51,7 +51,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
@@ -278,7 +278,7 @@ class AtlasSource(Source):
                         tag_fqn = fqn.build(
                             self.metadata,
                             entity_type=Tag,
-                            tag_category_name=ATLAS_TAG_CATEGORY,
+                            classification_name=ATLAS_TAG_CATEGORY,
                             tag_name=ATLAS_TABLE_TAG,
                         )
 
@@ -310,13 +310,13 @@ class AtlasSource(Source):
         ]
         return tags
 
-    def create_tag(self) -> OMetaTagAndCategory:
-        atlas_table_tag = OMetaTagAndCategory(
-            category_name=CreateTagCategoryRequest(
+    def create_tag(self) -> OMetaTagAndClassification:
+        atlas_table_tag = OMetaTagAndClassification(
+            classification_request=CreateClassificationRequest(
                 name=ATLAS_TAG_CATEGORY,
                 description="Tags associates with atlas entities",
             ),
-            category_details=CreateTagRequest(
+            tag_request=CreateTagRequest(
                 name=ATLAS_TABLE_TAG, description="Atlas Cluster Tag"
             ),
         )
