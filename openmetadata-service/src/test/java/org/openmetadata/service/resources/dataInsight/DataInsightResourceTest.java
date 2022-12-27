@@ -26,7 +26,6 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
         DataInsightChartResource.DataInsightChartList.class,
         "dataInsight",
         DataInsightChartResource.FIELDS);
-    supportsEmptyDescription = false;
   }
 
   @Test

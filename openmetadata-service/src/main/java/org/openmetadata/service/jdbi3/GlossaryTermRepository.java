@@ -67,8 +67,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException {
-    entity.setGlossary(getGlossary(entity));
-    entity.setParent(getParent(entity));
+    entity.withGlossary(getGlossary(entity)).withParent(getParent(entity));
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
     entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : null);
@@ -124,7 +123,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void storeEntity(GlossaryTerm entity, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<TagLabel> tags = entity.getTags();
-    // TODO Add relationships for reviewers
     EntityReference glossary = entity.getGlossary();
     EntityReference parentTerm = entity.getParent();
     List<EntityReference> relatedTerms = entity.getRelatedTerms();

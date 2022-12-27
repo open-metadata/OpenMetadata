@@ -29,10 +29,12 @@ src/test/unit/coverage
 .gitignore
 .prettierignore
 .eslintignore
+.licenseheaderignore
 
 # rc, json and html files
 .prettierrc
 .lintstagedrc.json
+.licenseheaderrc.json
 swagger.html
 
 # macOS

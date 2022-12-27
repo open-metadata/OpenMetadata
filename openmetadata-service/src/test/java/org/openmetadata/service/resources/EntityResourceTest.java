@@ -48,7 +48,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -108,6 +107,8 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -174,9 +175,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final String collectionName;
   private final String allFields;
   private final String systemEntityName; // System entity provided by the system that can't be deleted
-  protected boolean supportsFollowers;
-  protected boolean supportsOwner;
-  protected boolean supportsTags;
+  protected final boolean supportsFollowers;
+  protected final boolean supportsOwner;
+  protected final boolean supportsTags;
   protected boolean supportsPatch = true;
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
@@ -234,6 +235,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
 
+  public static Classification USER_TAG_CATEGORY;
+  public static Tag ADDRESS_TAG;
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
   public static TagLabel PII_SENSITIVE_TAG_LABEL;
@@ -415,7 +418,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entity;
   }
 
-  // Get container entity based on create request that has CONTAINS relationship to the entity created with this
+  // Get container entity used in createRequest that has CONTAINS relationship to the entity created with this
   // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
   // details.
   public EntityReference getContainer() {
@@ -779,11 +782,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
-    assertResponseContains(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponseContains(
+        () -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
 
     // Create an entity with mandatory name field too long
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
-    assertResponse(() -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponse(
+        () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+  }
+
+  @Test
+  void post_entityWithMissingDescription_400(TestInfo test) {
+    // Post entity that does not accept empty description and expect failure
+    if (supportsEmptyDescription) {
+      return;
+    }
+
+    final K create = createRequest(test).withDescription(null);
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
   }
 
   @Test
@@ -898,7 +914,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // The FQN has quote delimited parts if the FQN is hierarchical.
     // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
-    // team, webhook and the entity names that are at the root for FQN like services, TagCategory, and Glossary etc.)
+    // team, webhook and the entity names that are at the root for FQN like services, Classification, and Glossary etc.)
     // No delimiter is expected.
     boolean noHierarchicalName = entity.getFullyQualifiedName().equals(entity.getName());
     assertTrue(noHierarchicalName || entity.getFullyQualifiedName().contains("\""));
@@ -1626,6 +1642,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
     return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  public final T getEntityByName(String name, Map<String, String> authHeaders) throws HttpResponseException {
+    return getEntityByName(name, null, "", authHeaders);
   }
 
   public final T getEntityByName(String name, String fields, Map<String, String> authHeaders)

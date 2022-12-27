@@ -16,8 +16,9 @@ from unittest import TestCase
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
-    get_class_name,
+    get_class_name_root,
     get_module_name,
+    get_source_module_name,
     import_bulk_sink_type,
     import_class,
     import_processor_class,
@@ -35,26 +36,33 @@ class ImporterTest(TestCase):
     """
 
     def test_get_module_name(self) -> None:
-        self.assertEqual(get_module_name("mysql"), "mysql")
-        self.assertEqual(get_module_name("redshift-usage"), "redshift_usage")
+        self.assertEqual(get_source_module_name("mysql"), "metadata")
+        self.assertEqual(get_source_module_name("redshift-usage"), "usage")
+
+        self.assertEqual(get_module_name("query-parser"), "query_parser")
 
     def test_get_class_name(self) -> None:
-        self.assertEqual(get_class_name("mysql"), "Mysql")
-        self.assertEqual(get_class_name("redshift-usage"), "RedshiftUsage")
+        self.assertEqual(get_class_name_root("mysql"), "Mysql")
+        self.assertEqual(get_class_name_root("redshift-usage"), "RedshiftUsage")
 
     def test_import_class(self) -> None:
-        from metadata.ingestion.source.database.mysql import (
-            MysqlSource,  # pylint: disable=import-outside-toplevel
-        )
+        from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
-            import_class("metadata.ingestion.source.database.mysql.MysqlSource"),
+            import_class(
+                "metadata.ingestion.source.database.mysql.metadata.MysqlSource"
+            ),
             MysqlSource,
         )
 
     def test_import_source_class(self) -> None:
-        from metadata.ingestion.source.database.mysql import MysqlSource
-        from metadata.ingestion.source.database.snowflake import SnowflakeSource
+        from metadata.ingestion.source.database.bigquery.lineage import (
+            BigqueryLineageSource,
+        )
+        from metadata.ingestion.source.database.bigquery.usage import (
+            BigqueryUsageSource,
+        )
+        from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
             import_source_class(service_type=ServiceType.Database, source_type="mysql"),
@@ -63,9 +71,16 @@ class ImporterTest(TestCase):
 
         self.assertEqual(
             import_source_class(
-                service_type=ServiceType.Database, source_type="snowflake"
+                service_type=ServiceType.Database, source_type="bigquery-lineage"
             ),
-            SnowflakeSource,
+            BigqueryLineageSource,
+        )
+
+        self.assertEqual(
+            import_source_class(
+                service_type=ServiceType.Database, source_type="bigquery-usage"
+            ),
+            BigqueryUsageSource,
         )
 
     def test_import_processor_class(self) -> None:
