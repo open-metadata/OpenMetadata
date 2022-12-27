@@ -611,7 +611,8 @@
     "email-plural": "Emails",
     "no-tier": "No Tier",
     "dbt-run-result-http-path": "dbt Run Results HTTP Path",
-    "field-change": "Field Change"
+    "field-change": "Field Change",
+    "classification": "Classification"
   },
   "message": {
     "service-email-required": "Service account Email is required",

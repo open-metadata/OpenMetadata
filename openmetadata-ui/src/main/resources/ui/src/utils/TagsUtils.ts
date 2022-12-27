@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
-import { getClassification, getTags } from '../axiosAPIs/tagAPI';
+import { getAllClassifications, getClassification } from '../axiosAPIs/tagAPI';
 import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { Classification } from '../generated/entity/classification/classification';
@@ -24,7 +24,7 @@ import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 export const getClassifications = async (fields?: Array<string> | string) => {
   try {
     const listOfClassifications: Array<Classification> = [];
-    const classifications = await getTags(fields);
+    const classifications = await getAllClassifications(fields);
     const classificationList = classifications.data.map(
       (category: Classification) => {
         return {

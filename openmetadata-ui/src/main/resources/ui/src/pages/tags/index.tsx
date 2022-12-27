@@ -35,12 +35,14 @@ import {
   deleteClassification,
   deleteTag,
   getClassification,
+  getTags,
   updateClassification,
   updateTag,
 } from '../../axiosAPIs/tagAPI';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
@@ -53,7 +55,11 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { TIER_CATEGORY } from '../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  TIER_CATEGORY,
+} from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
@@ -62,6 +68,7 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
@@ -101,7 +108,7 @@ const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { ClassificationName } = useParams<Record<string, string>>();
-  const [categories, setCategoreis] = useState<Array<Classification>>([]);
+  const [categories, setCategories] = useState<Array<Classification>>([]);
   const [currentClassification, setCurrentCategory] =
     useState<Classification>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
@@ -121,6 +128,9 @@ const TagsPage = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [currentCategoryName, setCurrentCategoryName] = useState<string>('');
+  const [tags, setTags] = useState<Tag[]>();
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const { t } = useTranslation();
   const createCategoryPermission = useMemo(
@@ -155,15 +165,46 @@ const TagsPage = () => {
     setCurrentCategoryName(currentClassification?.name || '');
   };
 
-  const fetchCategories = async (setCurrent?: boolean) => {
+  const fetchClassificationChildren = async (
+    currentCategoryName: string,
+    paging?: Paging
+  ) => {
+    setIsLoading(true);
+
+    try {
+      const tagsResponse = await getTags(
+        'usageCount',
+        currentCategoryName,
+        paging?.after,
+        paging?.before,
+        PAGE_SIZE
+      );
+      setTags(tagsResponse.data);
+      setPaging(tagsResponse.paging);
+    } catch (error) {
+      const errMsg = getErrorText(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.tag-plural') })
+      );
+      showErrorToast(errMsg);
+      setError(errMsg);
+      setTags([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchClassifications = async (setCurrent?: boolean) => {
     setIsLoading(true);
 
     try {
       const response = await getClassifications('usageCount');
-      setCategoreis(response.data);
+      setCategories(response.data);
       if (setCurrent && response.data.length) {
         setCurrentCategory(response.data[0]);
         setCurrentCategoryName(response.data[0].name);
+
+        fetchClassificationChildren(response.data[0].name);
       }
     } catch (error) {
       const errMsg = getErrorText(
@@ -465,16 +506,18 @@ const TagsPage = () => {
   };
 
   const handleActionDeleteTag = (record: Tag) => {
-    setDeleteTags({
-      data: {
-        id: record.id as string,
-        name: record.name,
-        categoryName: currentClassification?.name,
-        isCategory: false,
-        status: 'waiting',
-      },
-      state: true,
-    });
+    if (currentClassification) {
+      setDeleteTags({
+        data: {
+          id: record.id as string,
+          name: record.name,
+          categoryName: currentClassification?.name,
+          isCategory: false,
+          status: 'waiting',
+        },
+        state: true,
+      });
+    }
   };
 
   useEffect(() => {
@@ -494,8 +537,30 @@ const TagsPage = () => {
     /**
      * Fetch all categories and set current category only if there is no categoryName
      */
-    fetchCategories(!ClassificationName);
+    fetchClassifications(!ClassificationName);
+
+    fetchClassificationChildren(ClassificationName);
   }, [ClassificationName]);
+
+  useEffect(() => {
+    /**
+     * Fetch all categories initially
+     */
+    fetchClassifications();
+  }, []);
+
+  const onClickClassifications = (category: Classification) => {
+    setCurrentCategory(category);
+    setCurrentCategoryName(category.name);
+    fetchClassificationChildren(category.name);
+    history.push(getTagPath(category.name));
+  };
+
+  const handlePageChange = (after: string | number) => {
+    if (after) {
+      fetchClassificationChildren(currentCategoryName, paging);
+    }
+  };
 
   const fetchLeftPanel = () => {
     return (
@@ -536,9 +601,7 @@ const TagsPage = () => {
                 )}`}
                 data-testid="side-panel-category"
                 key={category.name}
-                onClick={() => {
-                  history.push(getTagPath(category.name));
-                }}>
+                onClick={() => onClickClassifications(category)}>
                 <Typography.Paragraph
                   className="ant-typography-ellipsis-custom tag-category label-category self-center w-32"
                   data-testid="tag-name"
@@ -648,8 +711,12 @@ const TagsPage = () => {
         ),
       },
     ],
-    [categoryPermissions, deleteTags]
+    [currentClassification, categoryPermissions, deleteTags, tags, deleteTags]
   );
+
+  useEffect(() => {
+    fetchClassificationChildren(currentCategoryName);
+  }, [isAddingTag]);
 
   return (
     <PageContainerV1>
@@ -801,11 +868,22 @@ const TagsPage = () => {
               bordered
               columns={tableColumn}
               data-testid="table"
-              dataSource={[]}
+              dataSource={tags}
+              loading={isLoading}
               pagination={false}
               rowKey="id"
               size="small"
             />
+            {paging.total > PAGE_SIZE && (
+              <NextPrevious
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={paging}
+                pagingHandler={handlePageChange}
+                totalCount={paging.total}
+              />
+            )}
+
             <ModalWithMarkdownEditor
               header={t('label.edit-description-for', {
                 entityName: editTag?.name,
