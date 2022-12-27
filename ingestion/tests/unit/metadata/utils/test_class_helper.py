@@ -23,7 +23,6 @@ from metadata.utils.class_helper import (
         ("mlflow", ServiceType.MlModel),
         ("airflow", ServiceType.Pipeline),
         ("clickhouse_usage", ServiceType.Database),
-        ("sample-data", ServiceType.Database),
         ("redshift-usage", ServiceType.Database),
         ("metadata_elasticsearch", ServiceType.Metadata),
     ],
