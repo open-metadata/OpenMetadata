@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from metadata.ingestion.source.database.trino import (
+from metadata.ingestion.source.database.trino.metadata import (
     parse_array_data_type,
     parse_row_data_type,
 )

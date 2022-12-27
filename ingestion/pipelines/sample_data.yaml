@@ -1,11 +1,13 @@
 ---
 source:
-  type: sample-data
+  type: custom-database
   serviceName: sample_data
   serviceConnection:
     config:
-      type: SampleData
-      sampleDataFolder: "./examples/sample_data"
+      type: CustomDatabase
+      sourcePythonClass: metadata.ingestion.source.database.sample_data.SampleDataSource
+      connectionOptions:
+        sampleDataFolder: "./examples/sample_data"
   sourceConfig: {}
 sink:
   type: metadata-rest

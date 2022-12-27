@@ -592,7 +592,6 @@ export const getIngestionName = (
 
 export const shouldTestConnection = (serviceType: string) => {
   return (
-    serviceType !== DatabaseServiceType.SampleData &&
     serviceType !== DatabaseServiceType.CustomDatabase &&
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
