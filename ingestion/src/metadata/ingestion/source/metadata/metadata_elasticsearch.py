@@ -26,7 +26,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class MetadataElasticsearchSource(MetadataSource):
+class Metadata_ElasticsearchSource(MetadataSource):
     """
     Metadata Elastic Search Source
     Used for metadata to ES pipeline
