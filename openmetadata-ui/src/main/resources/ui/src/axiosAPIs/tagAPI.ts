@@ -16,14 +16,42 @@ import { CreateClassification } from '../generated/api/classification/createClas
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { Paging } from '../generated/type/paging';
 import { TagsCategory } from '../pages/tags/tagsTypes';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/classifications';
 
-export const getTags = async (arrQueryFields?: string | string[]) => {
-  const url = getURLWithQueryFields('/tags', arrQueryFields);
+export const getTags = async (
+  arrQueryFields?: string | string[],
+  parent?: string,
+  after?: string,
+  before?: string,
+  limit = 10
+) => {
+  const params = {
+    fields: arrQueryFields,
+    parent: parent,
+    limit,
+    after,
+    before,
+  };
+
+  const response = await APIClient.get<{ data: Tag[]; paging: Paging }>(
+    '/tags',
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const getAllClassifications = async (
+  arrQueryFields?: string | string[]
+) => {
+  const url = getURLWithQueryFields(BASE_URL, arrQueryFields);
 
   const response = await APIClient.get<{ data: Classification[] }>(url);
 

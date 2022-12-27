@@ -761,7 +761,8 @@
     "team-moved-error": "Error while moving team",
     "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
     "create-entity-success": "{{entity}} created successfully.",
-    "update-entity-success": "{{entity}} updated successfully."
+    "update-entity-success": "{{entity}} updated successfully.",
+    "tags-fetch-error": "Error while fetching tags category!"
   },
   "url": {}
 }
