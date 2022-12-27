@@ -73,6 +73,6 @@ describe('Test Schema modal component', () => {
 
     fireEvent.click(modalCloseButton);
 
-    expect(onClose).toBeCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 });

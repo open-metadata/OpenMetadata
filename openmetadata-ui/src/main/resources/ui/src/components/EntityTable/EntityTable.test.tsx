@@ -291,6 +291,6 @@ describe('Test EntityTable Component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 });

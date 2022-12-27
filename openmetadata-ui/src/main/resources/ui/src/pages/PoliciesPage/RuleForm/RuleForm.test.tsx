@@ -90,6 +90,6 @@ describe('Test Rule Form Component', () => {
       fireEvent.change(ruleName, { target: { value: 'RuleName' } });
     });
 
-    expect(setRuleData).toBeCalled();
+    expect(setRuleData).toHaveBeenCalled();
   });
 });

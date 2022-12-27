@@ -53,6 +53,6 @@ describe('Test Data insight left panel', () => {
       fireEvent.click(appAnalytics);
     });
 
-    expect(mockPush).toBeCalled();
+    expect(mockPush).toHaveBeenCalled();
   });
 });

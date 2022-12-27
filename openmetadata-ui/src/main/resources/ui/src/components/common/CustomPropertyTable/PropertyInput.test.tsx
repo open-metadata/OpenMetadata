@@ -52,7 +52,7 @@ describe('Test PropertyInput Component', () => {
 
     fireEvent.mouseDown(cancelButton);
 
-    expect(onCancel).toBeCalled();
+    expect(onCancel).toHaveBeenCalled();
   });
 
   it('Should call onSave on click of save button', async () => {
@@ -68,6 +68,6 @@ describe('Test PropertyInput Component', () => {
 
     fireEvent.click(saveButton);
 
-    expect(onSave).toBeCalled();
+    expect(onSave).toHaveBeenCalled();
   });
 });

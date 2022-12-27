@@ -27,7 +27,6 @@ const Auth0Callback: VFC = () => {
         localState.setOidcToken(token?.__raw || '');
         setIsAuthenticated(true);
         const oidcUser: OidcUser = {
-          // eslint-disable-next-line @typescript-eslint/camelcase
           id_token: token?.__raw || '',
           scope: '',
           profile: {

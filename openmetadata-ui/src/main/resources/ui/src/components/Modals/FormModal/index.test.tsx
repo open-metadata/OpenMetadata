@@ -66,7 +66,7 @@ describe.skip('Test FormModal component', () => {
     const cancel = await findByText(container, /Cancel/i);
     fireEvent.click(cancel);
 
-    expect(mockCancel).toBeCalledTimes(1);
+    expect(mockCancel).toHaveBeenCalledTimes(1);
   });
 
   it('Onclick of Save button, onSave callback should called', async () => {
@@ -83,6 +83,6 @@ describe.skip('Test FormModal component', () => {
     const save = await findByText(container, /Save/i);
     fireEvent.click(save);
 
-    expect(mockSave).toBeCalledTimes(1);
+    expect(mockSave).toHaveBeenCalledTimes(1);
   });
 });

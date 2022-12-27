@@ -95,7 +95,7 @@ export const getGlossaryTerms = (
   return APIClient.get(url);
 };
 
-export const getGlossaryTermsById: Function = (
+export const getGlossaryTermsById = (
   glossaryTermId = '',
   arrQueryFields = ''
 ): Promise<AxiosResponse> => {

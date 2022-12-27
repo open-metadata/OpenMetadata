@@ -97,7 +97,7 @@ describe('Test FeedEditor Component', () => {
       shiftKey: false,
     });
 
-    expect(onSave).toBeCalled();
+    expect(onSave).toHaveBeenCalled();
   });
 
   it("Should not call onSave method on 'Enter' + 'Shift' keydown", async () => {
@@ -113,6 +113,6 @@ describe('Test FeedEditor Component', () => {
       shiftKey: true,
     });
 
-    expect(onSave).not.toBeCalled();
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

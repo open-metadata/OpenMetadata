@@ -52,11 +52,11 @@ describe('Test Ingestion modal component', () => {
 
     fireEvent.click(cancel);
 
-    expect(mockCancel).toBeCalled();
+    expect(mockCancel).toHaveBeenCalled();
 
     fireEvent.click(save);
 
-    expect(mockConfirmation).toBeCalled();
+    expect(mockConfirmation).toHaveBeenCalled();
   });
 
   it('If loading state is waiting, component should show loading indicator', async () => {

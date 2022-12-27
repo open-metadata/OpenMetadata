@@ -14,7 +14,6 @@
 import { flatten, isNull } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 
-/* eslint-disable @typescript-eslint/camelcase */
 const mockTableSearchResponse = {
   took: 93,
   _shards: {
@@ -126,7 +125,6 @@ const mockSuggestUserResponse = {
     ],
   },
 };
-/* eslint-enable @typescript-eslint/camelcase */
 
 describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
@@ -169,7 +167,6 @@ describe('searchAPI tests', () => {
           buckets: expect.arrayContaining([
             {
               key: 'table',
-              /* eslint-disable-next-line @typescript-eslint/camelcase */
               doc_count: 10960,
             },
           ]),
@@ -178,12 +175,10 @@ describe('searchAPI tests', () => {
           buckets: expect.arrayContaining([
             {
               key: 'trino',
-              /* eslint-disable-next-line @typescript-eslint/camelcase */
               doc_count: 10924,
             },
             {
               key: 'sample_data',
-              /* eslint-disable-next-line @typescript-eslint/camelcase */
               doc_count: 36,
             },
           ]),

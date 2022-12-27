@@ -108,7 +108,7 @@ describe('Test manage button component', () => {
 
       fireEvent.click(announcementOption);
 
-      expect(mockAnnouncementClick).toBeCalled();
+      expect(mockAnnouncementClick).toHaveBeenCalled();
     });
   });
 
@@ -129,7 +129,7 @@ describe('Test manage button component', () => {
 
       fireEvent.click(restoreOption);
 
-      expect(mockOnRestoreEntity).toBeCalled();
+      expect(mockOnRestoreEntity).toHaveBeenCalled();
     });
   });
 });

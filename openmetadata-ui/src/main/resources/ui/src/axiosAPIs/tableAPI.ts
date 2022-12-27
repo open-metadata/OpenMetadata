@@ -70,7 +70,7 @@ export const getTableDetailsByFQN = async (
   return response.data;
 };
 
-export const getDatabaseTables: Function = (
+export const getDatabaseTables = (
   databaseName: string,
   paging: string,
   arrQueryFields?: string

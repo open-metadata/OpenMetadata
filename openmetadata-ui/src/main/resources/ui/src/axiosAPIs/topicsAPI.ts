@@ -56,7 +56,7 @@ export const getTopics = async (
   return response.data;
 };
 
-export const getTopicDetails: Function = (
+export const getTopicDetails = (
   id: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {

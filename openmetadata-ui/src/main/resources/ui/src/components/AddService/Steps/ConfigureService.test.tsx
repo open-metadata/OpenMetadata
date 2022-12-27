@@ -86,8 +86,8 @@ describe('Test ConfigureService component', () => {
     expect(serviceName).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(mockConfigureServiceProps.handleValidation).toBeCalled();
-    expect(mockConfigureServiceProps.onBack).toBeCalled();
-    expect(mockConfigureServiceProps.onNext).toBeCalled();
+    expect(mockConfigureServiceProps.handleValidation).toHaveBeenCalled();
+    expect(mockConfigureServiceProps.onBack).toHaveBeenCalled();
+    expect(mockConfigureServiceProps.onNext).toHaveBeenCalled();
   });
 });

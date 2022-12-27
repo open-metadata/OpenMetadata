@@ -83,6 +83,6 @@ describe('Test ModalWithMarkdownEditor Component', () => {
 
     fireEvent.click(cancel);
 
-    expect(mockOnCancel).toBeCalledTimes(1);
+    expect(mockOnCancel).toHaveBeenCalledTimes(1);
   });
 });

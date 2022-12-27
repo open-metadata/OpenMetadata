@@ -56,7 +56,7 @@ export const getPipelines = async (
   return response.data;
 };
 
-export const getPipelineDetails: Function = (
+export const getPipelineDetails = (
   id: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {

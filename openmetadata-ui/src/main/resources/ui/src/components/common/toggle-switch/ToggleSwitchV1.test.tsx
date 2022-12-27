@@ -27,6 +27,6 @@ describe('Test SuccessScreen component', () => {
     fireEvent.click(toggleButton);
 
     expect(toggleButton).toBeInTheDocument();
-    expect(mockFn).toBeCalled();
+    expect(mockFn).toHaveBeenCalled();
   });
 });

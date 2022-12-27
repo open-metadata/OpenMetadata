@@ -94,7 +94,7 @@ describe('Test Add attribute modal', () => {
       fireEvent.click(sumbitButton);
     });
 
-    expect(onSave).toBeCalled();
+    expect(onSave).toHaveBeenCalled();
   });
 
   it('Cancel button should work', async () => {
@@ -108,6 +108,6 @@ describe('Test Add attribute modal', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(onCancel).toBeCalled();
+    expect(onCancel).toHaveBeenCalled();
   });
 });

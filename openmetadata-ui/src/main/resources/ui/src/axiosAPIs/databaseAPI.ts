@@ -37,11 +37,11 @@ export const getDatabases = async (
   return response.data;
 };
 
-export const getTables: Function = (id: number): Promise<AxiosResponse> => {
+export const getTables = (id: number): Promise<AxiosResponse> => {
   return APIClient.get('/databases/' + id + '/tables');
 };
 
-export const getDatabase: Function = (
+export const getDatabase = (
   id: string,
   query?: string
 ): Promise<AxiosResponse> => {

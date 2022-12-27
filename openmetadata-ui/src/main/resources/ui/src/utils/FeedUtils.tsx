@@ -259,7 +259,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
 export async function matcher(
   searchTerm: string,
-  renderList: Function,
+  renderList: (matches: string[], search: string) => void,
   mentionChar: string
 ) {
   const matches = await suggestions(searchTerm, mentionChar);

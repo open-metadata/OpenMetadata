@@ -89,10 +89,7 @@ import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
-export const arraySorterByKey = (
-  key: string,
-  sortDescending = false
-): Function => {
+export const arraySorterByKey = (key: string, sortDescending = false) => {
   const sortOrder = sortDescending ? -1 : 1;
 
   return (
@@ -880,7 +877,7 @@ export const Transi18next = ({
   ...otherProps
 }: {
   i18nKey: string;
-  values?: {};
+  values?: object;
   renderElement: JSX.Element | HTMLElement;
 }): JSX.Element => (
   <Trans i18nKey={i18nKey} values={values} {...otherProps}>

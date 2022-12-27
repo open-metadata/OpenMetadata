@@ -371,7 +371,7 @@ export const isLeafNode = (
 
 export const ENTITY_LINK_SEPARATOR = '::';
 
-export const getEntityFeedLink: Function = (
+export const getEntityFeedLink = (
   type: string,
   fqn: string,
   field?: string

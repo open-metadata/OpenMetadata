@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/camelcase */
-
 import {
   findAllByText,
   findByTestId,

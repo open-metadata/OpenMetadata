@@ -121,7 +121,6 @@ export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 export const CUSTOM_AIRFLOW_DOCS =
   'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
 
-/* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },

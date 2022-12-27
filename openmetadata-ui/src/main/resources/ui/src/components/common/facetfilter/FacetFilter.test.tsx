@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/camelcase */
-
 import { getAllByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { Aggregations } from '../../../interface/search.interface';

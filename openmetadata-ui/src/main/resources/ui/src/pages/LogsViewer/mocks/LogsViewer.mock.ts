@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 export const mockLogsData = {
-  // eslint-disable-next-line @typescript-eslint/camelcase
   ingestion_task: 'test Logs',
   total: '6',
   after: '1',

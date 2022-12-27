@@ -40,9 +40,7 @@ function formatConnectionFields<T>(formData: T, field: string): T {
     for (const key in options) {
       const value = options[key];
       try {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-        // @ts-ignore
-        formData[field as keyof T][key] = JSON.parse(value);
+        formData[field as keyof T][key] = JSON.parse(value as string);
       } catch (_) {
         // ignore exception
       }
@@ -88,8 +86,6 @@ function formatConnectionFieldsForRender<T>(formData: T, field: string): T {
     for (const key in options) {
       const value = options[key];
       if (typeof value === 'object') {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-        // @ts-ignore
         formData[field as keyof T][key] = JSON.stringify(value);
       }
     }

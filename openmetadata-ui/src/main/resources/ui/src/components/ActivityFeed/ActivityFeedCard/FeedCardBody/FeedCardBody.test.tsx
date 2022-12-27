@@ -106,7 +106,7 @@ describe('Test FeedCardBody component', () => {
 
     fireEvent.click(cancelButton);
 
-    expect(mockCancel).toBeCalled();
+    expect(mockCancel).toHaveBeenCalled();
   });
 
   it('Save button should work', async () => {

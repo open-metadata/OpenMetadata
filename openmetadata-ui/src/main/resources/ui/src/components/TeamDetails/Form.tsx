@@ -24,7 +24,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { errorMsg } from '../../utils/CommonUtils';
 
 type FormProp = {
-  saveData: (value: {}) => void;
+  saveData: (value: object) => void;
   initialData: Team;
   errorData?: FormErrorData;
 };

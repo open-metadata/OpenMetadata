@@ -131,6 +131,6 @@ describe('Test userCard component', () => {
     fireEvent.click(remove);
 
     expect(remove).toBeInTheDocument();
-    expect(mockRemove).toBeCalled();
+    expect(mockRemove).toHaveBeenCalled();
   });
 });

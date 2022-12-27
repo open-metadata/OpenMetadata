@@ -112,6 +112,6 @@ describe('Test AddUserPage component', () => {
       fireEvent.click(await findByText(container, /CreateUser component/i));
     });
 
-    expect(mockCreateUser).toBeCalled();
+    expect(mockCreateUser).toHaveBeenCalled();
   });
 });

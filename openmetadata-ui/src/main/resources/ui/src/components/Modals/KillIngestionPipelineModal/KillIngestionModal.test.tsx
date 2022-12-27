@@ -61,7 +61,7 @@ describe('Test Kill Ingestion Modal component', () => {
 
     fireEvent.click(cancelButton);
 
-    expect(mockHandleClose).toBeCalled();
+    expect(mockHandleClose).toHaveBeenCalled();
   });
 
   it('Should call kill api on click of confirm button', async () => {

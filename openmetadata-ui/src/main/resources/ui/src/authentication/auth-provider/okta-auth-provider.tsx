@@ -51,7 +51,6 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       .then((info) => {
         setIsAuthenticated(true);
         const user = {
-          // eslint-disable-next-line @typescript-eslint/camelcase
           id_token: idToken,
           scope: scopes,
           profile: {

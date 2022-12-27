@@ -106,7 +106,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
                     {getEntityName(role)}
                   </Tooltip>
                 )
@@ -126,7 +126,9 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
                             {getEntityName(role)}
                           </Link>
                         ) : (
-                          <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                          <Tooltip
+                            key={uniqueId()}
+                            title={NO_PERMISSION_TO_VIEW}>
                             {getEntityName(role)}
                           </Tooltip>
                         )

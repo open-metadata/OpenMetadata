@@ -111,17 +111,14 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   }, [ruleData.resources, policyResources]);
 
   const getConditionOptions = (conditionFunctions: Function[]) => {
-    return conditionFunctions.reduce(
-      (prev: BaseOptionType[], curr: Function) => {
-        const currentValues = (curr.examples || []).map((example: string) => ({
-          label: example,
-          value: example,
-        }));
+    return conditionFunctions.reduce((prev: BaseOptionType[], curr) => {
+      const currentValues = (curr.examples || []).map((example: string) => ({
+        label: example,
+        value: example,
+      }));
 
-        return uniqBy([...prev, ...currentValues], 'value');
-      },
-      []
-    );
+      return uniqBy([...prev, ...currentValues], 'value');
+    }, []);
   };
 
   const handleConditionSearch = (value: string) => {

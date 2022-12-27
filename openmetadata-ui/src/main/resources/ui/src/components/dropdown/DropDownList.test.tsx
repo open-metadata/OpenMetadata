@@ -86,7 +86,7 @@ describe('Test DropDownList Component', () => {
       })
     );
 
-    expect(MockOnSelect).toBeCalledTimes(1);
+    expect(MockOnSelect).toHaveBeenCalledTimes(1);
   });
 
   it('Selected list item should have remove button', () => {
@@ -109,7 +109,7 @@ describe('Test DropDownList Component', () => {
       })
     );
 
-    expect(MockRemoveOwner).toBeCalledTimes(1);
+    expect(MockRemoveOwner).toHaveBeenCalledTimes(1);
   });
 
   it('On search, show no result placeholder', () => {
