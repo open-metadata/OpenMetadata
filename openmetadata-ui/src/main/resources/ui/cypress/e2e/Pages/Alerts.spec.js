@@ -208,7 +208,7 @@ describe('Alerts page should work properly', () => {
     //Click save
     cy.get('[type="submit"]').contains('Save').click();
     toastNotification('Alerts created successfully.');
-    cy.get('table').should('contain', ALERTS.name);
+    cy.get('table').should('contain', alertForAllAssets);
   });
 
   it('Create new alert for Test case data asset', () => {
