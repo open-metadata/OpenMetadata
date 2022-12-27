@@ -82,7 +82,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
             validator: (_, value) => {
               if (testSuites.some((suite) => suite.name === value)) {
                 return Promise.reject(
-                  `${t('label.entity-already-exists', {
+                  `${t('message.entity-already-exists', {
                     entity: t('label.name'),
                   })}!`
                 );

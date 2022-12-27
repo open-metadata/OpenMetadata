@@ -162,7 +162,7 @@ export const getGlobalSettingsMenuWithPermission = (
       isBeta: true,
       items: [
         {
-          label: i18next.t('label.activity-feeds'),
+          label: i18next.t('label.activity-feed-plural'),
           isProtected: Boolean(isAdminUser),
           icon: <AllActivityIcon className="side-panel-icons" />,
         },

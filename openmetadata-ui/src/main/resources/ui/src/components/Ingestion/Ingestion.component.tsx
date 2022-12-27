@@ -509,7 +509,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           ),
       },
       {
-        title: t('label.recent-runs'),
+        title: t('label.recent-run-plural'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
         width: 180,
@@ -518,7 +518,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
@@ -603,7 +603,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 onClick={() => {
                   setSelectedPipeline(record);
                 }}>
-                {t('label.logs')}
+                {t('label.log-plural')}
               </Button>
             </div>
             {isKillModalOpen &&

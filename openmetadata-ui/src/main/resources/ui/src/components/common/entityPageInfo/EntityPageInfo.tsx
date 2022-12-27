@@ -637,7 +637,7 @@ const EntityPageInfo = ({
         )}
       </Space>
       <FollowersModal
-        header={t('label.followers-of', {
+        header={t('label.followers-of-entity-name', {
           entityName,
         })}
         list={entityFollowers}

@@ -222,10 +222,10 @@ describe('Test PipelineDetails component', () => {
       'label.activity-feed-and-task-plural'
     );
     const lineageTab = await findByText(container, 'label.lineage');
-    const executionsTab = await findByText(container, 'label.executions');
+    const executionsTab = await findByText(container, 'label.execution-plural');
     const customPropertiesTab = await findByText(
       container,
-      'label.custom-properties'
+      'label.custom-property-plural'
     );
 
     expect(EntityPageInfo).toBeInTheDocument();
@@ -292,7 +292,10 @@ describe('Test PipelineDetails component', () => {
       }
     );
 
-    const activityFeedTab = await findByText(container, 'label.executions');
+    const activityFeedTab = await findByText(
+      container,
+      'label.execution-plural'
+    );
 
     await act(async () => {
       fireEvent.click(activityFeedTab);
@@ -329,7 +332,7 @@ describe('Test PipelineDetails component', () => {
 
     const activityFeedTab = await findByText(
       container,
-      'label.custom-properties'
+      'label.custom-property-plural'
     );
 
     await act(async () => {

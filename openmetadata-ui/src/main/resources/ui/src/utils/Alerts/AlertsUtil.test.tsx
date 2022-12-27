@@ -32,7 +32,7 @@ describe('AlertsUtil tests', () => {
 
   it('getFunctionDisplayName should return correct text for matchTestResult', () => {
     expect(getFunctionDisplayName('matchTestResult')).toBe(
-      'label.test-results'
+      'label.test-result-plural'
     );
   });
 

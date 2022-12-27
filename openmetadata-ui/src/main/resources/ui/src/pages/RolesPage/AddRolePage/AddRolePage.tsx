@@ -43,11 +43,11 @@ const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const breadcrumb = [
   {
-    name: t('label.settings'),
+    name: t('label.setting-plural'),
     url: getSettingPath(),
   },
   {
-    name: t('label.roles'),
+    name: t('label.role-plural'),
     url: rolesPath,
   },
   {
@@ -147,7 +147,7 @@ const AddRolePage = () => {
               <RichTextEditor
                 height="200px"
                 initialValue={description}
-                placeHolder={t('label.write-your-description')}
+                placeHolder={t('message.write-your-description')}
                 style={{ margin: 0 }}
                 onTextChange={(value) => setDescription(value)}
               />
@@ -159,7 +159,7 @@ const AddRolePage = () => {
                 {
                   required: true,
                   message: t('message.field-text-is-required', {
-                    fieldText: t('label.at-least-one-policy'),
+                    fieldText: t('message.at-least-one-policy'),
                   }),
                 },
               ]}>

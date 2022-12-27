@@ -277,7 +277,7 @@ const DataInsightPage = () => {
                 {t('label.data-insight-plural')}
               </Typography.Title>
               <Typography.Text className="data-insight-label-text">
-                {t('label.data-insight-subtitle')}
+                {t('message.data-insight-subtitle')}
               </Typography.Text>
             </div>
             <Tooltip

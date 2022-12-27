@@ -566,7 +566,7 @@ const Users = ({
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
           <span className="tw-no-description ">
-            {t('label.no-roles-assigned')}
+            {t('message.no-roles-assigned')}
           </span>
         )}
       </Fragment>
@@ -583,7 +583,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
             </div>
           }>
           <div className="tw-flex tw-items-center tw-justify-between tw-mb-4">
@@ -602,7 +602,7 @@ const Users = ({
           }}
           title={
             <div className="tw-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.roles')}</h6>
+              <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
               {!isRolesEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
@@ -684,7 +684,7 @@ const Users = ({
         title={
           <div className="tw-flex">
             <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
-              {t('label.inherited-roles')}
+              {t('label.inherited-role-plural')}
             </h6>
           </div>
         }>
@@ -692,7 +692,7 @@ const Users = ({
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
               <span className="tw-no-description">
-                {t('label.no-inherited-roles-found')}
+                {t('message.no-inherited-roles-found')}
               </span>
             </div>
           ) : (
@@ -809,7 +809,7 @@ const Users = ({
           {isTaskType ? (
             <Space align="end" size={5}>
               <Switch onChange={onSwitchChange} />
-              <span className="tw-ml-1">{t('label.closed-tasks')}</span>
+              <span className="tw-ml-1">{t('label.closed-task-plural')}</span>
             </Space>
           ) : null}
         </div>

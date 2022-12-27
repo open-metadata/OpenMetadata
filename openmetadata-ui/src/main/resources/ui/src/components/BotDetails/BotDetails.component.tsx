@@ -338,7 +338,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         bodyText={t('message.are-you-sure-to-revoke-access')}
         cancelText={t('label.cancel')}
         confirmText={t('label.confirm')}
-        header={t('label.are-you-sure')}
+        header={t('message.are-you-sure')}
         visible={isRevokingToken}
         onCancel={() => setIsRevokingToken(false)}
         onConfirm={() => {
