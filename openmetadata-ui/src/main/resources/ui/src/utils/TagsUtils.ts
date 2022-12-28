@@ -14,17 +14,26 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { Bucket, EntityTags, TableColumn, TagOption } from 'Models';
-import { getAllClassifications, getClassification } from '../axiosAPIs/tagAPI';
+import {
+  getAllClassifications,
+  getClassificationByName,
+  getTags,
+} from '../axiosAPIs/tagAPI';
 import { TAG_VIEW_CAP } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
+import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
-export const getClassifications = async (fields?: Array<string> | string) => {
+export const getClassifications = async (
+  fields?: Array<string> | string,
+  callGetClassificationByName = true
+) => {
   try {
     const listOfClassifications: Array<Classification> = [];
-    const classifications = await getAllClassifications(fields);
+    const classifications = await getAllClassifications(fields, 1000);
     const classificationList = classifications.data.map(
       (category: Classification) => {
         return {
@@ -33,16 +42,16 @@ export const getClassifications = async (fields?: Array<string> | string) => {
         } as Classification;
       }
     );
-    if (classificationList.length) {
+    if (classificationList.length && callGetClassificationByName) {
       const promiseArr = classificationList.map((category: Classification) =>
-        getClassification(category.name, fields)
+        getClassificationByName(category.name, fields)
       );
 
       const categories = await Promise.allSettled(promiseArr);
 
-      categories.map((category) => {
-        if (category.status === 'fulfilled') {
-          listOfClassifications.push(category.value as Classification);
+      categories.forEach((category) => {
+        if (category.status === SettledStatus.FULFILLED) {
+          listOfClassifications.push(category.value);
         }
       });
     }
@@ -53,11 +62,33 @@ export const getClassifications = async (fields?: Array<string> | string) => {
   }
 };
 
-export const getTaglist = (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _categories: Array<Classification> = []
-): Array<string> => {
-  return [] as string[];
+export const getTaglist = async (
+  classifications: Array<Classification> = [],
+  paging?: Paging
+) => {
+  try {
+    const tags: Tag[] = [];
+
+    const tagsListPromise = classifications.map((classification) =>
+      getTags('', classification.name, paging?.after, paging?.before, 1000)
+    );
+
+    return await Promise.allSettled(tagsListPromise)
+      .then((tagList) => {
+        tagList.forEach((tag) => {
+          if (tag.status === SettledStatus.FULFILLED) {
+            tags.push(...tag.value.data);
+          }
+        });
+
+        return tags.map((tag) => tag.fullyQualifiedName || tag.name);
+      })
+      .catch((error) => {
+        return Promise.reject({ data: (error as AxiosError).response });
+      });
+  } catch (error) {
+    return Promise.reject({ data: (error as AxiosError).response });
+  }
 };
 
 export const getTableTags = (
@@ -127,7 +158,8 @@ export const fetchTagsAndGlossaryTerms = async () => {
     responses[0].status === SettledStatus.FULFILLED &&
     responses[0].value.data
   ) {
-    tagsAndTerms = getTaglist(responses[0].value.data).map((tag) => {
+    const tagList = await getTaglist(responses[0].value.data);
+    tagsAndTerms = tagList.map((tag) => {
       return { fqn: tag, source: 'Tag' };
     });
   }

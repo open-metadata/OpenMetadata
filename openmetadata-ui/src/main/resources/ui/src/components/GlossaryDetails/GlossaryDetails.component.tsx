@@ -196,8 +196,9 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   const fetchTags = () => {
     setIsTagLoading(true);
     getClassifications()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
+      .then(async (res) => {
+        const tagList = await getTaglist(res.data);
+        setTagList(tagList);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);

@@ -14,7 +14,8 @@
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags, TagOption } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import jsonData from '../../jsons/en';
 import {
@@ -34,13 +35,15 @@ export const AddTags = ({
   const [tagList, setTagList] = useState<Array<string | TagOption>>([]);
   const [selectedTags, setSelectedTags] = useState<Array<EntityTags>>([]);
 
+  const { t } = useTranslation();
   const options: React.ReactNode[] = [];
 
   const fetchTags = () => {
     setIsTagLoading(true);
     getClassifications()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
+      .then(async (res) => {
+        const tagList = await getTaglist(res.data);
+        tagList && setTagList(tagList);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
@@ -63,13 +66,13 @@ export const AddTags = ({
     return newTags;
   }, [tagList]);
 
-  const onClickSelect = () => {
+  const onClickSelect = useCallback(() => {
     fetchTags();
-  };
+  }, []);
 
-  const handleChange = (value: string[]) => {
+  const handleChange = useCallback((value: string[]) => {
     setSelectedTags && setSelectedTags(value);
-  };
+  }, []);
 
   tagsList.forEach((tag) =>
     options.push(<Select.Option key={tag.label}>{tag.value}</Select.Option>)
@@ -85,7 +88,7 @@ export const AddTags = ({
     <Select
       loading={isTagLoading}
       mode="multiple"
-      placeholder="Add Tags"
+      placeholder={t('label.add-tags')}
       style={{ width: '100%' }}
       value={selectedTags}
       onChange={handleChange}

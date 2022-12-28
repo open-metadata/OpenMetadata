@@ -17,7 +17,7 @@ import {
   createTag,
   deleteClassification,
   deleteTag,
-  getClassification,
+  getClassificationByName,
   getTags,
   updateClassification,
   updateTag,
@@ -61,8 +61,8 @@ describe('API functions should work properly', () => {
     expect(data).toEqual(`get_request/tags?fields=querry`);
   });
 
-  it('getClassification function should work properly', async () => {
-    const result = await getClassification('categoryName', 'querry');
+  it('getClassificationByName function should work properly', async () => {
+    const result = await getClassificationByName('categoryName', 'querry');
 
     expect(result).toEqual(
       `get_request/classifications/name/categoryName?fields=querry`

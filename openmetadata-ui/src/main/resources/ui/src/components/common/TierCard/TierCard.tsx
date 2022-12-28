@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Status, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getClassification } from '../../../axiosAPIs/tagAPI';
+import { getClassificationByName } from '../../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';
@@ -60,7 +60,7 @@ const TierCard = ({
 
   const getTierData = () => {
     setIsLoadingTierData(true);
-    getClassification('Tier')
+    getClassificationByName('Tier')
       .then((res) => {
         if (res) {
           const tierData: CardWithListItems[] =

@@ -26,7 +26,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
@@ -34,7 +34,8 @@ import {
   createTag,
   deleteClassification,
   deleteTag,
-  getClassification,
+  getAllClassifications,
+  getClassificationByName,
   getTags,
   updateClassification,
   updateTag,
@@ -60,7 +61,6 @@ import {
   PAGE_SIZE,
   TIER_CATEGORY,
 } from '../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { delimiterRegex } from '../../constants/regex.constants';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { ProviderType } from '../../generated/entity/bot';
@@ -86,7 +86,6 @@ import {
 } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getClassifications } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 import './TagPage.style.less';
@@ -108,32 +107,38 @@ const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { ClassificationName } = useParams<Record<string, string>>();
-  const [categories, setCategories] = useState<Array<Classification>>([]);
-  const [currentClassification, setCurrentCategory] =
+  const [classifications, setClassifications] = useState<Array<Classification>>(
+    []
+  );
+  const [currentClassification, setCurrentClassification] =
     useState<Classification>();
-  const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
-  const [isAddingCategory, setIsAddingCategory] = useState<boolean>(false);
+  const [isEditClassification, setIsEditClassification] =
+    useState<boolean>(false);
+  const [isAddingClassification, setIsAddingClassification] =
+    useState<boolean>(false);
   const [isEditTag, setIsEditTag] = useState<boolean>(false);
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
+  const [errorDataClassification, setErrorDataClassification] =
+    useState<FormErrorData>();
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
     data: undefined,
     state: false,
   });
-  const [categoryPermissions, setCategoryPermissions] =
+  const [classificationPermissions, setClassificationPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
-  const [currentCategoryName, setCurrentCategoryName] = useState<string>('');
+  const [currentClassificationName, setCurrentClassificationName] =
+    useState<string>('');
   const [tags, setTags] = useState<Tag[]>();
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
 
   const { t } = useTranslation();
-  const createCategoryPermission = useMemo(
+  const createClassificationPermission = useMemo(
     () =>
       checkPermission(
         Operation.Create,
@@ -148,13 +153,13 @@ const TagsPage = () => {
     [permissions]
   );
 
-  const fetchCurrentCategoryPermission = async () => {
+  const fetchCurrentClassificationPermission = async () => {
     try {
       const response = await getEntityPermission(
         ResourceEntity.CLASSIFICATION,
         currentClassification?.id as string
       );
-      setCategoryPermissions(response);
+      setClassificationPermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -162,11 +167,11 @@ const TagsPage = () => {
 
   const handleEditNameCancel = () => {
     setIsNameEditing(false);
-    setCurrentCategoryName(currentClassification?.name || '');
+    setCurrentClassificationName(currentClassification?.name || '');
   };
 
   const fetchClassificationChildren = async (
-    currentCategoryName: string,
+    currentClassificationName: string,
     paging?: Paging
   ) => {
     setIsLoading(true);
@@ -174,7 +179,7 @@ const TagsPage = () => {
     try {
       const tagsResponse = await getTags(
         'usageCount',
-        currentCategoryName,
+        currentClassificationName,
         paging?.after,
         paging?.before,
         PAGE_SIZE
@@ -198,13 +203,13 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getClassifications('usageCount');
-      setCategories(response.data);
+      const response = await getAllClassifications('', 1000);
+      setClassifications(response.data);
       if (setCurrent && response.data.length) {
-        setCurrentCategory(response.data[0]);
-        setCurrentCategoryName(response.data[0].name);
+        setCurrentClassification(response.data[0]);
+        setCurrentClassificationName(response.data[0].name);
 
-        fetchClassificationChildren(response.data[0].name);
+        history.push(getTagPath(response.data[0].name));
       }
     } catch (error) {
       const errMsg = getErrorText(
@@ -218,17 +223,17 @@ const TagsPage = () => {
     }
   };
 
-  const fetchCurrentCategory = async (name: string, update?: boolean) => {
+  const fetchCurrentClassification = async (name: string, update?: boolean) => {
     if (currentClassification?.name !== name || update) {
       setIsLoading(true);
       try {
-        const currentClassification = await getClassification(
+        const currentClassification = await getClassificationByName(
           name,
           'usageCount'
         );
         if (currentClassification) {
-          setCurrentCategory(currentClassification);
-          setCurrentCategoryName(currentClassification.name);
+          setCurrentClassification(currentClassification);
+          setCurrentClassificationName(currentClassification.name);
           setIsLoading(false);
         } else {
           showErrorToast(
@@ -242,7 +247,7 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentCategory({ name } as Classification);
+        setCurrentClassification({ name } as Classification);
         setIsLoading(false);
       }
     }
@@ -252,7 +257,7 @@ const TagsPage = () => {
     data: CreateClassification,
     forceSet = false
   ) => {
-    if (errorDataCategory || forceSet) {
+    if (errorDataClassification || forceSet) {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
@@ -260,7 +265,9 @@ const TagsPage = () => {
         errData['name'] = 'Name with delimiters are not allowed';
       } else if (
         !isUndefined(
-          categories.find((item) => toLower(item.name) === toLower(data.name))
+          classifications.find(
+            (item) => toLower(item.name) === toLower(data.name)
+          )
         )
       ) {
         errData['name'] = 'Name already exists';
@@ -269,7 +276,7 @@ const TagsPage = () => {
       } else if (!isUrlFriendlyName(data.name.trim())) {
         errData['name'] = 'Special characters are not allowed';
       }
-      setErrorDataCategory(errData);
+      setErrorDataClassification(errData);
 
       return errData;
     }
@@ -295,7 +302,7 @@ const TagsPage = () => {
           );
         })
         .finally(() => {
-          setIsAddingCategory(false);
+          setIsAddingClassification(false);
         });
     }
   };
@@ -325,7 +332,7 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           setIsLoading(true);
-          const updatedClassification = categories.filter(
+          const updatedClassification = classifications.filter(
             (data) => data.id !== classificationId
           );
           const currentClassification = updatedClassification[0];
@@ -363,7 +370,7 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           if (currentClassification) {
-            setCurrentCategory({
+            setCurrentClassification({
               ...currentClassification,
             });
           }
@@ -398,10 +405,7 @@ const TagsPage = () => {
           history.push(getTagPath(response.name));
           setIsNameEditing(false);
         } else {
-          await fetchCurrentCategory(
-            currentClassification?.name as string,
-            true
-          );
+          await fetchCurrentClassification(currentClassification?.name, true);
         }
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -409,13 +413,13 @@ const TagsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsEditCategory(false);
+      setIsEditClassification(false);
     }
   };
 
   const handleRenameSave = () => {
     handleUpdateCategory({
-      name: (currentCategoryName || currentClassification?.name) ?? '',
+      name: (currentClassificationName || currentClassification?.name) ?? '',
       description: currentClassification?.description ?? '',
     });
   };
@@ -427,9 +431,12 @@ const TagsPage = () => {
     });
   };
 
-  const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentCategoryName(e.target.value);
-  };
+  const handleCategoryNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setCurrentClassificationName(e.target.value);
+    },
+    []
+  );
 
   const onNewTagChange = (data: Classification, forceSet = false) => {
     if (errorDataTag || forceSet) {
@@ -459,7 +466,10 @@ const TagsPage = () => {
       })
         .then((res) => {
           if (res) {
-            fetchCurrentCategory(currentClassification?.name as string, true);
+            fetchCurrentClassification(
+              currentClassification?.name as string,
+              true
+            );
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -483,7 +493,10 @@ const TagsPage = () => {
         description: updatedHTML,
       });
       if (response) {
-        await fetchCurrentCategory(currentClassification?.name as string, true);
+        await fetchCurrentClassification(
+          currentClassification?.name as string,
+          true
+        );
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -522,7 +535,7 @@ const TagsPage = () => {
 
   useEffect(() => {
     if (currentClassification) {
-      fetchCurrentCategoryPermission();
+      fetchCurrentClassificationPermission();
     }
   }, [currentClassification]);
 
@@ -532,33 +545,32 @@ const TagsPage = () => {
      */
     if (ClassificationName) {
       const isTier = ClassificationName.startsWith(TIER_CATEGORY);
-      fetchCurrentCategory(isTier ? TIER_CATEGORY : ClassificationName);
+      fetchCurrentClassification(isTier ? TIER_CATEGORY : ClassificationName);
     }
-    /**
-     * Fetch all categories and set current category only if there is no categoryName
-     */
-    fetchClassifications(!ClassificationName);
-
-    fetchClassificationChildren(ClassificationName);
   }, [ClassificationName]);
 
   useEffect(() => {
     /**
-     * Fetch all categories initially
+     * Fetch all classifications initially
      */
-    fetchClassifications();
+    fetchClassifications(true);
   }, []);
 
+  useEffect(() => {
+    currentClassification &&
+      fetchClassificationChildren(currentClassification?.name);
+  }, [currentClassification]);
+
   const onClickClassifications = (category: Classification) => {
-    setCurrentCategory(category);
-    setCurrentCategoryName(category.name);
-    fetchClassificationChildren(category.name);
+    setCurrentClassification(category);
+    setCurrentClassificationName(category.name);
     history.push(getTagPath(category.name));
   };
 
-  const handlePageChange = (after: string | number) => {
+  const handlePageChange = (after: string | number, activePage?: number) => {
     if (after) {
-      fetchClassificationChildren(currentCategoryName, paging);
+      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+      fetchClassificationChildren(currentClassificationName, paging);
     }
   };
 
@@ -568,32 +580,32 @@ const TagsPage = () => {
         <div className="tw-py-2" data-testid="data-summary-container">
           <div className="tw-px-3">
             <h6 className="tw-heading tw-text-sm tw-font-semibold">
-              Tag Categories
+              {t('label.classification-plural')}
             </h6>
             <div className="tw-mb-3">
               <Tooltip
                 title={
-                  createCategoryPermission
-                    ? t('label.add-category')
+                  createClassificationPermission
+                    ? t('label.add-classification')
                     : t('message.no-permission-for-action')
                 }>
                 <button
                   className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
                   data-testid="add-category"
-                  disabled={!createCategoryPermission}
+                  disabled={!createClassificationPermission}
                   onClick={() => {
-                    setIsAddingCategory((prevState) => !prevState);
-                    setErrorDataCategory(undefined);
+                    setIsAddingClassification((prevState) => !prevState);
+                    setErrorDataClassification(undefined);
                   }}>
                   <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
-                  <span>{t('label.add-tag-category')}</span>
+                  <span>{t('label.add-classification')}</span>
                 </button>
               </Tooltip>
             </div>
           </div>
 
-          {categories &&
-            categories.map((category: Classification) => (
+          {classifications &&
+            classifications.map((category: Classification) => (
               <div
                 className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
                   category.name,
@@ -623,12 +635,12 @@ const TagsPage = () => {
   const tableColumn: ColumnsType<Tag> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text: string, record: Tag) => (
@@ -638,12 +650,14 @@ const TagsPage = () => {
                 {text ? (
                   <RichTextEditorPreviewer markdown={text} />
                 ) : (
-                  <span className="tw-no-description">No description</span>
+                  <span className="tw-no-description">
+                    {t('label.no-description')}
+                  </span>
                 )}
               </div>
 
-              {(categoryPermissions.EditDescription ||
-                categoryPermissions.EditAll) && (
+              {(classificationPermissions.EditDescription ||
+                classificationPermissions.EditAll) && (
                 <button
                   className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
                   onClick={() => {
@@ -661,7 +675,10 @@ const TagsPage = () => {
               )}
             </div>
             <div className="tw-mt-1" data-testid="usage">
-              <span className="tw-text-grey-muted tw-mr-1">Usage:</span>
+              <span className="tw-text-grey-muted tw-mr-1">
+                {' '}
+                {t('label.usage')}:
+              </span>
               {record.usageCount ? (
                 <Link
                   className="link-text tw-align-middle"
@@ -671,7 +688,7 @@ const TagsPage = () => {
                 </Link>
               ) : (
                 <span className="tw-no-description" data-testid="usage-count">
-                  Not used
+                  {t('label.not-used')}
                 </span>
               )}
             </div>
@@ -679,7 +696,7 @@ const TagsPage = () => {
         ),
       },
       {
-        title: 'Actions',
+        title: t('label.actions'),
         dataIndex: 'actions',
         key: 'actions',
         width: 120,
@@ -690,7 +707,7 @@ const TagsPage = () => {
             data-testid="delete-tag"
             disabled={
               record.provider === ProviderType.System ||
-              !categoryPermissions.EditAll
+              !classificationPermissions.EditAll
             }
             onClick={() => handleActionDeleteTag(record)}>
             {deleteTags.data?.id === record.id ? (
@@ -711,12 +728,14 @@ const TagsPage = () => {
         ),
       },
     ],
-    [currentClassification, categoryPermissions, deleteTags, tags, deleteTags]
+    [
+      currentClassification,
+      classificationPermissions,
+      deleteTags,
+      tags,
+      deleteTags,
+    ]
   );
-
-  useEffect(() => {
-    fetchClassificationChildren(currentCategoryName);
-  }, [isAddingTag]);
 
   return (
     <PageContainerV1>
@@ -739,7 +758,7 @@ const TagsPage = () => {
                           className="input-width"
                           data-testid="tag-category-name"
                           name="ClassificationName"
-                          value={currentCategoryName}
+                          value={currentClassificationName}
                           onChange={handleCategoryNameChange}
                         />
                       </Col>
@@ -783,16 +802,16 @@ const TagsPage = () => {
                       {currentClassification.provider === ProviderType.User && (
                         <Tooltip
                           title={
-                            categoryPermissions.EditAll
+                            classificationPermissions.EditAll
                               ? t('label.edit-entity', {
                                   entity: t('label.name'),
                                 })
-                              : NO_PERMISSION_FOR_ACTION
+                              : t('message.no-permission-for-action')
                           }>
                           <Button
                             className="p-0"
                             data-testid="name-edit-icon"
-                            disabled={!categoryPermissions.EditAll}
+                            disabled={!classificationPermissions.EditAll}
                             size="small"
                             type="text"
                             onClick={() => setIsNameEditing(true)}>
@@ -811,15 +830,18 @@ const TagsPage = () => {
                 <div className="flex-center">
                   <Tooltip
                     title={
-                      createTagPermission || categoryPermissions.EditAll
-                        ? 'Add Tag'
-                        : NO_PERMISSION_FOR_ACTION
+                      createTagPermission || classificationPermissions.EditAll
+                        ? t('label.add-new-tag')
+                        : t('message.no-permission-for-action')
                     }>
                     <Button
                       className="add-new-tag-btn"
                       data-testid="add-new-tag-button"
                       disabled={
-                        !(createTagPermission || categoryPermissions.EditAll)
+                        !(
+                          createTagPermission ||
+                          classificationPermissions.EditAll
+                        )
                       }
                       size="small"
                       type="primary"
@@ -827,7 +849,7 @@ const TagsPage = () => {
                         setIsAddingTag((prevState) => !prevState);
                         setErrorDataTag(undefined);
                       }}>
-                      Add new tag
+                      {t('label.add-new-tag')}
                     </Button>
                   </Tooltip>
 
@@ -836,13 +858,15 @@ const TagsPage = () => {
                     data-testid="delete-tag-category-button"
                     disabled={
                       currentClassification.provider === ProviderType.System ||
-                      !categoryPermissions.Delete
+                      !classificationPermissions.Delete
                     }
                     size="small"
                     onClick={() => {
                       deleteTagHandler();
                     }}>
-                    Delete category
+                    {t('label.delete-classification-or-tag', {
+                      type: t('label.classification'),
+                    })}
                   </Button>
                 </div>
               </Space>
@@ -855,12 +879,12 @@ const TagsPage = () => {
                   currentClassification?.name
                 }
                 hasEditAccess={
-                  categoryPermissions.EditDescription ||
-                  categoryPermissions.EditAll
+                  classificationPermissions.EditDescription ||
+                  classificationPermissions.EditAll
                 }
-                isEdit={isEditCategory}
-                onCancel={() => setIsEditCategory(false)}
-                onDescriptionEdit={() => setIsEditCategory(true)}
+                isEdit={isEditClassification}
+                onCancel={() => setIsEditClassification(false)}
+                onDescriptionEdit={() => setIsEditClassification(true)}
                 onDescriptionUpdate={handleUpdateDescription}
               />
             </div>
@@ -898,18 +922,18 @@ const TagsPage = () => {
               onSave={updatePrimaryTag}
             />
             <FormModal
-              errorData={errorDataCategory}
+              errorData={errorDataClassification}
               form={Form}
-              header={t('label.adding-new-category')}
+              header={t('label.adding-new-classification')}
               initialData={{
                 name: '',
                 description: '',
               }}
-              isSaveButtonDisabled={!isEmpty(errorDataCategory)}
-              visible={isAddingCategory}
-              onCancel={() => setIsAddingCategory(false)}
+              isSaveButtonDisabled={!isEmpty(errorDataClassification)}
+              visible={isAddingClassification}
+              onCancel={() => setIsAddingClassification(false)}
               onChange={(data) => {
-                setErrorDataCategory({});
+                setErrorDataClassification({});
                 onNewCategoryChange(data as Classification);
               }}
               onSave={(data) => createCategory(data as Classification)}
@@ -937,13 +961,17 @@ const TagsPage = () => {
             />
             <ConfirmationModal
               bodyText={t('message.are-you-sure-delete-tag', {
-                isCategory: deleteTags.data?.isCategory ? 'category' : '',
+                type: deleteTags.data?.isCategory
+                  ? t('label.classification-lowercase')
+                  : t('label.tag-lowercase'),
                 tagName: deleteTags.data?.name,
               })}
               cancelText={t('label.cancel')}
               confirmText={t('label.confirm')}
-              header={t('label.delete-tag-category', {
-                isCategory: deleteTags.data?.isCategory ? 'Category' : '',
+              header={t('label.delete-classification-or-tag', {
+                type: deleteTags.data?.isCategory
+                  ? t('label.classification')
+                  : t('label.tag'),
               })}
               visible={deleteTags.state}
               onCancel={() => setDeleteTags({ data: undefined, state: false })}

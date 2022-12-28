@@ -13,7 +13,14 @@
 
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
@@ -39,6 +46,7 @@ const AddGlossaryPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
+  const { t } = useTranslation();
   const createPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
@@ -49,9 +57,9 @@ const AddGlossaryPage: FunctionComponent = () => {
     history.push(getGlossaryPath(name));
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     goToGlossary();
-  };
+  }, []);
 
   const handleSaveFailure = (
     error: AxiosError | string,
@@ -61,7 +69,7 @@ const AddGlossaryPage: FunctionComponent = () => {
     setStatus('initial');
   };
 
-  const onSave = (data: CreateGlossary) => {
+  const onSave = useCallback((data: CreateGlossary) => {
     setStatus('waiting');
     addGlossaries(data)
       .then((res) => {
@@ -83,14 +91,15 @@ const AddGlossaryPage: FunctionComponent = () => {
           jsonData['api-error-messages']['add-glossary-error']
         );
       });
-  };
+  }, []);
 
   const fetchTags = () => {
     setIsTagLoading(true);
     getClassifications()
-      .then((res) => {
+      .then(async (res) => {
         if (res.data) {
-          setTagList(getTaglist(res.data));
+          const tagList = await getTaglist(res.data);
+          setTagList(tagList);
         } else {
           showErrorToast(jsonData['api-error-messages']['fetch-tags-error']);
         }
@@ -123,7 +132,7 @@ const AddGlossaryPage: FunctionComponent = () => {
         <AddGlossary
           allowAccess={createPermission}
           fetchTags={fetchTags}
-          header="Add Glossary"
+          header={t('label.add-glossary')}
           isTagLoading={isTagLoading}
           saveState={status}
           slashedBreadcrumb={slashedBreadcrumb}

@@ -46,16 +46,21 @@ export const getTags = async (
 };
 
 export const getAllClassifications = async (
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  limit = 10
 ) => {
   const url = getURLWithQueryFields(BASE_URL, arrQueryFields);
 
-  const response = await APIClient.get<PagingResponse<Classification[]>>(url);
+  const response = await APIClient.get<PagingResponse<Classification[]>>(url, {
+    params: {
+      limit,
+    },
+  });
 
   return response.data;
 };
 
-export const getClassification = async (
+export const getClassificationByName = async (
   name: string,
   arrQueryFields?: string | string[]
 ) => {
