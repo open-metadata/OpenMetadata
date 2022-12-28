@@ -13,6 +13,7 @@
 
 package org.openmetadata.csv;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
@@ -67,6 +68,16 @@ public final class CsvUtil {
 
   public static String recordToString(List<String> fields) {
     return String.join(SEPARATOR, fields);
+  }
+
+  public static String recordToString(String[] fields) {
+    return String.join(SEPARATOR, fields);
+  }
+
+  public static List<String> fieldToStrings(String field) {
+    // Split a field that contains multiple strings separated by FIELD_SEPARATOR
+    // TODO handle quoted strings
+    return field == null ? null : listOf(field.split(FIELD_SEPARATOR));
   }
 
   public static String quote(String field) {
