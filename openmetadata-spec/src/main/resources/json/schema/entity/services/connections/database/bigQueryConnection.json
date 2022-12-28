@@ -47,9 +47,9 @@
       "description": "GCS Credentials",
       "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
-    "tagCategoryName": {
-      "title": "Tag Category Name",
-      "description": "Custom OpenMetadata Tag category name for BigQuery policy tags.",
+    "classificationName": {
+      "title": "Classification Name",
+      "description": "Custom OpenMetadata Classification name for BigQuery policy tags.",
       "type": "string",
       "default": "BigqueryPolicyTags"
     },

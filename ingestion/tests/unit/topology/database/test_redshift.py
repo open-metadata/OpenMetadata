@@ -4,7 +4,7 @@ from unittest.mock import patch
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.redshift import RedshiftSource
+from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
 
 mock_snowflake_config = {
     "source": {

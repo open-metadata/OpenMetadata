@@ -40,7 +40,6 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         "services/metadataServices",
         MetadataServiceResource.FIELDS);
     supportsPatch = false;
-    supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupMetadataServices() throws HttpResponseException {

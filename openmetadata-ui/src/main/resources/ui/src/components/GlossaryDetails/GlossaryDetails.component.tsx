@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -31,7 +31,7 @@ import { getEntityName } from '../../utils/CommonUtils';
 import { getOwnerList } from '../../utils/ManageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
-  getTagCategories,
+  getClassifications,
   getTaglist,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
@@ -195,7 +195,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
 
   const fetchTags = () => {
     setIsTagLoading(true);
-    getTagCategories()
+    getClassifications()
       .then((res) => {
         setTagList(getTaglist(res.data));
       })

@@ -28,7 +28,7 @@ ENTITY_TYPE
     | 'glossary'
     | 'glossaryTerm'
     | 'tag'
-    | 'tagCategory'
+    | 'classification'
     | 'type'
     | 'testDefinition'
     | 'testSuite'

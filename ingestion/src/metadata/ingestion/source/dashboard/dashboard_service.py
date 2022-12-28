@@ -41,7 +41,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -85,7 +85,7 @@ class DashboardServiceTopology(ServiceTopology):
                 must_return=True,
             ),
             NodeStage(
-                type_=OMetaTagAndCategory,
+                type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_tag",
                 ack_sink=False,
@@ -210,7 +210,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_tag(
         self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[OMetaTagAndCategory]]:
+    ) -> Optional[Iterable[OMetaTagAndClassification]]:
         """
         Method to fetch dashboard tags
         """

@@ -1,9 +1,22 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Button, Card, Col, Popover, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Status, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getCategory } from '../../../axiosAPIs/tagAPI';
+import { getClassification } from '../../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';
@@ -47,7 +60,7 @@ const TierCard = ({
 
   const getTierData = () => {
     setIsLoadingTierData(true);
-    getCategory('Tier')
+    getClassification('Tier')
       .then((res) => {
         if (res) {
           const tierData: CardWithListItems[] =
