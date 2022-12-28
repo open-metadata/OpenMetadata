@@ -25,8 +25,7 @@
     "plugin:prettier/recommended",
     "plugin:jest/recommended",
     "plugin:jest-formatting/recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:jsonc/recommended-with-jsonc"
+    "plugin:@typescript-eslint/recommended"
   ],
   "globals": {
     "Atomics": "readonly",

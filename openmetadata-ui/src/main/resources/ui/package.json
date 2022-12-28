@@ -44,7 +44,6 @@
     "cypress": "^10.7.0",
     "dagre": "^0.8.5",
     "diff": "^5.0.0",
-    "eslint-plugin-jsonc": "^2.5.0",
     "fast-json-patch": "^3.0.0-1",
     "fs-extra": "^10.1.0",
     "html-react-parser": "^1.2.6",
