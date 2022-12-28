@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -316,7 +316,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               <Form.Item
                 className="m-b-0"
                 label={t('label.profile-sample-type', {
-                  type: 'Value',
+                  type: t('label.value'),
                 })}
                 name="profileSamplePercentage">
                 <SliderWithInput
@@ -329,7 +329,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               <Form.Item
                 className="m-b-0"
                 label={t('label.profile-sample-type', {
-                  type: 'Value',
+                  type: t('label.value'),
                 })}
                 name="profileSampleRows">
                 <InputNumber

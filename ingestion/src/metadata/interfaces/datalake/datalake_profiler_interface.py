@@ -23,7 +23,7 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.source.database.datalake import ometa_to_dataframe
+from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.interfaces.profiler_protocol import (
     ProfilerInterfaceArgs,
     ProfilerProtocol,

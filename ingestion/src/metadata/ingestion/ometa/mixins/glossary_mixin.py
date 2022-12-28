@@ -33,7 +33,7 @@ class GlossaryMixin:
     """
 
     def create_glossary(self, glossaries_body):
-        """Method to create new Glossary category
+        """Method to create new Glossary
         Args:
             entity: Type to create
             glossaries_body (Glossary): body of the request

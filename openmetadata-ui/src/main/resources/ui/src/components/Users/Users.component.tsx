@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -692,7 +692,7 @@ const Users = ({
           {isEmpty(userData.inheritedRoles) ? (
             <div className="tw-mb-4">
               <span className="tw-no-description">
-                {t('label.no-inherited-found')}
+                {t('label.no-inherited-roles-found')}
               </span>
             </div>
           ) : (

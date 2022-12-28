@@ -54,7 +54,6 @@ import org.openmetadata.service.util.TestUtils;
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public RoleResourceTest() {
     super(Entity.ROLE, Role.class, RoleList.class, "roles", null, DATA_CONSUMER_ROLE_NAME);
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupRoles(TestInfo test) throws HttpResponseException {

@@ -885,8 +885,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/storageservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags
     url: /main-concepts/metadata-standard/schemas/entity/tags
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags / TagCategory
-    url: /main-concepts/metadata-standard/schemas/entity/tags/tagcategory
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags / Classification
+    url: /main-concepts/metadata-standard/schemas/entity/classification/classification
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn / GenerateToken
     url: /main-concepts/metadata-standard/schemas/entity/teams/authn/generatetoken
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn

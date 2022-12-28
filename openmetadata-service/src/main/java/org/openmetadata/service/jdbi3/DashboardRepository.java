@@ -60,11 +60,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
-    dashboard.setUsageSummary(
+    return dashboard.withUsageSummary(
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
             : null);
-    return dashboard;
   }
 
   @Override

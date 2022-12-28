@@ -77,7 +77,7 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find tag definitions and load tag categories from the json file, if necessary
+    // Find tag definitions and load classification from the json file, if necessary
     List<TestDefinition> testDefinitions = dao.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
     for (TestDefinition testDefinition : testDefinitions) {
       dao.initializeEntity(testDefinition);
