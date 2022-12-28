@@ -218,7 +218,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
         {entityTags.length ? (
           <>
             <Divider className="m-b-xs m-t-sm" />
-            <div className="flex flex-start">
+            <div className="d-flex flex-start">
               <span className="w-5 m-r-xs">
                 <SVGIcons alt="icon-tag" icon="icon-tag-grey" width="14" />
               </span>

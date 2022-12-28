@@ -66,10 +66,7 @@ const RolesDetailPageList = ({
           }
 
           return (
-            <Link
-              className="hover:tw-underline tw-cursor-pointer"
-              data-testid="entity-name"
-              to={link}>
+            <Link className="link-hover" data-testid="entity-name" to={link}>
               {getEntityName(record)}
             </Link>
           );
