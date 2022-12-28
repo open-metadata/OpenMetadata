@@ -76,8 +76,6 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
 
   cy.get(`[title="${ruleDetails.condition}"]`).should('be.visible').click();
 
-  cy.get('.ant-card-body').should('be.visible').click();
-
   cy.get('[data-testid="condition-success"]').contains('✅ Valid condition');
 
   cy.wait(500);
