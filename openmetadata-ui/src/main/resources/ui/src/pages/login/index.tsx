@@ -181,7 +181,7 @@ const SigninPage = () => {
   const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="d-flex flex-col h-full">
       <Row className="flex bg-body-main flex-grow" data-testid="signin-page">
         <Col span={10}>
           <div
@@ -240,7 +240,7 @@ const SigninPage = () => {
                 </Form>
                 {loginError && (
                   <div
-                    className="flex flex-col m-y-md"
+                    className="d-flex flex-col m-y-md"
                     data-testid="login-error-container">
                     <div className="flex border-1 border-main rounded-4 p-sm error-alert ">
                       <div className="m-r-xs">
@@ -271,7 +271,7 @@ const SigninPage = () => {
                       </Typography.Text>
                     </Divider>
 
-                    <div className="mt-4 flex flex-center">
+                    <div className="mt-4 d-flex flex-center">
                       <Typography.Text className="mr-4">
                         {t('label.new-to-the-platform')}
                       </Typography.Text>

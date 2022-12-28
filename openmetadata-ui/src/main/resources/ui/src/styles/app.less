@@ -18,7 +18,6 @@
 @primary-hover-light: rgba(219, 209, 249);
 @white: #fff;
 @gray: #dde3ea;
-@grey-body: rgb(55, 53, 47);
 @trigger-btn-hover-bg: #efefef;
 
 //font weight
@@ -68,6 +67,9 @@
 }
 .text-grey-muted {
   color: #6b7280;
+}
+.text-grey-body {
+  color: @text-color-secondary;
 }
 .text-body {
   color: @text-color-secondary;
@@ -127,46 +129,6 @@
 
 .rounded-6 {
   border-radius: 6px;
-}
-
-// flex
-.flex {
-  display: flex;
-}
-.item-start {
-  align-items: flex-start;
-}
-.items-center {
-  align-items: center;
-}
-.justify-end {
-  justify-content: flex-end;
-}
-.justify-between {
-  justify-content: space-between;
-}
-.justify-center {
-  justify-content: center;
-}
-.self-center {
-  align-self: center;
-}
-.flex-col {
-  flex-direction: column;
-}
-.flex-initial {
-  flex: 0 1 auto;
-}
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.flex-wrap {
-  flex-wrap: wrap;
-}
-.flex-grow {
-  flex-grow: 1;
 }
 
 .break-word {

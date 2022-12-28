@@ -433,7 +433,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlHyperParameters = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">
           {t('label.hyper-parameters')}{' '}
         </h6>
@@ -458,7 +458,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlModelStore = () => {
     return (
-      <div className="flex flex-col m-t-xs">
+      <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">{t('label.model-store')}</h6>
         {mlModelDetail.mlStore ? (
           <div className="m-t-xs tw-table-container">

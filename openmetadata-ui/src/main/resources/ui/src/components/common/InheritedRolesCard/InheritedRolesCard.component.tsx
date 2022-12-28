@@ -42,9 +42,9 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
             </span>
           </div>
         ) : (
-          <div className="flex justify-between flex-col">
+          <div className="d-flex justify-between flex-col">
             {userData.inheritedRoles?.map((inheritedRole, i) => (
-              <div className="mb-2 flex items-center gap-2" key={i}>
+              <div className="mb-2 d-flex items-center gap-2" key={i}>
                 <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
 
                 <Typography.Text
