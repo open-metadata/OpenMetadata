@@ -60,7 +60,7 @@ const FilterPattern = ({
             onChange={(e) => handleChecked(e.target.checked)}
           />
         </Col>
-        <Col className="flex flex-col">
+        <Col className="d-flex flex-col">
           <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
             type
           )} Filter Pattern`}</label>
@@ -87,7 +87,7 @@ const FilterPattern = ({
       {checked && (
         <div data-testid="field-container">
           <Field>
-            <label className="flex flex-col">{t('label.include')}:</label>
+            <label className="d-flex flex-col">{t('label.include')}:</label>
             <Typography.Text
               className="text-grey-muted m-t-xss m-b-xss"
               data-testid="filter-pattern-include-info">
@@ -106,7 +106,7 @@ const FilterPattern = ({
             />
           </Field>
           <Field>
-            <label className="flex flex-col">{t('label.exclude')}:</label>
+            <label className="d-flex flex-col">{t('label.exclude')}:</label>
             <Typography.Text
               className="text-grey-muted m-t-xss m-b-xss"
               data-testid="filter-pattern-exclude-info">

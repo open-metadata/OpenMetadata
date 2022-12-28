@@ -73,7 +73,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
         key: 'name',
         render: (_, record) => (
           <Link
-            className="hover:tw-underline tw-cursor-pointer"
+            className="link-hover"
             data-testid="role-name"
             to={getRoleWithFqnPath(record.fullyQualifiedName || '')}>
             {getEntityName(record)}
@@ -114,7 +114,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
               )}
               {hasMore && (
                 <Popover
-                  className="tw-cursor-pointer"
+                  className="cursor-pointer"
                   content={
                     <Space wrap size={4}>
                       {record.policies.slice(LIST_CAP).map((policy) =>
@@ -136,9 +136,9 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
                       )}
                     </Space>
                   }
-                  overlayClassName="tw-w-40 tw-text-center"
+                  overlayClassName="w-40 text-center"
                   trigger="click">
-                  <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                  <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
                     listLength - LIST_CAP
                   } more`}</Tag>
                 </Popover>

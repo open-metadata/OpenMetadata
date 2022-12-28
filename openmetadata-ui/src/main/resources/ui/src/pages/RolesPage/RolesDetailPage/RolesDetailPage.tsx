@@ -288,7 +288,7 @@ const RolesDetailPage = () => {
 
               <Tabs data-testid="tabs" defaultActiveKey="policies">
                 <TabPane key="policies" tab={t('label.policies')}>
-                  <Space className="tw-w-full" direction="vertical">
+                  <Space className="w-full" direction="vertical">
                     <Tooltip
                       title={
                         rolePermission.EditAll

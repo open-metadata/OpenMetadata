@@ -307,7 +307,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     return (
       <Fragment>
         <Button
-          className={classNames('h-8 rounded-4 m-b-xs flex items-center')}
+          className={classNames('h-8 rounded-4 m-b-xs d-flex items-center')}
           data-testid="add-new-ingestion-button"
           disabled={!permissions.Create}
           size="small"

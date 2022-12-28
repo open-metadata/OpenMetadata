@@ -108,15 +108,13 @@ const AddRolePage = () => {
 
   return (
     <Row
-      className="tw-bg-body-main tw-h-full"
+      className="bg-body-main h-full"
       data-testid="add-role-container"
       gutter={[16, 16]}>
       <Col offset={4} span={12}>
         <TitleBreadcrumb className="m-y-md" titleLinks={breadcrumb} />
         <Card>
-          <Typography.Paragraph
-            className="tw-text-base"
-            data-testid="form-title">
+          <Typography.Paragraph className="text-base" data-testid="form-title">
             {t('label.add-new-role')}
           </Typography.Paragraph>
           <Form
@@ -177,7 +175,7 @@ const AddRolePage = () => {
               </Select>
             </Form.Item>
 
-            <Space align="center" className="tw-w-full tw-justify-end">
+            <Space align="center" className="w-full justify-end">
               <Button
                 data-testid="cancel-btn"
                 type="link"
@@ -195,8 +193,8 @@ const AddRolePage = () => {
           </Form>
         </Card>
       </Col>
-      <Col className="tw-mt-4" span={4}>
-        <Typography.Paragraph className="tw-text-base tw-font-medium">
+      <Col className="m-t-md" span={4}>
+        <Typography.Paragraph className="text-base font-medium">
           {t('label.add-role')}
         </Typography.Paragraph>
         <Typography.Text>{t('message.add-role-message')}</Typography.Text>

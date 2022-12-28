@@ -202,7 +202,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         <Col span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
-              <div className="flex flex-col">
+              <div className="d-flex flex-col">
                 <SVGIcons
                   alt="bot-profile"
                   icon={Icons.BOT_PROFILE}
@@ -286,7 +286,7 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="page-layout-v1-left-panel mt-2">
           <div data-testid="right-panel">
-            <div className="flex flex-col">
+            <div className="d-flex flex-col">
               <Typography.Text className="mb-2 text-lg">
                 {t('label.token-security')}
               </Typography.Text>
