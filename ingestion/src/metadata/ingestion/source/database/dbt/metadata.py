@@ -257,7 +257,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             try:
                 # Create all the tags added
                 dbt_tag_labels = self.get_dbt_tag_labels(dbt_tags_list)
-                for tag_label in dbt_tag_labels:
+                for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
                             name="DBTTags",
