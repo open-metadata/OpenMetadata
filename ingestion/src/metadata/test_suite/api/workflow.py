@@ -51,6 +51,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.interfaces.datalake.datalake_test_suite_interface import (
     DataLakeTestSuiteInterface,
@@ -59,7 +60,6 @@ from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteI
 from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
-from metadata.utils.connections import get_connection
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.partition import get_partition_details
