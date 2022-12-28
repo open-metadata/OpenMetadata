@@ -25,7 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.domopipeline import DomopipelineSource
+from metadata.ingestion.source.pipeline.domopipeline.metadata import DomopipelineSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_dataset.json"

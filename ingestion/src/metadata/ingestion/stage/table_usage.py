@@ -111,6 +111,9 @@ class TableUsageStage(Stage[QueryParserData]):
             ]
 
     def stage_record(self, record: QueryParserData) -> None:
+        """
+        Process the parsed data and store it in a file
+        """
         if not record or not record.parsedData:
             return
         self.table_usage = {}
