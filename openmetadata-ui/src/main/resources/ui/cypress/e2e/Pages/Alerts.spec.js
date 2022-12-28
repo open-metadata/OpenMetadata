@@ -18,38 +18,10 @@ import {
     verifyResponseStatusCode
 } from '../../common/common';
 
-import { DELETE_TERM } from '../../constants/constants';
+import { DELETE_TERM, DESTINATION, TEST_CASE } from '../../constants/constants';
 
 const alertForAllAssets = `Alert-ct-test-${uuid()}`;
 const description = 'This is alert description';
-
-const TEST_CASE = {
-  testCaseAlert: `TestCaseAlert-ct-test-${uuid()}`,
-  testCaseDescription: 'This is test case alert description',
-  dataAsset: 'Test Case',
-  filters: 'Test Results === Failed',
-};
-
-const DESTINATION = {
-  webhook: {
-    name: `webhookAlert-ct-test-${uuid()}`,
-    locator: 'Webhook',
-    description: 'This is webhook description',
-    url: 'http://localhost:8585',
-  },
-  slack: {
-    name: `slackAlert-ct-test-${uuid()}`,
-    locator: 'Slack',
-    description: 'This is slack description',
-    url: 'http://localhost:8585',
-  },
-  msteams: {
-    name: `msteamsAlert-ct-test-${uuid()}`,
-    locator: 'MS Teams',
-    description: 'This is ms teams description',
-    url: 'http://localhost:8585',
-  },
-};
 
 describe('Alerts page should work properly', () => {
   beforeEach(() => {
@@ -77,8 +49,10 @@ describe('Alerts page should work properly', () => {
     //Enter description
     cy.get('#description').should('be.visible').type(description);
     //Click on all data assets
-    cy.get('[title="All Data Assets"]').should('be.visible').click();
-    cy.get('[title="All Data Assets"]').eq(1).click();
+    cy.get('.ant-select-selection-item').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('All Data Assets')
+      .click();
     //Select filters
     cy.get('button').contains('Add Filters').should('exist').click();
     cy.get('#filteringRules_0_name').invoke('show').click();
@@ -96,17 +70,11 @@ describe('Alerts page should work properly', () => {
 
     //Select Destination
     cy.get('button').contains('Add Destination').should('exist').click();
-    cy.get('.ant-select-selection-placeholder')
-      .contains('Select Source')
-      .click({ force: true });
-    cy.wait(1000);
+    cy.get('#alertActions_0_alertActionType').click();
+
     cy.get('.ant-select-item-option-content').contains('Email').click();
-    cy.wait(500);
     //Enter email
-    cy.get(
-      '.ant-form-item-control-input-content > .ant-select > .ant-select-selector > .ant-select-selection-overflow'
-    )
-      .eq(1)
+    cy.get('#alertActions_0_alertActionConfig_receivers')
       .click()
       .type('testuser@openmetadata.org');
     //Click save
@@ -192,17 +160,11 @@ describe('Alerts page should work properly', () => {
 
     //Select Destination
     cy.get('button').contains('Add Destination').should('exist').click();
-    cy.get('.ant-select-selection-placeholder')
-      .contains('Select Source')
-      .click({ force: true });
-    cy.wait(1000);
+    cy.get('#alertActions_0_alertActionType').click();
+
     cy.get('.ant-select-item-option-content').contains('Email').click();
-    cy.wait(500);
     //Enter email
-    cy.get(
-      '.ant-form-item-control-input-content > .ant-select > .ant-select-selector > .ant-select-selection-overflow'
-    )
-      .eq(1)
+    cy.get('#alertActions_0_alertActionConfig_receivers')
       .click()
       .type('testuser@openmetadata.org');
     //Click save
@@ -255,15 +217,11 @@ describe('Alerts page should work properly', () => {
 
     //Select Destination
     cy.get('button').contains('Add Destination').should('exist').click();
-    cy.get('.ant-select-selection-placeholder')
-      .contains('Select Source')
-      .click({ force: true });
-    cy.wait(1000);
+    cy.get('#alertActions_0_alertActionType').click();
+
     cy.get('.ant-select-item-option-content').contains('Email').click();
-    cy.wait(500);
     //Enter email
-    cy.get('.ant-select-selector > .ant-select-selection-overflow')
-      .eq(2)
+    cy.get('#alertActions_0_alertActionConfig_receivers')
       .click()
       .type('testuser@openmetadata.org');
     //Click save
@@ -310,14 +268,11 @@ describe('Alerts page should work properly', () => {
 
       //Select Destination
       cy.get('button').contains('Add Destination').should('exist').click();
-      cy.get('.ant-select-selection-placeholder')
-        .contains('Select Source')
-        .click({ force: true });
-      cy.wait(1000);
+      cy.get('#alertActions_0_alertActionType').click();
+
       cy.get('.ant-select-item-option-content')
         .contains(destination.locator)
         .click();
-      cy.wait(500);
       //Enter url
       cy.get('#alertActions_0_alertActionConfig_endpoint')
         .click()
