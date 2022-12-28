@@ -30,15 +30,16 @@ export const getTags = async (
   before?: string,
   limit = 10
 ) => {
+  const url = getURLWithQueryFields('/tags', arrQueryFields);
+
   const params = {
-    fields: arrQueryFields,
     parent: parent,
     limit,
     after,
     before,
   };
 
-  const response = await APIClient.get<PagingResponse<Tag[]>>('/tags', {
+  const response = await APIClient.get<PagingResponse<Tag[]>>(url, {
     params,
   });
 

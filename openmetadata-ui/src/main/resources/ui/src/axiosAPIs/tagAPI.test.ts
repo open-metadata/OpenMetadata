@@ -56,16 +56,16 @@ jest.mock('./index', () => ({
 
 describe('API functions should work properly', () => {
   it('getTags function should work properly', async () => {
-    const data = await getTags('querry');
+    const data = await getTags('query');
 
-    expect(data).toEqual(`get_request/tags?fields=querry`);
+    expect(data).toEqual(`get_request/tags?fields=query`);
   });
 
   it('getClassificationByName function should work properly', async () => {
-    const result = await getClassificationByName('categoryName', 'querry');
+    const result = await getClassificationByName('categoryName', 'query');
 
     expect(result).toEqual(
-      `get_request/classifications/name/categoryName?fields=querry`
+      `get_request/classifications/name/categoryName?fields=query`
     );
   });
 

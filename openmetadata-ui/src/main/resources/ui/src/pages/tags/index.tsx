@@ -18,6 +18,7 @@ import {
   Input,
   Row,
   Space,
+  Spin,
   Table,
   Tooltip,
   Typography,
@@ -69,7 +70,6 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
@@ -136,7 +136,7 @@ const TagsPage = () => {
   const [tags, setTags] = useState<Tag[]>();
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
-
+  const [isTagsLoading, setIsTagsLoading] = useState(false);
   const { t } = useTranslation();
   const createClassificationPermission = useMemo(
     () =>
@@ -174,7 +174,7 @@ const TagsPage = () => {
     currentClassificationName: string,
     paging?: Paging
   ) => {
-    setIsLoading(true);
+    setIsTagsLoading(true);
 
     try {
       const tagsResponse = await getTags(
@@ -195,7 +195,7 @@ const TagsPage = () => {
       setError(errMsg);
       setTags([]);
     } finally {
-      setIsLoading(false);
+      setIsTagsLoading(false);
     }
   };
 
@@ -214,7 +214,7 @@ const TagsPage = () => {
     } catch (error) {
       const errMsg = getErrorText(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-tags-category-error']
+        t('server.fetch-tags-category-error')
       );
       showErrorToast(errMsg);
       setError(errMsg);
@@ -236,14 +236,12 @@ const TagsPage = () => {
           setCurrentClassificationName(currentClassification.name);
           setIsLoading(false);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       } catch (err) {
         const errMsg = getErrorText(
           err as AxiosError,
-          jsonData['api-error-messages']['fetch-tags-category-error']
+          t('server.fetch-tags-category-error')
         );
         showErrorToast(errMsg);
         setError(errMsg);
@@ -292,14 +290,11 @@ const TagsPage = () => {
           if (res) {
             history.push(getTagPath(res.name));
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['create-tag-category-error']
-          );
+          showErrorToast(err, t('server.create-tag-category-error'));
         })
         .finally(() => {
           setIsAddingClassification(false);
@@ -343,16 +338,11 @@ const TagsPage = () => {
             )
           );
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['delete-tag-category-error']
-          );
+          showErrorToast(t('server.delete-tag-category-error'));
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-tag-category-error']
-        );
+        showErrorToast(err, t('server.delete-tag-category-error'));
       })
       .finally(() => {
         setDeleteTags({ data: undefined, state: false });
@@ -375,11 +365,11 @@ const TagsPage = () => {
             });
           }
         } else {
-          showErrorToast(jsonData['api-error-messages']['delete-tag-error']);
+          showErrorToast(t('server.delete-tag-error'));
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['delete-tag-error']);
+        showErrorToast(err, t('server.delete-tag-error'));
       })
       .finally(() => setDeleteTags({ data: undefined, state: false }));
   };
@@ -408,7 +398,7 @@ const TagsPage = () => {
           await fetchCurrentClassification(currentClassification?.name, true);
         }
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        throw t('server.unexpected-response');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -471,14 +461,11 @@ const TagsPage = () => {
               true
             );
           } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['create-tag-error']
-          );
+          showErrorToast(err, t('label.create-tag-error'));
         })
         .finally(() => {
           setIsAddingTag(false);
@@ -498,7 +485,7 @@ const TagsPage = () => {
           true
         );
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        throw t('server.unexpected-response');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -591,7 +578,7 @@ const TagsPage = () => {
                 }>
                 <button
                   className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md tw-text-center"
-                  data-testid="add-category"
+                  data-testid="add-classification"
                   disabled={!createClassificationPermission}
                   onClick={() => {
                     setIsAddingClassification((prevState) => !prevState);
@@ -611,7 +598,7 @@ const TagsPage = () => {
                   category.name,
                   currentClassification?.name
                 )}`}
-                data-testid="side-panel-category"
+                data-testid="side-panel-classification"
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
                 <Typography.Paragraph
@@ -687,7 +674,9 @@ const TagsPage = () => {
                   {record.usageCount}
                 </Link>
               ) : (
-                <span className="tw-no-description" data-testid="usage-count">
+                <span
+                  className="tw-no-description"
+                  side-panel-classification="usage-count">
                   {t('label.not-used')}
                 </span>
               )}
@@ -709,6 +698,7 @@ const TagsPage = () => {
               record.provider === ProviderType.System ||
               !classificationPermissions.EditAll
             }
+            side-panel-classification="delete-tag"
             onClick={() => handleActionDeleteTag(record)}>
             {deleteTags.data?.id === record.id ? (
               deleteTags.data?.status === 'success' ? (
@@ -756,7 +746,7 @@ const TagsPage = () => {
                       <Col>
                         <Input
                           className="input-width"
-                          data-testid="tag-category-name"
+                          data-testid="current-classification-name"
                           name="ClassificationName"
                           value={currentClassificationName}
                           onChange={handleCategoryNameChange}
@@ -795,7 +785,7 @@ const TagsPage = () => {
                     <Space>
                       <Typography.Title
                         className="m-b-0"
-                        data-testid="category-name"
+                        data-testid="classification-name"
                         level={5}>
                         {getEntityName(currentClassification)}
                       </Typography.Title>
@@ -855,7 +845,7 @@ const TagsPage = () => {
 
                   <Button
                     className="tw-h-8 tw-rounded tw-ml-2"
-                    data-testid="delete-tag-category-button"
+                    data-testid="delete-classification-or-tag"
                     disabled={
                       currentClassification.provider === ProviderType.System ||
                       !classificationPermissions.Delete
@@ -893,7 +883,12 @@ const TagsPage = () => {
               columns={tableColumn}
               data-testid="table"
               dataSource={tags}
-              loading={isLoading}
+              loading={{
+                indicator: (
+                  <Spin indicator={<Loader size="small" />} size="small" />
+                ),
+                spinning: isTagsLoading,
+              }}
               pagination={false}
               rowKey="id"
               size="small"
