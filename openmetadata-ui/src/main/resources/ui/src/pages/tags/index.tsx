@@ -581,7 +581,7 @@ const TagsPage = () => {
         key: 'description',
         render: (text: string, record: TagClass) => (
           <div className="tw-group tableBody-cell">
-            <div className="cursor-pointer flex">
+            <div className="cursor-pointer d-flex">
               <div>
                 {text ? (
                   <RichTextEditorPreviewer markdown={text} />

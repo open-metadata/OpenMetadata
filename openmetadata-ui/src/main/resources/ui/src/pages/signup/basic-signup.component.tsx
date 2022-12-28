@@ -69,8 +69,8 @@ const BasicSignUp = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex bg-body-main flex-grow" data-testid="signin-page">
+    <div className="d-flex flex-col h-full">
+      <div className="d-flex bg-body-main flex-grow" data-testid="signin-page">
         <div className="w-5/12">
           <div className="mt-4 text-center flex-center flex-col">
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
@@ -158,7 +158,7 @@ const BasicSignUp = () => {
                           <Typography.Text type="secondary">or</Typography.Text>
                         </Divider>
 
-                        <div className="mt-4 flex flex-center">
+                        <div className="mt-4 d-flex flex-center">
                           <Typography.Text className="mr-4">
                             Already a user?
                           </Typography.Text>
@@ -188,7 +188,7 @@ const BasicSignUp = () => {
             />
           </div>
           <div className="relative">
-            <div className="flex justify-center mt-44 mb-10">
+            <div className="d-flex justify-center mt-44 mb-10">
               <LoginCarousel />
             </div>
           </div>

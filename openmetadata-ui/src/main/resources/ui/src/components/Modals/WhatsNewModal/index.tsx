@@ -86,7 +86,7 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
         <div
           className="border-r-2 p-x-md p-y-md border-separate"
           style={{ width: '14%' }}>
-          <div className="flex flex-col-reverse">
+          <div className="d-flex flex-col-reverse">
             {WHATS_NEW.map((d) => (
               <div className="flex items-center justify-end mb-2.5" key={d.id}>
                 <VersionIndicatorIcon

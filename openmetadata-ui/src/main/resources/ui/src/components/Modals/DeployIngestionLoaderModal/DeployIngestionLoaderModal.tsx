@@ -41,7 +41,7 @@ const DeployIngestionLoaderModal = ({
       data-testid="deploy-modal"
       footer={null}
       visible={visible}>
-      <div className="p-y-lg flex flex-col" data-testid="body-text">
+      <div className="p-y-lg d-flex flex-col" data-testid="body-text">
         <div className={classNames('ingestion-content relative', className)}>
           <Fragment>
             <Typography.Text

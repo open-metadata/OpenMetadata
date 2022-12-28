@@ -781,7 +781,7 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
-        <div className="px-1.5 flex justify-between">
+        <div className="px-1.5 d-flex justify-between">
           <div className="tw-relative">
             <AntDButton
               className="flex items-center p-0"
