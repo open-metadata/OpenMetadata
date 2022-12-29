@@ -49,7 +49,7 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchAnyEventType':
       return i18next.t('label.event-type');
     case 'matchTestResult':
-      return i18next.t('label.test-results');
+      return i18next.t('label.test-result-plural');
     case 'matchUpdatedBy':
       return i18next.t('label.updated-by');
     case 'matchAnyFieldChange':
@@ -82,9 +82,9 @@ export const StyledCard = ({
 export const getDisplayNameForTriggerType = (type: AlertTriggerType) => {
   switch (type) {
     case AlertTriggerType.AllDataAssets:
-      return i18next.t('label.all-data-assets');
+      return i18next.t('label.all-data-asset-plural');
     case AlertTriggerType.SpecificDataAsset:
-      return i18next.t('label.specific-data-assets');
+      return i18next.t('label.specific-data-asset-plural');
   }
 };
 
@@ -116,7 +116,7 @@ export const getAlertActionTypeDisplayName = (
 ) => {
   switch (alertActionType) {
     case AlertActionType.ActivityFeed:
-      return i18next.t('label.activity-feeds');
+      return i18next.t('label.activity-feed-plural');
     case AlertActionType.Email:
       return i18next.t('label.email');
     case AlertActionType.GenericWebhook:
@@ -124,7 +124,7 @@ export const getAlertActionTypeDisplayName = (
     case AlertActionType.SlackWebhook:
       return i18next.t('label.slack');
     case AlertActionType.MSTeamsWebhook:
-      return i18next.t('label.ms-teams');
+      return i18next.t('label.ms-team-plural');
   }
 };
 

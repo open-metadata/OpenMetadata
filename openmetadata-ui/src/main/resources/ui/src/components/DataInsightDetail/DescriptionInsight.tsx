@@ -145,7 +145,9 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
             {t('label.data-insight-description-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            {t('message.field-insight', { field: 'description' })}
+            {t('message.field-insight', {
+              field: t('label.description-lowercase'),
+            })}
           </Typography.Text>
         </>
       }>

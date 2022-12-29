@@ -425,7 +425,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                 <Tooltip
                   title={
                     editTest
-                      ? t('label.settings')
+                      ? t('label.setting-plural')
                       : t('message.no-permission-for-action')
                   }>
                   <Button

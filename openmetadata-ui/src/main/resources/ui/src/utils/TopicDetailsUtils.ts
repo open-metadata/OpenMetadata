@@ -41,7 +41,7 @@ export const topicDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: t('label.custom-properties'),
+    name: t('label.custom-property-plural'),
     path: 'custom_properties',
   },
 ];

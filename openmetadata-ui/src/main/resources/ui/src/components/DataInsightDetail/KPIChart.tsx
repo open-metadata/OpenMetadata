@@ -204,7 +204,7 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
               {t('label.kpi-title')}
             </Typography.Title>
             <Typography.Text className="data-insight-label-text">
-              {t('label.kpi-subtitle')}
+              {t('message.kpi-subtitle')}
             </Typography.Text>
           </div>
         </Space>

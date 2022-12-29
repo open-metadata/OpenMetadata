@@ -38,7 +38,7 @@ export const dashboardDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: i18next.t('label.custom-properties'),
+    name: i18next.t('label.custom-property-plural'),
     path: 'custom_properties',
   },
 ];

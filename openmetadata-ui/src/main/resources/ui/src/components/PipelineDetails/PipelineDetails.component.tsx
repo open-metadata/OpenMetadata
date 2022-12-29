@@ -947,7 +947,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.Executions}
             tab={
               <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
-                {t('label.executions')}
+                {t('label.execution-plural')}
               </span>
             }>
             <ExecutionsTab pipelineFQN={pipelineFQN} tasks={tasks} />
@@ -980,7 +980,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.CustomProperties}
             tab={
               <span data-testid="Custom Properties">
-                {t('label.custom-properties')}
+                {t('label.custom-property-plural')}
               </span>
             }>
             <CustomPropertyTable

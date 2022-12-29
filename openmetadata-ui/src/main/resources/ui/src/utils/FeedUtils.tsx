@@ -41,8 +41,8 @@ import {
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,
-  entityRegex,
   EntityRegEx,
+  entityRegex,
   entityUrlMap,
   hashtagRegEx,
   linkRegEx,
@@ -120,7 +120,7 @@ export const getReplyText = (
     }`;
 
   return `${count} ${
-    plural ? plural : i18next.t('label.older-replies-lowercase')
+    plural ? plural : i18next.t('label.older-reply-plural-lowercase')
   }`;
 };
 

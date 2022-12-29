@@ -576,7 +576,7 @@ const TeamsPage = () => {
   return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
     <>
       {isEmpty(selectedTeam) ? (
-        <ErrorPlaceHolder>{t('label.no-team-found')}</ErrorPlaceHolder>
+        <ErrorPlaceHolder>{t('message.no-team-found')}</ErrorPlaceHolder>
       ) : (
         <TeamDetailsV1
           afterDeleteAction={afterDeleteAction}

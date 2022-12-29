@@ -79,19 +79,19 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
 export const DAY_FILTER = [
   {
     value: 7,
-    label: i18n.t('label.last-no-of-days', { day: 7 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 7 }),
   },
   {
     value: 14,
-    label: i18n.t('label.last-no-of-days', { day: 14 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 14 }),
   },
   {
     value: 30,
-    label: i18n.t('label.last-no-of-days', { day: 30 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 30 }),
   },
   {
     value: 60,
-    label: i18n.t('label.last-no-of-days', { day: 60 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 60 }),
   },
 ];
 
@@ -152,12 +152,12 @@ export const WEB_CHARTS = [
 
 export const WEB_SUMMARY_LIST = [
   {
-    label: i18n.t('label.page-views-by-entities'),
+    label: i18n.t('label.page-views-by-data-asset-plural'),
     latest: 0,
     id: DataInsightChartType.PageViewsByEntities,
   },
   {
-    label: i18n.t('label.daily-active-user'),
+    label: i18n.t('label.daily-active-users-on-the-platform'),
     latest: 0,
     id: DataInsightChartType.DailyActiveUsers,
   },
@@ -165,22 +165,24 @@ export const WEB_SUMMARY_LIST = [
 
 export const ENTITIES_SUMMARY_LIST = [
   {
-    label: i18n.t('label.total-data-assets'),
+    label: i18n.t('label.total-data-asset-plural'),
     latest: 0,
     id: DataInsightChartType.TotalEntitiesByType,
   },
   {
-    label: i18n.t('label.data-assets-with-field', { field: 'description' }),
+    label: i18n.t('label.data-asset-plural-with-field', {
+      field: 'description',
+    }),
     latest: 0,
     id: DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
   },
   {
-    label: i18n.t('label.data-assets-with-field', { field: 'owners' }),
+    label: i18n.t('label.data-asset-plural-with-field', { field: 'owners' }),
     latest: 0,
     id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
   },
   {
-    label: i18n.t('label.total-data-assets-with-tiers'),
+    label: i18n.t('label.total-data-asset-plural-with-tiers'),
     latest: 0,
     id: DataInsightChartType.TotalEntitiesByTier,
   },

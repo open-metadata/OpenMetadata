@@ -159,7 +159,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     return [
       {
         key: EntityInfo.PARTITIONS,
-        value: `${partitions} ${t('label.partitions')}`,
+        value: `${partitions} ${t('label.partition-plural')}`,
       },
       {
         key: EntityInfo.REPLICATION_FACTOR,
@@ -171,11 +171,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       },
       {
         key: EntityInfo.CLEAN_UP_POLICIES,
-        value: `${cleanupPolicies.join(', ')} ${t('label.clean-up-policies')}`,
+        value: `${cleanupPolicies.join(', ')} ${t(
+          'label.clean-up-policy-plural-lowercase'
+        )}`,
       },
       {
         key: EntityInfo.MAX_MESSAGE_SIZE,
-        value: `${bytesToSize(maximumMessageSize)} ${t('label.maximum-size')} `,
+        value: `${bytesToSize(maximumMessageSize)} ${t(
+          'label.maximum-size-lowercase'
+        )} `,
       },
     ];
   };
@@ -238,7 +242,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 6,
     },

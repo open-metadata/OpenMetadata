@@ -74,7 +74,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
               {getFrequentlyJoinedColumns(
                 columnName,
                 joins,
-                t('label.frequently-joined-columns')
+                t('label.frequently-joined-column-plural')
               )}
             </>
           ) : (
@@ -116,7 +116,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
     <Row>
       <Col>
         <Searchbar
-          placeholder={`${t('label.find-in-table')}...`}
+          placeholder={`${t('message.find-in-table')}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}

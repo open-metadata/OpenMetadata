@@ -88,7 +88,7 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
           ) : (
             <div className="m-y-md">
               <Typography.Text className="text-gray">
-                {t('label.no-data-available')}
+                {t('message.no-data-available')}
               </Typography.Text>
             </div>
           )}

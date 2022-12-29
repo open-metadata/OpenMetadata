@@ -34,7 +34,7 @@ export const pipelineDetailsTabs = [
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
-    name: t('label.executions'),
+    name: t('label.execution-plural'),
     path: 'executions',
     field: TabSpecificField.EXECUTIONS,
   },
@@ -44,7 +44,7 @@ export const pipelineDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: t('label.custom-properties'),
+    name: t('label.custom-property-plural'),
     path: 'custom_properties',
   },
 ];
