@@ -14,20 +14,15 @@ Build and document all supported Engines
 """
 import json
 import logging
-import os
-import traceback
-from functools import partial, singledispatch, wraps
-from typing import Callable, List, Union
+from functools import singledispatch, wraps
+from typing import Callable, Union
 
 import pkg_resources
-import requests
 from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.orm.session import Session
 from sqlalchemy.pool import QueuePool
 
 from metadata.clients.atlas_client import AtlasClient
@@ -39,48 +34,13 @@ from metadata.clients.connection_clients import (
     GluePipelineClient,
     KafkaClient,
     KinesisClient,
-    LookerClient,
-    MetabaseClient,
     MlflowClientWrapper,
-    ModeClient,
     NifiClientWrapper,
-    PowerBiClient,
-    QuickSightClient,
-    RedashClient,
     SageMakerClient,
-    SupersetClient,
-    TableauClient,
 )
 from metadata.clients.nifi_client import NifiClient
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    ConnectionArguments,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
-    DomoDashboardConnection,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
-    LookerConnection,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
-    MetabaseConnection,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
-    ModeConnection,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
-    PowerBIConnection,
-)
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
-    RedashConnection,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
-    TableauConnection,
 )
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
@@ -114,9 +74,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.backendConne
 )
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
-    DomoPipelineConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
@@ -226,18 +183,6 @@ def singledispatch_with_options_secrets_verbose(fn):
     return inner
 
 
-def test_connection_steps(steps: List[TestConnectionStep]) -> None:
-    """
-    Run all the function steps and raise any errors
-    """
-    for step in steps:
-        try:
-            step.function()
-        except Exception as exc:
-            msg = f"Error validating step [{step.name}] due to: {exc}."
-            raise SourceConnectionException(msg) from exc
-
-
 @singledispatch_with_options_secrets_verbose
 def get_connection(
     connection, verbose: bool = False
@@ -301,26 +246,6 @@ def _(
         schema_registry_client=schema_registry_client,
         consumer_client=consumer_client,
     )
-
-
-def create_and_bind_session(engine: Engine) -> Session:
-    """
-    Given an engine, create a session bound
-    to it to make our operations.
-    """
-    session = sessionmaker()
-    session.configure(bind=engine)
-    return session()
-
-
-def create_and_bind_thread_safe_session(engine: Engine) -> Session:
-    """
-    Given an engine, create a session bound
-    to it to make our operations.
-    """
-    session = sessionmaker()
-    session.configure(bind=engine)
-    return scoped_session(session)
 
 
 @timeout(seconds=120)
@@ -409,45 +334,6 @@ def _(connection: KinesisClient) -> None:
         raise SourceConnectionException(msg) from exc
 
 
-@get_connection.register
-def _(
-    connection: MetabaseConnection, verbose: bool = False
-):  # pylint: disable=unused-argument
-    try:
-        params = {}
-        params["username"] = connection.username
-        params["password"] = connection.password.get_secret_value()
-
-        headers = {"Content-Type": "application/json", "Accept": "*/*"}
-
-        resp = requests.post(  # pylint: disable=missing-timeout
-            connection.hostPort + "/api/session/",
-            data=json.dumps(params),
-            headers=headers,
-        )
-
-        session_id = resp.json()["id"]
-        metabase_session = {"X-Metabase-Session": session_id}
-        conn = {"connection": connection, "metabase_session": metabase_session}
-        return MetabaseClient(conn)
-
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
-def _(connection: MetabaseClient) -> None:
-    try:
-        requests.get(  # pylint: disable=missing-timeout
-            connection.client["connection"].hostPort + "/api/dashboard",
-            headers=connection.client["metabase_session"],
-        )
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
 @test_connection.register
 def _(connection: AirflowConnection) -> None:
     try:
@@ -497,234 +383,6 @@ def _(
 def _(connection: FivetranClient) -> None:
     try:
         connection.client.list_groups()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: RedashConnection, verbose: bool = False
-):  # pylint: disable=unused-argument
-
-    from redash_toolbelt import Redash
-
-    try:
-        redash = Redash(connection.hostPort, connection.apiKey.get_secret_value())
-        redash_client = RedashClient(redash)
-        return redash_client
-
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
-def _(connection: RedashClient) -> None:
-    try:
-        connection.client.dashboards()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: SupersetConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-):
-    from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
-
-    superset_connection = SupersetAPIClient(connection)
-    superset_client = SupersetClient(superset_connection)
-    return superset_client
-
-
-@test_connection.register
-def _(connection: SupersetClient) -> None:
-    try:
-        connection.client.fetch_menu()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(  # pylint: disable=inconsistent-return-statements
-    connection: TableauConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-):
-
-    from tableau_api_lib import TableauServerConnection
-
-    tableau_server_config = {
-        f"{connection.env}": {
-            "server": connection.hostPort,
-            "api_version": connection.apiVersion,
-            "site_name": connection.siteName if connection.siteName else "",
-            "site_url": connection.siteUrl if connection.siteUrl else "",
-        }
-    }
-    if connection.username and connection.password:
-        tableau_server_config[connection.env]["username"] = connection.username
-        tableau_server_config[connection.env][
-            "password"
-        ] = connection.password.get_secret_value()
-    elif (
-        connection.personalAccessTokenName
-        and connection.personalAccessTokenSecret.get_secret_value()
-    ):
-        tableau_server_config[connection.env][
-            "personal_access_token_name"
-        ] = connection.personalAccessTokenName
-        tableau_server_config[connection.env][
-            "personal_access_token_secret"
-        ] = connection.personalAccessTokenSecret.get_secret_value()
-    try:
-
-        get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
-        # ssl_verify is typed as a `bool` in TableauServerConnection
-        # However, it is passed as `verify=self.ssl_verify` in each `requests` call.
-        # In requests (https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification)
-        # the param can be None, False to ignore HTTPS certs or a string with the path to the cert.
-        conn = TableauServerConnection(
-            config_json=tableau_server_config,
-            env=connection.env,
-            ssl_verify=get_verify_ssl(connection.sslConfig),
-        )
-        conn.sign_in().json()
-        return TableauClient(conn)
-    except Exception as exc:  # pylint: disable=broad-except
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Unknown error connecting with {connection}: {exc}.")
-
-
-@test_connection.register
-def _(connection: TableauClient) -> None:
-    from tableau_api_lib.utils import extract_pages
-
-    from metadata.utils.constants import (
-        TABLEAU_GET_VIEWS_PARAM_DICT,
-        TABLEAU_GET_WORKBOOKS_PARAM_DICT,
-    )
-
-    steps = [
-        TestConnectionStep(
-            function=connection.client.server_info,
-            name="Server Info",
-        ),
-        TestConnectionStep(
-            function=partial(
-                extract_pages,
-                query_func=connection.client.query_workbooks_for_site,
-                parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
-            ),
-            name="Get Workbooks",
-        ),
-        TestConnectionStep(
-            function=partial(
-                extract_pages,
-                query_func=connection.client.query_views_for_site,
-                content_id=connection.client.site_id,
-                parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
-            ),
-            name="Get Views",
-        ),
-    ]
-
-    test_connection_steps(steps)
-
-
-@get_connection.register
-def _(
-    connection: PowerBIConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-):
-    from metadata.clients.powerbi_client import PowerBiApiClient
-
-    return PowerBiClient(PowerBiApiClient(connection))
-
-
-@test_connection.register
-def _(connection: PowerBiClient) -> None:
-    try:
-        connection.client.fetch_dashboards()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: LookerConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-):
-    import looker_sdk
-
-    if not os.environ.get("LOOKERSDK_CLIENT_ID"):
-        os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
-    if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
-        os.environ[
-            "LOOKERSDK_CLIENT_SECRET"
-        ] = connection.clientSecret.get_secret_value()
-    if not os.environ.get("LOOKERSDK_BASE_URL"):
-        os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
-    client = looker_sdk.init40()
-    return LookerClient(client=client)
-
-
-@test_connection.register
-def _(connection: LookerClient) -> None:
-    try:
-        connection.client.me()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: QuickSightConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> QuickSightClient:
-    from metadata.clients.aws_client import AWSClient
-
-    quicksight_connection = AWSClient(connection.awsConfig).get_quicksight_client()
-    return quicksight_connection
-
-
-@test_connection.register
-def _(connection: QuickSightClient) -> None:
-    """
-    Test that we can connect to the QuickSight source using the given aws resource
-    :param engine: boto service resource to test
-    :return: None or raise an exception if we cannot connect
-    """
-    from botocore.client import ClientError
-
-    try:
-        connection.client.list_dashboards(AwsAccountId=connection.awsAccountId)
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: ModeConnection, verbose: bool = False  # pylint: disable=unused-argument
-):
-    from metadata.clients.mode_client import ModeApiClient
-
-    return ModeClient(ModeApiClient(connection))
-
-
-@test_connection.register
-def _(connection: ModeClient) -> None:
-    try:
-        connection.client.get_user_account()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc

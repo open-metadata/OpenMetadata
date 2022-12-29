@@ -52,7 +52,7 @@ class DomodashboardSource(DashboardServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.domo_client = self.connection.client
+        self.domo_client = self.connection
         self.client = DomoClient(self.service_connection)
 
     @classmethod

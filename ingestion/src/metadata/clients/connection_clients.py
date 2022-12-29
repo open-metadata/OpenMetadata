@@ -38,55 +38,7 @@ class KinesisClient:
 
 
 @dataclass
-class MetabaseClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class RedashClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class SupersetClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class TableauClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class PowerBiClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class LookerClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class QuickSightClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
 class AirByteClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class ModeClient:
     def __init__(self, client) -> None:
         self.client = client
 

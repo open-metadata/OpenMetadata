@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List
 
 from pydantic import BaseModel
 from sqlalchemy.exc import OperationalError
@@ -38,6 +38,18 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
+
+
+def test_connection_steps(steps: List[TestConnectionStep]) -> None:
+    """
+    Run all the function steps and raise any errors
+    """
+    for step in steps:
+        try:
+            step.function()
+        except Exception as exc:
+            msg = f"Error validating step [{step.name}] due to: {exc}."
+            raise SourceConnectionException(msg) from exc
 
 
 @timeout(seconds=120)
