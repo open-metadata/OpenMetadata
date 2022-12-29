@@ -40,7 +40,9 @@ function formatConnectionFields<T>(formData: T, field: string): T {
     for (const key in options) {
       const value = options[key];
       try {
-        formData[field as keyof T][key] = JSON.parse(value as string);
+        formData[field as keyof T][key] = JSON.parse(
+          value as unknown as string
+        );
       } catch (_) {
         // ignore exception
       }
@@ -77,7 +79,10 @@ export function formatFormDataForSubmit<T>(formData: T): T {
   return formData;
 }
 
-function formatConnectionFieldsForRender<T>(formData: T, field: string): T {
+function formatConnectionFieldsForRender<T extends object>(
+  formData: T,
+  field: string
+): T {
   if (formData && formData[field as keyof T]) {
     // Since connection options support value of type string or object
     // convert object into string
@@ -86,7 +91,9 @@ function formatConnectionFieldsForRender<T>(formData: T, field: string): T {
     for (const key in options) {
       const value = options[key];
       if (typeof value === 'object') {
-        formData[field as keyof T][key] = JSON.stringify(value);
+        formData[field as keyof T][key] = JSON.stringify(
+          value
+        ) as unknown as T[keyof T][Extract<keyof T[keyof T], string>];
       }
     }
   }
@@ -94,7 +101,7 @@ function formatConnectionFieldsForRender<T>(formData: T, field: string): T {
   return formData;
 }
 
-export function formatFormDataForRender<T>(formData: T): T {
+export function formatFormDataForRender<T extends object>(formData: T): T {
   formData = cloneDeep(formData);
   formData = formatConnectionFieldsForRender(formData, 'connectionArguments');
 

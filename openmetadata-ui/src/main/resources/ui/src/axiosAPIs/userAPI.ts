@@ -22,6 +22,7 @@ import {
 } from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/auth/jwtAuth';
 import { Bot } from '../generated/entity/bot';
+import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
 import { getURLWithQueryFields } from '../utils/APIUtils';
@@ -106,8 +107,10 @@ export const getTeams = (): Promise<AxiosResponse> => {
   return APIClient.get('/teams');
 };
 
-export const getRoles = (): Promise<AxiosResponse> => {
-  return APIClient.get('/roles');
+export const getRoles = async () => {
+  const response = await APIClient.get<PagingResponse<Role[]>>('/roles');
+
+  return response.data;
 };
 
 export const updateUserRole = (

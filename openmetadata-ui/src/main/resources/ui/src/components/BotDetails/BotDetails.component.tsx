@@ -22,7 +22,7 @@ import {
   getAuthMechanismForBotUser,
   getRoles,
 } from '../../axiosAPIs/userAPI';
-import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../constants/constants';
+import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -99,14 +99,8 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchRoles = async () => {
     try {
-      const response = await getRoles(
-        '',
-        undefined,
-        undefined,
-        false,
-        PAGE_SIZE_LARGE
-      );
-      setRoles(response.data.data);
+      const { data } = await getRoles();
+      setRoles(data);
     } catch (err) {
       setRoles([]);
       showErrorToast(err as AxiosError);
