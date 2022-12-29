@@ -293,60 +293,6 @@ def _(connection: FivetranClient) -> None:
 
 @get_connection.register
 def _(
-    connection: MlflowConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-):
-    from mlflow.tracking import MlflowClient
-
-    return MlflowClientWrapper(
-        MlflowClient(
-            tracking_uri=connection.trackingUri,
-            registry_uri=connection.registryUri,
-        )
-    )
-
-
-@test_connection.register
-def _(connection: MlflowClientWrapper) -> None:
-    try:
-        connection.client.list_registered_models()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: SageMakerConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> SageMakerClient:
-    from metadata.clients.aws_client import AWSClient
-
-    sagemaker_connection = AWSClient(connection.awsConfig).get_sagemaker_client()
-    return sagemaker_connection
-
-
-@test_connection.register
-def _(connection: SageMakerClient) -> None:
-    """
-    Test that we can connect to the SageMaker source using the given aws resource
-    :param engine: boto service resource to test
-    :return: None or raise an exception if we cannot connect
-    """
-    from botocore.client import ClientError
-
-    try:
-        connection.client.list_models()
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
     connection: NifiConnection, verbose: bool = False
 ):  # pylint: disable=unused-argument
 

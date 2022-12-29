@@ -28,19 +28,6 @@ class AirByteClient:
     def __init__(self, client) -> None:
         self.client = client
 
-
-@dataclass
-class MlflowClientWrapper:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class SageMakerClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
 @dataclass
 class FivetranClient:
     def __init__(self, client) -> None:
