@@ -261,7 +261,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 4,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 5,
     },
@@ -435,7 +435,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     return (
       <div className="d-flex flex-col m-t-xs">
         <h6 className="font-medium text-base">
-          {t('label.hyper-parameters')}{' '}
+          {t('label.hyper-parameter-plural')}{' '}
         </h6>
         <div className="m-t-xs">
           {isEmpty(mlModelDetail.mlHyperParameters) ? (

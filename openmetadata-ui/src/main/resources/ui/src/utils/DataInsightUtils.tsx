@@ -657,11 +657,11 @@ export const getKpiTargetValueByMetricType = (
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   if (day > 0 && isTargetMet) {
-    return t('label.kpi-target-achieved-before-time');
+    return t('message.kpi-target-achieved-before-time');
   } else if (day <= 0 && !isTargetMet) {
-    return t('label.kpi-target-overdue');
+    return t('message.kpi-target-overdue');
   } else if (isTargetMet) {
-    return t('label.kpi-target-achieved');
+    return t('message.kpi-target-achieved');
   } else {
     return t('label.day-left', { day: pluralize(day, 'day') });
   }

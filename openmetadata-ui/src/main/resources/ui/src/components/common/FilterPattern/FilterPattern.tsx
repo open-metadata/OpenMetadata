@@ -99,7 +99,7 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
-              placeholder={t('label.list-of-strings-regex-patterns-csv')}
+              placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={includePattern}
               onChange={includeFilterChangeHandler}
@@ -118,7 +118,7 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
-              placeholder={t('label.list-of-strings-regex-patterns-csv')}
+              placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={excludePattern}
               onChange={excludeFilterChangeHandler}

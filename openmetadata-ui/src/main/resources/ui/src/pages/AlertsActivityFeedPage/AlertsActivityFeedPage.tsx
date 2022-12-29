@@ -57,7 +57,9 @@ const AlertsActivityFeedPage = () => {
       setAlert({ ...response, filteringRules: requestFilteringRules });
     } catch (error) {
       showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.activity-feeds') })
+        t('server.entity-fetch-error', {
+          entity: t('label.activity-feed-plural'),
+        })
       );
     } finally {
       setLoading(false);

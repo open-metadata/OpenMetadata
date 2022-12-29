@@ -44,7 +44,7 @@ const RolesElement = ({ userData }: RolesElementProps) => {
       ))}
       {!userData.isAdmin && isEmpty(userData.roles) && (
         <span className="roles-no-description">
-          {t('label.no-roles-assigned')}
+          {t('message.no-roles-assigned')}
         </span>
       )}
     </Fragment>

@@ -89,7 +89,7 @@ describe('Test Roles Details Page', () => {
     const tabs = await screen.findByTestId('tabs');
 
     const policiesTab = await screen.findByText('label.policies');
-    const teamsTab = await screen.findByText('label.teams');
+    const teamsTab = await screen.findByText('label.team-plural');
     const usersTab = await screen.findByText('label.users');
 
     expect(container).toBeInTheDocument();

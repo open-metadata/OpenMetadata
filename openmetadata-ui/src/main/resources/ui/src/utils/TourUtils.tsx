@@ -42,7 +42,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-activity-feed"
             renderElement={<strong />}
             values={{
-              text: i18next.t('label.activity-feeds'),
+              text: i18next.t('label.activity-feed-plural'),
             }}
           />
         </p>

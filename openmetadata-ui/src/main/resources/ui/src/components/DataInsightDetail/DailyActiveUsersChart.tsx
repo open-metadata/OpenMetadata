@@ -97,7 +97,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       title={
         <>
           <Typography.Title level={5}>
-            {t('label.daily-active-user')}
+            {t('label.daily-active-users-on-the-platform')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
             {t('message.active-users')}

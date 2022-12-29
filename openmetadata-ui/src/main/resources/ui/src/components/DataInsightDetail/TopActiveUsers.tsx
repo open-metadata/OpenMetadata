@@ -97,7 +97,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         ),
       },
       {
-        title: t('label.total-session'),
+        title: t('label.total-session-plural'),
         dataIndex: 'sessions',
         key: 'sessions',
         render: (sessions: number) => (
