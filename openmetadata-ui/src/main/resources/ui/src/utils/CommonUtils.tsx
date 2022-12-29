@@ -793,7 +793,7 @@ export const getEmptyPlaceholder = () => {
   return (
     <ErrorPlaceHolder size={SIZE.MEDIUM}>
       <Typography.Paragraph>
-        {t('label.no-data-available')}
+        {t('message.no-data-available')}
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );

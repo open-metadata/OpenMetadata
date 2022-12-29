@@ -512,18 +512,18 @@ const CreateUser = ({
               />
             </Form.Item>
             <Form.Item
-              label={t('label.scopes')}
+              label={t('label.scope-plural')}
               name="scopes"
               rules={[
                 {
                   required: true,
-                  message: t('label.scopes-comma-separated'),
+                  message: t('message.scopes-comma-separated'),
                 },
               ]}>
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder={t('label.scopes-comma-separated')}
+                placeholder={t('message.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
@@ -611,11 +611,11 @@ const CreateUser = ({
                 onChange={handleOnChange}
               />
             </Form.Item>
-            <Form.Item label={t('label.scopes')} name="scopes">
+            <Form.Item label={t('label.scope-plural')} name="scopes">
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder={t('label.scopes-comma-separated')}
+                placeholder={t('message.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
@@ -813,7 +813,7 @@ const CreateUser = ({
                     className="w-full"
                     data-testid="token-expiry"
                     defaultValue={tokenExpiry}
-                    placeholder={t('label.select-token-expiration')}
+                    placeholder={t('message.select-token-expiration')}
                     onChange={(value) => setTokenExpiry(value)}>
                     {getJWTTokenExpiryOptions().map((option) => (
                       <Option key={option.value}>{option.label}</Option>
@@ -945,17 +945,17 @@ const CreateUser = ({
                   )}
                 </>
               )}
-              <Form.Item label={t('label.teams')} name="teams">
+              <Form.Item label={t('label.team-plural')} name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
-              <Form.Item label={t('label.roles')} name="roles">
+              <Form.Item label={t('label.role-plural')} name="roles">
                 <DropDown
                   className={classNames('tw-bg-white', {
                     'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
                   })}
                   dataTestId="roles-dropdown"
                   dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-                  label={t('label.roles')}
+                  label={t('label.role-plural')}
                   selectedItems={selectedRoles as Array<string>}
                   type="checkbox"
                   onSelect={(_e, value) => selectedRolesHandler(value)}

@@ -184,7 +184,7 @@ const ReviewerModal = ({
           </Row>
         ) : (
           <Typography.Text className="flex justify-center mt-10 text-grey-muted text-base">
-            {t('label.no-user-available')}
+            {t('message.no-user-available')}
           </Typography.Text>
         )}
       </>

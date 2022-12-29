@@ -76,7 +76,7 @@ const PoliciesDetailsList = ({
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',

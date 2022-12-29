@@ -299,7 +299,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.DATA_INSIGHT,
                 }}>
-                {t('label.insights')}
+                {t('label.insight-plural')}
               </NavLink>
               <Dropdown
                 className="cursor-pointer"
@@ -320,7 +320,7 @@ const NavBar = ({
               className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
-              placeholder={t('label.search-global')}
+              placeholder={t('message.search-for-entity-types')}
               style={{
                 borderRadius: '0.24rem',
                 boxShadow: 'none',
@@ -380,7 +380,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.SETTINGS,
                 }}>
-                {t('label.settings')}
+                {t('label.setting-plural')}
               </NavLink>
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown

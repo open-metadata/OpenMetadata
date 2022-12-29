@@ -391,7 +391,7 @@ const TestSuitePipelineTab = () => {
         },
       },
       {
-        title: t('label.recent-runs'),
+        title: t('label.recent-run-plural'),
         dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
         render: (_, record) => (
@@ -401,7 +401,7 @@ const TestSuitePipelineTab = () => {
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => {
@@ -516,7 +516,7 @@ const TestSuitePipelineTab = () => {
                 <Tooltip
                   title={
                     viewPermission
-                      ? t('label.logs')
+                      ? t('label.log-plural')
                       : t('message.no-permission-for-action')
                   }>
                   <Button

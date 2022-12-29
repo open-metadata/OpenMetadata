@@ -35,11 +35,11 @@ const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const breadcrumb = [
   {
-    name: t('label.settings'),
+    name: t('label.setting-plural'),
     url: getSettingPath(),
   },
   {
-    name: t('label.roles'),
+    name: t('label.role-plural'),
     url: rolesPath,
   },
   {

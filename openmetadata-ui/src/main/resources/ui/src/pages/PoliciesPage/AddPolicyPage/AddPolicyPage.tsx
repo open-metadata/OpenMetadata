@@ -50,7 +50,7 @@ const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const breadcrumb = [
   {
-    name: t('label.settings'),
+    name: t('label.setting-plural'),
     url: getSettingPath(),
   },
   {
@@ -163,7 +163,7 @@ const AddPolicyPage = () => {
                     <RichTextEditor
                       height="200px"
                       initialValue={description}
-                      placeHolder={t('label.write-your-description')}
+                      placeHolder={t('message.write-your-description')}
                       style={{ margin: 0 }}
                       onTextChange={(value) => setDescription(value)}
                     />
