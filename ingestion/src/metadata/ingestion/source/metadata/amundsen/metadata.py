@@ -135,8 +135,7 @@ class AmundsenSource(Source[Entity]):
         self.database_object = None
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
+        self.client = get_connection(self.service_connection)
         self.status = AmundsenStatus()
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
