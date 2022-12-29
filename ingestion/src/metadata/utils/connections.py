@@ -32,19 +32,12 @@ from metadata.clients.connection_clients import (
     DagsterClient,
     FivetranClient,
     GluePipelineClient,
-    KafkaClient,
     KinesisClient,
     MlflowClientWrapper,
     NifiClientWrapper,
     SageMakerClient,
 )
 from metadata.clients.nifi_client import NifiClient
-from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
-    QuickSightConnection,
-)
-from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
-    KafkaConnection,
-)
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
@@ -186,7 +179,7 @@ def singledispatch_with_options_secrets_verbose(fn):
 @singledispatch_with_options_secrets_verbose
 def get_connection(
     connection, verbose: bool = False
-) -> Union[Engine, GluePipelineClient, KafkaClient,]:
+) -> Union[Engine, GluePipelineClient]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
@@ -202,50 +195,6 @@ def _(
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_pipeline_client()
     return glue_connection
-
-
-@get_connection.register(KafkaConnection)
-@get_connection.register(RedpandaConnection)
-def _(
-    connection, verbose: bool = False  # pylint: disable=unused-argument
-) -> KafkaClient:
-    """
-    Prepare Kafka Admin Client and Schema Registry Client
-    """
-    from confluent_kafka.admin import AdminClient
-    from confluent_kafka.avro import AvroConsumer
-    from confluent_kafka.schema_registry.schema_registry_client import (
-        SchemaRegistryClient,
-    )
-
-    admin_client_config = connection.consumerConfig
-    admin_client_config["bootstrap.servers"] = connection.bootstrapServers
-    admin_client = AdminClient(admin_client_config)
-
-    schema_registry_client = None
-    consumer_client = None
-    if connection.schemaRegistryURL:
-        connection.schemaRegistryConfig["url"] = connection.schemaRegistryURL
-        schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
-        connection.schemaRegistryConfig["url"] = str(connection.schemaRegistryURL)
-        consumer_config = {
-            **connection.consumerConfig,
-            "bootstrap.servers": connection.bootstrapServers,
-        }
-        if "group.id" not in consumer_config:
-            consumer_config["group.id"] = "openmetadata-consumer"
-        if "auto.offset.reset" not in consumer_config:
-            consumer_config["auto.offset.reset"] = "earliest"
-        logger.debug(f"Using Kafka consumer config: {consumer_config}")
-        consumer_client = AvroConsumer(
-            consumer_config, schema_registry=schema_registry_client
-        )
-
-    return KafkaClient(
-        admin_client=admin_client,
-        schema_registry_client=schema_registry_client,
-        consumer_client=consumer_client,
-    )
 
 
 @timeout(seconds=120)
@@ -280,52 +229,6 @@ def _(connection: GluePipelineClient) -> None:
 
     try:
         connection.client.list_workflows()
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
-def _(connection: KafkaClient) -> None:
-    """
-    Test AdminClient.
-
-    If exists, test the Schema Registry client as well.
-    """
-    try:
-        _ = connection.admin_client.list_topics().topics
-        if connection.schema_registry_client:
-            _ = connection.schema_registry_client.get_subjects()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: KinesisConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> KinesisClient:
-    from metadata.clients.aws_client import AWSClient
-
-    kinesis_connection = AWSClient(connection.awsConfig).get_kinesis_client()
-    return kinesis_connection
-
-
-@test_connection.register
-def _(connection: KinesisClient) -> None:
-    """
-    Test that we can connect to the Kinesis source using the given aws credentials
-    :param engine: boto service resource to test
-    :return: None or raise an exception if we cannot connect
-    """
-    from botocore.client import ClientError
-
-    try:
-        connection.client.list_streams()
     except ClientError as err:
         msg = f"Connection error for {connection}: {err}. Check the connection details."
         raise SourceConnectionException(msg) from err

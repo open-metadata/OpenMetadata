@@ -24,20 +24,6 @@ class GluePipelineClient:
 
 
 @dataclass
-class KafkaClient:
-    def __init__(self, admin_client, schema_registry_client, consumer_client) -> None:
-        self.admin_client = admin_client
-        self.schema_registry_client = schema_registry_client  # Optional
-        self.consumer_client = consumer_client
-
-
-@dataclass
-class KinesisClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
 class AirByteClient:
     def __init__(self, client) -> None:
         self.client = client
