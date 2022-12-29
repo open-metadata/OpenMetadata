@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.LINE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsv.ENTITY_CREATED;
 import static org.openmetadata.csv.EntityCsv.ENTITY_UPDATED;
@@ -28,7 +29,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 
 public class EntityCsvTest {
   private static final List<CsvHeader> CSV_HEADERS;
-  private static final String HEADER_STRING = "h1*,h2,h3\r\n";
+  private static final String HEADER_STRING = "h1*,h2,h3" + LINE_SEPARATOR;
 
   static {
     Object[][] headers = {
@@ -54,7 +55,7 @@ public class EntityCsvTest {
 
   @Test
   void test_validateCsvInvalidHeader() throws IOException {
-    String csv = ",h2,h3\r\n"; // Header h1 is missing in the CSV file
+    String csv = ",h2,h3" + LINE_SEPARATOR; // Header h1 is missing in the CSV file
     TestCsv testCsv = new TestCsv(CSV_HEADERS);
     CsvImportResult importResult = testCsv.importCsv(csv, true);
     assertSummary(importResult, Status.ABORTED, 1, 0, 1);
@@ -66,12 +67,12 @@ public class EntityCsvTest {
   void test_validateCsvInvalidRecords() throws IOException {
     // Invalid record 2 - Missing required value in h1
     // Invalid record 3 - Record with only two fields instead of 3
-    List<String> records = listOf("h1*,h2,h3", ",2,3", "1,2", "1,2,3");
-    String csv = String.join("\r\n", records);
+    List<String> records = listOf(",2,3", "1,2", "1,2,3");
+    String csv = createCsv(CSV_HEADERS, records);
 
     TestCsv testCsv = new TestCsv(CSV_HEADERS);
     CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.PARTIAL_SUCCESS, records.size(), 2, 2);
+    assertSummary(importResult, Status.PARTIAL_SUCCESS, 4, 2, 2);
 
     String[] expectedRecords = {
       CsvUtil.recordToString(EntityCsv.getResultHeaders(CSV_HEADERS)),
@@ -96,7 +97,7 @@ public class EntityCsvTest {
   }
 
   public static void assertRows(CsvImportResult importResult, String... expectedRows) {
-    String[] resultRecords = importResult.getImportResultsCsv().split("\r\n");
+    String[] resultRecords = importResult.getImportResultsCsv().split(LINE_SEPARATOR);
     assertEquals(expectedRows.length, resultRecords.length);
     for (int i = 0; i < resultRecords.length; i++) {
       assertEquals(expectedRows[i], resultRecords[i], "Row number is " + i);
@@ -119,17 +120,21 @@ public class EntityCsvTest {
     return csvHeaders;
   }
 
+  public static String createCsv(List<CsvHeader> csvHeaders, List<String> records) {
+    records.add(0, recordToString(CsvUtil.getHeaders(csvHeaders)));
+    return String.join(LINE_SEPARATOR, records) + LINE_SEPARATOR;
+  }
+
   public static String createCsv(List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
     // Create CSV
     List<String> csvRecords = new ArrayList<>();
-    csvRecords.add(recordToString(CsvUtil.getHeaders(csvHeaders)));
     if (!nullOrEmpty(createRecords)) {
       csvRecords.addAll(createRecords);
     }
     if (!nullOrEmpty(updateRecords)) {
       csvRecords.addAll(updateRecords);
     }
-    return String.join("\r\n", csvRecords) + "\r\n";
+    return createCsv(csvHeaders, csvRecords);
   }
 
   public static String createCsvResult(
@@ -147,7 +152,7 @@ public class EntityCsvTest {
         csvRecords.add(getSuccessRecord(record, ENTITY_UPDATED));
       }
     }
-    return String.join("\r\n", csvRecords) + "\r\n";
+    return String.join(LINE_SEPARATOR, csvRecords) + LINE_SEPARATOR;
   }
 
   private static class TestCsv extends EntityCsv<EntityInterface> {

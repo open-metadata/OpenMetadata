@@ -48,7 +48,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
-/** Generic EntityCsv that each entity must extend to perform entity specific validation */
+/**
+ * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
+ * provide entity specific processing functionality to export an entity to a CSV record, and import an entity from a CSV
+ * record.
+ */
 public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_STATUS_HEADER = "status";
   public static final String IMPORT_STATUS_DETAILS = "details";
@@ -60,7 +64,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected boolean processRecord; // When set to false record processing is discontinued
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
-  private Map<String, T> dryRunCreatedEntities = new HashMap<>();
+  private final Map<String, T> dryRunCreatedEntities = new HashMap<>();
   private final String user;
 
   protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String user) {
@@ -113,7 +117,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       records.add(toRecord(entity));
     }
     csvFile.withRecords(records);
-    // TODO Remove CsvFile
     return CsvUtil.formatCsv(csvFile);
   }
 
@@ -127,7 +130,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   private EntityInterface getEntity(String entityType, String fqn) {
-    EntityInterface entity = entityType == this.entityType ? dryRunCreatedEntities.get(fqn) : null;
+    EntityInterface entity = entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
     if (entity == null) {
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
       entity = entityRepository.findByNameOrNull(fqn, "", Include.NON_DELETED);
@@ -169,7 +172,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs.isEmpty() ? null : refs;
   }
 
-  // TODO support GlossaryTerm as labels
   protected final List<TagLabel> getTagLabels(CSVPrinter printer, CSVRecord record, int fieldNumber)
       throws IOException {
     List<EntityReference> refs = getEntityReferences(printer, record, fieldNumber, Entity.TAG);
@@ -317,7 +319,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   private void importSuccess(CSVPrinter printer, CSVRecord inputRecord, String successDetails) throws IOException {
-    // TODO success failure
     List<String> record = listOf(IMPORT_STATUS_SUCCESS, successDetails);
     record.addAll(inputRecord.toList());
     printer.printRecord(record);

@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 public final class CsvUtil {
   public static String SEPARATOR = ",";
   public static String FIELD_SEPARATOR = ";";
+  public static String LINE_SEPARATOR = "\r\n";
 
   private CsvUtil() {
     // Utility class hides the constructor
@@ -76,7 +77,6 @@ public final class CsvUtil {
 
   public static List<String> fieldToStrings(String field) {
     // Split a field that contains multiple strings separated by FIELD_SEPARATOR
-    // TODO handle quoted strings
     return field == null ? null : listOf(field.split(FIELD_SEPARATOR));
   }
 
@@ -111,19 +111,19 @@ public final class CsvUtil {
   public static List<String> addEntityReferences(List<String> record, List<EntityReference> refs) {
     record.add(
         nullOrEmpty(refs)
-            ? ""
+            ? null
             : refs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.joining(FIELD_SEPARATOR)));
     return record;
   }
 
   public static List<String> addEntityReference(List<String> record, EntityReference ref) {
-    record.add(nullOrEmpty(ref) ? "" : quoteField(ref.getFullyQualifiedName()));
+    record.add(nullOrEmpty(ref) ? null : quoteField(ref.getFullyQualifiedName()));
     return record;
   }
 
   public static List<String> addTagLabels(List<String> record, List<TagLabel> tags) {
     record.add(
-        nullOrEmpty(tags) ? "" : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
+        nullOrEmpty(tags) ? null : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
     return record;
   }
 }
