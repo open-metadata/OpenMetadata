@@ -42,7 +42,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_pipeline
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -223,7 +223,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_pipeline(self) -> Any:
         for pipeline_detail in self.get_pipelines_list():
             pipeline_name = self.get_pipeline_name(pipeline_detail)
-            if filter_by_pipeline(
+            if filter_func(
                 self.source_config.pipelineFilterPattern,
                 pipeline_name,
             ):

@@ -32,7 +32,7 @@ from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -189,7 +189,7 @@ class AthenaSource(CommonDbSourceService):
                     schema_name=self.context.database_schema.name.__root__,
                     table_name=table_name,
                 )
-                if filter_by_table(
+                if filter_func(
                     self.source_config.tableFilterPattern,
                     table_fqn if self.source_config.useFqnForFiltering else table_name,
                 ):
@@ -211,7 +211,7 @@ class AthenaSource(CommonDbSourceService):
                     schema_name=self.context.database_schema.name.__root__,
                     table_name=view_name,
                 )
-                if filter_by_table(
+                if filter_func(
                     self.source_config.tableFilterPattern,
                     view_fqn if self.source_config.useFqnForFiltering else view_name,
                 ):

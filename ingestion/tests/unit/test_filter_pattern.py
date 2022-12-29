@@ -15,7 +15,7 @@ Validate filter patterns
 from unittest import TestCase
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
-from metadata.utils.filters import filter_by_dashboard, filter_by_fqn
+from metadata.utils.filters import filter_func
 
 
 class FilterPatternTests(TestCase):
@@ -24,19 +24,19 @@ class FilterPatternTests(TestCase):
     """
 
     @staticmethod
-    def test_filter_by_fqn():
+    def test_filter_func():
         """
         Check FQN filters
         """
         fqn_filter_db = FilterPattern(includes=["^.*my_database.*$"])
 
-        assert not filter_by_fqn(fqn_filter_db, "service.my_database.schema.table")
-        assert filter_by_fqn(fqn_filter_db, "service.another_db.schema.table")
+        assert not filter_func(fqn_filter_db, "service.my_database.schema.table")
+        assert filter_func(fqn_filter_db, "service.another_db.schema.table")
 
         fqn_filter_schema = FilterPattern(includes=["^.*my_db.my_schema.*$"])
 
-        assert not filter_by_fqn(fqn_filter_schema, "service.my_db.my_schema.table")
-        assert filter_by_fqn(fqn_filter_schema, "service.another_db.my_schema.table")
+        assert not filter_func(fqn_filter_schema, "service.my_db.my_schema.table")
+        assert filter_func(fqn_filter_schema, "service.another_db.my_schema.table")
 
     @staticmethod
     def test_filter_numbers():
@@ -46,8 +46,8 @@ class FilterPatternTests(TestCase):
 
         num_filter = FilterPattern(includes=["^[4]"])
 
-        assert not filter_by_dashboard(num_filter, "40")
-        assert not filter_by_dashboard(num_filter, "41")
+        assert not filter_func(num_filter, "40")
+        assert not filter_func(num_filter, "41")
 
-        assert filter_by_dashboard(num_filter, "50")
-        assert filter_by_dashboard(num_filter, "54")
+        assert filter_func(num_filter, "50")
+        assert filter_func(num_filter, "54")

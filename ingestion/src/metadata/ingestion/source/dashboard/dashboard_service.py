@@ -50,7 +50,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_dashboard
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -292,7 +292,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         for dashboard in self.get_dashboards_list():
 
             dashboard_name = self.get_dashboard_name(dashboard)
-            if filter_by_dashboard(
+            if filter_func(
                 self.source_config.dashboardFilterPattern,
                 dashboard_name,
             ):

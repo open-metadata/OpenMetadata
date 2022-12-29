@@ -32,7 +32,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -110,7 +110,7 @@ class PowerbiSource(DashboardServiceSource):
                     continue
                 dashboard_name = self.get_dashboard_name(dashboard_details)
 
-                if filter_by_dashboard(
+                if filter_func(
                     self.source_config.dashboardFilterPattern,
                     dashboard_name,
                 ):
@@ -225,7 +225,7 @@ class PowerbiSource(DashboardServiceSource):
             try:
                 chart_title = chart.get("title")
                 chart_display_name = chart_title if chart_title else chart.get("id")
-                if filter_by_chart(
+                if filter_func(
                     self.source_config.chartFilterPattern, chart_display_name
                 ):
                     self.status.filter(chart_display_name, "Chart Pattern not Allowed")

@@ -35,7 +35,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -139,7 +139,7 @@ class PrestoSource(CommonDbSourceService):
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_catalog,
                 )
-                if filter_by_database(
+                if filter_func(
                     self.source_config.databaseFilterPattern,
                     database_fqn
                     if self.source_config.useFqnForFiltering

@@ -37,7 +37,7 @@ from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_func
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
 from metadata.utils.logger import ingestion_logger
 
@@ -142,7 +142,7 @@ class MetabaseSource(DashboardServiceSource):
 
                 if "name" not in chart_details:
                     continue
-                if filter_by_chart(
+                if filter_func(
                     self.source_config.chartFilterPattern, chart_details["name"]
                 ):
                     self.status.filter(

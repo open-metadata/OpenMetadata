@@ -38,7 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
-from metadata.utils.filters import filter_by_mlmodel
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -69,7 +69,7 @@ class MlflowSource(MlModelServiceSource):
         List and filters models from the registry
         """
         for model in cast(RegisteredModel, self.client.list_registered_models()):
-            if filter_by_mlmodel(
+            if filter_func(
                 self.source_config.mlModelFilterPattern, mlmodel_name=model.name
             ):
                 self.status.filter(

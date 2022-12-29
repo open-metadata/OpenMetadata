@@ -42,7 +42,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
@@ -195,7 +195,7 @@ class SnowflakeSource(CommonDbSourceService):
                     database_name=new_database,
                 )
 
-                if filter_by_database(
+                if filter_func(
                     self.source_config.databaseFilterPattern,
                     database_fqn
                     if self.source_config.useFqnForFiltering

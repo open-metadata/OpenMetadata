@@ -42,7 +42,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_topic
+from metadata.utils.filters import filter_func
 
 
 class BrokerTopicDetails(BaseModel):
@@ -158,7 +158,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_topic(self) -> Any:
         for topic_details in self.get_topic_list():
             topic_name = self.get_topic_name(topic_details)
-            if filter_by_topic(
+            if filter_func(
                 self.source_config.topicFilterPattern,
                 topic_name,
             ):

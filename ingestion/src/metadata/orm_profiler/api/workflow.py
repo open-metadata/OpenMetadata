@@ -80,7 +80,7 @@ from metadata.utils.class_helper import (
     get_service_type_from_source_type,
 )
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
 from metadata.utils.partition import get_partition_details
@@ -316,7 +316,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
     def filter_databases(self, database: Database) -> Optional[Database]:
         """Returns filtered database entities"""
-        if filter_by_database(
+        if filter_func(
             self.source_config.databaseFilterPattern,
             database.name.__root__,
         ):
@@ -335,7 +335,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         for table in tables:
             try:
-                if filter_by_schema(
+                if filter_func(
                     self.source_config.schemaFilterPattern,
                     table.databaseSchema.name,  # type: ignore
                 ):
@@ -344,7 +344,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                         "Schema pattern not allowed",
                     )
                     continue
-                if filter_by_table(
+                if filter_func(
                     self.source_config.tableFilterPattern,
                     table.name.__root__,
                 ):

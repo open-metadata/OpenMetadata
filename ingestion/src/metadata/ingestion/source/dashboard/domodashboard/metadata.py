@@ -33,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_func
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -122,7 +122,7 @@ class DomodashboardSource(DashboardServiceSource):
                     f"{charts['id']}/kpis/details/{chart['id']}"
                 )
 
-                if filter_by_chart(
+                if filter_func(
                     self.source_config.chartFilterPattern, chart["title"]
                 ):
                     self.status.filter(chart["title"], "Chart Pattern not allowed")

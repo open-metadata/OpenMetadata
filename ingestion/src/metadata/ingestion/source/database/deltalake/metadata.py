@@ -49,7 +49,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -164,7 +164,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 database_name=self.context.database.name.__root__,
                 schema_name=schema.name,
             )
-            if filter_by_schema(
+            if filter_func(
                 self.config.sourceConfig.config.schemaFilterPattern,
                 schema_fqn
                 if self.config.sourceConfig.config.useFqnForFiltering
@@ -207,7 +207,7 @@ class DeltalakeSource(DatabaseServiceSource):
                     schema_name=self.context.database_schema.name.__root__,
                     table_name=table.name,
                 )
-                if filter_by_table(
+                if filter_func(
                     self.source_config.tableFilterPattern,
                     table_fqn if self.source_config.useFqnForFiltering else table.name,
                 ):

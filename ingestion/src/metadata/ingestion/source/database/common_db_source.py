@@ -53,7 +53,7 @@ from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandl
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
 
@@ -204,7 +204,7 @@ class CommonDbSourceService(
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
                     )
-                    if filter_by_table(
+                    if filter_func(
                         self.source_config.tableFilterPattern,
                         table_fqn
                         if self.source_config.useFqnForFiltering
@@ -229,7 +229,7 @@ class CommonDbSourceService(
                         table_name=view_name,
                     )
 
-                    if filter_by_table(
+                    if filter_func(
                         self.source_config.tableFilterPattern,
                         view_fqn
                         if self.source_config.useFqnForFiltering

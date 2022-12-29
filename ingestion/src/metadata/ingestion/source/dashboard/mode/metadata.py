@@ -36,7 +36,7 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -187,7 +187,7 @@ class ModeSource(DashboardServiceSource):
             for chart in charts:
                 chart_name = chart[mode_client.VIEW_VEGAS].get(mode_client.TITLE)
                 try:
-                    if filter_by_chart(
+                    if filter_func(
                         self.source_config.chartFilterPattern,
                         chart_name,
                     ):

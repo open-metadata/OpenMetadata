@@ -36,7 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     POSTGRES_GET_TABLE_NAMES,
@@ -128,7 +128,7 @@ class PostgresSource(CommonDbSourceService):
                     database_name=new_database,
                 )
 
-                if filter_by_database(
+                if filter_func(
                     self.source_config.databaseFilterPattern,
                     database_fqn
                     if self.source_config.useFqnForFiltering

@@ -53,7 +53,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -139,21 +139,34 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
 
     def fetch_gcs_bucket_names(self):
         for bucket in self.client.list_buckets():
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
-                schema_name=bucket.name,
-            )
-            if filter_by_schema(
+
+            if filter_func(
                 self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn
-                if self.config.sourceConfig.config.useFqnForFiltering
-                else bucket.name,
+                bucket.name,
             ):
-                self.status.filter(schema_fqn, "Bucket Filtered Out")
+                self.status.filter(
+                    f"{self.context.database.name.__root__}{bucket.name}",
+                    "Bucket Filtered Out",
+                )
                 continue
+
+            if self.config.sourceConfig.config.useFqnForFiltering:
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=bucket.name,
+                )
+                if filter_func(
+                    self.config.sourceConfig.config.schemaFilterPattern,
+                    schema_fqn,
+                ):
+                    self.status.filter(
+                        schema_fqn,
+                        "Bucket Filtered Out",
+                    )
+                    continue
 
             yield bucket.name
 
@@ -166,7 +179,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 database_name=self.context.database.name.__root__,
                 schema_name=bucket["Name"],
             )
-            if filter_by_schema(
+            if filter_func(
                 self.config.sourceConfig.config.schemaFilterPattern,
                 schema_fqn
                 if self.config.sourceConfig.config.useFqnForFiltering
@@ -214,7 +227,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 database_name=self.context.database.name.__root__,
                 schema_name=schema["name"],
             )
-            if filter_by_schema(
+            if filter_func(
                 self.config.sourceConfig.config.schemaFilterPattern,
                 schema_fqn
                 if self.config.sourceConfig.config.useFqnForFiltering
@@ -281,7 +294,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         table_name=table_name,
                     )
 
-                    if filter_by_table(
+                    if filter_func(
                         self.config.sourceConfig.config.tableFilterPattern,
                         table_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
@@ -308,7 +321,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
                     )
-                    if filter_by_table(
+                    if filter_func(
                         self.config.sourceConfig.config.tableFilterPattern,
                         table_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
@@ -341,7 +354,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                             schema_name=self.context.database_schema.name.__root__,
                             table_name=table_name,
                         )
-                        if filter_by_table(
+                        if filter_func(
                             self.config.sourceConfig.config.tableFilterPattern,
                             table_fqn
                             if self.config.sourceConfig.config.useFqnForFiltering

@@ -48,7 +48,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -160,7 +160,7 @@ class SalesforceSource(DatabaseServiceSource):
                         schema_name=self.context.database_schema.name.__root__,
                         table_name=table_name,
                     )
-                    if filter_by_table(
+                    if filter_func(
                         self.config.sourceConfig.config.tableFilterPattern,
                         table_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering

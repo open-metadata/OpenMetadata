@@ -57,7 +57,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardUsage,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_func
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -345,7 +345,7 @@ class LookerSource(DashboardServiceSource):
         """
         for chart in dashboard_details.dashboard_elements:
             try:
-                if filter_by_chart(
+                if filter_func(
                     chart_filter_pattern=self.source_config.chartFilterPattern,
                     chart_name=chart.id,
                 ):

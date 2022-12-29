@@ -50,7 +50,7 @@ from metadata.utils.constants import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
 )
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_func
 from metadata.utils.graphql_queries import TABLEAU_LINEAGE_GRAPHQL_QUERY
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -361,7 +361,7 @@ class TableauSource(DashboardServiceSource):
         """
         for chart in dashboard_details.charts or []:
             try:
-                if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
+                if filter_func(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 workbook_name = dashboard_details.name.replace(" ", "")

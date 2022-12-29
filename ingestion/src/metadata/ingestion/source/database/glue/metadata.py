@@ -49,7 +49,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -120,7 +120,7 @@ class GlueSource(DatabaseServiceSource):
                         service_name=self.context.database_service.name.__root__,
                         database_name=schema["CatalogId"],
                     )
-                    if filter_by_database(
+                    if filter_func(
                         self.config.sourceConfig.config.databaseFilterPattern,
                         database_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
@@ -171,7 +171,7 @@ class GlueSource(DatabaseServiceSource):
                         database_name=self.context.database.name.__root__,
                         schema_name=schema["Name"],
                     )
-                    if filter_by_schema(
+                    if filter_func(
                         self.config.sourceConfig.config.schemaFilterPattern,
                         schema_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
@@ -227,7 +227,7 @@ class GlueSource(DatabaseServiceSource):
                     schema_name=self.context.database_schema.name.__root__,
                     table_name=table_name,
                 )
-                if filter_by_table(
+                if filter_func(
                     self.config.sourceConfig.config.tableFilterPattern,
                     table_fqn
                     if self.config.sourceConfig.config.useFqnForFiltering

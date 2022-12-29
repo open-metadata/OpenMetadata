@@ -68,7 +68,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_schema
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -454,7 +454,7 @@ class DatabaseServiceSource(
                 database_name=self.context.database.name.__root__,
                 schema_name=schema_name,
             )
-            if filter_by_schema(
+            if filter_func(
                 self.source_config.schemaFilterPattern,
                 schema_fqn if self.source_config.useFqnForFiltering else schema_name,
             ):

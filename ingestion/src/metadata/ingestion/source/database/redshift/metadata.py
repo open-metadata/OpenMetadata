@@ -47,7 +47,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_table
+from metadata.utils.filters import filter_func
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -504,7 +504,7 @@ class RedshiftSource(CommonDbSourceService):
                     schema_name=self.context.database_schema.name.__root__,
                     table_name=table_name,
                 )
-                if filter_by_table(
+                if filter_func(
                     self.source_config.tableFilterPattern,
                     table_fqn if self.source_config.useFqnForFiltering else table_name,
                 ):
@@ -525,7 +525,7 @@ class RedshiftSource(CommonDbSourceService):
                     schema_name=self.context.database_schema.name.__root__,
                     table_name=view_name,
                 )
-                if filter_by_table(
+                if filter_func(
                     self.source_config.tableFilterPattern,
                     view_fqn if self.source_config.useFqnForFiltering else view_name,
                 ):
@@ -553,7 +553,7 @@ class RedshiftSource(CommonDbSourceService):
                     database_name=new_database,
                 )
 
-                if filter_by_database(
+                if filter_func(
                     self.source_config.databaseFilterPattern,
                     database_fqn
                     if self.source_config.useFqnForFiltering
