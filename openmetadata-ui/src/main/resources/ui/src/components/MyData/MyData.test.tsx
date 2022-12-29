@@ -372,7 +372,7 @@ describe('Test MyData page', () => {
     expect(leftPanel).toBeInTheDocument();
     expect(rightPanel).toBeInTheDocument();
     expect(recentSearchedTerms).toBeInTheDocument();
-    expect(entityList.length).toBe(2);
+    expect(entityList).toHaveLength(2);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

@@ -376,7 +376,9 @@ export const getEntityFeedLink = (
   fqn: string,
   field?: string
 ): string | undefined => {
-  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+  if (isUndefined(type) || isUndefined(fqn)) {
+    return undefined;
+  }
   // url decode the fqn
   fqn = decodeURIComponent(fqn);
 

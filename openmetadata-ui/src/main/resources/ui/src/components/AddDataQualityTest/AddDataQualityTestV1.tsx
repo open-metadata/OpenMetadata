@@ -180,7 +180,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
 
   const handleFormSubmit = async (data: TestCase) => {
     setTestCaseData(data);
-    if (isUndefined(selectedTestSuite)) return;
+    if (isUndefined(selectedTestSuite)) {
+      return;
+    }
     try {
       const { parameterValues, testDefinition, name, entityLink, description } =
         data;

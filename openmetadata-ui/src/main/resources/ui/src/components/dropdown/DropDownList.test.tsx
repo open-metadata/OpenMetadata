@@ -64,7 +64,7 @@ describe('Test DropDownList Component', () => {
       />
     );
 
-    expect(getAllByTestId(container, 'list-item').length).toBe(2);
+    expect(getAllByTestId(container, 'list-item')).toHaveLength(2);
   });
 
   it('OnSelect of List item, callback should be called', () => {

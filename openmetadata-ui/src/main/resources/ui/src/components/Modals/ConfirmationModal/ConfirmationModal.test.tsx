@@ -42,13 +42,13 @@ describe('Test Ingestion modal component', () => {
 
     expect(confirmationModal).toBeInTheDocument();
     expect(header).toBeInTheDocument();
-    expect(header.textContent).toStrictEqual('confirmation modal');
+    expect(header.textContent).toBe('confirmation modal');
     expect(bodyText).toBeInTheDocument();
-    expect(bodyText.textContent).toStrictEqual('Are you sure?');
+    expect(bodyText.textContent).toBe('Are you sure?');
     expect(cancel).toBeInTheDocument();
-    expect(cancel.textContent).toStrictEqual('Cancel');
+    expect(cancel.textContent).toBe('Cancel');
     expect(save).toBeInTheDocument();
-    expect(save.textContent).toStrictEqual('Save');
+    expect(save.textContent).toBe('Save');
 
     fireEvent.click(cancel);
 

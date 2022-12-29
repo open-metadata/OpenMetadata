@@ -159,7 +159,7 @@ describe('Test AddUsersModal component', () => {
     });
     const userCard = await screen.findAllByTestId('user-card');
 
-    expect(userCard.length).toBe(mockAllUsers.length);
+    expect(userCard).toHaveLength(mockAllUsers.length);
   });
 
   it('Onclick of Discard button, onCancel callback should called', async () => {

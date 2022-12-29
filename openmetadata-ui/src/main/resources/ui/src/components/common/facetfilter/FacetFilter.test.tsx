@@ -123,7 +123,7 @@ describe('Test FacetFilter Component', () => {
       content.startsWith('filter-heading-')
     );
 
-    expect(filterHeadings.length).toBe(7);
+    expect(filterHeadings).toHaveLength(7);
     expect(
       filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
     ).toStrictEqual(
@@ -156,7 +156,7 @@ describe('Test FacetFilter Component', () => {
       content.startsWith('filter-heading-')
     );
 
-    expect(filterHeadings.length).toBe(8);
+    expect(filterHeadings).toHaveLength(8);
     expect(
       filterHeadings.map((fh) => fh.getAttribute('data-testid')).sort()
     ).toStrictEqual(

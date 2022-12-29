@@ -90,8 +90,12 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           onClose: () => {
             toggleMentionList(true);
           },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onSelect: (item: Record<string, any>, insertItem: Function) => {
+          onSelect: (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            item: Record<string, any>,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            insertItem: (item: Record<string, any>) => void
+          ) => {
             toggleMentionList(true);
             insertItem(item);
           },

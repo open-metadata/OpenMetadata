@@ -94,7 +94,7 @@ describe('Test Popover content component', () => {
 
     const replyButton = screen.queryByTestId('add-reply');
 
-    expect(replyButton).toBe(null);
+    expect(replyButton).toBeNull();
   });
 
   it('Should render reaction popover on click of reaction button', async () => {

@@ -110,7 +110,7 @@ describe('Test Auth0Callback component', () => {
     // eslint-disable-next-line no-undef
     await new Promise(process.nextTick);
 
-    expect(localStorageMock.getItem(oidcTokenKey)).toEqual('raw_id_token');
+    expect(localStorageMock.getItem(oidcTokenKey)).toBe('raw_id_token');
     expect(mockSetIsAuthenticated).toHaveBeenCalledTimes(1);
     expect(mockSetIsAuthenticated).toHaveBeenCalledWith(true);
     expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);

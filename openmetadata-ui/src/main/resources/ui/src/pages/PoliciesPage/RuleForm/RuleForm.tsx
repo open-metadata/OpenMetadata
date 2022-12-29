@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -217,7 +218,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           initialValue={ruleData.description || ''}
           placeHolder={t('message.write-your-description')}
           style={{ margin: 0 }}
-          onTextChange={(value) =>
+          onTextChange={(value: string) =>
             setRuleData((prev: Rule) => ({ ...prev, description: value }))
           }
         />
@@ -240,7 +241,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           placeholder={t('label.select-resource-plural')}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
-          onChange={(values) => {
+          onChange={(values: string[]) => {
             setRuleData((prev: Rule) => ({
               ...prev,
               resources: values,
@@ -266,7 +267,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           placeholder="Select Operations"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
-          onChange={(values) => {
+          onChange={(values: Operation[]) => {
             setRuleData((prev: Rule) => ({
               ...prev,
               operations: values,

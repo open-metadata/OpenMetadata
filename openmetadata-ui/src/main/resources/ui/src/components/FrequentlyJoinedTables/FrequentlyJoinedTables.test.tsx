@@ -63,7 +63,7 @@ describe('Test QueryDetails Component', () => {
     );
     const tableData = getAllByTestId(container, 'related-tables-data');
 
-    expect(tableData.length).toBe(4);
+    expect(tableData).toHaveLength(4);
     expect(tableData.map((tableName) => tableName.textContent)).toStrictEqual([
       'shopify/fact_order150',
       'shopify/fact_sale55',

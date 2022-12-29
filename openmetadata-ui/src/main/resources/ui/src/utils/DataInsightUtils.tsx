@@ -556,8 +556,9 @@ export const getEntitiesChartSummary = (
     );
 
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.TotalEntitiesByTier) {
         const { total } = getGraphDataByTierType(chartData.data ?? []);
 
@@ -585,8 +586,9 @@ export const getWebChartSummary = (
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
         const latestData = last(chartData.data);
 

@@ -367,7 +367,9 @@ const ConfigureIngestion = ({
       ? inputValue.split(separator)
       : Array(inputValue);
 
-    if (databaseNames) handleDatasetServiceName(databaseNames);
+    if (databaseNames) {
+      handleDatasetServiceName(databaseNames);
+    }
   };
 
   const getDashboardDBServiceName = () => {

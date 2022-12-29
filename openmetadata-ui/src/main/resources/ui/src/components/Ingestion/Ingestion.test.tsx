@@ -208,7 +208,7 @@ describe('Test Ingestion page', () => {
     const logsButton = await findByTestId('logs');
 
     expect(ingestionTable).toBeInTheDocument();
-    expect(tableHeaderContainer.length).toBe(5);
+    expect(tableHeaderContainer).toHaveLength(5);
     expect(runButton).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
