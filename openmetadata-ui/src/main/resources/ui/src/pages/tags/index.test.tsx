@@ -309,7 +309,7 @@ describe('Test TagsPage page', () => {
     expect(header).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(table).toBeInTheDocument();
-    expect(sidePanelCategories).toHaveLength(2);
+    expect(sidePanelCategories).toHaveLength(3);
   });
 
   it('OnClick of add new tag, FormModal should display', async () => {
@@ -474,7 +474,7 @@ describe('Test TagsPage page', () => {
     expect(header).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(table).toBeInTheDocument();
-    expect(sidePanelCategories).toHaveLength(2);
+    expect(sidePanelCategories).toHaveLength(3);
   });
 
   it('System tag category should not be renamed', async () => {
