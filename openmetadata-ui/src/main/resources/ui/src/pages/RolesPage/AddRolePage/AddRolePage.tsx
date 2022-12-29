@@ -105,7 +105,7 @@ const AddRolePage = () => {
           <TitleBreadcrumb titleLinks={breadcrumb} />
           <Card>
             <Typography.Paragraph
-              className="tw-text-base"
+              className="text-base"
               data-testid="form-title">
               {t('label.add-new-role')}
             </Typography.Paragraph>
@@ -152,7 +152,7 @@ const AddRolePage = () => {
                 <RichTextEditor
                   height="200px"
                   initialValue={description}
-                  placeHolder={t('label.write-your-description')}
+                  placeHolder={t('message.write-your-description')}
                   style={{ margin: 0 }}
                   onTextChange={(value) => setDescription(value)}
                 />
@@ -164,7 +164,7 @@ const AddRolePage = () => {
                   {
                     required: true,
                     message: t('message.field-text-is-required', {
-                      fieldText: t('label.at-least-one-policy'),
+                      fieldText: t('message.at-least-one-policy'),
                     }),
                   },
                 ]}>
@@ -182,7 +182,7 @@ const AddRolePage = () => {
                 </Select>
               </Form.Item>
 
-              <Space align="center" className="tw-w-full tw-justify-end">
+              <Space align="center" className="w-full justify-end">
                 <Button
                   data-testid="cancel-btn"
                   type="link"
@@ -202,7 +202,7 @@ const AddRolePage = () => {
         </Space>
 
         <div className="m-t-xlg p-l-lg w-max-400">
-          <Typography.Paragraph className="tw-text-base tw-font-medium">
+          <Typography.Paragraph className="text-base font-medium">
             {t('label.add-role')}
           </Typography.Paragraph>
           <Typography.Text>{t('message.add-role-message')}</Typography.Text>

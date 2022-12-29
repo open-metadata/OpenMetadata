@@ -110,7 +110,7 @@ const AddPolicyPage = () => {
               <TitleBreadcrumb titleLinks={breadcrumb} />
               <Card>
                 <Typography.Paragraph
-                  className="tw-text-base"
+                  className="text-base"
                   data-testid="form-title">
                   {t('label.add-new-policy')}
                 </Typography.Paragraph>
@@ -174,7 +174,7 @@ const AddPolicyPage = () => {
                   </Divider>
                   <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
-                  <Space align="center" className="tw-w-full tw-justify-end">
+                  <Space align="center" className="w-full justify-end">
                     <Button
                       data-testid="cancel-btn"
                       type="link"
@@ -194,7 +194,7 @@ const AddPolicyPage = () => {
             </Space>
           </Col>
           <Col className="p-l-lg m-t-xlg" span={8}>
-            <Typography.Paragraph className="tw-text-base tw-font-medium">
+            <Typography.Paragraph className="text-base font-medium">
               {t('label.add-policy')}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
