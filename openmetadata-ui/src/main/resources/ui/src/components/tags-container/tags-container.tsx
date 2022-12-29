@@ -31,11 +31,6 @@ import { Button } from '../buttons/Button/Button';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
 
-interface Option {
-  label: string;
-  value: string;
-}
-
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   children,
   editable,
@@ -153,6 +148,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             autoFocus
             open
             className={classNames('w-min-10', className)}
+            data-testid="tag-selector"
             defaultValue={tags}
             mode="multiple"
             options={tagOptions}
