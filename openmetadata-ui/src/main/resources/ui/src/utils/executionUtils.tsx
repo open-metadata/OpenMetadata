@@ -64,7 +64,9 @@ export const getTableViewData = (
   executions: PipelineStatus[] | undefined,
   status: string | undefined
 ): Array<ViewDataInterface> | undefined => {
-  if (isUndefined(executions)) return;
+  if (isUndefined(executions)) {
+    return;
+  }
 
   const viewData: Array<ViewDataInterface> = [];
   executions?.map((execution) => {
@@ -197,8 +199,9 @@ export const getTreeData = (
     };
 
     // skip the down stream node as it will be render by the parent task
-    if (isDownStreamTask) continue;
-    else if (hasDownStream) {
+    if (isDownStreamTask) {
+      continue;
+    } else if (hasDownStream) {
       const dataChildren: DataNode[] = [];
       const labelChildren: DataNode[] = [];
       // get execution list of downstream tasks

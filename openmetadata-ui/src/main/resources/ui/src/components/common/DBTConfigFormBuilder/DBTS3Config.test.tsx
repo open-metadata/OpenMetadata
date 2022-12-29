@@ -179,7 +179,7 @@ describe('Test DBT S3 Config Form', () => {
       },
     });
 
-    expect(mockSecurityConfigChange).toBeCalledTimes(5);
+    expect(mockSecurityConfigChange).toHaveBeenCalledTimes(5);
   });
 
   it('prefix config should change', async () => {
@@ -199,7 +199,7 @@ describe('Test DBT S3 Config Form', () => {
       },
     });
 
-    expect(mockPrefixConfigChange).toBeCalledTimes(2);
+    expect(mockPrefixConfigChange).toHaveBeenCalledTimes(2);
   });
 
   it('should show errors on submit', async () => {
@@ -208,7 +208,7 @@ describe('Test DBT S3 Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).not.toBeCalled();
+    expect(mockSubmit).not.toHaveBeenCalled();
   });
 
   it('should submit', async () => {
@@ -230,7 +230,7 @@ describe('Test DBT S3 Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).toBeCalled();
+    expect(mockSubmit).toHaveBeenCalled();
   });
 
   it('should cancel', async () => {
@@ -239,6 +239,6 @@ describe('Test DBT S3 Config Form', () => {
 
     fireEvent.click(backBtn);
 
-    expect(mockCancel).toBeCalled();
+    expect(mockCancel).toHaveBeenCalled();
   });
 });

@@ -55,7 +55,7 @@ export const getDashboards = async (
   return response.data;
 };
 
-export const getDashboardDetails: Function = (
+export const getDashboardDetails = (
   id: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {

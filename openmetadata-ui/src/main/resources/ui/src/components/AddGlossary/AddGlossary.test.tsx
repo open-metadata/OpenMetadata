@@ -89,7 +89,7 @@ describe('Test AddGlossary component', () => {
       })
     );
 
-    expect(mockOnCancel).toBeCalled();
+    expect(mockOnCancel).toHaveBeenCalled();
   });
 
   it('should be able to save', () => {
@@ -113,7 +113,7 @@ describe('Test AddGlossary component', () => {
       })
     );
 
-    expect(mockOnSave).toBeCalled();
+    expect(mockOnSave).toHaveBeenCalled();
   });
 
   it('should not be able to save', () => {
@@ -137,6 +137,6 @@ describe('Test AddGlossary component', () => {
       })
     );
 
-    expect(mockOnSave).not.toBeCalled();
+    expect(mockOnSave).not.toHaveBeenCalled();
   });
 });

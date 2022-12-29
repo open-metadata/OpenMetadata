@@ -144,10 +144,12 @@ const getNodeType = (entityLineage: EntityLineage, id: string) => {
   );
   const hasUpstreamToEntity = upStreamEdges.find((up) => up.toEntity === id);
 
-  if (hasDownStreamToEntity && !hasDownStreamFromEntity)
+  if (hasDownStreamToEntity && !hasDownStreamFromEntity) {
     return EntityLineageNodeType.OUTPUT;
-  if (hasUpstreamFromEntity && !hasUpstreamToEntity)
+  }
+  if (hasUpstreamFromEntity && !hasUpstreamToEntity) {
     return EntityLineageNodeType.INPUT;
+  }
 
   return EntityLineageNodeType.DEFAULT;
 };
@@ -156,10 +158,15 @@ export const getColumnType = (edges: Edge[], id: string) => {
   const sourceEdge = edges.find((edge) => edge.sourceHandle === id);
   const targetEdge = edges.find((edge) => edge.targetHandle === id);
 
-  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id)
+  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id) {
     return EntityLineageNodeType.DEFAULT;
-  if (sourceEdge?.sourceHandle === id) return EntityLineageNodeType.INPUT;
-  if (targetEdge?.targetHandle === id) return EntityLineageNodeType.OUTPUT;
+  }
+  if (sourceEdge?.sourceHandle === id) {
+    return EntityLineageNodeType.INPUT;
+  }
+  if (targetEdge?.targetHandle === id) {
+    return EntityLineageNodeType.OUTPUT;
+  }
 
   return EntityLineageNodeType.NOT_CONNECTED;
 };
@@ -957,7 +964,7 @@ export const getAllTracedNodes = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n.id == tracedNode.id) === -1) {
+    if (prevTraced.findIndex((n) => n.id === tracedNode.id) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedNodes(
@@ -969,7 +976,7 @@ export const getAllTracedNodes = (
       ).forEach((foundNode) => {
         memo.push(foundNode);
 
-        if (prevTraced.findIndex((n) => n.id == foundNode.id) === -1) {
+        if (prevTraced.findIndex((n) => n.id === foundNode.id) === -1) {
           prevTraced.push(foundNode);
         }
       });
@@ -1048,14 +1055,14 @@ export const getAllTracedEdges = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n == tracedNode) === -1) {
+    if (prevTraced.findIndex((n) => n === tracedNode) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
         (foundNode) => {
           memo.push(foundNode);
 
-          if (prevTraced.findIndex((n) => n == foundNode) === -1) {
+          if (prevTraced.findIndex((n) => n === foundNode) === -1) {
             prevTraced.push(foundNode);
           }
         }

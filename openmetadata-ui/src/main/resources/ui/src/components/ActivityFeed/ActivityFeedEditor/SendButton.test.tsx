@@ -36,7 +36,7 @@ describe('Test SendButton Component', () => {
 
     fireEvent.click(sendButton);
 
-    expect(onSaveHandler).toBeCalled();
+    expect(onSaveHandler).toHaveBeenCalled();
   });
 
   it('Button Should be disabled if editorvalue length is 0', async () => {

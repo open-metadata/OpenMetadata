@@ -127,7 +127,7 @@ describe('Signup page', () => {
 
       fireEvent.submit(form);
 
-      expect(mockSubmitHandler).toBeCalledTimes(1);
+      expect(mockSubmitHandler).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -164,13 +164,13 @@ describe('Signup page', () => {
         target: { name: 'displayName', value: 'sample@sample.com' },
       });
 
-      expect(mockChangeHandler).toBeCalledTimes(3);
+      expect(mockChangeHandler).toHaveBeenCalledTimes(3);
 
       form.onsubmit = mockSubmitHandler;
 
       fireEvent.submit(form);
 
-      expect(mockSubmitHandler).toBeCalledTimes(1);
+      expect(mockSubmitHandler).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -204,7 +204,7 @@ describe('Signup page', () => {
       });
     });
 
-    expect(mockChangeHandler).toBeCalledTimes(3);
+    expect(mockChangeHandler).toHaveBeenCalledTimes(3);
 
     form.onsubmit = mockSubmitHandler;
 
@@ -245,7 +245,7 @@ describe('Signup page', () => {
     usernameInput.onchange = mockChangeHandler;
     emailInput.onchange = mockChangeHandler;
 
-    expect(mockChangeHandler).not.toBeCalled();
+    expect(mockChangeHandler).not.toHaveBeenCalled();
 
     form.onsubmit = mockSubmitHandler;
 

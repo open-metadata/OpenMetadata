@@ -147,9 +147,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
 
   const getProfileSampleValue = () => {
     let value;
-    if (profile?.profileSampleType == ProfileSampleType.Percentage) {
+    if (profile?.profileSampleType === ProfileSampleType.Percentage) {
       value = `${profile?.profileSample ?? 100}%`;
-    } else if (profile?.profileSampleType == ProfileSampleType.Rows) {
+    } else if (profile?.profileSampleType === ProfileSampleType.Rows) {
       value = `${profile?.profileSample} ${
         profile?.profileSampleType.toString().length > 1
           ? t('label.row-plural')

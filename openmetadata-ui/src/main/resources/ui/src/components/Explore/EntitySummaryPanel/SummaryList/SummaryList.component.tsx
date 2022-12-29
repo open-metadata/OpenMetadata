@@ -84,7 +84,9 @@ export default function SummaryList({
         tags: feature.tags,
         description: feature.description,
       }));
-    } else return [];
+    } else {
+      return [];
+    }
   }, [columns, charts, tasks, mlFeatures]);
 
   return (

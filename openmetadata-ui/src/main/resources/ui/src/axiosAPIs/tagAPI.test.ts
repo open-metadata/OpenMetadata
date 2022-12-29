@@ -58,13 +58,13 @@ describe('API functions should work properly', () => {
   it('getTags function should work properly', async () => {
     const data = await getTags({ arrQueryFields: 'query' });
 
-    expect(data).toEqual(`get_request/tags?fields=query`);
+    expect(data).toBe(`get_request/tags?fields=query`);
   });
 
   it('getClassificationByName function should work properly', async () => {
     const result = await getClassificationByName('categoryName', 'query');
 
-    expect(result).toEqual(
+    expect(result).toBe(
       `get_request/classifications/name/categoryName?fields=query`
     );
   });
@@ -72,14 +72,14 @@ describe('API functions should work properly', () => {
   it('deleteClassification function should work properly', async () => {
     const result = await deleteClassification('classificationId');
 
-    expect(result).toEqual(`delete_request/classifications/classificationId`);
+    expect(result).toBe(`delete_request/classifications/classificationId`);
   });
 
   // TODO:9259 deleting tag with classificationId?
   it('deleteTag function should work properly', async () => {
     const result = await deleteTag('classificationId');
 
-    expect(result).toEqual(`delete_request/tags/classificationId`);
+    expect(result).toBe(`delete_request/tags/classificationId`);
   });
 
   it('createClassification function should work properly', async () => {

@@ -371,12 +371,14 @@ export const isLeafNode = (
 
 export const ENTITY_LINK_SEPARATOR = '::';
 
-export const getEntityFeedLink: Function = (
-  type: string,
-  fqn: string,
+export const getEntityFeedLink = (
+  type?: string,
+  fqn?: string,
   field?: string
-): string | undefined => {
-  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+): string => {
+  if (isUndefined(type) || isUndefined(fqn)) {
+    return '';
+  }
   // url decode the fqn
   fqn = decodeURIComponent(fqn);
 

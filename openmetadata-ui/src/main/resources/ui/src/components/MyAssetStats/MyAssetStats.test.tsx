@@ -61,7 +61,7 @@ describe('Test MyDataHeader Component', () => {
 
     const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary.length).toBe(9);
+    expect(dataSummary).toHaveLength(9);
   });
 
   it('OnClick it should redirect to respective page', () => {

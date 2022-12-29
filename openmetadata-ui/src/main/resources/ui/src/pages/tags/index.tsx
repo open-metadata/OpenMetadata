@@ -674,11 +674,7 @@ const TagsPage = () => {
                   {record.usageCount}
                 </Link>
               ) : (
-                <span
-                  className="tw-no-description"
-                  side-panel-classification="usage-count">
-                  {t('label.not-used')}
-                </span>
+                <span className="tw-no-description">{t('label.not-used')}</span>
               )}
             </div>
           </div>
@@ -698,7 +694,6 @@ const TagsPage = () => {
               record.provider === ProviderType.System ||
               !classificationPermissions.EditAll
             }
-            side-panel-classification="delete-tag"
             onClick={() => handleActionDeleteTag(record)}>
             {deleteTags.data?.id === record.id ? (
               deleteTags.data?.status === 'success' ? (

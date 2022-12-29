@@ -25,6 +25,11 @@ import { UserTag } from '../common/UserTag/UserTag.component';
 import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
 
+/**
+ * @deprecated -- Use AntD components instead
+ * @param param0
+ * @returns Dropdown list
+ */
 const DropDownList: FunctionComponent<DropDownListProp> = ({
   dropDownList,
   isLoading = false,
@@ -48,9 +53,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
-  const [dropDownPosition, setDropDownPosition] = useState<
-    { bottom: string } | {}
-  >({});
+  const [dropDownPosition, setDropDownPosition] =
+    useState<{ bottom: string }>();
 
   const setCurrentTabOnMount = () => {
     const selectedItem = dropDownList.find((l) => l.value === value);

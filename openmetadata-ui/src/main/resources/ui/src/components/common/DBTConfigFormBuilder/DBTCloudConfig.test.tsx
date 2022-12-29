@@ -78,7 +78,7 @@ describe('Test DBT Cloud Config Form', () => {
       },
     });
 
-    expect(mockAccountIdChange).toBeCalled();
+    expect(mockAccountIdChange).toHaveBeenCalled();
   });
 
   it('Authorization Token should change with input', async () => {
@@ -91,7 +91,7 @@ describe('Test DBT Cloud Config Form', () => {
       },
     });
 
-    expect(mockAuthTokenChange).toBeCalled();
+    expect(mockAuthTokenChange).toHaveBeenCalled();
   });
 
   it('Should show errors on submit when required fields do not have value provided', async () => {
@@ -100,7 +100,7 @@ describe('Test DBT Cloud Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).not.toBeCalled();
+    expect(mockSubmit).not.toHaveBeenCalled();
   });
 
   it('Should submit successfully when required fields have value provided', async () => {
@@ -115,7 +115,7 @@ describe('Test DBT Cloud Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).toBeCalled();
+    expect(mockSubmit).toHaveBeenCalled();
   });
 
   it('Should successfully cancel the operation', async () => {
@@ -124,6 +124,6 @@ describe('Test DBT Cloud Config Form', () => {
 
     fireEvent.click(backBtn);
 
-    expect(mockCancel).toBeCalled();
+    expect(mockCancel).toHaveBeenCalled();
   });
 });

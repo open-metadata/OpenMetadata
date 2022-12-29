@@ -159,7 +159,7 @@ describe('Test AddUsersModal component', () => {
     });
     const userCard = await screen.findAllByTestId('user-card');
 
-    expect(userCard.length).toBe(mockAllUsers.length);
+    expect(userCard).toHaveLength(mockAllUsers.length);
   });
 
   it('Onclick of Discard button, onCancel callback should called', async () => {
@@ -177,7 +177,7 @@ describe('Test AddUsersModal component', () => {
     const discard = await screen.findByText(/Cancel/);
     fireEvent.click(discard);
 
-    expect(mockCancel).toBeCalledTimes(1);
+    expect(mockCancel).toHaveBeenCalledTimes(1);
   });
 
   it('Onclick of Save button, onSave callback should called', async () => {
@@ -195,6 +195,6 @@ describe('Test AddUsersModal component', () => {
     const save = await screen.findByText(/Save/);
     fireEvent.click(save);
 
-    expect(mockSave).toBeCalledTimes(1);
+    expect(mockSave).toHaveBeenCalledTimes(1);
   });
 });

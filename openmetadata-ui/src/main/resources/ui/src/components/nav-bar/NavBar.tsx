@@ -89,7 +89,9 @@ const NavBar = ({
   const { socket } = useWebSocketConnector();
 
   const navStyle = (value: boolean) => {
-    if (value) return { color: activeLink };
+    if (value) {
+      return { color: activeLink };
+    }
 
     return { color: normalLink };
   };

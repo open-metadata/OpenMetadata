@@ -14,7 +14,6 @@
 import { flatten, isNull } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 
-/* eslint-disable @typescript-eslint/camelcase */
 const mockTableSearchResponse = {
   took: 93,
   _shards: {
@@ -126,7 +125,6 @@ const mockSuggestUserResponse = {
     ],
   },
 };
-/* eslint-enable @typescript-eslint/camelcase */
 
 describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
@@ -143,9 +141,9 @@ describe('searchAPI tests', () => {
     const { searchQuery } = require('./searchAPI');
     const res = await searchQuery({ searchIndex: SearchIndex.TABLE });
 
-    expect(res.hits.total.value).toEqual(10_000);
+    expect(res.hits.total.value).toBe(10_000);
 
-    expect(res.hits.hits.length).toEqual(1);
+    expect(res.hits.hits).toHaveLength(1);
     expect(res.hits.hits[0]._index).toEqual(SearchIndex.TABLE);
     expect(res.hits.hits[0]._source).toEqual(
       expect.objectContaining({
@@ -169,7 +167,6 @@ describe('searchAPI tests', () => {
           buckets: expect.arrayContaining([
             {
               key: 'table',
-              /* eslint-disable-next-line @typescript-eslint/camelcase */
               doc_count: 10960,
             },
           ]),
@@ -178,12 +175,10 @@ describe('searchAPI tests', () => {
           buckets: expect.arrayContaining([
             {
               key: 'trino',
-              /* eslint-disable-next-line @typescript-eslint/camelcase */
               doc_count: 10924,
             },
             {
               key: 'sample_data',
-              /* eslint-disable-next-line @typescript-eslint/camelcase */
               doc_count: 36,
             },
           ]),
@@ -212,7 +207,7 @@ describe('searchAPI tests', () => {
         res.hits.hits[0]._source.owner === undefined
     ).toBeTruthy();
     // Deep checking for null values
-    expect(flatten(res.hits.hits[0]._source).filter(isNull).length).toEqual(0);
+    expect(flatten(res.hits.hits[0]._source).filter(isNull)).toHaveLength(0);
   });
 
   it('searchQuery should have type field', async () => {
@@ -227,7 +222,7 @@ describe('searchAPI tests', () => {
     const { searchQuery } = require('./searchAPI');
     const res = await searchQuery({ searchIndex: SearchIndex.TABLE });
 
-    expect(res.hits.hits[0]._source.type).toEqual('table');
+    expect(res.hits.hits[0]._source.type).toBe('table');
   });
 
   it('suggestQuery should return object and text', async () => {
@@ -278,7 +273,7 @@ describe('searchAPI tests', () => {
     const res = await suggestQuery({ searchIndex: SearchIndex.USER });
 
     // Deep checking for null values
-    expect(flatten(res[0]._source).filter(isNull).length).toEqual(0);
+    expect(flatten(res[0]._source).filter(isNull)).toHaveLength(0);
   });
 
   it('suggestQuery should have type field', async () => {
@@ -293,6 +288,6 @@ describe('searchAPI tests', () => {
     const { suggestQuery } = require('./searchAPI');
     const res = await suggestQuery({ searchIndex: SearchIndex.USER });
 
-    expect(res[0]._source.type).toEqual('user');
+    expect(res[0]._source.type).toBe('user');
   });
 });

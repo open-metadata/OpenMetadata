@@ -89,16 +89,13 @@ import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
-export const arraySorterByKey = (
-  key: string,
+export const arraySorterByKey = <T extends object>(
+  key: keyof T,
   sortDescending = false
-): Function => {
+) => {
   const sortOrder = sortDescending ? -1 : 1;
 
-  return (
-    elementOne: { [x: string]: number | string },
-    elementTwo: { [x: string]: number | string }
-  ) => {
+  return (elementOne: T, elementTwo: T) => {
     return (
       (elementOne[key] < elementTwo[key]
         ? -1
@@ -294,14 +291,9 @@ export const addToRecentSearched = (searchTerm: string): void => {
     let arrSearchedData: RecentlySearched['data'] = [];
     if (recentlySearch?.data) {
       const arrData = recentlySearch.data
-        // search term is not case-insensetive.
+        // search term is not case-insensitive.
         .filter((item) => item.term !== searchData.term)
-        .sort(
-          arraySorterByKey('timestamp', true) as (
-            a: RecentlySearchedData,
-            b: RecentlySearchedData
-          ) => number
-        );
+        .sort(arraySorterByKey<RecentlySearchedData>('timestamp', true));
       arrData.unshift(searchData);
 
       if (arrData.length > 5) {
@@ -880,7 +872,7 @@ export const Transi18next = ({
   ...otherProps
 }: {
   i18nKey: string;
-  values?: {};
+  values?: object;
   renderElement: JSX.Element | HTMLElement;
 }): JSX.Element => (
   <Trans i18nKey={i18nKey} values={values} {...otherProps}>

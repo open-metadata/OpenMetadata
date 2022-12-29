@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import React, { ReactNode } from 'react';
 
 export enum DropDownType {
   LINK = 'link',
@@ -30,10 +30,7 @@ export type DropDownListItem = {
   isOpenNewTab?: boolean;
   isText?: boolean;
   isAdminOnly?: boolean;
-} & Record<
-  string,
-  string | number | boolean | undefined | Function | React.ReactElement
->;
+} & Record<string, ReactNode>;
 
 export type GroupType = 'label' | 'tab';
 export type DropDownListProp = {
