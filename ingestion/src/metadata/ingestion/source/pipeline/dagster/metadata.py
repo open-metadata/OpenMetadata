@@ -42,13 +42,13 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils import fqn
-from metadata.utils.graphql_queries import (
+from metadata.ingestion.source.pipeline.dagster.queries import (
     DAGSTER_PIPELINE_DETAILS_GRAPHQL,
     GRAPHQL_QUERY_FOR_JOBS,
     GRAPHQL_RUNS_QUERY,
 )
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

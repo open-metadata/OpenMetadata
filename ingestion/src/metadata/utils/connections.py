@@ -26,38 +26,11 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import QueuePool
 
 from metadata.clients.atlas_client import AtlasClient
-from metadata.clients.connection_clients import (
-    AirByteClient,
-    AmundsenClient,
-    DagsterClient,
-    FivetranClient,
-    GluePipelineClient,
-    KinesisClient,
-    MlflowClientWrapper,
-    NifiClientWrapper,
-    SageMakerClient,
-)
-from metadata.clients.nifi_client import NifiClient
-from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
-    KinesisConnection,
-)
-from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
-    RedpandaConnection,
-)
 from metadata.generated.schema.entity.services.connections.metadata.amundsenConnection import (
     AmundsenConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
     AtlasConnection,
-)
-from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
-    MlflowConnection,
-)
-from metadata.generated.schema.entity.services.connections.mlmodel.sageMakerConnection import (
-    SageMakerConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
-    AirbyteConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
@@ -65,21 +38,11 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
-    DagsterConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
-    FivetranConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
-    GluePipelineConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.sql_queries import NEO4J_AMUNDSEN_USER_QUERY
-from metadata.utils.ssl_registry import get_verify_ssl_fn
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")
@@ -177,24 +140,11 @@ def singledispatch_with_options_secrets_verbose(fn):
 
 
 @singledispatch_with_options_secrets_verbose
-def get_connection(
-    connection, verbose: bool = False
-) -> Union[Engine, GluePipelineClient]:
+def get_connection(connection, verbose: bool = False) -> Union[Engine]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
     return create_generic_connection(connection, verbose)
-
-
-@get_connection.register
-def _(
-    connection: GluePipelineConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> GluePipelineConnection:
-    from metadata.clients.aws_client import AWSClient
-
-    glue_connection = AWSClient(connection.awsConfig).get_glue_pipeline_client()
-    return glue_connection
 
 
 @timeout(seconds=120)
@@ -216,147 +166,6 @@ def test_connection(connection) -> None:
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
-def _(connection: GluePipelineClient) -> None:
-    """
-    Test that we can connect to the source using the given aws resource
-    :param engine: boto cliet to test
-    :return: None or raise an exception if we cannot connect
-    """
-    from botocore.client import ClientError
-
-    try:
-        connection.client.list_workflows()
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
-def _(connection: AirflowConnection) -> None:
-    try:
-        test_connection(connection.connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(connection: AirflowConnection) -> None:
-    try:
-        return get_connection(connection.connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: AirbyteConnection, verbose: bool = False
-):  # pylint: disable=unused-argument
-    from metadata.clients.airbyte_client import AirbyteClient
-
-    return AirByteClient(AirbyteClient(connection))
-
-
-@test_connection.register
-def _(connection: AirByteClient) -> None:
-    try:
-        connection.client.list_workspaces()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: FivetranConnection, verbose: bool = False
-):  # pylint: disable=unused-argument
-    from metadata.clients.fivetran_client import FivetranClient as FivetranRestClient
-
-    return FivetranClient(FivetranRestClient(connection))
-
-
-@test_connection.register
-def _(connection: FivetranClient) -> None:
-    try:
-        connection.client.list_groups()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(
-    connection: NifiConnection, verbose: bool = False
-):  # pylint: disable=unused-argument
-
-    return NifiClientWrapper(
-        NifiClient(
-            host_port=connection.hostPort,
-            username=connection.username,
-            password=connection.password.get_secret_value(),
-            verify=connection.verifySSL,
-        )
-    )
-
-
-@test_connection.register
-def _(connection: NifiClientWrapper) -> None:
-    try:
-        connection.client.resources
-    except Exception as err:
-        raise SourceConnectionException(
-            f"Unknown error connecting with {connection} - {err}."
-        ) from err
-
-
-@get_connection.register
-def _(_: BackendConnection, verbose: bool = False):  # pylint: disable=unused-argument
-    """
-    Let's use Airflow's internal connection for this
-    """
-    from airflow import settings
-
-    with settings.Session() as session:
-        return session.get_bind()
-
-
-@test_connection.register
-def _(connection: DagsterClient) -> None:
-    from metadata.utils.graphql_queries import TEST_QUERY_GRAPHQL
-
-    try:
-        connection.client._execute(  # pylint: disable=protected-access
-            TEST_QUERY_GRAPHQL
-        )
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@get_connection.register
-def _(connection: DagsterConnection) -> DagsterClient:
-
-    from dagster_graphql import DagsterGraphQLClient
-    from gql.transport.requests import RequestsHTTPTransport
-
-    url = connection.host
-    dagster_connection = DagsterGraphQLClient(
-        url,
-        transport=RequestsHTTPTransport(
-            url=f"{url}/graphql",
-            headers={"Dagster-Cloud-Api-Token": connection.token.get_secret_value()}
-            if connection.token
-            else None,
-        ),
-    )
-    return DagsterClient(dagster_connection)
 
 
 @get_connection.register

@@ -18,35 +18,6 @@ from dataclasses import dataclass
 
 
 @dataclass
-class GluePipelineClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class AirByteClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-@dataclass
-class FivetranClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class DagsterClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class NifiClientWrapper:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
 class AmundsenClient:
     def __init__(self, client) -> None:
         self.client = client

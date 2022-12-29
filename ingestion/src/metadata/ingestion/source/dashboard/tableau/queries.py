@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -10,10 +10,26 @@
 #  limitations under the License.
 
 """
-Module constants
+GraphQL queries used during ingestion
 """
 
-TABLEAU_GET_WORKBOOKS_PARAM_DICT = {
-    "fields": "fields=_default_,owner.email,description"
+TABLEAU_LINEAGE_GRAPHQL_QUERY = """
+{
+  workbooks {
+    id
+    luid
+    name
+    upstreamTables{
+      name
+      schema
+      upstreamDatabases{
+        name
+      }
+      referencedByQueries{
+        name
+        query
+      }
+    }
+  }
 }
-TABLEAU_GET_VIEWS_PARAM_DICT = {"fields": "fields=_default_,sheetType"}
+"""
