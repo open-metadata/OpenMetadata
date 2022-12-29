@@ -16,7 +16,7 @@ from unittest.mock import patch
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.snowflake import SnowflakeSource
+from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
 
 mock_snowflake_config = {
     "source": {

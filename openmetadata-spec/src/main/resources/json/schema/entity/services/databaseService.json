@@ -39,8 +39,7 @@
         "SQLite",
         "DeltaLake",
         "Salesforce",
-        "SampleData",
-        "PinotDB",        
+        "PinotDB",
         "Datalake",
         "DomoDatabase",
         "QueryLog",
@@ -119,9 +118,6 @@
         },
         {
           "name": "Salesforce"
-        },
-        {
-          "name": "SampleData"
         },
         {
           "name": "PinotDB"
@@ -224,9 +220,6 @@
             },
             {
               "$ref": "./connections/database/verticaConnection.json"
-            },
-            {
-              "$ref": "./connections/database/sampleDataConnection.json"
             },
             {
               "$ref": "./connections/database/pinotDBConnection.json"

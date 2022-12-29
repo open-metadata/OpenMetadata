@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -91,7 +91,7 @@ export default function SummaryList({
     <Row>
       {isEmpty(formattedColumnsData) ? (
         <div className="m-y-md">
-          <Text className="text-gray">{t('label.no-data-available')}</Text>
+          <Text className="text-gray">{t('message.no-data-available')}</Text>
         </div>
       ) : (
         formattedColumnsData.map((entity) => (

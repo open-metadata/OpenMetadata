@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -204,7 +204,7 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
               {t('label.kpi-title')}
             </Typography.Title>
             <Typography.Text className="data-insight-label-text">
-              {t('label.kpi-subtitle')}
+              {t('message.kpi-subtitle')}
             </Typography.Text>
           </div>
         </Space>

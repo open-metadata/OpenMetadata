@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -202,7 +202,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         <Col span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
-              <div className="flex flex-col">
+              <div className="d-flex flex-col">
                 <SVGIcons
                   alt="bot-profile"
                   icon={Icons.BOT_PROFILE}
@@ -286,7 +286,7 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="page-layout-v1-left-panel mt-2">
           <div data-testid="right-panel">
-            <div className="flex flex-col">
+            <div className="d-flex flex-col">
               <Typography.Text className="mb-2 text-lg">
                 {t('label.token-security')}
               </Typography.Text>
@@ -338,7 +338,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         bodyText={t('message.are-you-sure-to-revoke-access')}
         cancelText={t('label.cancel')}
         confirmText={t('label.confirm')}
-        header={t('label.are-you-sure')}
+        header={t('message.are-you-sure')}
         visible={isRevokingToken}
         onCancel={() => setIsRevokingToken(false)}
         onConfirm={() => {

@@ -61,7 +61,7 @@ RUN pip install --upgrade pip
 RUN pip install "openmetadata-managed-apis==0.12.2.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==0.12.2.4"
 # remove all airflow providers except for docker
-RUN pip freeze | grep "apache-airlfow-providers" | grep -v "docker\|http" | xargs pip uninstall -y
+RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xargs pip uninstall -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 

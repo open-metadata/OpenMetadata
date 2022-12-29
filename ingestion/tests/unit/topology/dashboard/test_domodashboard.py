@@ -19,7 +19,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.dashboard.domodashboard import DomodashboardSource
+from metadata.ingestion.source.dashboard.domodashboard.metadata import (
+    DomodashboardSource,
+)
 
 mock_file_path = (
     Path(__file__).parent.parent.parent

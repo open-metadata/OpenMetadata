@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -277,7 +277,7 @@ const DataInsightPage = () => {
                 {t('label.data-insight-plural')}
               </Typography.Title>
               <Typography.Text className="data-insight-label-text">
-                {t('label.data-insight-subtitle')}
+                {t('message.data-insight-subtitle')}
               </Typography.Text>
             </div>
             <Tooltip

@@ -43,7 +43,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
@@ -289,7 +289,7 @@ class CommonDbSourceService(
         """
         return False, None  # By default the table will be a Regular Table
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
 
     @calculate_execution_time_generator
@@ -456,5 +456,5 @@ class CommonDbSourceService(
         """
         return table
 
-    def yield_table_tag(self) -> Iterable[OMetaTagAndCategory]:
+    def yield_table_tag(self) -> Iterable[OMetaTagAndClassification]:
         pass

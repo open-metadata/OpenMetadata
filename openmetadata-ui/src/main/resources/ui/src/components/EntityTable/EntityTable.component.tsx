@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -49,7 +49,7 @@ import {
   makeData,
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import {
   getRequestDescriptionPath,
   getRequestTagsPath,
@@ -103,7 +103,7 @@ const EntityTable = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
@@ -349,14 +349,14 @@ const EntityTable = ({
           destroyTooltipOnHide
           content={
             hasDescription
-              ? t('label.request-update-description')
-              : t('label.request-description')
+              ? t('message.request-update-description')
+              : t('message.request-description')
           }
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
           <SVGIcons
-            alt={t('label.request-description')}
+            alt={t('message.request-description')}
             icon={Icons.REQUEST}
             width="16px"
           />
@@ -368,8 +368,8 @@ const EntityTable = ({
   const getRequestTagsElement = (cell: Column) => {
     const hasTags = !isEmpty(cell?.tags || []);
     const text = hasTags
-      ? t('label.update-request-tags')
-      : t('label.request-tags');
+      ? t('label.update-request-tag-plural')
+      : t('label.request-tag-plural');
 
     return (
       <button
@@ -385,7 +385,7 @@ const EntityTable = ({
           trigger="hover"
           zIndex={9999}>
           <SVGIcons
-            alt={t('label.request-tags')}
+            alt={t('label.request-tag-plural')}
             icon={Icons.REQUEST}
             width="16px"
           />
@@ -496,7 +496,7 @@ const EntityTable = ({
         {getFrequentlyJoinedColumns(
           record?.name,
           joins,
-          t('label.frequently-joined-columns')
+          t('label.frequently-joined-column-plural')
         )}
       </div>
     );
@@ -664,7 +664,7 @@ const EntityTable = ({
           header={`${t('label.edit-entity', { entity: t('label.column') })}: "${
             editColumn.column.name
           }"`}
-          placeholder={t('label.enter-column-description')}
+          placeholder={t('message.enter-column-description')}
           value={editColumn.column.description as string}
           visible={Boolean(editColumn)}
           onCancel={closeEditColumnModal}

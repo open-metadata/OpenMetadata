@@ -57,8 +57,7 @@ public class LocationRepository extends EntityRepository<Location> {
   public Location setFields(Location location, Fields fields) throws IOException {
     location.setService(getContainer(location.getId()));
     location.setPath(location.getPath());
-    location.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
-    return location;
+    return location.withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
   }
 
   @Override

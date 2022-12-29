@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -49,7 +49,7 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     }),
     step: 2,
   },
-  { name: i18next.t('label.connection-details'), step: 3 },
+  { name: i18next.t('label.connection-detail-plural'), step: 3 },
 ];
 
 export const INGESTION_ACTION_TYPE = {

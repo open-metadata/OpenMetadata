@@ -98,11 +98,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       // we need to set a mutable list here
       user.setRoles(getRoleForBot(bot.getName()));
       user = UserUtil.addOrUpdateBotUser(user, config);
-
-      bot.withId(UUID.randomUUID())
-          .withBotUser(user.getEntityReference())
-          .withUpdatedBy(userName)
-          .withUpdatedAt(System.currentTimeMillis());
+      bot.withBotUser(user.getEntityReference());
       dao.initializeEntity(bot);
     }
   }

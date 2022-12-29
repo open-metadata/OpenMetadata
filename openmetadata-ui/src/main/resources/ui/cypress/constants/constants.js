@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -291,7 +291,7 @@ export const HTTP_CONFIG_SOURCE = {
 };
 
 export const DBT = {
-  tagCategory: 'DBTTags',
+  classification: 'DBTTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNode: 'dev.dbt_jaffle.raw_customers',

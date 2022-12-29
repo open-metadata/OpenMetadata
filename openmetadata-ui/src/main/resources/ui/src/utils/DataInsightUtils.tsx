@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -657,11 +657,11 @@ export const getKpiTargetValueByMetricType = (
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   if (day > 0 && isTargetMet) {
-    return t('label.kpi-target-achieved-before-time');
+    return t('message.kpi-target-achieved-before-time');
   } else if (day <= 0 && !isTargetMet) {
-    return t('label.kpi-target-overdue');
+    return t('message.kpi-target-overdue');
   } else if (isTargetMet) {
-    return t('label.kpi-target-achieved');
+    return t('message.kpi-target-achieved');
   } else {
     return t('label.day-left', { day: pluralize(day, 'day') });
   }

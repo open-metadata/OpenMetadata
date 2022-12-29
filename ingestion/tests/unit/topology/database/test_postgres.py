@@ -16,7 +16,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres import (
+from metadata.ingestion.source.database.postgres.metadata import (
     GEOMETRY,
     POINT,
     POLYGON,

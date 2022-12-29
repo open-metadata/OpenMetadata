@@ -54,8 +54,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public Type setFields(Type type, Fields fields) throws IOException {
-    type.withCustomProperties(fields.contains("customProperties") ? getCustomProperties(type) : null);
-    return type;
+    return type.withCustomProperties(fields.contains("customProperties") ? getCustomProperties(type) : null);
   }
 
   @Override
