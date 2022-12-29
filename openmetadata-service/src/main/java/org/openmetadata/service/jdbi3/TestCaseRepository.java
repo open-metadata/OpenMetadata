@@ -5,7 +5,6 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,9 +47,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public TestCase setFields(TestCase test, EntityUtil.Fields fields) throws IOException {
     test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
-    test.setTestCaseResult(fields.contains("testCaseResult") ? getTestCaseResult(test) : null);
-    test.setOwner(fields.contains("owner") ? getOwner(test) : null);
-    return test;
+    return test.withTestCaseResult(fields.contains("testCaseResult") ? getTestCaseResult(test) : null);
   }
 
   @Override
@@ -260,27 +257,27 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       MessageParser.EntityLink updatedEntityLink = MessageParser.EntityLink.parse(updated.getEntityLink());
       EntityReference updatedTableRef = EntityUtil.validateEntityLink(updatedEntityLink);
 
-      updateFromRelationships(
+      updateFromRelationship(
           "entity",
           updatedTableRef.getType(),
-          new ArrayList<>(List.of(origTableRef)),
-          new ArrayList<>(List.of(updatedTableRef)),
+          origTableRef,
+          updatedTableRef,
           Relationship.CONTAINS,
           TEST_CASE,
           updated.getId());
-      updateFromRelationships(
+      updateFromRelationship(
           "testSuite",
           TEST_SUITE,
-          new ArrayList<>(List.of(original.getTestSuite())),
-          new ArrayList<>(List.of(updated.getTestSuite())),
+          original.getTestSuite(),
+          updated.getTestSuite(),
           Relationship.HAS,
           TEST_CASE,
           updated.getId());
-      updateFromRelationships(
+      updateFromRelationship(
           "testDefinition",
           TEST_DEFINITION,
-          new ArrayList<>(List.of(original.getTestDefinition())),
-          new ArrayList<>(List.of(updated.getTestDefinition())),
+          original.getTestDefinition(),
+          updated.getTestDefinition(),
           Relationship.APPLIED_TO,
           TEST_CASE,
           updated.getId());

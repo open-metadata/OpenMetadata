@@ -34,7 +34,6 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
 
   @Override
   public WebAnalyticEvent setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 

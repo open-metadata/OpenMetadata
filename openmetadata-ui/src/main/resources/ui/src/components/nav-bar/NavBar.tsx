@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -266,7 +266,12 @@ const NavBar = ({
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO_SMALL} />
+              <SVGIcons
+                alt="OpenMetadata Logo"
+                height={30}
+                icon={Icons.LOGO_SMALL}
+                width={25}
+              />
             </NavLink>
             <Space className="tw-ml-5 flex-none" size={16}>
               <NavLink
@@ -294,7 +299,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.DATA_INSIGHT,
                 }}>
-                {t('label.insights')}
+                {t('label.insight-plural')}
               </NavLink>
               <Dropdown
                 className="cursor-pointer"
@@ -315,7 +320,7 @@ const NavBar = ({
               className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
               data-testid="searchBox"
               id="searchBox"
-              placeholder={t('label.search-global')}
+              placeholder={t('message.search-for-entity-types')}
               style={{
                 borderRadius: '0.24rem',
                 boxShadow: 'none',
@@ -375,7 +380,7 @@ const NavBar = ({
                 to={{
                   pathname: ROUTES.SETTINGS,
                 }}>
-                {t('label.settings')}
+                {t('label.setting-plural')}
               </NavLink>
               <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
                 <Dropdown

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -170,7 +170,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
-          placeholder={t('label.markdown-editor-placeholder')}
+          placeholder={t('message.markdown-editor-placeholder')}
           style={getEditorStyles()}
           theme="snow"
           value={value}

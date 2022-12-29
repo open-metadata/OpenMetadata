@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,7 +48,7 @@ const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const breadcrumb = [
   {
-    name: t('label.settings'),
+    name: t('label.setting-plural'),
     url: getSettingPath(),
   },
   {
@@ -146,7 +146,7 @@ const AddPolicyPage = () => {
               <RichTextEditor
                 height="200px"
                 initialValue={description}
-                placeHolder={t('label.write-your-description')}
+                placeHolder={t('message.write-your-description')}
                 style={{ margin: 0 }}
                 onTextChange={(value) => setDescription(value)}
               />
@@ -175,7 +175,7 @@ const AddPolicyPage = () => {
           </Form>
         </Card>
       </Col>
-      <Col className="tw-mt-4" span={4}>
+      <Col className="m-t-xlg" span={4}>
         <Typography.Paragraph className="tw-text-base tw-font-medium">
           {t('label.add-policy')}
         </Typography.Paragraph>

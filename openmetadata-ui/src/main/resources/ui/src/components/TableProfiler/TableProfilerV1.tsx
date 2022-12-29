@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -425,11 +425,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
                 <Tooltip
                   title={
                     editTest
-                      ? t('label.settings')
+                      ? t('label.setting-plural')
                       : t('message.no-permission-for-action')
                   }>
                   <Button
-                    className="rounded-4 tw-w-8 flex justify-center manage-dropdown-button"
+                    className="rounded-4 tw-w-8 d-flex justify-center manage-dropdown-button"
                     data-testid="profiler-setting-btn"
                     disabled={!editTest}
                     type="primary"

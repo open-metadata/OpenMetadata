@@ -72,13 +72,6 @@ def docker_volume():
     # create a main directory
     if not os.path.exists(MAIN_DIR):
         os.mkdir(MAIN_DIR)
-        path_to_join = ["db-data", "es-data"]
-        final_path = []
-        for path in path_to_join:
-            temp_path = os.path.join(MAIN_DIR, path)
-            final_path.append(temp_path)
-        for path in final_path:
-            os.makedirs(path, exist_ok=True)
 
 
 def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
@@ -246,6 +239,7 @@ def run_docker(  # pylint: disable=too-many-branches too-many-statements
             compose_project_name="openmetadata",
             compose_files=[docker_compose_file_path],
             compose_env_file=env_file,
+            compose_project_directory=pathlib.Path(),
         )
 
         if docker_obj_instance.start:

@@ -90,7 +90,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         "policies",
         PolicyResource.FIELDS,
         Entity.ORGANIZATION_POLICY_NAME);
-    supportsAuthorizedMetadataOperations = false; // TODO why
   }
 
   @BeforeAll

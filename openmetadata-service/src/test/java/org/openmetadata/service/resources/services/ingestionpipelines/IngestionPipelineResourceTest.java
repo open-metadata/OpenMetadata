@@ -89,7 +89,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         IngestionPipelineResource.IngestionPipelineList.class,
         "services/ingestionPipelines",
         IngestionPipelineResource.FIELDS);
-    this.supportsEmptyDescription = false;
   }
 
   @BeforeAll

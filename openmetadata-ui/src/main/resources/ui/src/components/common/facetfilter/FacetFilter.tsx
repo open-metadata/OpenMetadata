@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -143,7 +143,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           { length: aggregationsLength }
         ) => (
           <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
-            <div className="flex justify-between flex-col">
+            <div className="d-flex justify-between flex-col">
               <h6 className="font-medium text-grey-body m-b-sm m-y-xs">
                 {translateAggregationKeyToTitle(aggregationKey)}
               </h6>

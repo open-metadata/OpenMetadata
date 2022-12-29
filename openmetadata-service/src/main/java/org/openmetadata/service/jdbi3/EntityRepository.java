@@ -64,9 +64,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -729,8 +729,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void store(T entity, boolean update) throws JsonProcessingException {
     if (update) {
       dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+      LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     } else {
       dao.insert(entity);
+      LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
   }
 
@@ -1463,8 +1465,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       if (!recordListChange(field, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
-        // No changes between original and updated.
-        return;
+        return; // No changes between original and updated.
       }
       // Remove relationships from original
       deleteFrom(fromId, fromEntityType, relationshipType, toEntityType);
@@ -1477,6 +1478,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       updatedToRefs.sort(EntityUtil.compareEntityReference);
       origToRefs.sort(EntityUtil.compareEntityReference);
+    }
+
+    public final void updateToRelationship(
+        String field,
+        String fromEntityType,
+        UUID fromId,
+        Relationship relationshipType,
+        String toEntityType,
+        EntityReference origToRef,
+        EntityReference updatedToRef,
+        boolean bidirectional)
+        throws JsonProcessingException {
+      if (!recordChange(field, origToRef, updatedToRef, true, entityReferenceMatch)) {
+        return; // No changes between original and updated.
+      }
+      // Remove relationships from original
+      deleteFrom(fromId, fromEntityType, relationshipType, toEntityType);
+      if (bidirectional) {
+        deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
+      }
+      // Add relationships from updated
+      addRelationship(fromId, updatedToRef.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
     }
 
     /**
@@ -1496,8 +1519,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       if (!recordListChange(field, originFromRefs, updatedFromRefs, added, deleted, entityReferenceMatch)) {
-        // No changes between original and updated.
-        return;
+        return; // No changes between original and updated.
       }
       // Remove relationships from original
       deleteTo(toId, toEntityType, relationshipType, fromEntityType);
@@ -1508,6 +1530,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
       originFromRefs.sort(EntityUtil.compareEntityReference);
+    }
+
+    public final void updateFromRelationship(
+        String field,
+        String fromEntityType,
+        EntityReference originFromRef,
+        EntityReference updatedFromRef,
+        Relationship relationshipType,
+        String toEntityType,
+        UUID toId)
+        throws JsonProcessingException {
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      if (!recordChange(field, originFromRef, updatedFromRef, true, entityReferenceMatch)) {
+        return; // No changes between original and updated.
+      }
+      // Remove relationships from original
+      deleteTo(toId, toEntityType, relationshipType, fromEntityType);
+
+      // Add relationships from updated
+      addRelationship(updatedFromRef.getId(), toId, fromEntityType, toEntityType, relationshipType);
     }
 
     public final void storeUpdate() throws IOException {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -436,7 +436,7 @@ export const servicePageTabs = (entity: string) => [
     path: entity.toLowerCase(),
   },
   {
-    name: t('label.ingestions'),
+    name: t('label.ingestion-plural'),
     path: 'ingestions',
   },
   {
@@ -592,7 +592,6 @@ export const getIngestionName = (
 
 export const shouldTestConnection = (serviceType: string) => {
   return (
-    serviceType !== DatabaseServiceType.SampleData &&
     serviceType !== DatabaseServiceType.CustomDatabase &&
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
@@ -696,7 +695,7 @@ export const getOptionalFields = (
 
       return (
         <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.brokers')}:</label>
+          <label className="tw-mb-0">{t('label.broker-plural')}:</label>
           <span
             className=" tw-ml-1 tw-font-normal tw-text-grey-body"
             data-testid="brokers">
@@ -901,7 +900,7 @@ export const getServicePageTabs = (
 
   tabs.push(
     {
-      name: t('label.ingestions'),
+      name: t('label.ingestion-plural'),
       isProtected: false,
 
       position: 2,

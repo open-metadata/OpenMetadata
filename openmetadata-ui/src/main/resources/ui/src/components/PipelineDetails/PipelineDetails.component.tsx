@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -74,7 +74,6 @@ import {
   refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -98,7 +97,6 @@ import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import ExecutionsTab from '../Execution/Execution.component';
 import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../tags-container/tags-container';
@@ -188,8 +186,6 @@ const PipelineDetails = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [selectedField, setSelectedField] = useState<string>('');
-
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
     pipelineStatus
@@ -233,10 +229,6 @@ const PipelineDetails = ({
       fetchResourcePermission();
     }
   }, [pipelineDetails.id]);
-
-  const closeRequestModal = () => {
-    setSelectedField('');
-  };
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
@@ -955,7 +947,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.Executions}
             tab={
               <span data-testid={PIPELINE_DETAILS_TABS.Tasks}>
-                {t('label.executions')}
+                {t('label.execution-plural')}
               </span>
             }>
             <ExecutionsTab pipelineFQN={pipelineFQN} tasks={tasks} />
@@ -988,7 +980,7 @@ const PipelineDetails = ({
             key={PIPELINE_DETAILS_TABS.CustomProperties}
             tab={
               <span data-testid="Custom Properties">
-                {t('label.custom-properties')}
+                {t('label.custom-property-plural')}
               </span>
             }>
             <CustomPropertyTable
@@ -1030,19 +1022,6 @@ const PipelineDetails = ({
           threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
-        />
-      ) : null}
-      {selectedField ? (
-        <RequestDescriptionModal
-          createThread={createThread}
-          defaultValue={getDefaultValue(owner as EntityReference)}
-          header={t('label.request-description')}
-          threadLink={getEntityFeedLink(
-            EntityType.PIPELINE,
-            pipelineFQN,
-            selectedField
-          )}
-          onCancel={closeRequestModal}
         />
       ) : null}
     </PageContainerV1>

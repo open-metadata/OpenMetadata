@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -112,9 +112,9 @@ const AddRulePage = () => {
   }
 
   return (
-    <Row className="tw-bg-body-main tw-h-auto" gutter={[16, 16]}>
+    <Row className="tw-bg-body-main tw-h-auto p-y-lg" gutter={[16, 16]}>
       <Col offset={5} span={14}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
+        <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph
             className="tw-text-base"
