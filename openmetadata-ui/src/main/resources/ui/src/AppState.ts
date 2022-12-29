@@ -32,7 +32,6 @@ class AppState {
   authDisabled = false;
   authProvider: ClientAuth = {
     authority: '',
-    // eslint-disable-next-line @typescript-eslint/camelcase
     client_id: '',
     signingIn: false,
   };

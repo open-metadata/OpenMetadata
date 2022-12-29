@@ -54,10 +54,10 @@ describe('Test ProfilerUtils', () => {
   });
 
   it('getRoundedValue should return integer value as it is', () => {
-    expect(getRoundedValue(12)).toEqual(12);
+    expect(getRoundedValue(12)).toBe(12);
   });
 
   it('getRoundedValue should other values as it is', () => {
-    expect(getRoundedValue(false)).toEqual(false);
+    expect(getRoundedValue(false)).toBe(false);
   });
 });

@@ -133,12 +133,6 @@ const AddService = ({
         delimit: true,
         isError: true,
       });
-    } else if (nameWithSpace.test(serviceName)) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        nameWithSpace: true,
-        isError: true,
-      });
     } else if (!isUrlFriendlyName(serviceName.trim())) {
       setShowErrorMessage({
         ...showErrorMessage,

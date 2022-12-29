@@ -419,7 +419,9 @@ export const getLogEntityPath = (
   path: string,
   logEntityType: string | undefined
 ): string => {
-  if (isUndefined(logEntityType)) return '';
+  if (isUndefined(logEntityType)) {
+    return '';
+  }
 
   const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
 

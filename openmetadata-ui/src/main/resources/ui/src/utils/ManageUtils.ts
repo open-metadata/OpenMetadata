@@ -48,7 +48,7 @@ export const getOwnerList = (
         group: 'Users',
         type: 'user',
       }))
-      .filter((u) => u.value != userDetails.id);
+      .filter((u) => u.value !== userDetails.id);
     const teams = (listTeams || []).map((team) => ({
       name: getEntityName(team),
       value: team.id,

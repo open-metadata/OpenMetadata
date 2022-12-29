@@ -159,7 +159,7 @@ export const getTask = async (taskID: string) => {
   return response.data;
 };
 
-export const updateTask: Function = (
+export const updateTask = (
   operation: TaskOperation,
   taskId: string,
   taskDetail: TaskDetails

@@ -104,7 +104,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       for (let i = 0; i < targets.length; i++) {
         const tgt = targets[i];
 
-        if (tgt == 'time') {
+        if (tgt === 'time') {
           selectedPeriodObj.hour = toNumber(v.hour);
           selectedPeriodObj.min = toNumber(v.min);
         } else {
@@ -235,13 +235,15 @@ const CronEditor: FC<CronEditorProp> = (props) => {
   };
 
   const getOptionComponent = (key: string) => {
-    return (o: CronOption, i: number) => {
+    const optionRenderer = (o: CronOption, i: number) => {
       return (
         <option key={`${key}_${i}`} value={o.value}>
           {o.label}
         </option>
       );
     };
+
+    return optionRenderer;
   };
 
   const getTextComp = (str: string) => {
@@ -250,13 +252,13 @@ const CronEditor: FC<CronEditorProp> = (props) => {
 
   const findHourOption = (hour: number) => {
     return hourOptions.find((h) => {
-      return h.value == hour;
+      return h.value === hour;
     });
   };
 
   const findMinuteOption = (min: number) => {
     return minuteOptions.find((h) => {
-      return h.value == min;
+      return h.value === min;
     });
   };
 
@@ -338,7 +340,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       }
       const comp = (
         <span
-          className={`cron-badge-option ${o.value == value ? 'active' : ''} ${
+          className={`cron-badge-option ${o.value === value ? 'active' : ''} ${
             disabled || !onClick ? 'disabled' : ''
           }`}
           data-value={o.value}
@@ -445,7 +447,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const minuteLabel = findMinuteOption(selectedWeekOption.min)?.label;
 
     const dayLabel = dayOptions.find((d) => {
-      return d.value == selectedWeekOption.dow;
+      return d.value === selectedWeekOption.dow;
     })?.label;
 
     return (
@@ -500,7 +502,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const minuteLabel = findMinuteOption(selectedMonthOption.min)?.label;
 
     const dateLabel = monthDaysOptions.find((d) => {
-      return d.value == selectedMonthOption.dom;
+      return d.value === selectedMonthOption.dom;
     })?.label;
 
     return (
@@ -547,10 +549,10 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const minuteLabel = findMinuteOption(selectedYearOption.min)?.label;
 
     const dateLabel = monthDaysOptions.find((d) => {
-      return d.value == selectedYearOption.dom;
+      return d.value === selectedYearOption.dom;
     })?.label;
     const monthLabel = monthOptions.find((d) => {
-      return d.value == selectedYearOption.mon;
+      return d.value === selectedYearOption.mon;
     })?.label;
 
     return (

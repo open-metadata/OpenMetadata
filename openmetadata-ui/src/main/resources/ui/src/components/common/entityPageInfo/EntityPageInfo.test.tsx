@@ -340,7 +340,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(versionHandler).toBeCalled();
+    expect(versionHandler).toHaveBeenCalled();
   });
 
   it('Should call follow handler on follow button click', async () => {
@@ -367,7 +367,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(followHandler).toBeCalled();
+    expect(followHandler).toHaveBeenCalled();
   });
 
   it('Should render all the extra info', async () => {
@@ -479,7 +479,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 
   it('Should render tag thread button with count', async () => {
@@ -523,7 +523,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 
   it.skip('Check if tags and glossary-terms are present', async () => {

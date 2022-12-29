@@ -30,7 +30,7 @@ declare module 'Models' {
     sizePerPage: number;
     totalNumberOfValues: number;
     currentPage: number;
-    paginate: Function;
+    paginate;
   };
   export type Feed = {
     addressedToEntity: {

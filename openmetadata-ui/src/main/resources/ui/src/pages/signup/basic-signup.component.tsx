@@ -51,11 +51,15 @@ const BasicSignUp = () => {
   }, [authConfig]);
 
   const handleSubmit = async (data: SignUpFormData) => {
-    if (data.confirmPassword) delete data['confirmPassword'];
+    if (data.confirmPassword) {
+      delete data['confirmPassword'];
+    }
 
     const request = data;
 
-    if (request) handleRegister(request);
+    if (request) {
+      handleRegister(request);
+    }
   };
 
   const handleLogin = () => history.push(ROUTES.SIGNIN);

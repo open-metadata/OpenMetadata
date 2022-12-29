@@ -159,7 +159,7 @@ describe('Test ExploreQuickFilters component', () => {
 
     fireEvent.click(advanceSearchButton);
 
-    expect(onAdvanceSearch).toBeCalled();
+    expect(onAdvanceSearch).toHaveBeenCalled();
   });
 
   it('All options should be passed to SearchDropdown component for proper API response', async () => {

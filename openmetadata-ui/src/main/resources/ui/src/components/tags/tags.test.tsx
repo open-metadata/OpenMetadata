@@ -71,7 +71,7 @@ describe('Test tags Component', () => {
       })
     );
 
-    expect(mockCallback).toBeCalledTimes(1);
+    expect(mockCallback).toHaveBeenCalledTimes(1);
   });
 
   it('Clicking on tag with source Tag should redirect to the proper tag category page', () => {
@@ -92,7 +92,7 @@ describe('Test tags Component', () => {
 
     fireEvent.click(tag);
 
-    expect(mockPush).toBeCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/tags/testTag');
   });
 
@@ -115,7 +115,7 @@ describe('Test tags Component', () => {
 
     fireEvent.click(tag);
 
-    expect(mockPush).toBeCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/glossary/glossaryTag.Test1');
   });
 });

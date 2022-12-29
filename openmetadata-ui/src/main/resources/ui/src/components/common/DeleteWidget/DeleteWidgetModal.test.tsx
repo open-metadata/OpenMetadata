@@ -86,7 +86,7 @@ describe('Test DeleteWidgetV1 Component', () => {
 
       userEvent.click(discardButton);
 
-      expect(mockProps.onCancel).toBeCalled();
+      expect(mockProps.onCancel).toHaveBeenCalled();
     });
   });
 });

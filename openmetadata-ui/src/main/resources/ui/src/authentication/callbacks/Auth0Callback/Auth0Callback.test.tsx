@@ -110,12 +110,11 @@ describe('Test Auth0Callback component', () => {
     // eslint-disable-next-line no-undef
     await new Promise(process.nextTick);
 
-    expect(localStorageMock.getItem(oidcTokenKey)).toEqual('raw_id_token');
-    expect(mockSetIsAuthenticated).toBeCalledTimes(1);
-    expect(mockSetIsAuthenticated).toBeCalledWith(true);
-    expect(mockHandleSuccessfulLogin).toBeCalledTimes(1);
-    expect(mockHandleSuccessfulLogin).toBeCalledWith({
-      // eslint-disable-next-line @typescript-eslint/camelcase
+    expect(localStorageMock.getItem(oidcTokenKey)).toBe('raw_id_token');
+    expect(mockSetIsAuthenticated).toHaveBeenCalledTimes(1);
+    expect(mockSetIsAuthenticated).toHaveBeenCalledWith(true);
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalledTimes(1);
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalledWith({
       id_token: 'raw_id_token',
       profile: {
         email: 'test_email',
