@@ -62,6 +62,30 @@ export const getClassifications = async (
   }
 };
 
+/**
+ * This method returns all the tags present in the system
+ * @returns tags: Tag[]
+ */
+export const getAllTagsForOptions = async () => {
+  let tags: Tag[] = [];
+  try {
+    const { data } = await getTags({ limit: 1000 });
+
+    tags = data;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+  }
+
+  return tags;
+};
+
+/**
+ * Return tags based on classifications
+ * @param classifications -- Parent for tags
+ * @param paging
+ * @returns Tag[]
+ */
 export const getTaglist = async (
   classifications: Array<Classification> = [],
   paging?: Paging
@@ -155,18 +179,14 @@ export const getTagDisplay = (tag: string) => {
 
 export const fetchTagsAndGlossaryTerms = async () => {
   const responses = await Promise.allSettled([
-    getClassifications(),
+    getAllTagsForOptions(),
     fetchGlossaryTerms(),
   ]);
 
   let tagsAndTerms: TagOption[] = [];
-  if (
-    responses[0].status === SettledStatus.FULFILLED &&
-    responses[0].value.data
-  ) {
-    const tagList = await getTaglist(responses[0].value.data);
-    tagsAndTerms = tagList.map((tag) => {
-      return { fqn: tag, source: 'Tag' };
+  if (responses[0].status === SettledStatus.FULFILLED && responses[0].value) {
+    tagsAndTerms = responses[0].value.map((tag) => {
+      return { fqn: tag.fullyQualifiedName ?? tag.name, source: 'Tag' };
     });
   }
   if (

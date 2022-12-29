@@ -12,18 +12,11 @@
  */
 
 import { Select } from 'antd';
-import { AxiosError } from 'axios';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import jsonData from '../../jsons/en';
-import {
-  getClassifications,
-  getTaglist,
-  getTagOptions,
-} from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { getAllTagsForOptions, getTagOptions } from '../../utils/TagsUtils';
 
 export const AddTags = ({
   setTags,
@@ -38,18 +31,12 @@ export const AddTags = ({
   const { t } = useTranslation();
   const options: React.ReactNode[] = [];
 
-  const fetchTags = () => {
+  const fetchTags = async () => {
     setIsTagLoading(true);
-    getClassifications()
-      .then(async (res) => {
-        getTaglist(res.data).then(setTagList);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
+    const tags = await getAllTagsForOptions();
+    setTagList(tags.map((t) => t.fullyQualifiedName || t.name));
+
+    setIsTagLoading(false);
   };
 
   const tagsList = useMemo(() => {
