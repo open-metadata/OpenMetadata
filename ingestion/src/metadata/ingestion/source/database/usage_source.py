@@ -18,8 +18,8 @@ from datetime import datetime, timedelta
 from typing import Iterable, Optional
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.connections import get_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()

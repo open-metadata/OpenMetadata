@@ -14,8 +14,8 @@ Source connection handler
 """
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -25,13 +25,19 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection_url(connection: PinotDBConnection) -> str:
+    url = get_connection_url_common(connection)
+    url += f"/query/sql?controller={connection.pinotControllerHost}"
+    return url
+
+
+def get_connection(connection: PinotDBConnection) -> Engine:
     """
     Create connection
     """
     return create_generic_db_connection(
         connection=connection,
-        get_connection_url_fn=get_connection_url_common,
+        get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
 

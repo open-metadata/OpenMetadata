@@ -35,12 +35,7 @@ from metadata.clients.connection_clients import (
     AirByteClient,
     AmundsenClient,
     DagsterClient,
-    DatalakeClient,
-    DeltaLakeClient,
-    DomoClient,
-    DynamoClient,
     FivetranClient,
-    GlueDBClient,
     GluePipelineClient,
     KafkaClient,
     KinesisClient,
@@ -53,7 +48,6 @@ from metadata.clients.connection_clients import (
     QuickSightClient,
     RedashClient,
     SageMakerClient,
-    SalesforceClient,
     SupersetClient,
     TableauClient,
 )
@@ -87,36 +81,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.supersetCon
 )
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-    BigQueryConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    AzureConfig,
-    DatalakeConnection,
-    GCSConfig,
-    S3Config,
-)
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
-    DomoDatabaseConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
-    DynamoDBConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.glueConnection import (
-    GlueConnection as GlueDBConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
-    SalesforceConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
@@ -164,13 +128,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifiConnecti
     NifiConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
-from metadata.utils.credentials import set_google_credentials
-from metadata.utils.source_connections import (
-    get_connection_args,
-    get_connection_url,
-    singledispatch_with_options_secrets,
-    update_connection_opts_args,
-)
 from metadata.utils.sql_queries import NEO4J_AMUNDSEN_USER_QUERY
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 from metadata.utils.timeout import timeout
@@ -284,96 +241,11 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> None:
 @singledispatch_with_options_secrets_verbose
 def get_connection(
     connection, verbose: bool = False
-) -> Union[
-    Engine,
-    DynamoClient,
-    GlueDBClient,
-    GluePipelineClient,
-    SalesforceClient,
-    KafkaClient,
-]:
+) -> Union[Engine, GluePipelineClient, KafkaClient,]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
     return create_generic_connection(connection, verbose)
-
-
-@get_connection.register
-def _(connection: DatabricksConnection, verbose: bool = False):
-    if connection.httpPath:
-        if not connection.connectionArguments:
-            connection.connectionArguments = ConnectionArguments()
-        connection.connectionArguments.http_path = connection.httpPath
-    return create_generic_connection(connection, verbose)
-
-
-@get_connection.register
-def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
-    if connection.privateKey:
-
-        from cryptography.hazmat.backends import default_backend
-        from cryptography.hazmat.primitives import serialization
-
-        snowflake_private_key_passphrase = (
-            connection.snowflakePrivatekeyPassphrase.get_secret_value()
-            if connection.snowflakePrivatekeyPassphrase
-            else ""
-        )
-
-        if not snowflake_private_key_passphrase:
-            logger.warning(
-                "Snowflake Private Key Passphrase not found, replacing it with empty string"
-            )
-        p_key = serialization.load_pem_private_key(
-            bytes(connection.privateKey.get_secret_value(), "utf-8"),
-            password=snowflake_private_key_passphrase.encode(),
-            backend=default_backend(),
-        )
-        pkb = p_key.private_bytes(
-            encoding=serialization.Encoding.DER,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-
-        if connection.privateKey:
-            connection.connectionArguments = {}
-            connection.connectionArguments["private_key"] = pkb
-
-    return create_generic_connection(connection, verbose)
-
-
-@get_connection.register
-def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
-    """
-    Prepare the engine and the GCS credentials
-    :param connection: BigQuery connection
-    :param verbose: debugger or not
-    :return: Engine
-    """
-    set_google_credentials(gcs_credentials=connection.credentials)
-    return create_generic_connection(connection, verbose)
-
-
-@get_connection.register
-def _(
-    connection: DynamoDBConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> DynamoClient:
-    from metadata.clients.aws_client import AWSClient
-
-    dynamo_connection = AWSClient(connection.awsConfig).get_dynamo_client()
-    return dynamo_connection
-
-
-@get_connection.register
-def _(
-    connection: GlueDBConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> GlueDBClient:
-    from metadata.clients.aws_client import AWSClient
-
-    glue_connection = AWSClient(connection.awsConfig).get_glue_db_client()
-    return glue_connection
 
 
 @get_connection.register
@@ -385,85 +257,6 @@ def _(
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_pipeline_client()
     return glue_connection
-
-
-@get_connection.register
-def _(
-    connection: SalesforceConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> SalesforceClient:
-    from simple_salesforce import Salesforce
-
-    salesforce_connection = SalesforceClient(
-        Salesforce(
-            connection.username,
-            password=connection.password.get_secret_value(),
-            security_token=connection.securityToken.get_secret_value(),
-        )
-    )
-    return salesforce_connection
-
-
-@get_connection.register
-def _(
-    connection: DeltaLakeConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> DeltaLakeClient:
-    import pyspark
-    from delta import configure_spark_with_delta_pip
-
-    builder = (
-        pyspark.sql.SparkSession.builder.appName(connection.appName or "OpenMetadata")
-        .enableHiveSupport()
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-        # Download delta-core jars when creating the SparkSession
-        .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.0")
-    )
-
-    # Check that the attribute exists and is properly informed
-    if (
-        hasattr(connection.metastoreConnection, "metastoreHostPort")
-        and connection.metastoreConnection.metastoreHostPort
-    ):
-        builder.config(
-            "hive.metastore.uris",
-            f"thrift://{connection.metastoreConnection.metastoreHostPort}",
-        )
-
-    if (
-        hasattr(connection.metastoreConnection, "metastoreDb")
-        and connection.metastoreConnection.metastoreDb
-    ):
-        builder.config(
-            "spark.hadoop.javax.jdo.option.ConnectionURL",
-            connection.metastoreConnection.metastoreDb,
-        )
-
-    if (
-        hasattr(connection.metastoreConnection, "metastoreFilePath")
-        and connection.metastoreConnection.metastoreFilePath
-    ):
-        # From https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell
-        # derby.system.home is the one in charge of the path for `metastore_db` dir and `derby.log`
-        # We can use this option to control testing, as well as to properly point to the right
-        # local database when ingesting data
-        builder.config(
-            "spark.driver.extraJavaOptions",
-            f"-Dderby.system.home={connection.metastoreConnection.metastoreFilePath}",
-        )
-
-    if connection.connectionArguments:
-        for key, value in connection.connectionArguments:
-            builder.config(key, value)
-
-    deltalake_connection = DeltaLakeClient(
-        configure_spark_with_delta_pip(builder).getOrCreate()
-    )
-    return deltalake_connection
 
 
 @get_connection.register(KafkaConnection)
@@ -552,46 +345,6 @@ def test_connection(connection) -> None:
 
 
 @test_connection.register
-def _(connection: DynamoClient) -> None:
-    """
-    Test that we can connect to the source using the given aws resource
-    :param engine: boto service resource to test
-    :return: None or raise an exception if we cannot connect
-    """
-    from botocore.client import ClientError
-
-    try:
-        connection.client.tables.all()
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
-def _(connection: GlueDBClient) -> None:
-    """
-    Test that we can connect to the source using the given aws resource
-    :param engine: boto client to test
-    :return: None or raise an exception if we cannot connect
-    """
-    from botocore.client import ClientError
-
-    try:
-        pagitator = connection.client.get_paginator("get_databases")
-        pagitator.paginate()
-
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
 def _(connection: GluePipelineClient) -> None:
     """
     Test that we can connect to the source using the given aws resource
@@ -611,20 +364,6 @@ def _(connection: GluePipelineClient) -> None:
 
 
 @test_connection.register
-def _(connection: SalesforceClient) -> None:
-    from simple_salesforce.exceptions import SalesforceAuthenticationFailed
-
-    try:
-        connection.client.describe()
-    except SalesforceAuthenticationFailed as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
 def _(connection: KafkaClient) -> None:
     """
     Test AdminClient.
@@ -635,15 +374,6 @@ def _(connection: KafkaClient) -> None:
         _ = connection.admin_client.list_topics().topics
         if connection.schema_registry_client:
             _ = connection.schema_registry_client.get_subjects()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-@test_connection.register
-def _(connection: DeltaLakeClient) -> None:
-    try:
-        connection.client.catalog.listDatabases()
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
@@ -982,96 +712,6 @@ def _(connection: QuickSightClient) -> None:
         raise SourceConnectionException(msg) from exc
 
 
-@test_connection.register
-def _(connection: DatalakeClient) -> None:
-    """
-    Test that we can connect to the source using the given aws resource
-    :param engine: boto service resource to test
-    :return: None or raise an exception if we cannot connect
-    """
-    from botocore.client import ClientError
-
-    try:
-        config = connection.config.configSource
-        if isinstance(config, GCSConfig):
-            if connection.config.bucketName:
-                connection.client.get_bucket(connection.config.bucketName)
-            else:
-                connection.client.list_buckets()
-
-        if isinstance(config, S3Config):
-            if connection.config.bucketName:
-                connection.client.list_objects(Bucket=connection.config.bucketName)
-            else:
-                connection.client.list_buckets()
-
-        if isinstance(config, AzureConfig):
-            connection.client.list_containers(name_starts_with="")
-
-    except ClientError as err:
-        msg = f"Connection error for {connection}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-
-
-@singledispatch
-def get_datalake_client(config):
-    """
-    Method to retrieve datalake client from the config
-    """
-    if config:
-        msg = f"Config not implemented for type {type(config)}: {config}"
-        raise NotImplementedError(msg)
-
-
-@get_connection.register
-def _(
-    connection: DatalakeConnection,
-    verbose: bool = False,  # pylint: disable=unused-argument
-) -> DatalakeClient:
-    datalake_connection = get_datalake_client(connection.configSource)
-    return DatalakeClient(client=datalake_connection, config=connection)
-
-
-@get_datalake_client.register
-def _(config: S3Config):
-    from metadata.clients.aws_client import AWSClient
-
-    s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
-    return s3_client
-
-
-@get_datalake_client.register
-def _(config: GCSConfig):
-    from google.cloud import storage
-
-    set_google_credentials(gcs_credentials=config.securityConfig)
-    gcs_client = storage.Client()
-    return gcs_client
-
-
-@get_datalake_client.register
-def _(config: AzureConfig):
-    from azure.identity import ClientSecretCredential
-    from azure.storage.blob import BlobServiceClient
-
-    try:
-        credentials = ClientSecretCredential(
-            config.securityConfig.tenantId,
-            config.securityConfig.clientId,
-            config.securityConfig.clientSecret.get_secret_value(),
-        )
-
-        azure_client = BlobServiceClient(
-            f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
-            credential=credentials,
-        )
-        return azure_client
-
-    except Exception as exc:
-        msg = f"Unknown error connecting with {config.securityConfig}: {exc}."
-        raise SourceConnectionException(msg)
-
-
 @get_connection.register
 def _(
     connection: ModeConnection, verbose: bool = False  # pylint: disable=unused-argument
@@ -1210,81 +850,6 @@ def _(connection: DagsterConnection) -> DagsterClient:
         ),
     )
     return DagsterClient(dagster_connection)
-
-
-@get_connection.register
-def _(connection: DomoDashboardConnection) -> None:
-    from pydomo import Domo
-
-    try:
-        domo = Domo(
-            connection.clientId,
-            connection.secretToken.get_secret_value(),
-            api_host=connection.apiHost,
-        )
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
-    return DomoClient(domo)
-
-
-@test_connection.register
-def _(connection: DomoClient) -> None:
-    try:
-        connection.client.page_list()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
-
-
-@get_connection.register
-def _(connection: DomoPipelineConnection) -> None:
-    from pydomo import Domo
-
-    try:
-        domo = Domo(
-            connection.clientId,
-            connection.secretToken.get_secret_value(),
-            api_host=connection.apiHost,
-        )
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
-    return DomoClient(domo)
-
-
-@test_connection.register
-def _(connection: DomoClient) -> None:
-    try:
-        connection.client.page_list()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
-
-
-@get_connection.register
-def _(connection: DomoDatabaseConnection) -> None:
-    from pydomo import Domo
-
-    try:
-        domo = Domo(
-            connection.clientId,
-            connection.secretToken.get_secret_value(),
-            api_host=connection.apiHost,
-        )
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
-    return DomoClient(domo)
-
-
-@test_connection.register
-def _(connection: DomoClient) -> None:
-    try:
-        connection.client.page_list()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg)
 
 
 @get_connection.register

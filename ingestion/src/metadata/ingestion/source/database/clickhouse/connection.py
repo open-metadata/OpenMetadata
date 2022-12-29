@@ -14,8 +14,8 @@ Source connection handler
 """
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
+    ClickhouseConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -25,9 +25,9 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection(connection: ClickhouseConnection) -> Engine:
     """
-    Create connection
+    Create MySQL connection
     """
     return create_generic_db_connection(
         connection=connection,
@@ -38,6 +38,6 @@ def get_connection(connection: MysqlConnection) -> Engine:
 
 def test_connection(engine: Engine) -> None:
     """
-    Test connection
+    Test MySQL connection
     """
     test_connection_db_common(engine)

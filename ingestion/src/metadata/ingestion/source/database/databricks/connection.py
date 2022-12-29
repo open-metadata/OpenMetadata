@@ -14,8 +14,11 @@ Source connection handler
 """
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
+)
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -25,13 +28,23 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection_url(connection: DatabricksConnection) -> str:
+    url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
+    return url
+
+
+def get_connection(connection: DatabricksConnection) -> Engine:
     """
     Create connection
     """
+    if connection.httpPath:
+        if not connection.connectionArguments:
+            connection.connectionArguments = ConnectionArguments()
+        connection.connectionArguments.http_path = connection.httpPath
+
     return create_generic_db_connection(
         connection=connection,
-        get_connection_url_fn=get_connection_url_common,
+        get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
 

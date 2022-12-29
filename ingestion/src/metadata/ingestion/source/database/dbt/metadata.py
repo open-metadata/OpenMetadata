@@ -99,15 +99,14 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         return self.report
 
     def test_connection(self) -> None:
-        # DBT does not need to connect to any source to process information
-        # Passing the test connection here
-        pass
+        """
+        DBT does not need to connect to any source to process information
+        """
 
     def prepare(self):
         """
-        By default, there's nothing to prepare
+        By default for DBT nothing is required to be prepared
         """
-        # By default for DBT nothing is required to be prepared
 
     def get_dbt_owner(self, manifest_node: dict, catalog_node: dict) -> Optional[str]:
         """

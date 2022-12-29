@@ -12,26 +12,59 @@
 """
 Source connection handler
 """
+from urllib.parse import quote_plus
+
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    AzureSQLConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
-    get_connection_url_common,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection_url(connection: AzureSQLConnection) -> str:
+
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
+        url += "@"
+
+    url += f"{connection.hostPort}"
+    url += f"/{quote_plus(connection.database)}" if connection.database else ""
+    url += f"?driver={quote_plus(connection.driver)}"
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+
+    return url
+
+
+def get_connection(connection: AzureSQLConnection) -> Engine:
     """
     Create connection
     """
     return create_generic_db_connection(
         connection=connection,
-        get_connection_url_fn=get_connection_url_common,
+        get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
 

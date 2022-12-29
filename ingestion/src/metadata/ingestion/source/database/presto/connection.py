@@ -12,10 +12,12 @@
 """
 Source connection handler
 """
+from urllib.parse import quote_plus
+
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -25,13 +27,28 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection_url(connection: PrestoConnection) -> str:
+    url = f"{connection.scheme.value}://"
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+    url += f"{connection.hostPort}"
+    if connection.catalog:
+        url += f"/{connection.catalog}"
+    if connection.databaseSchema:
+        url += f"?schema={quote_plus(connection.databaseSchema)}"
+    return url
+
+
+def get_connection(connection: PrestoConnection) -> Engine:
     """
     Create connection
     """
     return create_generic_db_connection(
         connection=connection,
-        get_connection_url_fn=get_connection_url_common,
+        get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
 

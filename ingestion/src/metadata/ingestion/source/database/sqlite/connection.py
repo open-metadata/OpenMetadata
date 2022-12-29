@@ -14,24 +14,29 @@ Source connection handler
 """
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
-    get_connection_url_common,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection_url(connection: SQLiteConnection) -> str:
+    database_mode = connection.databaseMode if connection.databaseMode else ":memory:"
+
+    return f"{connection.scheme.value}:///{database_mode}"
+
+
+def get_connection(connection: SQLiteConnection) -> Engine:
     """
     Create connection
     """
     return create_generic_db_connection(
         connection=connection,
-        get_connection_url_fn=get_connection_url_common,
+        get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
 

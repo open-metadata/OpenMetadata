@@ -12,26 +12,46 @@
 """
 Source connection handler
 """
+from urllib.parse import quote_plus
+
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
+    AthenaConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
-    get_connection_url_common,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection_url(connection: AthenaConnection) -> str:
+    url = f"{connection.scheme.value}://"
+    if connection.awsConfig.awsAccessKeyId:
+        url += connection.awsConfig.awsAccessKeyId
+        if connection.awsConfig.awsSecretAccessKey:
+            url += f":{connection.awsConfig.awsSecretAccessKey.get_secret_value()}"
+    else:
+        url += ":"
+    url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
+
+    url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
+    if connection.workgroup:
+        url += f"&work_group={connection.workgroup}"
+    if connection.awsConfig.awsSessionToken:
+        url += f"&aws_session_token={quote_plus(connection.awsConfig.awsSessionToken)}"
+
+    return url
+
+
+def get_connection(connection: AthenaConnection) -> Engine:
     """
     Create connection
     """
     return create_generic_db_connection(
         connection=connection,
-        get_connection_url_fn=get_connection_url_common,
+        get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
 

@@ -18,31 +18,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class GlueDBClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
 class GluePipelineClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class DynamoClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class SalesforceClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class DeltaLakeClient:
     def __init__(self, client) -> None:
         self.client = client
 
@@ -104,13 +80,6 @@ class QuickSightClient:
 
 
 @dataclass
-class DatalakeClient:
-    def __init__(self, client, config) -> None:
-        self.client = client
-        self.config = config
-
-
-@dataclass
 class AirByteClient:
     def __init__(self, client) -> None:
         self.client = client
@@ -147,12 +116,6 @@ class DagsterClient:
 
 
 @dataclass
-class DomoClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
 class NifiClientWrapper:
     def __init__(self, client) -> None:
         self.client = client
@@ -160,11 +123,5 @@ class NifiClientWrapper:
 
 @dataclass
 class AmundsenClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class DatalakeGen2Client:
     def __init__(self, client) -> None:
         self.client = client

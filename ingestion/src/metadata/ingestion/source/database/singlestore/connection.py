@@ -14,8 +14,8 @@ Source connection handler
 """
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreConnection,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -25,7 +25,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 
 
-def get_connection(connection: MysqlConnection) -> Engine:
+def get_connection(connection: SingleStoreConnection) -> Engine:
     """
     Create connection
     """
