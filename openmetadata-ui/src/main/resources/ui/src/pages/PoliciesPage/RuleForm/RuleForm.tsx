@@ -23,6 +23,7 @@ import {
   validateRuleCondition,
 } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
   Effect,
   Operation,
@@ -202,6 +203,19 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             max: 128,
             min: 1,
             message: t('label.field-required', { field: t('label.rule-name') }),
+          },
+          {
+            validator: (_, value) => {
+              if (allowedNameRegEx.test(value)) {
+                return Promise.reject(
+                  t('message.field-text-is-invalid', {
+                    fieldText: t('label.rule-name'),
+                  })
+                );
+              }
+
+              return Promise.resolve();
+            },
           },
         ]}>
         <Input

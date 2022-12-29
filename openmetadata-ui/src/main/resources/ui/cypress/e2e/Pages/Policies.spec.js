@@ -76,8 +76,6 @@ const addRule = (rulename, ruleDescription, descriptionIndex) => {
 
   cy.get(`[title="${ruleDetails.condition}"]`).should('be.visible').click();
 
-  cy.get('.ant-card-body').should('be.visible').click();
-
   cy.get('[data-testid="condition-success"]').contains('✅ Valid condition');
 
   cy.wait(500);
@@ -101,7 +99,7 @@ describe('Policy page should work properly', () => {
       .its('response.statusCode')
       .should('equal', 200);
 
-    cy.url().should('eq', 'http://localhost:8585/settings/access/policies');
+    cy.url().should('eq', `${BASE_URL}/settings/access/policies`);
   });
 
   it('Default Policies and Roles should be displayed', () => {
