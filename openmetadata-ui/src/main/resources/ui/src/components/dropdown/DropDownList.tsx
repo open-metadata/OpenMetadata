@@ -53,9 +53,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
-  const [dropDownPosition, setDropDownPosition] = useState<{ bottom: string }>(
-    {}
-  );
+  const [dropDownPosition, setDropDownPosition] =
+    useState<{ bottom: string }>();
 
   const setCurrentTabOnMount = () => {
     const selectedItem = dropDownList.find((l) => l.value === value);
