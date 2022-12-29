@@ -103,7 +103,7 @@ const AddAnnouncementModal: FC<Props> = ({
         htmlType: 'submit',
       }}
       okText="Submit"
-      title={t('label.make-an-announcement')}
+      title={t('message.make-an-announcement')}
       visible={open}
       width={720}
       onCancel={onCancel}>
@@ -170,7 +170,7 @@ const AddAnnouncementModal: FC<Props> = ({
         <Form.Item label={`${t('label.description')}:`} name="description">
           <RichTextEditor
             initialValue={description}
-            placeHolder={t('label.write-your-announcement-lowercase')}
+            placeHolder={t('message.write-your-announcement-lowercase')}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>

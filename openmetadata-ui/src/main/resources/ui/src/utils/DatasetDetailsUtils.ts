@@ -54,7 +54,7 @@ export const datasetTableTabs = [
     path: 'dbt',
   },
   {
-    name: i18next.t('label.custom-properties'),
+    name: i18next.t('label.custom-property-plural'),
     path: 'custom_properties',
   },
 ];

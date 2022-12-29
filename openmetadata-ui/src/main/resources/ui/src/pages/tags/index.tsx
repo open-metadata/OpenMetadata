@@ -632,7 +632,7 @@ const TagsPage = () => {
         key: 'description',
         render: (text: string, record: Tag) => (
           <div className="tw-group tableBody-cell">
-            <div className="cursor-pointer flex">
+            <div className="cursor-pointer d-flex">
               <div>
                 {text ? (
                   <RichTextEditorPreviewer markdown={text} />
@@ -936,7 +936,7 @@ const TagsPage = () => {
             <FormModal
               errorData={errorDataTag}
               form={Form}
-              header={t('label.adding-new-tag', {
+              header={t('message.adding-new-tag', {
                 categoryName:
                   currentClassification?.displayName ??
                   currentClassification?.name,

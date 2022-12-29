@@ -436,7 +436,7 @@ export const servicePageTabs = (entity: string) => [
     path: entity.toLowerCase(),
   },
   {
-    name: t('label.ingestions'),
+    name: t('label.ingestion-plural'),
     path: 'ingestions',
   },
   {
@@ -695,7 +695,7 @@ export const getOptionalFields = (
 
       return (
         <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.brokers')}:</label>
+          <label className="tw-mb-0">{t('label.broker-plural')}:</label>
           <span
             className=" tw-ml-1 tw-font-normal tw-text-grey-body"
             data-testid="brokers">
@@ -900,7 +900,7 @@ export const getServicePageTabs = (
 
   tabs.push(
     {
-      name: t('label.ingestions'),
+      name: t('label.ingestion-plural'),
       isProtected: false,
 
       position: 2,

@@ -357,7 +357,7 @@ const PoliciesDetailPage = () => {
           {isEmpty(policy) ? (
             <ErrorPlaceHolder>
               <div className="text-center">
-                <p>{`${t('label.no-policy-found')} ${fqn}`}</p>
+                <p>{`${t('message.no-policy-found-for')} ${fqn}`}</p>
                 <Button
                   size="small"
                   type="primary"
@@ -386,7 +386,7 @@ const PoliciesDetailPage = () => {
                 <TabPane key="rules" tab={t('label.rules')}>
                   {isEmpty(policy.rules) ? (
                     <ErrorPlaceHolder>
-                      <p>{t('label.no-rule-found')}</p>
+                      <p>{t('message.no-rule-found')}</p>
                     </ErrorPlaceHolder>
                   ) : (
                     <Space
@@ -451,7 +451,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="resources">
                                 <Col span={2}>
                                   <Typography.Text className="tw-text-grey-muted tw-mb-0">
-                                    {t('label.resources')} :
+                                    {t('label.resource-plural')} :
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -466,7 +466,7 @@ const PoliciesDetailPage = () => {
                               <Row data-testid="operations">
                                 <Col span={2}>
                                   <Typography.Text className="tw-text-grey-muted">
-                                    {t('label.operations')} :
+                                    {t('label.operation-plural')} :
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
@@ -506,7 +506,7 @@ const PoliciesDetailPage = () => {
                     </Space>
                   )}
                 </TabPane>
-                <TabPane key="roles" tab={t('label.roles')}>
+                <TabPane key="roles" tab={t('label.role-plural')}>
                   <PoliciesDetailsList
                     hasAccess={policyPermission.EditAll}
                     list={policy.roles ?? []}
@@ -516,7 +516,7 @@ const PoliciesDetailPage = () => {
                     }
                   />
                 </TabPane>
-                <TabPane key="teams" tab={t('label.teams')}>
+                <TabPane key="teams" tab={t('label.team-plural')}>
                   <PoliciesDetailsList
                     hasAccess={policyPermission.EditAll}
                     list={policy.teams ?? []}
@@ -551,7 +551,7 @@ const PoliciesDetailPage = () => {
             setEntity(undefined);
           }}>
           <Typography.Text>
-            {` ${t('label.sure-to-remove')} ${getEntityName(
+            {` ${t('message.sure-to-remove')} ${getEntityName(
               selectedEntity.record
             )} ${t('label.from-lowercase')} ${getEntityName(policy)}?`}
           </Typography.Text>

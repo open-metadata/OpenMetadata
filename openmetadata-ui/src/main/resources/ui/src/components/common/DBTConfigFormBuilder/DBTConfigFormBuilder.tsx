@@ -209,7 +209,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         return (
           <Fragment>
             <span data-testid="dbt-source-none">
-              {t('label.no-selected-dbt')}
+              {t('message.no-selected-dbt')}
             </span>
             {getSeparator('')}
             <Field className="tw-flex tw-justify-end">

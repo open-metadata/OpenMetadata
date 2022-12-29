@@ -69,14 +69,12 @@ const BasicSignUp = () => {
   };
 
   return (
-    <div className="tw-flex tw-flex-col tw-h-full">
-      <div
-        className="tw-flex tw-bg-body-main tw-flex-grow"
-        data-testid="signin-page">
-        <div className="tw-w-5/12">
-          <div className="mt-4 tw-text-center flex-center flex-col">
+    <div className="d-flex flex-col h-full">
+      <div className="d-flex bg-body-main flex-grow" data-testid="signin-page">
+        <div className="w-5/12">
+          <div className="mt-4 text-center flex-center flex-col">
             <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
-            <Typography.Text className="mt-8 w-80 tw-text-xl font-medium tw-text-grey-muted">
+            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               Centralized Metadata Store, Discover, Collaborate and get your
               Data Right
             </Typography.Text>
@@ -160,7 +158,7 @@ const BasicSignUp = () => {
                           <Typography.Text type="secondary">or</Typography.Text>
                         </Divider>
 
-                        <div className="mt-4 flex flex-center">
+                        <div className="mt-4 d-flex flex-center">
                           <Typography.Text className="mr-4">
                             Already a user?
                           </Typography.Text>
@@ -180,17 +178,17 @@ const BasicSignUp = () => {
             ) : null}
           </div>
         </div>
-        <div className="tw-w-7/12 tw-relative">
-          <div className="tw-absolute tw-inset-0">
+        <div className="w-7/12 relative">
+          <div className="absolute inset-0">
             <img
               alt="bg-image"
-              className="tw-w-full tw-h-full"
+              className="w-full h-full"
               data-testid="bg-image"
               src={loginBG}
             />
           </div>
-          <div className="tw-relative">
-            <div className="tw-flex tw-justify-center tw-mt-44 tw-mb-10">
+          <div className="relative">
+            <div className="d-flex justify-center mt-44 mb-10">
               <LoginCarousel />
             </div>
           </div>

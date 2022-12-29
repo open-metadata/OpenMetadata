@@ -220,7 +220,7 @@ const ConfigureIngestion = ({
   const getTimeoutSeconds = () => {
     return (
       <div>
-        <label>{t('label.profiler-timeout-seconds-label')}</label>
+        <label>{t('label.profiler-timeout-second-plural-label')}</label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           {t('message.profiler-timeout-seconds-message')}
         </p>

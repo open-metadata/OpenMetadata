@@ -126,9 +126,9 @@ describe('Test Policy details page', () => {
 
     const rulesTab = await screen.findByText('label.rules');
 
-    const rolesTab = await screen.findByText('label.roles');
+    const rolesTab = await screen.findByText('label.role-plural');
 
-    const teamsTab = await screen.findByText('label.teams');
+    const teamsTab = await screen.findByText('label.team-plural');
 
     expect(container).toBeInTheDocument();
 

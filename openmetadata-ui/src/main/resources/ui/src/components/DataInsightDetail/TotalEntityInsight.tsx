@@ -185,7 +185,7 @@ const TotalEntityInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   changeInValue={relativePercentage}
                   duration={selectedDays}
                   label={t('label.total-entity', {
-                    entity: t('label.assets'),
+                    entity: t('label.asset-plural'),
                   })}
                   value={total}
                 />

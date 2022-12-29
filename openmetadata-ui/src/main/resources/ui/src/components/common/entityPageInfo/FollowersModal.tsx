@@ -71,7 +71,7 @@ const FollowersModal = ({
       onCancel={onCancel}>
       <div>
         <Searchbar
-          placeholder={`${t('label.search-for-followers')}...`}
+          placeholder={`${t('label.search-for-follower-plural')}...`}
           searchValue={searchText}
           typingInterval={1500}
           onSearch={handleSearchAction}

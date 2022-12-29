@@ -163,7 +163,7 @@ const mockProps = {
   onSubmit: mockSubmit,
   formType: FormSubmitType.ADD,
   handleIngestionName: mockIngestionName,
-  ingestionName: i18n.t('label.dbt'),
+  ingestionName: i18n.t('label.dbt-uppercase'),
 };
 
 describe('Test DBT Config Form Builder', () => {

@@ -88,7 +88,7 @@ const RolesCard = ({
         key="roles-card"
         title={
           <div className="flex items-center justify-between">
-            <h6 className="mb-0">{t('label.roles')}</h6>
+            <h6 className="mb-0">{t('label.role-plural')}</h6>
             {!isRolesEdit && (
               <button
                 className="m-l-xs focus:tw-outline-none tw-self-baseline"
@@ -115,7 +115,7 @@ const RolesCard = ({
                 id="select-role"
                 mode="multiple"
                 options={userRolesOption}
-                placeholder={`${t('label.roles')}...`}
+                placeholder={`${t('label.role-plural')}...`}
                 onChange={handleOnRolesChange}
               />
               <div className="flex justify-end" data-testid="buttons">
@@ -154,7 +154,7 @@ const RolesCard = ({
         key="roles-card"
         title={
           <div className="flex items-center justify-between">
-            <h6 className="mb-0">{t('label.roles')}</h6>
+            <h6 className="mb-0">{t('label.role-plural')}</h6>
           </div>
         }>
         <div className="flex items-center justify-between mb-4">

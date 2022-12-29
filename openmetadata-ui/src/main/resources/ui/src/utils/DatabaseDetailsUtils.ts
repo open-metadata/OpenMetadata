@@ -20,7 +20,7 @@ export const databaseDetailsTabs = [
     path: 'schemas',
   },
   {
-    name: i18next.t('label.activity-feeds'),
+    name: i18next.t('label.activity-feed-plural'),
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },

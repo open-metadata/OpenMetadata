@@ -60,7 +60,7 @@ const FilterPattern = ({
             onChange={(e) => handleChecked(e.target.checked)}
           />
         </Col>
-        <Col className="flex flex-col">
+        <Col className="d-flex flex-col">
           <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
             type
           )} Filter Pattern`}</label>
@@ -87,7 +87,7 @@ const FilterPattern = ({
       {checked && (
         <div data-testid="field-container">
           <Field>
-            <label className="flex flex-col">{t('label.include')}:</label>
+            <label className="d-flex flex-col">{t('label.include')}:</label>
             <Typography.Text
               className="text-grey-muted m-t-xss m-b-xss"
               data-testid="filter-pattern-include-info">
@@ -99,14 +99,14 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
-              placeholder={t('label.list-of-strings-regex-patterns-csv')}
+              placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={includePattern}
               onChange={includeFilterChangeHandler}
             />
           </Field>
           <Field>
-            <label className="flex flex-col">{t('label.exclude')}:</label>
+            <label className="d-flex flex-col">{t('label.exclude')}:</label>
             <Typography.Text
               className="text-grey-muted m-t-xss m-b-xss"
               data-testid="filter-pattern-exclude-info">
@@ -118,7 +118,7 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
-              placeholder={t('label.list-of-strings-regex-patterns-csv')}
+              placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={excludePattern}
               onChange={excludeFilterChangeHandler}
