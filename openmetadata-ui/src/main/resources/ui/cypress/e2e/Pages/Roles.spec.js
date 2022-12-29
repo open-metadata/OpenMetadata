@@ -16,6 +16,7 @@ import {
     interceptURL, uuid,
     verifyResponseStatusCode
 } from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 
 const roles = {
   dataConsumer: 'Data Consumer',
