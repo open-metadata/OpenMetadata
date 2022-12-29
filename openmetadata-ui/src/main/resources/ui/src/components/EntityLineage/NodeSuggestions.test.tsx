@@ -49,7 +49,7 @@ describe('Test NodeSuggestions Component', () => {
       });
 
       // 1st call on page load with empty search string and respective searchIndex
-      expect(mockSearchData.mock.calls[0][0]).toEqual('');
+      expect(mockSearchData.mock.calls[0][0]).toBe('');
       expect(mockSearchData.mock.calls[0][6]).toEqual(
         SearchIndex[value as keyof typeof SearchIndex]
       );
@@ -70,7 +70,7 @@ describe('Test NodeSuggestions Component', () => {
       });
 
       // This function was instantiated exactly twice
-      expect(mockSearchData.mock.instances.length).toBe(2);
+      expect(mockSearchData.mock.instances).toHaveLength(2);
 
       // 2nd call with value search and respective searchIndex
       expect(mockSearchData.mock.calls[1][6]).toEqual(

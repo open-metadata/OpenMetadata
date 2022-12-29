@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -499,9 +500,7 @@ const AddAlertPage = () => {
                       <Form.Item
                         colon
                         initialValue={10}
-                        label={`${t(
-                          'label.connection-timeout-plural-optional'
-                        )}`}
+                        label={`${t('label.connection-timeout-plural')}`}
                         labelCol={{ span: 24 }}
                         name={[name, 'timeout']}>
                         <Input disabled={provider === ProviderType.System} />
@@ -584,7 +583,7 @@ const AddAlertPage = () => {
                           <Form.Item
                             required
                             messageVariables={{
-                              fieldName: t('label.data-assets'),
+                              fieldName: t('label.data-asset-plural'),
                             }}
                             name={['triggerConfig', 'entities']}>
                             <Select
@@ -597,7 +596,7 @@ const AddAlertPage = () => {
                                   label: getDisplayNameForEntities(entity),
                                 })) ?? []
                               }
-                              placeholder={t('label.select-data-assets')}
+                              placeholder={t('label.select-data-asset-plural')}
                             />
                           </Form.Item>
                         )}

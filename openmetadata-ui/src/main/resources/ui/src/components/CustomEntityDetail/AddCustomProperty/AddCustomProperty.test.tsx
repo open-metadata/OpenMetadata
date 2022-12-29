@@ -312,6 +312,6 @@ describe('Test Add Custom Property Component', () => {
 
     fireEvent.click(createButton);
 
-    expect(addPropertyToEntity).toBeCalled();
+    expect(addPropertyToEntity).toHaveBeenCalled();
   });
 });

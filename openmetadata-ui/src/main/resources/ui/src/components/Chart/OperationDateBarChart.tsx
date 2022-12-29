@@ -61,7 +61,7 @@ const OperationDateBarChart = ({
         data-testid="no-data-placeholder"
         justify="center">
         <Col>
-          <ErrorPlaceHolder>{t('label.no-data-available')}</ErrorPlaceHolder>
+          <ErrorPlaceHolder>{t('message.no-data-available')}</ErrorPlaceHolder>
         </Col>
       </Row>
     );

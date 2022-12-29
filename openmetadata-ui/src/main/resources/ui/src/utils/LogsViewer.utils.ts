@@ -30,7 +30,9 @@ export const getLogBreadCrumbs = (
   ingestionName: string,
   ingestionDetails: IngestionPipeline | undefined
 ) => {
-  if (isUndefined(ingestionDetails)) return [];
+  if (isUndefined(ingestionDetails)) {
+    return [];
+  }
 
   const urlPath = [serviceType, ...ingestionName.split('.')];
 

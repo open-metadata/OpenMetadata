@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/camelcase */
-
 import { SearchIndex } from '../../enums/search.enum';
 import {
   ConstraintType,

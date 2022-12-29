@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/camelcase */
-
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
@@ -36,12 +34,10 @@ const aggregations = {
     buckets: [
       {
         key: 'user',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         doc_count: 200,
       },
       {
         key: 'team',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         doc_count: 15,
       },
     ],
@@ -65,7 +61,6 @@ const aggregations = {
 
 const mockData: SearchResponse<ExploreSearchIndex> = {
   took: 44,
-  // eslint-disable-next-line @typescript-eslint/camelcase
   timed_out: false,
   hits: {
     total: {

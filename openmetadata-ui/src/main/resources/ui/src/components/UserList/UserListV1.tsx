@@ -121,7 +121,7 @@ const UserListV1: FC<UserListV1Props> = ({
     return [
       ...commonUserDetailColumns(),
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         width: 90,
@@ -190,7 +190,7 @@ const UserListV1: FC<UserListV1Props> = ({
                 size="small"
                 onClick={onShowDeletedUserChange}
               />
-              <span className="tw-ml-2">{t('label.deleted-users')}</span>
+              <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
             </span>
           </Col>
           <Col span={24}>
@@ -233,7 +233,7 @@ const UserListV1: FC<UserListV1Props> = ({
               checked={showDeletedUser}
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">{t('label.deleted-users')}</span>
+            <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
           </span>
           <Tooltip
             title={isAdminUser ? t('label.add-user') : ADMIN_ONLY_ACTION}>
@@ -301,7 +301,7 @@ const UserListV1: FC<UserListV1Props> = ({
         }}
         onOk={handleReactiveUser}>
         <p>
-          {t('label.want-to-restore')} {getEntityName(selectedUser)}?
+          {t('message.are-you-want-to-restore')} {getEntityName(selectedUser)}?
         </p>
       </Modal>
 

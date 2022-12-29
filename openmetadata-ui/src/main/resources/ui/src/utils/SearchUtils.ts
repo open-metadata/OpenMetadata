@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable @typescript-eslint/camelcase */
 
 import { isEmpty } from 'lodash';
 import { WILD_CARD_CHAR } from '../constants/char.constants';

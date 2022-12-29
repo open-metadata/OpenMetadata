@@ -150,7 +150,7 @@ const EditAnnouncementModal: FC<Props> = ({
         <Form.Item label={`${t('label.description')}:`} name="description">
           <RichTextEditor
             initialValue={description}
-            placeHolder={t('label.write-your-announcement-lowercase')}
+            placeHolder={t('message.write-your-announcement-lowercase')}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>

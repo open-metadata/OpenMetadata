@@ -22,7 +22,9 @@ export const hashCode = (str: string) => {
   let hash = 0,
     i,
     chr;
-  if (isEmpty(str)) return hash;
+  if (isEmpty(str)) {
+    return hash;
+  }
   for (i = 0; i < str.length; i++) {
     chr = str.charCodeAt(i);
     hash = (hash << 5) - hash + chr;

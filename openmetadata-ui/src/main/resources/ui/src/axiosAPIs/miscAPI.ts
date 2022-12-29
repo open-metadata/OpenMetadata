@@ -55,7 +55,7 @@ export const searchData = <SI extends SearchIndex>(
   });
 };
 
-export const getOwnershipCount: Function = (
+export const getOwnershipCount = (
   ownership: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(
@@ -124,11 +124,11 @@ export const getVersion = async () => {
   return response.data;
 };
 
-export const addLineage: Function = (data: Edge): Promise<AxiosResponse> => {
+export const addLineage = (data: Edge): Promise<AxiosResponse> => {
   return APIClient.put(`/lineage`, data);
 };
 
-export const deleteLineageEdge: Function = (
+export const deleteLineageEdge = (
   fromEntity: string,
   fromId: string,
   toEntity: string,
@@ -172,9 +172,7 @@ export const getTeamsByQuery = async (params: {
     params: {
       index: SearchIndex.TEAM,
       ...params,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       sort_field: 'name.keyword',
-      // eslint-disable-next-line @typescript-eslint/camelcase
       sort_order: 'asc',
     },
   });

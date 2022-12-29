@@ -285,7 +285,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         htmlType: 'submit',
       }}
       okText={t('label.save')}
-      title={t('label.settings')}
+      title={t('label.setting-plural')}
       visible={visible}
       width={630}
       onCancel={handleCancel}>
@@ -345,7 +345,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </Form>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
-          <p className="tw-mb-1.5">{t('label.profile-sample-query')} </p>
+          <p className="tw-mb-1.5">
+            {t('label.profile-sample-type', {
+              type: t('label.query'),
+            })}{' '}
+          </p>
           <CodeMirror
             className="profiler-setting-sql-editor"
             data-testid="profiler-setting-sql-editor"
@@ -360,7 +364,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <p className="tw-mb-4">{t('label.enable-column-profile')}</p>
+          <p className="tw-mb-4">{t('message.enable-column-profile')}</p>
           <p className="tw-text-xs tw-mb-1.5">{t('label.exclude')}:</p>
           <Select
             allowClear
@@ -368,7 +372,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             data-testid="exclude-column-select"
             mode="tags"
             options={selectOptions}
-            placeholder={t('label.select-column-exclude')}
+            placeholder={t('label.select-column-plural-to-exclude')}
             size="middle"
             value={excludeCol}
             onChange={(value) => setExcludeCol(value)}
@@ -422,7 +426,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               className="w-full"
                               data-testid="exclude-column-select"
                               options={selectOptions}
-                              placeholder={t('label.select-column-include')}
+                              placeholder={t(
+                                'label.select-column-plural-to-include'
+                              )}
                               size="middle"
                             />
                           </Form.Item>
@@ -486,7 +492,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   rules={[
                     {
                       required: enablePartition,
-                      message: t('message.column-name-required'),
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.column-name'),
+                      }),
                     },
                   ]}>
                   <Select
@@ -515,7 +523,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   rules={[
                     {
                       required: enablePartition,
-                      message: t('message.interval-type-required'),
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.interval-type'),
+                      }),
                     },
                   ]}>
                   <Select
@@ -524,7 +534,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     data-testid="interval-type"
                     disabled={!enablePartition}
                     options={INTERVAL_TYPE_OPTIONS}
-                    placeholder={t('message.select-type-required')}
+                    placeholder={t('message.select-interval-type')}
                     size="middle"
                   />
                 </Form.Item>
@@ -542,7 +552,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   rules={[
                     {
                       required: enablePartition,
-                      message: t('message.interval-required'),
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.interval'),
+                      }),
                     },
                   ]}>
                   <InputNumber
@@ -569,7 +581,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   rules={[
                     {
                       required: enablePartition,
-                      message: t('message.interval-unit-required'),
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.interval-unit'),
+                      }),
                     },
                   ]}>
                   <Select

@@ -177,7 +177,7 @@ describe('Test BotsDetail Component', () => {
     fireEvent.click(confirmButton);
 
     // revoke token handler should get called
-    expect(revokeTokenHandler).toBeCalled();
+    expect(revokeTokenHandler).toHaveBeenCalled();
   });
 
   it('Should render the edit form if the authmechanism is empty', async () => {

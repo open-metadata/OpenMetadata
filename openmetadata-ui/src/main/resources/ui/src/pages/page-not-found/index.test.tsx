@@ -32,6 +32,6 @@ describe('Test PageNotFound Component', () => {
     });
     const buttons = getByTestId(container, 'route-links');
 
-    expect(buttons.childElementCount).toEqual(2);
+    expect(buttons.childElementCount).toBe(2);
   });
 });

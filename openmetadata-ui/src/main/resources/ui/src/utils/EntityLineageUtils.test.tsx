@@ -67,7 +67,7 @@ describe('Test EntityLineageUtils utility', () => {
     );
 
     expect(upstreamData).toStrictEqual(UP_STREAM_EDGE);
-    expect(nodata).toStrictEqual(undefined);
+    expect(nodata).toBeUndefined();
   });
 
   it('getUpStreamDownStreamColumnLineageArr function should work properly', () => {

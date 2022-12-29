@@ -25,6 +25,11 @@ import { UserTag } from '../common/UserTag/UserTag.component';
 import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
 
+/**
+ * @deprecated -- Use AntD components instead
+ * @param param0
+ * @returns Dropdown list
+ */
 const DropDownList: FunctionComponent<DropDownListProp> = ({
   dropDownList,
   isLoading = false,
@@ -48,9 +53,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
-  const [dropDownPosition, setDropDownPosition] = useState<
-    { bottom: string } | {}
-  >({});
+  const [dropDownPosition, setDropDownPosition] =
+    useState<{ bottom: string }>();
 
   const setCurrentTabOnMount = () => {
     const selectedItem = dropDownList.find((l) => l.value === value);
@@ -137,7 +141,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <div
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'text-body flex px-4 py-2 text-sm hover:tw-bg-body-hover',
+          'text-body d-flex px-4 py-2 text-sm hover:tw-bg-body-hover',
           !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null,
           {
             'opacity-60 cursor-not-allowed': item.disabled,
@@ -152,7 +156,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
           !item.disabled && item.value !== value && onSelect?.(e, item.value)
         }>
         {item.type === 'user' ? (
-          <div className="w-full flex justify-between items-center">
+          <div className="w-full d-flex justify-between items-center">
             <UserTag id={item.value as string} name={item.name as string} />
 
             {removeOwnerButton(item)}
@@ -162,7 +166,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             {item.icon}
             <div
               className={classNames(
-                'tw-truncate flex items-center justify-between',
+                'tw-truncate d-flex items-center justify-between',
                 widthClass
               )}
               title={item.name as string}>

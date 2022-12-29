@@ -53,14 +53,14 @@ describe('AdvancedSearchUtils tests', () => {
       mockShortOptionsArray
     );
 
-    expect(resultOptionsString).toEqual('str1, str2');
+    expect(resultOptionsString).toBe('str1, str2');
   });
 
   it('Function getSelectedOptionLabelString should return string with ellipsis if the length of resultant string is more than 15', () => {
     const resultOptionsString =
       getSelectedOptionLabelString(mockLongOptionsArray);
 
-    expect(resultOptionsString).toEqual('string1, st...');
+    expect(resultOptionsString).toBe('string1, st...');
   });
 
   it('Function getSelectedOptionLabelString should return an empty string when passed anything else than string array as an argument', () => {
@@ -68,6 +68,6 @@ describe('AdvancedSearchUtils tests', () => {
       'invalidInput' as unknown as SearchDropdownOption[]
     );
 
-    expect(resultOptionsString).toEqual('');
+    expect(resultOptionsString).toBe('');
   });
 });

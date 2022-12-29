@@ -98,7 +98,7 @@ const AlertsPage = () => {
         key: 'description',
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'id',
         width: 120,
         key: 'id',

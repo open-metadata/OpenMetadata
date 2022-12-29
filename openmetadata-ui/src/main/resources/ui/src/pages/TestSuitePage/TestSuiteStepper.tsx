@@ -26,6 +26,7 @@ import {
 import TestSuiteIngestion from '../../components/AddDataQualityTest/TestSuiteIngestion';
 import SuccessScreen from '../../components/common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
@@ -100,11 +101,8 @@ const TestSuiteStepper = () => {
   }, []);
 
   return (
-    <Row
-      className="m-t-md"
-      data-testid="test-suite-stepper-container"
-      gutter={[16, 16]}>
-      <Col offset={4} span={12}>
+    <div data-testid="test-suite-stepper-container">
+      <PageLayoutV1 center>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
           {addIngestion ? (
@@ -134,20 +132,20 @@ const TestSuiteStepper = () => {
             </Row>
           )}
         </Space>
-      </Col>
-      <Col className="m-t-md" data-testid="right-panel" span={6}>
-        <RightPanel
-          data={
-            addIngestion
-              ? INGESTION_DATA
-              : getRightPanelForAddTestSuitePage(
-                  activeServiceStep,
-                  testSuiteResponse?.name || ''
-                )
-          }
-        />
-      </Col>
-    </Row>
+        <div className="m-t-xlg p-l-lg w-max-400" data-testid="right-panel">
+          <RightPanel
+            data={
+              addIngestion
+                ? INGESTION_DATA
+                : getRightPanelForAddTestSuitePage(
+                    activeServiceStep,
+                    testSuiteResponse?.name || ''
+                  )
+            }
+          />
+        </div>
+      </PageLayoutV1>
+    </div>
   );
 };
 

@@ -297,7 +297,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
-      name: t('label.custom-properties'),
+      name: t('label.custom-property-plural'),
       isProtected: false,
       position: 9,
     },

@@ -97,7 +97,7 @@ describe('KPI list component', () => {
       fireEvent.click(editButton);
     });
 
-    expect(mockPush).toBeCalled();
+    expect(mockPush).toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.click(deleteButton);
