@@ -341,6 +341,14 @@ public final class TestUtils {
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
+  public static <T> T putCsv(
+      WebTarget target, String request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.TEXT_PLAIN));
+    return readResponse(response, clz, expectedStatus.getStatusCode());
+  }
+
   public static void get(WebTarget target, Map<String, String> headers) throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).get();
     readResponse(response, Status.NO_CONTENT.getStatusCode());
