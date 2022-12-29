@@ -177,13 +177,13 @@ const TagsPage = () => {
     setIsTagsLoading(true);
 
     try {
-      const tagsResponse = await getTags(
-        'usageCount',
-        currentClassificationName,
-        paging?.after,
-        paging?.before,
-        PAGE_SIZE
-      );
+      const tagsResponse = await getTags({
+        arrQueryFields: 'usageCount',
+        parent: currentClassificationName,
+        after: paging?.after,
+        before: paging?.before,
+        limit: PAGE_SIZE,
+      });
       setTags(tagsResponse.data);
       setPaging(tagsResponse.paging);
     } catch (error) {

@@ -23,21 +23,20 @@ import APIClient from './index';
 
 const BASE_URL = '/classifications';
 
-export const getTags = async (
-  arrQueryFields?: string | string[],
-  parent?: string,
-  after?: string,
-  before?: string,
-  limit = 10
-) => {
-  const url = getURLWithQueryFields('/tags', arrQueryFields);
+interface TagsRequestParams {
+  arrQueryFields?: string | string[];
+  parent?: string;
+  after?: string;
+  before?: string;
+  limit?: number;
+}
 
-  const params = {
-    parent: parent,
-    limit,
-    after,
-    before,
-  };
+export const getTags = async ({
+  arrQueryFields,
+  limit = 10,
+  ...params
+}: TagsRequestParams) => {
+  const url = getURLWithQueryFields('/tags', arrQueryFields);
 
   const response = await APIClient.get<PagingResponse<Tag[]>>(url, {
     params,

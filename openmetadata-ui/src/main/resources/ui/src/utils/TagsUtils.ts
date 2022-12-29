@@ -70,7 +70,13 @@ export const getTaglist = async (
     const tags: Tag[] = [];
 
     const tagsListPromise = classifications.map((classification) =>
-      getTags('', classification.name, paging?.after, paging?.before, 1000)
+      getTags({
+        arrQueryFields: '',
+        parent: classification.name,
+        after: paging?.after,
+        before: paging?.before,
+        limit: 1000,
+      })
     );
 
     return await Promise.allSettled(tagsListPromise)

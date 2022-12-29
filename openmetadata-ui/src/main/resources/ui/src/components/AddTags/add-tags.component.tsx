@@ -42,8 +42,7 @@ export const AddTags = ({
     setIsTagLoading(true);
     getClassifications()
       .then(async (res) => {
-        const tagList = await getTaglist(res.data);
-        tagList && setTagList(tagList);
+        getTaglist(res.data).then(setTagList);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
