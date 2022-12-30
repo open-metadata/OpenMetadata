@@ -17,8 +17,8 @@ import {
     uuid,
     verifyResponseStatusCode
 } from '../../common/common';
-
 import { DELETE_TERM, DESTINATION, TEST_CASE } from '../../constants/constants';
+
 
 const alertForAllAssets = `Alert-ct-test-${uuid()}`;
 const description = 'This is alert description';
@@ -43,22 +43,22 @@ describe('Alerts page should work properly', () => {
   it('Create new alert for all data assets', () => {
     interceptURL('POST', '/api/v1/alerts', 'createAlert');
     //Click on create alert button
-    cy.get('button').contains('Create alert').should('be.visible').click();
+    cy.get('[data-testid="create-alert"]').should('be.visible').click();
     //Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     //Enter description
     cy.get('#description').should('be.visible').type(description);
     //Click on all data assets
-    cy.get('.ant-select-selection-item').should('be.visible').click();
+    cy.get('[data-testid="triggerConfig-type"]').should('be.visible').click();
     cy.get('.ant-select-item-option-content')
       .contains('All Data Assets')
       .click();
     //Select filters
-    cy.get('button').contains('Add Filters').should('exist').click();
+    cy.get('[data-testid="add-filters"]').should('exist').click();
     cy.get('#filteringRules_0_name').invoke('show').click();
     //Select owner
     cy.get('[title="Owner"]').should('be.visible').click();
-    cy.get('.ant-select-selection-overflow')
+    cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
       .type('Engineering');
@@ -69,7 +69,7 @@ describe('Alerts page should work properly', () => {
     cy.get('[title="Include"]').eq(1).click();
 
     //Select Destination
-    cy.get('button').contains('Add Destination').should('exist').click();
+    cy.get('[data-testid="add=destination"]').should('exist').click();
     cy.get('#alertActions_0_alertActionType').click();
 
     cy.get('.ant-select-item-option-content').contains('Email').click();
@@ -78,7 +78,7 @@ describe('Alerts page should work properly', () => {
       .click()
       .type('testuser@openmetadata.org');
     //Click save
-    cy.get('[type="submit"]').contains('Save').click();
+    cy.get('[data-testid="save"]').click();
     verifyResponseStatusCode('@createAlert', 201);
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', alertForAllAssets);
@@ -96,7 +96,7 @@ describe('Alerts page should work properly', () => {
       .focus()
       .type(updatedDescription);
     //Click save
-    cy.get('[type="submit"]').contains('Save').click();
+    cy.get('[data-testid="save"]').click();
     cy.get('.ant-table-cell').should('contain', updatedDescription);
   });
 
@@ -125,7 +125,7 @@ describe('Alerts page should work properly', () => {
   it('Create new alert for all data assets and multiple filters', () => {
     interceptURL('GET', '/api/v1/alerts/*', 'createAlert');
     //Click on create alert button
-    cy.get('button').contains('Create alert').should('be.visible').click();
+    cy.get('[data-testid="create-alert"]').should('be.visible').click();
     verifyResponseStatusCode('@createAlert', 200);
     //Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
@@ -135,11 +135,11 @@ describe('Alerts page should work properly', () => {
     cy.get('[title="All Data Assets"]').should('be.visible').click();
     cy.get('[title="All Data Assets"]').eq(1).click();
     //Select filters
-    cy.get('button').contains('Add Filters').should('exist').click();
+    cy.get('[data-testid="add-filters"]').should('exist').click();
     cy.get('#filteringRules_0_name').invoke('show').click();
     //Select first owner
     cy.get('[title="Owner"]').should('be.visible').click();
-    cy.get('.ant-select-selection-overflow')
+    cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
       .type('Engineering');
@@ -147,7 +147,7 @@ describe('Alerts page should work properly', () => {
     cy.get('#name').should('be.visible').click();
 
     //Select second owner
-    cy.get('.ant-select-selection-overflow')
+    cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
       .type('Applications');
@@ -159,7 +159,7 @@ describe('Alerts page should work properly', () => {
     cy.get('[title="Include"]').eq(1).click();
 
     //Select Destination
-    cy.get('button').contains('Add Destination').should('exist').click();
+    cy.get('[data-testid="add=destination"]').should('exist').click();
     cy.get('#alertActions_0_alertActionType').click();
 
     cy.get('.ant-select-item-option-content').contains('Email').click();
@@ -168,7 +168,7 @@ describe('Alerts page should work properly', () => {
       .click()
       .type('testuser@openmetadata.org');
     //Click save
-    cy.get('[type="submit"]').contains('Save').click();
+    cy.get('[data-testid="save"]').click();
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', alertForAllAssets);
   });
@@ -176,7 +176,7 @@ describe('Alerts page should work properly', () => {
   it('Create new alert for Test case data asset', () => {
     interceptURL('GET', '/api/v1/alerts/*', 'createAlert');
     //Click on create alert button
-    cy.get('button').contains('Create alert').should('be.visible').click();
+    cy.get('[data-testid="create-alert"]').should('be.visible').click();
     verifyResponseStatusCode('@createAlert', 200);
     //Enter alert name
     cy.get('#name').should('be.visible').type(TEST_CASE.testCaseAlert);
@@ -201,14 +201,14 @@ describe('Alerts page should work properly', () => {
       .click();
 
     //Select filters
-    cy.get('button').contains('Add Filters').should('exist').click();
+    cy.get('[data-testid="add-filters"]').should('exist').click();
     cy.get('#filteringRules_0_name').invoke('show').click();
     //Select Test results condition
 
     cy.get('[title="Test Results"]').should('be.visible').click();
     cy.get('#name').should('be.visible').click();
     //Select result
-    cy.get('.ant-select-selection-overflow').eq(1).should('be.visible').click();
+    cy.get('[data-testid="matchTestResult-select"]').should('be.visible').click();
     cy.get('[title="Failed"]').should('be.visible').click();
     cy.get('#name').should('be.visible').click();
     //Select include/exclude
@@ -216,7 +216,7 @@ describe('Alerts page should work properly', () => {
     cy.get('[title="Include"]').eq(1).click();
 
     //Select Destination
-    cy.get('button').contains('Add Destination').should('exist').click();
+    cy.get('[data-testid="add=destination"]').should('exist').click();
     cy.get('#alertActions_0_alertActionType').click();
 
     cy.get('.ant-select-item-option-content').contains('Email').click();
@@ -225,7 +225,7 @@ describe('Alerts page should work properly', () => {
       .click()
       .type('testuser@openmetadata.org');
     //Click save
-    cy.get('[type="submit"]').contains('Save').click();
+    cy.get('[data-testid="save"]').click();
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', TEST_CASE.testCaseAlert);
     cy.get('.ant-table-cell')
@@ -243,7 +243,7 @@ describe('Alerts page should work properly', () => {
     it(`Create alert for ${destination.locator}`, () => {
       interceptURL('POST', '/api/v1/alerts', 'createAlert');
       //Click on create alert button
-      cy.get('button').contains('Create alert').should('be.visible').click();
+      cy.get('[data-testid="create-alert"]').should('be.visible').click();
       //Enter alert name
       cy.get('#name').should('be.visible').type(destination.name);
       //Enter description
@@ -252,11 +252,11 @@ describe('Alerts page should work properly', () => {
       cy.get('[title="All Data Assets"]').should('be.visible').click();
       cy.get('[title="All Data Assets"]').eq(1).click();
       //Select filters
-      cy.get('button').contains('Add Filters').should('exist').click();
+      cy.get('[data-testid="add-filters"]').should('exist').click();
       cy.get('#filteringRules_0_name').invoke('show').click();
       //Select owner
       cy.get('[title="Owner"]').should('be.visible').click();
-      cy.get('.ant-select-selection-overflow')
+      cy.get('[data-testid="matchAnyOwnerName-select"]')
         .should('be.visible')
         .click()
         .type('Engineering');
@@ -267,7 +267,7 @@ describe('Alerts page should work properly', () => {
       cy.get('[title="Include"]').eq(1).click();
 
       //Select Destination
-      cy.get('button').contains('Add Destination').should('exist').click();
+      cy.get('[data-testid="add=destination"]').should('exist').click();
       cy.get('#alertActions_0_alertActionType').click();
 
       cy.get('.ant-select-item-option-content')
@@ -278,7 +278,7 @@ describe('Alerts page should work properly', () => {
         .click()
         .type(destination.url);
       //Click save
-      cy.get('[type="submit"]').contains('Save').click();
+      cy.get('[data-testid="save"]').click();
       verifyResponseStatusCode('@createAlert', 201);
       toastNotification('Alerts created successfully.');
       //Verify created alert
