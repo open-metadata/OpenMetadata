@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Select, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { TagOption } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -29,7 +29,7 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { withLoader } from '../../hoc/withLoader';
 import { Button } from '../buttons/Button/Button';
 import Tags from '../tags/tags';
-import { TagsContainerProps } from './tags-container.interface';
+import { EntityTags, TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   children,
@@ -67,7 +67,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             tagFQN: t,
             source: (tagList as TagOption[]).find((tag) => tag.fqn === t)
               ?.source,
-          };
+          } as EntityTags;
         });
 
         return updatedTags;
@@ -122,7 +122,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   }, [selectedTags]);
 
   const selectedTagsInternal = useMemo(
-    () => selectedTags.map(({ tagFQN }) => ({ label: tagFQN, value: tagFQN })),
+    () => selectedTags.map(({ tagFQN }) => tagFQN),
     [tags]
   );
 

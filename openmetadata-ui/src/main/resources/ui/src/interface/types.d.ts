@@ -14,7 +14,6 @@
 declare module 'Models' {
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
-  import { TagLabel } from '../generated/type/tagLabel';
   import { Paging } from './../generated/type/paging';
 
   export interface RestoreRequestType {
@@ -73,10 +72,6 @@ declare module 'Models' {
     selected: boolean;
     piiTags?: Array<string>;
   };
-
-  export type EntityTags = {
-    isRemovable?: boolean;
-  } & TagLabel;
 
   export type TableColumn = {
     name: string;

@@ -416,7 +416,7 @@ describe('Test TagsPage page', () => {
     const table = await findByTestId(container, 'table');
     const name = await findByText(container, 'label.name');
     const description = await findByText(container, 'label.description');
-    const actions = await findByText(container, 'label.actions');
+    const actions = await findByText(container, 'label.action-plural');
 
     expect(table).toBeInTheDocument();
     expect(actions).toBeInTheDocument();
