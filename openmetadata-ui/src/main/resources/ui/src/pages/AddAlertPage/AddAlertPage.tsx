@@ -324,6 +324,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getEntityByFQN}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: t('label.fqn-uppercase'),
@@ -342,6 +343,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getUsersAndTeamsOptions}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: getFunctionDisplayName(condition),
@@ -358,6 +360,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <Select
                 showArrow
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 options={
                   func.paramAdditionalContext?.data?.map((d) => ({
@@ -572,6 +575,7 @@ const AddAlertPage = () => {
                           initialValue={AlertTriggerType.AllDataAssets}
                           name={['triggerConfig', 'type']}>
                           <Select
+                            data-testid="triggerConfig-type"
                             options={defaultTriggers.map((trigger) => ({
                               label: getDisplayNameForTriggerType(trigger.type),
                               value: trigger.type,
@@ -624,6 +628,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add-filters"
                                 icon={<PlusOutlined />}
                                 type="default"
                                 onClick={() => add({}, 0)}>
@@ -716,6 +721,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add=destination"
                                 disabled={provider === ProviderType.System}
                                 icon={<PlusOutlined />}
                                 type="default"
@@ -739,6 +745,7 @@ const AddAlertPage = () => {
                                       key={key}
                                       name={[name, 'alertActionType']}>
                                       <Select
+                                        data-testid="alert-action-type"
                                         disabled={
                                           provider === ProviderType.System
                                         }
@@ -792,7 +799,7 @@ const AddAlertPage = () => {
                     <Button onClick={() => history.goBack()}>
                       {t('label.cancel')}
                     </Button>
-                    <Button htmlType="submit" type="primary">
+                    <Button data-testid="save" htmlType="submit" type="primary">
                       {t('label.save')}
                     </Button>
                   </Col>

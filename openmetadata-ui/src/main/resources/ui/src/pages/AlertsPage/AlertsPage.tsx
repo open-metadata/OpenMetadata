@@ -149,7 +149,7 @@ const AlertsPage = () => {
                 GlobalSettingsMenuCategory.NOTIFICATIONS,
                 GlobalSettingOptions.ADD_ALERTS
               )}>
-              <Button type="primary">
+              <Button data-testid="create-alert" type="primary">
                 {t('label.create-entity', { entity: 'alert' })}
               </Button>
             </Link>
