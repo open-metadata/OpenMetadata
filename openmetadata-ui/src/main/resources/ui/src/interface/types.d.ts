@@ -14,6 +14,7 @@
 declare module 'Models' {
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
+  import { TagLabel } from '../generated/type/tagLabel';
   import { Paging } from './../generated/type/paging';
 
   export interface RestoreRequestType {
@@ -63,6 +64,10 @@ declare module 'Models' {
     schemaRegistry?: string;
     serviceType: string;
   };
+
+  export type EntityTags = {
+    isRemovable?: boolean;
+  } & TagLabel;
 
   export type MockColumn = {
     columnId: number;

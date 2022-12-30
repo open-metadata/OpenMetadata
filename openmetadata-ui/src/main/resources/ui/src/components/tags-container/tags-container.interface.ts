@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import { TagOption } from 'Models';
+import { EntityTags, TagOption } from 'Models';
 import { ReactNode } from 'react';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { TagProps } from '../tags/tags.interface';
-
-export type EntityTags = {
-  isRemovable?: boolean;
-} & TagLabel;
 
 export type TagsContainerProps = {
   children?: ReactNode;
