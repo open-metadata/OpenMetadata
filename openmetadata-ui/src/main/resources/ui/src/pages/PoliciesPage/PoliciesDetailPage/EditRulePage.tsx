@@ -133,12 +133,12 @@ const EditRulePage = () => {
   }
 
   return (
-    <Row className="tw-bg-body-main tw-h-auto p-y-lg" gutter={[16, 16]}>
+    <Row className="bg-body-main h-auto p-y-lg" gutter={[16, 16]}>
       <Col offset={5} span={14}>
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph
-            className="tw-text-base"
+            className="text-base"
             data-testid="edit-rule-title">
             Edit Rule {`"${ruleName}"`}
           </Typography.Paragraph>
@@ -155,7 +155,7 @@ const EditRulePage = () => {
             layout="vertical"
             onFinish={handleSubmit}>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-            <Space align="center" className="tw-w-full tw-justify-end">
+            <Space align="center" className="w-full justify-end">
               <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
                 Cancel
               </Button>
