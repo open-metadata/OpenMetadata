@@ -61,7 +61,7 @@ const PoliciesDetailsList = ({
           }
 
           return (
-            <Link className="hover:tw-underline tw-cursor-pointer" to={link}>
+            <Link className="link-hover" to={link}>
               {getEntityName(record)}
             </Link>
           );

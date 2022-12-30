@@ -185,7 +185,7 @@ const AddServicePage = () => {
 
   return (
     <PageContainerV1>
-      <div className="tw-self-center">
+      <div className="self-center">
         <AddService
           addIngestion={addIngestion}
           handleAddIngestion={handleAddIngestion}
