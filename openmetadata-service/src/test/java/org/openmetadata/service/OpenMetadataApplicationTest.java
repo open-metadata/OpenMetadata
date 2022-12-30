@@ -71,6 +71,7 @@ public abstract class OpenMetadataApplicationTest {
             .table("DATABASE_CHANGE_LOG")
             .locations("filesystem:" + migrationScripsLocation)
             .sqlMigrationPrefix("v")
+            .cleanDisabled(false)
             .load();
     flyway.clean();
     flyway.migrate();
