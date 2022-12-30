@@ -167,7 +167,7 @@ class NifiUnitTest(TestCase):
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
     )
     @patch(
-        "metadata.ingestion.source.pipeline.nifi.metadata.NifiClient.token",
+        "metadata.ingestion.source.pipeline.nifi.client.NifiClient.token",
         new_callable=PropertyMock,
     )
     def __init__(self, methodName, nifi_token_prop, test_connection) -> None:

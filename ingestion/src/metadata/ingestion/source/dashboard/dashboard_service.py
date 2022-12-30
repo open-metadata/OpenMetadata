@@ -314,7 +314,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection)
+        test_connection_fn(self.client)
 
     def prepare(self):
         pass

@@ -239,7 +239,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         resp = self.profiler_workflow.get_partition_details(table_entity)
 
-        assert resp.enablePartitioning == True
+        assert resp.enablePartitioning
         assert resp.partitionColumnName == "foo"
         assert resp.partitionIntervalType == PartitionIntervalType.TIME_UNIT
         assert resp.partitionIntervalUnit == PartitionIntervalUnit.DAY

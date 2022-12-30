@@ -31,7 +31,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.nifi.client import NifiClient
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
@@ -215,7 +214,7 @@ class NifiSource(PipelineServiceSource):
         """
         Get List of all pipelines
         """
-        for process_group in self.client.list_process_groups():
+        for process_group in self.connection.list_process_groups():
             try:
                 yield NifiPipelineDetails(
                     id_=process_group[PROCESS_GROUP_FLOW].get("id"),
