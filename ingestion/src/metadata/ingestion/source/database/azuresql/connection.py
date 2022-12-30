@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -27,6 +27,9 @@ from metadata.ingestion.connections.test_connections import test_connection_db_c
 
 
 def get_connection_url(connection: AzureSQLConnection) -> str:
+    """
+    Build the connection URL
+    """
 
     url = f"{connection.scheme.value}://"
 

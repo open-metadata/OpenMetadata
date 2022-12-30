@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -19,10 +19,7 @@ from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_db_common,
-)
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 
 
 def get_connection(connection: GlueConnection) -> Engine:

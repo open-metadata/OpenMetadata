@@ -63,7 +63,7 @@ class LineageSource(QueryParserSource, ABC):
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
             try:
-                with get_connection(self.connection).connect() as conn:
+                with get_connection(self.service_connection).connect() as conn:
                     rows = conn.execute(
                         self.get_sql_statement(
                             start_time=self.start,

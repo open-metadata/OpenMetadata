@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -33,6 +33,10 @@ from metadata.utils.credentials import set_google_credentials
 
 
 def get_connection_url(connection: BigQueryConnection) -> str:
+    """
+    Build the connection URL and set the project
+    environment variable when needed
+    """
 
     if isinstance(connection.credentials.gcsConfig, GCSValues):
         if isinstance(  # pylint: disable=no-else-return

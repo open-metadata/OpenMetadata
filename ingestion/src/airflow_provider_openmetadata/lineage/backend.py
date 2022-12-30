@@ -47,7 +47,6 @@ class OpenMetadataLineageBackend(LineageBackend):
                  only if you are using google as SSO
     """
 
-    # pylint: disable=protected-access
     def send_lineage(
         self,
         operator: "BaseOperator",

@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -77,9 +77,11 @@ def get_connection(connection: TableauConnection) -> TableauServerConnection:
         )
         conn.sign_in().json()
         return conn
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unknown error connecting with {connection}: {exc}.")
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection}: {exc}."
+        )
 
 
 def test_connection(client: TableauServerConnection) -> None:

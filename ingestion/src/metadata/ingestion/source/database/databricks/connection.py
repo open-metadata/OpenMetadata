@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
-    get_connection_url_common,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 

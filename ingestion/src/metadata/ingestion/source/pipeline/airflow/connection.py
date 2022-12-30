@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -41,6 +41,8 @@ from metadata.ingestion.connections.test_connections import (
 )
 
 
+# Only import when needed
+# pylint: disable=import-outside-toplevel
 @singledispatch
 def _get_connection(airflow_connection) -> Engine:
     """

@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -14,6 +14,9 @@ Source connection handler
 """
 from urllib.parse import quote_plus
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -22,7 +25,6 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
-    get_connection_url_common,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.utils.logger import ingestion_logger
@@ -31,6 +33,9 @@ logger = ingestion_logger()
 
 
 def get_connection_url(connection: SnowflakeConnection) -> str:
+    """
+    Set the connection URL
+    """
     url = f"{connection.scheme.value}://"
 
     if connection.username:
@@ -75,9 +80,6 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
     Create connection
     """
     if connection.privateKey:
-
-        from cryptography.hazmat.backends import default_backend
-        from cryptography.hazmat.primitives import serialization
 
         snowflake_private_key_passphrase = (
             connection.snowflakePrivatekeyPassphrase.get_secret_value()

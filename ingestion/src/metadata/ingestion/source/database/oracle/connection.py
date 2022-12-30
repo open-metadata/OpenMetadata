@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate #pylint: disable=too-many-lines
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -34,6 +34,9 @@ CX_ORACLE_LIB_VERSION = "8.3.0"
 
 
 def get_connection_url(connection: OracleConnection) -> str:
+    """
+    Build the URL and handle driver version at system level
+    """
 
     oracledb.version = CX_ORACLE_LIB_VERSION
     sys.modules["cx_Oracle"] = oracledb
