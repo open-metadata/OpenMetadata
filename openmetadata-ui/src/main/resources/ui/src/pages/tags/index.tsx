@@ -106,7 +106,7 @@ type DeleteTagsType = {
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
-  const { ClassificationName } = useParams<Record<string, string>>();
+  const { tagCategoryName } = useParams<Record<string, string>>();
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );
@@ -288,7 +288,10 @@ const TagsPage = () => {
       createClassification({ ...data, name: trim(data.name) })
         .then((res) => {
           if (res) {
-            history.push(getTagPath(res.name));
+            fetchClassifications();
+            setTimeout(() => {
+              history.push(getTagPath(res.name));
+            }, 100);
           } else {
             throw t('server.unexpected-response');
           }
@@ -327,16 +330,23 @@ const TagsPage = () => {
       .then((res) => {
         if (res) {
           setIsLoading(true);
-          const updatedClassification = classifications.filter(
-            (data) => data.id !== classificationId
-          );
-          const currentClassification = updatedClassification[0];
-          history.push(
-            getTagPath(
-              currentClassification?.fullyQualifiedName ||
-                currentClassification?.name
-            )
-          );
+
+          setClassifications((classifications) => {
+            const updatedClassification = classifications.filter(
+              (data) => data.id !== classificationId
+            );
+            const currentClassification = updatedClassification[0];
+            setTimeout(() => {
+              history.push(
+                getTagPath(
+                  currentClassification?.fullyQualifiedName ||
+                    currentClassification?.name
+                )
+              );
+            }, 100);
+
+            return updatedClassification;
+          });
         } else {
           showErrorToast(t('server.delete-tag-category-error'));
         }
@@ -530,11 +540,11 @@ const TagsPage = () => {
     /**
      * If ClassificationName is present then fetch that category
      */
-    if (ClassificationName) {
-      const isTier = ClassificationName.startsWith(TIER_CATEGORY);
-      fetchCurrentClassification(isTier ? TIER_CATEGORY : ClassificationName);
+    if (tagCategoryName) {
+      const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
+      fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
     }
-  }, [ClassificationName]);
+  }, [tagCategoryName]);
 
   useEffect(() => {
     /**
@@ -681,7 +691,7 @@ const TagsPage = () => {
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         width: 120,

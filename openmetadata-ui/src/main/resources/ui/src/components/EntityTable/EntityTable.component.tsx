@@ -537,7 +537,6 @@ const EntityTable = ({
                 }
               }}>
               <TagsContainer
-                className="w-max-256"
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
                 selectedTags={tags || []}
@@ -637,7 +636,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 272,
+        width: 350,
         render: renderTags,
       },
     ],

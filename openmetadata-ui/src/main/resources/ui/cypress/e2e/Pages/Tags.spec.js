@@ -179,6 +179,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="save-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteTag', 200)
+    cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
     cy.get('[data-testid="data-summary-container"]')
         .contains(NEW_TAG.name)
         .should('not.be.exist');

@@ -121,6 +121,11 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     setTags(selectedTags);
   }, [selectedTags]);
 
+  const selectedTagsInternal = useMemo(
+    () => selectedTags.map(({ tagFQN }) => ({ label: tagFQN, value: tagFQN })),
+    [tags]
+  );
+
   return (
     <Space
       align="center"
@@ -146,10 +151,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         {editable ? (
           <Select
             autoFocus
-            open
             className={classNames('w-min-10', className)}
             data-testid="tag-selector"
-            defaultValue={tags}
+            defaultValue={selectedTagsInternal}
             mode="multiple"
             options={tagOptions}
             onChange={handleTagSelection}

@@ -39,7 +39,7 @@ export const getTags = async ({
   const url = getURLWithQueryFields('/tags', arrQueryFields);
 
   const response = await APIClient.get<PagingResponse<Tag[]>>(url, {
-    params,
+    params: { ...params, limit },
   });
 
   return response.data;
