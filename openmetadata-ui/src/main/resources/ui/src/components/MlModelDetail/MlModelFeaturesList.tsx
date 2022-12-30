@@ -124,13 +124,14 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
     Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then((values) => {
+      .then(async (values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
+          const tagList = await getTaglist(values[0].value.data);
+          tagsAndTerms = tagList.map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }

@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Select, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -20,20 +21,15 @@ import React, {
   FunctionComponent,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
-import AsyncSelect from 'react-select/async';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { withLoader } from '../../hoc/withLoader';
 import { Button } from '../buttons/Button/Button';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
-
-interface Option {
-  label: string;
-  value: string;
-}
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   children,
@@ -50,32 +46,28 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
 
-  const getTagList = (inputValue: string) => {
+  const tagOptions = useMemo(() => {
     const newTags = (tagList as TagOption[])
-      .filter((tag) => {
-        return !tags.some((selectedTag) => selectedTag.tagFQN === tag.fqn);
-      })
       .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
       .map((tag) => {
         return {
           label: tag.fqn,
           value: tag.fqn,
         };
-      })
-      .filter((i) => i.label.toLowerCase().includes(inputValue.toLowerCase()));
+      });
 
     return newTags;
-  };
+  }, [tagList]);
 
-  const handleTagSelection = (selectedTag: unknown) => {
+  const handleTagSelection = (selectedTag: string[]) => {
     if (!isEmpty(selectedTag)) {
       setTags(() => {
-        const updatedTags = (selectedTag as Option[]).map((t) => {
+        const updatedTags = selectedTag.map((t) => {
           return {
-            tagFQN: t.value,
-            source: (tagList as TagOption[]).find((tag) => tag.fqn === t.value)
+            tagFQN: t,
+            source: (tagList as TagOption[]).find((tag) => tag.fqn === t)
               ?.source,
-          };
+          } as EntityTags;
         });
 
         return updatedTags;
@@ -125,30 +117,21 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     );
   };
 
-  const loadOptions = (inputValue: string) =>
-    new Promise<Option[]>((resolve) => {
-      setTimeout(() => {
-        resolve(getTagList(inputValue));
-      }, 1000);
-    });
-
-  const getDefaultTags = () => {
-    return tags.map((tag) => {
-      return {
-        label: tag.tagFQN,
-        value: tag.tagFQN,
-      };
-    });
-  };
-
   useEffect(() => {
     setTags(selectedTags);
   }, [selectedTags]);
 
+  const selectedTagsInternal = useMemo(
+    () => selectedTags.map(({ tagFQN }) => tagFQN as string),
+    [tags]
+  );
+
   return (
-    <div
-      className={classNames('tw-cursor-pointer', containerClass)}
-      data-testid="tag-container">
+    <Space
+      align="center"
+      className={classNames('w-full', containerClass)}
+      data-testid="tag-container"
+      size={16}>
       <div className="tw-flex tw-flex-wrap">
         {showTags && !editable && (
           <Fragment>
@@ -166,13 +149,13 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           </Fragment>
         )}
         {editable ? (
-          <AsyncSelect
-            cacheOptions
-            defaultOptions
-            isMulti
-            className={classNames('tw-min-w-64', className)}
-            defaultValue={getDefaultTags}
-            loadOptions={loadOptions}
+          <Select
+            autoFocus
+            className={classNames('w-min-10', className)}
+            data-testid="tag-selector"
+            defaultValue={selectedTagsInternal}
+            mode="multiple"
+            options={tagOptions}
             onChange={handleTagSelection}
           />
         ) : (
@@ -180,12 +163,10 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         )}
       </div>
       {editable && (
-        <div
-          className={classNames(
-            'tw-flex tw-justify-end tw-mt-2',
-            buttonContainerClass
-          )}
-          data-testid="buttons">
+        <Space
+          className={classNames('', buttonContainerClass)}
+          data-testid="buttons"
+          size={8}>
           <Button
             className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
             data-testid="cancelAssociatedTag"
@@ -204,9 +185,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             onMouseDown={handleSave}>
             <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
           </Button>
-        </div>
+        </Space>
       )}
-    </div>
+    </Space>
   );
 };
 

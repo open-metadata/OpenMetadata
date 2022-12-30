@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+/* eslint-disable @typescript-eslint/ban-types */
+
 import { FormErrorData } from 'Models';
 import React, {
   forwardRef,

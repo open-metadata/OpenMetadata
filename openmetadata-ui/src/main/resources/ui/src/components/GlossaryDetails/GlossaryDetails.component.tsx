@@ -13,7 +13,6 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button as ButtonAntd, Card as AntdCard, Tooltip } from 'antd';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
@@ -26,16 +25,13 @@ import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
-import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getOwnerList } from '../../utils/ManageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
-  getClassifications,
-  getTaglist,
+  getAllTagsForOptions,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
@@ -193,18 +189,11 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     }));
   };
 
-  const fetchTags = () => {
+  const fetchTags = async () => {
     setIsTagLoading(true);
-    getClassifications()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
+    const tags = await getAllTagsForOptions();
+    setTagList(tags.map((t) => t.fullyQualifiedName ?? t.name));
+    setIsTagLoading(false);
   };
 
   const onDescriptionUpdate = async (updatedHTML: string) => {

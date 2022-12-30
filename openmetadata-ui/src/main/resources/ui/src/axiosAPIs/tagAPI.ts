@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { PagingResponse } from 'Models';
 import { CreateClassification } from '../generated/api/classification/createClassification';
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
@@ -22,15 +23,44 @@ import APIClient from './index';
 
 const BASE_URL = '/classifications';
 
-export const getTags = async (arrQueryFields?: string | string[]) => {
+interface TagsRequestParams {
+  arrQueryFields?: string | string[];
+  parent?: string;
+  after?: string;
+  before?: string;
+  limit?: number;
+}
+
+export const getTags = async ({
+  arrQueryFields,
+  limit = 10,
+  ...params
+}: TagsRequestParams) => {
   const url = getURLWithQueryFields('/tags', arrQueryFields);
 
-  const response = await APIClient.get<{ data: Classification[] }>(url);
+  const response = await APIClient.get<PagingResponse<Tag[]>>(url, {
+    params: { ...params, limit },
+  });
 
   return response.data;
 };
 
-export const getClassification = async (
+export const getAllClassifications = async (
+  arrQueryFields?: string | string[],
+  limit = 10
+) => {
+  const url = getURLWithQueryFields(BASE_URL, arrQueryFields);
+
+  const response = await APIClient.get<PagingResponse<Classification[]>>(url, {
+    params: {
+      limit,
+    },
+  });
+
+  return response.data;
+};
+
+export const getClassificationByName = async (
   name: string,
   arrQueryFields?: string | string[]
 ) => {

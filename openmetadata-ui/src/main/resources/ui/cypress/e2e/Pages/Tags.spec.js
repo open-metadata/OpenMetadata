@@ -33,9 +33,9 @@ describe('Tags page should work', () => {
   });
 
   it('Required Details should be available', () => {
-    cy.get('[data-testid="add-category"]').should('be.visible');
+    cy.get('[data-testid="add-classification"]').should('be.visible');
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible');
-    cy.get('[data-testid="delete-tag-category-button"]').should('be.visible');
+    cy.get('[data-testid="delete-classification-or-tag"]').should('be.visible');
     cy.get('[data-testid="description"]').should('be.visible');
     cy.get('[data-testid="table"]').should('be.visible');
 
@@ -66,10 +66,8 @@ describe('Tags page should work', () => {
   });
 
   it('Add new tag category flow should work properly', () => {
-    interceptURL("GET", "/api/v1/tags?*", "tags");
-    interceptURL("POST", "/api/v1/tags?*", "postTags");
-        
-    cy.get('[data-testid="add-category"]').should('be.visible').click();
+    interceptURL('POST', 'api/v1/classifications', 'createTagCategory')
+    cy.get('[data-testid="add-classification"]').should('be.visible').click();
     cy.get('[data-testid="modal-container"]').should('exist').then(() => {
         cy.get('[role="dialog"]').should('be.visible');
     });
@@ -84,20 +82,15 @@ describe('Tags page should work', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-
-      cy.get('[data-testid="modal-container"]').should('not.exist');
-      cy.get('[data-testid="category-name"]')
-        .should('be.visible')
-        .invoke('text')
-        .then((text) => {
-          expect(text).to.equal(NEW_TAG_CATEGORY.name);
-        });
+    verifyResponseStatusCode('@createTagCategory', 201);
+    cy.get('[data-testid="modal-container"]').should('not.exist');
+    cy.get('[data-testid="data-summary-container"]')
+      .should('be.visible')
+      .and('contain', NEW_TAG_CATEGORY.name)
   });
 
   it('Add new tag flow should work properly', () => {
-    interceptURL("GET", "/api/v1/tags?*", "tags");
-    
-    cy.get('[data-testid="side-panel-category"]')
+    cy.get('[data-testid="data-summary-container"]')
     .contains(NEW_TAG_CATEGORY.name)
     .should('be.visible')
     .as('newCategory');
@@ -113,10 +106,10 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
-    interceptURL('GET', '/api/v1/tags/*', 'createTag');
+    interceptURL('POST', '/api/v1/tags', 'createTag');
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@createTag', 200);
+    verifyResponseStatusCode('@createTag', 201);
 
     cy.get('[data-testid="table"]').should('contain', NEW_TAG.name);
   });
@@ -127,7 +120,7 @@ describe('Tags page should work', () => {
   });
 
   it('Check Usage of tag and it should redirect to explore page with tags filter', () => {
-    cy.get('[data-testid="side-panel-category"]')
+    cy.get('[data-testid="data-summary-container"]')
       .contains(NEW_TAG_CATEGORY.name)
       .should('be.visible')
       .as('newCategory');
@@ -164,9 +157,39 @@ describe('Tags page should work', () => {
   });
 
   it('Delete Tag flow should work properly', () => {
-    interceptURL("GET", "/api/v1/tags?*", "tags");
+    interceptURL('DELETE', '/api/v1/tags/*', 'deleteTag')
+    cy.get('[data-testid="data-summary-container"]')
+        .contains(NEW_TAG_CATEGORY.name)
+        .should('be.visible')
+        .as('newCategory');
 
-       cy.get('[data-testid="side-panel-category"]')
+    cy.get('@newCategory')
+        .click()
+        .parent()
+        .should('have.class', 'activeCategory');
+
+    cy.get('[data-testid="delete-tag"]').should('be.visible').click();
+    cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
+    cy.get('[data-testid="confirmation-modal"]').within(() => {
+            cy.get("[role='dialog']").should("be.visible");
+        });
+    cy.contains(
+        `Are you sure you want to delete the tag "${NEW_TAG.name}"?`
+        ).should('be.visible');
+
+    cy.get('[data-testid="save-button"]').should('be.visible').click();
+    verifyResponseStatusCode('@deleteTag', 200)
+    cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
+    cy.get('[data-testid="data-summary-container"]')
+        .contains(NEW_TAG.name)
+        .should('not.be.exist');
+
+  })
+
+  it('Delete Tag classification flow should work properly', () => {
+       interceptURL("DELETE", "/api/v1/classifications/*", "deletTagClassification");
+
+       cy.get('[data-testid="data-summary-container"]')
         .contains(NEW_TAG_CATEGORY.name)
         .should('be.visible')
         .as('newCategory');
@@ -176,7 +199,7 @@ describe('Tags page should work', () => {
         .parent()
         .should('have.class', 'activeCategory');
 
-        cy.get('[data-testid="delete-tag-category-button"]')
+        cy.get('[data-testid="delete-classification-or-tag"]')
         .should('be.visible')
         .click();
 
@@ -185,12 +208,12 @@ describe('Tags page should work', () => {
             cy.get("[role='dialog']").should("be.visible");
         });
         cy.contains(
-        `Are you sure you want to delete the tag category "${NEW_TAG_CATEGORY.name}"?`
+        `Are you sure you want to delete the classification "${NEW_TAG_CATEGORY.name}"?`
         ).should('be.visible');
 
         cy.get('[data-testid="save-button"]').should('be.visible').click();
-
-        cy.get('[data-testid="side-panel-category"]')
+        verifyResponseStatusCode('@deletTagClassification', 200)
+        cy.get('[data-testid="data-summary-container"]')
         .contains(NEW_TAG_CATEGORY.name)
         .should('not.be.exist');
   });

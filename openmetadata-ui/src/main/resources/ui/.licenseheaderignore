@@ -14,7 +14,7 @@
 /dist
 
 # TypeScript
-/tsbuildinfo
+"tsconfig.tsbuildinfo"
 
 # Maven
 /target
@@ -73,3 +73,6 @@ Thumbs.db
 
 # Sonar cloud
 "sonar-project.properties"
+
+# Generated
+src/generated

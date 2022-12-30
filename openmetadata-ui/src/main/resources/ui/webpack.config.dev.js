@@ -184,9 +184,8 @@ module.exports = {
     // In development mode, fork TypeScript checking to run in another thread and not block main
     // transpilation
     new ForkTsCheckerWebpackPlugin({
-      eslint: {
-        files: './src/**/*.{ts,tsx,js,jsx,json}',
-        // required - same as command `eslint ./src/**/*.{ts,tsx,js,jsx} --ext .ts,.tsx,.js,.jsx`
+      typescript: {
+        configFile: 'tsconfig.json',
       },
     }),
     // Generate index.html from template
