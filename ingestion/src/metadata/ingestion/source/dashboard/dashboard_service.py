@@ -247,11 +247,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.connection = get_connection(self.service_connection)
+        self.client = get_connection(self.service_connection)
         self.test_connection()
         self.status = DashboardSourceStatus()
 
-        self.client = self.connection.client
         self.metadata_client = OpenMetadata(self.metadata_config)
 
     def get_status(self) -> SourceStatus:

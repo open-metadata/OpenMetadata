@@ -131,7 +131,7 @@ class DatabricksLineageTests(TestCase):
         )
 
     @patch(
-        "metadata.ingestion.source.database.client.DatabricksClient.list_query_history"
+        "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_query_history"
     )
     def test_get_table_query(self, list_query_history):
         list_query_history.return_value = mock_data

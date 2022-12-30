@@ -158,7 +158,9 @@ MOCK_PIPELINE = Pipeline(
 
 
 class AirbyteUnitTest(TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     @patch("metadata.ingestion.source.pipeline.airbyte.metadata.AirbyteClient")
     def __init__(self, methodName, airbyte_client, test_connection) -> None:
         super().__init__(methodName)

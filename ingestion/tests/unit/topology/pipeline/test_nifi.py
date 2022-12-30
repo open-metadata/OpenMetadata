@@ -163,7 +163,9 @@ MOCK_PIPELINE = Pipeline(
 
 
 class NifiUnitTest(TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     @patch(
         "metadata.ingestion.source.pipeline.nifi.metadata.NifiClient.token",
         new_callable=PropertyMock,

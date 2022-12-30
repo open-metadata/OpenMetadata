@@ -82,14 +82,6 @@ class NifiSource(PipelineServiceSource):
     Pipeline metadata from Airflow's metadata db
     """
 
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
-        self.client: NifiClient = self.connection.client
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

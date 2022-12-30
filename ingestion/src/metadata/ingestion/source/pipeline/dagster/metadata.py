@@ -74,8 +74,7 @@ class DagsterSource(PipelineServiceSource):
         metadata_config: OpenMetadataConnection,
     ):
         self.service_connection = config.serviceConnection.__root__.config
-        self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
+        self.client = get_connection(self.service_connection)
         super().__init__(config, metadata_config)
         # Create the connection to the database
 
