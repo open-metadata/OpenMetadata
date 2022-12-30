@@ -312,8 +312,11 @@ const TaskDetailPage = () => {
   };
 
   const onTaskResolve = () => {
-    const updateTaskData = (data: Record<string, string>) => {
-      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, data)
+    const updateTaskData = (data: TaskDetails) => {
+      if (!taskDetail.task?.id) {
+        return;
+      }
+      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id + '', data)
         .then(() => {
           showSuccessToast(t('server.task-resolved-successfully'));
           history.push(
@@ -329,14 +332,14 @@ const TaskDetailPage = () => {
     if (isTaskTags) {
       if (!isEmpty(tagsSuggestion)) {
         const data = { newValue: JSON.stringify(tagsSuggestion || '[]') };
-        updateTaskData(data);
+        updateTaskData(data as TaskDetails);
       } else {
         showErrorToast(t('server.please-add-tags'));
       }
     } else {
       if (suggestion) {
         const data = { newValue: suggestion };
-        updateTaskData(data);
+        updateTaskData(data as TaskDetails);
       } else {
         showErrorToast(t('server.please-add-description'));
       }
@@ -344,11 +347,11 @@ const TaskDetailPage = () => {
   };
 
   const onTaskReject = () => {
-    if (comment) {
+    if (comment && taskDetail.task?.id) {
       setIsLoadingOnSave(true);
-      updateTask(TaskOperation.REJECT, taskDetail.task?.id, {
+      updateTask(TaskOperation.REJECT, taskDetail.task?.id + '', {
         comment,
-      })
+      } as unknown as TaskDetails)
         .then(() => {
           showSuccessToast(t('server.task-closed-successfully'));
           setModalVisible(false);

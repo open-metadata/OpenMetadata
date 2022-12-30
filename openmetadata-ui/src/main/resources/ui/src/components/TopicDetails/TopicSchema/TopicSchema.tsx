@@ -170,7 +170,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             direction={styleFlag ? 'vertical' : 'horizontal'}
             onClick={() => handleAddTagClick(record)}>
             <TagsContainer
-              className="w-max-256"
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}
               selectedTags={tags || []}
@@ -224,7 +223,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        width: 272,
+        width: 350,
         render: renderFieldTags,
       },
     ],

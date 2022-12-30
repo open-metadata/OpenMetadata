@@ -65,6 +65,10 @@ declare module 'Models' {
     serviceType: string;
   };
 
+  export type EntityTags = {
+    isRemovable?: boolean;
+  } & TagLabel;
+
   export type MockColumn = {
     columnId: number;
     name: string;
@@ -73,10 +77,6 @@ declare module 'Models' {
     selected: boolean;
     piiTags?: Array<string>;
   };
-
-  export type EntityTags = {
-    isRemovable?: boolean;
-  } & TagLabel;
 
   export type TableColumn = {
     name: string;

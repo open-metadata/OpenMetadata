@@ -209,9 +209,9 @@ describe('Glossary page should work properly', () => {
     })
     cy.get('[data-testid="reviewer-card-container"]').should('have.length', 1);
     //Uncomment once the suggestion API issue gets resolved
-    // cy.get('[data-testid="reviewer-card-container"]').invoke('text').then((text) => {
-    //   expect(text).to.contain(NEW_GLOSSARY.reviewer) 
-    // })
+    cy.get('[data-testid="reviewer-card-container"]').invoke('text').then((text) => {
+      expect(text).to.contain(NEW_GLOSSARY.reviewer) 
+    })
   })
 
   it('Create glossary term should work properly', () => {
@@ -230,13 +230,12 @@ describe('Glossary page should work properly', () => {
         cy.get('[data-testid="add-tag"]').should('exist').and('be.visible').click()
     });
     
-    cy.get('[class*="-control"]')
+    cy.get('[data-testid="tag-selector"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
-    cy.get('[id*="-option-0"]').should('contain', 'Personal');
+      cy.get(`[title="PersonalData.Personal"]`).should('be.visible').click();
 
-    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-details"]')
       .scrollIntoView()
@@ -280,13 +279,11 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]')
+    cy.get('[data-testid="tag-selector"]')
       .scrollIntoView()
       .should('be.visible')
       .type('personal');
-    cy.get('[id*="-option-0"]').should('contain', 'Personal');
-
-    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
+    cy.get(`[title="PersonalData.Personal"]`).should('be.visible').click()
 
     interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveData');
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
@@ -405,9 +402,8 @@ describe('Glossary page should work properly', () => {
       .eq(0)
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]').should('be.visible').type(term);
-    cy.get('[id*="-option-0"]').should('contain', term);
-    cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get('[data-testid="tag-selector"]').should('be.visible').click();
+    cy.get(`[title*="${term}"]`).should('be.visible').click();
     cy.get(
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
     ).contains(term);
@@ -429,9 +425,9 @@ describe('Glossary page should work properly', () => {
       .first()
       .click();
 
-      cy.get('[class*="-control"]').should('be.visible').type(term);
-      cy.get('[id*="-option-0"]').should('contain', term);
-      cy.get('[id*="-option-0"]').should('be.visible').click();
+    cy.get('[data-testid="tag-selector"]').should('be.visible').click();
+    cy.get(`[title*="${term}"]`).should('be.visible').click();
+      
       cy.get(
         '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
       ).contains(term);
@@ -478,7 +474,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[role="button"]').eq(0).should('be.visible').click();
+    cy.get('.ant-select-selection-item-remove').eq(0).should('be.visible').click();
     // uncomment below code once `Updating data of glossary term should work properly` is fixed
     // cy.get('[role="button"]').eq(0).should('be.visible').click();
 

@@ -18,8 +18,8 @@ import {
     BASE_URL, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE,
     SEARCH_ENTITY_TOPIC
 } from '../../constants/constants';
-
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
+
 
 const CREDENTIALS = {
   firstName: 'Test_Data_Consumer',
@@ -217,7 +217,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       .should('not.be.disabled')
       .first()
       .click();
-    cy.get('[class*="-control"]').should('be.visible');
+    cy.get('[data-testid="tag-selector"]').should('be.visible');
 
     //Check if tags is editable for dashboard
     visitEntityDetailsPage(
@@ -231,7 +231,7 @@ describe.skip('DataConsumer Edit policy should work properly', () => {
       .should('not.be.disabled')
       .first()
       .click();
-    cy.get('[class*="-control"]').should('be.visible');
+    cy.get('[data-testid="tag-selector"]').should('be.visible');
   });
 
   it('Check for CRUD operations to be disabled for the user for glossary and tags', () => {

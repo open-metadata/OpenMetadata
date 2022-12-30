@@ -12,17 +12,11 @@
  */
 
 import { Select } from 'antd';
-import { AxiosError } from 'axios';
 import { EntityTags, TagOption } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import jsonData from '../../jsons/en';
-import {
-  getClassifications,
-  getTaglist,
-  getTagOptions,
-} from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { getAllTagsForOptions, getTagOptions } from '../../utils/TagsUtils';
 
 export const AddTags = ({
   setTags,
@@ -34,20 +28,15 @@ export const AddTags = ({
   const [tagList, setTagList] = useState<Array<string | TagOption>>([]);
   const [selectedTags, setSelectedTags] = useState<Array<EntityTags>>([]);
 
+  const { t } = useTranslation();
   const options: React.ReactNode[] = [];
 
-  const fetchTags = () => {
+  const fetchTags = async () => {
     setIsTagLoading(true);
-    getClassifications()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
+    const tags = await getAllTagsForOptions();
+    setTagList(tags.map((t) => t.fullyQualifiedName || t.name));
+
+    setIsTagLoading(false);
   };
 
   const tagsList = useMemo(() => {
@@ -63,13 +52,13 @@ export const AddTags = ({
     return newTags;
   }, [tagList]);
 
-  const onClickSelect = () => {
+  const onClickSelect = useCallback(() => {
     fetchTags();
-  };
+  }, []);
 
-  const handleChange = (value: string[]) => {
+  const handleChange = useCallback((value: string[]) => {
     setSelectedTags && setSelectedTags(value);
-  };
+  }, []);
 
   tagsList.forEach((tag) =>
     options.push(<Select.Option key={tag.label}>{tag.value}</Select.Option>)
@@ -85,7 +74,7 @@ export const AddTags = ({
     <Select
       loading={isTagLoading}
       mode="multiple"
-      placeholder="Add Tags"
+      placeholder={t('label.add-tags')}
       style={{ width: '100%' }}
       value={selectedTags}
       onChange={handleChange}
