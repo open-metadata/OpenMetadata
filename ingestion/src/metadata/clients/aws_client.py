@@ -11,6 +11,7 @@
 """
 Module containing AWS Client
 """
+from enum import Enum
 from typing import Any
 
 import boto3
@@ -19,6 +20,14 @@ from boto3 import Session
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+
+class AWSServices(Enum):
+    DYNAMO_DB = "dynamodb"
+    GLUE = "glue"
+    SAGEMAKER = "sagemaker"
+    KINESIS = "kinesis"
+    QUICKSIGHT = "quicksight"
 
 
 class AWSClient:
@@ -84,19 +93,16 @@ class AWSClient:
         return session.resource(service_name=service_name)
 
     def get_dynamo_client(self):
-        return self.get_resource("dynamodb")
+        return self.get_resource(AWSServices.DYNAMO_DB.value)
 
-    def get_glue_db_client(self):
-        return self.get_client("glue")
-
-    def get_glue_pipeline_client(self):
-        return self.get_client("glue")
+    def get_glue_client(self):
+        return self.get_client(AWSServices.GLUE.value)
 
     def get_sagemaker_client(self):
-        return self.get_client("sagemaker")
+        return self.get_client(AWSServices.SAGEMAKER.value)
 
     def get_kinesis_client(self):
-        return self.get_client("kinesis")
+        return self.get_client(AWSServices.KINESIS.value)
 
     def get_quicksight_client(self):
-        return self.get_client("quicksight")
+        return self.get_client(AWSServices.QUICKSIGHT.value)

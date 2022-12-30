@@ -29,7 +29,7 @@ def get_connection(connection: GlueConnection) -> Engine:
     """
     Create connection
     """
-    return AWSClient(connection.awsConfig).get_glue_db_client()
+    return AWSClient(connection.awsConfig).get_glue_client()
 
 
 def test_connection(client) -> None:
