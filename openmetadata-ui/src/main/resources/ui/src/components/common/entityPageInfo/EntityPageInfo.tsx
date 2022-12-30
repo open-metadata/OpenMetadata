@@ -122,7 +122,6 @@ const EntityPageInfo = ({
     useState<Array<EntityReference>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
     document.getElementById('version-and-follow-section')?.offsetWidth
@@ -258,7 +257,12 @@ const EntityPageInfo = ({
 
   const fetchTags = async () => {
     setIsTagLoading(true);
-    await fetchTagsAndGlossaryTerms();
+    try {
+      const tags = await fetchTagsAndGlossaryTerms();
+      setTagList(tags);
+    } catch (error) {
+      setTagList([]);
+    }
     setIsTagLoading(false);
   };
 
@@ -534,7 +538,7 @@ const EntityPageInfo = ({
                   data-testid="tags-wrapper"
                   onClick={() => {
                     // Fetch tags and terms only once
-                    if (tagList.length === 0 || tagFetchFailed) {
+                    if (tagList.length === 0) {
                       fetchTags();
                     }
                     setIsEditable(true);
