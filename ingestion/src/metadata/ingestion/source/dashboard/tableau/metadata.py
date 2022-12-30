@@ -256,7 +256,11 @@ class TableauSource(DashboardServiceSource):
                     name=TABLEAU_TAG_CATEGORY,
                     description="Tags associates with tableau entities",
                 ),
-                tag_request=CreateTagRequest(name=tag, description="Tableau Tag"),
+                tag_request=CreateTagRequest(
+                    classification=TABLEAU_TAG_CATEGORY,
+                    name=tag,
+                    description="Tableau Tag",
+                ),
             )
             yield classification
             logger.info(f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested")

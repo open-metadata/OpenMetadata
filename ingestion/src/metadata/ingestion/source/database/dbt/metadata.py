@@ -264,6 +264,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                             description="dbt classification",
                         ),
                         tag_request=CreateTagRequest(
+                            classification="DBTTags",
                             name=tag_label.tagFQN.__root__.split(".")[1],
                             description="dbt Tags",
                         ),
