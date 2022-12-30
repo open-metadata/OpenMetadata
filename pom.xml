@@ -74,12 +74,12 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mockito.version>4.11.0</mockito.version>
+    <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.14.1</jackson.version>
     <jackson-databind.version>2.14.1</jackson-databind.version>
     <dropwizard.version>2.1.4</dropwizard.version>
     <diffMatch.version>1.0</diffMatch.version>
-    <dropwizard-jdbi3.version>2.0.34</dropwizard-jdbi3.version>
     <jersey-bom.version>2.38</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
@@ -223,7 +223,7 @@
       <dependency>
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-jdbi3</artifactId>
-        <version>${dropwizard-jdbi3.version}</version>
+        <version>${dropwizard.version}</version>
       </dependency>
       <dependency>
         <groupId>org.jdbi</groupId>
@@ -370,7 +370,7 @@
       <dependency>
         <groupId>jakarta.xml.bind</groupId>
         <artifactId>jakarta.xml.bind-api</artifactId>
-        <version>3.0.1</version>
+        <version>4.0.0</version>
       </dependency>
 
       <!-- Runtime, com.sun.xml.bind module -->
@@ -505,7 +505,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.dataformat</groupId>
         <artifactId>jackson-dataformat-cbor</artifactId>
-        <version>2.13.3</version>
+        <version>2.14.1</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
