@@ -31,7 +31,7 @@ const DisplayNameComponent = ({
   const { t } = useTranslation();
 
   return (
-    <div className="mt-4 w-full flex">
+    <div className="mt-4 w-full d-flex">
       {isDisplayNameEdit ? (
         <div className="flex items-center gap-2">
           <Input

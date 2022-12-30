@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +24,7 @@ import {
   validateRuleCondition,
 } from '../../../axiosAPIs/rolesAPIV1';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
   Effect,
   Operation,
@@ -111,17 +113,14 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   }, [ruleData.resources, policyResources]);
 
   const getConditionOptions = (conditionFunctions: Function[]) => {
-    return conditionFunctions.reduce(
-      (prev: BaseOptionType[], curr: Function) => {
-        const currentValues = (curr.examples || []).map((example: string) => ({
-          label: example,
-          value: example,
-        }));
+    return conditionFunctions.reduce((prev: BaseOptionType[], curr) => {
+      const currentValues = (curr.examples || []).map((example: string) => ({
+        label: example,
+        value: example,
+      }));
 
-        return uniqBy([...prev, ...currentValues], 'value');
-      },
-      []
-    );
+      return uniqBy([...prev, ...currentValues], 'value');
+    }, []);
   };
 
   const handleConditionSearch = (value: string) => {
@@ -153,7 +152,9 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
   };
 
   const handleConditionValidation = async (condition: string) => {
-    const defaultErrorText = t('label.condition-is-invalid');
+    const defaultErrorText = t('message.field-text-is-invalid', {
+      fieldText: t('label.condition'),
+    });
 
     if (condition) {
       setIsValidating(true);
@@ -201,6 +202,19 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             min: 1,
             message: t('label.field-required', { field: t('label.rule-name') }),
           },
+          {
+            validator: (_, value) => {
+              if (allowedNameRegEx.test(value)) {
+                return Promise.reject(
+                  t('message.field-text-is-invalid', {
+                    fieldText: t('label.rule-name'),
+                  })
+                );
+              }
+
+              return Promise.resolve();
+            },
+          },
         ]}>
         <Input
           data-testid="rule-name"
@@ -216,21 +230,21 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         <RichTextEditor
           height="200px"
           initialValue={ruleData.description || ''}
-          placeHolder={t('label.write-your-description')}
+          placeHolder={t('message.write-your-description')}
           style={{ margin: 0 }}
-          onTextChange={(value) =>
+          onTextChange={(value: string) =>
             setRuleData((prev: Rule) => ({ ...prev, description: value }))
           }
         />
       </Form.Item>
       <Form.Item
-        label={`${t('label.resources')}:`}
+        label={`${t('label.resource-plural')}:`}
         name="resources"
         rules={[
           {
             required: true,
             message: t('label.field-required-plural', {
-              field: t('label.resources'),
+              field: t('label.resource-plural'),
             }),
           },
         ]}>
@@ -238,10 +252,10 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           treeCheckable
           className="tw-w-full"
           data-testid="resources"
-          placeholder={t('label.select-resource')}
+          placeholder={t('label.select-resource-plural')}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
-          onChange={(values) => {
+          onChange={(values: string[]) => {
             setRuleData((prev: Rule) => ({
               ...prev,
               resources: values,
@@ -250,13 +264,13 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         />
       </Form.Item>
       <Form.Item
-        label={`${t('label.operations')}:`}
+        label={`${t('label.operation-plural')}:`}
         name="operations"
         rules={[
           {
             required: true,
             message: t('label.field-required-plural', {
-              field: t('label.operations'),
+              field: t('label.operation-plural'),
             }),
           },
         ]}>
@@ -267,7 +281,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
           placeholder="Select Operations"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
-          onChange={(values) => {
+          onChange={(values: Operation[]) => {
             setRuleData((prev: Rule) => ({
               ...prev,
               operations: values,

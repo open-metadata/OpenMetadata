@@ -180,7 +180,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             ) : (
               <Row className="m-y-sm" justify="center">
                 <Typography.Text>
-                  {t('label.no-data-available')}
+                  {t('message.no-data-available')}
                 </Typography.Text>
               </Row>
             )}

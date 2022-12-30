@@ -61,7 +61,7 @@ const ReIndexAllModal = ({
         onFinish={onSave}>
         <Form.Item
           initialValue
-          label={t('label.recreate-indexes')}
+          label={t('label.recreate-index-plural')}
           name="recreateIndex">
           <Select
             data-testid="re-index-selector"
@@ -71,7 +71,7 @@ const ReIndexAllModal = ({
 
         <Form.Item
           initialValue={entities}
-          label={t('label.entities-plural')}
+          label={t('label.entity-plural')}
           name="entities">
           <Checkbox.Group
             onChange={(values) => setEntities(values as string[])}>
@@ -91,7 +91,7 @@ const ReIndexAllModal = ({
           <Input
             data-testid="flush-interval-in-sec"
             placeholder={t('label.enter-entity', {
-              entity: t('label.seconds-plural'),
+              entity: t('label.second-plural'),
             })}
           />
         </Form.Item>

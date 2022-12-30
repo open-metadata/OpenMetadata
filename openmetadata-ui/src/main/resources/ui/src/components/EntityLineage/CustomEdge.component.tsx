@@ -28,6 +28,24 @@ interface LineageEdgeIconProps {
   offset: number;
 }
 
+export const LineageEdgeIcon = ({
+  children,
+  x,
+  y,
+  offset,
+}: LineageEdgeIconProps) => {
+  return (
+    <foreignObject
+      height={FOREIGN_OBJECT_SIZE}
+      requiredExtensions="http://www.w3.org/1999/xhtml"
+      width={FOREIGN_OBJECT_SIZE}
+      x={x - FOREIGN_OBJECT_SIZE / offset}
+      y={y - FOREIGN_OBJECT_SIZE / offset}>
+      {children}
+    </foreignObject>
+  );
+};
+
 export const CustomEdge = ({
   id,
   sourceX,
@@ -176,23 +194,5 @@ export const CustomEdge = ({
         )
       )}
     </Fragment>
-  );
-};
-
-export const LineageEdgeIcon = ({
-  children,
-  x,
-  y,
-  offset,
-}: LineageEdgeIconProps) => {
-  return (
-    <foreignObject
-      height={FOREIGN_OBJECT_SIZE}
-      requiredExtensions="http://www.w3.org/1999/xhtml"
-      width={FOREIGN_OBJECT_SIZE}
-      x={x - FOREIGN_OBJECT_SIZE / offset}
-      y={y - FOREIGN_OBJECT_SIZE / offset}>
-      {children}
-    </foreignObject>
   );
 };

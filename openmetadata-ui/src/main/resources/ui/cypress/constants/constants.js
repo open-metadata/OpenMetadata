@@ -305,3 +305,31 @@ export const API_SERVICE = {
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
 }
+
+export const TEST_CASE = {
+  testCaseAlert: `TestCaseAlert-ct-test-${uuid()}`,
+  testCaseDescription: 'This is test case alert description',
+  dataAsset: 'Test Case',
+  filters: 'Test Results === Failed',
+};
+
+export const DESTINATION = {
+  webhook: {
+    name: `webhookAlert-ct-test-${uuid()}`,
+    locator: 'Webhook',
+    description: 'This is webhook description',
+    url: 'http://localhost:8585',
+  },
+  slack: {
+    name: `slackAlert-ct-test-${uuid()}`,
+    locator: 'Slack',
+    description: 'This is slack description',
+    url: 'http://localhost:8585',
+  },
+  msteams: {
+    name: `msteamsAlert-ct-test-${uuid()}`,
+    locator: 'MS Teams',
+    description: 'This is ms teams description',
+    url: 'http://localhost:8585',
+  },
+};

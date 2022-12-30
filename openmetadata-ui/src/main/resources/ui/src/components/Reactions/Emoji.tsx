@@ -104,7 +104,7 @@ const Emoji: FC<EmojiProps> = ({
       zIndex={9999}
       onVisibleChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction tw-mr-1 flex', {
+        className={classNames('ant-btn-reaction tw-mr-1 d-flex', {
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"

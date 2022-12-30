@@ -16,6 +16,9 @@ on:
       DOCKER_RELEASE_TAG:
         description: "Docker Release Tag"
         required: true
+      push_latest_tag_to_release:
+        description: "Do you want to update docker image latest tag as well ?"
+        type: boolean
   release:
     types: [published]
 jobs:
@@ -133,13 +136,23 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
-      
-      - name: Build and push
+
+      - name: Process Docker Tags
+        id:  input_check
+        run: |
+            if ${{ github.event_name == 'release' }}; then
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
+            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
+                echo "tags=openmetadata/server:${{inputs.tag}},openmetadata/server:latest" >> $GITHUB_OUTPUT
+            else
+                echo "tags=openmetadata/server:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            fi
+
+      - name: Build and push if event is workflow_dispatch and input is checked
         uses: docker/build-push-action@v3
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
-
-          tags: 'openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest'
+          tags: ${{ steps.input_check.outputs.tags }}
           file: ./docker/metadata/Dockerfile

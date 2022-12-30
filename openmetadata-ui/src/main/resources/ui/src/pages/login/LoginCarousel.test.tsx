@@ -46,7 +46,7 @@ describe('Test LoginCarousel component', () => {
 
     expect(reactSlick).toBeInTheDocument();
     expect(carouselContainer).toBeInTheDocument();
-    expect(sliderContainer.length).toBe(LOGIN_SLIDE.length);
+    expect(sliderContainer).toHaveLength(LOGIN_SLIDE.length);
     expect(descriptions.map((d) => d.textContent)).toEqual(
       LOGIN_SLIDE.map((d) => `message.${d.descriptionKey}`)
     );

@@ -49,7 +49,10 @@ const ServiceConnectionDetails = ({
   const [schema, setSchema] = useState({});
   const [data, setData] = useState<ReactNode>();
 
-  const getKeyValues = (obj: {}, schemaPropertyObject: {}): ReactNode => {
+  const getKeyValues = (
+    obj: object,
+    schemaPropertyObject: object
+  ): ReactNode => {
     const internalRef = '$ref';
     const oneOf = 'oneOf';
 

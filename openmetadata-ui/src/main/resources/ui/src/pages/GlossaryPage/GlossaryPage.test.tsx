@@ -21,7 +21,6 @@ import {
 import { MOCK_GLOSSARY } from './glossary.mock';
 import GlossaryPageV1 from './GlossaryPageV1.component';
 
-/* eslint-disable @typescript-eslint/camelcase */
 const mockSearchData = {
   data: {
     took: 28,

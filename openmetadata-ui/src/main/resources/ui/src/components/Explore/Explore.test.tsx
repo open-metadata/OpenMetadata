@@ -95,6 +95,6 @@ describe('Test Explore component', () => {
 
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs.length).toBe(5);
+    expect(tabs).toHaveLength(5);
   });
 });

@@ -16,6 +16,7 @@ import {
     interceptURL, uuid,
     verifyResponseStatusCode
 } from '../../common/common';
+import { BASE_URL } from '../../constants/constants';
 
 const roles = {
   dataConsumer: 'Data Consumer',
@@ -65,7 +66,7 @@ describe('Roles page should work properly', () => {
 
     verifyResponseStatusCode('@getRoles', 200);
 
-    cy.url().should('eq', 'http://localhost:8585/settings/access/roles');
+    cy.url().should('eq', `${BASE_URL}/settings/access/roles`);
   });
 
   it('Default Role and Policies should be displayed', () => {
@@ -121,7 +122,7 @@ describe('Roles page should work properly', () => {
     //Verify the role is added successfully
     cy.url().should(
       'eq',
-      `http://localhost:8585/settings/access/roles/${roleName}`
+      `${BASE_URL}/settings/access/roles/${roleName}`
     );
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
 

@@ -103,7 +103,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           ),
       },
       {
-        title: t('label.total-views'),
+        title: t('label.total-view-plural'),
         dataIndex: 'pageViews',
         key: 'totalViews',
         render: (pageViews: number) => (

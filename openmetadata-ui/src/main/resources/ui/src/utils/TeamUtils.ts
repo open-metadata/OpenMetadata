@@ -77,7 +77,7 @@ export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
     teamType: userDetails.teamType as TeamType,
     defaultRoles: getEntityValue(defaultRoles),
     children:
-      userDetails.teamType == TeamType.Group
+      userDetails.teamType === TeamType.Group
         ? undefined
         : getEntityValue(children),
     parents: parents,

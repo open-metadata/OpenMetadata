@@ -79,14 +79,14 @@ describe('TableProfilerChart component test', () => {
     expect(
       await screen.findByTestId('operation-date-metrics')
     ).toBeInTheDocument();
-    expect((await screen.findAllByText('ProfilerLatestValue')).length).toBe(2);
+    expect(await screen.findAllByText('ProfilerLatestValue')).toHaveLength(2);
     expect(
       await screen.findByText('OperationDateBarChart')
     ).toBeInTheDocument();
     expect(await screen.findByText('CustomBarChart')).toBeInTheDocument();
     expect(await screen.findByText('ProfilerDetailsCard')).toBeInTheDocument();
-    expect(mockGetSystemProfileList.mock.instances.length).toBe(1);
-    expect(mockGetTableProfilesList.mock.instances.length).toBe(1);
+    expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
+    expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
   });
 
   it('Api call should done as per proper data', async () => {
@@ -97,8 +97,8 @@ describe('TableProfilerChart component test', () => {
     });
 
     // API should be call once
-    expect(mockGetSystemProfileList.mock.instances.length).toBe(1);
-    expect(mockGetTableProfilesList.mock.instances.length).toBe(1);
+    expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
+    expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
     // API should be call with FQN value
     expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual(mockFQN);
     expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual(mockFQN);

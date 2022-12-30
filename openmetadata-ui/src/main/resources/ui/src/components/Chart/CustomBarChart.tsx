@@ -52,7 +52,7 @@ const CustomBarChart = ({
         justify="center">
         <Col>
           <ErrorPlaceHolder>
-            <Typography.Text>{t('label.no-data-available')}</Typography.Text>
+            <Typography.Text>{t('message.no-data-available')}</Typography.Text>
           </ErrorPlaceHolder>
         </Col>
       </Row>

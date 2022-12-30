@@ -86,7 +86,7 @@ describe('Tests for CommonUtils', () => {
       const result = getNameFromFQN(mockFQNWithSpecialChar2);
       const containsDoubleQuotes = result.search('"');
 
-      expect(containsDoubleQuotes > 0).toEqual(false);
+      expect(containsDoubleQuotes > 0).toBe(false);
     });
   });
 });

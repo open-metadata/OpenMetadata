@@ -77,7 +77,6 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       // Call your API with the access token and return the data you need to save in state
       const { idToken, scopes, account } = response;
       const user = {
-        // eslint-disable-next-line @typescript-eslint/camelcase
         id_token: idToken,
         scope: scopes.join(),
         profile: {

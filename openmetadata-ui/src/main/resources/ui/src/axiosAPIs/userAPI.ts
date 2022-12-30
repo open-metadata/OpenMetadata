@@ -22,6 +22,7 @@ import {
 } from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/auth/jwtAuth';
 import { Bot } from '../generated/entity/bot';
+import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
 import { getURLWithQueryFields } from '../utils/APIUtils';
@@ -98,9 +99,7 @@ export const getLoggedInUser = async (arrQueryFields?: string) => {
   return response.data;
 };
 
-export const getUserDetails: Function = (
-  id: string
-): Promise<AxiosResponse> => {
+export const getUserDetails = (id: string): Promise<AxiosResponse> => {
   return APIClient.get(`/users/${id}`);
 };
 
@@ -108,18 +107,20 @@ export const getTeams = (): Promise<AxiosResponse> => {
   return APIClient.get('/teams');
 };
 
-export const getRoles: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get('/roles');
+export const getRoles = async () => {
+  const response = await APIClient.get<PagingResponse<Role[]>>('/roles');
+
+  return response.data;
 };
 
-export const updateUserRole: Function = (
+export const updateUserRole = (
   id: string,
   options: Array<string>
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/users/${id}/roles`, options);
 };
 
-export const updateUserTeam: Function = (
+export const updateUserTeam = (
   id: string,
   options: Array<string>
 ): Promise<AxiosResponse> => {

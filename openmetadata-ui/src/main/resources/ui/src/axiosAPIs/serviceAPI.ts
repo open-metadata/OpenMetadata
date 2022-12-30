@@ -96,7 +96,7 @@ export const updateService = async (
   return response.data;
 };
 
-export const deleteService: Function = (
+export const deleteService = (
   serviceCat: string,
   id: string
 ): Promise<AxiosResponse> => {

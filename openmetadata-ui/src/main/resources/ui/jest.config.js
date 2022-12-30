@@ -15,6 +15,13 @@ module.exports = {
   // Project name
   displayName: '@openmetadata',
 
+  globals: {
+    // TypeScript
+    'ts-jest': {
+      tsconfig: 'tsconfig.json',
+    },
+  },
+
   // Working directory
   roots: ['<rootDir>/src'],
 
@@ -51,6 +58,12 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
   },
+
+  // TypeScript
+  preset: 'ts-jest',
+
+  // Test Environment
+  testEnvironment: 'jsdom',
 
   // Sonar Cloud Configuration
   testResultsProcessor: 'jest-sonar-reporter',

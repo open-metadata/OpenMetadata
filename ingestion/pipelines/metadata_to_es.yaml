@@ -1,5 +1,5 @@
 source:
-  type: metadata-elasticsearch
+  type: metadata_elasticsearch
   serviceName: openMetadata
   serviceConnection:
     config:

@@ -163,10 +163,10 @@ const RelatedTermsModal = ({
         ) : (
           <Typography.Text className="flex justify-center mt-10 text-grey-muted text-base">
             {searchText
-              ? t('label.no-terms-found-for-searchText', {
+              ? t('message.no-terms-found-for-search-text', {
                   searchText,
                 })
-              : t('label.no-terms-found')}
+              : t('message.no-terms-found')}
           </Typography.Text>
         )}
       </div>
