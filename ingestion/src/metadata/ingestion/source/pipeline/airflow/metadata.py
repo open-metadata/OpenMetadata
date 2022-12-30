@@ -432,12 +432,12 @@ class AirflowSource(PipelineServiceSource):
                         else:
                             logger.warning(
                                 f"Could not find Table [{to_fqn}] from "
-                                f"[{self.context.pipeline_entity.fullyQualifiedName.__root__}] outlets"
+                                f"[{self.context.pipeline.fullyQualifiedName.__root__}] outlets"
                             )
                 else:
                     logger.warning(
                         f"Could not find Table [{from_fqn}] from "
-                        f"[{self.context.pipeline_entity.fullyQualifiedName.__root__}] inlets"
+                        f"[{self.context.pipeline.fullyQualifiedName.__root__}] inlets"
                     )
 
     def close(self):
