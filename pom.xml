@@ -80,7 +80,7 @@
     <dropwizard.version>2.0.34</dropwizard.version>
     <diffMatch.version>1.0</diffMatch.version>
     <dropwizard-jdbi3.version>2.0.34</dropwizard-jdbi3.version>
-    <jersey-bom.version>2.35</jersey-bom.version>
+    <jersey-bom.version>2.38</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
@@ -133,7 +133,7 @@
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
-    <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
+    <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
     <json-schema-validator.version>1.0.76</json-schema-validator.version>
     <java-jwt.version>3.19.3</java-jwt.version>
     <jwks-rsa.version>0.21.2</jwks-rsa.version>
