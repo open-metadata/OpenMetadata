@@ -104,7 +104,7 @@
     <jsonschema2pojo.version>1.1.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
-    <tomcat-jdbc.version>10.1.1</tomcat-jdbc.version>
+    <tomcat-jdbc.version>10.1.4</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
@@ -113,7 +113,8 @@
     <openapiswagger.version>2.2.7</openapiswagger.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>5.3.23</spring.version>
+    <!-- Upgrading to spring version 6.x requires Java 17 -->
+    <spring.version>5.3.24</spring.version>
     <log4j.version>2.19.0</log4j.version>
     <org.junit.jupiter.version>5.9.1</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.2</dropwizard-health.version>
@@ -133,6 +134,7 @@
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
+    <!-- Micrometer upgrade to 3.x requires Dropwizard > 3.x -->
     <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
     <json-schema-validator.version>1.0.76</json-schema-validator.version>
     <java-jwt.version>3.19.3</java-jwt.version>
@@ -491,7 +493,8 @@
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
-        <version>9.4.40.v20210413</version>
+        <!-- 9.x required for Dropwizard 2.1.x -->
+        <version>9.4.50.v20221201</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
