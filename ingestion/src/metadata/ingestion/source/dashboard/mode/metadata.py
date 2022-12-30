@@ -92,9 +92,7 @@ class ModeSource(DashboardServiceSource):
         """
         yield CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
-            dashboardUrl=dashboard_details[client.LINKS][client.SHARE][
-                client.HREF
-            ],
+            dashboardUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
             displayName=dashboard_details.get(client.NAME),
             description=dashboard_details.get(client.DESCRIPTION)
             if dashboard_details.get(client.DESCRIPTION)
@@ -201,9 +199,7 @@ class ModeSource(DashboardServiceSource):
                         displayName=chart_name,
                         description="",
                         chartType=ChartType.Other,
-                        chartUrl=chart[client.LINKS]["report_viz_web"][
-                            client.HREF
-                        ],
+                        chartUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
                         service=EntityReference(
                             id=self.context.dashboard_service.id.__root__,
                             type="dashboardService",
