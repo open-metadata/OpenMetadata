@@ -163,6 +163,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.gluePipeline
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+    DatabricksPipelineConnection,
+)
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import (
@@ -298,8 +301,9 @@ def get_connection(
     return create_generic_connection(connection, verbose)
 
 
-@get_connection.register
-def _(connection: DatabricksConnection, verbose: bool = False):
+@get_connection.register(DatabricksConnection)
+@get_connection.register(DatabricksPipelineConnection)
+def _(connection, verbose: bool = False):
     if connection.httpPath:
         if not connection.connectionArguments:
             connection.connectionArguments = ConnectionArguments()

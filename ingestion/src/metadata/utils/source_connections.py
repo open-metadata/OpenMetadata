@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+    DatabricksPipelineConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
 )
@@ -280,8 +283,9 @@ def _(connection: TrinoConnection):
     return url
 
 
-@get_connection_url.register
-def _(connection: DatabricksConnection):
+@get_connection_url.register(DatabricksConnection)
+@get_connection_url.register(DatabricksPipelineConnection)
+def _(connection):
     url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
     return url
 
