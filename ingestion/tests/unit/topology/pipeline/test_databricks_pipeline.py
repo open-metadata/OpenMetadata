@@ -18,13 +18,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.entity.data.pipeline import (
-    Pipeline,
-    PipelineStatus,
-    StatusType,
-    Task,
-    TaskStatus,
-)
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
