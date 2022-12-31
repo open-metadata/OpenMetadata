@@ -464,7 +464,7 @@ export const addNewTagToEntity = (entityObj, term) => {
         .scrollIntoView()
         .click();
 
-    cy.get('[data-testid="tag-selector"]').should('be.visible').type(term);
+    cy.get('[data-testid="tag-selector"] input').should('be.visible').type(term);
     
     cy.get(`[title="${term}"]`).should('be.visible').click();
     cy.get(

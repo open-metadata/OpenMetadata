@@ -158,6 +158,7 @@ describe('Tags page should work', () => {
 
   it('Delete Tag flow should work properly', () => {
     interceptURL('DELETE', '/api/v1/tags/*', 'deleteTag')
+    interceptURL('GET', '/api/v1/tags/*', 'getTags')
     cy.get('[data-testid="data-summary-container"]')
         .contains(NEW_TAG_CATEGORY.name)
         .should('be.visible')
@@ -167,6 +168,8 @@ describe('Tags page should work', () => {
         .click()
         .parent()
         .should('have.class', 'activeCategory');
+
+    verifyResponseStatusCode('@getTags', 200)
 
     cy.get('[data-testid="delete-tag"]').should('be.visible').click();
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
