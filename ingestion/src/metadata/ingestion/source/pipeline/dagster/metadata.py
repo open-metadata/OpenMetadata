@@ -176,7 +176,9 @@ class DagsterSource(PipelineServiceSource):
                 description="Tags associated with dagster",
             ),
             tag_request=CreateTagRequest(
-                name=self.context.repository_name, description="Dagster Tag"
+                classification="DagsterTags",
+                name=self.context.repository_name,
+                description="Dagster Tag",
             ),
         )
 

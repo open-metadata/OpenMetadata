@@ -306,6 +306,8 @@ class SnowflakeSource(CommonDbSourceService):
                     description="SNOWFLAKE TAG NAME",
                 ),
                 tag_request=CreateTagRequest(
-                    name=row[1], description="SNOWFLAKE TAG VALUE"
+                    classification=row[0],
+                    name=row[1],
+                    description="SNOWFLAKE TAG VALUE",
                 ),
             )
