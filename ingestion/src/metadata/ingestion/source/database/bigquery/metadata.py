@@ -162,11 +162,13 @@ class BigquerySource(CommonDbSourceService):
                     for tag in policy_tags:
                         yield OMetaTagAndClassification(
                             classification_request=CreateClassificationRequest(
-                                name=self.service_connection.tagCategoryName,
+                                name=self.service_connection.classificationName,
                                 description="",
                             ),
                             tag_request=CreateTagRequest(
-                                name=tag.display_name, description="Bigquery Policy Tag"
+                                classification=self.service_connection.classificationName,
+                                name=tag.display_name,
+                                description="Bigquery Policy Tag",
                             ),
                         )
         except Exception as exc:
@@ -193,7 +195,7 @@ class BigquerySource(CommonDbSourceService):
                     tagFQN=fqn.build(
                         self.metadata,
                         entity_type=Tag,
-                        classification_name=self.service_connection.tagCategoryName,
+                        classification_name=self.service_connection.classificationName,
                         tag_name=column["policy_tags"],
                     ),
                     labelType="Automated",
