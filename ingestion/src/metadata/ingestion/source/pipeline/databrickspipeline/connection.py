@@ -15,11 +15,8 @@ Source connection handler
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
 )
-
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.database.databricks.client import (
-    DatabricksClient,
-)
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
 
 
 def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient:

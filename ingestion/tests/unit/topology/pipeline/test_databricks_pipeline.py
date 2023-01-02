@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
-
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -32,9 +31,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
-
 from metadata.utils.ansi import print_ansi_encoded_string
-
 
 mock_file_path = (
     Path(__file__).parent.parent.parent
