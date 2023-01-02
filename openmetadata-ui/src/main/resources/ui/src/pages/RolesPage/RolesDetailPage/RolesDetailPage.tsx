@@ -353,10 +353,10 @@ const RolesDetailPage = () => {
           closable={false}
           confirmLoading={isLoadingOnSave}
           okText={t('label.confirm')}
+          open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity.record),
           })} ${t('label.from-lowercase')} ${getEntityName(role)}`}
-          visible={!isUndefined(selectedEntity.record)}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
             await handleDelete(selectedEntity.record, selectedEntity.attribute);

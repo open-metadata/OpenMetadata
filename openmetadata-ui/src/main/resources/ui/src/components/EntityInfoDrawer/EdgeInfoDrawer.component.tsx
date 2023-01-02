@@ -112,9 +112,9 @@ const EdgeInfoDrawer = ({
       getContainer={false}
       headerStyle={{ padding: 16 }}
       mask={false}
+      open={visible}
       style={{ position: 'absolute' }}
-      title={t('label.edge-information')}
-      visible={visible}>
+      title={t('label.edge-information')}>
       {isLoading ? (
         <Loader />
       ) : (

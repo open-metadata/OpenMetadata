@@ -61,12 +61,12 @@ const FormModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={1300}
       onCancel={onCancel}>
       <form id="form-modal" onSubmit={onSubmitHandler}>

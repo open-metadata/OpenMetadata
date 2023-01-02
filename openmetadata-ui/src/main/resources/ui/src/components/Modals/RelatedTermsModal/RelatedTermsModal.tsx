@@ -123,12 +123,12 @@ const RelatedTermsModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}>
       <div className="h-full">
         <Searchbar
