@@ -24,6 +24,7 @@ import {
 import { getListTestCase } from '../../../../axiosAPIs/testAPI';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Table, TableType } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
@@ -32,6 +33,7 @@ import {
   formTwoDigitNmber,
 } from '../../../../utils/CommonUtils';
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
@@ -40,6 +42,7 @@ import {
   TableTestsType,
 } from '../../../TableProfiler/TableProfiler.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({ entityDetails }: TableSummaryProps) {
@@ -158,6 +161,11 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     [tableType, columns, tableQueries]
   );
 
+  const formattedColumnsData: BasicEntityInfo[] = useMemo(
+    () => getFormattedEntityData(SummaryEntityType.COLUMN, columns),
+    [columns]
+  );
+
   useEffect(() => {
     if (!isEmpty(entityDetails)) {
       setTableDetails(entityDetails);
@@ -240,7 +248,10 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <SummaryList columns={columns} />
+          <SummaryList
+            entityType={SummaryEntityType.COLUMN}
+            formattedEntityData={formattedColumnsData}
+          />
         </Col>
       </Row>
     </>

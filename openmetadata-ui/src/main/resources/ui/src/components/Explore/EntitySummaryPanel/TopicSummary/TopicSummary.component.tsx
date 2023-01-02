@@ -15,13 +15,16 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { isArray } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Topic } from '../../../../generated/entity/data/topic';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface TopicSummaryProps {
   entityDetails: Topic;
@@ -39,6 +42,15 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
       'Max Message Size': bytesToSize(configs['Max Message Size'] ?? 0),
     };
   }, [entityDetails]);
+
+  const formattedSchemaFieldsData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        entityDetails.messageSchema?.schemaFields
+      ),
+    [entityDetails]
+  );
 
   return (
     <>
@@ -81,9 +93,7 @@ function TopicSummary({ entityDetails }: TopicSummaryProps) {
         </Col>
         <Col span={24}>
           {entityDetails.messageSchema?.schemaFields ? (
-            <SummaryList
-              schemaFields={entityDetails.messageSchema?.schemaFields || []}
-            />
+            <SummaryList formattedEntityData={formattedSchemaFieldsData} />
           ) : (
             <div className="m-y-md">
               <Typography.Text className="text-gray">

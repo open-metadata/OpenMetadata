@@ -13,15 +13,18 @@
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Pipeline, Task } from '../../../../generated/entity/data/pipeline';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import SVGIcons from '../../../../utils/SvgUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface PipelineSummaryProps {
   entityDetails: Pipeline;
@@ -51,6 +54,11 @@ function PipelineSummary({ entityDetails }: PipelineSummaryProps) {
   useEffect(() => {
     fetchTaskDetails();
   }, [entityDetails]);
+
+  const formattedTasksData: BasicEntityInfo[] = useMemo(
+    () => getFormattedEntityData(SummaryEntityType.TASK, tasks),
+    [tasks]
+  );
 
   return (
     <>
@@ -94,7 +102,7 @@ function PipelineSummary({ entityDetails }: PipelineSummaryProps) {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <SummaryList tasks={tasks || []} />
+          <SummaryList formattedEntityData={formattedTasksData} />
         </Col>
       </Row>
     </>

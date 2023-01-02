@@ -16,11 +16,14 @@ import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getDashboardDetailsPath } from '../../../../constants/constants';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { getEntityName } from '../../../../utils/CommonUtils';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface MlModelSummaryProps {
   entityDetails: Mlmodel;
@@ -52,6 +55,15 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
         </Link>
       ) : undefined,
     }),
+    [entityDetails]
+  );
+
+  const formattedFeaturesData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.MLFEATURE,
+        entityDetails.mlFeatures
+      ),
     [entityDetails]
   );
 
@@ -98,7 +110,7 @@ function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <SummaryList mlFeatures={entityDetails.mlFeatures || []} />
+          <SummaryList formattedEntityData={formattedFeaturesData} />
         </Col>
       </Row>
     </>
