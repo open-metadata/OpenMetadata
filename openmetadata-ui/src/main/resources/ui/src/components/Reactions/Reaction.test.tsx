@@ -67,6 +67,6 @@ describe('Test Reaction Component', () => {
 
     fireEvent.click(reactionButton);
 
-    expect(onHide).toBeCalled();
+    expect(onHide).toHaveBeenCalled();
   });
 });

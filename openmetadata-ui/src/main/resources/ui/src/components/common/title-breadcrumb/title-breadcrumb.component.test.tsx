@@ -52,7 +52,7 @@ describe('Test Breadcrumb Component', () => {
     });
     const breadcrumbLink = getAllByTestId(container, 'breadcrumb-link');
 
-    expect(breadcrumbLink.length).toBe(3);
+    expect(breadcrumbLink).toHaveLength(3);
   });
 
   it('Last value should not be link', () => {

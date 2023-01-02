@@ -63,7 +63,10 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    expect(getRunHistoryForPipeline).toBeCalledWith('test', expect.anything());
+    expect(getRunHistoryForPipeline).toHaveBeenCalledWith(
+      'test',
+      expect.anything()
+    );
   });
 
   it('should render runs when API returns runs', async () => {

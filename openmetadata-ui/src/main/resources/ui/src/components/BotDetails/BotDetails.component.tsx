@@ -22,7 +22,7 @@ import {
   getAuthMechanismForBotUser,
   getRoles,
 } from '../../axiosAPIs/userAPI';
-import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../constants/constants';
+import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -99,14 +99,8 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchRoles = async () => {
     try {
-      const response = await getRoles(
-        '',
-        undefined,
-        undefined,
-        false,
-        PAGE_SIZE_LARGE
-      );
-      setRoles(response.data.data);
+      const { data } = await getRoles();
+      setRoles(data);
     } catch (err) {
       setRoles([]);
       showErrorToast(err as AxiosError);
@@ -202,7 +196,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         <Col span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
-              <div className="flex flex-col">
+              <div className="d-flex flex-col">
                 <SVGIcons
                   alt="bot-profile"
                   icon={Icons.BOT_PROFILE}
@@ -286,7 +280,7 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="page-layout-v1-left-panel mt-2">
           <div data-testid="right-panel">
-            <div className="flex flex-col">
+            <div className="d-flex flex-col">
               <Typography.Text className="mb-2 text-lg">
                 {t('label.token-security')}
               </Typography.Text>
@@ -338,7 +332,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         bodyText={t('message.are-you-sure-to-revoke-access')}
         cancelText={t('label.cancel')}
         confirmText={t('label.confirm')}
-        header={t('label.are-you-sure')}
+        header={t('message.are-you-sure')}
         visible={isRevokingToken}
         onCancel={() => setIsRevokingToken(false)}
         onConfirm={() => {

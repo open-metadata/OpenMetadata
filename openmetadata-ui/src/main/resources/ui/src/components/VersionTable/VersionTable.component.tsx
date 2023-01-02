@@ -74,7 +74,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
               {getFrequentlyJoinedColumns(
                 columnName,
                 joins,
-                t('label.frequently-joined-columns')
+                t('label.frequently-joined-column-plural')
               )}
             </>
           ) : (
@@ -90,7 +90,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'tags',
         width: 272,
         render: (tags: Column['tags']) => (
-          <div className="flex flex-wrap">
+          <div className="d-flex flex-wrap">
             <TagsViewer sizeCap={-1} tags={tags || []} />
           </div>
         ),
@@ -116,7 +116,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
     <Row>
       <Col>
         <Searchbar
-          placeholder={`${t('label.find-in-table')}...`}
+          placeholder={`${t('message.find-in-table')}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}

@@ -118,17 +118,17 @@ const BotListV1 = ({
           ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'id',
         key: 'id',
         width: 90,
         render: (_, record) => {
           const isSystemBot = record.provider === ProviderType.System;
           const title = isSystemBot
-            ? t('label.ingestion-bot-cant-be-deleted')
+            ? t('message.ingestion-bot-cant-be-deleted')
             : isAdminUser
             ? t('label.delete')
-            : t('label.admin-only-action');
+            : t('message.admin-only-action');
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
@@ -215,7 +215,7 @@ const BotListV1 = ({
                 title={
                   isAdminUser
                     ? t('label.add-bot')
-                    : t('label.admin-only-action')
+                    : t('message.admin-only-action')
                 }>
                 <Button
                   ghost
@@ -253,7 +253,7 @@ const BotListV1 = ({
 
           <Tooltip
             title={
-              isAdminUser ? t('label.add-bot') : t('label.admin-only-action')
+              isAdminUser ? t('label.add-bot') : t('message.admin-only-action')
             }>
             <Button
               data-testid="add-bot"
@@ -268,7 +268,7 @@ const BotListV1 = ({
       <Col span={8}>
         <Searchbar
           removeMargin
-          placeholder={t('label.search-for-bots')}
+          placeholder={`${t('label.search-for-bot-plural')}...`}
           typingInterval={500}
           onSearch={handleSearch}
         />

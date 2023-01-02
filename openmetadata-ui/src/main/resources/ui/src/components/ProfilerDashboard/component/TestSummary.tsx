@@ -131,7 +131,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   };
 
   const fetchTestResults = async () => {
-    if (isEmpty(data)) return;
+    if (isEmpty(data)) {
+      return;
+    }
 
     try {
       const startTs = getPastDatesTimeStampFromCurrentDate(

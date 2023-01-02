@@ -31,7 +31,9 @@ const getUniqueTablesWithCount = (tableFQNs: Props['tableList']) => {
       let duplicates = false;
       for (const table of resList) {
         if (table.fullyQualifiedName === curr.fullyQualifiedName) {
-          if (table?.joinCount) table.joinCount += curr?.joinCount as number;
+          if (table?.joinCount) {
+            table.joinCount += curr?.joinCount as number;
+          }
           duplicates = true;
 
           break;

@@ -179,7 +179,7 @@ const ManageButton: FC<Props> = ({
                       <Row data-testid="announcement-button">
                         <Col span={21}>
                           <Typography.Text className="font-medium">
-                            {t('label.announcements')}
+                            {t('label.announcement-plural')}
                           </Typography.Text>
                         </Col>
                         <Col className="p-t-xss">

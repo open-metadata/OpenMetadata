@@ -537,7 +537,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     (params: Edge | Connection) => {
       const { target, source, sourceHandle, targetHandle } = params;
 
-      if (target === source) return;
+      if (target === source) {
+        return;
+      }
 
       const columnConnection = !isNil(sourceHandle) && !isNil(targetHandle);
 

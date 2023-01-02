@@ -187,7 +187,6 @@ export const rawSearchQuery = <
       from: (pageNumber - 1) * pageSize,
       size: pageSize,
       deleted: includeDeleted,
-      /* eslint-disable @typescript-eslint/camelcase */
       query_filter: JSON.stringify(queryFilter),
       post_filter: JSON.stringify(postFilter),
       sort_field: sortField,
@@ -195,7 +194,6 @@ export const rawSearchQuery = <
       track_total_hits: trackTotalHits,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
-      /* eslint-enable @typescript-eslint/camelcase */
     },
   });
 };
@@ -330,10 +328,8 @@ export const rawSuggestQuery = <
       q: query,
       field,
       index: getSearchIndexParam(searchIndex),
-      /* eslint-disable @typescript-eslint/camelcase */
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
-      /* eslint-enable @typescript-eslint/camelcase */
     },
   });
 };

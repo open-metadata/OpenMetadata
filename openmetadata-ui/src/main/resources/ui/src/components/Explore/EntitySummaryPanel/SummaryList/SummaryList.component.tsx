@@ -84,14 +84,16 @@ export default function SummaryList({
         tags: feature.tags,
         description: feature.description,
       }));
-    } else return [];
+    } else {
+      return [];
+    }
   }, [columns, charts, tasks, mlFeatures]);
 
   return (
     <Row>
       {isEmpty(formattedColumnsData) ? (
         <div className="m-y-md">
-          <Text className="text-gray">{t('label.no-data-available')}</Text>
+          <Text className="text-gray">{t('message.no-data-available')}</Text>
         </div>
       ) : (
         formattedColumnsData.map((entity) => (

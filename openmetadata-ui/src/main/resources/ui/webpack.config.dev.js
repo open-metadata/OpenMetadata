@@ -185,7 +185,7 @@ module.exports = {
     // transpilation
     new ForkTsCheckerWebpackPlugin({
       eslint: {
-        files: './src/**/*.{ts,tsx,js,jsx}',
+        files: './src/**/*.{ts,tsx,js,jsx,json}',
         // required - same as command `eslint ./src/**/*.{ts,tsx,js,jsx} --ext .ts,.tsx,.js,.jsx`
       },
     }),

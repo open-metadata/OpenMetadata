@@ -82,6 +82,9 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const AuthContext = createContext({} as any);
+
 const cookieStorage = new CookieStorage();
 
 const userAPIQueryFields = 'profile,teams,roles';
@@ -635,9 +638,6 @@ export const AuthProvider = ({
     </AuthContext.Provider>
   );
 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const AuthContext = createContext({} as any);
 
 export const useAuthContext = () => useContext(AuthContext);
 

@@ -64,10 +64,10 @@ describe('Test Announcement card component', () => {
 
     fireEvent.click(card);
 
-    expect(mockOnClick).toBeCalled();
+    expect(mockOnClick).toHaveBeenCalled();
 
     fireEvent.click(readMore);
 
-    expect(mockOnClick).toBeCalled();
+    expect(mockOnClick).toHaveBeenCalled();
   });
 });

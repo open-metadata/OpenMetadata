@@ -102,7 +102,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: t('label.docs'),
+      name: t('label.doc-plural'),
       to: urlGitbookDocs,
       isOpenNewTab: true,
       disabled: false,

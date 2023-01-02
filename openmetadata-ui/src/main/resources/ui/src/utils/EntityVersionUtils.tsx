@@ -181,10 +181,10 @@ export const getSummary = (
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
-                ? t('label.data-asset-has-been-action-type', {
+                ? t('message.data-asset-has-been-action-type', {
                     actionType: t('label.deleted-lowercase'),
                   })
-                : t('label.data-asset-has-been-action-type', {
+                : t('message.data-asset-has-been-action-type', {
                     actionType: t('label.restored-lowercase'),
                   });
             })

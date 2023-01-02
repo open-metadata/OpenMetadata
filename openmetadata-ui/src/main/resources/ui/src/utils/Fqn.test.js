@@ -22,7 +22,7 @@ describe('Test FQN', () => {
       }
       validate(actualParts, actualFQN) {
         expect(this.fqn).toStrictEqual(actualFQN);
-        expect(this.parts.length).toStrictEqual(actualParts.length);
+        expect(this.parts).toHaveLength(actualParts.length);
 
         for (let i = 0; i < this.parts.length; i++) {
           /* eslint-disable jest/no-conditional-expect */

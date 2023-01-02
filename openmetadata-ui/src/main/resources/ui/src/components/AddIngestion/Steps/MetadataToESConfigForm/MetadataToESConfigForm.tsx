@@ -87,7 +87,7 @@ const MetadataToESConfigForm = ({
       <Divider />
       <Form.Item
         className="switch-item"
-        label={t('label.use-aws-credentials')}
+        label={t('label.use-aws-credential-plural')}
         name="useAwsCredentials">
         <Switch />
       </Form.Item>
@@ -107,7 +107,7 @@ const MetadataToESConfigForm = ({
       <Divider />
       <Form.Item
         className="switch-item"
-        label={t('label.verify-certs')}
+        label={t('label.verify-cert-plural')}
         name="verifyCerts">
         <Switch />
       </Form.Item>

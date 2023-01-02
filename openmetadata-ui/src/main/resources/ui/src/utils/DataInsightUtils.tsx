@@ -556,8 +556,9 @@ export const getEntitiesChartSummary = (
     );
 
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.TotalEntitiesByTier) {
         const { total } = getGraphDataByTierType(chartData.data ?? []);
 
@@ -585,8 +586,9 @@ export const getWebChartSummary = (
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) return summary;
-    else {
+    if (isUndefined(chartData)) {
+      return summary;
+    } else {
       if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
         const latestData = last(chartData.data);
 
@@ -657,11 +659,11 @@ export const getKpiTargetValueByMetricType = (
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   if (day > 0 && isTargetMet) {
-    return t('label.kpi-target-achieved-before-time');
+    return t('message.kpi-target-achieved-before-time');
   } else if (day <= 0 && !isTargetMet) {
-    return t('label.kpi-target-overdue');
+    return t('message.kpi-target-overdue');
   } else if (isTargetMet) {
-    return t('label.kpi-target-achieved');
+    return t('message.kpi-target-achieved');
   } else {
     return t('label.day-left', { day: pluralize(day, 'day') });
   }

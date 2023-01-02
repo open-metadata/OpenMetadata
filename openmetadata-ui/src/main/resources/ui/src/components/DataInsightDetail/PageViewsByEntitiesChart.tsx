@@ -121,7 +121,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       title={
         <>
           <Typography.Title level={5}>
-            {t('label.page-views-by-entities')}
+            {t('label.page-views-by-data-asset-plural')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
             {t('message.data-insight-page-views')}
@@ -181,7 +181,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                   changeInValue={relativePercentage}
                   duration={selectedDays}
                   label={t('label.total-entity', {
-                    entity: t('label.assets'),
+                    entity: t('label.asset-plural'),
                   })}
                   value={total}
                 />

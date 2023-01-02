@@ -41,8 +41,8 @@ import {
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   entityLinkRegEx,
-  entityRegex,
   EntityRegEx,
+  entityRegex,
   entityUrlMap,
   hashtagRegEx,
   linkRegEx,
@@ -113,14 +113,17 @@ export const getReplyText = (
   singular?: string,
   plural?: string
 ) => {
-  if (count === 0) return i18next.t('label.reply-in-conversation');
-  if (count === 1)
+  if (count === 0) {
+    return i18next.t('label.reply-in-conversation');
+  }
+  if (count === 1) {
     return `${count} ${
       singular ? singular : i18next.t('label.older-reply-lowercase')
     }`;
+  }
 
   return `${count} ${
-    plural ? plural : i18next.t('label.older-replies-lowercase')
+    plural ? plural : i18next.t('label.older-reply-plural-lowercase')
   }`;
 };
 
@@ -259,7 +262,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
 export async function matcher(
   searchTerm: string,
-  renderList: Function,
+  renderList: (matches: string[], search: string) => void,
   mentionChar: string
 ) {
   const matches = await suggestions(searchTerm, mentionChar);
