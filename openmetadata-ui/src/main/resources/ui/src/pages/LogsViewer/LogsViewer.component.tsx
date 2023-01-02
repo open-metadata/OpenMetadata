@@ -187,7 +187,9 @@ const LogsViewer = () => {
     )[0] as HTMLInputElement;
 
     if (lazyLogSearchBarInput) {
-      lazyLogSearchBarInput.placeholder = `${t('label.search-log-plural')}...`;
+      lazyLogSearchBarInput.placeholder = `${t('label.search-entity', {
+        entity: t('label.log-plural'),
+      })}...`;
     }
   });
 

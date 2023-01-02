@@ -169,7 +169,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
         value: formatNumberWithComma(profile?.rowCount ?? 0),
       },
       {
-        title: t('label.column-count'),
+        title: t('label.column-entity', {
+          entity: t('label.count'),
+        }),
         value: profile?.columnCount ?? 0,
       },
       {
@@ -196,19 +198,25 @@ const TableProfilerV1: FC<TableProfilerProps> = ({ permissions }) => {
 
   const tabOptions = [
     {
-      label: t('label.table-profile'),
+      label: t('label.table-entity-text', {
+        entityText: t('label.profile'),
+      }),
       key: ProfilerDashboardTab.PROFILER,
       disabled: !viewProfiler,
       icon: <TableProfileIcon />,
     },
     {
-      label: t('label.column-profile'),
+      label: t('label.column-entity', {
+        entity: t('label.profile'),
+      }),
       key: ProfilerDashboardTab.SUMMARY,
       disabled: !viewProfiler,
       icon: <ColumnProfileIcon />,
     },
     {
-      label: t('label.data-quality'),
+      label: t('label.data-entity', {
+        entity: t('label.quality'),
+      }),
       key: ProfilerDashboardTab.DATA_QUALITY,
       disabled: !viewTest,
       icon: <DataQualityIcon />,

@@ -118,7 +118,9 @@ const TestSuiteStepper = () => {
                   data-testid="header"
                   level={5}>
                   {t('label.add-entity', {
-                    entity: t('label.test-suite'),
+                    entity: t('label.test-entity', {
+                      entity: t('label.suite'),
+                    }),
                   })}
                 </Typography.Title>
               </Col>

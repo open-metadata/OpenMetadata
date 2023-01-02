@@ -490,7 +490,9 @@ const AddAlertPage = () => {
 
                 <Collapse ghost>
                   <Collapse.Panel
-                    header={`${t('label.advanced-config')}:`}
+                    header={`${t('label.advanced-entity', {
+                      entity: t('label.config'),
+                    })}:`}
                     key="1">
                     <Space>
                       <Form.Item
@@ -600,7 +602,9 @@ const AddAlertPage = () => {
                                   label: getDisplayNameForEntities(entity),
                                 })) ?? []
                               }
-                              placeholder={t('label.select-data-asset-plural')}
+                              placeholder={t('label.select-field', {
+                                field: t('label.data-asset-plural'),
+                              })}
                             />
                           </Form.Item>
                         )}

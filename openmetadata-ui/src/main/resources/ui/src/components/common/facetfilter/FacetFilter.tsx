@@ -178,7 +178,9 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                         [aggregationKey]: prev[aggregationKey] + 5,
                       }))
                     }>
-                    {t('label.view-more')}
+                    {t('label.view-entity', {
+                      entity: t('label.more-lowercase'),
+                    })}
                   </p>
                 )}
                 {aggregationsPageSize[aggregationKey] > 5 && (
@@ -190,7 +192,9 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
                         [aggregationKey]: Math.max(5, prev[aggregationKey] - 5),
                       }))
                     }>
-                    {t('label.view-less')}
+                    {t('label.view-entity', {
+                      entity: t('label.less-lowercase'),
+                    })}
                   </p>
                 )}
               </div>

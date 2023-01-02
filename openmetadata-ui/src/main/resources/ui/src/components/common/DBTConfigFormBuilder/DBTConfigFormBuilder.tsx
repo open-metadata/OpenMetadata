@@ -262,7 +262,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbt-source">
-          {t('label.dbt-Configuration-source')}
+          {t('label.dbt-configuration-source')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
           {t('message.fetch-dbt-files')}
@@ -272,7 +272,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           data-testid="dbt-source"
           id="dbt-source"
           name="dbt-source"
-          placeholder={t('label.select-dbt-source')}
+          placeholder={t('label.select-field', {
+            field: t('label.dbt-source'),
+          })}
           value={source}
           onChange={(e) => {
             handleSourceChange &&

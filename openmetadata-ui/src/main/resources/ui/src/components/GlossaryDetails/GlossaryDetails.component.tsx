@@ -514,7 +514,9 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
       </div>
 
       <ReviewerModal
-        header={t('label.add-reviewer')}
+        header={t('label.add-entity', {
+          entity: t('label.reviewer'),
+        })}
         reviewer={reviewer}
         visible={showRevieweModal}
         onCancel={onReviewerModalCancel}

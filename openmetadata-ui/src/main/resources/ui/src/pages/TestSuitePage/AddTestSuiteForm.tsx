@@ -95,7 +95,9 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
         <Input
           data-testid="test-suite-name"
           placeholder={t('label.enter-entity', {
-            entity: `${t('label.test-suite')} ${t('label.name')}`,
+            entity: `${t('label.test-entity', {
+              entity: t('label.suite'),
+            })} ${t('label.name')}`,
           })}
         />
       </Form.Item>
