@@ -16,7 +16,6 @@ from typing import Iterable, List, Optional
 
 from pydantic import BaseModel, ValidationError
 
-from metadata.clients.nifi_client import NifiClient
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Task
@@ -81,14 +80,6 @@ class NifiSource(PipelineServiceSource):
     Implements the necessary methods ot extract
     Pipeline metadata from Airflow's metadata db
     """
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
-        self.client: NifiClient = self.connection.client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -223,7 +214,7 @@ class NifiSource(PipelineServiceSource):
         """
         Get List of all pipelines
         """
-        for process_group in self.client.list_process_groups():
+        for process_group in self.connection.list_process_groups():
             try:
                 yield NifiPipelineDetails(
                     id_=process_group[PROCESS_GROUP_FLOW].get("id"),
