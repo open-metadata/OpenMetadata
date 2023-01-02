@@ -407,8 +407,8 @@ const TagsPage = () => {
           patchData
         );
         if (response) {
+          fetchClassifications();
           if (currentClassification?.name !== updatedClassification.name) {
-            fetchClassifications();
             history.push(getTagPath(response.name));
             setIsNameEditing(false);
           } else {
