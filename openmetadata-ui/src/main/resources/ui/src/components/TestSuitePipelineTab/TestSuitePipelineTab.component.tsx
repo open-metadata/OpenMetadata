@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -69,7 +69,7 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
+  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const testSuitePath = useMemo(
     () => location.pathname.split('/')[1],
@@ -306,6 +306,7 @@ const TestSuitePipelineTab = () => {
   }, []);
 
   useEffect(() => {
+    setIsLoading(true);
     checkAirflowStatus()
       .then((res) => {
         if (res.status === 200) {
@@ -316,6 +317,7 @@ const TestSuitePipelineTab = () => {
       })
       .catch(() => {
         setIsAirflowRunning(false);
+        setIsLoading(false);
       });
   }, []);
 
@@ -389,7 +391,7 @@ const TestSuitePipelineTab = () => {
         },
       },
       {
-        title: t('label.recent-runs'),
+        title: t('label.recent-run-plural'),
         dataIndex: 'pipelineStatuses',
         key: 'recentRuns',
         render: (_, record) => (
@@ -399,7 +401,7 @@ const TestSuitePipelineTab = () => {
         ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => {
@@ -514,7 +516,7 @@ const TestSuitePipelineTab = () => {
                 <Tooltip
                   title={
                     viewPermission
-                      ? t('label.logs')
+                      ? t('label.log-plural')
                       : t('message.no-permission-for-action')
                   }>
                   <Button

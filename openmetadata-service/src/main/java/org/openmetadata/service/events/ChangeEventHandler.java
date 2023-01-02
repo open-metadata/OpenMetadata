@@ -72,6 +72,8 @@ public class ChangeEventHandler implements EventHandler {
       if (changeEvent == null) {
         return null;
       }
+      // Always set the Change Event Username as context Principal, the one creating the CE
+      changeEvent.setUserName(loggedInUserName);
       LOG.info(
           "Recording change event {}:{}:{}:{}",
           changeEvent.getTimestamp(),

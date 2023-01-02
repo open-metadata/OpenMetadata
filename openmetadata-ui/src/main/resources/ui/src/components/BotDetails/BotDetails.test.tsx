@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -177,7 +177,7 @@ describe('Test BotsDetail Component', () => {
     fireEvent.click(confirmButton);
 
     // revoke token handler should get called
-    expect(revokeTokenHandler).toBeCalled();
+    expect(revokeTokenHandler).toHaveBeenCalled();
   });
 
   it('Should render the edit form if the authmechanism is empty', async () => {

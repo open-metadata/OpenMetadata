@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -31,12 +31,12 @@ const DataInsightLeftPanel = () => {
   const menuItems: MenuProps['items'] = [
     {
       key: DataInsightTabs.DATA_ASSETS,
-      label: t('label.data-assets'),
+      label: t('label.data-asset-plural'),
       icon: <AppAnalyticsIcon className="side-panel-icons" />,
     },
     {
       key: DataInsightTabs.APP_ANALYTICS,
-      label: t('label.app-analytics'),
+      label: t('label.app-analytic-plural'),
       icon: <DataAssetsIcon className="side-panel-icons" />,
     },
     {

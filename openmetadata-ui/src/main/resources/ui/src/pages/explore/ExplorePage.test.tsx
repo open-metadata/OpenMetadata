@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-/* eslint-disable @typescript-eslint/camelcase */
 
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
@@ -36,12 +34,10 @@ const aggregations = {
     buckets: [
       {
         key: 'user',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         doc_count: 200,
       },
       {
         key: 'team',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         doc_count: 15,
       },
     ],
@@ -65,7 +61,6 @@ const aggregations = {
 
 const mockData: SearchResponse<ExploreSearchIndex> = {
   took: 44,
-  // eslint-disable-next-line @typescript-eslint/camelcase
   timed_out: false,
   hits: {
     total: {

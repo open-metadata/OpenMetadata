@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,10 @@
  */
 
 import { SearchIndex } from '../../enums/search.enum';
-import { ExploreQuickFilterField } from './explore.interface';
+import {
+  EntityDetailsType,
+  ExploreQuickFilterField,
+} from './explore.interface';
 
 export interface ExploreQuickFiltersProps {
   index: SearchIndex;
@@ -25,4 +28,9 @@ export interface FilterFieldsMenuItem {
   key: string;
   label: string;
   defaultField: boolean;
+}
+
+export interface FormattedSuggestResponseObject {
+  text: string;
+  source: EntityDetailsType;
 }

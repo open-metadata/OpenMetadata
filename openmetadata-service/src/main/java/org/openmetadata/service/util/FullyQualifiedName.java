@@ -56,7 +56,7 @@ public class FullyQualifiedName {
   }
 
   public static String getParent(String fqn) {
-    // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
+    // Split fqn of format a.b.c.d and return the parent a.b.c
     String[] split = split(fqn);
     if (split.length <= 1) {
       return null;
@@ -66,6 +66,15 @@ public class FullyQualifiedName {
       parent = add(parent, split[i]);
     }
     return parent;
+  }
+
+  public static String getRoot(String fqn) {
+    // Split fqn of format a.b.c.d and return the root a
+    String[] split = split(fqn);
+    if (split.length <= 1) {
+      return null;
+    }
+    return split[0];
   }
 
   private static class SplitListener extends FqnBaseListener {

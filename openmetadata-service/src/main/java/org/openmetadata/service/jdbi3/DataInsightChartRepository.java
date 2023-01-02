@@ -20,7 +20,6 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
@@ -88,7 +87,6 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
 
   @Override
   public DataInsightChart setFields(DataInsightChart entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 

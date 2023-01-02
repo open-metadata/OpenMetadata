@@ -15,7 +15,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.glue import GlueSource
+from metadata.ingestion.source.database.glue.metadata import GlueSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
@@ -103,7 +103,9 @@ EXPECTED_TABLE_TYPES = [TableType.External, TableType.Iceberg, TableType.View]
 
 
 class GlueUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.glue.test_connection")
+    @patch(
+        "metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

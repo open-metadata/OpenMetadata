@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -933,9 +933,7 @@ const ServicePage: FunctionComponent = () => {
           !isUndefined(description) && description.trim() ? (
             <RichTextEditorPreviewer markdown={description} />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
@@ -1004,7 +1002,7 @@ const ServicePage: FunctionComponent = () => {
                         variant="outlined"
                         onClick={handleDelete}>
                         <IcDeleteColored
-                          className="tw-mr-1.5"
+                          className="m-r-xs"
                           height={14}
                           viewBox="0 0 24 24"
                           width={14}
@@ -1083,7 +1081,7 @@ const ServicePage: FunctionComponent = () => {
               <Col span={24}>
                 <TabsPane
                   activeTab={activeTab}
-                  className="tw-flex-initial"
+                  className="flex-initial"
                   setActiveTab={activeTabHandler}
                   tabs={tabs}
                 />

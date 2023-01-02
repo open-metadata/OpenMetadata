@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -269,7 +269,10 @@ const EditIngestionPage = () => {
         activeTitle: true,
       },
       {
-        name: `Edit ${capitalize(ingestionType)} Ingestion`,
+        name: getIngestionHeadingName(
+          ingestionType,
+          INGESTION_ACTION_TYPE.EDIT
+        ),
         url: '',
         activeTitle: true,
       },

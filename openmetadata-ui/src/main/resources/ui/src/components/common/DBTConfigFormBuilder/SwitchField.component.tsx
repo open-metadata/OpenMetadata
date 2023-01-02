@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -44,7 +44,7 @@ function SwitchField({
       <p
         className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs"
         data-testid="switch-description">
-        Optional configuration to update the description from DBT or not
+        Optional configuration to update the description from dbt or not
       </p>
     </Field>
   );

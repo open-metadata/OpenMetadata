@@ -105,7 +105,7 @@ MOCK_GET_TABLE_NAMES = [
     "storage_service_entity",
     "table_entity",
     "tag",
-    "tag_category",
+    "classification",
     "tag_usage",
     "team_entity",
     "thread_entity",

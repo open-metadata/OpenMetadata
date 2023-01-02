@@ -39,14 +39,13 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import DeleteTable
@@ -63,7 +62,6 @@ from metadata.ingestion.source.database.database_service import (
     DataModelLink,
     TableLocationLink,
 )
-from metadata.utils import fqn
 from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger
 
@@ -109,7 +107,7 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(OMetaDatabaseAndTable, self.write_tables)
         self.write_record.register(AddLineageRequest, self.write_lineage)
         self.write_record.register(OMetaUserProfile, self.write_users)
-        self.write_record.register(OMetaTagAndCategory, self.write_tag_category)
+        self.write_record.register(OMetaTagAndClassification, self.write_classification)
         self.write_record.register(DeleteTable, self.delete_table)
         self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
         self.write_record.register(DataModelLink, self.write_datamodel)
@@ -343,41 +341,29 @@ class MetadataRestSink(Sink[Entity]):
                 f"Unexpected error writing db schema and table [{db_schema_and_table}]: {exc}"
             )
 
-    def write_tag_category(self, record: OMetaTagAndCategory) -> None:
-        """PUT Tag Category and Primary Tag to OM API
+    def write_classification(self, record: OMetaTagAndClassification) -> None:
+        """PUT Classification and Tag to OM API
 
         Args:
-            record (OMetaTagAndCategory): Tag information
+            record (OMetaTagAndClassification): Tag information
 
         Return:
             None
 
         """
         try:
-            self.metadata.create_or_update_tag_category(
-                tag_category_body=record.category_name,
-                category_name=record.category_name.name.__root__,
-            )
+            self.metadata.create_or_update(record.classification_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Unexpected error writing tag category [{record.category_name}]: {exc}"
+                f"Unexpected error writing classification [{record.classification_request}]: {exc}"
             )
         try:
-            self.metadata.create_or_update_primary_tag(
-                category_name=record.category_name.name.__root__,
-                primary_tag_body=record.category_details,
-                primary_tag_fqn=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Tag,
-                    tag_category_name=record.category_name.name.__root__,
-                    tag_name=record.category_details.name.__root__,
-                ),
-            )
+            self.metadata.create_or_update(record.tag_request)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Unexpected error writing tag category [{record.category_name}]: {exc}"
+                f"Unexpected error writing classification [{record.tag_request}]: {exc}"
             )
 
     def write_lineage(self, add_lineage: AddLineageRequest):

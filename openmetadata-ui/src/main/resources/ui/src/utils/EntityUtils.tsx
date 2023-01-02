@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -371,12 +371,14 @@ export const isLeafNode = (
 
 export const ENTITY_LINK_SEPARATOR = '::';
 
-export const getEntityFeedLink: Function = (
-  type: string,
-  fqn: string,
+export const getEntityFeedLink = (
+  type?: string,
+  fqn?: string,
   field?: string
-): string | undefined => {
-  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+): string => {
+  if (isUndefined(type) || isUndefined(fqn)) {
+    return '';
+  }
   // url decode the fqn
   fqn = decodeURIComponent(fqn);
 

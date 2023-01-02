@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -30,7 +30,7 @@ declare module 'Models' {
     sizePerPage: number;
     totalNumberOfValues: number;
     currentPage: number;
-    paginate: Function;
+    paginate;
   };
   export type Feed = {
     addressedToEntity: {
@@ -65,6 +65,10 @@ declare module 'Models' {
     serviceType: string;
   };
 
+  export type EntityTags = {
+    isRemovable?: boolean;
+  } & TagLabel;
+
   export type MockColumn = {
     columnId: number;
     name: string;
@@ -73,10 +77,6 @@ declare module 'Models' {
     selected: boolean;
     piiTags?: Array<string>;
   };
-
-  export type EntityTags = {
-    isRemovable?: boolean;
-  } & TagLabel;
 
   export type TableColumn = {
     name: string;

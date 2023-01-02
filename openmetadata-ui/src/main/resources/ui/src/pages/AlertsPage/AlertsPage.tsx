@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,15 +25,12 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
-import { AlertAction } from '../../generated/alerts/alertAction';
 import { Alerts, ProviderType } from '../../generated/alerts/alerts';
 import { Paging } from '../../generated/type/paging';
 import { getDisplayNameForTriggerType } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { AlertsExpanded } from './AlertRowExpanded';
 
 const AlertsPage = () => {
   const [loading, setLoading] = useState(true);
@@ -50,7 +47,7 @@ const AlertsPage = () => {
     try {
       const { data, paging } = await getAllAlerts({ after });
 
-      setAlerts(data);
+      setAlerts(data.filter((d) => d.provider !== ProviderType.System));
       setAlertsPaging(paging);
     } catch (error) {
       showErrorToast(
@@ -83,6 +80,9 @@ const AlertsPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
+        render: (name: string, record: Alerts) => {
+          return <Link to={`alert/${record.id}`}>{name}</Link>;
+        },
       },
       {
         title: t('label.trigger'),
@@ -92,21 +92,13 @@ const AlertsPage = () => {
         render: getDisplayNameForTriggerType,
       },
       {
-        title: t('label.destination'),
-        dataIndex: 'alertActions',
-        width: '200px',
-        key: 'alertActions',
-        render: (actions: AlertAction[]) =>
-          actions.map((action) => <Tag key={action.name}>{action.name}</Tag>),
-      },
-      {
         title: t('label.description'),
         dataIndex: 'description',
         flex: true,
         key: 'description',
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'id',
         width: 120,
         key: 'id',
@@ -114,10 +106,10 @@ const AlertsPage = () => {
           return (
             <>
               <Tooltip placement="bottom" title={t('label.edit')}>
-                <Link to={`edit/${id}`}>
+                <Link to={`edit-alert/${id}`}>
                   <Button
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<SVGIcons className="tw-w-4" icon={Icons.EDIT} />}
+                    icon={<SVGIcons className="w-4" icon={Icons.EDIT} />}
                     type="text"
                   />
                 </Link>
@@ -126,7 +118,7 @@ const AlertsPage = () => {
                 <Button
                   data-testid={`alert-delete-${record.name}`}
                   disabled={record.provider === ProviderType.System}
-                  icon={<SVGIcons className="tw-w-4" icon={Icons.DELETE} />}
+                  icon={<SVGIcons className="w-4" icon={Icons.DELETE} />}
                   type="text"
                   onClick={() => setSelectedAlert(record)}
                 />
@@ -154,10 +146,10 @@ const AlertsPage = () => {
             </div>
             <Link
               to={getSettingPath(
-                GlobalSettingsMenuCategory.COLLABORATION,
+                GlobalSettingsMenuCategory.NOTIFICATIONS,
                 GlobalSettingOptions.ADD_ALERTS
               )}>
-              <Button type="primary">
+              <Button data-testid="create-alert" type="primary">
                 {t('label.create-entity', { entity: 'alert' })}
               </Button>
             </Link>
@@ -168,10 +160,6 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            expandable={{
-              ...getTableExpandableConfig<Alerts>(),
-              expandedRowRender: (record) => <AlertsExpanded alert={record} />,
-            }}
             loading={{ spinning: loading, indicator: <Loader /> }}
             pagination={false}
             rowKey="id"

@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>0.13.0-SNAPSHOT</version>
+    <version>0.13.2-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -16,8 +16,8 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.17.4</org.testcontainers.version>
-    <awssdk.version>2.18.1</awssdk.version>
+    <org.testcontainers.version>1.17.6</org.testcontainers.version>
+    <awssdk.version>2.19.7</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
   </properties>
 
@@ -367,7 +367,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.49.v20220914</version>
+      <version>9.4.50.v20221201</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -409,6 +409,11 @@
       <groupId>org.bitbucket.cowwoc.diff-match-patch</groupId>
       <artifactId>diff-match-patch</artifactId>
       <version>${diffMatch.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-csv</artifactId>
+      <version>1.9.0</version>
     </dependency>
   </dependencies>
 

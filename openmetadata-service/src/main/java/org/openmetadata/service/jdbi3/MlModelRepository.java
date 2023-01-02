@@ -73,9 +73,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
-    mlModel.setUsageSummary(
+    return mlModel.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
-    return mlModel;
   }
 
   @Override

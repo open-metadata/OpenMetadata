@@ -11,7 +11,6 @@ A Metric is a computation that we can run on top of a Table or Column to receive
 
 * **Metrics** define the queries and computations generically. They do not aim at specific columns or database dialects. Instead, they are expressions built with SQLAlchemy that should run everywhere.
 * A **Profiler** is the binding between a set of metrics and the external world. The Profiler contains the Table and Session information and is in charge of executing the metrics.
-* A **Test Case** adds logic to the Metrics results. A Metric is neither good nor wrong, so we need the Test definitions to map results into Success or Failures.
 
 On this page, you will learn all the metrics that we currently support and their meaning. We will base all the namings on the definitions on the JSON Schemas.
 
@@ -34,6 +33,15 @@ It computes the number of rows in the Table.
 ### Column Count
 
 Returns the number of columns in the Table.
+
+## System Metrics
+System metrics are metrics related to DML operations performed on the table. These metrics are available for BigQuery, Redshift and Snowflake only. Other database engines are currently not supported so the computation of the system metrics will be skipped.
+
+### DML Operations
+This metrics shows all the DML operations performed (`INSERT`, `UPDATE`, `DELETE`) against the table in a timeseries fashion.
+
+### Rows Affected by the DML Operation
+This metrics shows the number of rows that were affected by a DML operation (`INSERT`, `UPDATE`, `DELETE`) over time. 
 
 ## Column Metrics
 
@@ -113,6 +121,28 @@ Only for numerical values. Returns the standard deviation.
 ### Histogram
 
 The histogram returns a dictionary of the different bins and the number of values found for that bin.
+
+## Grant Access to User for System Metrics
+OpenMetadata uses system tables to compute system metrics. You can find the required access as well as more details for your database engine below.
+### Snowflake
+OpenMetadata uses the `QUERY_HISTORY_BY_WAREHOUSE` view of the `INFORMATION_SCHEMA` to collect metrics about DML operations. To collect information about the `RESULT_SCAN` command alongside the QUERY ID will be passed to the `RESULT_SCAN` function to get the number of rows affected by the operation. You need to make sure the user running the profiler workflow has access to this view and this function.
+
+OpenMetadata will look at the past 24-hours to fetch the operations that were performed against a table. 
+
+### Redshift
+OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fecth DNL operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
+
+OpenMetadata will look at the previous day to fetch the operations that were performed against a table.
+
+### Redshift
+OpenMetadata uses `stl_insert`, `stl_delete`, `svv_table_info`, and `stl_querytext` to fecth DNL operations as well as the number of rows affected by these operations. You need to make sure the user running the profiler workflow has access to these views and tables.
+
+OpenMetadata will look at the previous day to fetch the operations that were performed against a table.
+
+### BigQuery
+Bigquery uses the `JOBS` table of the `INFORMATION_SCHEMA` to fecth DNL operations as well as the number of rows affected by these operations. You will need to make sure your data location is properly set when creating your BigQuery service connection in OpenMetadata. 
+
+OpenMetadata will look at the previous day to fetch the operations that were performed against a table filter on the `creation_time` partition field to limit the size of data scanned.
 
 ## Reach out!
 

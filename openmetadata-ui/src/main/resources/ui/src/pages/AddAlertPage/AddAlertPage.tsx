@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -64,15 +65,13 @@ import {
   ProviderType,
   TriggerConfig,
 } from '../../generated/alerts/alerts';
-import {
-  AlertActionType,
-  CreateAlertAction,
-} from '../../generated/alerts/api/createAlertAction';
+import { AlertActionType } from '../../generated/alerts/api/createAlertAction';
 import { EntitySpelFilters } from '../../generated/alerts/entitySpelFilters';
 import { Function } from '../../generated/type/function';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
+  getDisplayNameForEntities,
   getDisplayNameForTriggerType,
   getFunctionDisplayName,
   listLengthValidator,
@@ -80,7 +79,7 @@ import {
 } from '../../utils/Alerts/AlertsUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './add-alerts-page.styles.less';
 
 const AddAlertPage = () => {
@@ -177,7 +176,6 @@ const AddAlertPage = () => {
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
 
   const updateCreateAlertActions = async (alertActions: AlertAction[]) => {
-    const api = isEditMode ? updateAlertAction : createAlertAction;
     if (isEditMode) {
       if (!form.isFieldTouched(['alertActions'])) {
         // If destination is not changed return given alertAction as it is
@@ -192,18 +190,19 @@ const AddAlertPage = () => {
 
     // Else Create AlertActions and return new IDs
     const promises =
-      alertActions?.map((action) =>
-        api(
-          pick(action, [
-            'alertActionConfig',
-            'alertActionType',
-            'name',
-            'displayName',
-            'timeout',
-            'batchSize',
-          ]) as CreateAlertAction
-        )
-      ) ?? [];
+      alertActions?.map((action) => {
+        const api = action.id ? updateAlertAction : createAlertAction;
+        const alertAction = pick(action, [
+          'alertActionConfig',
+          'alertActionType',
+          'name',
+          'displayName',
+          'timeout',
+          'batchSize',
+        ]) as AlertAction;
+
+        return api(alertAction);
+      }) ?? [];
 
     const responses = await Promise.allSettled(promises);
 
@@ -237,18 +236,9 @@ const AddAlertPage = () => {
       )?.join(', ')})`,
     }));
 
-    const modifiedAlertActions = alertActions?.map(
-      (action) =>
-        ({
-          ...action,
-          name: action.name ?? action.displayName,
-          displayName: action.displayName,
-        } as unknown as AlertAction)
-    );
-
     try {
       const requestAlertActions = await updateCreateAlertActions(
-        modifiedAlertActions
+        alertActions as unknown as AlertAction[]
       );
 
       try {
@@ -258,14 +248,14 @@ const AddAlertPage = () => {
           alertActions: requestAlertActions,
         });
 
-        showErrorToast(
+        showSuccessToast(
           t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
             entity: t('label.alert-plural'),
           })
         );
         history.push(
           getSettingPath(
-            GlobalSettingsMenuCategory.COLLABORATION,
+            GlobalSettingsMenuCategory.NOTIFICATIONS,
             GlobalSettingOptions.ALERTS
           )
         );
@@ -334,6 +324,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getEntityByFQN}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: t('label.fqn-uppercase'),
@@ -352,6 +343,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getUsersAndTeamsOptions}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: getFunctionDisplayName(condition),
@@ -368,6 +360,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <Select
                 showArrow
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 options={
                   func.paramAdditionalContext?.data?.map((d) => ({
@@ -445,17 +438,7 @@ const AddAlertPage = () => {
             return (
               <>
                 <Form.Item
-                  required
-                  label={t('label.name')}
-                  labelCol={{ span: 24 }}
-                  name={[name, 'displayName']}>
-                  <Input
-                    disabled={provider === ProviderType.System}
-                    placeholder={t('label.name')}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.receiver-plural')}
+                  label={t('label.send-to')}
                   labelCol={{ span: 24 }}
                   name={[name, 'alertActionConfig', 'receivers']}>
                   <Select
@@ -492,12 +475,6 @@ const AddAlertPage = () => {
           case AlertActionType.MSTeamsWebhook:
             return (
               <>
-                <Form.Item required name={[name, 'displayName']}>
-                  <Input
-                    disabled={provider === ProviderType.System}
-                    placeholder={t('label.name')}
-                  />
-                </Form.Item>
                 <Form.Item
                   required
                   name={[name, 'alertActionConfig', 'endpoint']}>
@@ -526,9 +503,7 @@ const AddAlertPage = () => {
                       <Form.Item
                         colon
                         initialValue={10}
-                        label={`${t(
-                          'label.connection-timeout-plural-optional'
-                        )}`}
+                        label={`${t('label.connection-timeout-plural')}`}
                         labelCol={{ span: 24 }}
                         name={[name, 'timeout']}>
                         <Input disabled={provider === ProviderType.System} />
@@ -600,6 +575,7 @@ const AddAlertPage = () => {
                           initialValue={AlertTriggerType.AllDataAssets}
                           name={['triggerConfig', 'type']}>
                           <Select
+                            data-testid="triggerConfig-type"
                             options={defaultTriggers.map((trigger) => ({
                               label: getDisplayNameForTriggerType(trigger.type),
                               value: trigger.type,
@@ -611,7 +587,7 @@ const AddAlertPage = () => {
                           <Form.Item
                             required
                             messageVariables={{
-                              fieldName: t('label.data-assets'),
+                              fieldName: t('label.data-asset-plural'),
                             }}
                             name={['triggerConfig', 'entities']}>
                             <Select
@@ -621,10 +597,10 @@ const AddAlertPage = () => {
                               options={
                                 selectedTrigger.entities?.map((entity) => ({
                                   value: entity,
-                                  label: startCase(entity),
+                                  label: getDisplayNameForEntities(entity),
                                 })) ?? []
                               }
-                              placeholder={t('label.select-data-assets')}
+                              placeholder={t('label.select-data-asset-plural')}
                             />
                           </Form.Item>
                         )}
@@ -652,6 +628,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add-filters"
                                 icon={<PlusOutlined />}
                                 type="default"
                                 onClick={() => add({}, 0)}>
@@ -685,7 +662,7 @@ const AddAlertPage = () => {
                                       )}
 
                                     <Form.Item
-                                      initialValue={Effect.Allow}
+                                      initialValue={Effect.Include}
                                       key={key}
                                       name={[name, 'effect']}>
                                       <Select
@@ -744,6 +721,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add=destination"
                                 disabled={provider === ProviderType.System}
                                 icon={<PlusOutlined />}
                                 type="default"
@@ -767,6 +745,7 @@ const AddAlertPage = () => {
                                       key={key}
                                       name={[name, 'alertActionType']}>
                                       <Select
+                                        data-testid="alert-action-type"
                                         disabled={
                                           provider === ProviderType.System
                                         }
@@ -820,7 +799,7 @@ const AddAlertPage = () => {
                     <Button onClick={() => history.goBack()}>
                       {t('label.cancel')}
                     </Button>
-                    <Button htmlType="submit" type="primary">
+                    <Button data-testid="save" htmlType="submit" type="primary">
                       {t('label.save')}
                     </Button>
                   </Col>

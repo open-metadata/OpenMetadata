@@ -12,7 +12,6 @@
  */
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
@@ -64,23 +63,12 @@ public abstract class ServiceEntityRepository<
   @Override
   public T setFields(T entity, EntityUtil.Fields fields) throws IOException {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
-    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 
   @Override
   public void prepare(T service) {
     /* Nothing to do */
-  }
-
-  @Override
-  public void storeEntity(T service, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = service.getOwner();
-    List<TagLabel> tags = service.getTags();
-    // Don't store owner, service, href and tags as JSON. Build it on the fly based on relationships
-    service.withOwner(null).withHref(null).setTags(null);
-
     service
         .getConnection()
         .setConfig(
@@ -91,9 +79,16 @@ public abstract class ServiceEntityRepository<
                     service.getName(),
                     serviceType,
                     true));
+  }
 
+  @Override
+  public void storeEntity(T service, boolean update) throws IOException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+    List<TagLabel> tags = service.getTags();
+    // Don't store owner, service, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null).setTags(null);
     store(service, update);
-
     // Restore the relationships
     service.withOwner(owner).setTags(tags);
   }

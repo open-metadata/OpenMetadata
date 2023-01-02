@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,7 @@ import { ResourceEntity } from '../components/PermissionProvider/PermissionProvi
 
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
-  COLLABORATION = 'collaboration',
+  NOTIFICATIONS = 'notifications',
   CUSTOM_ATTRIBUTES = 'customAttributes',
   DATA_QUALITY = 'dataQuality',
   EVENT_PUBLISHERS = 'eventPublishers',
@@ -41,11 +41,12 @@ export enum GlobalSettingOptions {
   BOTS = 'bots',
   TABLES = 'tables',
   MSTEAMS = 'msteams',
-  ACTIVITY_FEED = 'activityFeed',
+  ACTIVITY_FEED = 'activityFeeds',
   ELASTIC_SEARCH = 'elasticSearch',
   ALERTS = 'alerts',
+  ALERT = 'alert',
   ADD_ALERTS = 'add-alerts',
-  EDIT_ALERTS = 'edit',
+  EDIT_ALERTS = 'edit-alert',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

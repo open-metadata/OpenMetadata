@@ -187,3 +187,36 @@ curl -XPOST <AIRFLOW_HOST>/api/v1/openmetadata/enable --data-raw '{"dag_id": "<D
 ```
 
 Please update it accordingly.
+
+# Troubleshooting
+
+## Ingestion Pipeline deployment issues
+
+### GetServiceException: Could not get service from type XYZ
+
+In this case, the OpenMetadata client running in the Airflow host had issues getting the service you are trying to
+deploy from the API. Note that once pipelines are deployed, the auth happens via the `ingestion-bot`. Here there are
+a couple of points to validate:
+
+1. The JWT of the ingestion bot is valid. You can check services such as https://jwt.io/ to help you
+    review if the token is expired or if there are any configuration issues.
+2. The `ingestion-bot` does not have the proper role. If you go to `<openmetadata-server>/bots/ingestion-bot`, the bot
+    should present the `Ingestion bot role`. You can validate the role policies as well to make sure they were not
+    updated and the bot can indeed view and access services from the API.
+3. Run an API call for your service to verify the issue. An example trying to get a database service would look like follows:
+    ```
+    curl -XGET 'http://<server>:8585/api/v1/services/databaseServices/name/<service name>' \
+    -H 'Accept: application/json' -H 'Authorization: Bearer <token>'
+    ```
+   If, for example, you have an issue with the roles you would be getting a message similar to:
+    ```
+    {"code":403,"message":"Principal: CatalogPrincipal{name='ingestion-bot'} operations [ViewAll] not allowed"}
+    ```
+
+### ClientInitializationError
+
+The main root cause here is a version mismatch between the server and the client. Make sure that the `openmetadata-ingestion`
+python package you installed on the Airflow host has the same version as the OpenMetadata server. For example, to set up
+OpenMetadata server 0.13.1 you will need to install `openmetadata-ingestion==0.13.1.0`. Note that we are validating
+the version as in `x.y.z`. Any differences after the PATCH versioning are not taken into account, as they are usually
+small bugfixes on existing functionalities.

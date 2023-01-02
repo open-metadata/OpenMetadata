@@ -3,10 +3,13 @@ package org.openmetadata.service.resources.dataInsight;
 import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.Map;
+import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
@@ -23,10 +26,6 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
         DataInsightChartResource.DataInsightChartList.class,
         "dataInsight",
         DataInsightChartResource.FIELDS);
-    supportsEmptyDescription = false;
-    supportsFollowers = false;
-    supportsAuthorizedMetadataOperations = false;
-    supportsOwner = false;
   }
 
   @Test
@@ -69,8 +68,21 @@ public class DataInsightResourceTest extends EntityResourceTest<DataInsightChart
   }
 
   @Override
-  public DataInsightChart validateGetWithDifferentFields(DataInsightChart entity, boolean byName) {
-    return null;
+  public DataInsightChart validateGetWithDifferentFields(DataInsightChart entity, boolean byName)
+      throws HttpResponseException {
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner());
+    fields = "owner";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner());
+    return entity;
   }
 
   @Override

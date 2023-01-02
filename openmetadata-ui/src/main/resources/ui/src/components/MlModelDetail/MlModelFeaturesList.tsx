@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -33,7 +33,7 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -123,14 +123,15 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
-      .then((values) => {
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
+      .then(async (values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
+          const tagList = await getTaglist(values[0].value.data);
+          tagsAndTerms = tagList.map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }

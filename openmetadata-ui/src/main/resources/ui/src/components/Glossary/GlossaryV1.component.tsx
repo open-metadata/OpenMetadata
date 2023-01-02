@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -525,7 +525,9 @@ const GlossaryV1 = ({
               </Row>
             ) : (
               <Space className="display-name">
-                <Title level={4}>{getEntityName(selectedData)}</Title>
+                <Title className="tw-text-base" level={5}>
+                  {getEntityName(selectedData)}
+                </Title>
                 <Tooltip
                   title={
                     editDisplayNamePermission
@@ -533,6 +535,7 @@ const GlossaryV1 = ({
                       : NO_PERMISSION_FOR_ACTION
                   }>
                   <ButtonAntd
+                    className="m-b-xss"
                     disabled={!editDisplayNamePermission}
                     type="text"
                     onClick={() => setIsNameEditing(true)}>

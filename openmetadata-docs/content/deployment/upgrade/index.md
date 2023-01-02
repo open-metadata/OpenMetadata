@@ -12,6 +12,54 @@ OpenMetadata community will be doing feature releases and stable releases.
  - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
  - Stable releases are to upgrade your production environments and share it with your users.
 
+## 0.13.1 - Stable Release
+
+OpenMetadata 0.13.1 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) 
+
+If you are upgrading production this is the recommended version to upgrade.
+
+## Breaking Changes for 0.13.1 Stable Release
+
+OpenMetadata Release 0.13.1 introduces below breaking changes -
+
+### Webhooks
+
+Starting from 0.13.1 , OpenMetadata will be deprecating the existing webhooks for Slack, MSTeams.
+
+Before upgrading to 0.13.1 it is recommended to save the existing Webhook configs(like webhook url) to use them later.
+
+We have added Alerts/Notifications , which can be configured to receive customised alerts on updates in OM using Triggers, Filtering Information to different destinations like Slack, MsTeams or even Emails.
+Please use the same webhook config that you had saved from previous version to configure the Alerts Destination after upgrading.
+
+
+OpenMetadata Release 0.13.x introduces below breaking changes:
+
+### Docker Volumes
+
+OpenMetadata Release 0.13.x introduces Default Docker Volumes for Database (MySQL, PostgreSQL) and ElasticSearch with Docker deployment.
+
+- If you are looking for the fresh deployment of 0.13.x - [here](https://docs.open-metadata.org/deployment/docker)
+- If you are looking for upgrading of the new version i.e 0.13.x - [here](https://docs.open-metadata.org/deployment/upgrade/docker)
+
+### MySQL Helm Chart Version Updated to 9.2.1
+
+OpenMetadata Helm Chart Release with Application Version `0.13.1` updates the Bitnami MySQL Helm Chart version to `9.2.1` from `8.8.23`. This is not a breaking change but existing user's trying to upgrade will experience a slight delay in OpenMetadata Dependencies Helm Chart Upgrades as it pulls new docker image for MySQL. Please note that OpenMetadata Dependencies Helm Chart is not recommended for production use cases. Please follow the [kubernetes deployment](/deployment/kubernetes) for new installation or [upgrade kubernetes](/deployment/upgrade/kubernetes) for upgrading OpenMetadata in Kubernetes.
+
+### dbt Workflow
+
+dbt ingestion has been separated from the metadata ingestion. It can now be configured as a separate workflow after completing the metadata ingestion workflow.
+
+We will remove the dbt configuration from your existing metadata ingestion pipelines and they will keep working as expected.
+
+After upgrading you will have to create the dbt workflow for the dbt ingestion to start working again.
+
+### Airflow Lineage Backend
+
+- The import for the Airflow Lineage Backend has been updated from `airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`
+  to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
+- We removed support from Airflow v1.
+- The failure callback now only updates the pipeline status if the Pipeline already exists in OpenMetadata.
+
 ## 0.13.0 - Feature Release
 
 OpenMetadata 0.13.0 is a **feature release**. 
@@ -26,11 +74,6 @@ Explore 0.13.0 by following up [Deployment guides](https://docs.open-metadata.or
  OpenMetadata 0.12.3 is a stable release. Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) 
 
 If you are upgrading production this is the recommended version to upgrade.
-  
- 
- 
- 
-## Breaking Changes from 0.13.0 Feature Release
 ## Breaking Changes from 0.12.x Stable Release
 
 OpenMetadata Release 0.12.x introduces below breaking changes -

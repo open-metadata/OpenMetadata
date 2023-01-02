@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -44,8 +44,8 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
           key={searchKey}
           title="search-dropdown">
           {options.map((option) => (
-            <div data-testid={`option-${searchKey}`} key={option}>
-              {option}
+            <div data-testid={`option-${searchKey}`} key={option.key}>
+              {option.label}
             </div>
           ))}
           <div
@@ -55,7 +55,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () =>
           </div>
           <div
             data-testid={`onChange-${searchKey}`}
-            onClick={() => onChange([''], searchKey)}>
+            onClick={() => onChange([{ key: '', label: '' }], searchKey)}>
             onChange
           </div>
         </div>
@@ -159,7 +159,7 @@ describe('Test ExploreQuickFilters component', () => {
 
     fireEvent.click(advanceSearchButton);
 
-    expect(onAdvanceSearch).toBeCalled();
+    expect(onAdvanceSearch).toHaveBeenCalled();
   });
 
   it('All options should be passed to SearchDropdown component for proper API response', async () => {

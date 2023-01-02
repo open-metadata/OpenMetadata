@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 export const addServiceGuide = [
   {
     step: 1,
@@ -50,9 +63,9 @@ export const addMetadataIngestionGuide = [
   },
   {
     step: 2,
-    title: 'Configure DBT Model',
-    description: `A DBT model provides transformation logic that creates a table from raw data. Lineage traces the path of data across tables, but a DBT model provides specifics. 
-    Select the  required DBT source provider and fill in the mandatory fields. Integrate with DBT from OpenMetadata to view the models used to generate tables.`,
+    title: 'Configure dbt Model',
+    description: `A dbt model provides transformation logic that creates a table from raw data. Lineage traces the path of data across tables, but a dbt model provides specifics. 
+    Select the  required dbt source provider and fill in the mandatory fields. Integrate with dbt from OpenMetadata to view the models used to generate tables.`,
   },
   {
     ...schedulingIngestionGuide,
@@ -122,14 +135,16 @@ export const addProfilerIngestionGuide = [
 export const addDBTIngestionGuide = [
   {
     step: 2,
-    title: 'Add DBT Ingestion',
-    description: `A profiler workflow can be configured and deployed after a metadata ingestion has been set up. Multiple profiler pipelines can be set up for the same database service. 
-      The pipeline feeds the Profiler tab of the Table entity, and also runs the tests configured for that entity. Add a Name, FQN, and define the filter pattern to start.`,
+    title: 'Add dbt Ingestion',
+    description: `A dbt workflow can be configured and deployed after a metadata ingestion has been set up. 
+     Multiple dbt pipelines can be set up for the same database service. The pipeline feeds the dbt tab of the 
+     Table entity, creates lineage from dbt nodes and adds tests from dbt. Add the source configuration of the
+      dbt files to start.`,
   },
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: 'DBT Ingestion Added Successfully',
+    title: 'dbt Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The profiler will run at a regular interval as per the schedule.',
   },

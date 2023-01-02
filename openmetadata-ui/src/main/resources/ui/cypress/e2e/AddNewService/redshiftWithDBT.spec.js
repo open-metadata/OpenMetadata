@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -103,10 +103,10 @@ describe('RedShift Ingestion', () => {
       .should('be.visible')
       .click();
     cy.get('[data-testid="list-item"]')
-      .contains('Add DBT Ingestion')
+      .contains('Add dbt Ingestion')
       .click();
       //Add DBT ingestion
-      cy.contains('Add DBT Ingestion').should('be.visible');
+      cy.contains('Add dbt Ingestion').should('be.visible');
       cy.get('[data-testid="dbt-source"]')
         .should('be.visible')
         .select('HTTP Config Source');
@@ -139,7 +139,7 @@ describe('RedShift Ingestion', () => {
 
   it('Validate DBT is ingested properly', () => {
     //Verify DBT tags
-    interceptURL('GET', '/api/v1/tags?fields=usageCount', 'getTagList');
+    interceptURL('GET', `/api/v1/tags?fields=usageCount&parent=${DBT.classification}&limit=10`, 'getTagList');
     cy.get('[data-testid="governance"]').should("exist").should("be.visible").click({force:true})
     cy.get('[data-testid="appbar-item-tags"]')
       .should('exist')
@@ -149,7 +149,7 @@ describe('RedShift Ingestion', () => {
     //Verify DBT tag category is added
     cy.get('[data-testid="tag-name"]')
       .should('be.visible')
-      .should('contain', DBT.tagCategory);
+      .should('contain', DBT.classification);
 
     cy.get('.ant-table-row')
       .should('be.visible')
@@ -162,7 +162,7 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="entity-tags"]')
       .should('exist')
       .should('be.visible')
-      .should('contain', `${DBT.tagCategory}.${DBT.tagName}`);
+      .should('contain', `${DBT.classification}.${DBT.tagName}`);
     //Verify DBT tab is present
     cy.get('[data-testid="DBT"]').should('exist').should('be.visible');
     cy.get('[data-testid="DBT"]').click();
