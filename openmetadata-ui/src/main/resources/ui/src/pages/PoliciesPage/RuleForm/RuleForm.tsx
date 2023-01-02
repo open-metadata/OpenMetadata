@@ -250,7 +250,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
-          className="tw-w-full"
+          className="w-full"
           data-testid="resources"
           placeholder={t('label.select-resource-plural')}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
@@ -276,7 +276,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
         ]}>
         <TreeSelect
           treeCheckable
-          className="tw-w-full"
+          className="w-full"
           data-testid="operations"
           placeholder="Select Operations"
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
@@ -324,18 +324,18 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             onSearch={handleConditionSearch}
           />
           {validationError && (
-            <div className="tw-mt-1" data-testid="condition-error" role="alert">
+            <div className="m-t-xss" data-testid="condition-error" role="alert">
               {`❌ Invalid condition : ${validationError}`}
             </div>
           )}
           {isValidatingCondition && (
-            <div className="tw-mt-1" role="alert">
+            <div className="m-t-xss" role="alert">
               Validating the condition...
             </div>
           )}
           {isValidCondition && !isValidatingCondition && !validationError && (
             <div
-              className="tw-mt-1"
+              className="m-t-xss"
               data-testid="condition-success"
               role="alert">
               ✅ Valid condition

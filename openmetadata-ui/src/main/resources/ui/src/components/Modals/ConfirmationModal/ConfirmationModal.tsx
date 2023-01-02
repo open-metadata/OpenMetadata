@@ -66,6 +66,7 @@ const ConfirmationModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text
           strong
@@ -73,8 +74,7 @@ const ConfirmationModal = ({
           data-testid="modal-header">
           {header}
         </Typography.Text>
-      }
-      visible={visible}>
+      }>
       <div className={classNames('h-20', bodyClassName)}>
         <Typography.Text data-testid="body-text">{bodyText}</Typography.Text>
       </div>
