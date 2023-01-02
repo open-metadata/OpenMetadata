@@ -25,6 +25,7 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,8 +39,8 @@ import {
   getAllClassifications,
   getClassificationByName,
   getTags,
-  updateClassification,
-  updateTag,
+  patchClassification,
+  patchTag,
 } from '../../axiosAPIs/tagAPI';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -398,37 +399,48 @@ const TagsPage = () => {
   const handleUpdateCategory = async (
     updatedClassification: Classification
   ) => {
-    try {
-      const response = await updateClassification(updatedClassification);
-      if (response) {
-        if (currentClassification?.name !== updatedClassification.name) {
-          history.push(getTagPath(response.name));
-          setIsNameEditing(false);
+    if (!isUndefined(currentClassification)) {
+      const patchData = compare(currentClassification, updatedClassification);
+      try {
+        const response = await patchClassification(
+          currentClassification?.id || '',
+          patchData
+        );
+        if (response) {
+          fetchClassifications();
+          if (currentClassification?.name !== updatedClassification.name) {
+            history.push(getTagPath(response.name));
+            setIsNameEditing(false);
+          } else {
+            await fetchCurrentClassification(currentClassification?.name, true);
+          }
         } else {
-          await fetchCurrentClassification(currentClassification?.name, true);
+          throw t('server.unexpected-response');
         }
-      } else {
-        throw t('server.unexpected-response');
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEditClassification(false);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEditClassification(false);
     }
   };
 
   const handleRenameSave = () => {
-    handleUpdateCategory({
-      name: (currentClassificationName || currentClassification?.name) ?? '',
-      description: currentClassification?.description ?? '',
-    });
+    if (!isUndefined(currentClassification)) {
+      handleUpdateCategory({
+        ...currentClassification,
+        name: (currentClassificationName || currentClassification?.name) ?? '',
+      });
+    }
   };
 
   const handleUpdateDescription = async (updatedHTML: string) => {
-    handleUpdateCategory({
-      name: currentClassification?.name ?? '',
-      description: updatedHTML,
-    });
+    if (!isUndefined(currentClassification)) {
+      handleUpdateCategory({
+        ...currentClassification,
+        description: updatedHTML,
+      });
+    }
   };
 
   const handleCategoryNameChange = useCallback(
@@ -484,24 +496,27 @@ const TagsPage = () => {
   };
 
   const updatePrimaryTag = async (updatedHTML: string) => {
-    try {
-      const response = await updateTag({
-        name: editTag?.name ?? '',
+    if (!isUndefined(editTag)) {
+      const patchData = compare(editTag, {
+        ...editTag,
         description: updatedHTML,
       });
-      if (response) {
-        await fetchCurrentClassification(
-          currentClassification?.name as string,
-          true
-        );
-      } else {
-        throw t('server.unexpected-response');
+      try {
+        const response = await patchTag(editTag.id || '', patchData);
+        if (response) {
+          await fetchCurrentClassification(
+            currentClassification?.name as string,
+            true
+          );
+        } else {
+          throw t('server.unexpected-response');
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsEditTag(false);
+        setEditTag(undefined);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEditTag(false);
-      setEditTag(undefined);
     }
   };
 
