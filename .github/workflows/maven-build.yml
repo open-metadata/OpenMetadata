@@ -33,6 +33,7 @@ concurrency:
 jobs:
   test:
     runs-on: ${{matrix.os}}
+    environment: publish
 
     strategy:
       matrix:
@@ -71,6 +72,8 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
+          gpg-private-key: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
+          gpg-passphrase: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
 
       - name: Install Ubuntu dependencies
         run: |
@@ -86,6 +89,8 @@ jobs:
       - name: Build PR with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_PRIVATE_KET: ${{ secrets.OSSRH_GPG_SECRET_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
