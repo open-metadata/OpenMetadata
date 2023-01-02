@@ -172,8 +172,8 @@ const GlossaryTermsV1 = ({
   const fetchTags = () => {
     setIsTagLoading(true);
     getClassifications()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
+      .then(async (res) => {
+        getTaglist(res.data).then(setTagList);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);

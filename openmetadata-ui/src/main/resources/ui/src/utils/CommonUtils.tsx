@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+/* eslint-disable @typescript-eslint/ban-types */
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';

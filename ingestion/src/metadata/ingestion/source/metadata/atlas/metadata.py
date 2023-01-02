@@ -317,7 +317,9 @@ class AtlasSource(Source):
                 description="Tags associates with atlas entities",
             ),
             tag_request=CreateTagRequest(
-                name=ATLAS_TABLE_TAG, description="Atlas Cluster Tag"
+                classification=ATLAS_TAG_CATEGORY,
+                name=ATLAS_TABLE_TAG,
+                description="Atlas Cluster Tag",
             ),
         )
         return atlas_table_tag

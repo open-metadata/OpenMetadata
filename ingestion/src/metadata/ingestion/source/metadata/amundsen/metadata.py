@@ -243,7 +243,9 @@ class AmundsenSource(Source[Entity]):
                     description="Tags associates with amundsen entities",
                 ),
                 tag_request=CreateTagRequest(
-                    name=tag, description="Amundsen Table Tag"
+                    classification=AMUNDSEN_TAG_CATEGORY,
+                    name=tag,
+                    description="Amundsen Table Tag",
                 ),
             )
             yield classification
@@ -342,7 +344,9 @@ class AmundsenSource(Source[Entity]):
                     description="Tags associates with amundsen entities",
                 ),
                 category_details=CreateTagRequest(
-                    name=AMUNDSEN_TABLE_TAG, description="Amundsen Table Tag"
+                    classification=AMUNDSEN_TAG_CATEGORY,
+                    name=AMUNDSEN_TABLE_TAG,
+                    description="Amundsen Table Tag",
                 ),
             )
             yield amundsen_table_tag
@@ -352,7 +356,9 @@ class AmundsenSource(Source[Entity]):
                     description="Tags associates with amundsen entities",
                 ),
                 category_details=CreateTagRequest(
-                    name=table["cluster"], description="Amundsen Cluster Tag"
+                    classification=AMUNDSEN_TAG_CATEGORY,
+                    name=table["cluster"],
+                    description="Amundsen Cluster Tag",
                 ),
             )
             yield amundsen_cluster_tag

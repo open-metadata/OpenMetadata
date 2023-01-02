@@ -55,7 +55,7 @@ const FormBuilder: FunctionComponent<Props> = ({
 }: Props) => {
   const formRef = useRef<CoreForm<ConfigData>>();
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
-    formatFormDataForRender(formData)
+    formatFormDataForRender(formData ?? {})
   );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
   const [connectionTestingState, setConnectionTestingState] =
@@ -79,7 +79,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   }, [isAirflowAvailable]);
 
   const handleCancel = () => {
-    setLocalFormData(formatFormDataForRender(formData));
+    setLocalFormData(formatFormDataForRender<ConfigData>(formData ?? {}));
     if (onCancel) {
       onCancel();
     }

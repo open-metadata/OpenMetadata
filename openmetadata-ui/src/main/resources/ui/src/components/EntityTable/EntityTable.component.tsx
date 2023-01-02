@@ -104,15 +104,23 @@ const EntityTable = ({
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
     Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then((values) => {
+      .then(async (values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
+          const tagList = await getTaglist(values[0].value.data);
+
+          tagsAndTerms =
+            tagList.length !== 0
+              ? tagList.map((tag) => {
+                  return {
+                    fqn: tag,
+                    source: 'Tag',
+                  };
+                })
+              : [];
         }
         if (
           values[1].status === SettledStatus.FULFILLED &&
@@ -529,7 +537,6 @@ const EntityTable = ({
                 }
               }}>
               <TagsContainer
-                className="w-max-256"
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
                 selectedTags={tags || []}
@@ -629,7 +636,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 272,
+        width: 350,
         render: renderTags,
       },
     ],
