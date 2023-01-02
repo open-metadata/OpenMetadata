@@ -102,7 +102,7 @@ class ColumnTypeParseTest(TestCase):
                 parse_string
             )
             self.assertTrue(
-                bool(parsed_string == EXPECTED_OUTPUT[index]),
+                parsed_string == EXPECTED_OUTPUT[index],
                 msg=f"{index}: {parse_string} : {parsed_string}",
             )
 

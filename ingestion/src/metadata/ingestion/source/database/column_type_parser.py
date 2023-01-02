@@ -213,8 +213,6 @@ class ColumnTypeParser:
 
     @staticmethod
     def get_column_type(column_type: Any) -> str:
-
-        column_type_result = None
         column_type_result = ColumnTypeParser.get_column_type_mapping(column_type)
         if column_type_result:
             return column_type_result
