@@ -251,7 +251,9 @@ class DagsterUnitTest(TestCase):
     Dagster Pipeline Unit Test
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     @patch("dagster_graphql.DagsterGraphQLClient")
     # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
     def __init__(self, methodName, graphql_client, test_connection) -> None:

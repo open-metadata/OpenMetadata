@@ -42,12 +42,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
 from metadata.utils import fqn
-from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -69,8 +69,7 @@ class SalesforceSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
-        self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
+        self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.data_models = {}
         self.dbt_tests = {}
@@ -269,4 +268,5 @@ class SalesforceSource(DatabaseServiceSource):
         pass
 
     def test_connection(self) -> None:
-        test_connection(self.connection)
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.client)

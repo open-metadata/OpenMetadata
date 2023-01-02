@@ -41,7 +41,7 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.importer import (
     import_bulk_sink_type,
-    import_class,
+    import_from_module,
     import_processor_class,
     import_sink_class,
     import_source_class,
@@ -113,7 +113,7 @@ class Workflow(WorkflowStatusMixin):
         logger.info(f"Service type:{service_type},{source_type} configured")
 
         source_class = (
-            import_class(
+            import_from_module(
                 self.config.source.serviceConnection.__root__.config.sourcePythonClass
             )
             if source_type.startswith("custom")

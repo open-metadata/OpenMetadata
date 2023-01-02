@@ -49,7 +49,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.connections import get_connection, test_connection
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
@@ -247,11 +247,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.connection = get_connection(self.service_connection)
+        self.client = get_connection(self.service_connection)
         self.test_connection()
         self.status = DashboardSourceStatus()
 
-        self.client = self.connection.client
         self.metadata_client = OpenMetadata(self.metadata_config)
 
     def get_status(self) -> SourceStatus:
@@ -314,7 +313,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             yield dashboard_details
 
     def test_connection(self) -> None:
-        test_connection(self.connection)
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.client)
 
     def prepare(self):
         pass

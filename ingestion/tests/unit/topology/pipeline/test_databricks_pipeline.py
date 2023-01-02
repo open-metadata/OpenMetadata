@@ -173,7 +173,10 @@ class DatabricksPipelineTests(TestCase):
     Databricks Pipeline test
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    # @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         print_ansi_encoded_string(message="init")
@@ -187,7 +190,9 @@ class DatabricksPipelineTests(TestCase):
         self.databricks.context.__dict__["pipeline"] = MOCK_PIPELINE
         self.databricks.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
 
-    @patch("metadata.clients.databricks_client.DatabricksClient.list_jobs")
+    @patch(
+        "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_jobs"
+    )
     def test_list_jobs(self, list_jobs):
         list_jobs.return_value = mock_data
         results = list(self.databricks.get_pipelines_list())

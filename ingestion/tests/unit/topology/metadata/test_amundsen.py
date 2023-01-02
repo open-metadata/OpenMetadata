@@ -181,7 +181,9 @@ class AmundsenUnitTest(TestCase):
     Amundsen Unit Test
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

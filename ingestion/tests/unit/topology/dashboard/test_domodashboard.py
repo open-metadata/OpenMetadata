@@ -178,7 +178,9 @@ class DomoDashboardUnitTest(TestCase):
     Domo Dashboard Unit Test
     """
 
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
+    )
     @patch("pydomo.Domo")
     def __init__(self, methodName, domo_client, test_connection) -> None:
         super().__init__(methodName)

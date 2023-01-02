@@ -16,7 +16,10 @@ Databricks pipeline source to extract metadata
 import traceback
 from typing import Any, Iterable, List, Optional
 
-from metadata.clients.databricks_client import DatabricksClient
+from metadata.ingestion.source.database.databricks.client import (
+    DatabricksClient,
+)
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
