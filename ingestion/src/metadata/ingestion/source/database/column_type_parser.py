@@ -221,7 +221,9 @@ class ColumnTypeParser:
         column_type_result = ColumnTypeParser.get_source_type_mapping(column_type)
         if column_type_result:
             return column_type_result
-        column_type_result = ColumnTypeParser.get_source_type_containes_brackets(column_type)
+        column_type_result = ColumnTypeParser.get_source_type_containes_brackets(
+            column_type
+        )
         if column_type_result:
             return column_type_result
 
