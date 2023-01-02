@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -184,9 +184,8 @@ module.exports = {
     // In development mode, fork TypeScript checking to run in another thread and not block main
     // transpilation
     new ForkTsCheckerWebpackPlugin({
-      eslint: {
-        files: './src/**/*.{ts,tsx,js,jsx}',
-        // required - same as command `eslint ./src/**/*.{ts,tsx,js,jsx} --ext .ts,.tsx,.js,.jsx`
+      typescript: {
+        configFile: 'tsconfig.json',
       },
     }),
     // Generate index.html from template

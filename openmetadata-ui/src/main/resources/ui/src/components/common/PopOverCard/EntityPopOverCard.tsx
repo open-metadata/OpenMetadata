@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -218,7 +218,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
         {entityTags.length ? (
           <>
             <Divider className="m-b-xs m-t-sm" />
-            <div className="flex flex-start">
+            <div className="d-flex flex-start">
               <span className="w-5 m-r-xs">
                 <SVGIcons alt="icon-tag" icon="icon-tag-grey" width="14" />
               </span>

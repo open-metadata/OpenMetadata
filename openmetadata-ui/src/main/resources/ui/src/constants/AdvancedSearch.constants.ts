@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -63,14 +63,14 @@ export const TABLE_DROPDOWN_ITEMS = [
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
     label: i18next.t('label.chart'),
-    key: 'charts.displayName',
+    key: 'charts.name',
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: i18next.t('label.task'),
-    key: 'tasks.displayName',
+    key: 'tasks.name',
   },
 ];
 

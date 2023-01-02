@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import i18next from 'i18next';
 import { camelCase } from 'lodash';
@@ -44,6 +45,7 @@ export interface MenuListItem {
 export interface MenuList {
   category: string;
   items: MenuListItem[];
+  isBeta?: boolean;
 }
 
 export const getGlobalSettingsMenuWithPermission = (
@@ -157,9 +159,10 @@ export const getGlobalSettingsMenuWithPermission = (
     },
     {
       category: i18next.t('label.notification-plural'),
+      isBeta: true,
       items: [
         {
-          label: i18next.t('label.activity-feeds'),
+          label: i18next.t('label.activity-feed-plural'),
           isProtected: Boolean(isAdminUser),
           icon: <AllActivityIcon className="side-panel-icons" />,
         },
@@ -253,12 +256,13 @@ export const getGlobalSettingMenuItem = (
     isProtected: boolean;
     icon: React.ReactNode;
   }[],
-  type?: string
+  type?: string,
+  isBeta?: boolean
 ): {
   key: string;
   icon: React.ReactNode;
   children: ItemType[] | undefined;
-  label: string;
+  label: ReactNode;
   type: string | undefined;
 } => {
   const subItems = children
@@ -273,7 +277,13 @@ export const getGlobalSettingMenuItem = (
     key: `${category}.${key}`,
     icon,
     children: subItems,
-    label,
+    label: isBeta ? (
+      <Badge color="#7147e8" count="beta" offset={[30, 8]} size="small">
+        {label}
+      </Badge>
+    ) : (
+      label
+    ),
     type,
   };
 };

@@ -27,6 +27,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
@@ -41,7 +42,6 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
 )
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -58,7 +58,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -146,7 +146,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 consumer=["database_service", "database"],
             ),
             NodeStage(
-                type_=OMetaTagAndCategory,
+                type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_tag_details",
                 ack_sink=False,
@@ -288,12 +288,14 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         """
         From topology. To be run for each schema
         """
 
-    def yield_tag_details(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag_details(
+        self, schema_name: str
+    ) -> Iterable[OMetaTagAndClassification]:
         """
         From topology. To be run for each schema
         """
@@ -356,7 +358,7 @@ class DatabaseServiceSource(
                 tagFQN=fqn.build(
                     self.metadata,
                     entity_type=Tag,
-                    tag_category_name=tag_and_category.category_name.name.__root__,
+                    classification_name=tag_and_category.category_name.name.__root__,
                     tag_name=tag_and_category.category_details.name.__root__,
                 ),
                 labelType=LabelType.Automated,

@@ -280,7 +280,7 @@ First, you'll need to create a Test Definition for your test. You can use the fo
     "description": "<you test definition description>",
     "entityType": "<TABLE or COLUMN>",
     "name": "<your_test_name>",
-    "testPlatforms": ["<any of OpenMetadata,GreatExpectations, DBT, Deequ, Soda, Other>"],
+    "testPlatforms": ["<any of OpenMetadata,GreatExpectations, dbt, Deequ, Soda, Other>"],
     "parameterDefinition": [
       {
         "name": "<name>"
@@ -301,7 +301,7 @@ curl --request POST 'http://localhost:8585/api/v1/testDefinition' \
     "description": "A demo custom test",
     "entityType": "TABLE",
     "name": "demo_test_definition",
-    "testPlatforms": ["Soda", "DBT"],
+    "testPlatforms": ["Soda", "dbt"],
     "parameterDefinition": [{
         "name": "ColumnOne"
     }]

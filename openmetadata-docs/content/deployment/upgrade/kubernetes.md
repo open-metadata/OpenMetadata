@@ -35,7 +35,7 @@ Then, follow the next steps to create a virtual environment and install the late
 
 1. `python -m venv venv`
 2. `source venv/bin/activate`
-3. `pip install openmetadata-ingestion~=0.13.1`
+3. `pip install openmetadata-ingestion~=0.13.1.0`
 4. Validate the installed `metadata` version with `python -m metadata --version`
 5. Run the backup using the updated `metadata` CLI:
     ```

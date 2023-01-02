@@ -46,7 +46,6 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
   public MlModelServiceResourceTest() {
     super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;
-    this.supportsAuthorizedMetadataOperations = false;
   }
 
   public void setupMlModelServices(TestInfo test) throws HttpResponseException {

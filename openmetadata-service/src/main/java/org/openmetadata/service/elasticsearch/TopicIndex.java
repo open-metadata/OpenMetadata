@@ -9,7 +9,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicIndex implements ElasticSearchIndex {
-  final List<String> excludeTopicFields = List.of("sampleData");
+  final List<String> excludeTopicFields = List.of("sampleData", "changeDescription");
   final Topic topic;
 
   public TopicIndex(Topic topic) {

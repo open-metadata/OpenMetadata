@@ -24,7 +24,6 @@ from pydantic import ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
@@ -82,6 +81,7 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_profiler_status
@@ -128,7 +128,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 sink_type=self.config.sink.type,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
-                _from="orm_profiler",
+                from_="orm_profiler",
             )
 
         if not self._validate_service_name():

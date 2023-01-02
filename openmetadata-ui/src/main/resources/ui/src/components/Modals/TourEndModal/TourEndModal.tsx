@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -42,9 +42,9 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
         </Col>
         <Col span={24}>
           <Typography className="text-base mt-5">
-            {t('label.successfully-completed-the-tour')}
+            {t('message.successfully-completed-the-tour')}
             <br />
-            {t('label.get-started-with-open-metadata')}
+            {t('message.get-started-with-open-metadata')}
           </Typography>
         </Col>
       </Row>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,6 +27,24 @@ interface LineageEdgeIconProps {
   y: number;
   offset: number;
 }
+
+export const LineageEdgeIcon = ({
+  children,
+  x,
+  y,
+  offset,
+}: LineageEdgeIconProps) => {
+  return (
+    <foreignObject
+      height={FOREIGN_OBJECT_SIZE}
+      requiredExtensions="http://www.w3.org/1999/xhtml"
+      width={FOREIGN_OBJECT_SIZE}
+      x={x - FOREIGN_OBJECT_SIZE / offset}
+      y={y - FOREIGN_OBJECT_SIZE / offset}>
+      {children}
+    </foreignObject>
+  );
+};
 
 export const CustomEdge = ({
   id,
@@ -176,23 +194,5 @@ export const CustomEdge = ({
         )
       )}
     </Fragment>
-  );
-};
-
-export const LineageEdgeIcon = ({
-  children,
-  x,
-  y,
-  offset,
-}: LineageEdgeIconProps) => {
-  return (
-    <foreignObject
-      height={FOREIGN_OBJECT_SIZE}
-      requiredExtensions="http://www.w3.org/1999/xhtml"
-      width={FOREIGN_OBJECT_SIZE}
-      x={x - FOREIGN_OBJECT_SIZE / offset}
-      y={y - FOREIGN_OBJECT_SIZE / offset}>
-      {children}
-    </foreignObject>
   );
 };

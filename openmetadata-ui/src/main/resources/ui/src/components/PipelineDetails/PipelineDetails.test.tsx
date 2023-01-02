@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -222,10 +222,10 @@ describe('Test PipelineDetails component', () => {
       'label.activity-feed-and-task-plural'
     );
     const lineageTab = await findByText(container, 'label.lineage');
-    const executionsTab = await findByText(container, 'label.executions');
+    const executionsTab = await findByText(container, 'label.execution-plural');
     const customPropertiesTab = await findByText(
       container,
-      'label.custom-properties'
+      'label.custom-property-plural'
     );
 
     expect(EntityPageInfo).toBeInTheDocument();
@@ -292,7 +292,10 @@ describe('Test PipelineDetails component', () => {
       }
     );
 
-    const activityFeedTab = await findByText(container, 'label.executions');
+    const activityFeedTab = await findByText(
+      container,
+      'label.execution-plural'
+    );
 
     await act(async () => {
       fireEvent.click(activityFeedTab);
@@ -329,7 +332,7 @@ describe('Test PipelineDetails component', () => {
 
     const activityFeedTab = await findByText(
       container,
-      'label.custom-properties'
+      'label.custom-property-plural'
     );
 
     await act(async () => {

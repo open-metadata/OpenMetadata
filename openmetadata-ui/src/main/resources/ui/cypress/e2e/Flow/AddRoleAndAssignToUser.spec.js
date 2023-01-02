@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { descriptionBox, interceptURL, uuid, verifyResponseStatusCode } from "../../common/common";
+import { BASE_URL } from "../../constants/constants";
 
 const roleName = `Role-test-${uuid()}`;
 const userName = `Usercttest${uuid()}`;
@@ -29,7 +30,7 @@ describe("Test Add role and assign it to the user", () => {
 
     verifyResponseStatusCode('@getRoles', 200);
 
-    cy.url().should('eq', 'http://localhost:8585/settings/access/roles');
+    cy.url().should('eq', `${BASE_URL}/settings/access/roles`);
   });
 
   it("Create and Assign role to user", () => {
@@ -67,7 +68,7 @@ describe("Test Add role and assign it to the user", () => {
     //Verify the role is added successfully
     cy.url().should(
       'eq',
-      `http://localhost:8585/settings/access/roles/${roleName}`
+      `${BASE_URL}/settings/access/roles/${roleName}`
     );
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
 

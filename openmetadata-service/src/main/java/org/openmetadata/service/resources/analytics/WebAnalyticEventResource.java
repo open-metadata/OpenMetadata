@@ -83,10 +83,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
     public WebAnalyticEventList() {
       // Empty constructor needed for deserialization
     }
-
-    public WebAnalyticEventList(List<WebAnalyticEvent> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
   }
 
   public static class WebAnalyticEventDataList extends ResultList<WebAnalyticEventData> {

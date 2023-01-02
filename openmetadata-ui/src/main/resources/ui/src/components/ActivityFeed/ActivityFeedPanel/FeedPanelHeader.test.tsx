@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -84,7 +84,7 @@ describe('Test FeedPanelHeader Component', () => {
     const noun = await findByTestId(container, 'header-noun');
 
     // noun is undefined so default noun should be present in text content
-    expect(noun).toHaveTextContent('Conversation on');
+    expect(noun).toHaveTextContent('label.conversation on');
   });
 
   it('Should render entityFQN if entityField is empty', async () => {

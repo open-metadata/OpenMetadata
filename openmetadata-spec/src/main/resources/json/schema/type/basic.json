@@ -140,6 +140,11 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "status" : {
+      "description": "State of an action over API.",
+      "type" : "string",
+      "enum" : ["success", "failure", "aborted", "partialSuccess"]
     }
   }
 }

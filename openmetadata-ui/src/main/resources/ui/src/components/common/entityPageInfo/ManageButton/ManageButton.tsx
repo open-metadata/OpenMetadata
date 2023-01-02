@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -82,7 +82,7 @@ const ManageButton: FC<Props> = ({
                   }
                 }}>
                 <Col span={3}>
-                  <SVGIcons alt="Delete" icon={Icons.DELETE} />
+                  <SVGIcons alt="Delete" icon={Icons.DELETE} width="20px" />
                 </Col>
                 <Col span={21}>
                   <Row data-testid="delete-button">
@@ -125,7 +125,11 @@ const ManageButton: FC<Props> = ({
                       }}>
                       <Col span={3}>
                         {' '}
-                        <SVGIcons alt="Restore" icon={Icons.RESTORE} />
+                        <SVGIcons
+                          alt="Restore"
+                          icon={Icons.RESTORE}
+                          width="20px"
+                        />
                       </Col>
                       <Col span={21}>
                         <Row data-testid="restore-button">
@@ -168,13 +172,14 @@ const ManageButton: FC<Props> = ({
                       <SVGIcons
                         alt="announcement"
                         icon={Icons.ANNOUNCEMENT_BLACK}
+                        width="20px"
                       />
                     </Col>
                     <Col span={21}>
                       <Row data-testid="announcement-button">
                         <Col span={21}>
                           <Typography.Text className="font-medium">
-                            {t('label.announcements')}
+                            {t('label.announcement-plural')}
                           </Typography.Text>
                         </Col>
                         <Col className="p-t-xss">

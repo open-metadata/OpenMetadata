@@ -12,9 +12,100 @@ version. To see what's coming in next releases, please check our [Roadmap](/over
 
 </Note>
 
-## Latest Release - 0.12.1 Release - Oct 3rd 2022
+# **[0.13.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.1-release) - Latest - Dec 20th 2022** 🎉
+## Profiler and Data Quality
+- Freshness Metric has been introduced. Data freshness shows DML operations performed against a table and the number of rows affected. All this is displayed within the data profiler with filterable graphs. This is currently supported for BigQuery, Snowflake, and Redshift.
+- Support has been added for data quality tests on Data Lake.
+- UI has been improved to show table and column profile data on seperate page. Legend is now selectable to filter for specific metrics
 
-# 0.12.0 Release - Sept 7th 2022 🎉
+## Alerts and Notification
+The logic for Notification Support has been improved. Users can define Alerts based on a Trigger (all data assets or a specific entity), Filters (events to consider), and Action (Slack, MS Teams, Email, Webhook) on where to send the alert.
+
+## Ingestion
+- Now, dbt has its own workflow. Previously, dbt  was a part of metadata ingestion workflow.
+- Airflow Lineage Operator and the OpenMetadata Hook are now part of the ingestion package. Send Airflow metadata from your DAGs and safely store the OpenMetadata server connection directly in Airflow.
+- Multiple Databases (catalog) is now supported for the Databricks connector
+- Azure blob is now supported to backup your metadata into
+
+## New Connectors
+- OpenMetadata now supports Azure Datalake Storage Gen 2
+
+## General Improvements
+- Users can update the description and tags for Topic Schema. Previously, the topic schemas were read-only. We now support Avro/Protobuf parsing and field level details for topic schemas.
+- The layout for the Data Insight  Report has been improved. We now display a line graph instead of a bar graph. The Most Viewed Data Assets are clickable to view the asset details page.
+- Improvements have been made to Advanced Search. Now, when a filter is applied, the details of the filter selected are displayed for clarity.
+- On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.
+
+# [0.13.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.0-release) - Dec 8th 2022 🎉
+<YouTube videoId="oNbMnTW5AkE" start="0:00" end="7:51"/>
+## Data Insights and KPI
+Data Insight allows admins to take an active approach in their metadata management. Data Inisght provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
+
+## Lineage
+The lineage UI has been transformed to enhance user experience. Users can get a holistic view of an entity from the Lineage tab. When an entity is selected, the UI displays end-to-end lineage traceability for the table and column levels.
+
+## Profiler
+With the OpenMetadata UI, users can now create and deploy profiling workflows for the Datalake connector, which supports AWS S3 and GCS
+
+## SSO
+Support for LDAP SSO has been added in this release
+
+## Advance Search
+Syntax Editor has been introduced for advanced search with And/Or conditions that help discover assets quickly
+
+## New Connectors
+- AWS SageMaker
+- AWS QuickSight
+- AWS Kinesis
+- Domo
+
+## Messaging Service Schemas Improvements
+Major enhancements have been made to how data is extracted from Kafka and Redpanda Messaging services. Previously, OpenMetadata extracted all the Topics in the messaging queue and also connected to the Schema Registry to get the Schemas. These schemas were taken as one payload and published to OpenMetadata. We now parse Avro and Protobuf Schemas to extract the fields. Now, users can document each of these fields within a schema by adding descriptions and tags. Users can search based on the fields in the Schema of a Topic.
+
+## General Improvements
+- Soft deleted entities can be restored. Currently, only the ML Models are not supported.
+- Soft deleted teams can be restored. When restoring a soft deleted parent team, the child teams will not be restored by default.
+
+# [0.12.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.3-release) - Nov 18th 2022 🎉
+## Bug Fixes
+- User suggestion index mapping
+- Tag and Glossary terms caching
+
+# [0.12.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.2-release) - Oct 20th 2022 🎉
+## Ingestion
+- Databricks lineage
+- Added support for Airflow version 2.2.2 as a workflow scheduler
+## Bug Fixes
+- Support same table across differemt databases for the profiler
+
+# [0.12.1 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.1-release) - Oct 3rd 2022 🎉
+## Basic Authentication
+
+- User/Password signup and login
+- Email notifications for forgotten password and new user signed up
+- Admin can add new users and send an email 
+
+## ElasticSearch full re-index through UI
+
+- Now admins can full re-index elasticsearch through the UI itself
+
+## Versioning Support for Custom Attributes
+
+- Any changes to entity custom attributes are now versioned
+
+## DBT Metadata - Tags
+
+- We support ingesting DBT tags into OpenMetadata
+
+## Bots Integration 
+
+- Admins can create bots and their security mechanism from UI itself
+
+## Bug Fixes
+
+- Around 136 Features/Improvements/Tests made it into 0.12.1 release 
+
+# [0.12.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.12.0-release) - Sept 7th 2022 🎉
 
 You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 or watch an awesome video showing the new features!
@@ -121,11 +212,11 @@ and the UI. We now use the pydantic models automatically generated from the JSON
 definition. The ‘Add Service’ form is automatically generated in the UI based on the JSON schema specifications for the
 various connectors that are supported in OpenMetadata.
 
-### Download DBT Manifest Files from Amazon S3 or Google Cloud Storage
+### Download dbt Manifest Files from Amazon S3 or Google Cloud Storage
 
-Previously, when ingesting the models and lineage from DBT, we passed the path of the DBT manifest and catalog files 
-directly into the workflow. We’ve worked on improving the quality of life of DBT. Now, we can dynamically download 
-these files from Amazon S3 or Google Cloud Storage. This way we can have any other process to connect to the DBT, 
+Previously, when ingesting the models and lineage from dbt, we passed the path of the dbt manifest and catalog files 
+directly into the workflow. We’ve worked on improving the quality of life of dbt. Now, we can dynamically download 
+these files from Amazon S3 or Google Cloud Storage. This way we can have any other process to connect to the dbt, 
 extract the catalog, and put it into any cloud service. We just need the path name and workflow job details from the 
 metadata extraction to be able to ingest metadata.
 
@@ -280,7 +371,7 @@ and prepares handy methods to help us test the connection to the source before c
 
 ### Connectors
 - AWS Glue
-- DBT
+- dbt
 - MariaDB
 
 ## 0.5 Release - Oct 19th, 2021

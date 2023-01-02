@@ -32,7 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -73,7 +73,7 @@ class PipelineServiceTopology(ServiceTopology):
         producer="get_pipeline",
         stages=[
             NodeStage(
-                type_=OMetaTagAndCategory,
+                type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_tag",
                 ack_sink=False,
@@ -171,7 +171,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_tag(
         self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[OMetaTagAndCategory]]:
+    ) -> Optional[Iterable[OMetaTagAndClassification]]:
         """
         Method to fetch pipeline tags
         """

@@ -22,10 +22,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.tags.Tag;
-import org.openmetadata.schema.type.TagCategory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
@@ -43,9 +43,9 @@ public class TagLabelCache {
   private static volatile boolean INITIALIZED = false;
 
   protected static EntityRepository<Tag> TAG_REPOSITORY;
-  protected static EntityRepository<TagCategory> TAG_CATEGORY_REPOSITORY;
+  protected static EntityRepository<Classification> TAG_CATEGORY_REPOSITORY;
   protected static LoadingCache<String, Tag> TAG_CACHE; // Tag fqn to Tag
-  protected static LoadingCache<String, TagCategory> TAG_CATEGORY_CACHE; // Tag category name to TagCategory
+  protected static LoadingCache<String, Classification> TAG_CATEGORY_CACHE; // Classification name to Classification
 
   protected static EntityRepository<GlossaryTerm> GLOSSARY_TERM_REPOSITORY;
   protected static EntityRepository<Glossary> GLOSSARY_REPOSITORY;
@@ -59,11 +59,11 @@ public class TagLabelCache {
           CacheBuilder.newBuilder()
               .maximumSize(25)
               .expireAfterAccess(1, TimeUnit.MINUTES)
-              .build(new TagCategoryLoader());
+              .build(new ClassificationLoader());
       TAG_CACHE =
           CacheBuilder.newBuilder().maximumSize(100).expireAfterAccess(1, TimeUnit.MINUTES).build(new TagLoader());
       TAG_REPOSITORY = Entity.getEntityRepository(Entity.TAG);
-      TAG_CATEGORY_REPOSITORY = Entity.getEntityRepository(Entity.TAG_CATEGORY);
+      TAG_CATEGORY_REPOSITORY = Entity.getEntityRepository(Entity.CLASSIFICATION);
 
       GLOSSARY_CACHE =
           CacheBuilder.newBuilder().maximumSize(25).expireAfterAccess(1, TimeUnit.MINUTES).build(new GlossaryLoader());
@@ -84,7 +84,7 @@ public class TagLabelCache {
     return INSTANCE;
   }
 
-  public TagCategory getTagCategory(String categoryName) {
+  public Classification getClassification(String categoryName) {
     try {
       return TAG_CATEGORY_CACHE.get(categoryName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -131,7 +131,9 @@ public class TagLabelCache {
     String parentFqn = FullyQualifiedName.getParent(label.getTagFQN());
     boolean rootParent = FullyQualifiedName.split(parentFqn).length == 1;
     if (label.getSource() == TagSource.TAG) {
-      return rootParent ? getTagCategory(parentFqn).getMutuallyExclusive() : getTag(parentFqn).getMutuallyExclusive();
+      return rootParent
+          ? getClassification(parentFqn).getMutuallyExclusive()
+          : getTag(parentFqn).getMutuallyExclusive();
     } else if (label.getSource() == TagSource.GLOSSARY) {
       return rootParent
           ? getGlossary(parentFqn).getMutuallyExclusive()
@@ -150,10 +152,10 @@ public class TagLabelCache {
     }
   }
 
-  static class TagCategoryLoader extends CacheLoader<String, TagCategory> {
+  static class ClassificationLoader extends CacheLoader<String, Classification> {
     @Override
-    public TagCategory load(@CheckForNull String categoryName) throws IOException {
-      TagCategory category = TAG_CATEGORY_REPOSITORY.getByName(null, categoryName, Fields.EMPTY_FIELDS);
+    public Classification load(@CheckForNull String categoryName) throws IOException {
+      Classification category = TAG_CATEGORY_REPOSITORY.getByName(null, categoryName, Fields.EMPTY_FIELDS);
       LOG.info("Loaded user {}:{}", category.getName(), category.getId());
       return category;
     }
