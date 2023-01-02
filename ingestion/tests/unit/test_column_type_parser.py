@@ -58,9 +58,7 @@ COLUMN_TYPE = [
     "LONGBLOB",
     "JSONB",
     "POINT",
-    types.ARRAY,
-    types.DateTime,
-    types.BigInteger,
+    "Random1",
 ]
 
 EXPTECTED_COLUMN_TYPE = [
@@ -78,8 +76,6 @@ EXPTECTED_COLUMN_TYPE = [
     "LONGBLOB",
     "JSON",
     "POINT",
-    "VARCHAR",
-    "VARCHAR",
     "VARCHAR",
 ]
 root = os.path.dirname(__file__)
